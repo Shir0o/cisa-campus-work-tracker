@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Tag, Plus, Loader2, RefreshCw, CalendarHeart, MapPin } from 'lucide-react';
+import { X, Calendar, Tag, Plus, Loader2, RefreshCw, CalendarHeart, MapPin, Users } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { cn } from '../../lib/utils';
@@ -9,11 +9,13 @@ import { addDays, addWeeks, addMonths, format, parseISO, getDay, startOfMonth, e
 import DatePicker from '../ui/DatePicker';
 import { useGatheringTypes } from '../../lib/gatheringTypes';
 import { useLanguage } from '../LanguageProvider';
+import type { Contact } from '../../types';
 
 interface AddEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentEventCount: number;
+  contacts?: Contact[];
 }
 
 type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
@@ -29,10 +31,12 @@ const DAYS = [
   { label: 'S', labelFull: 'Saturday', value: 6 },
 ];
 
-export default function AddEventModal({ isOpen, onClose, currentEventCount }: AddEventModalProps) {
+export default function AddEventModal({ isOpen, onClose, currentEventCount, contacts = [] }: AddEventModalProps) {
   const { t } = useLanguage();
   const gatheringTypes = useGatheringTypes();
   const [loading, setLoading] = useState(false);
+  const [selectedRoster, setSelectedRoster] = useState<string[]>([]);
+  const [rosterSearch, setRosterSearch] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     type: 'Weekly',
@@ -200,7 +204,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
             recurrenceEndDate: formData.recurrenceEndDate,
             recurrenceDays: formData.recurrenceType === 'weekly' ? formData.recurrenceDays : null,
             monthlyType: formData.recurrenceType === 'monthly' ? formData.monthlyType : null,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            roster: selectedRoster,
           });
         });
         
@@ -214,10 +219,13 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
           order: currentEventCount,
           isRecurring: false,
           recurrenceType: 'none',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          roster: selectedRoster,
         });
       }
       
+      setSelectedRoster([]);
+      setRosterSearch('');
       setFormData({
         name: '',
         type: gatheringTypes[0]?.name ?? 'Weekly',
@@ -334,6 +342,55 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                     placeholder="e.g. Lower Common Room"
                   />
                 </div>
+
+                {/* Expected Roster (optional, defaults to empty) */}
+                {contacts.length > 0 && (
+                  <div className="space-y-2 p-3 rounded-2xl bg-surface-container-high border border-outline/30">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1">
+                        <Users className="w-3 h-3" /> {t('attendance.expected_roster', 'Expected Roster')}
+                      </label>
+                      <span className="text-[11px] font-medium text-accent">
+                        {selectedRoster.length} selected
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={rosterSearch}
+                      onChange={(e) => setRosterSearch(e.target.value)}
+                      placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
+                      className="w-full h-8 px-3 rounded-lg bg-surface border border-outline/40 text-xs text-on-surface outline-none focus:border-primary"
+                    />
+                    <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
+                      {contacts
+                        .filter((c) => !rosterSearch.trim() || c.name.toLowerCase().includes(rosterSearch.toLowerCase()))
+                        .slice(0, 20)
+                        .map((c) => {
+                          const isSelected = selectedRoster.includes(c.id);
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedRoster((prev) =>
+                                  isSelected ? prev.filter((id) => id !== c.id) : [...prev, c.id],
+                                )
+                              }
+                              className={cn(
+                                'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left',
+                                isSelected
+                                  ? 'bg-primary/10 text-accent font-medium'
+                                  : 'hover:bg-surface text-on-surface-variant',
+                              )}
+                            >
+                              <span>{c.name}</span>
+                              <span className="text-[10px]">{isSelected ? '✓' : '+'}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Recurrence Toggle */}
                 <div className="flex items-center justify-between p-3 rounded-3xl bg-surface-container-high border border-outline/30">

@@ -798,7 +798,18 @@
     "came": "vinieron",
     "attended_header": "Asistieron",
     "no_gatherings_recorded": "Aún no hay reuniones registradas. Registra la primera para empezar a llevar el historial.",
-    "remove_gathering_confirm": "¿Eliminar la reunión \"{name}\"? Esto también borra quién fue marcado presente o ausente."
+    "remove_gathering_confirm": "¿Eliminar la reunión \"{name}\"? Esto también borra quién fue marcado presente o ausente.",
+    "expected_roster": "Lista esperada",
+    "regular_attendees": "Asistentes habituales",
+    "manage_roster": "Administrar lista",
+    "add_attendee_or_walkin": "Añadir asistente o participante...",
+    "add_to_roster": "Añadir a la lista",
+    "remove_from_roster": "Quitar de la lista",
+    "create_contact_named": "Crear contacto \"{name}\"",
+    "creating": "Creando...",
+    "apply_to_this_only": "Solo esta reunión",
+    "apply_to_future_series": "Todas las futuras en la serie",
+    "apply_roster_scope_title": "¿Actualizar lista de la serie?"
   },
   "outreach": {
     "stages": "Etapas",

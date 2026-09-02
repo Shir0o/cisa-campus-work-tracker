@@ -107,6 +107,33 @@ describe('AddEventModal Component', () => {
     });
   });
 
+  it('allows selecting expected attendees for the roster', async () => {
+    const mockContacts = [
+      { id: 'c1', name: 'Alice', role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'A' },
+      { id: 'c2', name: 'Bob', role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'B' },
+    ];
+    render(<AddEventModal isOpen={true} onClose={mockOnClose} currentEventCount={1} contacts={mockContacts} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/e.g. Friday Night Gathering/i), { target: { value: 'Team Gathering' } });
+
+    // Select Alice
+    const aliceBtn = screen.getByText('Alice');
+    fireEvent.click(aliceBtn);
+
+    const submitBtn = screen.getByRole('button', { name: /Log gathering/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(firestore.addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          name: 'Team Gathering',
+          roster: ['c1'],
+        }),
+      );
+    });
+  });
+
   it('shows recurrence options when isRecurring checkbox is checked', async () => {
     render(<AddEventModal isOpen={true} onClose={mockOnClose} currentEventCount={0} />);
 

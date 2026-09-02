@@ -5,10 +5,17 @@ import EditEventModal from '../components/modals/EditEventModal';
 import { updateDoc } from 'firebase/firestore';
 import { logActivity } from '../lib/firebase';
 
-vi.mock('firebase/firestore', () => ({
-  doc: vi.fn((_db, path, id) => ({ path, id })),
-  updateDoc: vi.fn(() => Promise.resolve()),
-}));
+vi.mock('firebase/firestore', () => {
+  const mockBatch = {
+    update: vi.fn(),
+    commit: vi.fn().mockResolvedValue(true),
+  };
+  return {
+    doc: vi.fn((_db, path, id) => ({ path, id })),
+    updateDoc: vi.fn(() => Promise.resolve()),
+    writeBatch: vi.fn(() => mockBatch),
+  };
+});
 
 vi.mock('../lib/firebase', () => ({
   db: {},
@@ -84,6 +91,38 @@ describe('EditEventModal', () => {
       expect.objectContaining({ targetType: 'event', type: 'edit', targetId: 'e1' }),
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('updates roster and allows cascading to recurring series', async () => {
+    const mockContacts = [
+      { id: 'c1', name: 'Alice', role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'A' },
+    ];
+    const recurringEvent = { ...EVENT, isRecurring: true, roster: [] };
+    const futureOccurrence = { ...EVENT, id: 'e2', date: '2026-06-19', parentEventId: 'e1' };
+
+    render(
+      <EditEventModal
+        isOpen
+        onClose={vi.fn()}
+        event={recurringEvent}
+        contacts={mockContacts}
+        allEvents={[recurringEvent, futureOccurrence]}
+      />
+    );
+
+    // Toggle Alice in roster
+    const aliceBtn = screen.getByText('Alice');
+    fireEvent.click(aliceBtn);
+
+    // Check cascade checkbox
+    const cascadeCheckbox = screen.getByLabelText(/All future in series/i);
+    fireEvent.click(cascadeCheckbox);
+
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalled();
+    });
   });
 
   it('falls back to the first gathering type when the stored type was renamed/removed', async () => {

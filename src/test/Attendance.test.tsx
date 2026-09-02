@@ -1,7 +1,7 @@
 import './useMediaQuery.mock';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
+import { onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import Attendance from '../views/Attendance';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -108,6 +108,7 @@ const mockEvents = [
       date: '2026-06-12',
       type: 'Weekly',
       order: 1,
+      roster: ['c1', 'c2'],
     }),
   },
   {
@@ -117,6 +118,7 @@ const mockEvents = [
       date: '2026-06-05',
       type: 'Weekly',
       order: 2,
+      roster: ['c1', 'c2'],
     }),
   },
   {
@@ -126,6 +128,7 @@ const mockEvents = [
       date: '2026-05-29',
       type: 'Small Group',
       order: 3,
+      roster: ['c1', 'c2'],
     }),
   },
 ];
@@ -394,5 +397,70 @@ describe('Attendance', () => {
       expect(screen.getByText('Coming up')).toBeInTheDocument();
       expect(screen.getAllByText('Upcoming Retreat').length).toBeGreaterThan(0);
     });
+  });
+
+  it('allows checking in a walk-in attendee via search and creating an inline contact', async () => {
+    // Contact c3 is not on the roster for e1
+    const extraContact = {
+      id: 'c3',
+      data: () => ({
+        name: 'Charlie Brown',
+        email: 'charlie@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        attendance: {},
+      }),
+    };
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: [...mockContacts, extraContact], size: 3 });
+      } else if (ref?.path === 'events') {
+        callback({ docs: mockEvents, size: 3 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    // Expand session e1
+    fireEvent.click(screen.getByText('Friday Gathering 1'));
+
+    // Search for non-roster contact Charlie
+    const searchInput = screen.getByPlaceholderText(/Add attendee or walk-in/i);
+    fireEvent.change(searchInput, { target: { value: 'Charlie' } });
+
+    // Check in Charlie
+    const checkInBtn = screen.getByText('Charlie Brown').closest('button')!;
+    fireEvent.click(checkInBtn);
+
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        attendance: expect.objectContaining({ e1: true }),
+      }),
+    );
+
+    // Search for a brand-new walk-in who is not in the system
+    fireEvent.change(searchInput, { target: { value: 'New Visitor' } });
+
+    const createBtn = screen.getByRole('button', { name: /Create contact "New Visitor"/i });
+    fireEvent.click(createBtn);
+
+    expect(addDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        name: 'New Visitor',
+        role: 'Student',
+        stage: 'Lead',
+        attendance: expect.objectContaining({ e1: true }),
+      }),
+    );
   });
 });
