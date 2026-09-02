@@ -162,6 +162,9 @@ export function Sheet({
       onDismiss={onClose}
       snapPoints={snapPoints}
       enableDynamicSizing={false}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       animationConfigs={animationConfigs}
       backgroundStyle={{
         backgroundColor: backgroundColor ?? colors.surface,

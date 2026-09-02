@@ -29,8 +29,10 @@ jest.mock('@gorhom/bottom-sheet', () => {
     // typecheck.)
     const apiRef = React.useRef(null as { present: jest.Mock; dismiss: jest.Mock } | null);
     if (!apiRef.current) {
-      apiRef.current = { present: jest.fn(), dismiss: jest.fn() };
+      apiRef.current = { present: jest.fn(), dismiss: jest.fn(), props };
       instances.push(apiRef.current);
+    } else {
+      apiRef.current.props = props;
     }
     React.useImperativeHandle(ref, () => apiRef.current!);
     return React.createElement(View, null, props.children);
@@ -48,7 +50,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
 
 // The mock registers one api object per mounted BottomSheetModal.
 const { __instances } = jest.requireMock('@gorhom/bottom-sheet') as {
-  __instances: { present: jest.Mock; dismiss: jest.Mock }[];
+  __instances: { present: jest.Mock; dismiss: jest.Mock; props: any }[];
 };
 
 const { Sheet } = require('./Sheet') as typeof import('./Sheet');
@@ -68,6 +70,37 @@ describe('Sheet', () => {
       </ThemeProvider>,
     );
     expect(getByText('Sheet content')).toBeTruthy();
+  });
+
+  it('configures keyboardBehavior and android_keyboardInputMode for interactive keyboard avoidance', () => {
+    render(
+      <ThemeProvider>
+        <Sheet visible onClose={jest.fn()}>
+          <Text>Sheet content</Text>
+        </Sheet>
+      </ThemeProvider>,
+    );
+    expect(__instances).toHaveLength(1);
+    expect(__instances[0].props.keyboardBehavior).toBe('interactive');
+    expect(__instances[0].props.keyboardBlurBehavior).toBe('restore');
+    expect(__instances[0].props.android_keyboardInputMode).toBe('adjustResize');
+  });
+
+  it('renders backdrop with pointerEvents none when visible is false', () => {
+    const { UNSAFE_getByType } = render(
+      <ThemeProvider>
+        <Sheet visible={false} onClose={jest.fn()}>
+          <Text>Content</Text>
+        </Sheet>
+      </ThemeProvider>,
+    );
+    // Render the backdropComponent provided to BottomSheetModal
+    const BackdropComp = __instances[0].props.backdropComponent;
+    const { getByTestId, UNSAFE_queryAllByType } = render(
+      <ThemeProvider>
+        <BackdropComp animatedIndex={{ value: -1 }} />
+      </ThemeProvider>,
+    );
   });
 
   it('calls present() a macrotask after opening, and dismiss() when closing', () => {

@@ -390,6 +390,7 @@ export function QueueScreen() {
         <Pressable
           accessibilityLabel="Log a conversation"
           onPress={openBlankLog}
+          hitSlop={8}
           style={[
             {
               width: 54,
