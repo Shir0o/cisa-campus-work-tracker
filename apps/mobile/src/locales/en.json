@@ -38,6 +38,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "discard": "Discard",
     "edit": "Edit",
     "close": "Close",
     "search": "Search",
@@ -1510,7 +1511,10 @@
       "goes_by": "Goes by",
       "known": "Known",
       "cared_for_by": "Cared for by",
-      "looking_back": "Looking back"
+      "looking_back": "Looking back",
+      "details_updated": "{name} updated",
+      "discard_title": "Discard changes?",
+      "discard_message": "You have unsaved changes. Are you sure you want to discard them?"
     },
     "queue": {
       "moved_to_later": "Moved to later.",

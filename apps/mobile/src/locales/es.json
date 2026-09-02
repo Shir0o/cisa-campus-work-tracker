@@ -38,6 +38,7 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "discard": "Descartar",
     "edit": "Editar",
     "close": "Cerrar",
     "search": "Buscar",
@@ -1510,7 +1511,10 @@
       "goes_by": "Se hace llamar",
       "known": "Conocido",
       "cared_for_by": "Cuidado por",
-      "looking_back": "Mirando atrás"
+      "looking_back": "Mirando atrás",
+      "details_updated": "{name} actualizado",
+      "discard_title": "¿Descartar cambios?",
+      "discard_message": "Tienes cambios sin guardar. ¿Seguro que deseas descartarlos?"
     },
     "queue": {
       "moved_to_later": "Movido a después.",

@@ -24,6 +24,7 @@ export interface ContactEditFields {
   spiritualBackground: string;
   /** How we first met — the fixed "How we met" vocabulary (#356). */
   metVia?: string;
+  instagram?: string;
 }
 
 /** Diffs an edit form against the live contact, producing the audit-log
@@ -36,6 +37,9 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
   if (fullName !== before.name) changes.push(`name: "${before.name}" → "${fullName}"`);
   if (after.email !== before.email) changes.push(`email: "${before.email}" → "${after.email}"`);
   if (after.phone !== before.phone) changes.push(`phone: "${before.phone}" → "${after.phone}"`);
+  if (after.instagram !== before.instagram) {
+    changes.push(`instagram: "${before.instagram || ""}" → "${after.instagram || ""}"`);
+  }
   if (after.location !== before.location) {
     changes.push(`address: "${before.location}" → "${after.location}"`);
   }

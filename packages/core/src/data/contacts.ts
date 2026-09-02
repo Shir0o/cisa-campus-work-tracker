@@ -248,6 +248,7 @@ export interface ContactUpdateFields {
   spiritualBackground: string;
   /** How we first met — the fixed "How we met" vocabulary (#356). */
   metVia?: string;
+  instagram?: string;
 }
 
 /** Save the Contact Detail edit form (mirrors ContactDetailsModal's

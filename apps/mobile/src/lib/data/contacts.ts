@@ -125,6 +125,7 @@ export async function updateContact(
         tags: edits.tags,
         notes: edits.notes,
         spiritualBackground: edits.spiritualBackground,
+        instagram: edits.instagram,
       },
       by,
     );
