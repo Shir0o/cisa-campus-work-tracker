@@ -58,6 +58,7 @@ import { Snackbar } from '../ui';
 import { LogSheet } from '../log/LogSheet';
 import { MoveStepSheet } from '../journey/MoveStepSheet';
 import { ContactPrayerSheet } from './ContactPrayerSheet';
+import { EditContactSheet } from './EditContactSheet';
 import { ThreadCompose } from './ThreadCompose';
 import { ThreadMessageRow } from './ThreadMessageRow';
 
@@ -91,7 +92,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const [tab, setTab] = useState<ContactV2Tab>(initialTab);
   const [openStoryId, setOpenStoryId] = useState<string | null>(initialInteractionId ?? null);
   const [showDetails, setShowDetails] = useState(false);
-  const [sheet, setSheet] = useState<'log' | 'pray' | null>(null);
+  const [sheet, setSheet] = useState<'log' | 'pray' | 'edit' | null>(null);
   const [moving, setMoving] = useState<Contact | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
@@ -203,7 +204,12 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
-      <BackRow onBack={back} note={contactCareLine(data.inYourCare, contact.createdByName)} />
+      <BackRow
+        onBack={back}
+        note={contactCareLine(data.inYourCare, contact.createdByName)}
+        canEdit={canWrite}
+        onEdit={() => setSheet('edit')}
+      />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 30 }}
@@ -323,6 +329,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 contact={contact}
                 careLine={contactCareLine(data.inYourCare, contact.createdByName)}
                 caregiverName={data.caregiverName}
+                canEdit={canWrite}
+                onEdit={() => setSheet('edit')}
               />
             )}
           </View>
@@ -421,6 +429,21 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         onClose={() => setMoving(null)}
       />
 
+      {/* Edit contact info, notes, and tags directly from mobile. */}
+      <EditContactSheet
+        visible={sheet === 'edit'}
+        contact={contact}
+        room={roomForRole(role)}
+        onSaved={(name) =>
+          setToast(
+            t('mobile.contact.details_updated')
+              ? t('mobile.contact.details_updated').replace('{name}', name)
+              : `${name} updated`,
+          )
+        }
+        onClose={() => setSheet(null)}
+      />
+
       {removalSnack && (
         <Snackbar
           message={removalSnack.message}
@@ -438,7 +461,17 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
 }
 
 /** The design's `.m2-ch` on this screen: back, then who's looking after them. */
-function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
+function BackRow({
+  onBack,
+  note,
+  canEdit,
+  onEdit,
+}: {
+  onBack: () => void;
+  note: string;
+  canEdit?: boolean;
+  onEdit?: () => void;
+}) {
   const { c, font, fs } = useV2Theme();
   const { t } = useLanguage();
   return (
@@ -461,6 +494,25 @@ function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
         <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.room.ink3, marginLeft: 'auto' }} numberOfLines={1}>
           {note}
         </Text>
+      )}
+      {canEdit && onEdit && (
+        <Pressable
+          onPress={onEdit}
+          style={({ pressed }) => ({
+            height: 44,
+            paddingHorizontal: 15,
+            borderRadius: 15,
+            backgroundColor: c.room.chip,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginLeft: note ? 0 : 'auto',
+            opacity: pressed ? 0.65 : 1,
+          })}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>
+            {t('actions.edit') || 'Edit'}
+          </Text>
+        </Pressable>
       )}
     </View>
   );
@@ -658,16 +710,19 @@ function PrayerCard({
   );
 }
 
-/** Story's one disclosure (`.m2c-det`) — everything the old Overview tab held,
- * read-only. Tag editing went with the edit form; both live on the desk now. */
+/** Story's one disclosure (`.m2c-det`) — everything the old Overview tab held. */
 function Details({
   contact,
   careLine,
   caregiverName,
+  canEdit,
+  onEdit,
 }: {
   contact: NonNullable<ReturnType<typeof useContactDetailData>['contact']>;
   careLine: string;
   caregiverName: string | null;
+  canEdit?: boolean;
+  onEdit?: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -675,7 +730,7 @@ function Details({
   const tags = contact.tags ?? [];
 
   return (
-    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12 }}>
+    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 14 }}>
       {!!contact.notes && (
         <View style={{ backgroundColor: c.card.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
           <Kicker>{t('mobile.contact.first_impression')}</Kicker>
@@ -712,6 +767,25 @@ function Details({
         label={t('mobile.contact.cared_for_by')}
         value={careLine === 'In your care' ? t('mobile.common.you') : caregiverName ?? contact.createdByName}
       />
+
+      {canEdit && onEdit && (
+        <Pressable
+          onPress={onEdit}
+          style={({ pressed }) => ({
+            marginTop: 14,
+            minHeight: 44,
+            borderRadius: radius.note,
+            backgroundColor: c.card.bg2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>
+            {t('modals.contactDetails.edit_details') || 'Edit details'}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

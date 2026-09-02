@@ -2228,6 +2228,152 @@ describe('removing interactions (#650)', () => {
     expect(overviewTab).toHaveClass('on');
     expect(interactionsTab).not.toHaveClass('on');
   });
+
+  describe('Mobile Viewport / PWA Contact Editing', () => {
+    const setMobileViewport = () => {
+      const original = window.matchMedia;
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query) => ({
+          matches: query === '(max-width: 768px)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+      return () => {
+        Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+      };
+    };
+
+    it('renders Edit button in mobile viewport header for trainee (manager) role', () => {
+      const reset = setMobileViewport();
+      try {
+        (useAuth as any).mockReturnValue({
+          user: { uid: 'trainee_1', displayName: 'Trainee Sam' },
+          isAdmin: false,
+          role: 'manager',
+          effectiveUserId: 'trainee_1',
+        });
+
+        render(
+          <ContactDetailsModal
+            isOpen={true}
+            onClose={vi.fn()}
+            contact={{
+              id: 'c1',
+              name: 'Jordan Lee',
+              initials: 'JL',
+              role: 'Student',
+              location: 'Dorm A',
+              email: 'jordan@college.edu',
+              phone: '555-1234',
+              stage: 'Interested',
+              lastSeen: new Date().toISOString(),
+              tags: ['Freshman'],
+              createdBy: 'trainee_1',
+            } as any}
+          />
+        );
+
+        const editBtn = screen.getByRole('button', { name: /^Edit$/i });
+        expect(editBtn).toBeInTheDocument();
+      } finally {
+        reset();
+      }
+    });
+
+    it('hides Edit button in mobile viewport header for viewer role', () => {
+      const reset = setMobileViewport();
+      try {
+        (useAuth as any).mockReturnValue({
+          user: { uid: 'viewer_1', displayName: 'Viewer Val' },
+          isAdmin: false,
+          role: 'viewer',
+          effectiveUserId: 'viewer_1',
+        });
+
+        render(
+          <ContactDetailsModal
+            isOpen={true}
+            onClose={vi.fn()}
+            contact={{
+              id: 'c1',
+              name: 'Jordan Lee',
+              initials: 'JL',
+              role: 'Student',
+              location: 'Dorm A',
+              email: 'jordan@college.edu',
+              phone: '555-1234',
+              stage: 'Interested',
+              lastSeen: new Date().toISOString(),
+              tags: ['Freshman'],
+              createdBy: 'trainee_1',
+            } as any}
+          />
+        );
+
+        expect(screen.queryByRole('button', { name: /^Edit$/i })).toBeNull();
+      } finally {
+        reset();
+      }
+    });
+
+    it('switches to mobile edit form and saves changes on submit for trainee', async () => {
+      const reset = setMobileViewport();
+      try {
+        (useAuth as any).mockReturnValue({
+          user: { uid: 'trainee_1', displayName: 'Trainee Sam' },
+          isAdmin: false,
+          role: 'manager',
+          effectiveUserId: 'trainee_1',
+        });
+
+        render(
+          <ContactDetailsModal
+            isOpen={true}
+            onClose={vi.fn()}
+            contact={{
+              id: 'c1',
+              name: 'Jordan Lee',
+              initials: 'JL',
+              role: 'Student',
+              location: 'Dorm A',
+              email: 'jordan@college.edu',
+              phone: '555-1234',
+              stage: 'Interested',
+              lastSeen: new Date().toISOString(),
+              tags: ['Freshman'],
+              createdBy: 'trainee_1',
+            } as any}
+          />
+        );
+
+        // Tap mobile Edit button
+        const editBtn = screen.getByRole('button', { name: /^Edit$/i });
+        fireEvent.click(editBtn);
+
+        // Verify mobile edit header is shown
+        expect(screen.getByText(/edit details/i)).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /Cancel/i }).length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByRole('button', { name: /^Save$/i })).toBeInTheDocument();
+
+        // Submit form
+        const saveBtn = screen.getByRole('button', { name: /^Save$/i });
+        fireEvent.click(saveBtn);
+
+        await waitFor(() => {
+          expect(firestore.updateDoc).toHaveBeenCalled();
+        });
+      } finally {
+        reset();
+      }
+    });
+  });
 });
 
 

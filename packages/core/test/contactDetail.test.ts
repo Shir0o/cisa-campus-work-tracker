@@ -96,6 +96,12 @@ describe('diffContactFields', () => {
     const changes = diffContactFields(contact(), fields({ notes: 'New notes here.' }));
     expect(changes).toEqual(['notes updated']);
   });
+
+  it('reports an instagram change', () => {
+    const before = contact({ instagram: undefined });
+    const changes = diffContactFields(before, fields({ instagram: '@alex_on_campus' }));
+    expect(changes).toEqual(['instagram: "" → "@alex_on_campus"']);
+  });
 });
 
 describe('interactionActivityType', () => {

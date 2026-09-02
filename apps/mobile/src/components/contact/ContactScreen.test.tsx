@@ -50,6 +50,25 @@ jest.mock('../journey/MoveStepSheet', () => ({
   MoveStepSheet: () => null,
 }));
 
+jest.mock('./EditContactSheet', () => {
+  const { View, Button } = require('react-native');
+  return {
+    EditContactSheet: ({ visible, onSaved, onClose }: any) =>
+      visible ? (
+        <View testID="edit-contact-sheet">
+          <Button
+            title="Trigger Save"
+            onPress={() => {
+              onSaved('Sarah Connor');
+              onClose();
+            }}
+          />
+          <Button title="Close Sheet" onPress={onClose} />
+        </View>
+      ) : null,
+  };
+});
+
 describe('ContactScreen', () => {
   const mockContact = {
     id: 'contact1',
@@ -258,6 +277,67 @@ describe('ContactScreen', () => {
 
       expect(queryByText('Coffee chat')).toBeNull();
       alertSpy.mockRestore();
+    });
+  });
+
+  describe('Contact Editing Flow', () => {
+    it('renders Edit button in top row for write roles', () => {
+      (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
+      const { getByText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      expect(getByText('Edit')).toBeTruthy();
+    });
+
+    it('hides Edit button for viewer role', () => {
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'user_viewer', user: { displayName: 'Viewer' }, role: 'viewer' });
+      (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
+      const { queryByText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      expect(queryByText('Edit')).toBeNull();
+    });
+
+    it('opens EditContactSheet from top row Edit button and handles save', () => {
+      (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
+      const { getByText, getByTestId, queryByTestId } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      expect(queryByTestId('edit-contact-sheet')).toBeNull();
+
+      fireEvent.press(getByText('Edit'));
+      expect(getByTestId('edit-contact-sheet')).toBeTruthy();
+
+      fireEvent.press(getByText('Trigger Save'));
+      expect(queryByTestId('edit-contact-sheet')).toBeNull();
+      expect(getByText('Sarah Connor updated')).toBeTruthy();
+    });
+
+    it('renders Edit details button inside details disclosure for write roles and opens sheet', () => {
+      (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
+      const { getByText, getByTestId, queryByTestId } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      // Expand details
+      const detailsToggle = getByText('Details, notes, how to reach them');
+      fireEvent.press(detailsToggle);
+
+      expect(getByText('Edit details')).toBeTruthy();
+
+      fireEvent.press(getByText('Edit details'));
+      expect(getByTestId('edit-contact-sheet')).toBeTruthy();
     });
   });
 });
