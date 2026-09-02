@@ -300,7 +300,7 @@ describe('PrayerList', () => {
     render(<PrayerList />);
 
     await waitFor(() => {
-      expect(screen.getByText('No one to hold yet')).toBeInTheDocument();
+      expect(screen.getByText('No one to pray for yet')).toBeInTheDocument();
     });
   });
 
@@ -332,10 +332,10 @@ describe('PrayerList', () => {
     render(<PrayerList />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Write what we’re holding for Alice this week/i)).toBeInTheDocument();
+      expect(screen.getByText(/Write what we're praying for Alice this week/i)).toBeInTheDocument();
     });
 
-    const writeButton = screen.getByText(/Write what we’re holding for Alice this week/i);
+    const writeButton = screen.getByText(/Write what we're praying for Alice this week/i);
     fireEvent.click(writeButton);
 
     // Cancel input
@@ -347,7 +347,7 @@ describe('PrayerList', () => {
     });
 
     // Re-open and add burden
-    fireEvent.click(screen.getByText(/Write what we’re holding for Alice this week/i));
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
     const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
     fireEvent.change(textarea, { target: { value: 'New prayer request text' } });
 
@@ -541,14 +541,14 @@ describe('PrayerList', () => {
     fireEvent.click(screen.getByRole('button', { name: /Choose people/i }));
 
     // Alice and Bob are already held; Carol is not.
-    expect(screen.getByText('Who are we holding?')).toBeInTheDocument();
-    expect(screen.getAllByText('already held').length).toBe(2);
+    expect(screen.getByText('Who are we praying for?')).toBeInTheDocument();
+    expect(screen.getAllByText('already on our prayer list').length).toBe(2);
 
     fireEvent.click(screen.getByText('Carol Lee').closest('button')!);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
-      expect(screen.getByText(/Write what we’re holding for Carol this week/i)).toBeInTheDocument(),
+      expect(screen.getByText(/Write what we're praying for Carol this week/i)).toBeInTheDocument(),
     );
   });
 
@@ -604,7 +604,7 @@ describe('PrayerList', () => {
     render(<PrayerList />);
     await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText(/Write what we’re holding for Alice this week/i));
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
     fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
     expect(addDoc).not.toHaveBeenCalled();
   });
@@ -615,7 +615,7 @@ describe('PrayerList', () => {
     render(<PrayerList />);
     await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText(/Write what we’re holding for Alice this week/i));
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
     fireEvent.change(screen.getByPlaceholderText(/What are we praying for Alice this week/i), {
       target: { value: 'Pray for rest' },
     });
@@ -703,7 +703,7 @@ describe('PrayerList', () => {
     const searchInput = screen.getByPlaceholderText('Find someone…');
     fireEvent.change(searchInput, { target: { value: 'Carol' } });
 
-    const startBtn = await screen.findByRole('button', { name: /Start holding Carol/i });
+    const startBtn = await screen.findByRole('button', { name: /Start praying for Carol/i });
     fireEvent.click(startBtn);
 
     expect(await screen.findByPlaceholderText(/What are we praying for Carol this week/i)).toBeInTheDocument();
@@ -743,7 +743,7 @@ describe('PrayerList', () => {
     fireEvent.change(searchInput, { target: { value: 'Alice' } });
 
     // Start holding Alice (this unhides her and opens compose)
-    const startBtn = await screen.findByRole('button', { name: /Start holding Alice/i });
+    const startBtn = await screen.findByRole('button', { name: /Start praying for Alice/i });
     fireEvent.click(startBtn);
 
     // Fill in the burden and submit

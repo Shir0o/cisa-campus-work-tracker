@@ -82,7 +82,7 @@ describe('PrayerListMobile', () => {
 
   it('shows the Hold button only for operators and opens the picker', () => {
     const { rerender } = renderWithRouter({ isOperator: true, contacts: [contact()] });
-    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(screen.getByText('Pray for someone'));
     expect(screen.getByText(/Anyone from the roster/)).toBeInTheDocument();
 
     rerender(
@@ -98,7 +98,7 @@ describe('PrayerListMobile', () => {
   it('starts holding a contact chosen from the picker', () => {
     const startHolding = vi.fn();
     renderWithRouter({ contacts: [contact()], startHolding });
-    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(screen.getByText('Pray for someone'));
     fireEvent.click(screen.getByText('Alice Smith'));
     expect(startHolding).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
     expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
@@ -107,8 +107,8 @@ describe('PrayerListMobile', () => {
   it('searches the picker via the search input', () => {
     const setSearchQuery = vi.fn();
     renderWithRouter({ contacts: [contact()], setSearchQuery });
-    fireEvent.click(screen.getByText('Hold someone in prayer'));
-    fireEvent.change(screen.getByPlaceholderText('Search anyone to hold in prayer…'), {
+    fireEvent.click(screen.getByText('Pray for someone'));
+    fireEvent.change(screen.getByPlaceholderText('Search anyone to pray for…'), {
       target: { value: 'Ali' },
     });
     expect(setSearchQuery).toHaveBeenCalledWith('Ali');
@@ -214,11 +214,11 @@ describe('PrayerListMobile', () => {
 
   it('closes the picker via the scrim and via the close button', () => {
     renderWithRouter({ contacts: [contact()] });
-    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(screen.getByText('Pray for someone'));
     fireEvent.click(document.querySelector('.scrim')!);
     expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(screen.getByText('Pray for someone'));
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
   });
@@ -283,7 +283,7 @@ describe('PrayerListMobile', () => {
       onAddBurden,
       setComposeFor,
     });
-    fireEvent.click(screen.getByText(/Write what we're holding for Alice this week/));
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
     fireEvent.change(
       screen.getByPlaceholderText('What are we praying for Alice this week?'),
       { target: { value: 'Peace for exams' } },
@@ -294,18 +294,18 @@ describe('PrayerListMobile', () => {
 
   it('cancels the add-composer and keeps the empty card', () => {
     renderWithRouter({ entries: [{ contact: contact(), prayers: [] }] });
-    fireEvent.click(screen.getByText(/Write what we're holding for Alice this week/));
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
     fireEvent.change(
       screen.getByPlaceholderText('What are we praying for Alice this week?'),
       { target: { value: 'Draft' } },
     );
     fireEvent.click(screen.getByText('Cancel'));
-    expect(screen.getByText(/Write what we're holding for Alice this week/)).toBeInTheDocument();
+    expect(screen.getByText(/Write what we're praying for Alice this week/)).toBeInTheDocument();
   });
 
   it('shows "Everyone is already here" when no addable contacts remain', () => {
     renderWithRouter({ contacts: [], entries: [{ contact: contact(), prayers: [] }] });
-    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(screen.getByText('Pray for someone'));
     expect(screen.getByText(/Everyone's already here/)).toBeInTheDocument();
   });
 
