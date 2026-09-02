@@ -211,8 +211,9 @@ describe('NavRail (#664)', () => {
     // alongside the groups.
     const destNav = within(rail).getByRole('navigation', { name: /Destinations/i });
     expect(within(destNav).queryByRole('link', { name: /^Settings$/ })).not.toBeInTheDocument();
-    // The rail mounts its own Settings link (a separate surface).
-    expect(within(rail).getByRole('link', { name: /^Settings$/ })).toBeInTheDocument();
+    // Settings is removed from the rail entirely (#711) — it lives in the
+    // avatar/profile dropdown of both nav chrome variants.
+    expect(within(rail).queryByRole('link', { name: /^Settings$/ })).not.toBeInTheDocument();
   });
 
   it('renders only the destinations a Trainee can reach (no Visits, no Looking back)', () => {
@@ -276,17 +277,21 @@ describe('NavRail (#664)', () => {
   });
 
   // ── Pinned controls at the bottom ──────────────────────────────
-  it('renders the Settings link at the bottom of the rail (pinned control)', () => {
+  // The rail's own Settings link is gone (#711): Settings already lives in
+  // the avatar/profile dropdown of both nav chrome variants.
+  it('renders no Settings link at the bottom of the rail (#711)', () => {
     renderRail();
-    const rail = screen.getByTestId('nav-rail');
-    expect(within(rail).getByRole('link', { name: /^Settings$/ })).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('nav-rail')).queryByRole('link', { name: /^Settings$/ }),
+    ).not.toBeInTheDocument();
   });
 
-  it('exposes a focusable tooltip on the Settings link when the rail is collapsed', () => {
+  it('renders no Settings link when the rail is collapsed (#711)', () => {
     localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
     renderRail();
-    const settings = screen.getByRole('link', { name: /^Settings$/ });
-    expect(settings).toHaveAttribute('data-tooltip', 'Settings');
+    expect(
+      within(screen.getByTestId('nav-rail')).queryByRole('link', { name: /^Settings$/ }),
+    ).not.toBeInTheDocument();
   });
 
   // ── External links rendered too ────────────────────────────────────
@@ -390,10 +395,51 @@ describe('NavRail (#664)', () => {
     renderRail({ role: 'admin' });
     // The native `title` attribute is hover-only and not announced reliably
     // on focus; the contract here is a focusable tooltip — the label must be
-    // surfaced via a non-title channel. The collapse rail sets
-    // `data-tooltip` so the focus-visible pseudo-rule can render a tooltip.
+    // surfaced via a non-title channel. The collapsed rail sets `data-tooltip`,
+    // which NavRail's delegated focus handler turns into the portal bubble
+    // for keyboard focus.
     const questions = screen.getByRole('link', { name: /Questions/i });
     expect(questions).toHaveAttribute('data-tooltip', 'Questions');
+  });
+
+  // ── Unclipped hover tooltip (#711) ────────────────────────────────────────
+  it('shows the full label in a portal tooltip on hover, outside the rail (#711)', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+    const questions = screen.getByRole('link', { name: /Questions/i });
+    fireEvent.mouseOver(questions);
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip).toHaveTextContent('Questions');
+    // The bubble must NOT live inside the rail: both the aside and the
+    // destinations nav clip overflow, which cropped the old CSS pseudo into
+    // an unreadable sliver at the rail's edge (#711).
+    expect(screen.getByTestId('nav-rail')).not.toContainElement(tooltip);
+    fireEvent.mouseOut(questions);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('shows the portal tooltip on keyboard focus (#665 AC6, #711)', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+    const questions = screen.getByRole('link', { name: /Questions/i });
+    // jsdom has no :focus-visible heuristic (it always answers false), so
+    // simulate the engine: only this link answers true, as keyboard focus
+    // would in a real browser.
+    const nativeMatches = HTMLElement.prototype.matches;
+    const spy = vi
+      .spyOn(HTMLElement.prototype, 'matches')
+      .mockImplementation(function (this: HTMLElement, selector: string) {
+        if (selector === ':focus-visible') return this === questions;
+        return nativeMatches.call(this, selector);
+      });
+    try {
+      fireEvent.focus(questions);
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip).toHaveTextContent('Questions');
+      expect(screen.getByTestId('nav-rail')).not.toContainElement(tooltip);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   // ── Sign-up form destination (Issue #676) ──────────────────────────────────

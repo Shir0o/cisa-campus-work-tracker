@@ -40,7 +40,7 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 20. As a Trainee on a narrow laptop, I want the rail to collapse automatically rather than crushing the content, so that a smaller window is still usable.
 21. As a Trainee, I want an automatic collapse to be temporary, so that resizing a window does not permanently change the preference I chose.
 22. As a Full-timer on a 13-inch laptop, I want the destination list to scroll within the rail, so that a long list does not push the pinned controls off-screen.
-23. As a Full-timer, I want the Settings link to stay pinned, so that the way out of a state is never the thing that scrolls away (updated in #681).
+23. *(Retired in #711)* As a Full-timer, I want the Settings link to stay pinned, so that the way out of a state is never the thing that scrolls away — superseded: Settings lives in the profile dropdown, so a pinned copy stopped earning its place.
 24. As a Student on a phone, I want navigation to be unchanged, so that a desktop preference has no effect on my device.
 25. As a Full-timer impersonating a colleague, I want the impersonation banner to remain prominent in every shell, so that I never forget whose account I am acting in.
 26. As a Full-timer, I want Global Search reachable from the same keyboard shortcut in every shell, so that muscle memory survives the change.
@@ -61,13 +61,13 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 **What "falls through" means below 1024px.** Read literally, "falls through to the existing mobile navigation" would put the bottom bar on every viewport under `lg`, which gives 768–1023px both the top bar's hamburger drawer *and* a bottom bar. What it means, and what is implemented: below `lg` the rail is not rendered and the shell falls through to the **top-bar branch**, which already carries its own drawer under `lg`; the bottom bar keeps its own `md` threshold and is unchanged. Only the rail's gates move at `lg`.
 
-**Grouping is role-filtered data and belongs with the other navigation data.** A grouping function is added alongside the existing per-role navigation helpers, returning ordered groups of destinations for a role. Groups are Today, People, Gatherings and Prayer, with Settings pinned below a divider.
+**Grouping is role-filtered data and belongs with the other navigation data.** A grouping function is added alongside the existing per-role navigation helpers, returning ordered groups of destinations for a role. Groups are Today, People, Gatherings and Prayer. Settings was originally pinned below a divider; since #711 it is not in the rail at all.
 
 **The More menu is retired for both rail states.** The rail shows everything a role can reach, so the more-navigation helper is no longer called by the rail. It remains in use by the top-bar shell, which still needs it. Its existing tests stay meaningful for that path.
 
 **Collapsing changes five things.** Group labels become hairline dividers, so the grouping survives without the words. Items become 44×44 squares at the interactive radius rather than pills, because a pill at that width reads as a circle. Count badges become a dot — "something here" without the number. Labels move to a tooltip on hover *and* focus. The wordmark drops to the mark.
 
-**The rail does not own an account block.** This was originally specified as a sixth collapsing behaviour — an avatar, name and role pinned at the bottom of the rail, reducing to the avatar alone. It contradicted this document's own reasoning two decisions below: search, notifications and the season indicator are mounted by the shell precisely so they are written once rather than per-shell, and the avatar is the same case. It lives in the chrome strip with them. The rail's pinned footer is the Settings link (the collapse toggle was retired in #681; rail width is controlled in Settings).
+**The rail does not own an account block.** This was originally specified as a sixth collapsing behaviour — an avatar, name and role pinned at the bottom of the rail, reducing to the avatar alone. It contradicted this document's own reasoning two decisions below: search, notifications and the season indicator are mounted by the shell precisely so they are written once rather than per-shell, and the avatar is the same case. It lives in the chrome strip with them. The rail's pinned footer was the Settings link (the collapse toggle was retired in #681; rail width is controlled in Settings); since #711 the rail has no pinned Settings link either — Settings is reachable from the profile dropdown in the chrome strip.
 
 **Leaving the rail entirely or collapsing to compact rail is a Settings decision.** *(Updated in #681)* The Settings control is the canonical location for switching among Rail, Compact, and Top bar.
 
@@ -77,7 +77,9 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 **The impersonation and owner-view banners need a defined home in each shell.** In the rail states they sit at the top of the content column; in top-bar mode they stay full-bleed beneath the bar. A safety banner whose position depends on a display preference is worth specifying rather than discovering.
 
-**The rail scrolls internally.** At its expanded height the destination list overflows a 13-inch laptop viewport. The list scrolls within the rail while the mark and the Settings link stay pinned.
+**The rail scrolls internally.** At its expanded height the destination list overflows a 13-inch laptop viewport. The list scrolls within the rail while the mark stays pinned.
+
+**Collapsed-rail labels surface in a portal tooltip.** *(Updated in #711)* Hover *and* keyboard focus show the destination label in a bubble rendered through a portal to `document.body`, fixed-positioned just right of the rail's edge. A CSS `::after` pseudo on the item cannot leave the rail: the aside's rounded-corner `overflow-hidden` and the nav's scroll containment both clip it, which cropped the bubble to an unreadable sliver.
 
 ## Testing Decisions
 
