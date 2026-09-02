@@ -76,12 +76,20 @@ describe('diffContactFields', () => {
     expect(changes.find((c) => /how we met/i.test(c))).toBeUndefined();
   });
 
-  it('does not surface an "address" change — the form no longer exposes location', () => {
-    // #730: the new-contact and contact-edit forms removed the location field.
-    // Even if a legacy value still sits on the contact, changing it is no
-    // longer surfaced as a change line.
-    const changes = diffContactFields(contact(), fields({ location: 'Library' }));
+  it('does not surface an "address" change when the form omits `location`', () => {
+    // The web new-contact/edit forms no longer expose `location` (#730) and
+    // omit the key from the payload, so an omitted key must not read as
+    // "cleared". Only a caller that actually supplies `location` (mobile's
+    // EditContactSheet) produces an address change line.
+    const changes = diffContactFields(contact(), fields({ location: undefined }));
     expect(changes.find((c) => /address/i.test(c))).toBeUndefined();
+  });
+
+  it('surfaces an "address" change when the caller supplies `location`', () => {
+    // Mobile's EditContactSheet still edits the address, so a supplied
+    // `location` change reaches the audit log as before.
+    const changes = diffContactFields(contact(), fields({ location: 'Library' }));
+    expect(changes).toContain('address: "Campus Coffee" → "Library"');
   });
 
   it('reports group (role) and stage changes', () => {
