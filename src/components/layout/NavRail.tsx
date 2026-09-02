@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useLocation, Link } from 'react-router-dom';
 import {
   Sunrise,
@@ -13,7 +14,6 @@ import {
   MessageSquare,
   MessageCircleQuestion,
   LayoutDashboard,
-  Settings as SettingsIcon,
   ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
@@ -45,7 +45,6 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/coordination': FileText,
   '/messages': MessageSquare,
   '/questions': MessageCircleQuestion,
-  '/settings': SettingsIcon,
 };
 
 function NavGlyph({ href, size = 20, className }: { href: string; size?: number; className?: string }) {
@@ -88,10 +87,46 @@ export default function NavRail(_props: NavRailProps = {}) {
 
   const railWidth = collapsed ? 'w-[76px]' : 'w-[232px]';
 
+  // ── Collapsed-rail tooltips (#711) ──────────────────────────────────────
+  // The old CSS ::after bubble was clipped by the aside's rounded-corner
+  // `overflow-hidden` (and the nav's scroll containment), leaving only a
+  // sliver of the label at the rail's edge. One portal bubble, fixed-
+  // positioned against the hovered/focused item, escapes both containers.
+  const [tip, setTip] = useState<{ label: string; x: number; y: number } | null>(null);
+  const showTip = (el: Element) => {
+    const label = el.getAttribute('data-tooltip');
+    if (!label) return;
+    // Anchor to the rail's right edge, not the item's: collapsed items are
+    // inset from the edge, so anchoring to the item would start the bubble
+    // slightly inside the rail.
+    const x = (el.closest('aside') ?? el).getBoundingClientRect().right + 8;
+    const r = el.getBoundingClientRect();
+    setTip({ label, x, y: r.top + r.height / 2 });
+  };
+
   return (
     <aside
       aria-label="Main Navigation"
       data-testid="nav-rail"
+      onMouseOver={(e) => {
+        const el = (e.target as HTMLElement).closest?.('[data-tooltip]');
+        if (el) showTip(el);
+      }}
+      onMouseOut={(e) => {
+        const el = (e.target as HTMLElement).closest?.('[data-tooltip]');
+        if (el && e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
+        setTip(null);
+      }}
+      onFocusCapture={(e) => {
+        const target = e.target as HTMLElement;
+        const el = target.closest?.('[data-tooltip]');
+        if (!el) return;
+        // Mirror the old :focus-visible rule — keyboard focus surfaces the
+        // bubble, mouse focus doesn't.
+        if (target.matches(':focus-visible')) showTip(el);
+      }}
+      onBlurCapture={() => setTip(null)}
+      onScrollCapture={() => setTip(null)}
       className={cn(
         // A floating slab, not a flush column: the gutter around it is what
         // makes it read as an object (ADR 0003). `rounded-xl` is --radius-xl
@@ -237,26 +272,20 @@ export default function NavRail(_props: NavRailProps = {}) {
         </div>
       </nav>
 
-      {/* ── Pinned: Settings link ────────────────────────────────────── */}
-      {/* The avatar, search, notifications and season live in NavChromeStrip
-          above the content. The rail's pinned row keeps the rail-resident
-          Settings link. Nav shell preference is configured in Settings (#681). */}
-      <div className="shrink-0 border-t border-rail-line">
-        <div className="flex items-center px-2 py-2">
-          <Link
-            to="/settings"
-            data-tooltip={collapsed ? 'Settings' : undefined}
-            className={cn(
-              'flex items-center gap-2 rounded-full text-rail-on-dim hover:bg-rail-hover hover:text-rail-on transition-colors',
-              collapsed ? 'p-1 justify-center w-full' : 'flex-1 px-3 py-1.5 text-sm',
-            )}
-            aria-label="Settings"
+      {/* Collapsed-rail label bubble (#711): portal-rendered to document.body
+          so neither the aside's overflow clipping nor the nav's scroll
+          containment can crop it. Hover and keyboard focus both surface it. */}
+      {tip &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-[60] -translate-y-1/2 whitespace-nowrap rounded-lg border border-outline-variant bg-surface-container-highest px-2 py-1 text-xs font-medium text-on-surface shadow-[var(--shadow-pop)]"
+            style={{ left: tip.x, top: tip.y }}
           >
-            <SettingsIcon className="w-4 h-4 shrink-0" />
-            {!collapsed && <span className="font-medium">Settings</span>}
-          </Link>
-        </div>
-      </div>
+            {tip.label}
+          </div>,
+          document.body,
+        )}
     </aside>
   );
 }
@@ -288,11 +317,11 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
       aria-current={isActive ? 'page' : undefined}
       aria-label={unread > 0 ? a11yLabel : undefined}
       // The collapsed rail is icon-only, so the destination's label is
-      // surfaced via a `data-tooltip` CSS pseudo (defined in index.css)
-      // that shows on both hover and keyboard focus — the native `title`
-      // is hover-only, so we don't set it. A keyboard user tabbing
-      // through the rail can identify an icon-only destination without
-      // a mouse. #665 acceptance criterion 6.
+      // surfaced as a `data-tooltip` attribute that NavRail's delegated
+      // handlers turn into a portal bubble on hover and keyboard focus —
+      // the native `title` is hover-only, so we don't set it. A keyboard
+      // user tabbing through the rail can identify an icon-only destination
+      // without a mouse. #665 acceptance criterion 6.
       data-tooltip={collapsed ? label : undefined}
       className={cn(
         // `rounded-[14px]` is the interactive radius, not `rounded-xl` —
@@ -354,8 +383,8 @@ function RailExternalItem({ link, collapsed }: { link: ExternalNavItem; collapse
       href={link.href}
       target="_blank"
       rel="noopener noreferrer"
-      // Same hover+focus tooltip pattern as RailItem — see index.css
-      // `[data-tooltip]`. #665 acceptance criterion 6.
+      // Same hover+focus tooltip attribute as RailItem — NavRail's delegated
+      // handlers render it as a portal bubble. #665 acceptance criterion 6.
       data-tooltip={collapsed ? link.label : undefined}
       className={cn(
         'group relative flex items-center gap-3 rounded-[14px] transition-colors text-rail-on-dim hover:bg-rail-hover hover:text-rail-on',

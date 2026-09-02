@@ -100,3 +100,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for Shir0o/cisa-campus-work-tracker, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: label strings equal the canonical role names (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.

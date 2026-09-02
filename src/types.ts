@@ -195,6 +195,7 @@ export interface Event {
   monthlyType?: 'same-day' | 'relative-day';
   parentEventId?: string;
   createdAt: string;
+  roster?: string[];
 }
 
 // A managed "kind of gathering" (Weekly / Small Group / …) with a warm one-line

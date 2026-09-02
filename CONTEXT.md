@@ -59,6 +59,9 @@ _Avoid_: Bell popup, system toast, activity blast
 Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, role/affiliation, first impressions/notes, and tags). Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet, while caregiver assignments follow gospel partner ownership rules.
 _Avoid_: Admin edit form, contact manager modal
 
+**Gathering Roster**:
+The defined cohort of people expected to attend a specific gathering or recurring series (`Event.roster`). Defaults to empty rather than defaulting to the entire contact database. Only roster members are tracked under "We missed" if absent; walk-ins can be marked present, integrated into the roster going forward (without retroactive absence penalties), or created on the spot by name. Roster management is restricted to Full-timers (`isAdmin`).
+_Avoid_: Member pool, invite list, attendance group
 
 **Study**:
 A Bible study series that runs over a term — the named arc ("Romans, Fall 2026") that a set of Meetings belongs to. Distinct from the "Bible study" option a student picks under "What are you drawn to?" at sign-up, which is an interest, not this.

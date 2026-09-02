@@ -798,7 +798,18 @@
     "came": "came",
     "attended_header": "Attended",
     "no_gatherings_recorded": "No gatherings recorded yet. Log your first one to start keeping the record.",
-    "remove_gathering_confirm": "Remove the gathering \"{name}\"? This also clears who was marked present or absent for it."
+    "remove_gathering_confirm": "Remove the gathering \"{name}\"? This also clears who was marked present or absent for it.",
+    "expected_roster": "Expected Roster",
+    "regular_attendees": "Regular attendees",
+    "manage_roster": "Manage roster",
+    "add_attendee_or_walkin": "Add attendee or walk-in...",
+    "add_to_roster": "Add to roster",
+    "remove_from_roster": "Remove from roster",
+    "create_contact_named": "Create contact \"{name}\"",
+    "creating": "Creating...",
+    "apply_to_this_only": "This gathering only",
+    "apply_to_future_series": "All future in series",
+    "apply_roster_scope_title": "Update series roster?"
   },
   "outreach": {
     "stages": "Stages",

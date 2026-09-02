@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Tag, MapPin, Loader2, CalendarHeart } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { X, Tag, MapPin, Loader2, CalendarHeart, Users } from 'lucide-react';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
-import type { Event } from '../../types';
+import type { Contact, Event } from '../../types';
 import { useGatheringTypes } from '../../lib/gatheringTypes';
+import { getRecurringSeriesEventIdsToUpdate } from '../../lib/attendanceRoster';
 import DatePicker from '../ui/DatePicker';
 import { useLanguage } from '../LanguageProvider';
 
@@ -13,16 +14,19 @@ interface EditEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null;
+  contacts?: Contact[];
+  allEvents?: Event[];
 }
 
-// Edit one gathering's details — name / kind / date / location. Who came stays as
-// it is (attendance lives on contacts, keyed by event id). Recurrence is not
-// edited here (a series is edited per occurrence).
-export default function EditEventModal({ isOpen, onClose, event }: EditEventModalProps) {
+// Edit one gathering's details — name / kind / date / location / expected roster.
+export default function EditEventModal({ isOpen, onClose, event, contacts = [], allEvents = [] }: EditEventModalProps) {
   const { t } = useLanguage();
   const gatheringTypes = useGatheringTypes();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ name: '', type: '', location: '', date: '' });
+  const [selectedRoster, setSelectedRoster] = useState<string[]>([]);
+  const [rosterSearch, setRosterSearch] = useState('');
+  const [applyToSeries, setApplyToSeries] = useState(false);
 
   useEffect(() => {
     if (isOpen && event) {
@@ -32,6 +36,9 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
         location: event.location ?? '',
         date: event.date ?? '',
       });
+      setSelectedRoster(event.roster ?? []);
+      setRosterSearch('');
+      setApplyToSeries(false);
     }
   }, [isOpen, event]);
 
@@ -52,17 +59,37 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
+  const isRecurringEvent = !!(event?.isRecurring || event?.parentEventId);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!event || !formData.name.trim() || !formData.date) return;
     setLoading(true);
     try {
-      await updateDoc(doc(db, 'events', event.id), {
+      const updatePayload: Record<string, unknown> = {
         name: formData.name.trim(),
         type: formData.type || null,
         location: formData.location.trim() || null,
         date: formData.date,
-      });
+        roster: selectedRoster,
+      };
+
+      if (applyToSeries && isRecurringEvent && allEvents.length > 0) {
+        const eventIds = getRecurringSeriesEventIdsToUpdate(event, allEvents);
+        const batch = writeBatch(db);
+        for (const evId of eventIds) {
+          batch.update(doc(db, 'events', evId), {
+            name: formData.name.trim(),
+            type: formData.type || null,
+            location: formData.location.trim() || null,
+            roster: selectedRoster,
+          });
+        }
+        await batch.commit();
+      } else {
+        await updateDoc(doc(db, 'events', event.id), updatePayload);
+      }
+
       logActivity({
         action: 'edited the gathering',
         targetId: event.id,
@@ -175,6 +202,70 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
                   placeholder={t('modals.location_placeholder')}
                 />
               </div>
+
+              {/* Expected Roster (optional) */}
+              {contacts.length > 0 && (
+                <div className="space-y-2 p-3 rounded-2xl bg-surface-container-high border border-outline/30">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1">
+                      <Users className="w-3 h-3" /> {t('attendance.expected_roster', 'Expected Roster')}
+                    </label>
+                    <span className="text-[11px] font-medium text-accent">
+                      {selectedRoster.length} selected
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={rosterSearch}
+                    onChange={(e) => setRosterSearch(e.target.value)}
+                    placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
+                    className="w-full h-8 px-3 rounded-lg bg-surface border border-outline/40 text-xs text-on-surface outline-none focus:border-primary"
+                  />
+                  <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
+                    {contacts
+                      .filter((c) => !rosterSearch.trim() || c.name.toLowerCase().includes(rosterSearch.toLowerCase()))
+                      .slice(0, 20)
+                      .map((c) => {
+                        const isSelected = selectedRoster.includes(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedRoster((prev) =>
+                                isSelected ? prev.filter((id) => id !== c.id) : [...prev, c.id],
+                              )
+                            }
+                            className={cn(
+                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left',
+                              isSelected
+                                ? 'bg-primary/10 text-accent font-medium'
+                                : 'hover:bg-surface text-on-surface-variant',
+                            )}
+                          >
+                            <span>{c.name}</span>
+                            <span className="text-[10px]">{isSelected ? '✓' : '+'}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  {isRecurringEvent && (
+                    <div className="pt-2 mt-2 border-t border-outline/20 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="edit-apply-to-series"
+                        checked={applyToSeries}
+                        onChange={(e) => setApplyToSeries(e.target.checked)}
+                        className="rounded border-outline text-primary focus:ring-primary"
+                      />
+                      <label htmlFor="edit-apply-to-series" className="text-xs text-on-surface-variant cursor-pointer select-none">
+                        {t('attendance.apply_to_future_series', 'All future in series')}
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="pt-2 flex gap-2">
