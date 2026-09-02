@@ -147,6 +147,25 @@ export async function createAnnouncementRoom(
     type: 'system',
   });
 
+  // Notify members added to announcement channel
+  for (const memberId of memberUids) {
+    if (memberId === currentUser.uid) continue;
+    void sendNotification({
+      userId: memberId,
+      title: 'New announcement channel',
+      message: `${currentUser.displayName} started announcements for "${name}"`,
+      type: 'info',
+      targetId: roomRef.id,
+      link: `/messages/${roomRef.id}`,
+    });
+    void sendPushNotification({
+      userId: memberId,
+      title: 'New announcement channel',
+      body: `${currentUser.displayName} started announcements for "${name}"`,
+      data: { targetId: roomRef.id, link: `/messages/${roomRef.id}` },
+    });
+  }
+
   return roomRef.id;
 }
 
