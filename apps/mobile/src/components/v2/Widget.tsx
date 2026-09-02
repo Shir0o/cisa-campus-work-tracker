@@ -330,6 +330,7 @@ export function V2Input({
   placeholder,
   keyboardType,
   autoCapitalize,
+  onSubmitEditing,
 }: {
   value: string;
   onChangeText: (next: string) => void;
@@ -337,6 +338,7 @@ export function V2Input({
   /** For the log sheet's phone / email fields — the right keyboard on a phone. */
   keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
+  onSubmitEditing?: TextInputProps['onSubmitEditing'];
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
@@ -347,6 +349,7 @@ export function V2Input({
       placeholderTextColor={c.card.ink3}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
+      onSubmitEditing={onSubmitEditing}
       autoCorrect={false}
       style={{
         minHeight: 48,

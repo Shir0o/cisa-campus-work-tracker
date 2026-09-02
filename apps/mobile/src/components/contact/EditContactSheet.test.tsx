@@ -49,7 +49,7 @@ describe('EditContactSheet', () => {
         <EditContactSheet
           visible={true}
           contact={mockContact}
-          room="trainee"
+          room="queue"
           onSaved={mockOnSaved}
           onClose={mockOnClose}
           {...props}

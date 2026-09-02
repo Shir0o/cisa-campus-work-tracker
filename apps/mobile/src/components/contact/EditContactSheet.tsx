@@ -232,13 +232,13 @@ function EditContactSheetBody({
             <View>
               <Text
                 style={{
-                  fontFamily: font.extra,
-                  fontSize: fs(20),
-                  letterSpacing: -0.5,
+                  fontFamily: font.bold,
+                  fontSize: fs(22),
+                  lineHeight: fs(27),
                   color: c.card.ink,
                 }}
               >
-                Edit {getFirstName(contact.name)}
+                {t('actions.edit') || 'Edit'} {getFirstName(contact.name)}
               </Text>
               <Text
                 style={{
@@ -249,27 +249,27 @@ function EditContactSheetBody({
                   marginTop: 6,
                 }}
               >
-                Update contact info, notes, and tags.
+                {t('mobile.contact.update_contact_sub')}
               </Text>
             </View>
 
             {/* Name Fields */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1, gap: 8 }}>
-                <Kicker>First Name</Kicker>
+                <Kicker>{t('mobile.contact.first_name')}</Kicker>
                 <V2Input
                   value={firstName}
                   onChangeText={setFirstName}
-                  placeholder="First name"
+                  placeholder={t('mobile.contact.first_name_placeholder')}
                   autoCapitalize="words"
                 />
               </View>
               <View style={{ flex: 1, gap: 8 }}>
-                <Kicker>Last Name</Kicker>
+                <Kicker>{t('mobile.contact.last_name')}</Kicker>
                 <V2Input
                   value={lastName}
                   onChangeText={setLastName}
-                  placeholder="Last name"
+                  placeholder={t('mobile.contact.last_name_placeholder')}
                   autoCapitalize="words"
                 />
               </View>
@@ -278,7 +278,7 @@ function EditContactSheetBody({
             {/* Phone & Email */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1, gap: 8 }}>
-                <Kicker>Phone</Kicker>
+                <Kicker>{t('mobile.contact.phone')}</Kicker>
                 <V2Input
                   value={phone}
                   onChangeText={setPhone}
@@ -287,11 +287,11 @@ function EditContactSheetBody({
                 />
               </View>
               <View style={{ flex: 1, gap: 8 }}>
-                <Kicker>Email</Kicker>
+                <Kicker>{t('mobile.contact.email')}</Kicker>
                 <V2Input
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="name@email.edu"
+                  placeholder={t('mobile.contact.email_placeholder')}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -301,27 +301,27 @@ function EditContactSheetBody({
             {/* Instagram & Location */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1, gap: 8 }}>
-                <Kicker>Instagram</Kicker>
+                <Kicker>{t('mobile.contact.instagram')}</Kicker>
                 <V2Input
                   value={instagram}
                   onChangeText={setInstagram}
-                  placeholder="@handle"
+                  placeholder={t('mobile.contact.instagram_placeholder')}
                   autoCapitalize="none"
                 />
               </View>
               <View style={{ flex: 1, gap: 8 }}>
-                <Kicker>Address / Location</Kicker>
+                <Kicker>{t('mobile.contact.address_location')}</Kicker>
                 <V2Input
                   value={location}
                   onChangeText={setLocation}
-                  placeholder="Dorm, hall, or area"
+                  placeholder={t('mobile.contact.address_placeholder')}
                 />
               </View>
             </View>
 
             {/* Part of (Role) */}
             <View style={{ gap: 8 }}>
-              <Kicker>Part of</Kicker>
+              <Kicker>{t('mobile.contact.part_of')}</Kicker>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {ROLES.map((r) => {
                   const selected = role === r;
@@ -354,7 +354,7 @@ function EditContactSheetBody({
 
             {/* How We Met */}
             <View style={{ gap: 8 }}>
-              <Kicker>How We Met</Kicker>
+              <Kicker>{t('mobile.contact.how_we_met')}</Kicker>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {MET_VIA.map((mv) => {
                   const selected = metVia === mv;
@@ -387,18 +387,18 @@ function EditContactSheetBody({
 
             {/* Notes / First Impression */}
             <View style={{ gap: 8 }}>
-              <Kicker>First Impression / Notes</Kicker>
+              <Kicker>{t('mobile.contact.first_impression_notes')}</Kicker>
               <V2TextArea
                 value={notes}
                 onChangeText={setNotes}
-                placeholder="What you talked about, things to remember…"
+                placeholder={t('mobile.contact.notes_placeholder')}
                 minHeight={80}
               />
             </View>
 
             {/* Tags */}
             <View style={{ gap: 8 }}>
-              <Kicker>Tags</Kicker>
+              <Kicker>{t('mobile.contact.tags')}</Kicker>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
                 {TAG_SUGGESTIONS.map((sug) => {
                   const active = tags.includes(sug);
@@ -460,7 +460,7 @@ function EditContactSheetBody({
                   <V2Input
                     value={customTag}
                     onChangeText={setCustomTag}
-                    placeholder="Add custom tag…"
+                    placeholder={t('mobile.contact.add_custom_tag')}
                     autoCapitalize="none"
                     onSubmitEditing={addCustomTag}
                   />
@@ -485,7 +485,7 @@ function EditContactSheetBody({
                       color: customTag.trim() ? c.card.bg : c.card.ink3,
                     }}
                   >
-                    Add
+                    {t('mobile.contact.add')}
                   </Text>
                 </Pressable>
               </View>
@@ -495,7 +495,7 @@ function EditContactSheetBody({
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
               <View style={{ flex: 1 }}>
                 <PrimaryButton
-                  title={saving ? 'Saving…' : 'Save Details'}
+                  title={saving ? t('mobile.contact.saving') : t('mobile.contact.save_details')}
                   tone="deep"
                   disabled={saving}
                   onPress={handleSave}
@@ -503,7 +503,7 @@ function EditContactSheetBody({
               </View>
               <View style={{ width: 110 }}>
                 <SecondaryButton
-                  title="Cancel"
+                  title={t('actions.cancel') || 'Cancel'}
                   disabled={saving}
                   onPress={handleRequestClose}
                 />

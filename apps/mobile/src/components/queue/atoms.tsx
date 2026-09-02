@@ -218,24 +218,27 @@ export function PrimaryButton({
   title,
   onPress,
   tone = 'primary',
+  disabled = false,
 }: {
   title: string;
   onPress: () => void;
   tone?: ButtonTone;
+  disabled?: boolean;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const bg = { primary: c.card.primary, warm: c.card.warm, deep: c.card.deep, green: c.card.green }[tone];
   const fg = { primary: c.card.onPrimary, warm: c.card.onWarm, deep: c.card.onDeep, green: c.card.onGreen }[tone];
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       style={({ pressed }) => ({
         height: 56,
         borderRadius: radius.button,
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.85 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: fg }}>{title}</Text>
@@ -243,11 +246,20 @@ export function PrimaryButton({
   );
 }
 
-export function SecondaryButton({ title, onPress }: { title: string; onPress: () => void }) {
+export function SecondaryButton({
+  title,
+  onPress,
+  disabled = false,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
   const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       style={({ pressed }) => ({
         height: 52,
         borderRadius: radius.button,
@@ -255,7 +267,7 @@ export function SecondaryButton({ title, onPress }: { title: string; onPress: ()
         borderColor: c.card.border,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.6 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.6 : 1,
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.ink2 }}>{title}</Text>
