@@ -209,6 +209,33 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     const data = contactCall[1];
     expect(data.metVia).toBeUndefined();
   });
+
+  it('writes the contact stage as "Unassigned" regardless of configured stages (#678)', async () => {
+    // #678: sign-up contacts land in the "Unassigned" bucket so the Journey
+    // board isn't cluttered with raw form leads. Even when the project has
+    // a `stages` collection, sign-ups skip past the first configured stage.
+    const mockDb: any = {};
+    const testForm = form();
+
+    await submitSignUp(mockDb, testForm, []);
+
+    const contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall).toBeDefined();
+    expect(contactCall![1].stage).toBe('Unassigned');
+  });
+  it('does not read the stages collection when assigning the contact stage (#678)', async () => {
+    // #678: the stages collection no longer drives the default — sign-up is
+    // "Unassigned" unconditionally. Asserting that `getDocs` is never called
+    // guards against a future regression that re-introduces the old
+    // "default to first stage" lookup.
+    mockGetDocs.mockClear();
+    const mockDb: any = {};
+    const testForm = form();
+
+    await submitSignUp(mockDb, testForm, []);
+
+    expect(mockGetDocs).not.toHaveBeenCalled();
+  });
 });
 
 
