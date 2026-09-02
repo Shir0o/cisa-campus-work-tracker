@@ -128,6 +128,13 @@ describe("check-hardcoded-colors — isCommentLine", () => {
     expect(isCommentLine(`* line`)).toBe(true);
   });
 
+  it("skips JSX comment lines", () => {
+    // `{/* … */}` is how a comment is written inside JSX, so issue references
+    // there hit the eager hex pattern exactly like `//` ones do (#730).
+    expect(isCommentLine(`{/* #730: the "How we met" rows are gone */}`)).toBe(true);
+    expect(isCommentLine(`      {/* TODO(#730 follow-up): was contact.location`)).toBe(true);
+  });
+
   it("does NOT skip code lines", () => {
     expect(isCommentLine(`const x = 1;`)).toBe(false);
     expect(isCommentLine(`className="bg-red-500"`)).toBe(false);

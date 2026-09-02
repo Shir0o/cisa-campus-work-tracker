@@ -1,0 +1,256 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --primary-container:rgba(10,10,11,0.06); --on-primary-container:#52525B;
+      --accent:#52525B; --accent-line:rgba(10,10,11,0.18); --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --flag:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:12px;color:var(--on-surface)}
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:36px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.02;
+      letter-spacing:-0.03em;margin:0}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:64ch;margin:8px 0 0}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:22px;letter-spacing:-0.02em;margin:0 0 6px}
+
+    .finding{border-left:2px solid var(--flag);padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:8px}
+    .finding-tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--flag)}
+    .finding p{margin:0;font-size:13.5px;line-height:1.6;color:var(--on-surface-variant);max-width:78ch}
+    .finding strong{color:var(--on-surface);font-weight:600}
+    .swatches{display:flex;gap:14px;margin-top:4px}
+    .sw{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--on-surface-variant)}
+    .sw i{width:22px;height:22px;border-radius:7px;display:block;border:1px solid rgba(10,10,11,0.06)}
+
+    .ladder{display:flex;flex-direction:column;gap:14px}
+    .rung{display:grid;grid-template-columns:1fr 340px;gap:32px;align-items:start;
+      padding:20px 22px;border-radius:24px;background:var(--surface);border:1px solid var(--outline-variant)}
+    .stage{background:var(--surface);border-radius:16px}
+    .ann{display:flex;flex-direction:column;gap:7px;padding-top:2px}
+    .ann-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15px;letter-spacing:-0.012em}
+    .ann-name .kicker{display:inline-block;font-family:Lexend,sans-serif;font-size:10px;font-weight:600;
+      text-transform:uppercase;letter-spacing:0.06em;padding:2px 7px;border-radius:999px;
+      background:var(--accent-soft);color:var(--accent);margin-right:8px;vertical-align:2px}
+    .ann-name .kicker.new{background:var(--stage-accent-soft);color:var(--stage-accent)}
+    .ann p{margin:0;font-size:12.5px;line-height:1.6;color:var(--on-surface-variant)}
+    .ann .tok{font-size:11.5px;color:var(--on-surface-variant);opacity:.85}
+
+    /* stack card — AttentionFeed.tsx:219-225, at real dimensions */
+    .stack{border-radius:16px;border:1px solid var(--outline-variant);background:var(--surface);padding:16px}
+    .stack.read{border-color:rgba(240,240,242,0.4)}
+    .stack.edge{box-shadow:inset 2px 0 0 0 var(--stage-accent)}
+    .stack-row{display:flex;align-items:flex-start;gap:14px}
+    .avatar{width:44px;height:44px;flex:none;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:14px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .line1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .namewrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pname{font-size:16px;font-weight:500;color:var(--on-surface)}
+    .unread-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .rel{font-size:12px;color:var(--on-surface-variant);opacity:.8;flex:none}
+    .phrases{font-size:12px;font-weight:500;color:var(--on-surface-variant);margin-top:4px}
+    .latest{font-size:12px;color:var(--on-surface-variant);opacity:.9;margin:4px 0 0;
+      background:rgba(234,234,236,0.4);border-radius:10px;padding:8px}
+    .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .btn-p{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:0;
+      background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:500}
+    .btn-g{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface);
+      font-size:12px;font-weight:500}
+    .scan{margin-left:auto;font-size:12px;font-weight:500;color:var(--on-surface-variant);padding:4px 8px}
+    .talked{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+      font-size:11px;font-weight:600;color:var(--stage-accent);background:var(--stage-accent-soft)}
+
+    .verdict{background:var(--surface-variant);border-radius:24px;padding:28px 30px;
+      display:grid;grid-template-columns:1fr 1fr;gap:30px}
+    .verdict h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;margin:0 0 6px}
+    .verdict p{margin:0;font-size:13px;line-height:1.65;color:var(--on-surface-variant)}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>Highlighting the ones with interactions</h1>
+    <p class="lede">The feed already knows which stacks contain a conversation &mdash; <code>stack.kinds</code> has carried the set of item types since the day it was written, and the UI has never read it. What is missing is a signal, and the ladder below is drawn against the emphasis the card already has, not on top of an imagined one.</p>
+  </header>
+
+  <section class="finding">
+    <div class="finding-tag">First, a finding &mdash; the existing emphasis does not render</div>
+    <p>A stack card marks itself unread with <code>bg-surface border-outline-variant</code> and read with <code>bg-surface/60 border-outline-variant/40</code>. Both sit inside a column card that is <em>also</em> <code>bg-surface</code>, so <strong>the fills are identical</strong> &mdash; the whole ladder rests on a 1px border of <code>#F0F0F2</code> against <code>#F4F4F5</code>, which is <strong>1.04:1</strong>. In light theme the two cards below are, to the eye, the same card.</p>
+    <p>What does carry unread today is the 8px accent dot beside the name (<code>#52525B</code> on <code>#F4F4F5</code>, <strong>7.0:1</strong>) and the appearance of &ldquo;Mark scanned&rdquo;. Any interaction marker therefore has to stand on its own colour, because there is no working border ladder to step up from &mdash; and it must not be a border, or it inherits the same problem.</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:#F4F4F5"></i> <code>--surface</code> #F4F4F5</div>
+      <div class="sw"><i style="background:#F0F0F2"></i> <code>--outline-variant</code> #F0F0F2</div>
+      <div class="sw"><i style="background:#E4E4E7"></i> <code>--outline</code> #E4E4E7</div>
+      <div class="sw"><i style="background:#52525B"></i> <code>--accent</code> #52525B</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The ladder</h2>
+
+    <div class="ladder">
+
+      <article class="rung">
+        <div class="stage">
+          <div class="stack read">
+            <div class="stack-row">
+              <div class="avatar">EV</div>
+              <div class="grow">
+                <div class="line1"><div class="namewrap"><span class="pname">Elena Vasquez</span></div><span class="rel">2d</span></div>
+                <div class="phrases">Daniel added them</div>
+                <p class="latest">A new face to welcome.</p>
+                <div class="actions">
+                  <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ann">
+          <div class="ann-name">Resting</div>
+          <p>Scanned, a new contact, nothing said yet. This is the baseline everything else has to beat.</p>
+          <div class="tok">Ships today &middot; <code>bg-surface/60 border-outline-variant/40</code></div>
+        </div>
+      </article>
+
+      <article class="rung">
+        <div class="stage">
+          <div class="stack">
+            <div class="stack-row">
+              <div class="avatar">LO</div>
+              <div class="grow">
+                <div class="line1"><div class="namewrap"><span class="pname">Liam O'Donnell</span><span class="unread-dot"></span></div><span class="rel">6h</span></div>
+                <div class="phrases">Andre added them</div>
+                <p class="latest">A new face to welcome.</p>
+                <div class="actions">
+                  <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+                  <span class="scan">Mark scanned</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ann">
+          <div class="ann-name">Unread</div>
+          <p>Against the card above, only the dot and the extra button actually changed. Put the two side by side and cover those, and they are the same card &mdash; that is the finding, drawn.</p>
+          <div class="tok">Ships today &middot; <code>bg-surface border-outline-variant</code></div>
+        </div>
+      </article>
+
+      <article class="rung">
+        <div class="stage">
+          <div class="stack read">
+            <div class="stack-row">
+              <div class="avatar">TB</div>
+              <div class="grow">
+                <div class="line1"><div class="namewrap"><span class="pname">Tyler Brooks</span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div><span class="rel">1d</span></div>
+                <div class="phrases">Priya logged &ldquo;Walked back to the quad&rdquo; &middot; 2 more</div>
+                <p class="latest">Asked good questions about suffering. Wants to come Thursday but works until seven.</p>
+                <div class="actions">
+                  <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg> All 3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ann">
+          <div class="ann-name"><span class="kicker new">Proposed</span>Talked</div>
+          <p>The chip the expanded sub-items already use, lifted to the summary row. It carries a word, not just an icon, because a lone glyph beside a name reads as decoration. Recommended: it is the only change, it sits on colour rather than on a border, and it survives beside the unread dot.</p>
+          <div class="tok"><code>stack.kinds.includes("interaction")</code> &middot; <code>text-stage-accent bg-stage-accent-soft</code></div>
+        </div>
+      </article>
+
+      <article class="rung">
+        <div class="stage">
+          <div class="stack read edge">
+            <div class="stack-row">
+              <div class="avatar">MC</div>
+              <div class="grow">
+                <div class="line1"><div class="namewrap"><span class="pname">Marcus Chen</span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div><span class="rel">1d</span></div>
+                <div class="phrases">Jonah logged &ldquo;First real conversation&rdquo;</div>
+                <p class="latest">Grew up going to church with his grandmother. Hasn't been since he moved here.</p>
+                <div class="actions">
+                  <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ann">
+          <div class="ann-name"><span class="kicker new">Proposed</span>Talked, plus an edge</div>
+          <p>The same chip with a 2px inset edge in the same hue, so a column of cards can be skimmed down the left rather than read across. Stronger, and one more thing to keep true in dark. Take this only if the chip alone tests too quiet.</p>
+          <div class="tok">Adds <code>inset 2px 0 0 var(--stage-accent)</code>. A neutral <code>--accent-line</code> edge is the quieter version of the same idea.</div>
+        </div>
+      </article>
+
+      <article class="rung">
+        <div class="stage">
+          <div class="stack">
+            <div class="stack-row">
+              <div class="avatar">KM</div>
+              <div class="grow">
+                <div class="line1"><div class="namewrap"><span class="pname">Kofi Mensah</span><span class="unread-dot"></span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div><span class="rel">2h</span></div>
+                <div class="phrases">Mei added them &middot; Mei logged &ldquo;Coffee after the lab&rdquo;</div>
+                <p class="latest">Second year, mechanical engineering. Came to the table at Club Rush and asked what a Bible study actually looks like.</p>
+                <div class="actions">
+                  <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+                  <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg> All 2</span>
+                  <span class="scan">Mark scanned</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ann">
+          <div class="ann-name">Both at once</div>
+          <p>The case that decides it. Unread is a grey dot; talked is a tinted pill with a word. They occupy the same row and do not compete, because they are different shapes saying different things &mdash; <em>new to you</em> and <em>someone has been with them</em>.</p>
+          <div class="tok">Order is fixed: name, dot, chip. Never the reverse &mdash; the dot belongs to the name.</div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="verdict">
+    <div>
+      <h3>What is not proposed, and why</h3>
+      <p>Not a border, not a background, not a shadow: the card already spends all three on unread and gets nothing back for them. Not a coloured left rail on its own &mdash; without a word it reads as a stage colour, and the stages already own that vocabulary on The Journey. Not a count (&ldquo;2 conversations&rdquo;): the summary line under the name already says who logged what, so a number would repeat it.</p>
+    </div>
+    <div>
+      <h3>The border ladder, separately</h3>
+      <p>Fixing the inert unread border is a real change and a different one &mdash; moving unread to <code>--outline</code> (<code>#E4E4E7</code>, 1.16:1) barely helps; it wants a surface step, and that is a token conversation, not a feed one. Worth its own row in <code>DRIFT.md</code> either way. The marker above is drawn so it does not depend on that being settled first.</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>

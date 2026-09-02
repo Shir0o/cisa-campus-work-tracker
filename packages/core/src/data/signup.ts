@@ -36,11 +36,10 @@ export async function submitSignUp(
   const allTags = normalizeTagList(["New Sign Up", ...autoTags, ...seasonTags]);
 
   const now = new Date();
+
   const contactData: Record<string, any> = {
     name: form.name.trim(),
     email: form.email.trim(),
-    phone: form.phone.trim(),
-    metVia: "Sign-up form",
     role: "Student",
     stage: firstStage,
     initials: getUserInitials(form.name),

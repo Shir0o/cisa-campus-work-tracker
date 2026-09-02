@@ -1,0 +1,92 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1180,
+      "title": "What's new — Home at 1440"
+    },
+    {
+      "file": "States.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1120,
+      "h": 2260,
+      "title": "The filter row"
+    },
+    {
+      "file": "Highlight.dc.html",
+      "x": 2760,
+      "y": 0,
+      "w": 1120,
+      "h": 2700,
+      "title": "Highlighting interactions"
+    },
+    {
+      "file": "Teams.dc.html",
+      "x": 0,
+      "y": 1300,
+      "w": 1120,
+      "h": 1640,
+      "title": "Where the teams are set"
+    },
+    {
+      "file": "Mobile.dc.html",
+      "x": 1560,
+      "y": 2380,
+      "w": 390,
+      "h": 844,
+      "title": "Mobile — 390"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -300,
+      "w": 520,
+      "text": "Issue #727, from the feedback form on the home page.\n\nTwo asks: filter the news, and highlight the ones with interactions. Plus a team layer above the pairs — six trainees on YP, six on Campus, numbers vary.\n\nThe filter cuts on WHO DID IT, not on the contact. That is the only axis on which a team means anything, and it is what makes the two halves of the issue one feature."
+    },
+    {
+      "id": "feed-note",
+      "x": 620,
+      "y": -300,
+      "w": 480,
+      "text": "The one structural change: the feed gets a visible header.\n\nToday its only heading is sr-only, so there is nowhere to hang a control. The header carries the title, the count, Mark all scanned (lifted out of the On you column, where it currently duplicates) and the filter row.\n\nBoth columns keep their shape. One row governs the whole feed, not each column."
+    },
+    {
+      "id": "states-note",
+      "x": 1560,
+      "y": -300,
+      "w": 460,
+      "text": "Nothing invented: the pill group and the person select are copied out of Looking back (History.tsx:419–451), which already ships them and already translates them.\n\nThe fourth state is the one that gets skipped and shouldn't. The feed returns null when it has no stacks — under a filter that reads as a bug, not as a filter."
+    },
+    {
+      "id": "highlight-note",
+      "x": 2760,
+      "y": -300,
+      "w": 460,
+      "text": "stack.kinds has carried the set of item types per stack since it was written, and the UI has never read it. The highlight needs no new data.\n\nRead the finding at the top of this sheet before choosing: the unread border ladder the card already has does not actually render in light theme — 1.04:1 — so the new marker cannot be a border, and cannot lean on one."
+    },
+    {
+      "id": "teams-note",
+      "x": 1200,
+      "y": 1360,
+      "w": 320,
+      "text": "Team is a field on the trainee, not on the pair — settled with the reporter.\n\nCost: one field on the user document, plus that same field in the firestore.rules user allowlist. Miss the second and every write is rejected while the picker looks like it worked."
+    },
+    {
+      "id": "mobile-note",
+      "x": 1990,
+      "y": 2380,
+      "w": 320,
+      "text": "MyDayMobile mounts the same component, so the row has to survive 390.\n\nChips fit on one line at 13px; the select wraps under them. No fake status bar and no fake keyboard — the real ones draw on top.\n\nTap targets in the cards are 44px."
+    }
+  ],
+  "launch": {
+    "view": "focused",
+    "file": "Main.dc.html"
+  }
+}

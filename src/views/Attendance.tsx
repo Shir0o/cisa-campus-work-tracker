@@ -518,9 +518,9 @@ export default function Attendance() {
                       <div className="text-sm text-accent font-medium mt-0.5">
                         Last with us at {lastSeen.name} · {formatEventDate(lastSeen.date)} — {since} gatherings ago
                       </div>
-                      {(contact.role || contact.location) && (
+                      {contact.role && (
                         <p className="text-sm text-on-surface-variant mt-1">
-                          {[contact.role, contact.location].filter(Boolean).join(' · ')}
+                          {contact.role}
                         </p>
                       )}
                     </div>

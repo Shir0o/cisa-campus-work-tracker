@@ -239,7 +239,12 @@ export default function Visits() {
                       <div className="min-w-0">
                         <div className="text-[17px] font-semibold text-on-surface">{contact.name}</div>
                         <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
-                          {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || contact.location}
+                          {/* TODO(#730 follow-up): the previous fallback was `contact.location`,
+                              which has been retired from the contact model. For now we surface
+                              a "no location noted" label when the visit itself has no `where`;
+                              a real follow-up should land a `visitAddress` field on the Visit
+                              doc (or move `where` to be required at visit-log time). */}
+                          {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || t('visits.no_location_noted')}
                           {visit.followUp && (
                             <>
                               {' · '}

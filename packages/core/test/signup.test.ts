@@ -195,6 +195,20 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     expect(data.lastContactedBy).toBe('Full Timer John');
     expect(data.tags).toEqual(expect.arrayContaining(['New Sign Up', 'Club Rush', '2026-27']));
   });
+
+  it('does not write metVia on the public sign-up contact (#730)', async () => {
+    // #730: the "How we met" surface is gone, so the public sign-up form no
+    // longer auto-stamps `metVia: "Sign-up form"` on the new contact doc.
+    const mockDb: any = {};
+    const testForm = form();
+
+    await submitSignUp(mockDb, testForm, []);
+
+    const contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall).toBeDefined();
+    const data = contactCall[1];
+    expect(data.metVia).toBeUndefined();
+  });
 });
 
 

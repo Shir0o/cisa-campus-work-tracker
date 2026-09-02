@@ -73,9 +73,9 @@ describe('OutreachBoardMobile', () => {
       />
     );
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
-    expect(screen.getByText('Student · Miller Hall')).toBeInTheDocument();
+    // #730: location was removed from the card sub — just the role remains.
+    expect(screen.getByText('Student')).toBeInTheDocument();
     expect(screen.getByText('Connected today')).toBeInTheDocument();
-    expect(screen.getByText(/Coffee chat/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Alice Smith'));
     expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
   });

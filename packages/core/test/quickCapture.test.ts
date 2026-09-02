@@ -187,48 +187,21 @@ describe('logSavedLine / contactAddedLine', () => {
 });
 
 describe('newContactFromLog', () => {
-  it('puts "where you met" on location — the address field', () => {
-    // The design tags a new person with where you met; a Contact here has a
-    // `location` field whose own form calls it "ADDRESS", so that is its home
-    // (the address a visit would go to). `tags` stays the active-season tag the
-    // other addContact callers already set.
-    expect(
-      newContactFromLog({
-        name: '  Alex Johnson ',
-        where: '  Org fair ',
-        note: '  Plays bass. ',
-        stageLabel: 'First conversation',
-        tags: ['fall-2026'],
-      }),
-    ).toEqual({
-      name: 'Alex Johnson',
-      role: '',
-      location: 'Org fair',
-      email: '',
-      phone: '',
-      stage: 'First conversation',
-      tags: ['fall-2026'],
-      notes: 'Plays bass.',
-      spiritualBackground: '',
-      initials: 'AJ',
-    });
-  });
-
-  it('leaves the two optional fields empty when they were skipped', () => {
+  it('does not write `location` — the address field is gone (#730)', () => {
+    // #730: the app no longer surfaces an ADDRESS / "where you met" field on
+    // the contact, so the log sheet's `where` is dropped instead of being
+    // stored on the new contact.
     const input = newContactFromLog({
-      name: 'Alex',
-      where: '',
-      note: '',
-      stageLabel: 'Unassigned',
-      tags: [],
+      name: '  Alex Johnson ',
+      where: '  Org fair ',
+      note: '  Plays bass. ',
+      stageLabel: 'First conversation',
+      tags: ['fall-2026'],
     });
-    expect(input.location).toBe('');
-    expect(input.notes).toBe('');
-    expect(input.tags).toEqual([]);
-    expect(input.createdAt).toBeUndefined();
+    expect(input).not.toHaveProperty('location');
   });
 
-  it('carries "Fill in the rest" through, trimmed, when the disclosure was opened', () => {
+  it('still carries the trimmed disclosure fields through to the new contact', () => {
     const input = newContactFromLog({
       name: 'Alex Johnson',
       where: 'Org fair',
@@ -241,6 +214,10 @@ describe('newContactFromLog', () => {
       major: ' Music ',
       metISO: '2026-07-01',
     });
+    expect(input.name).toBe('Alex Johnson');
+    expect(input.stage).toBe('First conversation');
+    expect(input.tags).toEqual(['fall-2026']);
+    expect(input.notes).toBe('Plays bass.');
     expect(input.phone).toBe('(555) 000-0000');
     expect(input.email).toBe('alex@campus.edu');
     expect(input.year).toBe('Sophomore');
@@ -248,11 +225,20 @@ describe('newContactFromLog', () => {
     expect(input.createdAt).toBe('2026-07-01');
   });
 
+  it('leaves notes and tags empty when the disclosure was skipped', () => {
+    const input = newContactFromLog({
+      name: 'Alex',
+      where: 'Org fair',
+      note: '',
+      stageLabel: 'Unassigned',
+      tags: [],
+    });
+    expect(input.notes).toBe('');
+    expect(input.tags).toEqual([]);
+    expect(input.createdAt).toBeUndefined();
+  });
+
   it('never sets "Part of" or "Faith, so far" — the log sheet stopped asking', () => {
-    // Both came out of the 20-second capture: the design picks "Part of" from a
-    // fellowships list this app doesn't have, and neither question belongs in a
-    // sheet meant to be done while walking. The public sign-up form still fills
-    // them, and the person screen still shows them when it has them.
     const input = newContactFromLog({
       name: 'Alex Johnson',
       where: 'Org fair',
@@ -264,22 +250,8 @@ describe('newContactFromLog', () => {
     expect(input.role).toBe('');
     expect(input.spiritualBackground).toBe('');
   });
-
-  it('still lands "where you met" on location even with the disclosure open', () => {
-    // The design offers a separate "Lives" field; this app has one dual-purpose
-    // `location` ("ADDRESS"), so "where you met" keeps it and the design's
-    // "Lives" is dropped rather than fighting over the same field.
-    const input = newContactFromLog({
-      name: 'Alex',
-      where: 'The Quad',
-      note: '',
-      stageLabel: 'Unassigned',
-      tags: [],
-      major: 'Music',
-    });
-    expect(input.location).toBe('The Quad');
-  });
 });
+
 
 describe('firstMetDate', () => {
   it('resolves each preset to a bare yyyy-MM-dd in the past', () => {

@@ -117,8 +117,6 @@ export async function updateContact(
         name: fullName,
         initials: (edits.firstName.charAt(0) + (edits.lastName.charAt(0) || '')).toUpperCase(),
         role: edits.role,
-        location: edits.location,
-        metVia: edits.metVia,
         email: edits.email,
         phone: edits.phone,
         stage: edits.stage,

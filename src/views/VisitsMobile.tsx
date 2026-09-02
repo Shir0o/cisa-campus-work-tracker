@@ -87,7 +87,8 @@ export default function VisitsMobile({
                   <div className="min-w-0">
                     <div className="text-[15px] font-semibold text-on-surface">{contact.name}</div>
                     <p className="text-[13px] text-on-surface-variant leading-relaxed mt-0.5">
-                      {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || contact.location}
+                      {/* TODO(#730 follow-up): the previous fallback was `contact.location`; see Visits.tsx for the note. */}
+                      {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || t('visits.no_location_noted')}
                       {visit.followUp && (
                         <>
                           {' · '}

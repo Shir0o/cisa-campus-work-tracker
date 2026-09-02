@@ -67,15 +67,21 @@ describe('diffContactFields', () => {
     ]);
   });
 
-  it('labels a location change "address"', () => {
-    const changes = diffContactFields(contact(), fields({ location: 'Library' }));
-    expect(changes).toEqual(['address: "Campus Coffee" → "Library"']);
+  it('does not surface a "how we met" change — the form no longer exposes metVia', () => {
+    // #730: the new-contact and contact-edit forms removed the metVia field.
+    // Even if a legacy value still sits on the contact, changing it is no
+    // longer surfaced as a change line — the field is no longer user-facing.
+    const before = contact({ metVia: 'Outreach' });
+    const changes = diffContactFields(before, fields({ metVia: undefined }));
+    expect(changes.find((c) => /how we met/i.test(c))).toBeUndefined();
   });
 
-  it('labels a metVia change "how we met"', () => {
-    const before = contact({ metVia: undefined });
-    const changes = diffContactFields(before, fields({ metVia: 'A friend brought them' }));
-    expect(changes).toEqual(['how we met: "" → "A friend brought them"']);
+  it('does not surface an "address" change — the form no longer exposes location', () => {
+    // #730: the new-contact and contact-edit forms removed the location field.
+    // Even if a legacy value still sits on the contact, changing it is no
+    // longer surfaced as a change line.
+    const changes = diffContactFields(contact(), fields({ location: 'Library' }));
+    expect(changes.find((c) => /address/i.test(c))).toBeUndefined();
   });
 
   it('reports group (role) and stage changes', () => {
@@ -135,7 +141,6 @@ describe('contactDeleteFieldsLog', () => {
       [
         'Group: Student',
         'Stage: Contact',
-        'Address: Campus Coffee',
         'Email: alex@campus.edu',
         'Phone: (555) 000-0000',
         'Total Interactions: 3',

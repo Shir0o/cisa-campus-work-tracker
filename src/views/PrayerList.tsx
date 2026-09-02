@@ -740,7 +740,7 @@ function PrayerThread({
               )}
             </div>
             <div className="text-[13px] text-on-surface-variant mt-0.5 truncate">
-              {[contact.role, getContactGrade(contact), contact.metVia].filter(Boolean).join(' · ') || t('directory.unassigned')}
+              {[contact.role, getContactGrade(contact)].filter(Boolean).join(' · ') || t('directory.unassigned')}
             </div>
           </div>
         </button>
@@ -1375,7 +1375,7 @@ function PickHeldModal({
     const needle = q.trim().toLowerCase();
     if (!needle) return sorted;
     return sorted.filter((c) =>
-      `${c.name} ${c.role || ''} ${c.metVia || ''} ${c.location || ''} ${(c.tags || []).join(' ')}`.toLowerCase().includes(needle),
+      `${c.name} ${c.role || ''} ${(c.tags || []).join(' ')}`.toLowerCase().includes(needle),
     );
   }, [contacts, q]);
 
@@ -1448,7 +1448,7 @@ function PickHeldModal({
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold text-on-surface truncate">{c.name}</span>
                   <span className="block text-xs text-on-surface-variant truncate mt-0.5">
-                    {[c.role, c.metVia].filter(Boolean).join(' · ')}
+                    {[c.role].filter(Boolean).join(' · ')}
                   </span>
                 </span>
                 {wasHeld && <span className="text-[11px] text-on-surface-variant shrink-0">{t('prayers.already_held')}</span>}

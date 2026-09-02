@@ -754,14 +754,8 @@ function Details({
       <DetailRow label={t('mobile.contact.phone')} value={contact.phone} onPress={() => openCall(contact.phone)} />
       <DetailRow label={t('mobile.contact.email')} value={contact.email} onPress={() => openEmail(contact.email)} />
       <DetailRow label={t('mobile.contact.instagram')} value={contact.instagram} />
-      {/* "How we met" (#356) — replaces the old "First met / lives" reading of
-          the dual-purpose location field. The address stays on `location` for
-          the v2 log sheet's "Where you met". */}
-      <DetailRow label={t('mobile.contact.how_we_met')} value={contact.metVia} />
-      <DetailRow label={t('mobile.contact.address')} value={contact.location} />
-      {/* The two fields the log sheet's "Fill in the rest" adds — the design
-          asks that they have somewhere to be read. `role` is this app's
-          contact group, which the sheet labels "Part of". */}
+      {/* #730: the "How we met" and "Address" rows are gone — the fields
+          have been retired from the app. */}
       <DetailRow label={t('mobile.contact.part_of')} value={contact.role} />
       <DetailRow
         label={t('mobile.contact.cared_for_by')}

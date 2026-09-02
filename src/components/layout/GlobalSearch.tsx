@@ -198,15 +198,12 @@ export default function GlobalSearch() {
       (c) =>
         c.name?.toLowerCase().includes(ql) ||
         (c.role || '').toLowerCase().includes(ql) ||
-        (c.metVia || '').toLowerCase().includes(ql) ||
-        (c.location || '').toLowerCase().includes(ql) ||
         (c.notes || '').toLowerCase().includes(ql) ||
         (c.spiritualBackground || '').toLowerCase().includes(ql) ||
         (c.tags || []).some((t) => t.toLowerCase().includes(ql)),
     );
     return rankByFrecency(currentUid, matched, (c) => c.id).slice(0, GS_MAX);
   }, [hasQ, ql, contacts, currentUid]);
-
   const convResults = useMemo(() => {
     if (!hasQ || !isStaff) return [];
     return interactions
@@ -551,7 +548,7 @@ export default function GlobalSearch() {
                   tone="accent"
                   icon={User}
                   title={c.name}
-                  sub={[c.role, c.metVia].filter(Boolean).join(' · ') || undefined}
+                  sub={c.role || undefined}
                   onClick={() => openContactById(c.id)}
                 />
               ))}
@@ -631,7 +628,7 @@ export default function GlobalSearch() {
                   tone="accent"
                   icon={User}
                   title={c.name}
-                  sub={[c.role, c.metVia].filter(Boolean).join(' · ') || undefined}
+                  sub={c.role || undefined}
                   onClick={() => openContactById(c.id)}
                 />
               ))}

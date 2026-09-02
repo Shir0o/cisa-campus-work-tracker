@@ -346,10 +346,10 @@ describe('OutreachBoard', () => {
     vi.advanceTimersByTime(900);
 
     await screen.findByText('Alice Chen');
-
-    // Sub-info: role · location
-    expect(screen.getByText('Student · North Campus')).toBeInTheDocument();
-
+    // Sub-info: just the role (#730 removed the location from the card sub).
+    // The role "Student" also appears in the stage chip; assert it's present
+    // (as a sub-element) without requiring it to be unique on the page.
+    expect(screen.getAllByText('Student').length).toBeGreaterThan(0);
     // Tag
     expect(screen.getByText('Freshman')).toBeInTheDocument();
   });

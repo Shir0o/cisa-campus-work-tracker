@@ -139,8 +139,9 @@ describe('Contact Management', () => {
     // People-first cards: names + meta render (emails live behind a mailto button).
     expect(await screen.findByText('John Doe')).toBeInTheDocument();
     expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
-    expect(await screen.findByText(/Student · Campus Hub/)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Email/i }).length).toBeGreaterThan(0);
+    // #730: the card sub-text is now just the role (metVia and location
+    // are gone from the form).
+    expect(await screen.findByText(/Student/)).toBeInTheDocument();
   });
 
   it('Adding a Contact: calls addDoc with correct data', async () => {
@@ -152,11 +153,10 @@ describe('Contact Management', () => {
 
     // Open disclosure for remaining fields
     fireEvent.click(screen.getByText(/\+ Add the rest/i));
-
     fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Builder' } });
     fireEvent.change(screen.getByPlaceholderText(/alex@campus.edu/i), { target: { value: 'bob@build.it' } });
     fireEvent.change(screen.getByPlaceholderText(/e.g. Student/i), { target: { value: 'Contractor' } });
-    fireEvent.change(screen.getByPlaceholderText(/e.g. Miller Hall/i), { target: { value: 'Library' } });
+    // #730: the new-contact form no longer exposes the ADDRESS / "How we met" fields.
 
     // Submit
     const form = document.getElementById('new-contact-form');

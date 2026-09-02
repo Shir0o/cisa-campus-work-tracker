@@ -156,11 +156,12 @@ describe('ContactDetailsModal Component', () => {
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john.doe@example.com')).toBeInTheDocument();
-    // Location shows in the header meta and the aside — the design's duplication.
-    expect(screen.getAllByText('Main Hall').length).toBeGreaterThan(0);
+    // #730: the contact's `location` (and `metVia`) is no longer surfaced in
+    // the read-only overview — the field is gone from the app. The contact
+    // still has the value on disk for legacy rows, but the UI must not show it.
+    expect(screen.queryByText('Main Hall')).not.toBeInTheDocument();
     expect(screen.getByText('Christian')).toBeInTheDocument();
   });
-
   it('avoids dash placeholders when last-connected and meta details are missing', () => {
     const { container } = render(
       <ContactDetailsModal
@@ -480,7 +481,11 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByPlaceholderText('First name is plenty')).toBeRequired();
     expect(screen.getByPlaceholderText('alex@campus.edu')).not.toBeRequired();
     expect(screen.getByPlaceholderText('e.g. Student, Faculty')).not.toBeRequired();
-    expect(screen.getByPlaceholderText('e.g. Miller Hall, off-campus')).not.toBeRequired();
+    // #730: the ADDRESS / "How we met" inputs are gone; no placeholder
+    // for "Miller Hall, off-campus" should exist in the form.
+    expect(
+      screen.queryByPlaceholderText('e.g. Miller Hall, off-campus'),
+    ).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('Add some context about this contact...')).not.toBeRequired();
   });
 
@@ -1333,7 +1338,7 @@ describe('ContactDetailsModal Component', () => {
     );
   });
 
-  it('records email, residence-hall location, stage and spiritual background changes', async () => {
+  it('records email, stage and spiritual background changes (no how-we-met, no address #730)', async () => {
     (firestore.getDocs as any).mockResolvedValue({
       size: 2,
       docs: [
@@ -1352,14 +1357,16 @@ describe('ContactDetailsModal Component', () => {
 
     fireEvent.click(screen.getByTitle('Edit details'));
 
-    // HOW WE MET label reflects the fixed "How we met" vocabulary.
-    expect(screen.getByText('HOW WE MET')).toBeInTheDocument();
+    // #730: the contact-detail edit form no longer exposes a "How we met"
+    // select or an ADDRESS input. Both must be gone.
+    expect(screen.queryByText('HOW WE MET')).not.toBeInTheDocument();
+    expect(screen.queryByText('ADDRESS')).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText('e.g. Miller Hall, off-campus'),
+    ).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('alex@campus.edu'), {
       target: { value: 'john.new@example.com' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('e.g. Miller Hall, off-campus'), {
-      target: { value: 'West Hall' },
     });
     const stageSelect = screen.getByDisplayValue('Regular');
     fireEvent.change(stageSelect, { target: { value: 'First' } });
@@ -1374,17 +1381,22 @@ describe('ContactDetailsModal Component', () => {
         expect.anything(),
         expect.objectContaining({
           email: 'john.new@example.com',
-          location: 'West Hall',
           stage: 'First',
           spiritualBackground: 'Exploring',
         }),
       ),
     );
-    expect(logActivity).toHaveBeenCalledWith(
-      expect.objectContaining({
-        description: expect.stringContaining('address'),
-      }),
+
+    // #730: the activity log description must not include an "address" change
+    // line — the field is no longer user-facing.
+    const logActivityMock = logActivity as any;
+    const updateCalls = logActivityMock.mock.calls.filter(
+      ([arg]) => arg?.type === 'edit',
     );
+    for (const [arg] of updateCalls) {
+      expect(arg.description ?? '').not.toMatch(/address/i);
+      expect(arg.description ?? '').not.toMatch(/how we met/i);
+    }
   });
 
   it('parses comma-separated tags from the edit form', async () => {

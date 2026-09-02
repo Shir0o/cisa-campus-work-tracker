@@ -1,0 +1,244 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC; --surface-container-low:#F4F4F5;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --primary-container:rgba(10,10,11,0.06); --on-primary-container:#52525B;
+      --secondary-container:rgba(10,10,11,0.06); --on-secondary-container:#52525B;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+      display:flex;flex-direction:column}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    svg{display:block}
+
+    .topbar{height:52px;flex:none;display:flex;align-items:center;gap:10px;padding:0 20px}
+    .brand{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15px;letter-spacing:-0.01em}
+    .spacer{flex:1}
+    .ibtn{width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+      color:var(--on-surface-variant)}
+    .me{width:32px;height:32px;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:12px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+
+    .body{flex:1;min-height:0;padding:8px 20px 0;display:flex;flex-direction:column;gap:16px}
+    .greeting{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:22px;
+      letter-spacing:-0.02em;margin:0}
+
+    .feed-head{display:flex;flex-direction:column;gap:12px}
+    .feed-titlewrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+    .feed-title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:20px;
+      letter-spacing:-0.02em;margin:0}
+    .count-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;
+      font-size:12px;font-weight:600;background:var(--accent-soft);color:var(--accent)}
+    .feed-sub{font-size:12px;color:var(--on-surface-variant)}
+
+    /* the filter row wraps here — chips on one line, the select under them */
+    .controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .segtrack{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;
+      background:var(--surface-container-low);border:1px solid var(--outline-variant)}
+    .segbtn{font-size:13px;padding:6px 12px;border-radius:999px;border:0;background:transparent;
+      color:var(--on-surface-variant)}
+    .segbtn.on{background:var(--bg);color:var(--on-surface);font-weight:500}
+    .personsel{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px;
+      border-radius:999px;background:var(--surface);border:1px solid var(--outline-variant);
+      font-size:14px;color:var(--on-surface)}
+
+    .col{background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;
+      padding:20px;display:flex;flex-direction:column;gap:14px}
+    .col-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+      border-bottom:1px solid var(--outline-variant);padding-bottom:10px}
+    .col-title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:600;font-size:17px;margin:0}
+    .col-sub{font-size:12px;color:var(--on-surface-variant)}
+    .bucket{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);opacity:.7;padding:0 2px}
+    .rows{display:flex;flex-direction:column;gap:10px}
+
+    .stack{border-radius:16px;border:1px solid var(--outline-variant);background:var(--surface);padding:14px}
+    .stack.read{border-color:rgba(240,240,242,0.4)}
+    .stack-row{display:flex;align-items:flex-start;gap:12px}
+    .avatar{width:32px;height:32px;flex:none;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:12px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .line1{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+    .namewrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .pname{font-size:15px;font-weight:500}
+    .unread-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .rel{font-size:11px;color:var(--on-surface-variant);opacity:.8}
+    .phrases{font-size:11.5px;font-weight:500;color:var(--on-surface-variant);margin-top:3px}
+    .actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .btn-p{display:inline-flex;align-items:center;gap:5px;height:44px;padding:0 14px;border-radius:999px;
+      background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:500}
+    .btn-g{display:inline-flex;align-items:center;gap:5px;height:44px;padding:0 14px;border-radius:999px;
+      border:1px solid var(--outline-variant);color:var(--on-surface);font-size:12px;font-weight:500}
+    .talked{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+      font-size:11px;font-weight:600;color:var(--stage-accent);background:var(--stage-accent-soft)}
+
+    .ambients{display:flex;flex-direction:column}
+    .ambient{display:flex;align-items:center;gap:10px;padding:9px 2px;
+      border-top:1px solid rgba(240,240,242,0.6)}
+    .ambient:first-child{border-top:0}
+    .amb-name{font-size:14px;font-weight:500}
+    .amb-action{font-size:11.5px;color:var(--on-surface-variant)}
+
+    /* the app's own bottom bar — MobileNav.tsx:25 */
+    .bottomnav{height:64px;flex:none;background:var(--surface-container-low);
+      border-top:1px solid var(--outline-variant);display:flex;align-items:center;
+      justify-content:space-around;padding:0 16px}
+    .nitem{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:64px;
+      color:var(--on-surface-variant);padding:4px 0}
+    .npuck{width:48px;height:32px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+    .nitem.on{color:var(--accent)}
+    .nitem.on .npuck{background:var(--secondary-container);color:var(--on-secondary-container)}
+    .nlabel{font-size:11px;font-weight:500}
+    .nfab{width:56px;height:56px;border-radius:16px;background:var(--primary);color:var(--on-primary);
+      display:flex;align-items:center;justify-content:center}
+  </style>
+</helmet>
+
+<div class="topbar">
+  <div class="brand">My Day</div>
+  <div class="spacer"></div>
+  <div class="ibtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
+  <div class="ibtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+  <div class="me">RA</div>
+</div>
+
+<div class="body">
+  <h1 class="greeting">Good morning, Ruth</h1>
+
+  <div class="feed-head">
+    <div class="feed-titlewrap">
+      <h2 class="feed-title">What's new</h2>
+      <span class="count-pill">9 new</span>
+    </div>
+    <span class="feed-sub">Who was added, and who was talked to.</span>
+
+    <div class="controls">
+      <div class="segtrack">
+        <button class="segbtn on">Everyone</button>
+        <button class="segbtn">YP team</button>
+        <button class="segbtn">Campus team</button>
+      </div>
+      <label class="personsel">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Whole team
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+      </label>
+    </div>
+  </div>
+
+  <section class="col">
+    <div class="col-head">
+      <h3 class="col-title">On you</h3>
+      <span class="col-sub">4 people</span>
+    </div>
+    <div class="bucket">Today</div>
+    <div class="rows">
+      <div class="stack">
+        <div class="stack-row">
+          <div class="avatar">KM</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap">
+                <span class="pname">Kofi Mensah</span>
+                <span class="unread-dot"></span>
+                <span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span>
+              </div>
+              <span class="rel">2h</span>
+            </div>
+            <div class="phrases">Mei added them &middot; Mei logged &ldquo;Coffee after the lab&rdquo;</div>
+            <div class="actions">
+              <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+              <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="stack-row">
+          <div class="avatar">EV</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap">
+                <span class="pname">Elena Vasquez</span>
+                <span class="unread-dot"></span>
+              </div>
+              <span class="rel">5h</span>
+            </div>
+            <div class="phrases">Daniel added them</div>
+            <div class="actions">
+              <span class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</span>
+              <span class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="col-head">
+      <h3 class="col-title">Around the team</h3>
+      <span class="col-sub">5 new</span>
+    </div>
+    <div class="ambients">
+      <div class="ambient">
+        <div class="avatar">MC</div>
+        <div class="grow">
+          <div class="amb-name">Marcus Chen <span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div>
+          <div class="amb-action">Jonah logged &ldquo;First real conversation&rdquo;</div>
+        </div>
+      </div>
+      <div class="ambient">
+        <div class="avatar">AR</div>
+        <div class="grow">
+          <div class="amb-name">Aisha Rahman</div>
+          <div class="amb-action">Grace added them &mdash; a new face</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="bottomnav">
+  <div class="nitem on">
+    <div class="npuck"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></div>
+    <div class="nlabel">My Day</div>
+  </div>
+  <div class="nitem">
+    <div class="npuck"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+    <div class="nlabel">People</div>
+  </div>
+  <div class="nfab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></div>
+  <div class="nitem">
+    <div class="npuck"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg></div>
+    <div class="nlabel">Prayer</div>
+  </div>
+  <div class="nitem">
+    <div class="npuck"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    <div class="nlabel">Messages</div>
+  </div>
+</nav>
+</x-dc>
+</body>
+</html>

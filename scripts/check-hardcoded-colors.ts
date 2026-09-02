@@ -82,7 +82,7 @@ export type Violation = RawHit & {
 /**
  * Determine whether a single added line should be skipped because it is
  * wholly a comment. The hex regex is otherwise eager and would flag issue
- * references like `(#563)` in a `//` comment.
+ * references like `(#563)` in a `//` comment or in a JSX one.
  *
  * Lines that contain both code and a trailing comment (e.g.
  * `const c = '#ff0000'; // red`) are NOT skipped — the hex is still a
@@ -90,7 +90,13 @@ export type Violation = RawHit & {
  */
 export function isCommentLine(line: string): boolean {
   const trimmed = line.trim();
-  return trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*');
+  return (
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('/*') ||
+    trimmed.startsWith('*') ||
+    // JSX comments open with `{/*` — the same issue-reference false positive.
+    trimmed.startsWith('{/*')
+  );
 }
 
 export function isTargetFile(path: string): boolean {

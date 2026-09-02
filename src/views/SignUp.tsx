@@ -168,7 +168,6 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         interests: form.interests,
         prayerRequest: form.prayerRequest.trim() || null,
         notes: form.notes.trim() || null,
-        metVia: 'Sign-up form',
         role: 'Student',
         stage: '',
         initials: getUserInitials(form.name),
@@ -178,7 +177,6 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         lastSeen: now.toLocaleDateString(),
         tags: allTags,
       };
-
       if (auth?.user?.uid) {
         contactData.createdBy = auth.user.uid;
         contactData.createdByName = auth.user.displayName || auth.user.email || null;
