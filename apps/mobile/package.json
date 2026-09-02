@@ -75,7 +75,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
-    "@testing-library/react-native": "^13.3.3",
+    "@testing-library/react-native": "^14.0.1",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
