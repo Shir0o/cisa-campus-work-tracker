@@ -442,42 +442,6 @@
   }
 }
 
-/* ── Focusable tooltip (#665) ───────────────────────────────────────────────
-   Destination names hide behind icons in the collapsed rail. The native
-   `title` is hover-only; this rule surfaces the label on hover AND on
-   keyboard focus so a keyboard user can identify an icon-only destination
-   without a mouse. The trigger is `data-tooltip` set on the link/button
-   itself; the bubble is a `::after` pseudo, positioned just to the right
-   of the rail so it isn't clipped by the rail's overflow-hidden bounds. */
-[data-tooltip] {
-  position: relative;
-}
-[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--surface-container-highest);
-  color: var(--on-surface);
-  border: 1px solid var(--outline-variant);
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  z-index: 60;
-  transition: opacity 80ms linear;
-  /* A 4%-black shadow is invisible against a dark page; the popover token
-     carries a real value in both themes. */
-  box-shadow: var(--shadow-pop);
-}
-[data-tooltip]:hover:not(:focus-visible)::after,
-[data-tooltip]:focus-visible::after {
-  opacity: 1;
-}
 
 /* ====================================================================
    The Board — TipTap document content.

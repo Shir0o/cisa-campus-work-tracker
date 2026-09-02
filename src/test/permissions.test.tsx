@@ -537,8 +537,8 @@ describe('Questions for the team as its own destination', () => {
 // ── Destination grouping for the rail (issue #662) ───────────────────────────
 // The rail (issue #664) consumes this data: ordered groups of destinations a
 // given role can reach. The groups and within-group order are fixed by the
-// design at docs/design/ink/NavPref.dc.html. Settings is excluded — the shell
-// pins it below a divider rather than letting it fall into a group.
+// design at docs/design/ink/NavPref.dc.html. Settings is excluded from the
+// groups entirely (#711) — it lives in the avatar/profile dropdown.
 
 describe('groupedNavFor() — rail destination groups (#662)', () => {
   // Per-role expectations. Each entry lists the groups (in stable order) and
