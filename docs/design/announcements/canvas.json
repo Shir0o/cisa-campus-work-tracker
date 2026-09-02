@@ -1,0 +1,92 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 980,
+      "title": "Reading an announcement — Messages at 1440"
+    },
+    {
+      "file": "Mobile.dc.html",
+      "x": 0,
+      "y": 1180,
+      "w": 390,
+      "h": 844,
+      "title": "Mobile — 390"
+    },
+    {
+      "file": "Compose.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1120,
+      "h": 2300,
+      "title": "Sending one"
+    },
+    {
+      "file": "Post.dc.html",
+      "x": 2800,
+      "y": 0,
+      "w": 1240,
+      "h": 2750,
+      "title": "The post, and its states"
+    },
+    {
+      "file": "Footer.dc.html",
+      "x": 4200,
+      "y": 0,
+      "w": 1120,
+      "h": 2450,
+      "title": "The bar at the bottom"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -420,
+      "w": 500,
+      "text": "Issue #725, from the feedback form on /messages.\n\nOne line: \"a rework ui ux on how annoucement works\". So the scope was settled first — both ends, sending and receiving.\n\nThe thing that decided the shape: an announcement is a broadcast wearing a chat's clothes. It is created from the second tab of New message, it sits in the conversation list next to DMs, it renders as 62%-wide chat bubbles, and it arrives on 24 phones titled \"New message\". Every drawing here follows from putting that right."
+    },
+    {
+      "id": "main-note",
+      "x": 600,
+      "y": -420,
+      "w": 460,
+      "text": "Two structural changes on this screen.\n\nThe conversation list gets sections — announcements are not conversations, and a bell in an amber circle is not enough to say so. They lift to the top as cards with a preview, which is the shape the mobile member home already uses (apps/mobile/.../Announcements.tsx).\n\nThe stream renders posts, not bubbles. The header says who it goes to, which today it does not.\n\nDrawn as a member sees it: no composer."
+    },
+    {
+      "id": "compose-note",
+      "x": 1560,
+      "y": -420,
+      "w": 470,
+      "text": "The audience presets were in the mobile v2 design and were dropped in the port for want of roster data — CreateChatModal.tsx says so in a comment.\n\nTwo of the three presets need no roster at all — \"the whole app\" is every approved user, which the modal already queries. The per-team ones need the team field #727's canvas proposes and which is not built: AppUser has six fields and team is not one. Ship the roster-free presets first if #727 slips.\n\nThe notification change at the bottom is one branch in sendMessage on a room type it already fetches."
+    },
+    {
+      "id": "post-note",
+      "x": 2800,
+      "y": -420,
+      "w": 470,
+      "text": "784px is the real thread pane at 1440: 1440 less the 232 rail, the 328 list and six 16px gutters (the shell's two edges and its gap, then the same three inside .page.msgs). Both drawings on this sheet are at that width, so the 62% bubble clamp is shown at its actual size rather than described.\n\nRead receipts are the one proposal here that costs something — a write per member per post, and a firestore.rules path a member can write on a room they otherwise cannot. The fallback is drawn in the finding at the bottom."
+    },
+    {
+      "id": "footer-note",
+      "x": 4200,
+      "y": -420,
+      "w": 470,
+      "text": "This sheet is the sharpest of the five, because the defects are not judgement calls.\n\n\"Replies go to the team directly\" describes a route that does not exist — the same flag that hides the composer also closes the thread reply box. The four emoji react to messages[messages.length - 1], not to what you are looking at. And italic grey is the app's typography for a deleted message.\n\nWhere a reply should actually go is a real decision, so it is drawn as three options with their costs, not as one answer."
+    },
+    {
+      "id": "mobile-note",
+      "x": 560,
+      "y": 1180,
+      "w": 380,
+      "text": "The same footer at 390. Buttons go to the 44px tap floor and the reactions drop to their own row rather than shrinking.\n\nNo status bar and no keyboard drawn — the real ones render on top."
+    }
+  ],
+  "launch": {
+    "view": "focused",
+    "file": "Main.dc.html"
+  }
+}
