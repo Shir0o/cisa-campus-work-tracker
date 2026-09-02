@@ -692,6 +692,33 @@ Analyze the input text carefully and extract the following:
     return null;
   }
 
+  // Helper: Match an external sender name/email against registered team members in the `users` collection
+  async function findMatchingTeamUser(senderName?: string, senderEmail?: string) {
+    if (!senderName && !senderEmail) return null;
+    const db = getAdminDb();
+    const snapshot = await db.collection("users").get();
+    const cleanName = (senderName || "").trim().toLowerCase();
+    const cleanEmail = (senderEmail || "").trim().toLowerCase();
+
+    let matchedUser: { id: string; displayName?: string; email?: string } | null = null;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const uEmail = (data.email || "").trim().toLowerCase();
+      const uName = (data.displayName || data.name || "").trim().toLowerCase();
+
+      if (cleanEmail && uEmail && uEmail === cleanEmail) {
+        matchedUser = { id: doc.id, ...data };
+      } else if (!matchedUser && cleanName && uName) {
+        if (uName === cleanName || uName.startsWith(cleanName) || cleanName.startsWith(uName)) {
+          matchedUser = { id: doc.id, ...data };
+        }
+      }
+    });
+
+    return matchedUser;
+  }
+
   // Developer Logging Helper: Records incoming API and webhook events for debugging purposes
   async function logApiCall(source: string, payload: any, headers: any, status: "success" | "error" | "ignored", result: string, error?: string) {
     try {
@@ -1032,6 +1059,7 @@ Analyze the input text carefully and extract the following:
       }
 
       // Creating new contact
+      const isRegisteredUser = opUserId && !opUserId.startsWith("system-") && !opUserId.startsWith("groupme-") && !opUserId.startsWith("sms-") && opUserId !== "external-automation";
       const contactData = {
         name: parsed.name,
         role: parsed.role || "Student",
@@ -1048,6 +1076,7 @@ Analyze the input text carefully and extract the following:
         serverCreatedAt: FieldValue.serverTimestamp(),
         createdBy: opUserId,
         createdByName: opUserName,
+        owner: isRegisteredUser ? opUserId : null,
         hasNewActivity: true,
         attendance: {}
       };
@@ -1293,9 +1322,13 @@ Error: ${error.message || "Internal server processing error."}
       }
 
       console.log(`Processing GroupMe Bot incoming trigger from user "${name}": "${textToParse}"`);
+      const matchedUser = await findMatchingTeamUser(name);
+      const opUserId = matchedUser ? matchedUser.id : (sender_id ? `groupme-${sender_id}` : "system-groupme");
+      const opUserName = matchedUser ? (matchedUser.displayName || matchedUser.email || name) : (name ? `${name} (GroupMe)` : "GroupMe User");
+
       const contact = await performQuickAdd(textToParse, {
-        userId: sender_id ? `groupme-${sender_id}` : "system-groupme",
-        userName: name ? `${name} (GroupMe)` : "GroupMe User"
+        userId: opUserId,
+        userName: opUserName
       }) as any;
 
       // Always carry the active semester on GroupMe-added contacts (issue #410).

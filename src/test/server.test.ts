@@ -759,6 +759,25 @@ describe("POST /api/webhook/groupme", () => {
   });
 
 
+  it("attributes createdBy, createdByName, and owner to matching user if GroupMe sender matches a team user", async () => {
+    seedDoc("users", "user-sam-uid", {
+      displayName: "Sam Wilson",
+      email: "sam@campus.edu",
+    });
+
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam Wilson", sender_id: "s-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const savedContacts = Object.values(getCollection("contacts"));
+    const createdContact = savedContacts.find((c) => c.name === "Leo King");
+    expect(createdContact).toBeDefined();
+    expect(createdContact.createdBy).toBe("user-sam-uid");
+    expect(createdContact.createdByName).toBe("Sam Wilson");
+    expect(createdContact.owner).toBe("user-sam-uid");
+  });
+
   it("tags a new GroupMe-added contact with the current semester", async () => {
     const now = new Date();
     const month = now.getMonth() + 1;
