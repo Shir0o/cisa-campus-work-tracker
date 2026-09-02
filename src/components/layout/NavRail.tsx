@@ -15,8 +15,6 @@ import {
   LayoutDashboard,
   Settings as SettingsIcon,
   ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -76,7 +74,7 @@ export interface NavRailProps {
 export default function NavRail(_props: NavRailProps = {}) {
   const { role, isAdmin, user, effectiveUserId } = useAuth();
   const { pathname } = useLocation();
-  const { effective, setPreference } = useNavShell();
+  const { effective } = useNavShell();
   const collapsed = effective === 'rail-collapsed';
 
   const groups = groupedNavFor(role);
@@ -89,10 +87,6 @@ export default function NavRail(_props: NavRailProps = {}) {
   const waitingAsks = useWaitingAsksCount(effectiveUserId || user?.uid, isAdmin);
 
   const railWidth = collapsed ? 'w-[76px]' : 'w-[232px]';
-
-  const toggleCollapsed = () => {
-    setPreference(collapsed ? 'rail' : 'rail-collapsed');
-  };
 
   return (
     <aside
@@ -243,11 +237,10 @@ export default function NavRail(_props: NavRailProps = {}) {
         </div>
       </nav>
 
-      {/* ── Pinned: Settings link + collapse control ──────────────────── */}
+      {/* ── Pinned: Settings link ────────────────────────────────────── */}
       {/* The avatar, search, notifications and season live in NavChromeStrip
           above the content. The rail's pinned row keeps the rail-resident
-          Settings link and the chevron collapse control — both small and
-          staying-at-the-bottom is the user-visible promise of the spec. */}
+          Settings link. Nav shell preference is configured in Settings (#681). */}
       <div className="shrink-0 border-t border-rail-line">
         <div className="flex items-center px-2 py-2">
           <Link
@@ -262,27 +255,6 @@ export default function NavRail(_props: NavRailProps = {}) {
             <SettingsIcon className="w-4 h-4 shrink-0" />
             {!collapsed && <span className="font-medium">Settings</span>}
           </Link>
-        </div>
-
-        <div className="border-t border-rail-line">
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            data-tooltip={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className={cn(
-              'w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-rail-on-dim hover:bg-rail-hover hover:text-rail-on transition-colors',
-              collapsed ? 'justify-center' : 'justify-between',
-            )}
-          >
-            {!collapsed && <span>Collapse</span>}
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
         </div>
       </div>
     </aside>

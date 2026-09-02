@@ -28,19 +28,19 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 8. As a Trainee, I want my collapsed or expanded choice remembered, so that I do not re-set it every morning.
 9. As a Full-timer, I want to switch back to the top bar entirely, so that I can keep the shell I am used to if I prefer it.
 10. As a Full-timer, I want to change the navigation style in Settings, so that there is one obvious place to find the option.
-11. As a Trainee, I want a quick control on the rail itself to collapse and expand it, so that the common adjustment does not require a trip to Settings.
-12. As a Trainee, I want the quick control to only move between the two rail widths, so that I cannot accidentally throw away my whole navigation with one click.
+11. *(Retired in #681)* The rail width preference is configured in Settings; the on-rail collapse toggle was removed to keep the rail footer minimal.
+12. *(Retired in #681)*
 13. As a Student using the compact rail, I want to see a destination's name on hover, so that I do not have to learn thirteen icons.
 14. As a keyboard user, I want destination names to appear on focus as well as hover, so that the compact rail is usable without a mouse.
 15. As a screen-reader user, I want every destination to keep its accessible name when its label is hidden, so that the compact rail is not silent.
-16. As a keyboard user, I want the collapse control to be a real button announcing its expanded state, so that I know what it does before activating it.
+16. *(Retired in #681)*
 17. As a Trainee, I want unread counts to remain visible when the rail is collapsed, so that collapsing does not hide that something needs me.
 18. As a Full-timer, I want my navigation choice to survive a reload, so that it behaves like a setting rather than a session toggle.
 19. As a Trainee, I want the correct shell on first paint, so that the page does not flash the wrong navigation and reflow underneath me.
 20. As a Trainee on a narrow laptop, I want the rail to collapse automatically rather than crushing the content, so that a smaller window is still usable.
 21. As a Trainee, I want an automatic collapse to be temporary, so that resizing a window does not permanently change the preference I chose.
 22. As a Full-timer on a 13-inch laptop, I want the destination list to scroll within the rail, so that a long list does not push the pinned controls off-screen.
-23. As a Full-timer, I want the Settings link and the collapse control to stay pinned, so that the way out of a state is never the thing that scrolls away.
+23. As a Full-timer, I want the Settings link to stay pinned, so that the way out of a state is never the thing that scrolls away (updated in #681).
 24. As a Student on a phone, I want navigation to be unchanged, so that a desktop preference has no effect on my device.
 25. As a Full-timer impersonating a colleague, I want the impersonation banner to remain prominent in every shell, so that I never forget whose account I am acting in.
 26. As a Full-timer, I want Global Search reachable from the same keyboard shortcut in every shell, so that muscle memory survives the change.
@@ -67,9 +67,9 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 **Collapsing changes five things.** Group labels become hairline dividers, so the grouping survives without the words. Items become 44×44 squares at the interactive radius rather than pills, because a pill at that width reads as a circle. Count badges become a dot — "something here" without the number. Labels move to a tooltip on hover *and* focus. The wordmark drops to the mark.
 
-**The rail does not own an account block.** This was originally specified as a sixth collapsing behaviour — an avatar, name and role pinned at the bottom of the rail, reducing to the avatar alone. It contradicted this document's own reasoning two decisions below: search, notifications and the season indicator are mounted by the shell precisely so they are written once rather than per-shell, and the avatar is the same case. It lives in the chrome strip with them. The rail's pinned footer is the Settings link and the collapse control.
+**The rail does not own an account block.** This was originally specified as a sixth collapsing behaviour — an avatar, name and role pinned at the bottom of the rail, reducing to the avatar alone. It contradicted this document's own reasoning two decisions below: search, notifications and the season indicator are mounted by the shell precisely so they are written once rather than per-shell, and the avatar is the same case. It lives in the chrome strip with them. The rail's pinned footer is the Settings link (the collapse toggle was retired in #681; rail width is controlled in Settings).
 
-**The two controls have deliberately different reach.** The chevron on the rail moves only between rail and rail-collapsed. Leaving the rail entirely is a Settings decision. A one-click escape from your whole navigation is a trap, not a shortcut.
+**Leaving the rail entirely or collapsing to compact rail is a Settings decision.** *(Updated in #681)* The Settings control is the canonical location for switching among Rail, Compact, and Top bar.
 
 **The Settings control is a segmented control** offering all three states, using the existing segmented-control pattern, with copy making clear the setting is desktop-only.
 
@@ -77,7 +77,7 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 **The impersonation and owner-view banners need a defined home in each shell.** In the rail states they sit at the top of the content column; in top-bar mode they stay full-bleed beneath the bar. A safety banner whose position depends on a display preference is worth specifying rather than discovering.
 
-**The rail scrolls internally.** At its expanded height the destination list overflows a 13-inch laptop viewport. The list scrolls within the rail while the mark, the Settings link and the collapse control stay pinned.
+**The rail scrolls internally.** At its expanded height the destination list overflows a 13-inch laptop viewport. The list scrolls within the rail while the mark and the Settings link stay pinned.
 
 ## Testing Decisions
 
