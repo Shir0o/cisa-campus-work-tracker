@@ -318,8 +318,9 @@ export default function LandingTrainee() {
           </b>{" "}
           this season.{" "}
           {waiting.length > 0
-            ? "Here's what the team's flagged for you, the people you've brought in, and what you're holding in prayer."
-            : "Here's your circle, and what you're holding in prayer."}
+            ? "Here's what the team's flagged for you, the people you've brought in, and what we're praying for."
+            : "Here's your circle, and what we're praying for."
+          }
         </p>
       </header>
 
@@ -430,11 +431,11 @@ export default function LandingTrainee() {
         )}
       </section>
 
-      {/* ── Prayers you're holding ── */}
+      {/* ── Prayers we're praying for ── */}
       <section className="mt-12">
         <SectionHead
-          title="Prayers you're holding"
-          sub="Yours to hold this week — for your people, and just between you and God."
+          title="Prayers we're praying for"
+          sub="Yours to carry this week — for your people, and just between you and God."
         />
         <div className={cardClass}>
           {contactPrayers.map((p, i) => (

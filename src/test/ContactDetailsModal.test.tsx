@@ -221,7 +221,7 @@ describe('ContactDetailsModal Component', () => {
     // Click Prayer tab
     const prayerTab = screen.getByRole('button', { name: /^Prayer\s*\d*$/ });
     fireEvent.click(prayerTab);
-    expect(screen.getByText("Prayers we're holding")).toBeInTheDocument();
+    expect(screen.getByText("Prayers we're praying for")).toBeInTheDocument();
 
     // Click Discussion tab (labeled "Discussion")
     const commentsTab = screen.getByRole('button', { name: /Discussion/i });
