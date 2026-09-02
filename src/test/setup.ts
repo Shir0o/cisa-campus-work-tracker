@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+
+process.env.NODE_ENV = 'test';
 vi.mock('html2canvas-pro', () => ({
   default: vi.fn().mockResolvedValue({
     toDataURL: () => 'data:image/png;base64,mock',
