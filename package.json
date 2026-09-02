@@ -54,7 +54,7 @@
     "googleapis": "^176.0.0",
     "html2canvas-pro": "^2.4.0",
     "ical.js": "^2.2.1",
-    "lucide-react": "^0.546.0",
+    "lucide-react": "^1.37.0",
     "motion": "^13.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
