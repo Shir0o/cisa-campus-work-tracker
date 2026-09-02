@@ -66,11 +66,13 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
           const stageData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stage[];
           setStages(stageData);
 
-          // #730: when stages are configured, default to the first one; when
-          // none are configured, fall back to "Unassigned" (no hardcoded
-          // "First Contact" anymore — that value was a stale historical
-          // default unrelated to the actual stages the full-timer has set up).
-          const fallback = stageData.length > 0 ? stageData[0].label : 'Unassigned';
+          // #678: the new-contact modal now defaults to "Unassigned" — same
+          // bucket as the public sign-up form — so /board isn't cluttered
+          // with raw staff quick-adds. The select still lists every
+          // configured stage; only the initial selection changes (this
+          // reverses the #730 "default to first stage" decision). When the
+          // stages fetch errors out, "Unassigned" is also the safe default.
+          const fallback = 'Unassigned';
           const validStages = new Set<string>(['Unassigned', ...stageData.map(s => s.label)]);
           const stage = initialStage && validStages.has(initialStage) ? initialStage : fallback;
           setFormData(f => ({ ...f, stage }));

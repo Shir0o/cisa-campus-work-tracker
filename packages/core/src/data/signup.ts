@@ -5,9 +5,6 @@
 import {
   addDoc,
   collection,
-  getDocs,
-  limit,
-  query,
   serverTimestamp,
   type Firestore,
 } from "firebase/firestore";
@@ -17,11 +14,12 @@ import { getAutoSemesterAndSchoolYearTags } from "../seasons";
 import { normalizeTagList } from "../tags";
 
 /**
- * Writes the new lead to `contacts` (stage defaults to the first `stages`
- * doc, falling back to "Lead") and best-effort broadcasts an ALL_ADMINS
- * notification. If `by` is supplied, stamps the creator/contacting actor.
- * Auto-tags with semester and school year (e.g. Fall 2026, 2026-27).
- * Returns the new contact id.
+ * Writes the new lead to `contacts` with `stage: "Unassigned"` (so the
+ * Journey board isn't cluttered with raw form leads — Full-timers move
+ * them to a real stage via MoveStepSheet / board drag-and-drop) and
+ * best-effort broadcasts an ALL_ADMINS notification. If `by` is supplied,
+ * stamps the creator/contacting actor. Auto-tags with semester and school
+ * year (e.g. Fall 2026, 2026-27). Returns the new contact id.
  */
 export async function submitSignUp(
   db: Firestore,
@@ -29,8 +27,10 @@ export async function submitSignUp(
   seasonTags: string[],
   by?: { uid?: string | null; name?: string | null },
 ): Promise<string> {
-  const stagesSnapshot = await getDocs(query(collection(db, "stages"), limit(1)));
-  const firstStage = stagesSnapshot.empty ? "Lead" : (stagesSnapshot.docs[0].data().label as string);
+  // #678: sign-up contacts land in "Unassigned" regardless of what stages
+  // the project has configured — they used to default to the first
+  // configured stage (or "Lead" if none), which polluted /board.
+  const stage = "Unassigned";
 
   const autoTags = getAutoSemesterAndSchoolYearTags();
   const allTags = normalizeTagList(["New Sign Up", ...autoTags, ...seasonTags]);
@@ -41,7 +41,7 @@ export async function submitSignUp(
     name: form.name.trim(),
     email: form.email.trim(),
     role: "Student",
-    stage: firstStage,
+    stage,
     initials: getUserInitials(form.name),
     notes: form.notes.trim(),
     spiritualBackground: form.spiritualBackground,

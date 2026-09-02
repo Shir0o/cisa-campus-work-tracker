@@ -86,7 +86,12 @@ describe('NewContactModal', () => {
     });
   });
 
-  it('defaults the stage to the first stage when no initialStage is given', async () => {
+  it('defaults the stage to "Unassigned" when no initialStage is given (#678)', async () => {
+    // #678: the new-contact modal defaults to "Unassigned" — same bucket as
+    // the public sign-up form — so the Journey board isn't cluttered with
+    // raw form leads. The user can still pick any configured stage from the
+    // select. The select still lists every configured stage; only the
+    // initial selection changes (this reverses the #730 default).
     const user = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
     await waitFor(() => {
@@ -97,11 +102,11 @@ describe('NewContactModal', () => {
 
     await waitFor(() => {
       const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
-      expect(stageSelect.value).toBe('Contacted');
+      expect(stageSelect.value).toBe('Unassigned');
     });
   });
 
-  it('falls back to the first stage when initialStage is not a valid option', async () => {
+  it('falls back to "Unassigned" when initialStage is not a valid option (#678)', async () => {
     const user = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={vi.fn()} initialStage="Nonexistent" />);
     await waitFor(() => {
@@ -112,7 +117,7 @@ describe('NewContactModal', () => {
 
     await waitFor(() => {
       const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
-      expect(stageSelect.value).toBe('Contacted');
+      expect(stageSelect.value).toBe('Unassigned');
     });
   });
 
