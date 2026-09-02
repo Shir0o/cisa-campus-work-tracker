@@ -299,18 +299,18 @@ describe('NavRail (#664)', () => {
     }
   });
 
-  // ── Accessibility: collapse control announces expanded state ────────
-  it('collapse control has aria-expanded=true in expanded mode', () => {
+  // ── Pinned footer: Settings link is present and collapse control is removed (#681) ──
+  it('does not render a collapse or expand toggle button in expanded mode', () => {
     renderRail();
-    const btn = screen.getByRole('button', { name: /Collapse navigation/i });
-    expect(btn).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.queryByRole('button', { name: /Collapse navigation/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Expand navigation/i })).not.toBeInTheDocument();
   });
 
-  it('collapse control has aria-expanded=false in compact mode', () => {
+  it('does not render a collapse or expand toggle button in compact mode', () => {
     localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
     renderRail();
-    const btn = screen.getByRole('button', { name: /Expand navigation/i });
-    expect(btn).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: /Collapse navigation/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Expand navigation/i })).not.toBeInTheDocument();
   });
 
   // ── Accessibility: destinations keep accessible name in compact mode
@@ -324,20 +324,6 @@ describe('NavRail (#664)', () => {
         ).toBeInTheDocument();
       }
     }
-  });
-
-  // ── Chevron calls setPreference ─────────────────────────────────────
-  it('clicking the collapse control calls setPreference with rail-collapsed', () => {
-    renderRail();
-    fireEvent.click(screen.getByRole('button', { name: /Collapse navigation/i }));
-    expect(localStorage.getItem('campus-hub-nav-shell')).toBe('rail-collapsed');
-  });
-
-  it('clicking the expand control calls setPreference with rail', () => {
-    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
-    renderRail();
-    fireEvent.click(screen.getByRole('button', { name: /Expand navigation/i }));
-    expect(localStorage.getItem('campus-hub-nav-shell')).toBe('rail');
   });
 
   // ── Unread badge (acceptance criterion 5: count → dot on collapse) ──
