@@ -23,6 +23,17 @@ export default function FeedbackFAB() {
   const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle');
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Both timers outlive a render, and the auto-close one runs 2.2s after a
+  // successful send — long enough that the FAB can unmount first (a route
+  // change, or a test file finishing). Without this the callback lands on an
+  // unmounted tree, which surfaced as an uncaught `window is not defined`
+  // during suite teardown.
+  useEffect(() => () => {
+    if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+  }, []);
 
   // Focus the textarea shortly after the panel opens.
   useEffect(() => {
@@ -48,7 +59,8 @@ export default function FeedbackFAB() {
   const close = () => {
     clearAutoClose();
     setIsOpen(false);
-    setTimeout(resetForm, 320);
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(resetForm, 320);
   };
 
   const openFresh = () => {
