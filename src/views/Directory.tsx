@@ -3,6 +3,7 @@ import {
   Search,
   Filter,
   Mail,
+  Copy,
   Tag,
   Kanban,
   Trash2,
@@ -272,6 +273,7 @@ export default function Directory() {
   const [filterRole, setFilterRole] = useState<string>('All');
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>('All');
   const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
@@ -279,6 +281,29 @@ export default function Directory() {
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  // Auto-dismiss toast.
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  // Update customRange with From/To validation. Invalid ranges (from > to) are
+  // rejected with a toast and `customRange` stays empty so the filter applies
+  // nothing — the contacts remain visible.
+  const updateCustomRange = (next: { from: string; to: string }) => {
+    setCustomRange(next);
+    if (next.from && next.to) {
+      const fromMs = new Date(next.from).getTime();
+      const toMs = new Date(next.to).getTime();
+      if (Number.isFinite(fromMs) && Number.isFinite(toMs) && fromMs > toMs) {
+        setCustomRange({ from: '', to: '' });
+        setToast(t('directory.date_range_invalid'));
+        return;
+      }
+    }
+  };
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -337,15 +362,28 @@ export default function Directory() {
       result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
     }
 
-    // Filter by Added When
-    if (filterAddedWhen !== 'all') {
+    // Filter by Added When (preset AND custom range, both must pass).
+    if (filterAddedWhen !== 'all' || customRange.from || customRange.to) {
       result = result.filter(c => {
         const ms = parseMs(c.createdAt);
         if (ms == null) return false;
-        const d = daysSince(ms);
-        if (filterAddedWhen === 'today') return d === 0;
-        if (filterAddedWhen === 'week') return d <= 7;
-        if (filterAddedWhen === 'month') return d <= 30;
+        // Preset check
+        if (filterAddedWhen !== 'all') {
+          const d = daysSince(ms);
+          if (filterAddedWhen === 'today' && d !== 0) return false;
+          if (filterAddedWhen === 'week' && d > 7) return false;
+          if (filterAddedWhen === 'month' && d > 30) return false;
+        }
+        // Custom range check
+        if (customRange.from) {
+          const fromMs = new Date(customRange.from).getTime();
+          if (Number.isFinite(fromMs) && ms < fromMs) return false;
+        }
+        if (customRange.to) {
+          // The date input gives YYYY-MM-DD; "to" must include the whole day.
+          const toMs = new Date(`${customRange.to}T23:59:59.999`).getTime();
+          if (Number.isFinite(toMs) && ms > toMs) return false;
+        }
         return true;
       });
     }
@@ -360,7 +398,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterAddedWhen, selectedTags]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterAddedWhen, customRange, selectedTags]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -478,11 +516,11 @@ export default function Directory() {
     setFilterRole('All');
     setFilterSpiritualBackground('All');
     setFilterAddedWhen('all');
+    setCustomRange({ from: '', to: '' });
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || filterAddedWhen !== 'all' || selectedTags.length > 0;
-
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -502,15 +540,29 @@ export default function Directory() {
     setSelectedIds(newSelected);
   };
 
-  const handleBulkEmail = () => {
+  const handleBulkEmail = async () => {
     if (selectedIds.size === 0) return;
     const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
-    const emails = selectedContacts.map(c => c.email).filter(Boolean).join(',');
-    if (emails) {
-      window.location.href = `mailto:${emails}`;
+    const emails: string[] = [];
+    for (const c of selectedContacts) {
+      if (c.email) emails.push(c.email);
     }
+    if (emails.length === 0) {
+      setToast(t('directory.no_emails_to_copy'));
+      return;
+    }
+    const joined = emails.join(',');
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(joined);
+        setToast(t('directory.emails_copied').replace('{n}', String(emails.length)));
+        return;
+      }
+    } catch {
+      /* clipboard blocked — fall through to the failure toast */
+    }
+    setToast(t('directory.no_emails_to_copy'));
   };
-
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(t('directory.confirm_remove').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people')))) return;
@@ -712,6 +764,27 @@ export default function Directory() {
                         <option value="week">{t('directory.added_this_week')}</option>
                         <option value="month">{t('directory.added_this_month')}</option>
                       </select>
+                      <div className="pt-2 space-y-1.5">
+                        <span className="text-xs font-medium text-on-surface-variant px-1">{t('directory.custom_range')}</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            aria-label={t('directory.from')}
+                            value={customRange.from}
+                            onChange={(e) => updateCustomRange({ ...customRange, from: e.target.value })}
+                            className="flex-1 min-w-0 h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
+                          />
+                          <span className="text-on-surface-variant">–</span>
+                          <input
+                            type="date"
+                            aria-label={t('directory.to')}
+                            value={customRange.to}
+                            onChange={(e) => updateCustomRange({ ...customRange, to: e.target.value })}
+                            className="flex-1 min-w-0 h-10 px-2 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary"
+                          />
+
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -793,9 +866,9 @@ export default function Directory() {
               <button
                 onClick={handleBulkEmail}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
-                title={t('directory.email_selected')}
+                title={t('directory.copy_emails')}
               >
-                <Mail className="w-4 h-4" /> {t('directory.email')}
+                <Copy className="w-4 h-4" /> {t('directory.copy_emails')}
               </button>
               <button
                 onClick={handleBulkDelete}
@@ -1069,6 +1142,20 @@ export default function Directory() {
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="directory-toast"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-inverse-surface text-on-inverse text-sm shadow-lg"
+            role="status"
+          >
+            {toast}
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
