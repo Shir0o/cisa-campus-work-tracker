@@ -59,3 +59,27 @@ _Avoid_: Bell popup, system toast, activity blast
 Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, role/affiliation, first impressions/notes, and tags). Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet, while caregiver assignments follow gospel partner ownership rules.
 _Avoid_: Admin edit form, contact manager modal
 
+
+**Study**:
+A Bible study series that runs over a term — the named arc ("Romans, Fall 2026") that a set of Meetings belongs to. Distinct from the "Bible study" option a student picks under "What are you drawn to?" at sign-up, which is an interest, not this.
+_Avoid_: Course, curriculum, series, Bible study (bare)
+
+**Meeting**:
+One week's Bible study document — the outline, readings and prompts for a single gathering, and the thing a single QR code opens. A Meeting is what a student reads on their phone; it is not the gathering's attendance record. When a Study splits its room into two, that week is two Meetings sharing an opening and a closing.
+_Avoid_: Session, lesson, week, class
+
+**Section**:
+One movement of a Meeting: some outline points, a Passage, and a Prompt. Sections are the visual and structural unit a Meeting is read in — every part of one is optional and their order is however the author wrote it.
+_Avoid_: Slide, step, chapter, block
+
+**Passage**:
+The portion of scripture a Section is built around, shown in full on the page rather than cited for the reader to look up elsewhere.
+_Avoid_: Verse, reading, scripture reference, excerpt
+
+**Prompt**:
+The part of a Section that puts something to the room, in one of three kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
+_Avoid_: Question (bare), exercise, discussion question, application
+
+**Blank**:
+A word hidden in a Section's outline points or Passage that a reader taps to reveal — the fill-in-the-blank device, used to interrupt passive reading. Whether a Meeting uses Blanks at all is the author's choice, per Meeting.
+_Avoid_: Cloze, fill-in, hidden word, quiz

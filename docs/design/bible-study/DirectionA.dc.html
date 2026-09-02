@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --accent-strong:#131316; --accent-on:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-sage:oklch(0.55 0.15 145);  --t-sage-soft:oklch(0.55 0.15 145 / 0.14);
+      --t-clay:oklch(0.55 0.15 42);   --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--text-dim);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--accent-strong)}
+
+    .page{padding:20px 16px 0;display:flex;flex-direction:column;gap:14px}
+
+    /* masthead — app density */
+    .hd{display:flex;flex-direction:column;gap:6px}
+    .hd-top{display:flex;align-items:center;gap:8px}
+    .studychip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;
+      background:var(--accent-soft);color:var(--text-dim);font-size:12px;font-weight:600}
+    .datechip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;
+      border:1px solid var(--border);color:var(--text-dim);font-size:12px;font-weight:500;margin-left:auto}
+    .title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:22px;line-height:1.2;
+      letter-spacing:-0.02em;margin:2px 0 0}
+    .sub{font-size:13px;color:var(--text-dim)}
+
+    /* progress ticks — app pattern */
+    .ticks{display:flex;gap:4px;margin-top:4px}
+    .tick{height:4px;flex:1;border-radius:999px;background:var(--panel-2)}
+    .tick.on{background:var(--accent-strong)}
+
+    /* section card — the app's 24px container */
+    .card{background:var(--panel);border:1px solid var(--border-soft);border-radius:24px;
+      padding:18px;display:flex;flex-direction:column;gap:14px}
+    .cardhead{display:flex;align-items:center;gap:8px;padding-bottom:12px;
+      border-bottom:1px solid var(--border-soft)}
+    .idx{width:22px;height:22px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--text-dim);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
+    .cardtitle{font-family:"Plus Jakarta Sans",sans-serif;font-weight:600;font-size:16px;margin:0;
+      letter-spacing:-0.01em}
+
+    .pts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+    .pts li{font-size:14px;line-height:1.55;color:var(--text);padding-left:15px;position:relative}
+    .pts li::before{content:"";position:absolute;left:0;top:9px;width:4px;height:4px;border-radius:999px;
+      background:var(--accent-line)}
+
+    .blank{display:inline-block;min-width:66px;border-bottom:2px solid var(--accent-line);margin:0 2px}
+    .blank.on{border-bottom-color:transparent;background:var(--t-sage-soft);border-radius:6px;
+      padding:0 5px;min-width:0;font-weight:500}
+
+    /* passage — inner surface, app style */
+    .passage{background:var(--bg);border:1px solid var(--border-soft);border-radius:14px;padding:14px}
+    .passage p{margin:0;font-size:14.5px;line-height:1.62;color:var(--text)}
+    .passage .cite{margin-top:10px;font-size:11px;font-weight:600;letter-spacing:0.08em;
+      text-transform:uppercase;color:var(--text-mute)}
+
+    /* prompt — chip + body, app chip vocabulary */
+    .prompt{display:flex;flex-direction:column;gap:8px}
+    .pchip{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+      border-radius:999px;font-size:11px;font-weight:600;background:var(--t-slate-soft);color:var(--t-slate)}
+    .pchip.discuss{background:var(--t-sage-soft);color:var(--t-sage)}
+    .pchip.activity{background:var(--t-clay-soft);color:var(--t-clay)}
+    .prompt p{margin:0;font-size:14px;line-height:1.55;color:var(--text)}
+    .dot{width:5px;height:5px;border-radius:999px;background:currentColor}
+
+    .foot{margin-top:6px;padding:14px 2px 22px;display:flex;align-items:center;gap:8px}
+    .foot .fl{font-size:12px;color:var(--text-mute)}
+  </style>
+</helmet>
+
+<div class="page">
+  <header class="hd">
+    <div class="hd-top">
+      <span class="studychip">Romans · Fall 2026</span>
+      <span class="datechip">Sept 10</span>
+    </div>
+    <h1 class="title">Peace that holds</h1>
+    <div class="sub">Week 4 of 12 · 3 sections</div>
+    <div class="ticks">
+      <div class="tick on"></div><div class="tick on"></div><div class="tick on"></div>
+      <div class="tick on"></div><div class="tick"></div><div class="tick"></div>
+      <div class="tick"></div><div class="tick"></div><div class="tick"></div>
+      <div class="tick"></div><div class="tick"></div><div class="tick"></div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="cardhead">
+      <div class="idx">1</div>
+      <h2 class="cardtitle">Where peace starts</h2>
+    </div>
+    <ul class="pts">
+      <li>Peace with God is a <span class="blank on">standing</span>, not a mood.</li>
+      <li>The access we have was <span class="blank"></span>, never earned.</li>
+      <li>What we stand in now is what we will stand in at the end.</li>
+    </ul>
+    <div class="passage">
+      <p>Being therefore justified by faith, we have peace with God through our Lord Jesus Christ; through whom we also have our access by faith into this grace in which we stand. We rejoice in hope of the glory of God.</p>
+      <div class="cite">Romans 5:1–2 · WEB</div>
+    </div>
+    <div class="prompt">
+      <span class="pchip discuss"><span class="dot"></span>Discuss</span>
+      <p>Where do you catch yourself treating peace with God as a feeling that comes and goes?</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead">
+      <div class="idx">2</div>
+      <h2 class="cardtitle">What suffering is doing</h2>
+    </div>
+    <ul class="pts">
+      <li>Suffering is not the opposite of hope — it is the <span class="blank"></span> to it.</li>
+      <li>Character is not given. It is <span class="blank on">produced</span>.</li>
+    </ul>
+    <div class="passage">
+      <p>We also rejoice in our sufferings, knowing that suffering produces perseverance; and perseverance, proven character; and proven character, hope.</p>
+      <div class="cite">Romans 5:3–4 · WEB</div>
+    </div>
+    <div class="prompt">
+      <span class="pchip activity"><span class="dot"></span>Activity</span>
+      <p>In pairs, two minutes each. Name one thing you are enduring, and one thing it has produced.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cardhead">
+      <div class="idx">3</div>
+      <h2 class="cardtitle">Hope that does not shame</h2>
+    </div>
+    <ul class="pts">
+      <li>Hope is safe because of who <span class="blank"></span> it, not how strongly we hold it.</li>
+    </ul>
+    <div class="prompt">
+      <span class="pchip"><span class="dot"></span>Question</span>
+      <p>What would change this week if your hope did not depend on how you felt on Tuesday?</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="fl">CISA Campus Work</span>
+    <span class="fl" style="margin-left:auto">Week 4 of 12</span>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
