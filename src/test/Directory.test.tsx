@@ -449,18 +449,18 @@ describe('Directory', () => {
     fireEvent.click(checkboxes[0]); // Select Alice
 
     expect(screen.getByText('1 selected')).toBeInTheDocument();
+    // Bulk copy emails to clipboard instead of opening mail client (#751)
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
 
-    // Bulk email redirection
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = { href: '' } as any;
-
-    const emailBtn = screen.getByTitle('Email selected');
+    const emailBtn = screen.getByTitle('Copy emails');
     fireEvent.click(emailBtn);
-    expect(window.location.href).toBe('mailto:alice@example.com');
-    (window as any).location = originalLocation;
 
-    // Bulk Tagging Modal flow
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('alice@example.com');
+    });
+    // Toast confirms the copy
+    expect(await screen.findByText(/Copied 1 email/i)).toBeInTheDocument();
     const tagBtn = screen.getByTitle('Tag selected');
     fireEvent.click(tagBtn);
     expect(screen.getByText('Add a tag')).toBeInTheDocument();
@@ -625,6 +625,118 @@ describe('Directory', () => {
     expect(handleFirestoreError).toHaveBeenCalled();
     expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
     consoleErrorSpy.mockRestore();
+  });
+
+  it('intersects a custom From/To range with the active preset (#751)', async () => {
+    // Three-day-ago contact is inside both the "week"/"month" presets AND a 7-day
+    // From-window. Eighteen-day-ago contact is inside "month" preset but outside
+    // the 7-day From-window. With "month" preset + From=7 days ago + To=today the
+    // 18-day-old contact must be excluded (preset passes, range fails). Drop the
+    // From to "no filter" and the 18-day contact reappears (still inside "month").
+    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    const eighteenDaysAgo = new Date(Date.now() - 18 * 86_400_000).toISOString();
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'c-week', data: () => ({ name: 'Week User', role: 'Student', stage: 'Lead', createdAt: threeDaysAgo, tags: [] }) },
+            { id: 'c-month', data: () => ({ name: 'Month User', role: 'Student', stage: 'Lead', createdAt: eighteenDaysAgo, tags: [] }) },
+          ],
+          size: 2,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Week User')).toBeInTheDocument();
+      expect(screen.getByText('Month User')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Filters'));
+
+    // Set the "month" preset AND a From=7 days ago / To=today window.
+    // Month User (18 days ago) is inside "month" but OUTSIDE the 7-day window —
+    // intersection filters it out.
+    const addedSelect = screen.getByText('Added').nextElementSibling as HTMLSelectElement;
+    fireEvent.change(addedSelect, { target: { value: 'month' } });
+
+    const fromInput = await waitFor(() => screen.getByLabelText(/From/i)) as HTMLInputElement;
+    const toInput = await waitFor(() => screen.getByLabelText(/To/i)) as HTMLInputElement;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    fireEvent.change(fromInput, { target: { value: sevenDaysAgo } });
+    fireEvent.change(toInput, { target: { value: todayStr } });
+
+    expect(screen.getByText('Week User')).toBeInTheDocument();
+    expect(screen.queryByText('Month User')).not.toBeInTheDocument();
+
+    // Loosen the From to "all-time" via Clear all; the preset still applies so
+    // both contacts are now visible — proving the range was the binding constraint.
+    fireEvent.click(screen.getByText('Clear all'));
+    expect(screen.getByText('Week User')).toBeInTheDocument();
+    expect(screen.getByText('Month User')).toBeInTheDocument();
+  });
+  it('shows a validation toast and applies no range when From is after To (#751)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Filters'));
+
+    const fromInput = await waitFor(() => screen.getByLabelText(/From/i)) as HTMLInputElement;
+    const toInput = await waitFor(() => screen.getByLabelText(/To/i)) as HTMLInputElement;
+    fireEvent.change(fromInput, { target: { value: '2026-08-25' } });
+    fireEvent.change(toInput, { target: { value: '2026-08-10' } });
+
+    expect(await screen.findByText(/start date before/i)).toBeInTheDocument();
+    // Invalid range must NOT hide contacts
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+  });
+
+   it('shows a no-emails toast when selected contacts have no email addresses (#751)', async () => {
+    const noEmail = {
+      id: 'c-noemail',
+      data: () => ({
+        name: 'No Email Person',
+        role: 'Student',
+        stage: 'Lead',
+        email: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
+    };
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: [noEmail], size: 1 });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+     render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('No Email Person')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    fireEvent.click(screen.getByTitle('Copy emails'));
+
+    expect(writeText).not.toHaveBeenCalled();
+    expect(await screen.findByText(/No email addresses/i)).toBeInTheDocument();
   });
 });
 
