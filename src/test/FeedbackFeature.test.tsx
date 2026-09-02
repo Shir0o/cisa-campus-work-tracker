@@ -370,6 +370,37 @@ describe('User Feedback Feature', () => {
       expect(screen.getByRole('textbox', { name: /Your note/i })).toHaveValue('');
       expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
     });
+
+    it('cancels the pending auto-close when it unmounts from the success state', async () => {
+      // A successful send arms a 2.2s auto-close. If the FAB unmounts first —
+      // a route change, or a test file finishing — that callback used to land
+      // on an unmounted tree and blow up once the environment was gone.
+      const setSpy = vi.spyOn(globalThis, 'setTimeout');
+      const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+      const userAct = userEvent.setup();
+      const { unmount } = render(<FeedbackFAB />);
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'unmount me');
+      await userAct.click(screen.getByRole('button', { name: 'Send' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+      });
+
+      const autoClose = setSpy.mock.results[
+        setSpy.mock.calls.findIndex(([, delay]) => delay === 2200)
+      ]?.value;
+      expect(autoClose).toBeDefined();
+
+      unmount();
+
+      expect(clearSpy).toHaveBeenCalledWith(autoClose);
+
+      setSpy.mockRestore();
+      clearSpy.mockRestore();
+    });
   });
 
   describe('FeedbackList (Admin View)', () => {

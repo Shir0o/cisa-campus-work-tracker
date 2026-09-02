@@ -33,16 +33,30 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
 
+    // The PWA/browser chrome reads <meta name="theme-color">. index.html ships
+    // one per prefers-color-scheme for first paint; once the app picks an
+    // explicit theme the media-scoped pair can disagree with the page, so we
+    // point a single un-scoped meta at the resolved surface.
+    const setChromeColor = (resolved: 'light' | 'dark') => {
+      let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]:not([media])');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        document.head.appendChild(meta);
+      }
+      meta.content = resolved === 'dark' ? '#0A0A0B' : '#FFFFFF';
+    };
+
     const applyTheme = (t: Theme) => {
       root.classList.remove('light', 'dark');
-      if (t === 'system') {
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light';
-        root.classList.add(systemTheme);
-      } else {
-        root.classList.add(t);
-      }
+      const resolved =
+        t === 'system'
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+          : t;
+      root.classList.add(resolved);
+      setChromeColor(resolved);
     };
 
     applyTheme(theme);

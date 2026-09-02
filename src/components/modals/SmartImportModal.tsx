@@ -346,7 +346,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               </div>
 
               {/* Filter Tabs */}
-              <div className="flex border-b border-outline-variant gap-2 text-sm font-medium">
+              <div className="flex border-b border-outline-variant gap-2 text-sm font-medium overflow-x-auto no-scrollbar whitespace-nowrap">
                 <button
                   onClick={() => setActiveTab('all')}
                   className={`pb-2 px-3 border-b-2 transition-colors ${

@@ -5,7 +5,7 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#6750A4",
+  "theme_color": "#FFFFFF",
   "icons": [
     {
       "src": "https://www.gstatic.com/images/branding/product/1x/contacts_48dp.png",
