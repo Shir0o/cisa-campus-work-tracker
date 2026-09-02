@@ -178,7 +178,7 @@ describe('chat.ts services', () => {
   });
 
   describe('createAnnouncementRoom', () => {
-    it('creates an announcement room document and posts system message', async () => {
+    it('creates an announcement room document, posts system message, and notifies members', async () => {
       const roomId = await createAnnouncementRoom(
         'Weekly Updates',
         ['u2'],
@@ -202,6 +202,24 @@ describe('chat.ts services', () => {
         senderName: 'System',
         timestamp: 'SERVER_TS',
         type: 'system',
+      });
+
+      expect(mockSendNotification).toHaveBeenCalledTimes(1);
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'New announcement channel',
+        message: 'Admin User started announcements for "Weekly Updates"',
+        type: 'info',
+        targetId: 'new-doc-id',
+        link: '/messages/new-doc-id',
+      });
+
+      expect(mockSendPushNotification).toHaveBeenCalledTimes(1);
+      expect(mockSendPushNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'New announcement channel',
+        body: 'Admin User started announcements for "Weekly Updates"',
+        data: { targetId: 'new-doc-id', link: '/messages/new-doc-id' },
       });
     });
   });
