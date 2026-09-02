@@ -17,29 +17,26 @@ Behavioral guidelines to maximize code quality, prevent regressions, and minimiz
 - **No Mock Data**: Always wire real data from the backend, props, or state. Never hardcode fake/mock data in component logic.
 - **Clean Up Own Mess**: Remove only imports, variables, and code introduced or made unused by your changes. Do not touch pre-existing dead code.
 
-## 3. Targeted Changelog Context & Tracking
-- **Selective Reading**: Do NOT read the entire `CHANGELOG.md` file (which can be large). Check only recent entries, the `[Unreleased]` section, or search for sections relevant to the code being modified to prevent regressions.
-- **Update After Completion**: Append a concise bullet point under `[Unreleased]` in `CHANGELOG.md` summarizing core changes added, modified, or fixed.
-
-## 4. Test-Driven Development (TDD) & Quality
+## 3. Test-Driven Development (TDD) & Quality
 - **TDD First**: Follow Red → Green → Refactor. Write or update unit tests before writing implementation code.
 - **Coverage & Ratcheting**: Enforce a minimum 80% test coverage threshold. Thresholds must never be lowered; only ratchet upwards as coverage improves.
 - **Goal Verification**: Transform tasks into verifiable goals (e.g. reproducing a bug via test first, ensuring all unit tests pass after).
 
-## 5. Pre-PR Gate
-Before creating or pushing a PR, run local CI pipeline steps in order and fix all failures:
+## 4. Commits & Pre-PR Gate
+- **Commits**: Follow Conventional Commits format (e.g., `feat(auth): add MFA`, `fix(nav): align dropdown arrow`).
+- **Pre-PR Gate**: Before creating or pushing a PR, run local CI pipeline steps in order and fix all failures:
 
 > **Note**: See `PROJECT.md` for the exact commands for this repo.
 
 - **Fix, don't skip**: Do not push with failing lints, build errors, or test coverage drops.
 - **Signature Verification**: Always match actual function signatures across callers when modifying utility functions.
 
+
 ---
 
 # Project-Specific Rules
 
 <!-- Repo-specific agent instructions. The rollout script never touches this file. -->
-
 
 <!-- ── Migrated from CLAUDE.md ── -->
 
@@ -83,14 +80,7 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-## 5. Changelog Context & Tracking
-**Always prevent regression by checking the changelog before making changes, and always update the changelog after.**
-Before starting a feature or bug fix, when it touches an area with recent churn:
-- Check the `[Unreleased]` section and recent entries of [CHANGELOG.md](CHANGELOG.md) for context on recent PRs and changes. This helps prevent regression.
-- Read it targeted (`head`, or `grep` for the files/features you're touching). Never read the whole file - it is 600+ lines and grows every PR.
-After completing a feature or bug fix (always):
-- Update the `[Unreleased]` section of `CHANGELOG.md` with a concise bullet point describing the change. Focus on the core functionality added, modified, or fixed.
-- Keep changelog descriptions brief and distinct from full release notes.
+
 ## 6. Testing Policy
 - **TDD (Test-Driven Development)**: Mandatory for logic, data, and permissions code, and for all bug fixes. Write a failing test first, then implement. Red → Green → Refactor.
 - **UI-only changes**: Pure styling/copy/markup changes need tests only where behavior is actually assertable - don't write hollow snapshot tests just to satisfy this policy.
@@ -110,3 +100,4 @@ After completing a feature or bug fix (always):
   This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
+

@@ -2,7 +2,6 @@
 
 <!-- Repo-specific agent instructions. The rollout script never touches this file. -->
 
-
 <!-- ── Migrated from CLAUDE.md ── -->
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
@@ -45,14 +44,7 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-## 5. Changelog Context & Tracking
-**Always prevent regression by checking the changelog before making changes, and always update the changelog after.**
-Before starting a feature or bug fix, when it touches an area with recent churn:
-- Check the `[Unreleased]` section and recent entries of [CHANGELOG.md](CHANGELOG.md) for context on recent PRs and changes. This helps prevent regression.
-- Read it targeted (`head`, or `grep` for the files/features you're touching). Never read the whole file - it is 600+ lines and grows every PR.
-After completing a feature or bug fix (always):
-- Update the `[Unreleased]` section of `CHANGELOG.md` with a concise bullet point describing the change. Focus on the core functionality added, modified, or fixed.
-- Keep changelog descriptions brief and distinct from full release notes.
+
 ## 6. Testing Policy
 - **TDD (Test-Driven Development)**: Mandatory for logic, data, and permissions code, and for all bug fixes. Write a failing test first, then implement. Red → Green → Refactor.
 - **UI-only changes**: Pure styling/copy/markup changes need tests only where behavior is actually assertable - don't write hollow snapshot tests just to satisfy this policy.
