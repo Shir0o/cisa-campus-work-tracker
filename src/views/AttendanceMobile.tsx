@@ -8,6 +8,7 @@ import { openMessage } from '../lib/messaging';
 import type { TodoPerson } from '../lib/todos';
 import { useLanguage } from '../components/LanguageProvider';
 import type { UnifiedGathering, CalContextItem } from '../lib/calendar/calendarSync';
+import { getSessionRoster } from '../lib/attendanceRoster';
 
 interface AttendanceMobileProps {
   contacts: Contact[];
@@ -336,10 +337,8 @@ function RosterSheet({
   onClose,
 }: RosterSheetProps) {
   const { t } = useLanguage();
-  const present = contacts.filter((c) => here(c, session.id));
-  const absent = contacts.filter((c) => c.attendance?.[session.id] === 'absent');
-
   const meta = `${session.type} ${session.location ? '· ' + session.location : ''}`;
+  const { present, absent } = getSessionRoster(session, contacts, here);
 
   return (
     <div

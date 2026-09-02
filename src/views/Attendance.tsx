@@ -13,11 +13,16 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
 import { useGatheringTypes, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
+import {
+  getSessionRoster,
+  calculateMissedContacts,
+  getRecurringSeriesEventIdsToUpdate,
+} from '../lib/attendanceRoster';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
@@ -278,6 +283,85 @@ export default function Attendance() {
     }
   };
 
+  const handleCreateWalkInContact = async (name: string, event: Event) => {
+    const trimmed = name.trim();
+    if (!trimmed || isCreatingContact) return;
+    setIsCreatingContact(true);
+    try {
+      const initials = getUserInitials(trimmed);
+      const userName = user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user');
+      const userUid = user?.uid || null;
+
+      const newContactData: Record<string, unknown> = {
+        name: trimmed,
+        initials,
+        role: 'Student',
+        stage: 'Lead',
+        lastSeen: 'Just now',
+        lastContactedDate: event.date || new Date().toISOString(),
+        lastContactedBy: userName,
+        lastContactedById: userUid,
+        hasNewActivity: true,
+        attendance: {
+          [event.id]: true,
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: userUid,
+      };
+
+      const docRef = await addDoc(collection(db, 'contacts'), newContactData);
+
+      logActivity({
+        action: 'added new contact via gathering walk-in',
+        targetId: docRef.id,
+        targetName: trimmed,
+        targetType: 'contact',
+        type: 'create',
+        description: `Created contact "${trimmed}" from gathering "${event.name}"`,
+      });
+
+      // Clear search query for this session
+      setWalkInQuery((prev) => ({ ...prev, [event.id]: '' }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'contacts');
+    } finally {
+      setIsCreatingContact(false);
+    }
+  };
+
+  const handleToggleRoster = async (event: Event, contactId: string, addToRoster: boolean) => {
+    if (!isAdmin) return;
+    try {
+      const currentRoster = event.roster || [];
+      const newRoster = addToRoster
+        ? Array.from(new Set([...currentRoster, contactId]))
+        : currentRoster.filter((id) => id !== contactId);
+
+      const isRecurring = !!(event.isRecurring || event.parentEventId);
+      let applySeries = false;
+      if (isRecurring && events.length > 1) {
+        applySeries = window.confirm(
+          t('attendance.apply_to_future_series', 'Apply roster update to all future gatherings in this series?'),
+        );
+      }
+
+      if (applySeries) {
+        const eventIds = getRecurringSeriesEventIdsToUpdate(event, events);
+        for (const evId of eventIds) {
+          await updateDoc(doc(db, 'events', evId), { roster: newRoster });
+        }
+      } else {
+        await updateDoc(doc(db, 'events', event.id), { roster: newRoster });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    }
+  };
+
+  const [walkInQuery, setWalkInQuery] = useState<{ [eventId: string]: string }>({});
+  const [isCreatingContact, setIsCreatingContact] = useState(false);
+
   // newest gatherings first
   const sessionsNewestFirst = useMemo(
     () =>
@@ -289,22 +373,9 @@ export default function Attendance() {
     [events],
   );
 
-  // Who we've missed: attended before, but not in the most recent gatherings.
+  // Who we've missed: attended before, bounded by first appearance and roster.
   const missed = useMemo(() => {
-    const out: { contact: Contact; since: number; lastSeen: Event }[] = [];
-    contacts.forEach((c) => {
-      let since = 0;
-      let lastSeen: Event | null = null;
-      for (const s of sessionsNewestFirst) {
-        if (here(c, s.id)) {
-          lastSeen = s;
-          break;
-        }
-        since++;
-      }
-      if (lastSeen && since >= 2) out.push({ contact: c, since, lastSeen });
-    });
-    return out.sort((a, b) => b.since - a.since).slice(0, 4);
+    return calculateMissedContacts(contacts, sessionsNewestFirst);
   }, [contacts, sessionsNewestFirst]);
 
   // gatherings to mark / review — newest first, filtered by type
@@ -596,10 +667,17 @@ export default function Attendance() {
           {sessions.length > 0 ? (
             <div className="space-y-3">
               {sessions.map((s) => {
-                const present = contacts.filter((c) => here(c, s.id));
-                const absent = contacts.filter((c) => !here(c, s.id));
+                const { present, absent, nonRoster } = getSessionRoster(s, contacts);
                 const isOpen = openId === s.id;
                 const d = evtDate(s.date);
+                const queryText = walkInQuery[s.id] || '';
+                const filteredNonRoster = queryText.trim()
+                  ? nonRoster.filter((c) => c.name.toLowerCase().includes(queryText.toLowerCase()))
+                  : [];
+                const exactMatch = nonRoster.some(
+                  (c) => c.name.trim().toLowerCase() === queryText.trim().toLowerCase(),
+                );
+
                 return (
                   <div
                     key={s.id}
@@ -673,8 +751,8 @@ export default function Attendance() {
                     </button>
 
                     {isOpen && (
-                      <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4">
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant mb-4">
+                      <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4 space-y-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant">
                           <span className="inline-flex items-center gap-1.5">
                             <i className="w-2 h-2 rounded-full bg-primary inline-block" /> {t('attendance.here')}
                           </span>
@@ -683,6 +761,7 @@ export default function Attendance() {
                           </span>
                           <span className="italic">{t('attendance.tap_name_to_update')}</span>
                         </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                           <div>
                             <div className="text-xs font-semibold text-on-surface   mb-2">
@@ -692,16 +771,38 @@ export default function Attendance() {
                               {present.length === 0 && (
                                 <span className="text-sm text-on-surface-variant italic">{t('attendance.no_one_marked_yet')}</span>
                               )}
-                              {present.map((c) => (
-                                <button
-                                  key={c.id}
-                                  onClick={() => cycleAttendance(c, s.id)}
-                                  className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-colors bg-primary-container/50 border-primary/30 text-on-surface"
-                                >
-                                  <Avatar contact={c} size="sm" />
-                                  <span className="text-sm">{c.name}</span>
-                                </button>
-                              ))}
+                              {present.map((c) => {
+                                const isOnRoster = (s.roster || []).includes(c.id);
+                                return (
+                                  <div
+                                    key={c.id}
+                                    className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border transition-colors bg-primary-container/50 border-primary/30 text-on-surface"
+                                  >
+                                    <button
+                                      onClick={() => cycleAttendance(c, s.id)}
+                                      className="inline-flex items-center gap-2"
+                                    >
+                                      <Avatar contact={c} size="sm" />
+                                      <span className="text-sm">{c.name}</span>
+                                    </button>
+                                    {isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleRoster(s, c.id, !isOnRoster)}
+                                        title={isOnRoster ? t('attendance.remove_from_roster', 'Remove from roster') : t('attendance.add_to_roster', 'Add to roster')}
+                                        className={cn(
+                                          'text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors',
+                                          isOnRoster
+                                            ? 'text-on-surface-variant/70 hover:text-error'
+                                            : 'bg-primary/20 text-accent hover:bg-primary/30',
+                                        )}
+                                      >
+                                        {isOnRoster ? '★' : '+ Roster'}
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                           <div>
@@ -737,6 +838,56 @@ export default function Attendance() {
                               ))}
                             </div>
                           </div>
+                        </div>
+
+                        {/* Walk-in search and inline contact creation */}
+                        <div className="pt-3 border-t border-outline-variant/30">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={queryText}
+                              onChange={(e) =>
+                                setWalkInQuery((prev) => ({ ...prev, [s.id]: e.target.value }))
+                              }
+                              placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
+                              className="w-full max-w-sm h-8 px-3 rounded-xl bg-surface-variant/50 border border-outline/30 text-xs text-on-surface outline-none focus:border-primary"
+                            />
+                            {queryText.trim() && !exactMatch && (
+                              <button
+                                type="button"
+                                disabled={isCreatingContact}
+                                onClick={() => handleCreateWalkInContact(queryText, s)}
+                                className="h-8 px-3 rounded-xl bg-primary text-on-primary text-xs font-medium whitespace-nowrap hover:opacity-90 disabled:opacity-50 transition-opacity"
+                              >
+                                {isCreatingContact
+                                  ? t('attendance.creating', 'Creating...')
+                                  : t('attendance.create_contact_named', 'Create contact "{name}"').replace(
+                                      '{name}',
+                                      queryText.trim(),
+                                    )}
+                              </button>
+                            )}
+                          </div>
+
+                          {queryText.trim() && filteredNonRoster.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {filteredNonRoster.slice(0, 10).map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={async () => {
+                                    await cycleAttendance(c, s.id);
+                                    setWalkInQuery((prev) => ({ ...prev, [s.id]: '' }));
+                                  }}
+                                  className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-lg bg-surface border border-outline-variant text-xs hover:border-primary text-on-surface transition-colors"
+                                >
+                                  <Avatar contact={c} size="sm" />
+                                  <span>{c.name}</span>
+                                  <span className="text-[10px] text-accent">+ Check in</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -851,11 +1002,14 @@ export default function Attendance() {
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         currentEventCount={events.length}
+        contacts={contacts}
       />
       <EditEventModal
         isOpen={editingEvent !== null}
         onClose={() => setEditingEvent(null)}
         event={editingEvent}
+        contacts={contacts}
+        allEvents={events}
       />
       <ManageGatheringTypesModal
         isOpen={isManageTypesOpen}
