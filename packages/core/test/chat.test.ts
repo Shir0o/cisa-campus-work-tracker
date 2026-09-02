@@ -256,10 +256,18 @@ describe('isAnnouncement', () => {
 });
 
 describe('canPostToRoom', () => {
-  it('lets only a Full-timer post in an announcement room', () => {
+  it('lets only a Full-timer post at the top level in an announcement room', () => {
     const ann = room({ type: 'announcement', memberIds: ['me', 'boss'] });
     expect(canPostToRoom(ann, 'boss', true)).toBe(true);
     expect(canPostToRoom(ann, 'me', false)).toBe(false);
+  });
+
+  it('lets any room member reply in a thread in an announcement room (#743)', () => {
+    const ann = room({ type: 'announcement', memberIds: ['me', 'boss'] });
+    // When parentId is provided (a thread reply), members can post
+    expect(canPostToRoom(ann, 'me', false, 'm1')).toBe(true);
+    // Non-member cannot reply
+    expect(canPostToRoom(ann, 'stranger', false, 'm1')).toBe(false);
   });
 
   it('lets any member post in a direct or group room', () => {

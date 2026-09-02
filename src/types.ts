@@ -327,6 +327,8 @@ export interface ChatRoom {
     senderName: string;
     timestamp: any;
   };
+  audiencePreset?: 'everyone' | 'custom';
+  deletedFor?: string[];
 }
 
 export interface ChatReaction {
@@ -354,6 +356,10 @@ export interface ChatMessage {
   deleted?: { by: string; at: any };
   /** Slack-shaped thread parentId: null = top-level; set = reply (#563). */
   parentId?: string | null;
+  /** Passive read receipts: uids who have had this announcement post appear on screen (#743). */
+  readBy?: string[];
+  /** Active acknowledgement: uids who deliberately tapped "Got it" (#743). */
+  acknowledged?: string[];
 }
 
 export interface ImpersonateTarget {

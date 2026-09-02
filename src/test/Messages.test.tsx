@@ -91,6 +91,8 @@ vi.mock('../services/chat', async (importOriginal) => {
     removeMessageForEveryone: vi.fn().mockResolvedValue(undefined),
     deleteChatRoom: vi.fn().mockResolvedValue(undefined),
     canRemoveConvForEveryone: vi.fn().mockImplementation((r: any, uid: any, isAdmin: any) => Boolean(isAdmin || (r && r.createdById === uid))),
+    acknowledgeAnnouncement: vi.fn().mockResolvedValue(undefined),
+    markAnnouncementRead: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -935,7 +937,7 @@ describe('Messages View Component', () => {
     const renderWithAnnouncement = () => {
       (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
         const isMessages = q && q.path && q.path.includes('messages');
-        const dataList = isMessages ? mockMessages : [announcementRoom];
+        const dataList = isMessages ? mockMessages : [announcementRoom, mockRooms[0]];
         successCallback({
           forEach: (fn: any) => {
             dataList.forEach((item) => {
@@ -959,28 +961,33 @@ describe('Messages View Component', () => {
     };
 
     const openTheRoom = () => {
-      fireEvent.click(screen.getByText('Weekly notes').closest('.msgs-item')!);
+      const el = screen.getByText('Weekly notes').closest('.anrow') || screen.getByText('Weekly notes').closest('.msgs-item')!;
+      fireEvent.click(el);
     };
 
-    it('names the room and lets a Full-timer post in it', async () => {
+    it('names the room and lets a Full-timer post in it with audience strip', async () => {
       renderWithAnnouncement();
+      // Verify rail sectioning when Announcements and Conversations coexist
+      expect(document.querySelector('.sech')).toBeInTheDocument();
+      expect(screen.getByText('Conversations')).toBeInTheDocument();
       openTheRoom();
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Write an announcement/i)).toBeInTheDocument();
       });
-      expect(screen.queryByText(/replies go to the team directly/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/Posting to everyone on Campus/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Only Full-timers post here/i)).not.toBeInTheDocument();
     });
 
-    it('replaces the composer with the reason for everyone else', async () => {
+    it('replaces the composer with the guidance bar for non-admins', async () => {
       (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
       renderWithAnnouncement();
       openTheRoom();
 
       await waitFor(() => {
-        expect(screen.getByText(/replies go to the team directly/i)).toBeInTheDocument();
+        expect(screen.getByText(/Only Full-timers post here. Anyone can reply in a thread./i)).toBeInTheDocument();
       });
-      expect(screen.queryByPlaceholderText(/Write a message/i)).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/Write/i)).not.toBeInTheDocument();
     });
 
     it('leaves the composer alone in a group room', async () => {
@@ -1003,8 +1010,7 @@ describe('Messages View Component', () => {
 
       const { container } = renderWithAnnouncement();
 
-      const roomBtn = screen.getByText('Weekly notes').closest('.msgs-item');
-      fireEvent.click(roomBtn!);
+      openTheRoom();
 
       await waitFor(() => {
         const messagesStream = container.querySelector('.msgs-stream');
@@ -1013,6 +1019,105 @@ describe('Messages View Component', () => {
 
       // Verify scrollIntoView was NOT called (preventing outer page jump)
       expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    });
+
+    it('renders announcement post card with Full-timer badge, reactions, acknowledgement and thread reply button', async () => {
+      renderWithAnnouncement();
+      openTheRoom();
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Weekly notes').length).toBeGreaterThanOrEqual(1);
+        expect(document.querySelector('.post')).toBeInTheDocument();
+      });
+
+      // Post card rendered
+      expect(document.querySelector('.post')).toBeInTheDocument();
+      expect(screen.getByText('Full-timer')).toBeInTheDocument();
+      expect(screen.getByText('Got it')).toBeInTheDocument();
+      expect(screen.getByText('Reply in thread')).toBeInTheDocument();
+
+      // Click Got it
+      fireEvent.click(screen.getByText('Got it'));
+      expect(chatService.acknowledgeAnnouncement).toHaveBeenCalledWith(
+        'room-ann',
+        'm1',
+        'u1',
+        []
+      );
+
+      // Click Reply in thread
+      fireEvent.click(screen.getByText('Reply in thread'));
+      await waitFor(() => {
+        expect(screen.getByText('Thread')).toBeInTheDocument();
+      });
+
+      // Click Read receipts
+      fireEvent.click(screen.getByTitle('View read receipts'));
+      await waitFor(() => {
+        expect(screen.getByText('Read receipts')).toBeInTheDocument();
+      });
+      // Verify Read and Not yet sections
+      expect(screen.getByText('Read')).toBeInTheDocument();
+      expect(screen.getByText('Not yet')).toBeInTheDocument();
+      // Close popover
+      fireEvent.click(screen.getByText('Close'));
+      expect(screen.queryByText('Read receipts')).not.toBeInTheDocument();
+    });
+
+    it('renders pinned announcement strip when post is pinned and shows new unread dot in rail', async () => {
+      const pinnedAnnouncementRoom = {
+        ...announcementRoom,
+        lastMessage: {
+          ...announcementRoom.lastMessage,
+          text: 'Important update',
+        },
+      };
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? [{
+          ...mockMessages[0],
+          pinned: true,
+          readBy: ['u2'],
+          acknowledged: ['u2'],
+          attachments: [{ type: 'todo', id: 't1', name: 'Task 1', status: 'completed' }]
+        }] : [pinnedAnnouncementRoom];
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item as any;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      openTheRoom();
+
+      await waitFor(() => {
+        expect(screen.getByText('Pinned')).toBeInTheDocument();
+        expect(document.querySelector('.post.pinned')).toBeInTheDocument();
+        expect(screen.getByText('Task 1')).toBeInTheDocument();
+      });
+      // Test closing read receipts modal via backdrop click
+      fireEvent.click(screen.getByTitle('View read receipts'));
+      await waitFor(() => {
+        expect(screen.getByText('Read receipts')).toBeInTheDocument();
+      });
+      fireEvent.click(document.querySelector('.modal-backdrop')!);
+      expect(screen.queryByText('Read receipts')).not.toBeInTheDocument();
     });
   });
 

@@ -1348,6 +1348,60 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
+    it('AN3b: a member can create a message in an announcement room IF it is a reply to a top-level post (#743)', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'announcement');
+      await seedMsg('room1', 'root1', 'ft1'); // top-level announcement post (parentId is null/undefined)
+
+      // student1 replies to root1 -> succeeds
+      await assertSucceeds(
+        setDoc(
+          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/reply1'),
+          {
+            ...newChatMsg('student1'),
+            roomId: 'room1',
+            parentId: 'root1',
+          },
+        ),
+      );
+
+      // student1 tries to reply to a non-existent parent -> fails
+      await assertFails(
+        setDoc(
+          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/replyBad'),
+          {
+            ...newChatMsg('student1'),
+            roomId: 'room1',
+            parentId: 'nonExistentDoc',
+          },
+        ),
+      );
+
+      // student1 tries to reply to another reply (nested thread) -> fails
+      await assertFails(
+        setDoc(
+          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/replyNested'),
+          {
+            ...newChatMsg('student1'),
+            roomId: 'room1',
+            parentId: 'reply1',
+          },
+        ),
+      );
+
+      // Non-member student2 cannot reply -> fails
+      await assertFails(
+        setDoc(
+          doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/replyStranger'),
+          {
+            ...newChatMsg('student2'),
+            roomId: 'room1',
+            parentId: 'root1',
+          },
+        ),
+      );
+    });
+
     it('MSG5: a non-member cannot react to or pin a message', async () => {
       await seedMemberUsers();
       await seedRoom('room1', 'group');
@@ -1355,6 +1409,33 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(
         updateDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/m1'), {
           reactions: [{ by: 'student2', emoji: '🙏' }],
+        }),
+      );
+    });
+
+    it('MSG7: a member can acknowledge a live post or update their own readBy entry (#743)', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'announcement');
+      await seedMsg('room1', 'm1', 'ft1');
+
+      // Member can add themselves to acknowledged
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          acknowledged: ['student1'],
+        }),
+      );
+
+      // Member can add themselves to readBy
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          readBy: ['student1'],
+        }),
+      );
+
+      // Member cannot add or remove someone else from acknowledged
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          acknowledged: ['student2'],
         }),
       );
     });

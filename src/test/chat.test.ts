@@ -48,7 +48,10 @@ import {
   reactToMessage,
   togglePinMessage,
   removeMessageForEveryone,
-  deleteChatRoom
+  deleteChatRoom,
+  acknowledgeAnnouncement,
+  markAnnouncementRead,
+  canRemoveConvForEveryone
 } from '../services/chat';
 
 describe('chat.ts services', () => {
@@ -222,6 +225,52 @@ describe('chat.ts services', () => {
         data: { targetId: 'new-doc-id', link: '/messages/new-doc-id' },
       });
     });
+
+    it('creates an announcement room with audiencePreset and immediately posts initial announcement if provided (#743)', async () => {
+      const roomId = await createAnnouncementRoom(
+        'Campus News',
+        ['u2', 'u3'],
+        { uid: 'u1', displayName: 'Naomi' },
+        'everyone',
+        { text: 'First announcement text', pinned: true }
+      );
+
+      expect(roomId).toBe('new-doc-id');
+      // 1. Room doc with audiencePreset
+      expect(mockAddDoc).toHaveBeenNthCalledWith(1, 'col:chatRooms', {
+        type: 'announcement',
+        name: 'Campus News',
+        memberIds: ['u1', 'u2', 'u3'],
+        createdById: 'u1',
+        createdByName: 'Naomi',
+        createdAt: 'SERVER_TS',
+        audiencePreset: 'everyone',
+      });
+
+      // 2. Genesis system message
+      expect(mockAddDoc).toHaveBeenNthCalledWith(2, 'col:chatRooms/new-doc-id/messages', {
+        roomId: 'new-doc-id',
+        text: 'Naomi started announcements for "Campus News"',
+        senderId: 'u1',
+        senderName: 'System',
+        timestamp: 'SERVER_TS',
+        type: 'system',
+      });
+
+      // 3. First announcement post
+      expect(mockAddDoc).toHaveBeenNthCalledWith(3, 'col:chatRooms/new-doc-id/messages', {
+        roomId: 'new-doc-id',
+        text: 'First announcement text',
+        senderId: 'u1',
+        senderName: 'Naomi',
+        senderPhoto: '',
+        timestamp: 'SERVER_TS',
+        type: 'text',
+        attachments: [],
+        parentId: null,
+        pinned: true,
+      });
+    });
   });
 
   describe('sendMessage', () => {
@@ -360,6 +409,91 @@ describe('chat.ts services', () => {
         },
       });
     });
+
+    it('sends an announcement post with channel name as title and custom announcement message (#743)', async () => {
+      await sendMessage(
+        'r-ann',
+        'Campus retreat this Saturday',
+        { uid: 'u1', displayName: 'Naomi' },
+        undefined,
+        ['u1', 'u2'],
+        null,
+        'announcement',
+        'Campus Updates'
+      );
+
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'Campus Updates',
+        message: 'Naomi posted an announcement: Campus retreat this Saturday',
+        type: 'info',
+        targetId: 'r-ann',
+        link: '/messages/r-ann',
+      });
+
+      expect(mockSendPushNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'Campus Updates',
+        body: 'Naomi posted an announcement: Campus retreat this Saturday',
+        data: { targetId: 'r-ann', link: '/messages/r-ann' },
+      });
+    });
+
+    it('routes announcement thread reply notification only to author and thread participants (#743)', async () => {
+      // Mock getDocs to return replies in thread
+      mockGetDocs.mockResolvedValueOnce({
+        docs: [
+          { data: () => ({ senderId: 'u3' }) }
+        ]
+      });
+      // Mock parent message author
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ senderId: 'u1', text: 'Original announcement' })
+      });
+
+      // u2 replies to u1's announcement in a room with [u1, u2, u3, u4]
+      await sendMessage(
+        'r-ann',
+        'Is transport provided?',
+        { uid: 'u2', displayName: 'Bob' },
+        undefined,
+        ['u1', 'u2', 'u3', 'u4'],
+        'parent-ann-1',
+        'announcement',
+        'Campus Updates'
+      );
+
+      // u1 (author) and u3 (participant) notified, but NOT u4 (non-participant in channel)
+      expect(mockSendNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1' }));
+      expect(mockSendNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u3' }));
+      expect(mockSendNotification).not.toHaveBeenCalledWith(expect.objectContaining({ userId: 'u4' }));
+    });
+  });
+
+  describe('acknowledgeAnnouncement', () => {
+    it('toggles acknowledgement on and off for the user (#743)', async () => {
+      // Toggle on
+      await acknowledgeAnnouncement('r1', 'm1', 'u1', []);
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
+        acknowledged: ['u1']
+      });
+
+      // Toggle off
+      await acknowledgeAnnouncement('r1', 'm1', 'u1', ['u1', 'u2']);
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
+        acknowledged: ['u2']
+      });
+    });
+  });
+
+  describe('markAnnouncementRead', () => {
+    it('adds uid to readBy without throwing on error (#743)', async () => {
+      await markAnnouncementRead('r1', 'm1', 'u1');
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
+        readBy: { type: 'arrayUnion', args: ['u1'] }
+      });
+    });
   });
 
   describe('inviteToGroup', () => {
@@ -448,6 +582,15 @@ describe('chat.ts services', () => {
     it('deletes the room document from Firestore', async () => {
       await deleteChatRoom('r1');
       expect(mockDeleteDoc).toHaveBeenCalledWith('doc:chatRooms/r1');
+    });
+  });
+
+  describe('canRemoveConvForEveryone', () => {
+    it('allows admin or room creator, denies others', () => {
+      expect(canRemoveConvForEveryone(null as any, 'u1', false)).toBe(false);
+      expect(canRemoveConvForEveryone({ id: 'r1', createdById: 'u1' } as any, 'u1', false)).toBe(true);
+      expect(canRemoveConvForEveryone({ id: 'r1', createdById: 'u2' } as any, 'u1', true)).toBe(true);
+      expect(canRemoveConvForEveryone({ id: 'r1', createdById: 'u2' } as any, 'u1', false)).toBe(false);
     });
   });
 });
