@@ -22,13 +22,20 @@ export interface ContactEditFields {
   notes: string;
   spiritualBackground: string;
   instagram?: string;
+  /** How we first met — the fixed "How we met" vocabulary (#356). Optional
+   * since #730 removed it from the web forms; mobile's EditContactSheet
+   * (#633) still edits it, so the field stays on the interface. */
+  metVia?: string;
+  /** Address used by Visits. Optional for the same reason as `metVia`. */
+  location?: string;
 }
 
 /** Diffs an edit form against the live contact, producing the audit-log
- * change lines (`handleUpdate`'s change block). The "How we met" and address
- * fields are intentionally not diffed — they were removed from the form
- * (#730) and the form no longer writes them. Instagram is diffed: it is part
- * of the unified mobile/PWA edit flow (#633). */
+ * change lines (`handleUpdate`'s change block). `metVia` ("How we met") and
+ * `location` (address) are diffed only when the caller actually supplies
+ * them: the web forms stopped offering both (#730), so for those callers the
+ * keys are absent and must not read as "cleared". Mobile's EditContactSheet
+ * (#633) does supply them, and its edits still reach the audit log. */
 export function diffContactFields(before: Contact, after: ContactEditFields): string[] {
   const changes: string[] = [];
   const fullName = `${after.firstName} ${after.lastName}`.trim();
@@ -38,6 +45,12 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
   if (after.phone !== before.phone) changes.push(`phone: "${before.phone}" → "${after.phone}"`);
   if (after.instagram !== before.instagram) {
     changes.push(`instagram: "${before.instagram || ""}" → "${after.instagram || ""}"`);
+  }
+  if (after.location !== undefined && after.location !== before.location) {
+    changes.push(`address: "${before.location}" → "${after.location}"`);
+  }
+  if (after.metVia !== undefined && after.metVia !== before.metVia) {
+    changes.push(`how we met: "${before.metVia || ""}" → "${after.metVia || ""}"`);
   }
   if (after.role !== before.role) changes.push(`group: "${before.role}" → "${after.role}"`);
   if (after.stage !== before.stage) changes.push(`stage: "${before.stage}" → "${after.stage}"`);

@@ -122,6 +122,9 @@ export function subscribeTouches(
 export interface NewContactInput {
   name: string;
   role: string;
+  /** Address used by Visits. Optional: the web new-contact form no longer
+   * sends it (#730); the outreach log sheet records where the outing was. */
+  location?: string;
   email: string;
   phone: string;
   stage: string;
@@ -129,6 +132,9 @@ export interface NewContactInput {
   notes: string;
   spiritualBackground: string;
   initials: string;
+  /** How we first met — the fixed "How we met" vocabulary (#356). Optional,
+   * as for the edit interfaces above. */
+  metVia?: string;
   year?: string;
   major?: string;
   /** Backdates the contact, for the v2 log sheet's "First met" — everything
@@ -242,6 +248,11 @@ export interface ContactUpdateFields {
   notes: string;
   spiritualBackground: string;
   instagram?: string;
+  /** How we first met — the fixed "How we met" vocabulary (#356). Optional:
+   * the web forms no longer send it (#730), mobile's EditContactSheet does. */
+  metVia?: string;
+  /** Address used by Visits. Optional for the same reason as `metVia`. */
+  location?: string;
 }
 /** Save the Contact Detail edit form (mirrors ContactDetailsModal's
  * handleUpdate). Activity logging (the field diff) is left to each platform,

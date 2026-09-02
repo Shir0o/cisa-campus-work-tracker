@@ -47,12 +47,17 @@ export async function addContact(
     const fieldsLog = [
       `Group: ${input.role}`,
       `Stage: ${input.stage}`,
+      input.metVia ? `How we met: ${input.metVia}` : '',
+      input.location ? `Address: ${input.location}` : '',
       input.email ? `Email: ${input.email}` : '',
       input.phone ? `Phone: ${input.phone}` : '',
       input.spiritualBackground ? `Spiritual Background: ${input.spiritualBackground}` : '',
       input.tags.length > 0 ? `Tags: ${input.tags.join(', ')}` : '',
       input.notes ? `Notes: ${input.notes}` : '',
     ]
+      .filter(Boolean)
+      .join('\n');
+
     void logActivity({
       action: 'created a new contact',
       targetId: id,
