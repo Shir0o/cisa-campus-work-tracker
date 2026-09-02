@@ -602,6 +602,46 @@ describe("POST /api/quick-add", () => {
     expect(res.body.contact.id).toBe("c-3");
   });
 
+  it("does not collapse 'Bob' onto an existing 'Bobby' contact (#731)", async () => {
+    // Regression for: typing "Bob" (a substring of "Bobby") was matching the
+    // existing contact via substring containment. Word-boundary matching prevents it.
+    seedDoc("contacts", "c-bobby", { name: "Bobby Smith", email: "", phone: "" });
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ name: "Bob", email: "", phone: "" }),
+    });
+    const res = await request(app).post("/api/quick-add").send({ text: "Met Bob" });
+    expect(res.status).toBe(200);
+    expect(res.body.contact.isExisting).toBe(false);
+    expect(res.body.contact.name).toBe("Bob");
+  });
+
+  it("does not collapse 'Robert' onto an existing 'Roberto' contact (#731)", async () => {
+    // GroupMe !add: typing "Robert" must not fold into existing "Roberto".
+    seedDoc("contacts", "c-rob", { name: "Roberto Garcia", email: "", phone: "" });
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ name: "Robert", email: "", phone: "" }),
+    });
+    const res = await request(app)
+      .post("/api/webhook/groupme")
+      .send({ text: "!add Robert", name: "Sam", sender_id: "s-1" });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.contact.name).toBe("Robert");
+
+    const contacts = Object.values(getCollection("contacts"));
+    const nameOf = (c: unknown): string => {
+      if (c && typeof c === "object" && "name" in c) {
+        const name = c.name; // unknown until validated
+        return typeof name === "string" ? name : "";
+      }
+      return "";
+    };
+    const robertos = contacts.filter((c) => nameOf(c) === "Roberto Garcia");
+    const roberts = contacts.filter((c) => nameOf(c) === "Robert");
+    expect(robertos).toHaveLength(1);
+    expect(roberts).toHaveLength(1);
+  });
+
   it("creates a minimal contact when logging an interaction for an unknown contact", async () => {
     mockGenerateContent.mockResolvedValue({
       text: JSON.stringify({ contactName: "New Kid", content: "Bible study", type: "Bible Study" }),

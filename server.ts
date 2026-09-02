@@ -662,11 +662,26 @@ Analyze the input text carefully and extract the following:
     }
 
     // 4. Match by fuzzy name containment (case-insensitive substring overlap)
+    //    Only treat a substring hit as a match when it aligns on a word
+    //    boundary — otherwise prefix-only names like "Robert" wrongly fold
+    //    into existing contacts such as "Roberto Garcia" (#731).
     if (cleanParsedName) {
+      const isWordBoundaryMatch = (haystack: string, needle: string) => {
+        if (!needle) return false;
+        let idx = haystack.indexOf(needle);
+        while (idx !== -1) {
+          const prev = idx === 0 ? " " : haystack[idx - 1];
+          const next = idx + needle.length === haystack.length ? " " : haystack[idx + needle.length];
+          if (!/[a-z0-9]/.test(prev) && !/[a-z0-9]/.test(next)) return true;
+          idx = haystack.indexOf(needle, idx + 1);
+        }
+        return false;
+      };
       const potentials = contacts.filter(c => {
         if (!c.name) return false;
         const dbName = c.name.trim().toLowerCase();
-        return dbName.includes(cleanParsedName) || cleanParsedName.includes(dbName);
+        return isWordBoundaryMatch(dbName, cleanParsedName)
+          || isWordBoundaryMatch(cleanParsedName, dbName);
       });
       // Return if exactly one unique contact matched fuzzy lookup
       if (potentials.length === 1) {
