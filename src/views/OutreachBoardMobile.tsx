@@ -172,7 +172,7 @@ export default function OutreachBoardMobile({
 
       {/* Switcher tabs */}
       <div
-        className="flex gap-2 overflow-x-auto px-5 py-4 border-b border-outline-variant/30 scrollbar-none whitespace-nowrap jrnm-switch bg-surface"
+        className="flex gap-2 overflow-x-auto px-5 py-4 border-b border-outline-variant/30 no-scrollbar whitespace-nowrap jrnm-switch bg-surface"
         ref={switchRef}
       >
         {mobileStages.map((s, i) => {

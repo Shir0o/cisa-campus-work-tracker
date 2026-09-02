@@ -145,7 +145,7 @@ export default function AttendanceMobile({
         </div>
 
         {/* Filter scrollbar */}
-        <div className="flex gap-1.5 overflow-x-auto pb-3 mb-2 scrollbar-none whitespace-nowrap gthm-filter">
+        <div className="flex gap-1.5 overflow-x-auto pb-3 mb-2 no-scrollbar whitespace-nowrap gthm-filter">
           {filterOptions.map((t) => (
             <button
               key={t}
