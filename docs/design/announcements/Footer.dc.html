@@ -1,0 +1,357 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --bg-elev:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --accent:#52525B; --accent-strong:#131316; --accent-on:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --success:#016A1C; --success-soft:#E1FCDE;
+      --warn:#BA5900; --warn-soft:#FFF2D2;
+      --danger:#B1000F; --danger-soft:#FFD4D8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--accent-strong)}
+    button{font-family:inherit}
+    svg{display:block}
+
+    .sheet{padding:48px 56px 64px;display:flex;flex-direction:column;gap:40px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:30px;letter-spacing:-0.02em;margin:0}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:600;font-size:19px;margin:0}
+    .lede{font-size:15px;line-height:1.6;color:var(--text-dim);max-width:66ch;margin:8px 0 0;text-wrap:pretty}
+    .sec{display:flex;flex-direction:column;gap:18px}
+    .sechead{display:flex;flex-direction:column;gap:5px;border-bottom:1px solid var(--border-soft);padding-bottom:12px}
+    .sechead p{margin:0;font-size:13.5px;line-height:1.6;color:var(--text-dim);max-width:74ch;text-wrap:pretty}
+    .kicker{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mute)}
+    code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;color:var(--text-dim)}
+    .caption{font-size:12.5px;line-height:1.6;color:var(--text-mute);text-wrap:pretty;margin:0}
+    .caption b{color:var(--text-dim);font-weight:600}
+    .balab{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;
+      text-transform:uppercase;letter-spacing:0.07em}
+    .balab.now{color:var(--danger)}
+    .balab.next{color:var(--success)}
+    .badot{width:7px;height:7px;border-radius:999px;background:currentColor}
+
+    /* a 784px stub of the thread pane, footer only */
+    .stub{width:784px;border:1px solid var(--border-soft);border-radius:24px;background:var(--bg);overflow:hidden}
+    .stubtop{padding:16px 22px 18px;background:var(--bg);display:flex;flex-direction:column;gap:10px}
+    .ghostpost{border:1px solid var(--border-soft);border-radius:16px;background:var(--panel);padding:12px 16px;
+      font-size:13.5px;line-height:1.55;color:var(--text-mute)}
+
+    /* ── today: .msgs-readonly verbatim ── */
+    .readonly{border-top:1px solid var(--border-soft);padding:14px 22px;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      font-size:13px;color:var(--text-mute);font-style:italic}
+    .ro-reacts{display:flex;gap:6px;font-style:normal}
+    .ro-reacts button{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);background:var(--panel);
+      cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;line-height:1}
+
+    /* ── proposed footer ── */
+    .foot{border-top:1px solid var(--border-soft);background:var(--bg);padding:12px 22px 14px;
+      display:flex;flex-direction:column;gap:10px}
+    .foot-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .ack{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border-radius:10px;
+      border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+    .ack.done{background:var(--success-soft);border-color:var(--success-soft);color:var(--success)}
+    .ghost{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;
+      border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-weight:500;cursor:pointer}
+    .quick{display:flex;gap:6px;margin-left:auto}
+    .quick button{width:34px;height:34px;border-radius:999px;border:1px solid var(--border);background:var(--panel);
+      cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;line-height:1}
+    .quick button.on{border-color:var(--accent-line);background:var(--accent-soft)}
+    .foot-note{font-size:12px;color:var(--text-mute);display:flex;align-items:center;gap:6px}
+    .foot-note svg{flex:none}
+
+    /* the poster's composer, unchanged from .msgs-composer */
+    .composer{border-top:1px solid var(--border-soft);padding:12px 22px;background:var(--bg)}
+    .composer-row{display:flex;align-items:flex-end;gap:8px}
+    .icon-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+      background:transparent;border:0;border-radius:8px;color:var(--text-dim);flex:none}
+    .ta{flex:1;min-height:38px;border-radius:14px;border:1px solid var(--border);background:var(--bg);
+      padding:9px 13px;font-size:14px;color:var(--text-mute)}
+    .send{width:36px;height:36px;border-radius:999px;flex:none;border:0;background:var(--accent);color:#fff;
+      display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .postbar{display:flex;align-items:center;gap:8px;padding:7px 22px;background:var(--warn-soft);color:var(--warn);
+      font-size:12px;font-weight:600}
+
+    /* defect callouts */
+    .defects{display:flex;flex-direction:column;gap:12px;max-width:74ch}
+    .defect{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:14px;
+      background:var(--panel);border:1px solid var(--border)}
+    .dn{width:22px;height:22px;border-radius:999px;flex:none;background:var(--danger-soft);color:var(--danger);
+      font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+    .defect p{margin:0;font-size:13px;line-height:1.65;color:var(--text-dim);text-wrap:pretty}
+    .defect b{color:var(--text);font-weight:600}
+
+    /* the state ladder */
+    .rung{display:flex;gap:24px;align-items:flex-start;margin-bottom:24px}
+    .rungtxt{width:230px;flex:none;display:flex;flex-direction:column;gap:5px;padding-top:2px}
+    .rungname{font-size:13.5px;font-weight:600;color:var(--text)}
+    .rungsub{font-size:12.5px;line-height:1.55;color:var(--text-mute);text-wrap:pretty}
+
+    /* the three options */
+    .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
+    .opt{border-radius:16px;border:1px solid var(--border);background:var(--panel);padding:18px;
+      display:flex;flex-direction:column;gap:10px}
+    .opt.picked{border-color:var(--accent-line);box-shadow:inset 0 0 0 1px var(--accent-line)}
+    .optlab{display:flex;align-items:center;gap:8px}
+    .optname{font-family:"Plus Jakarta Sans",sans-serif;font-size:15px;font-weight:600}
+    .picktag{margin-left:auto;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+      padding:2px 8px;border-radius:999px;background:var(--accent-strong);color:var(--accent-on)}
+    .opt p{margin:0;font-size:12.5px;line-height:1.6;color:var(--text-dim);text-wrap:pretty}
+    .cost{margin-top:auto;padding-top:10px;border-top:1px solid var(--border-soft);
+      font-size:12px;line-height:1.55;color:var(--text-mute)}
+    .cost b{color:var(--text-dim);font-weight:600}
+    .srcs{font-size:12px;line-height:1.7;color:var(--text-mute);border-top:1px solid var(--border-soft);padding-top:16px}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <h1>The bar at the bottom</h1>
+    <p class="lede">
+      When you can’t post, the composer is replaced by one line of italic grey text and four emoji.
+      It is the whole of the member’s side of the feature, and each of its three parts is wrong in a
+      different way — one of them says out loud that something exists which doesn’t.
+    </p>
+  </div>
+
+  <!-- ── today ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">Today</span>
+      <h2>What the bar does now</h2>
+      <p>
+        <code>Messages.tsx:1191–1208</code>, drawn at 1:1 in a 784px pane. Everything below is in the
+        shipped code; nothing is exaggerated for the drawing.
+      </p>
+    </div>
+    <span class="balab now"><span class="badot"></span> Today</span>
+    <div class="stub">
+      <div class="stubtop">
+        <div class="ghostpost">…the announcement stream, ending on David’s post from Monday.</div>
+      </div>
+      <div class="readonly">
+        <span>This one’s an announcement — replies go to the team directly.</span>
+        <span class="ro-reacts">
+          <button>🙏</button><button>❤️</button><button>🌱</button><button>👍</button>
+        </span>
+      </div>
+    </div>
+
+    <div class="defects">
+      <div class="defect">
+        <span class="dn">1</span>
+        <p>
+          <b>It describes a route that isn’t built.</b> “Replies go to the team directly” reads as an
+          instruction — reply, and it reaches the team. There is nowhere to reply. The same gate that
+          hides the composer is passed to <code>MsgThreadPane</code> as <code>canPost</code>, so the thread
+          reply box is closed too. A member’s only way to answer is to leave, remember who posted, and
+          start a direct message.
+        </p>
+      </div>
+      <div class="defect">
+        <span class="dn">2</span>
+        <p>
+          <b>The emoji attach to the wrong message.</b> They react to
+          <code>messages[messages.length&nbsp;-&nbsp;1]</code> — whatever is newest — regardless of what
+          you have scrolled to. Reading Monday’s post and tapping 🙏 puts your reaction on today’s,
+          silently, with no feedback that anything happened anywhere.
+        </p>
+      </div>
+      <div class="defect">
+        <span class="dn">3</span>
+        <p>
+          <b>Italic grey is the app’s voice for absence.</b> Every other italic
+          <code>--text-mute</code> rule on this page is a nothing-here: <code>.msgb-gone</code> (a deleted
+          message), <code>.msgs-item-gone</code> (a deleted conversation), <code>.msgs-people-empty</code>
+          (an empty list). The member’s whole side of the feature is set in the typography the app
+          reserves for what isn’t there.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── proposed ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">Proposed</span>
+      <h2>A footer with two things you can actually do</h2>
+      <p>
+        Acknowledge, and reply to the person who posted. Reactions stay, but they move: they belong
+        in each post’s footer, where you can see what you are reacting to. What is left at the bottom
+        of the pane is about the announcement as a whole.
+      </p>
+    </div>
+
+    <div class="rung">
+      <div class="rungtxt">
+        <span class="rungname">Resting — you haven’t said got it</span>
+        <span class="rungsub">The primary action is acknowledgement, because that is the one thing a broadcast wants back. Reply is secondary and names the person, so it can’t be read as “reply to all”.</span>
+      </div>
+      <div>
+        <span class="balab next" style="display:block;margin-bottom:10px"><span class="badot"></span> Proposed</span>
+        <div class="stub">
+          <div class="stubtop">
+            <div class="ghostpost">…the announcement stream, ending on Naomi’s post from 2 hours ago.</div>
+          </div>
+          <div class="foot">
+            <div class="foot-row">
+              <button class="ack">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                Got it
+              </button>
+              <button class="ghost">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-6-5 6-5"/><path d="M3 12h12a6 6 0 0 1 0 12h-1"/></svg>
+                Reply to Naomi
+              </button>
+              <span class="quick">
+                <button>🙏</button><button>❤️</button><button>🌱</button><button>👍</button>
+              </span>
+            </div>
+            <div class="foot-note">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              Only Full-timers post here. A reply opens a direct message with whoever posted — it doesn’t go to everyone.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rung">
+      <div class="rungtxt">
+        <span class="rungname">Acknowledged</span>
+        <span class="rungsub">The button becomes the receipt rather than disappearing, so the state is legible on a return visit. Tap it again to undo.</span>
+      </div>
+      <div class="stub">
+        <div class="foot">
+          <div class="foot-row">
+            <button class="ack done">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              You said got it
+            </button>
+            <button class="ghost">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-6-5 6-5"/><path d="M3 12h12a6 6 0 0 1 0 12h-1"/></svg>
+              Reply to Naomi
+            </button>
+            <span class="quick">
+              <button class="on">🙏</button><button>❤️</button><button>🌱</button><button>👍</button>
+            </span>
+          </div>
+          <div class="foot-note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            Naomi can see that you’ve read this one.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rung">
+      <div class="rungtxt">
+        <span class="rungname">You’re the one who posts</span>
+        <span class="rungsub">Full-timers keep the composer they have — same control, same shortcuts. The only addition is the strip above it, which is the thing that is easy to forget at 11pm.</span>
+      </div>
+      <div class="stub">
+        <div class="postbar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          Posting to everyone on Campus — 24 people, 19 phones
+        </div>
+        <div class="composer">
+          <div class="composer-row">
+            <span class="icon-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </span>
+            <span class="ta">Write an announcement…</span>
+            <span class="send">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── the decision ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">The open question</span>
+      <h2>Where a reply should go</h2>
+      <p>
+        The current copy asserts an answer the code doesn’t implement, so this has to be settled
+        rather than inherited. Three routes, each with a real case for it.
+      </p>
+    </div>
+    <div class="opts">
+      <div class="opt picked">
+        <div class="optlab">
+          <span class="optname">To the poster</span>
+          <span class="picktag">Drawn</span>
+        </div>
+        <p>
+          “Reply to Naomi” opens — or reuses — a direct chat with whoever wrote the post, with the
+          announcement quoted into it so she knows what it’s about.
+        </p>
+        <p class="cost">
+          <b>Why:</b> it is the only reading of the existing copy that is true, it needs no new room
+          type, and <code>getOrCreateDirectChat</code> already does exactly this.
+          <b>Costs:</b> if three Full-timers post to one channel, a member’s replies scatter across
+          three chats.
+        </p>
+      </div>
+      <div class="opt">
+        <div class="optlab"><span class="optname">To a staff group</span></div>
+        <p>
+          Replies land in one group chat that all the channel’s Full-timers are in, so whoever is
+          around picks it up.
+        </p>
+        <p class="cost">
+          <b>Why:</b> it is closest to “replies go to <i>the team</i>” as written, and no reply falls
+          on one person’s day off.
+          <b>Costs:</b> a member’s question about the rota is now visible to every Full-timer, which
+          is a different privacy promise than a direct message.
+        </p>
+      </div>
+      <div class="opt">
+        <div class="optlab"><span class="optname">Threads, opened up</span></div>
+        <p>
+          Keep replies in the channel, but only inside a post’s thread — the pane already exists and
+          is already closed off by the same <code>canPost</code> flag.
+        </p>
+        <p class="cost">
+          <b>Why:</b> the conversation stays attached to what it is about, and the UI is built.
+          <b>Costs:</b> it makes an announcement a discussion, which is the thing the room type exists
+          to prevent — and it needs a <code>firestore.rules</code> change to let non-admins write
+          messages with a <code>parentId</code> but not without one.
+        </p>
+      </div>
+    </div>
+    <p class="caption" style="max-width:74ch">
+      Drawn as option one because it is the smallest change that stops the app promising something it
+      doesn’t do. If option two is the intent, the copy is right and only the wiring is missing;
+      option three is a bigger feature than this issue, and worth its own.
+    </p>
+  </div>
+
+  <p class="srcs">
+    Geometry from <code>.msgs-readonly</code>, <code>.msgs-composer</code>, <code>.msgs-send</code> and
+    <code>.msgb-react</code> in <code>src/index.css</code>. Behaviour from <code>src/views/Messages.tsx</code>
+    (the <code>canPostToActiveRoom</code> gate, the read-only bar, the <code>canPost</code> prop passed to
+    <code>MsgThreadPane</code>). Sample names.
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

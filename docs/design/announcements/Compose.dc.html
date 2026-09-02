@@ -1,0 +1,498 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --bg-elev:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --accent:#52525B; --accent-strong:#131316; --accent-on:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --success:#016A1C; --success-soft:#E1FCDE;
+      --warn:#BA5900; --warn-soft:#FFF2D2;
+      --danger:#B1000F; --danger-soft:#FFD4D8;
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-teal:oklch(0.55 0.15 196); --t-teal-soft:oklch(0.55 0.15 196 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--accent-strong)}
+    button{font-family:inherit}
+    svg{display:block}
+
+    .sheet{padding:48px 56px 64px;display:flex;flex-direction:column;gap:40px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:30px;letter-spacing:-0.02em;margin:0}
+    .lede{font-size:15px;line-height:1.6;color:var(--text-dim);max-width:66ch;margin:8px 0 0;text-wrap:pretty}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:600;font-size:19px;margin:0}
+    .sec{display:flex;flex-direction:column;gap:16px}
+    .sechead{display:flex;flex-direction:column;gap:5px;border-bottom:1px solid var(--border-soft);padding-bottom:12px}
+    .sechead p{margin:0;font-size:13.5px;line-height:1.6;color:var(--text-dim);max-width:74ch;text-wrap:pretty}
+    .kicker{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mute)}
+
+    /* modal frame — CreateChatModal: max-w-md (448), h-560, rounded-3xl (24), border-outline-variant */
+    .modalrow{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+    .modal{width:448px;flex:none;border-radius:24px;border:1px solid var(--border-soft);background:var(--panel);
+      overflow:hidden;display:flex;flex-direction:column;box-shadow:0 16px 32px rgba(0,0,0,0.08)}
+    .modal.tall{height:560px}
+    .mhead{padding:16px 24px;border-bottom:1px solid var(--border-soft);background:var(--bg);
+      display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}
+    .mtitle{font-family:"Plus Jakarta Sans",sans-serif;font-size:20px;font-weight:500}
+    .xbtn{width:36px;height:36px;border-radius:999px;border:0;background:transparent;color:var(--text-dim);
+      display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .tabs{display:flex;gap:4px;padding:6px;background:var(--bg);border-bottom:1px solid var(--border-soft);flex:none}
+    .tab{flex:1;height:36px;border-radius:14px;border:0;background:transparent;color:var(--text-dim);
+      font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+    .tab.on{background:var(--accent-strong);color:var(--accent-on)}
+    .mbody{flex:1;min-height:0;padding:18px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+    .mfoot{flex:none;padding:14px 18px;border-top:1px solid var(--border-soft);background:var(--bg);
+      display:flex;align-items:center;gap:10px}
+    .mfoot .grow{flex:1;min-width:0;font-size:12px;color:var(--text-mute)}
+
+    .fieldlab{font-size:12px;font-weight:600;color:var(--text-dim)}
+    .field{height:44px;border-radius:14px;background:var(--bg);border:1px solid var(--border);
+      display:flex;align-items:center;padding:0 14px;font-size:14px;color:var(--text)}
+    .field.ph{color:var(--text-mute)}
+    .field.focus{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+    .area{border-radius:14px;background:var(--bg);border:1px solid var(--border);padding:12px 14px;
+      font-size:14.5px;line-height:1.6;color:var(--text);min-height:150px}
+    .area .ph{color:var(--text-mute)}
+
+    /* audience presets — the replacement for picking 24 people one at a time */
+    .aud{display:flex;flex-direction:column;gap:8px}
+    .audopt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
+      background:var(--bg);border:1px solid var(--border);cursor:pointer}
+    .audopt.on{border-color:var(--accent-line);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+    .audico{width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;
+      background:var(--panel-2);color:var(--text-dim)}
+    .audopt.on .audico{background:var(--accent-strong);color:var(--accent-on)}
+    .audmain{flex:1;min-width:0}
+    .audname{font-size:14px;font-weight:600;color:var(--text)}
+    .audsub{font-size:12px;color:var(--text-mute);margin-top:1px}
+    .audn{font-size:12.5px;font-weight:600;color:var(--text-dim);font-variant-numeric:tabular-nums;flex:none}
+    .radio{width:18px;height:18px;border-radius:999px;border:1.5px solid var(--border);flex:none}
+    .audopt.on .radio{border-color:var(--accent-strong);border-width:5px}
+
+    .btn-p{height:40px;padding:0 16px;border-radius:10px;border:1px solid var(--accent-strong);
+      background:var(--accent-strong);color:var(--accent-on);font-size:14px;font-weight:600;
+      display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+    .btn-g{height:40px;padding:0 15px;border-radius:10px;border:1px solid var(--border);background:var(--bg);
+      color:var(--text);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+    .btn-p:disabled{opacity:.4}
+
+    .step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text-mute)}
+    .stepn{width:20px;height:20px;border-radius:999px;background:var(--accent-strong);color:var(--accent-on);
+      font-size:11px;display:flex;align-items:center;justify-content:center;flex:none}
+    .caption{font-size:12.5px;line-height:1.6;color:var(--text-mute);max-width:448px;text-wrap:pretty}
+    .caption b{color:var(--text-dim);font-weight:600}
+
+    /* the review card */
+    .review{border-radius:14px;border:1px solid var(--border);background:var(--bg);padding:14px;display:flex;flex-direction:column;gap:12px}
+    .revrow{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-dim)}
+    .revrow svg{flex:none;margin-top:2px;color:var(--text-mute)}
+    .revrow b{color:var(--text);font-weight:600}
+    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+      background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:600}
+    .warnbar{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;
+      background:var(--warn-soft);color:var(--warn);font-size:12.5px;line-height:1.55;font-weight:500}
+    .warnbar svg{flex:none;margin-top:2px}
+
+    /* before / after columns */
+    .ba{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    .bacol{display:flex;flex-direction:column;gap:12px}
+    .balab{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;
+      text-transform:uppercase;letter-spacing:0.07em}
+    .balab.now{color:var(--danger)}
+    .balab.next{color:var(--success)}
+    .badot{width:7px;height:7px;border-radius:999px;background:currentColor}
+
+    /* today's picker, drawn small */
+    .pick{border-radius:14px;border:1px solid var(--border);background:var(--bg);overflow:hidden}
+    .pickrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border-soft);font-size:13px}
+    .pickrow:last-child{border-bottom:0}
+    .cbox{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border);flex:none}
+    .cbox.on{background:var(--accent-strong);border-color:var(--accent-strong)}
+    .pav{width:28px;height:28px;border-radius:999px;background:var(--accent-soft);color:var(--accent);
+      font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+    .more{padding:9px 12px;font-size:12px;color:var(--text-mute);font-style:italic}
+
+    /* what lands — notification cards */
+    .notes{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    .push{border-radius:16px;background:var(--panel);border:1px solid var(--border-soft);padding:13px 14px;
+      display:flex;gap:11px;align-items:flex-start}
+    .pushico{width:32px;height:32px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;
+      background:var(--accent-soft);color:var(--accent)}
+    .pushico.an{background:var(--warn-soft);color:var(--warn)}
+    .pushmain{flex:1;min-width:0}
+    .pushtop{display:flex;align-items:baseline;gap:8px}
+    .pushtitle{font-size:13.5px;font-weight:600;color:var(--text)}
+    .pushtime{margin-left:auto;font-size:11px;color:var(--text-mute);flex:none}
+    .pushbody{font-size:13px;line-height:1.5;color:var(--text-dim);margin-top:3px}
+    .verdict{font-size:12.5px;line-height:1.6;color:var(--text-mute);text-wrap:pretty}
+    .verdict b{color:var(--text-dim);font-weight:600}
+
+    .srcs{font-size:12px;line-height:1.7;color:var(--text-mute);border-top:1px solid var(--border-soft);padding-top:16px}
+    .srcs code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--text-dim)}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <h1>Sending an announcement</h1>
+    <p class="lede">
+      Today an announcement is opened from the second tab of <b>New message</b> and addressed by
+      ticking people out of the full user list, one at a time. Then it is posted with the same
+      composer as a direct message, and it arrives on 24 phones titled “New message”. Three
+      changes: an audience you can name, a compose step that admits it is a broadcast, and a
+      notification that says what it is.
+    </p>
+  </div>
+
+  <!-- ── 1. addressing ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">Change one</span>
+      <h2>Address it to a group, not to a list of people</h2>
+      <p>
+        The audience presets were in the mobile v2 design and were dropped in the port because the
+        roster data wasn’t there — <code>CreateChatModal.tsx:12–18</code> says so. Two of the three
+        presets need no roster: “the whole app” is every approved user, which
+        <code>CreateChatModal</code> already queries. The per-team presets need the <code>team</code> field
+        that <code>news-filters</code> proposes for #727 and which is <b>not built</b> — <code>AppUser</code> has
+        <code>uid, email, displayName, photoURL, approved, role</code> and nothing else. Ship those two
+        first if #727 slips. Hand-picking stays, as the last option.
+      </p>
+    </div>
+
+    <div class="ba">
+      <div class="bacol">
+        <span class="balab now"><span class="badot"></span> Today</span>
+        <div class="pick">
+          <div class="pickrow"><span class="cbox on"></span><span class="pav">AB</span><span>Amara Boateng</span></div>
+          <div class="pickrow"><span class="cbox on"></span><span class="pav">CD</span><span>Chen Dai</span></div>
+          <div class="pickrow"><span class="cbox on"></span><span class="pav">EF</span><span>Esi Fofana</span></div>
+          <div class="pickrow"><span class="cbox"></span><span class="pav">FA</span><span>Femi Adeyemi</span></div>
+          <div class="pickrow"><span class="cbox on"></span><span class="pav">GH</span><span>Grace Hollis</span></div>
+          <div class="more">…19 more to tick, and again next time.</div>
+        </div>
+        <p class="caption">
+          Nothing remembers the audience. A weekly announcement to the same 24 people is 24 taps
+          every week, and a missed tick is silent — the person simply never sees it.
+        </p>
+      </div>
+
+      <div class="bacol">
+        <span class="balab next"><span class="badot"></span> Proposed</span>
+        <div class="aud">
+          <div class="audopt on">
+            <span class="audico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <span class="audmain">
+              <span class="audname">Everyone on Campus</span>
+              <span class="audsub">The Campus team, as it stands each time you post</span>
+            </span>
+            <span class="audn">24</span>
+            <span class="radio"></span>
+          </div>
+          <div class="audopt">
+            <span class="audico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.2v15M15 5.8v15"/><path d="M3 6.6 9 3.2l6 2.6 6-2.6v14.2l-6 2.6-6-2.6-6 2.6z"/></svg>
+            </span>
+            <span class="audmain">
+              <span class="audname">Everyone on YP</span>
+              <span class="audsub">The Young Professionals team</span>
+            </span>
+            <span class="audn">12</span>
+            <span class="radio"></span>
+          </div>
+          <div class="audopt">
+            <span class="audico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10"/></svg>
+            </span>
+            <span class="audmain">
+              <span class="audname">The whole app</span>
+              <span class="audsub">Everyone approved, both teams</span>
+            </span>
+            <span class="audn">36</span>
+            <span class="radio"></span>
+          </div>
+          <div class="audopt">
+            <span class="audico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+            </span>
+            <span class="audmain">
+              <span class="audname">Pick people</span>
+              <span class="audsub">The list you have today, kept for the odd case</span>
+            </span>
+            <span class="audn">—</span>
+            <span class="radio"></span>
+          </div>
+        </div>
+        <p class="caption">
+          A preset is stored as the <b>rule</b>, not as the 24 uids it resolves to today. Someone who joins
+          next week is in the audience without anyone editing the channel — which is the behaviour the
+          copy already promises (“Everyone here reads it”). It also means the room’s
+          <code>memberIds</code> stop being the source of truth for who reads it, which
+          <code>firestore.rules</code> currently uses to gate reads: the rule has to resolve to a member
+          list somewhere, and that is the part to design before building.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. compose ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">Change two</span>
+      <h2>A compose step, not a chat line</h2>
+      <p>
+        A one-line <code>textarea</code> with a round send button is the right shape for “ok, see you at 7”.
+        It is the wrong shape for something 24 people are about to be pushed. The Announcement tab
+        gets its own body field and a review step that states the size of the audience before it goes.
+      </p>
+    </div>
+
+    <div class="modalrow">
+      <div>
+        <div class="step" style="margin-bottom:10px"><span class="stepn">1</span> Name it and choose who</div>
+        <div class="modal tall">
+          <div class="mhead">
+            <span class="mtitle">New announcement</span>
+            <button class="xbtn" aria-label="Close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="tabs">
+            <button class="tab">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Message
+            </button>
+            <button class="tab on">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              Announcement
+            </button>
+          </div>
+          <div class="mbody">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span class="fieldlab">Channel name</span>
+              <div class="field focus">Campus updates</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span class="fieldlab">Who reads it</span>
+              <div class="aud">
+                <div class="audopt on">
+                  <span class="audico">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  </span>
+                  <span class="audmain">
+                    <span class="audname">Everyone on Campus</span>
+                    <span class="audsub">Updates as the team changes</span>
+                  </span>
+                  <span class="audn">24</span>
+                  <span class="radio"></span>
+                </div>
+                <div class="audopt">
+                  <span class="audico">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.2v15M15 5.8v15"/><path d="M3 6.6 9 3.2l6 2.6 6-2.6v14.2l-6 2.6-6-2.6-6 2.6z"/></svg>
+                  </span>
+                  <span class="audmain">
+                    <span class="audname">Everyone on YP</span>
+                    <span class="audsub">Updates as the team changes</span>
+                  </span>
+                  <span class="audn">12</span>
+                  <span class="radio"></span>
+                </div>
+                <div class="audopt">
+                  <span class="audico">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                  </span>
+                  <span class="audmain">
+                    <span class="audname">Pick people</span>
+                    <span class="audsub">Choose from the directory</span>
+                  </span>
+                  <span class="audn">—</span>
+                  <span class="radio"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mfoot">
+            <span class="grow">Only Full-timers can open one.</span>
+            <button class="btn-g">Cancel</button>
+            <button class="btn-p">Next</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="step" style="margin-bottom:10px"><span class="stepn">2</span> Write the first post</div>
+        <div class="modal tall">
+          <div class="mhead">
+            <span class="mtitle">Campus updates</span>
+            <button class="xbtn" aria-label="Close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="mbody">
+            <div class="warnbar">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              This goes to 24 people and pushes to their phones. They can’t reply here.
+            </div>
+            <div class="area">
+              Reading week moves the Thursday gathering to the Chaplaincy lounge, 7pm — the Hub is
+              booked for exams.<br><br>
+              Same week we’re short two drivers for the Saturday retreat run.<span class="ph">|</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-g" style="height:34px;font-size:13px;padding:0 12px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Attach
+              </button>
+              <button class="btn-g" style="height:34px;font-size:13px;padding:0 12px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
+                Pin it
+              </button>
+            </div>
+          </div>
+          <div class="mfoot">
+            <span class="grow">Draft saves as you type.</span>
+            <button class="btn-g">Back</button>
+            <button class="btn-p">Review</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="step" style="margin-bottom:10px"><span class="stepn">3</span> See it before 24 people do</div>
+        <div class="modal tall">
+          <div class="mhead">
+            <span class="mtitle">Send this?</span>
+            <button class="xbtn" aria-label="Close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="mbody">
+            <div class="review">
+              <div class="revrow">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                <span>Goes to <b>everyone on Campus — 24 people</b>, including 3 who joined this month.</span>
+              </div>
+              <div class="revrow">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                <span>Pushes to <b>19 phones</b>. Five have notifications off and will see it in the app.</span>
+              </div>
+              <div class="revrow">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-6-5 6-5"/><path d="M3 12h12a6 6 0 0 1 0 12h-1"/></svg>
+                <span>Replies come back to <b>you</b>, as direct messages.</span>
+              </div>
+              <div class="chips">
+                <span class="chip">Campus</span>
+                <span class="chip">24 people</span>
+                <span class="chip">Pinned</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span class="fieldlab">What lands on their phone</span>
+              <div class="push">
+                <span class="pushico an">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                </span>
+                <span class="pushmain">
+                  <span class="pushtop">
+                    <span class="pushtitle">Campus updates</span>
+                    <span class="pushtime">now</span>
+                  </span>
+                  <span class="pushbody">Naomi posted an announcement: Reading week moves the Thursday gathering…</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="mfoot">
+            <span class="grow"></span>
+            <button class="btn-g">Back</button>
+            <button class="btn-p">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>
+              Send to 24
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. what lands ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">Change three</span>
+      <h2>Stop calling it “New message”</h2>
+      <p>
+        <code>sendMessage</code> (<code>services/chat.ts:218–251</code>) notifies every recipient with the title
+        “New message” and the body “Name: text”, whatever kind of room it is. So the one thing in the
+        app that is meant to be read by everybody arrives looking exactly like a note from a friend,
+        and gets triaged like one.
+      </p>
+    </div>
+    <div class="notes">
+      <div class="bacol">
+        <span class="balab now"><span class="badot"></span> Today</span>
+        <div class="push">
+          <span class="pushico">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <span class="pushmain">
+            <span class="pushtop">
+              <span class="pushtitle">New message</span>
+              <span class="pushtime">2h</span>
+            </span>
+            <span class="pushbody">Naomi Kwan: Reading week moves the Thursday gathering to the Chaplaincy lounge, 7pm…</span>
+          </span>
+        </div>
+        <p class="verdict">
+          Indistinguishable from a direct message, and stacked with them in the bell. The only
+          announcement-shaped notification the app sends today is the one fired when the
+          <b>channel is created</b> — which is the least important moment in its life.
+        </p>
+      </div>
+      <div class="bacol">
+        <span class="balab next"><span class="badot"></span> Proposed</span>
+        <div class="push">
+          <span class="pushico an">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          </span>
+          <span class="pushmain">
+            <span class="pushtop">
+              <span class="pushtitle">Campus updates</span>
+              <span class="pushtime">2h</span>
+            </span>
+            <span class="pushbody">Naomi posted an announcement: Reading week moves the Thursday gathering to the Chaplaincy lounge, 7pm…</span>
+          </span>
+        </div>
+        <p class="verdict">
+          Titled with the channel, bodied with what changed. One extra branch in <code>sendMessage</code>
+          on the room type it already fetches to build the recipient list — no new read, and it
+          also fixes the in-app bell, which shares the same call.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <p class="srcs">
+    Drawn against <code>src/components/modals/CreateChatModal.tsx</code> (modal frame 448&#215;560, 24px radius,
+    tab row, picker rows), <code>src/services/chat.ts</code> (<code>createAnnouncementRoom</code>, <code>sendMessage</code>)
+    and the Ink tokens in <code>src/index.css</code>. Names, counts and copy in the mockups are sample data.
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

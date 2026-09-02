@@ -1,0 +1,392 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --bg-elev:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --accent:#52525B; --accent-strong:#131316; --accent-on:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --success:#016A1C; --success-soft:#E1FCDE;
+      --warn:#BA5900; --warn-soft:#FFF2D2;
+      --danger:#B1000F; --danger-soft:#FFD4D8;
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-teal:oklch(0.55 0.15 196); --t-teal-soft:oklch(0.55 0.15 196 / 0.14);
+      --t-clay:oklch(0.55 0.15 42); --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--accent-strong)}
+    button{font-family:inherit}
+    svg{display:block}
+
+    .sheet{padding:48px 56px 64px;display:flex;flex-direction:column;gap:40px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:30px;letter-spacing:-0.02em;margin:0}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:600;font-size:19px;margin:0}
+    .lede{font-size:15px;line-height:1.6;color:var(--text-dim);max-width:66ch;margin:8px 0 0;text-wrap:pretty}
+    .sec{display:flex;flex-direction:column;gap:18px}
+    .sechead{display:flex;flex-direction:column;gap:5px;border-bottom:1px solid var(--border-soft);padding-bottom:12px}
+    .sechead p{margin:0;font-size:13.5px;line-height:1.6;color:var(--text-dim);max-width:74ch;text-wrap:pretty}
+    .kicker{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mute)}
+    code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px;color:var(--text-dim)}
+
+    .balab{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;
+      text-transform:uppercase;letter-spacing:0.07em}
+    .balab.now{color:var(--danger)}
+    .balab.next{color:var(--success)}
+    .badot{width:7px;height:7px;border-radius:999px;background:currentColor}
+    .caption{font-size:12.5px;line-height:1.6;color:var(--text-mute);text-wrap:pretty;margin:0}
+    .caption b{color:var(--text-dim);font-weight:600}
+
+    /* a stage that stands in for the 784px-wide thread pane at 1440 */
+    .stage{border:1px solid var(--border-soft);border-radius:24px;background:var(--bg);padding:20px 22px;
+      display:flex;flex-direction:column;gap:14px;width:784px}
+    .stagelab{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-mute)}
+
+    /* ── today: the chat bubble, .msgb / .msgb-bubble verbatim ── */
+    .msgb{display:flex;gap:10px;align-items:flex-end}
+    .msgb-col{max-width:62%;min-width:0;display:flex;flex-direction:column}
+    .msgb-name{font-size:12px;font-weight:600;color:var(--text-mute);margin-bottom:3px}
+    .msgb-bubble{padding:10px 13px;border-radius:16px;background:var(--panel);border:1px solid var(--border-soft);
+      font-size:14.5px;line-height:1.55;color:var(--text-dim);text-wrap:pretty}
+    .msgb-foot{display:flex;align-items:center;gap:8px;margin-top:5px}
+    .msgb-when{font-size:11px;color:var(--text-mute)}
+    .av32{width:32px;height:32px;border-radius:999px;flex:none;display:flex;align-items:center;justify-content:center;
+      background:var(--t-slate-soft);color:var(--t-slate);font-size:12px;font-weight:600}
+
+    /* ── proposed: the post ── */
+    .post{border:1px solid var(--border-soft);border-radius:16px;background:var(--panel);overflow:hidden}
+    .post.fresh{border-color:var(--warn)}
+    .post.pinned{border-color:var(--warn)}
+    .post-strip{display:flex;align-items:center;gap:7px;padding:7px 16px;background:var(--warn-soft);
+      color:var(--warn);font-size:11.5px;font-weight:600}
+    .post-head{display:flex;align-items:center;gap:10px;padding:13px 16px 0}
+    .post-who{font-size:13.5px;font-weight:600;color:var(--text)}
+    .rolechip{font-size:10.5px;font-weight:600;letter-spacing:0.03em;text-transform:uppercase;
+      padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+    .post-when{margin-left:auto;font-size:11.5px;color:var(--text-mute);flex:none}
+    .post-body{padding:8px 16px 14px;font-size:14.5px;line-height:1.6;color:var(--text-dim);text-wrap:pretty}
+    .post-body strong{color:var(--text);font-weight:600}
+    .post-foot{display:flex;align-items:center;gap:8px;padding:9px 16px;
+      border-top:1px solid var(--border-soft);background:var(--bg);flex-wrap:wrap}
+    .react{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;
+      border:1px solid var(--border);background:var(--bg-elev);font-size:12px;color:var(--text-dim);cursor:pointer}
+    .react.on{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+    .react .n{font-variant-numeric:tabular-nums;font-weight:600}
+    .readcount{margin-left:auto;font-size:11.5px;color:var(--text-mute);display:flex;align-items:center;gap:5px;cursor:pointer}
+    .readcount.done{color:var(--success)}
+    .attach{display:flex;align-items:center;gap:8px;margin:0 16px 14px;padding:9px 11px;border-radius:10px;
+      background:var(--panel-2);border:1px solid var(--border-soft);font-size:12.5px;color:var(--text-dim)}
+    .sysline{text-align:center;font-size:12px;color:var(--text-mute)}
+    .daymark{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--text-mute)}
+    .daymark .rule{flex:1;height:1px;background:var(--border-soft)}
+
+    /* measured callouts */
+    .measured{position:relative;display:flex;gap:28px;align-items:flex-start}
+    .dims{width:250px;flex:none;display:flex;flex-direction:column;gap:9px;padding-top:6px}
+    .dim{display:flex;gap:9px;font-size:12px;line-height:1.5;color:var(--text-mute)}
+    .dimn{font-variant-numeric:tabular-nums;font-weight:600;color:var(--text-dim);flex:none;width:74px}
+
+    /* state ladder */
+    .ladder{display:flex;flex-direction:column;gap:22px}
+    .rung{display:flex;gap:24px;align-items:flex-start}
+    .rungtxt{width:250px;flex:none;display:flex;flex-direction:column;gap:5px;padding-top:4px}
+    .rungname{font-size:13.5px;font-weight:600;color:var(--text)}
+    .rungsub{font-size:12.5px;line-height:1.55;color:var(--text-mute);text-wrap:pretty}
+    .rungbody{flex:1;min-width:0;max-width:510px}
+
+    /* read receipts popover */
+    .pop{width:320px;border-radius:14px;border:1px solid var(--border);background:var(--bg);
+      box-shadow:0 16px 32px rgba(0,0,0,0.16);overflow:hidden}
+    .pophead{padding:11px 14px;border-bottom:1px solid var(--border-soft);display:flex;align-items:baseline;gap:8px}
+    .poptitle{font-size:13px;font-weight:600}
+    .popn{margin-left:auto;font-size:11.5px;color:var(--text-mute);font-variant-numeric:tabular-nums}
+    .popsec{padding:8px 14px 4px;font-size:10.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.06em;color:var(--text-mute)}
+    .poprow{display:flex;align-items:center;gap:9px;padding:6px 14px;font-size:13px;color:var(--text-dim)}
+    .av24{width:24px;height:24px;border-radius:999px;flex:none;display:flex;align-items:center;justify-content:center;
+      background:var(--accent-soft);color:var(--accent);font-size:10px;font-weight:600}
+    .poprow .when{margin-left:auto;font-size:11px;color:var(--text-mute)}
+    .popfoot{padding:9px 14px;border-top:1px solid var(--border-soft);font-size:12px;color:var(--text-mute)}
+
+    .finding{border-radius:14px;border:1px solid var(--border);background:var(--panel);padding:16px 18px;
+      display:flex;gap:12px;align-items:flex-start;max-width:74ch}
+    .finding svg{flex:none;margin-top:2px;color:var(--warn)}
+    .finding p{margin:0;font-size:13px;line-height:1.65;color:var(--text-dim);text-wrap:pretty}
+    .finding b{color:var(--text);font-weight:600}
+    .srcs{font-size:12px;line-height:1.7;color:var(--text-mute);border-top:1px solid var(--border-soft);padding-top:16px}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <h1>An announcement is a post, not a chat turn</h1>
+    <p class="lede">
+      The stream renders every announcement through <code>.msgb</code> — a 62%-wide bubble, tucked to the
+      left, next to an avatar, in a column shaped for turn-taking. It reads as one side of a
+      conversation that never comes back. This sheet redraws it as a post, at the real width of the
+      thread pane, and works out what it has to carry.
+    </p>
+  </div>
+
+  <!-- ── the swap ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">The swap</span>
+      <h2>Both at 1:1, in a 784px pane</h2>
+      <p>
+        784px is the thread pane on a 1440 window: 1440 less the 232 rail, the 328 conversation list
+        and six 16px gutters — the shell’s two edges and its gap, then the same three again inside
+        <code>.page.msgs</code>. The bubble uses 62% of that, so a three-line announcement wraps at 486px
+        and leaves a third of the pane empty beside it.
+      </p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:26px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span class="balab now"><span class="badot"></span> Today — .msgb-bubble, max-width 62%</span>
+        <div class="stage">
+          <div class="msgb">
+            <span class="av32">NK</span>
+            <div class="msgb-col">
+              <div class="msgb-name">Naomi Kwan</div>
+              <div class="msgb-bubble">
+                Reading week moves the Thursday gathering to the Chaplaincy lounge, 7pm — the Hub is
+                booked for exams. Same week we’re short two drivers for the Saturday retreat run.
+              </div>
+              <div class="msgb-foot"><span class="msgb-when">2h ago</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="caption" style="max-width:784px">
+          Nothing here says this went to 24 people, and nothing says you can’t answer it. The avatar
+          and the tucked bubble both say the opposite.
+        </p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span class="balab next"><span class="badot"></span> Proposed — a post at full pane width</span>
+        <div class="measured">
+          <div class="stage">
+            <div class="post">
+              <div class="post-head">
+                <span class="av32">NK</span>
+                <span class="post-who">Naomi Kwan</span>
+                <span class="rolechip">Full-timer</span>
+                <span class="post-when">2h ago</span>
+              </div>
+              <div class="post-body">
+                Reading week moves the Thursday gathering to the <strong>Chaplaincy lounge, 7pm</strong> — the
+                Hub is booked for exams.<br><br>
+                Same week we’re short two drivers for the Saturday retreat run. If you can drive, say so
+                in the retreat group and I’ll sort the rota.
+              </div>
+              <div class="post-foot">
+                <span class="react">👍 <span class="n">4</span></span>
+                <span class="react">🙏 <span class="n">1</span></span>
+                <span class="readcount">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7"/><circle cx="12" cy="12" r="3"/></svg>
+                  Read by 9 of 24
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="dims">
+            <div class="dim"><span class="dimn">100%</span><span>Full pane width. The 62% clamp comes off; the post is the only thing in its row.</span></div>
+            <div class="dim"><span class="dimn">16px</span><span>Card radius — the value <code>.msgb-bubble</code> already uses, so the two read as one family.</span></div>
+            <div class="dim"><span class="dimn">14.5 / 1.6</span><span>Body type. One notch of line-height above the bubble’s 1.55: this gets read, not scanned.</span></div>
+            <div class="dim"><span class="dimn">13 / 16</span><span>Head padding, 8/16/14 body, 9/16 foot.</span></div>
+            <div class="dim"><span class="dimn">--bg</span><span>The footer strip drops to page white against the <code>--panel</code> card, which separates it without a second border.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── the state ladder ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">States</span>
+      <h2>Five things a post has to be able to say</h2>
+      <p>
+        Emphasis is carried by the border, not by the fill — the card sits on <code>--panel</code> against a
+        white pane, and a second fill would flatten it. <code>--warn</code> is the announcement colour
+        already: it is what <code>.msgs-cluster.broadcast</code> paints the bell.
+      </p>
+    </div>
+
+    <div class="ladder">
+      <div class="rung">
+        <div class="rungtxt">
+          <span class="rungname">New to you</span>
+          <span class="rungsub">Border goes to <code>--warn</code>: 4.2:1 against the card in light, 7.7:1 in dark. It renders in both — unlike the feed’s unread border, which is 1.04:1 in light (<code>news-filters/Highlight.dc.html</code>).</span>
+        </div>
+        <div class="rungbody">
+          <div class="post fresh">
+            <div class="post-head">
+              <span class="av32">NK</span><span class="post-who">Naomi Kwan</span>
+              <span class="rolechip">Full-timer</span><span class="post-when">2h ago</span>
+            </div>
+            <div class="post-body">Reading week moves the Thursday gathering to the <strong>Chaplaincy lounge, 7pm</strong>.</div>
+            <div class="post-foot">
+              <span class="react">👍 <span class="n">4</span></span>
+              <span class="readcount">Read by 9 of 24</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rungtxt">
+          <span class="rungname">Read, and acknowledged</span>
+          <span class="rungsub">Resting border. “Got it” is per-post and shows back to you, so you can tell a post you have dealt with from one you have merely scrolled past.</span>
+        </div>
+        <div class="rungbody">
+          <div class="post">
+            <div class="post-head">
+              <span class="av32">DO</span><span class="post-who">David Osei</span>
+              <span class="rolechip">Full-timer</span><span class="post-when">Mon, 9:12</span>
+            </div>
+            <div class="post-body">The <strong>new intake form</strong> is live. The old sheet stops syncing on Friday.</div>
+            <div class="post-foot">
+              <span class="react on">👍 <span class="n">11</span></span>
+              <span class="react">🙏 <span class="n">3</span></span>
+              <span class="readcount done">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                You said got it
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rungtxt">
+          <span class="rungname">Pinned</span>
+          <span class="rungsub">A labelled strip rather than a bare border, so pinned and unread are told apart at a glance. Pinning already exists on messages; this is the same flag, drawn for a post.</span>
+        </div>
+        <div class="rungbody">
+          <div class="post pinned">
+            <div class="post-strip">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
+              Pinned — stays at the top until Naomi unpins it
+            </div>
+            <div class="post-head">
+              <span class="av32">NK</span><span class="post-who">Naomi Kwan</span>
+              <span class="rolechip">Full-timer</span><span class="post-when">3 Sep</span>
+            </div>
+            <div class="post-body">Term dates, room bookings and the rota live in <strong>the shared drive</strong>. Check there before asking.</div>
+            <div class="post-foot">
+              <span class="react">🙏 <span class="n">7</span></span>
+              <span class="readcount">Read by 24 of 24</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rungtxt">
+          <span class="rungname">Carrying something</span>
+          <span class="rungsub">Attachments are already supported on any message (<code>ChatAttachment</code>, eight kinds). In a post they sit under the body at card width rather than inside a bubble.</span>
+        </div>
+        <div class="rungbody">
+          <div class="post">
+            <div class="post-head">
+              <span class="av32">DO</span><span class="post-who">David Osei</span>
+              <span class="rolechip">Full-timer</span><span class="post-when">Fri, 16:40</span>
+            </div>
+            <div class="post-body">Saturday’s retreat run — the rota and the pickup points.</div>
+            <div class="attach">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Saturday retreat run — 8:00, Chaplaincy car park
+            </div>
+            <div class="post-foot">
+              <span class="react">👍 <span class="n">6</span></span>
+              <span class="readcount">Read by 18 of 24</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rungtxt">
+          <span class="rungname">The channel opening</span>
+          <span class="rungsub"><code>createAnnouncementRoom</code> posts a system message as its first act. It is not a post and should not be drawn as one — it is the day marker’s sibling.</span>
+        </div>
+        <div class="rungbody">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="daymark"><span class="rule"></span><span>28 August</span><span class="rule"></span></div>
+            <div class="sysline">Naomi Kwan started announcements for “Campus updates”</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── the poster's side ── -->
+  <div class="sec">
+    <div class="sechead">
+      <span class="kicker">The other half</span>
+      <h2>What the person who posted it can see</h2>
+      <p>
+        Today: nothing. You post to 24 people and the app tells you no more than it tells you about a
+        text to one. “Read by 9 of 24” is the cheapest useful thing a broadcast can offer, and the
+        data is a per-post read set — the same shape the unread dot in the conversation list already needs.
+      </p>
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+      <div class="pop">
+        <div class="pophead">
+          <span class="poptitle">Who has read it</span>
+          <span class="popn">9 of 24</span>
+        </div>
+        <div class="popsec">Read</div>
+        <div class="poprow"><span class="av24">AB</span>Amara Boateng<span class="when">2h</span></div>
+        <div class="poprow"><span class="av24">CD</span>Chen Dai<span class="when">2h</span></div>
+        <div class="poprow"><span class="av24">EF</span>Esi Fofana<span class="when">1h</span></div>
+        <div class="poprow"><span class="av24">GH</span>Grace Hollis<span class="when">44m</span></div>
+        <div class="popsec">Not yet</div>
+        <div class="poprow"><span class="av24">FA</span>Femi Adeyemi</div>
+        <div class="poprow"><span class="av24">PR</span>Priya Raman</div>
+        <div class="popfoot">…and 13 more who haven’t opened it.</div>
+      </div>
+      <div style="flex:1;min-width:300px;max-width:60ch;display:flex;flex-direction:column;gap:16px">
+        <p class="caption">
+          Opened from “Read by 9 of 24” in the post footer. Two lists, no percentages, no chart — the
+          only question a poster actually has is <b>who still needs telling</b>, and the answer is a
+          list of names they can act on.
+        </p>
+        <div class="finding">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          <p>
+            <b>This one costs something.</b> A read set is a write per member per post, and
+            <code>firestore.rules</code> would need a path a member can write to on a room they cannot
+            otherwise write to. If that trade isn’t wanted, the footer degrades to the acknowledgement
+            count alone — “4 said got it” — which is a member action, needs no passive tracking, and
+            still answers the poster’s question for the posts where it matters.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="srcs">
+    Bubble geometry from <code>src/index.css</code> (<code>.msgb</code>, <code>.msgb-bubble</code>, <code>.msgb-react</code>,
+    <code>.msgs-stream</code>); pane width computed from <code>.page.msgs</code>’s 328px grid column and 16px gutters.
+    <code>--warn</code> is <code>#BA5900</code> in light and <code>#F2930D</code> in dark. Sample names and counts.
+  </p>
+</div>
+</x-dc>
+</body>
+</html>
