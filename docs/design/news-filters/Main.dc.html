@@ -1,0 +1,455 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --surface-container-low:#F4F4F5;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --primary-container:rgba(10,10,11,0.06); --on-primary-container:#52525B;
+      --accent:#52525B; --accent-line:rgba(10,10,11,0.18); --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --rail:#0A0A0B; --rail-on:#FFFFFF; --rail-on-dim:rgba(255,255,255,0.62);
+      --rail-hover:rgba(255,255,255,0.08); --rail-selected:#FFFFFF; --rail-on-selected:#0A0A0B;
+      --rail-line:rgba(255,255,255,0.10);
+      --gs-outline:#A1A1AA;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    .serif{font-family:"Plus Jakarta Sans",Lexend,ui-sans-serif,system-ui,sans-serif;font-weight:700}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+
+    /* ── shell ── */
+    .shell{display:flex;min-height:100%;padding:16px;gap:16px;background:var(--bg)}
+    .rail{width:232px;flex:none;background:var(--rail);border-radius:32px;
+      box-shadow:0 8px 32px rgba(10,10,11,0.14);padding:16px 0;display:flex;flex-direction:column;gap:2px}
+    .rail-logo{display:flex;align-items:center;gap:10px;margin:0 16px 14px}
+    .rail-tile{width:32px;height:32px;border-radius:14px;background:var(--rail-selected);
+      color:var(--rail-on-selected);display:flex;align-items:center;justify-content:center;
+      font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:14px}
+    .rail-wordmark{color:var(--rail-on);font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:14px;letter-spacing:-0.01em}
+    .rail-item{height:44px;margin:0 8px;padding:0 12px;border-radius:14px;display:flex;align-items:center;gap:12px;
+      color:var(--rail-on-dim);font-size:14px;font-weight:500}
+    .rail-item.on{background:var(--rail-selected);color:var(--rail-on-selected);font-weight:600}
+    .rail-item .badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;
+      background:var(--rail-hover);color:var(--rail-on);font-size:11px;font-weight:600;
+      display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+    .rail-sep{height:1px;background:var(--rail-line);margin:10px 16px}
+
+    .main{flex:1;min-width:0;display:flex;flex-direction:column}
+    .chrome{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px}
+    .gs{width:300px;height:40px;border-radius:16px;background:var(--bg);
+      box-shadow:inset 0 0 0 1px var(--gs-outline);display:flex;align-items:center;gap:8px;padding:0 14px;
+      color:var(--on-surface-variant);font-size:14px}
+    .gs kbd{margin-left:auto;font-family:inherit;font-size:11px;color:var(--on-surface-variant);
+      border:1px solid var(--outline);border-radius:6px;padding:1px 5px}
+    .chrome-spacer{flex:1}
+    .icon-btn{width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+      color:var(--on-surface-variant)}
+    .me{width:40px;height:40px;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);display:flex;align-items:center;justify-content:center;
+      font-size:13px;font-weight:600}
+
+    .page{flex:1;min-height:0;padding:24px 32px 32px}
+    .container{max-width:1280px;margin:0 auto;width:100%}
+    .greeting{font-size:clamp(1.5rem,1.1rem + 1.6vw,2.25rem);line-height:1.15;margin:0 0 4px}
+    .greeting-sub{font-size:14px;color:var(--on-surface-variant);margin:0}
+
+    /* ── feed ── */
+    .feed{margin-top:32px;display:flex;flex-direction:column;gap:16px}
+    .feed-head{display:flex;flex-direction:column;gap:14px}
+    .feed-head-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .feed-title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:24px;
+      letter-spacing:-0.02em;color:var(--on-surface);margin:0}
+    .feed-titlewrap{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+    .count-pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;
+      font-size:12px;font-weight:600;background:var(--accent-soft);color:var(--accent)}
+    .feed-sub{font-size:14px;color:var(--on-surface-variant)}
+    .linkish{font-size:12px;font-weight:500;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+
+    /* filter row — History.tsx:419-451 */
+    .controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+    .segtrack{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;
+      background:var(--surface-container-low);border:1px solid var(--outline-variant)}
+    .segbtn{font-size:13px;padding:6px 12px;border-radius:999px;border:0;background:transparent;
+      color:var(--on-surface-variant);cursor:pointer}
+    .segbtn.on{background:var(--bg);color:var(--on-surface);font-weight:500}
+    .personsel{display:inline-flex;align-items:center;gap:8px;height:40px;padding-left:12px;padding-right:12px;
+      border-radius:999px;background:var(--surface);border:1px solid var(--outline-variant);
+      font-size:14px;color:var(--on-surface)}
+    .personsel .chev{color:var(--on-surface-variant)}
+
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    .col{background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;
+      padding:24px;display:flex;flex-direction:column;gap:16px}
+    .col-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      border-bottom:1px solid var(--outline-variant);padding-bottom:12px}
+    .col-title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:600;font-size:18px;margin:0;color:var(--on-surface)}
+    .col-sub{font-size:12px;color:var(--on-surface-variant)}
+    .bucket{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);opacity:.7;padding:0 4px}
+    .group{display:flex;flex-direction:column;gap:10px}
+    .groups{display:flex;flex-direction:column;gap:20px}
+    .rows{display:flex;flex-direction:column;gap:12px}
+
+    /* stack card — AttentionFeed.tsx:219-225 */
+    .stack{border-radius:16px;border:1px solid var(--outline-variant);background:var(--surface);padding:16px}
+    .stack.read{background:var(--surface);border-color:rgba(240,240,242,0.4)}
+    .stack-row{display:flex;align-items:flex-start;gap:14px}
+    .avatar{width:44px;height:44px;flex:none;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:14px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .line1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .namewrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pname{font-size:16px;font-weight:500;color:var(--on-surface)}
+    .unread-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .rel{font-size:12px;color:var(--on-surface-variant);opacity:.8;flex:none}
+    .phrases{font-size:12px;font-weight:500;color:var(--on-surface-variant);margin-top:4px}
+    .latest{font-size:12px;color:var(--on-surface-variant);opacity:.9;margin:4px 0 0;
+      background:rgba(234,234,236,0.4);border-radius:10px;padding:8px}
+    .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .btn-p{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:0;
+      background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:500;cursor:pointer}
+    .btn-g{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface);
+      font-size:12px;font-weight:500;cursor:pointer}
+    .scan{margin-left:auto;font-size:12px;font-weight:500;color:var(--on-surface-variant);padding:4px 8px}
+
+    /* THE PROPOSAL — interaction marker */
+    .talked{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+      font-size:11px;font-weight:600;color:var(--stage-accent);background:var(--stage-accent-soft)}
+    .teamtag{font-size:11px;font-weight:500;color:var(--on-surface-variant);
+      border:1px solid var(--outline-variant);border-radius:999px;padding:1px 7px}
+
+    /* ambient rows — AttentionFeed.tsx:394 */
+    .ambients{display:flex;flex-direction:column}
+    .ambient{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;
+      border-radius:12px;border-top:1px solid rgba(240,240,242,0.6)}
+    .ambient:first-child{border-top:0}
+    .amb-left{display:flex;align-items:center;gap:10px;min-width:0}
+    .avatar-sm{width:32px;height:32px;flex:none;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:12px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .amb-name{font-size:14px;font-weight:500;color:var(--on-surface)}
+    .amb-action{font-size:12px;color:var(--on-surface-variant)}
+    .amb-btns{display:flex;align-items:center;gap:6px;flex:none}
+    .sq{width:32px;height:32px;border-radius:10px;border:1px solid var(--outline-variant);
+      display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);background:transparent}
+    .showmore{margin-top:8px;padding-top:12px;border-top:1px dashed var(--outline-variant);
+      display:flex;justify-content:center}
+    .pillbtn{padding:4px 12px;border-radius:999px;border:1px solid var(--outline-variant);
+      background:transparent;font-size:12px;font-weight:500;color:var(--on-surface);cursor:pointer}
+  </style>
+</helmet>
+
+<div class="shell">
+  <!-- ── nav rail (ADR 0003 floating slab) ── -->
+  <nav class="rail">
+    <div class="rail-logo">
+      <div class="rail-tile">C</div>
+      <div class="rail-wordmark">Campus Work</div>
+    </div>
+    <div class="rail-item on">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      My Day
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      People
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.2v15M15 5.8v15"/><path d="M3 6.6 9 3.2l6 2.6 6-2.6v14.2l-6 2.6-6-2.6-6 2.6z"/></svg>
+      The Journey
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Gatherings
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg>
+      Prayer
+    </div>
+    <div class="rail-sep"></div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+      <span class="badge">3</span>
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      Questions
+      <span class="badge">2</span>
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Looking back
+    </div>
+    <div class="rail-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+      Settings
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="chrome">
+      <div class="gs">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        Find a person, a moment…
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="chrome-spacer"></div>
+      <div class="icon-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      </div>
+      <div class="me">RA</div>
+    </div>
+
+    <div class="page">
+      <div class="container">
+        <h1 class="serif greeting">Good morning, Ruth</h1>
+        <p class="greeting-sub">Tuesday, 2 September · eight people were met on campus yesterday.</p>
+
+        <!-- ══ THE NEWS FEED ══ -->
+        <section class="feed">
+          <div class="feed-head">
+            <div class="feed-head-top">
+              <div class="feed-titlewrap">
+                <h2 class="feed-title">What's new</h2>
+                <span class="count-pill">9 new</span>
+                <span class="feed-sub">Who was added, and who was talked to.</span>
+              </div>
+              <a class="linkish" href="#">Mark all scanned</a>
+            </div>
+
+            <!-- ▼ NEW: the filter row -->
+            <div class="controls">
+              <div class="segtrack">
+                <button class="segbtn on">Everyone</button>
+                <button class="segbtn">YP team</button>
+                <button class="segbtn">Campus team</button>
+              </div>
+              <label class="personsel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Whole team
+                <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </label>
+            </div>
+          </div>
+
+          <div class="cols">
+            <!-- ── On you ── -->
+            <section class="col">
+              <div class="col-head">
+                <div class="feed-titlewrap">
+                  <h3 class="col-title">On you</h3>
+                  <span class="col-sub">4 people, because you carry them.</span>
+                </div>
+              </div>
+
+              <div class="groups">
+                <div class="group">
+                  <div class="bucket">Today</div>
+                  <div class="rows">
+
+                    <div class="stack">
+                      <div class="stack-row">
+                        <div class="avatar">KM</div>
+                        <div class="grow">
+                          <div class="line1">
+                            <div class="namewrap">
+                              <span class="pname">Kofi Mensah</span>
+                              <span class="unread-dot"></span>
+                              <span class="talked">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Talked
+                              </span>
+                            </div>
+                            <span class="rel">2h</span>
+                          </div>
+                          <div class="phrases">Mei added them · Mei logged “Coffee after the lab”</div>
+                          <p class="latest">Second year, mechanical engineering. Came to the table at Club Rush and asked what a Bible study actually looks like.</p>
+                          <div class="actions">
+                            <button class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</button>
+                            <button class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</button>
+                            <button class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg> All 2</button>
+                            <span class="scan">Mark scanned</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="stack">
+                      <div class="stack-row">
+                        <div class="avatar">EV</div>
+                        <div class="grow">
+                          <div class="line1">
+                            <div class="namewrap">
+                              <span class="pname">Elena Vasquez</span>
+                              <span class="unread-dot"></span>
+                            </div>
+                            <span class="rel">5h</span>
+                          </div>
+                          <div class="phrases">Daniel added them</div>
+                          <p class="latest">A new face to welcome.</p>
+                          <div class="actions">
+                            <button class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</button>
+                            <button class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</button>
+                            <span class="scan">Mark scanned</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <div class="group">
+                  <div class="bucket">Yesterday</div>
+                  <div class="rows">
+                    <div class="stack read">
+                      <div class="stack-row">
+                        <div class="avatar">TB</div>
+                        <div class="grow">
+                          <div class="line1">
+                            <div class="namewrap">
+                              <span class="pname">Tyler Brooks</span>
+                              <span class="talked">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Talked
+                              </span>
+                            </div>
+                            <span class="rel">1d</span>
+                          </div>
+                          <div class="phrases">Priya logged “Walked back to the quad” · 2 more</div>
+                          <p class="latest">Asked good questions about suffering. Wants to come Thursday but works until seven.</p>
+                          <div class="actions">
+                            <button class="btn-p"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> I followed up</button>
+                            <button class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Comment</button>
+                            <button class="btn-g"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg> All 3</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ── Around the team ── -->
+            <section class="col">
+              <div class="col-head">
+                <div class="feed-titlewrap">
+                  <h3 class="col-title">Around the team</h3>
+                  <span class="col-sub">Not yours to carry — good to know.</span>
+                </div>
+                <span class="count-pill">5 new</span>
+              </div>
+
+              <div class="groups">
+                <div class="group">
+                  <div class="bucket">Today</div>
+                  <div class="ambients">
+                    <div class="ambient">
+                      <div class="amb-left">
+                        <div class="avatar-sm">AR</div>
+                        <div>
+                          <div class="amb-name">Aisha Rahman</div>
+                          <div class="amb-action">Grace added them — a new face <span class="teamtag">Campus team</span></div>
+                        </div>
+                      </div>
+                      <div class="amb-btns">
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg></div>
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                      </div>
+                    </div>
+
+                    <div class="ambient">
+                      <div class="amb-left">
+                        <div class="avatar-sm">MC</div>
+                        <div>
+                          <div class="amb-name">Marcus Chen <span class="talked" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div>
+                          <div class="amb-action">Jonah logged “First real conversation” <span class="teamtag">Campus team</span></div>
+                        </div>
+                      </div>
+                      <div class="amb-btns">
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg></div>
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                      </div>
+                    </div>
+
+                    <div class="ambient">
+                      <div class="amb-left">
+                        <div class="avatar-sm">SD</div>
+                        <div>
+                          <div class="amb-name">Sofia Duarte <span class="talked" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div>
+                          <div class="amb-action">Sam logged “Lunch, talked about home” <span class="teamtag">YP team</span></div>
+                        </div>
+                      </div>
+                      <div class="amb-btns">
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg></div>
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                      </div>
+                    </div>
+
+                    <div class="ambient">
+                      <div class="amb-left">
+                        <div class="avatar-sm">LO</div>
+                        <div>
+                          <div class="amb-name">Liam O'Donnell</div>
+                          <div class="amb-action">Andre added them — a new face <span class="teamtag">Campus team</span></div>
+                        </div>
+                      </div>
+                      <div class="amb-btns">
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg></div>
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="group">
+                  <div class="bucket">Yesterday</div>
+                  <div class="ambients">
+                    <div class="ambient">
+                      <div class="amb-left">
+                        <div class="avatar-sm">HK</div>
+                        <div>
+                          <div class="amb-name">Hana Kimura <span class="talked" style="margin-left:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span></div>
+                          <div class="amb-action">Nadia logged “Walked her to class” <span class="teamtag">YP team</span></div>
+                        </div>
+                      </div>
+                      <div class="amb-btns">
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/></svg></div>
+                        <div class="sq"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="showmore"><button class="pillbtn">7 more from the team</button></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC; --surface-container-low:#F4F4F5;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --primary-container:rgba(10,10,11,0.06); --on-primary-container:#52525B;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --flag:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:12px;color:var(--on-surface)}
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:32px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.02;
+      letter-spacing:-0.03em;margin:0}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:70ch;margin:8px 0 0}
+
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+    .card{background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;padding:26px 28px;
+      display:flex;flex-direction:column;gap:16px}
+    .card-head{display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--outline-variant);padding-bottom:14px}
+    .card-title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:20px;
+      letter-spacing:-0.02em;margin:0}
+    .card-sub{font-size:13px;color:var(--on-surface-variant)}
+    .badge-new{display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.06em;padding:2px 7px;border-radius:999px;
+      background:var(--stage-accent-soft);color:var(--stage-accent);margin-left:8px;vertical-align:3px}
+
+    .termrow{display:flex;align-items:center;gap:10px}
+    .termsel{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px;border-radius:999px;
+      background:var(--bg);border:1px solid var(--outline-variant);font-size:14px}
+    .linkish{font-size:12px;font-weight:500;color:var(--accent);
+      text-decoration:underline;text-underline-offset:2px}
+
+    .list{display:flex;flex-direction:column;gap:8px}
+    .pair{background:var(--bg);border:1px solid var(--outline-variant);border-radius:16px;
+      padding:12px 14px;display:flex;align-items:center;gap:12px}
+    .avs{display:flex}
+    .av{width:34px;height:34px;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:12px;font-weight:600;
+      display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+    .av + .av{margin-left:-10px}
+    .pnames{font-size:14px;font-weight:500}
+    .pmeta{font-size:12px;color:var(--on-surface-variant)}
+    .x{margin-left:auto;width:28px;height:28px;border-radius:999px;
+      display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant)}
+
+    .person{background:var(--bg);border:1px solid var(--outline-variant);border-radius:16px;
+      padding:10px 12px;display:flex;align-items:center;gap:12px}
+    .person .av{border:0}
+    .pn{font-size:14px;font-weight:500}
+    .segtrack{margin-left:auto;display:inline-flex;gap:4px;padding:4px;border-radius:999px;
+      background:var(--surface-container-low);border:1px solid var(--outline-variant)}
+    .segbtn{font-size:12.5px;padding:5px 11px;border-radius:999px;border:0;background:transparent;
+      color:var(--on-surface-variant);cursor:pointer;white-space:nowrap}
+    .segbtn.on{background:var(--bg);color:var(--on-surface);font-weight:500}
+
+    .tallies{display:flex;gap:8px;flex-wrap:wrap}
+    .tally{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;
+      font-size:12px;font-weight:500;background:var(--bg);border:1px solid var(--outline-variant);
+      color:var(--on-surface-variant)}
+    .tally b{color:var(--on-surface);font-weight:600}
+    .teamhead{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);opacity:.7;margin-top:4px}
+
+    .notes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px;
+      background:var(--surface-variant);border-radius:24px;padding:28px 30px}
+    .note h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15px;margin:0 0 6px}
+    .note p{margin:0;font-size:12.5px;line-height:1.65;color:var(--on-surface-variant)}
+    .note.flag{border-left:2px solid var(--flag);padding-left:16px}
+    .note.flag h3{color:var(--flag)}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>Where the teams are set</h1>
+    <p class="lede">Teams do not exist anywhere yet &mdash; not on a contact, not on a user, not in the rules. They belong in Settings beside the pairs, as a second reading of the same roster: <strong>who goes out with whom</strong>, and <strong>which team they are on</strong>. Two lists, one set of people, neither derived from the other.</p>
+  </header>
+
+  <div class="two">
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Going out together</h2>
+        <div class="card-sub">Gospel partners for the term. Contacts either one adds are shared with the other.</div>
+      </div>
+      <div class="termrow">
+        <label class="termsel">
+          Fall 2026
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+        </label>
+        <a class="linkish" href="#">Bring over Spring 2026</a>
+      </div>
+      <div class="list">
+        <div class="pair">
+          <div class="avs"><div class="av">MT</div><div class="av">DO</div></div>
+          <div>
+            <div class="pnames">Mei Tanaka &amp; Daniel Okonkwo</div>
+            <div class="pmeta">Tuesdays and Thursdays</div>
+          </div>
+          <div class="x"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+        <div class="pair">
+          <div class="avs"><div class="av">PR</div><div class="av">SW</div></div>
+          <div>
+            <div class="pnames">Priya Raman &amp; Sam Whitfield</div>
+            <div class="pmeta">Wednesdays</div>
+          </div>
+          <div class="x"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+        <div class="pair">
+          <div class="avs"><div class="av">JR</div><div class="av">GL</div></div>
+          <div>
+            <div class="pnames">Jonah Reyes &amp; Grace Lim</div>
+            <div class="pmeta">Mondays and Fridays</div>
+          </div>
+          <div class="x"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+        <div class="pair">
+          <div class="avs"><div class="av">AB</div><div class="av">NH</div></div>
+          <div>
+            <div class="pnames">Andre Baptiste &amp; Nadia Haddad</div>
+            <div class="pmeta">Thursdays</div>
+          </div>
+          <div class="x"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
+        </div>
+      </div>
+      <div class="pmeta">Unchanged. Nothing on this canvas touches it.</div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">Which team they're on<span class="badge-new">New</span></h2>
+        <div class="card-sub">One team each, for the whole roster. This is what the chips on the feed read.</div>
+      </div>
+      <div class="tallies">
+        <span class="tally"><b>4</b> on YP team</span>
+        <span class="tally"><b>4</b> on Campus team</span>
+        <span class="tally">Numbers vary by term</span>
+      </div>
+
+      <div class="teamhead">YP team</div>
+      <div class="list">
+        <div class="person"><div class="av">MT</div><span class="pn">Mei Tanaka</span>
+          <div class="segtrack"><button class="segbtn on">YP</button><button class="segbtn">Campus</button></div></div>
+        <div class="person"><div class="av">DO</div><span class="pn">Daniel Okonkwo</span>
+          <div class="segtrack"><button class="segbtn on">YP</button><button class="segbtn">Campus</button></div></div>
+        <div class="person"><div class="av">PR</div><span class="pn">Priya Raman</span>
+          <div class="segtrack"><button class="segbtn on">YP</button><button class="segbtn">Campus</button></div></div>
+        <div class="person"><div class="av">SW</div><span class="pn">Sam Whitfield</span>
+          <div class="segtrack"><button class="segbtn on">YP</button><button class="segbtn">Campus</button></div></div>
+      </div>
+
+      <div class="teamhead">Campus team</div>
+      <div class="list">
+        <div class="person"><div class="av">JR</div><span class="pn">Jonah Reyes</span>
+          <div class="segtrack"><button class="segbtn">YP</button><button class="segbtn on">Campus</button></div></div>
+        <div class="person"><div class="av">GL</div><span class="pn">Grace Lim</span>
+          <div class="segtrack"><button class="segbtn">YP</button><button class="segbtn on">Campus</button></div></div>
+        <div class="person"><div class="av">AB</div><span class="pn">Andre Baptiste</span>
+          <div class="segtrack"><button class="segbtn">YP</button><button class="segbtn on">Campus</button></div></div>
+        <div class="person"><div class="av">NH</div><span class="pn">Nadia Haddad</span>
+          <div class="segtrack"><button class="segbtn">YP</button><button class="segbtn on">Campus</button></div></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="notes">
+    <div class="note">
+      <h3>Two teams, and the names are yours</h3>
+      <p>&ldquo;YP&rdquo; and &ldquo;Campus&rdquo; are drawn as the two the feedback named, and the tally says numbers vary &mdash; but nothing here assumes two. If a third term brings a third team, this list grows; the chip row on the feed grows with it and wraps, which is why the row is drawn as a wrapping pill track rather than a fixed three-up control.</p>
+    </div>
+    <div class="note">
+      <h3>Pairs and teams are independent</h3>
+      <p>A pair sits inside one team in every case drawn here, because that is how the team was described. Nothing enforces it, and nothing needs to: the feed filter reads the <em>person's</em> team, never the pair's, so a pair that straddles two teams simply shows up under both chips. Leaving them uncoupled means a pair can be re-cut mid-term without disturbing the teams.</p>
+    </div>
+    <div class="note flag">
+      <h3>What this costs to build</h3>
+      <p>One field on the user document, and the same field added to the <code>firestore.rules</code> user allowlist &mdash; without that second line every write is rejected and the picker silently does nothing. Both copies of the roster helper need it. Admin-only, like the pairs beside it.</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>

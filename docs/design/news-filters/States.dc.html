@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC; --surface-container-low:#F4F4F5;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --primary-container:rgba(10,10,11,0.06); --on-primary-container:#52525B;
+      --accent:#52525B; --accent-line:rgba(10,10,11,0.18); --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --measure:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:40px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.02;
+      letter-spacing:-0.03em;margin:0}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:62ch;margin:8px 0 0}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:22px;letter-spacing:-0.02em;margin:0 0 4px}
+    .note{font-size:13px;color:var(--on-surface-variant);margin:0;max-width:70ch}
+    .rule{height:1px;background:var(--outline-variant);border:0;margin:0}
+
+    /* controls */
+    .controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+    .segtrack{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;
+      background:var(--surface-container-low);border:1px solid var(--outline-variant)}
+    .segbtn{font-size:13px;padding:6px 12px;border-radius:999px;border:0;background:transparent;
+      color:var(--on-surface-variant);cursor:pointer}
+    .segbtn.on{background:var(--bg);color:var(--on-surface);font-weight:500}
+    .personsel{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px;
+      border-radius:999px;background:var(--surface);border:1px solid var(--outline-variant);
+      font-size:14px;color:var(--on-surface)}
+    .personsel.set{border-color:var(--primary)}
+    .clearbtn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;
+      color:var(--accent);background:transparent;border:0;cursor:pointer;
+      text-decoration:underline;text-underline-offset:2px}
+
+    /* anatomy */
+    .anatomy{background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;padding:32px}
+    .measures{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:26px}
+    .measure{border-left:2px solid var(--measure);padding-left:12px}
+    .measure dt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--measure);margin-bottom:3px}
+    .measure dd{margin:0;font-size:12.5px;color:var(--on-surface-variant);line-height:1.5}
+    .measure code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:11.5px;color:var(--on-surface)}
+
+    /* states */
+    .states{display:flex;flex-direction:column;gap:24px}
+    .state{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start;
+      background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;padding:26px 28px}
+    .state-label{display:flex;flex-direction:column;gap:6px}
+    .state-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;letter-spacing:-0.012em}
+    .state-desc{font-size:12.5px;color:var(--on-surface-variant);line-height:1.55}
+    .state-body{display:flex;flex-direction:column;gap:16px}
+    .result-head{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);opacity:.7}
+    .results{background:var(--bg);border:1px solid var(--outline-variant);border-radius:16px;overflow:hidden}
+    .rrow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--outline-variant)}
+    .rrow:first-child{border-top:0}
+    .rrow.out{opacity:.32}
+    .av{width:28px;height:28px;flex:none;border-radius:999px;background:var(--primary-container);
+      color:var(--on-primary-container);font-size:11px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .rname{font-size:13.5px;font-weight:500;color:var(--on-surface)}
+    .rby{font-size:12px;color:var(--on-surface-variant);margin-left:auto;text-align:right}
+    .talked{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+      font-size:11px;font-weight:600;color:var(--stage-accent);background:var(--stage-accent-soft)}
+    .teamtag{font-size:11px;font-weight:500;color:var(--on-surface-variant);
+      border:1px solid var(--outline-variant);border-radius:999px;padding:1px 7px}
+
+    /* empty */
+    .empty{background:var(--bg);border:1px solid var(--outline-variant);border-radius:16px;
+      padding:44px 24px;text-align:center}
+    .empty h4{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:20px;margin:0 0 4px}
+    .empty p{font-size:14px;color:var(--on-surface-variant);margin:0 0 14px}
+    .pillbtn{padding:6px 14px;border-radius:999px;border:1px solid var(--outline-variant);
+      background:var(--bg);font-size:13px;font-weight:500;color:var(--on-surface);cursor:pointer}
+    .menu{width:236px;background:var(--surface-variant);border:1px solid var(--outline-variant);
+      border-radius:16px;padding:8px;box-shadow:0 16px 32px rgba(0,0,0,0.16)}
+    .mitem{padding:7px 12px;border-radius:999px;font-size:13.5px;color:var(--on-surface);
+      display:flex;align-items:center;gap:8px}
+    .mitem.on{background:var(--bg);font-weight:500}
+    .mhead{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);opacity:.7;padding:6px 12px 4px}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>The filter row</h1>
+    <p class="lede">Two controls, in the clothes <em>Looking back</em> already wears — the same pill group and the same person select, so the two feeds read as siblings rather than as two people's ideas. No search field: the feed is already stacked per person and cut off at five, and a third control would earn nothing.</p>
+  </header>
+
+  <section class="anatomy">
+    <h2>Anatomy, at 1:1</h2>
+    <p class="note">Every value here is lifted from <code>History.tsx:419&ndash;451</code>. Nothing is new but the labels.</p>
+    <div style="margin-top:24px">
+      <div class="controls">
+        <div class="segtrack">
+          <button class="segbtn on">Everyone</button>
+          <button class="segbtn">YP team</button>
+          <button class="segbtn">Campus team</button>
+        </div>
+        <label class="personsel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Whole team
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+        </label>
+      </div>
+    </div>
+    <dl class="measures">
+      <div class="measure">
+        <dt>Track</dt>
+        <dd>999px radius, 4px pad, <code>--surface-container-low</code> on a 1px <code>--outline-variant</code> border.</dd>
+      </div>
+      <div class="measure">
+        <dt>Chip</dt>
+        <dd>13px / 6px&#215;12px / 999px. Selected takes <code>--background</code> and <code>--on-surface</code>; the rest are <code>--on-surface-variant</code>.</dd>
+      </div>
+      <div class="measure">
+        <dt>Select</dt>
+        <dd>40px tall, 12px inset, 999px, <code>--surface</code> on <code>--outline-variant</code>. Border goes to <code>--primary</code> on focus and while set.</dd>
+      </div>
+      <div class="measure">
+        <dt>Row</dt>
+        <dd>12px gap, wraps. Sits under the title, above both columns &mdash; one row governs the whole feed, not each column.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>The states</h2>
+    <p class="note" style="margin-bottom:22px">The team chips filter on <strong>who did it</strong> &mdash; the trainee who added the contact or logged the conversation &mdash; not on the contact. That is the only axis on which a team means anything.</p>
+
+    <div class="states">
+
+      <article class="state">
+        <div class="state-label">
+          <div class="state-name">Resting</div>
+          <div class="state-desc">Everyone, whole team. What a full-timer sees on landing. The select reads &ldquo;Whole team&rdquo;, not a name, so the resting state never looks filtered.</div>
+        </div>
+        <div class="state-body">
+          <div class="controls">
+            <div class="segtrack">
+              <button class="segbtn on">Everyone</button>
+              <button class="segbtn">YP team</button>
+              <button class="segbtn">Campus team</button>
+            </div>
+            <label class="personsel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Whole team
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+            </label>
+          </div>
+          <div>
+            <div class="result-head" style="margin-bottom:8px">9 people</div>
+            <div class="results">
+              <div class="rrow"><div class="av">KM</div><span class="rname">Kofi Mensah</span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span><span class="rby">Mei &middot; <span class="teamtag">YP team</span></span></div>
+              <div class="rrow"><div class="av">EV</div><span class="rname">Elena Vasquez</span><span class="rby">Daniel &middot; <span class="teamtag">YP team</span></span></div>
+              <div class="rrow"><div class="av">AR</div><span class="rname">Aisha Rahman</span><span class="rby">Grace &middot; <span class="teamtag">Campus team</span></span></div>
+              <div class="rrow"><div class="av">MC</div><span class="rname">Marcus Chen</span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span><span class="rby">Jonah &middot; <span class="teamtag">Campus team</span></span></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="state">
+        <div class="state-label">
+          <div class="state-name">A team is chosen</div>
+          <div class="state-desc">The chip takes the selected fill. Both columns narrow together; the counts in the header and in each column head recount against the filter, so &ldquo;4 people&rdquo; always describes what is on screen.</div>
+        </div>
+        <div class="state-body">
+          <div class="controls">
+            <div class="segtrack">
+              <button class="segbtn">Everyone</button>
+              <button class="segbtn on">YP team</button>
+              <button class="segbtn">Campus team</button>
+            </div>
+            <label class="personsel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Whole YP team
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+            </label>
+            <button class="clearbtn">Clear</button>
+          </div>
+          <div>
+            <div class="result-head" style="margin-bottom:8px">4 people &middot; from Mei, Daniel, Priya, Sam</div>
+            <div class="results">
+              <div class="rrow"><div class="av">KM</div><span class="rname">Kofi Mensah</span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span><span class="rby">Mei</span></div>
+              <div class="rrow"><div class="av">EV</div><span class="rname">Elena Vasquez</span><span class="rby">Daniel</span></div>
+              <div class="rrow out"><div class="av">AR</div><span class="rname">Aisha Rahman</span><span class="rby">Grace &middot; Campus team</span></div>
+              <div class="rrow out"><div class="av">MC</div><span class="rname">Marcus Chen</span><span class="rby">Jonah &middot; Campus team</span></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="state">
+        <div class="state-label">
+          <div class="state-name">Down to one teammate</div>
+          <div class="state-desc">The select's options are scoped by the chip above it &mdash; pick YP team and only its four trainees are offered. Its border takes <code>--primary</code> so a narrowed select is visible without a second badge.</div>
+        </div>
+        <div class="state-body">
+          <div class="controls">
+            <div class="segtrack">
+              <button class="segbtn">Everyone</button>
+              <button class="segbtn on">YP team</button>
+              <button class="segbtn">Campus team</button>
+            </div>
+            <label class="personsel set">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Mei Tanaka
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+            </label>
+            <button class="clearbtn">Clear</button>
+          </div>
+          <div style="display:flex;gap:20px;align-items:flex-start">
+            <div class="menu">
+              <div class="mhead">YP team</div>
+              <div class="mitem on">Mei Tanaka</div>
+              <div class="mitem">Daniel Okonkwo</div>
+              <div class="mitem">Priya Raman</div>
+              <div class="mitem">Sam Whitfield</div>
+              <div class="mhead">Everyone</div>
+              <div class="mitem">Whole YP team</div>
+            </div>
+            <div style="flex:1">
+              <div class="result-head" style="margin-bottom:8px">2 people &middot; from Mei</div>
+              <div class="results">
+                <div class="rrow"><div class="av">KM</div><span class="rname">Kofi Mensah</span><span class="talked"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Talked</span><span class="rby">Mei</span></div>
+                <div class="rrow"><div class="av">SD</div><span class="rname">Sofia Duarte</span><span class="rby">Mei</span></div>
+                <div class="rrow out"><div class="av">EV</div><span class="rname">Elena Vasquez</span><span class="rby">Daniel</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="state">
+        <div class="state-label">
+          <div class="state-name">Nothing matches</div>
+          <div class="state-desc">The one state that must not be skipped. The feed returns <code>null</code> when it has no stacks &mdash; under a filter that would make the whole section vanish and read as a bug. It has to say so instead, the way <em>Looking back</em> does.</div>
+        </div>
+        <div class="state-body">
+          <div class="controls">
+            <div class="segtrack">
+              <button class="segbtn">Everyone</button>
+              <button class="segbtn">YP team</button>
+              <button class="segbtn on">Campus team</button>
+            </div>
+            <label class="personsel set">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Andre Baptiste
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--on-surface-variant)"><path d="m6 9 6 6 6-6"/></svg>
+            </label>
+            <button class="clearbtn">Clear</button>
+          </div>
+          <div class="empty">
+            <h4>Nothing from Andre this week</h4>
+            <p>Try the whole Campus team, or widen to everyone.</p>
+            <button class="pillbtn">Show everyone</button>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+</div>
+</x-dc>
+</body>
+</html>
