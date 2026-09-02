@@ -521,11 +521,12 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     }
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
                   >
-                    <option value="">{t('modals.select_background')}</option>
-                    <option value="Christian">{t('modals.christian')}</option>
-                    <option value="Catholic">{t('modals.catholic')}</option>
-                    <option value="Other">{t('modals.other_religion')}</option>
-                    <option value="None">{t('modals.none')}</option>
+                    <option value="">{t('modals.contactDetails.spiritual_background_placeholder')}</option>
+                    <option value="Exploring">{t('modals.contactDetails.spiritual_exploring')}</option>
+                    <option value="Christian">{t('modals.contactDetails.christian')}</option>
+                    <option value="Catholic">{t('modals.contactDetails.catholic')}</option>
+                    <option value="Other">{t('modals.contactDetails.other_religion')}</option>
+                    <option value="None">{t('modals.contactDetails.none')}</option>
                   </select>
                 </div>
 

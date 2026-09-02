@@ -476,6 +476,30 @@ describe('NewContactModal', () => {
     });
   });
 
+  it('renders localized spiritual background options and placeholder without raw i18n keys', async () => {
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    await waitFor(() => {
+      expect(screen.getByText('SPIRITUAL BACKGROUND')).toBeInTheDocument();
+    });
+
+    // Verify raw translation key is not rendered
+    expect(screen.queryByText('modals.select_background')).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Select background...' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Exploring Faith' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Christian' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Catholic' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Other Religion / Background' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'None' })).toBeInTheDocument();
+  });
+
   it('does not render when isOpen is false', () => {
     const { container } = render(<NewContactModal isOpen={false} onClose={vi.fn()} />);
     expect(screen.queryByText('New Contact')).not.toBeInTheDocument();
