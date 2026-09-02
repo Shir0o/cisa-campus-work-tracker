@@ -950,14 +950,21 @@ function IntegrationsSection({
         {/* Channels */}
         <ChannelCard
           Icon={Command}
-          title="Siri & the developer API"
-          blurb="Add contacts from iOS Shortcuts, Siri, or your own automations."
+          title="Siri & iOS Shortcuts / Home Widget"
+          blurb="Add contacts from iOS Shortcuts, Home Screen widgets, Siri voice, or your own automations."
           defaultOpen
         >
           <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            Say “Hey Siri, Quick Add…” and pass a raw description, or POST to the endpoint directly from any pipeline —
-            same parser, same result.
+            Say “Hey Siri, Quick Add…” or tap an iOS Home Screen Quick-Add widget to pass a raw voice note or text description directly into the tracker.
           </p>
+          <Steps
+            items={[
+              'In the Apple Shortcuts app, create a new Shortcut named "Quick Add".',
+              'Add "Dictate Text" (for Siri voice) or "Ask for Input" (for Home Screen widget).',
+              'Add "Get Contents of URL" pointing to this POST endpoint with JSON body {"text": "<Input/Dictated Text>"}.',
+              'Add the shortcut to your iPhone Home Screen as a widget or trigger it hands-free with Siri.',
+            ]}
+          />
           <CodeBlock label="POST · curl request template" code={curlCommand} />
         </ChannelCard>
 
