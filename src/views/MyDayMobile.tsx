@@ -69,7 +69,7 @@ interface MyDayMobileProps {
   hideCompleted?: boolean;
   onToggleHideCompleted?: () => void;
   hasCompleted?: boolean;
-  onUpdatePrayerStatus?: (id: string, status: string, answer?: string, answeredAt?: string | null) => void;
+  onUpdatePrayerStatus?: (id: string, status: string, answer?: string, answeredAt?: string | null, archiveReason?: string) => void;
   onUpdatePersonalPrayer?: (id: string, patch: any) => void;
   onDeletePersonalPrayer?: (id: string) => void;
   onAddPersonalPrayer?: (title: string, contactId?: string) => void;

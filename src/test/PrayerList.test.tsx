@@ -322,9 +322,74 @@ describe('PrayerList', () => {
     fireEvent.click(ongoingButton);
     expect(updateDoc).toHaveBeenCalled();
 
-    // Mark as Still waiting
+    // Mark as Still waiting / Archived
     const unansweredButton = screen.getAllByRole('button', { name: 'Archived' })[0];
     fireEvent.click(unansweredButton);
+    expect(updateDoc).toHaveBeenCalled();
+
+    // Verify archive reason composer appears
+    expect(await screen.findByPlaceholderText(/A note on why this is archived/i)).toBeInTheDocument();
+  });
+
+  it('handles writing, saving, editing, and skipping an archive reason when marking prayer as archived', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    const archiveBtn = screen.getAllByRole('button', { name: 'Archived' })[0];
+    fireEvent.click(archiveBtn);
+
+    const textarea = await screen.findByPlaceholderText(/A note on why this is archived/i);
+    fireEvent.change(textarea, { target: { value: 'Graduated and moved away' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      const calls = vi.mocked(updateDoc).mock.calls;
+      const patch = calls[calls.length - 1][1] as unknown as Record<string, unknown>;
+      expect(patch.archiveReason).toBe('Graduated and moved away');
+      expect(patch.status).toBe('unanswered');
+    });
+  });
+
+  it('handles editing an existing archive reason on archived prayer', async () => {
+    const archivedPrayer = [
+      {
+        id: 'p-arch',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Graduation prayers',
+          date: '2026-06-12T00:00:00.000Z',
+          status: 'unanswered',
+          archiveReason: 'No longer on campus',
+          updatedAt: '2026-06-12T00:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: archivedPrayer, size: 1 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Graduation prayers')).toBeInTheDocument());
+
+    expect(screen.getByText('No longer on campus')).toBeInTheDocument();
+    const editReasonBtn = screen.getByText('Edit Reason');
+    fireEvent.click(editReasonBtn);
+
+    const textarea = screen.getByDisplayValue('No longer on campus');
+    fireEvent.change(textarea, { target: { value: 'Graduated and moved to another city' } });
+
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveBtn);
+
     expect(updateDoc).toHaveBeenCalled();
   });
 

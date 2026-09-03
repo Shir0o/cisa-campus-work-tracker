@@ -107,6 +107,62 @@ describe('TeamPrayerRow', () => {
     expect(screen.queryByText(/How was it answered/)).not.toBeInTheDocument();
   });
 
+  it('saves an archive reason through the composer when marking as archive', () => {
+    const onUpdateStatus = vi.fn();
+    render(
+      <TeamPrayerRow
+        prayer={prayer({ status: 'pending' })}
+        first
+        onUpdateStatus={onUpdateStatus}
+        onOpenContact={vi.fn()}
+        onOpenPrayerLog={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('archive'));
+    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'unanswered', undefined, undefined, undefined);
+
+    fireEvent.change(screen.getByPlaceholderText(/A note on why this is archived/), {
+      target: { value: 'Moved out of area' },
+    });
+    fireEvent.click(screen.getByText('Save'));
+    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'unanswered', undefined, undefined, 'Moved out of area');
+  });
+
+  it('edits an existing archive reason', () => {
+    const onUpdateStatus = vi.fn();
+    render(
+      <TeamPrayerRow
+        prayer={prayer({ status: 'unanswered', archiveReason: 'Old reason' })}
+        first
+        onUpdateStatus={onUpdateStatus}
+        onOpenContact={vi.fn()}
+        onOpenPrayerLog={vi.fn()}
+      />
+    );
+    expect(screen.getByText('Old reason')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Edit Reason'));
+    const textarea = screen.getByPlaceholderText(/A note on why this is archived/);
+    fireEvent.change(textarea, { target: { value: 'New archive reason' } });
+    fireEvent.click(screen.getByText('Save'));
+    expect(onUpdateStatus).toHaveBeenCalledWith('p1', 'unanswered', undefined, undefined, 'New archive reason');
+  });
+
+  it('skips out of the archive reason composer without saving', () => {
+    const onUpdateStatus = vi.fn();
+    render(
+      <TeamPrayerRow
+        prayer={prayer({ status: 'pending' })}
+        first
+        onUpdateStatus={onUpdateStatus}
+        onOpenContact={vi.fn()}
+        onOpenPrayerLog={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('archive'));
+    fireEvent.click(screen.getByText('Skip'));
+    expect(screen.queryByText(/Why is this archived/)).not.toBeInTheDocument();
+  });
+
   it('updates prayer status even when prayer has prayerPage true', () => {
     const onUpdateStatus = vi.fn();
     render(

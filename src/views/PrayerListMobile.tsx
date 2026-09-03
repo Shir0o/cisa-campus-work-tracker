@@ -23,7 +23,7 @@ interface PrayerListMobileProps {
   setGenderFilter?: (v: 'all' | 'brothers' | 'sisters') => void;
   startHolding: (contact: Contact) => void;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, photos?: any, archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenContact: (contact: Contact) => void;
   answeredThisYear: number;
@@ -301,7 +301,7 @@ interface PrayerThreadCardProps {
   prayers: PrayerRecord[];
   autoCompose: boolean;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, photos?: any, archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
   onRemove: () => void;
@@ -591,7 +591,7 @@ function PrayerItemMobile({
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, photos?: any, archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
@@ -604,6 +604,8 @@ function PrayerItemMobile({
   const [draft, setDraft] = useState(prayer.burden);
   const [answering, setAnswering] = useState(false);
   const [howDraft, setHowDraft] = useState(prayer.answer || '');
+  const [archiving, setArchiving] = useState(false);
+  const [archiveReasonDraft, setArchiveReasonDraft] = useState(prayer.archiveReason || '');
 
   const startEdit = () => {
     setDraft(prayer.burden);
@@ -768,6 +770,67 @@ function PrayerItemMobile({
         </div>
       )}
 
+      {/* Archive reason display */}
+      {!editing && !archiving && prayer.status === 'unanswered' && prayer.archiveReason && (
+        <div className="mt-2.5 text-xs bg-surface-variant/40 border border-outline-variant/60 rounded-xl p-3 max-w-full">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-on-surface-variant">
+              {t('prayers.archive_reason', 'Archive reason')}
+            </span>
+            {isOperator && (
+              <button
+                onClick={() => {
+                  setArchiveReasonDraft(prayer.archiveReason || "");
+                  setArchiving(true);
+                }}
+                className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
+              >
+                {t('prayers.edit_archive_reason', 'Edit Reason')}
+              </button>
+            )}
+          </div>
+          <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
+            "<Translate text={prayer.archiveReason} />"
+          </p>
+        </div>
+      )}
+
+      {/* Archive reason compose box */}
+      {archiving && (
+        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-xl border border-outline-variant/60">
+          <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
+            {t('prayers.why_is_it_archived', 'Why is this archived?')}
+          </label>
+          <textarea
+            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
+            autoFocus
+            rows={2}
+            value={archiveReasonDraft}
+            onChange={(e) => setArchiveReasonDraft(e.target.value)}
+            placeholder={t('prayers.archive_reason_placeholder', 'A note on why this is archived (optional)')}
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full text-[11px] text-on-surface-variant hover:bg-surface-variant"
+              onClick={() => setArchiving(false)}
+            >
+              {t('prayers.skip')}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full text-[11px] bg-primary text-on-primary font-semibold"
+              onClick={() => {
+                onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, archiveReasonDraft.trim());
+                setArchiving(false);
+              }}
+            >
+              {t('actions.save')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Marks status dropdown */}
       {isOperator && (
         <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
@@ -783,17 +846,28 @@ function PrayerItemMobile({
               onChange={(e) => {
                 const val = e.target.value as Status | '';
                 if (!val) {
+                  setAnswering(false);
+                  setArchiving(false);
                   onUpdateStatus(prayer, 'pending');
                   return;
                 }
                 if (val === 'answered') {
+                  setArchiving(false);
                   onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || format(new Date(), 'MMM d'));
                   if (!prayer.answer) {
                     setHowDraft("");
                     setAnswering(true);
                   }
+                } else if (val === 'unanswered') {
+                  setAnswering(false);
+                  onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, prayer.archiveReason || undefined);
+                  if (!prayer.archiveReason) {
+                    setArchiveReasonDraft("");
+                    setArchiving(true);
+                  }
                 } else {
                   setAnswering(false);
+                  setArchiving(false);
                   onUpdateStatus(prayer, val);
                 }
               }}

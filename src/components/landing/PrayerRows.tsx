@@ -20,13 +20,15 @@ export function TeamPrayerRow({
   prayer: PrayerRecord;
   contact?: Contact;
   first: boolean;
-  onUpdateStatus: (id: string, status: PrayerRecord["status"], answer?: string, answeredAt?: string) => void;
+  onUpdateStatus: (id: string, status: PrayerRecord["status"], answer?: string, answeredAt?: string, archiveReason?: string) => void;
   onOpenContact: (contact: Contact) => void;
   onOpenPrayerLog: () => void;
 }) {
   const { t } = useLanguage();
   const [answering, setAnswering] = useState(false);
   const [howDraft, setHowDraft] = useState(prayer.answer || "");
+  const [archiving, setArchiving] = useState(false);
+  const [archiveReasonDraft, setArchiveReasonDraft] = useState(prayer.archiveReason || "");
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const teamPrayerPills = useMemo<{ val: PrayerRecord["status"]; label: string; tone: PillTone }[]>(() => [
@@ -37,13 +39,22 @@ export function TeamPrayerRow({
 
   const handleStatusChange = (status: PrayerRecord["status"]) => {
     if (status === "answered") {
+      setArchiving(false);
       onUpdateStatus(prayer.id, "answered", prayer.answer || undefined, prayer.answeredAt || today);
       if (!prayer.answer) {
         setHowDraft("");
         setAnswering(true);
       }
+    } else if (status === "unanswered") {
+      setAnswering(false);
+      onUpdateStatus(prayer.id, "unanswered", undefined, undefined, prayer.archiveReason || undefined);
+      if (!prayer.archiveReason) {
+        setArchiveReasonDraft("");
+        setArchiving(true);
+      }
     } else {
       setAnswering(false);
+      setArchiving(false);
       onUpdateStatus(prayer.id, status, undefined, undefined);
     }
   };
@@ -51,6 +62,11 @@ export function TeamPrayerRow({
   const saveAnswer = () => {
     onUpdateStatus(prayer.id, "answered", howDraft.trim(), prayer.answeredAt || today);
     setAnswering(false);
+  };
+
+  const saveArchiveReason = () => {
+    onUpdateStatus(prayer.id, "unanswered", undefined, undefined, archiveReasonDraft.trim());
+    setArchiving(false);
   };
 
   return (
@@ -138,6 +154,61 @@ export function TeamPrayerRow({
                   type="button"
                   className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
                   onClick={saveAnswer}
+                >
+                  {t("actions.save", "Save")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!archiving && prayer.status === "unanswered" && prayer.archiveReason && (
+            <div className="mt-2 text-sm bg-surface-variant/40 border border-outline-variant/60 rounded-xl p-3 max-w-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-on-surface-variant">
+                  {t("prayers.archive_reason", "Archive reason")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArchiveReasonDraft(prayer.archiveReason || "");
+                    setArchiving(true);
+                  }}
+                  className="text-[11px] text-on-surface-variant hover:text-accent font-medium"
+                >
+                  {t("prayers.edit_archive_reason", "Edit Reason")}
+                </button>
+              </div>
+              <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
+                "<Translate text={prayer.archiveReason} />"
+              </p>
+            </div>
+          )}
+
+          {archiving && (
+            <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+              <label className="block text-xs font-medium text-on-surface-variant mb-1">
+                {t("prayers.why_is_it_archived", "Why is this archived?")}
+              </label>
+              <textarea
+                className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+                autoFocus
+                rows={2}
+                value={archiveReasonDraft}
+                onChange={(e) => setArchiveReasonDraft(e.target.value)}
+                placeholder={t("prayers.archive_reason_placeholder", "A note on why this is archived (optional)")}
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+                  onClick={() => setArchiving(false)}
+                >
+                  {t("actions.skip", "Skip")}
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+                  onClick={saveArchiveReason}
                 >
                   {t("actions.save", "Save")}
                 </button>

@@ -196,6 +196,8 @@ export interface PrayerRecord {
   answeredAt?: string;
   /** Photos attached to "how it was answered" (mirrors web `PrayerRecord`). */
   answeredPhotos?: { path: string; url: string; name?: string }[];
+  /** Optional reason explaining why a prayer was archived (#708). */
+  archiveReason?: string;
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;

@@ -284,20 +284,28 @@ export default function PrayerList() {
     answer?: string,
     answeredAt?: string,
     answeredPhotos?: VisitPhoto[],
+    archiveReason?: string,
   ) => {
     try {
       const clean: Record<string, any> = { status: newStatus, ...stamp() };
       if (answer !== undefined) clean.answer = answer;
       if (answeredAt !== undefined) clean.answeredAt = answeredAt;
       if (answeredPhotos !== undefined) clean.answeredPhotos = answeredPhotos;
+      if (archiveReason !== undefined) clean.archiveReason = archiveReason;
       await updateDoc(doc(db, 'prayers', prayer.id), clean);
+      let desc = `Status changed to ${newStatus}`;
+      if (newStatus === 'answered' && answer) {
+        desc = `Answered: "${answer}"`;
+      } else if (newStatus === 'unanswered' && archiveReason) {
+        desc = `Archived: "${archiveReason}"`;
+      }
       logActivity({
         action: `marked a prayer burden as ${newStatus} for`,
         targetId: prayer.contactId,
         targetName: contactName(prayer.contactId),
         targetType: 'contact',
         type: 'edit',
-        description: answer ? `Answered: "${answer}"` : `Status changed to ${newStatus}`,
+        description: desc,
       });
     } catch (error) {
       console.error('Error updating status:', error);
@@ -745,7 +753,7 @@ function PrayerThread({
   team?: TodoPerson[];
   autoCompose: boolean;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
   onStopHolding: (contactId: string) => void;
@@ -1036,7 +1044,7 @@ function PrayerItem({
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
@@ -1052,6 +1060,9 @@ function PrayerItem({
   const [answerPhotos, setAnswerPhotos] = useState<VisitPhoto[]>(prayer.answeredPhotos || []);
   const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
   const [savingAnswer, setSavingAnswer] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveReasonDraft, setArchiveReasonDraft] = useState(prayer.archiveReason || '');
+  const [savingArchiveReason, setSavingArchiveReason] = useState(false);
   const answerFileRef = useRef<HTMLInputElement>(null);
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -1080,6 +1091,11 @@ function PrayerItem({
     setAnswering(true);
   };
 
+  const openArchiveComposer = () => {
+    setArchiveReasonDraft(prayer.archiveReason || '');
+    setArchiving(true);
+  };
+
   const addAnswerFiles = (files: FileList | null) => {
     if (!files) return;
     const remaining = MAX_ANSWER_PHOTOS - answerPhotos.length - newPhotoFiles.length;
@@ -1097,6 +1113,13 @@ function PrayerItem({
     onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || today, photos);
     setSavingAnswer(false);
     setAnswering(false);
+  };
+
+  const saveArchiveReason = () => {
+    setSavingArchiveReason(true);
+    onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, archiveReasonDraft.trim());
+    setSavingArchiveReason(false);
+    setArchiving(false);
   };
 
   const dimmed = prayer.status === 'answered' || variant === 'earlier';
@@ -1229,6 +1252,28 @@ function PrayerItem({
         </div>
       )}
 
+      {/* Archive reason display */}
+      {!editing && !archiving && prayer.status === 'unanswered' && prayer.archiveReason && (
+        <div className="mt-2 text-sm bg-surface-variant/40 border border-outline-variant/60 rounded-xl p-3 max-w-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-on-surface-variant">
+              {t('prayers.archive_reason', 'Archive reason')}
+            </span>
+            {isOperator && (
+              <button
+                onClick={openArchiveComposer}
+                className="text-[11px] text-on-surface-variant hover:text-accent font-medium"
+              >
+                {t('prayers.edit_archive_reason', 'Edit Reason')}
+              </button>
+            )}
+          </div>
+          <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
+            "<Translate text={prayer.archiveReason} />"
+          </p>
+        </div>
+      )}
+
       {/* Testimony compose box */}
       {answering && (
         <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
@@ -1325,6 +1370,40 @@ function PrayerItem({
         </div>
       )}
 
+      {/* Archive reason compose box */}
+      {archiving && (
+        <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+          <label className="block text-[11px]   font-semibold text-on-surface-variant mb-1">
+            {t('prayers.why_is_it_archived', 'Why is this archived?')}
+          </label>
+          <textarea
+            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+            autoFocus
+            rows={2}
+            value={archiveReasonDraft}
+            onChange={(e) => setArchiveReasonDraft(e.target.value)}
+            placeholder={t('prayers.archive_reason_placeholder', 'A note on why this is archived (optional)')}
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+              onClick={() => setArchiving(false)}
+            >
+              {t('prayers.skip')}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary disabled:opacity-50"
+              disabled={savingArchiveReason}
+              onClick={saveArchiveReason}
+            >
+              {savingArchiveReason ? t('prayers.saving') : t('actions.save')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Mark */}
       {isOperator && (
         <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
@@ -1336,8 +1415,8 @@ function PrayerItem({
               <button
                 key={s}
                 onClick={() => {
-                  console.log("STATUS_CLICK", s, prayer.id);
                   if (s === 'answered') {
+                    setArchiving(false);
                     if (prayer.status === 'answered') {
                       onUpdateStatus(prayer, 'pending', undefined, undefined);
                       setAnswering(false);
@@ -1347,8 +1426,20 @@ function PrayerItem({
                         openAnswerComposer();
                       }
                     }
+                  } else if (s === 'unanswered') {
+                    setAnswering(false);
+                    if (prayer.status === 'unanswered') {
+                      onUpdateStatus(prayer, 'pending', undefined, undefined);
+                      setArchiving(false);
+                    } else {
+                      onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, prayer.archiveReason || undefined);
+                      if (!prayer.archiveReason) {
+                        openArchiveComposer();
+                      }
+                    }
                   } else {
                     setAnswering(false);
+                    setArchiving(false);
                     onUpdateStatus(prayer, prayer.status === s ? 'pending' : s, undefined, undefined);
                   }
                 }}
