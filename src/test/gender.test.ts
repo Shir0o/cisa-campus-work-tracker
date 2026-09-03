@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inferGenderFromName, normalizeGender, genderTag } from '../lib/gender';
+import { inferGenderFromName, normalizeGender, genderTag, planGenderTagging } from '../lib/gender';
 
 describe('inferGenderFromName', () => {
   it('infers M from male first names', () => {
@@ -48,5 +48,72 @@ describe('genderTag', () => {
     expect(genderTag('M')).toBe('M');
     expect(genderTag('female')).toBe('F');
     expect(genderTag('')).toBe('');
+  });
+});
+
+describe('planGenderTagging', () => {
+  it('plans gender tagging for contact with explicit gender field missing M/F tag', () => {
+    const contacts = [
+      { id: '1', name: 'John Doe', gender: 'M', tags: ['Student'] },
+    ];
+    const plan = planGenderTagging(contacts);
+    expect(plan).toEqual([
+      {
+        contactId: '1',
+        name: 'John Doe',
+        gender: 'M',
+        from: ['Student'],
+        to: ['Student', 'M'],
+      },
+    ]);
+  });
+
+  it('infers gender from first name when gender field is missing', () => {
+    const contacts = [
+      { id: '2', name: 'Alice Smith', tags: ['Freshman'] },
+    ];
+    const plan = planGenderTagging(contacts);
+    expect(plan).toEqual([
+      {
+        contactId: '2',
+        name: 'Alice Smith',
+        gender: 'F',
+        from: ['Freshman'],
+        to: ['Freshman', 'F'],
+      },
+    ]);
+  });
+
+  it('skips contacts that already have matching M or F tag', () => {
+    const contacts = [
+      { id: '3', name: 'John Doe', gender: 'M', tags: ['Student', 'M'] },
+      { id: '4', name: 'Alice Smith', tags: ['Freshman', 'F'] },
+    ];
+    const plan = planGenderTagging(contacts);
+    expect(plan).toEqual([]);
+  });
+
+  it('skips contacts whose gender cannot be inferred and has no gender field', () => {
+    const contacts = [
+      { id: '5', name: 'UnknownPerson', tags: ['Student'] },
+    ];
+    const plan = planGenderTagging(contacts);
+    expect(plan).toEqual([]);
+  });
+
+  it('replaces conflicting gender tag if explicit gender says otherwise', () => {
+    const contacts = [
+      { id: '6', name: 'Alice', gender: 'F', tags: ['M', 'Saved'] },
+    ];
+    const plan = planGenderTagging(contacts);
+    expect(plan).toEqual([
+      {
+        contactId: '6',
+        name: 'Alice',
+        gender: 'F',
+        from: ['M', 'Saved'],
+        to: ['Saved', 'F'],
+      },
+    ]);
   });
 });

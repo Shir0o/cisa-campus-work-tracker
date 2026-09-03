@@ -148,3 +148,54 @@ export function inferGenderFromName(name?: string | null): Gender | null {
 export function genderTag(gender?: string | null): string {
   return normalizeGender(gender);
 }
+
+export interface GenderTagPlanRow {
+  contactId: string;
+  name: string;
+  gender: 'M' | 'F';
+  from: string[];
+  to: string[];
+}
+
+/**
+ * Plans M/F gender tags for contacts.
+ * Uses explicit contact.gender if valid ('M' | 'F'), or infers gender from first name.
+ * Contacts that already have the matching tag (or cannot be determined) are omitted.
+ */
+export function planGenderTagging(
+  contacts: Array<{ id: string; name: string; gender?: string | null; tags?: string[] | null }>,
+): GenderTagPlanRow[] {
+  const rows: GenderTagPlanRow[] = [];
+
+  for (const contact of contacts) {
+    const rawGender = normalizeGender(contact.gender);
+    const resolvedGender: 'M' | 'F' | null =
+      rawGender === 'M' || rawGender === 'F'
+        ? rawGender
+        : inferGenderFromName(contact.name);
+
+    if (!resolvedGender) continue;
+
+    const from = (contact.tags ?? []).map((t) => t.trim()).filter(Boolean);
+    // Strip any existing M/F tag, and ensure target tag is added
+    const nonGenderTags = from.filter((t) => t !== 'M' && t !== 'F');
+    const to = Array.from(new Set([...nonGenderTags, resolvedGender]));
+
+    // Check if unchanged
+    const unchanged =
+      from.length === to.length && from.every((tag, idx) => tag === to[idx]);
+
+    if (!unchanged) {
+      rows.push({
+        contactId: contact.id,
+        name: contact.name,
+        gender: resolvedGender,
+        from,
+        to,
+      });
+    }
+  }
+
+  return rows;
+}
+

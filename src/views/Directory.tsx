@@ -35,6 +35,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
+import TagGenderModal from '../components/modals/TagGenderModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
@@ -279,6 +280,7 @@ export default function Directory() {
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
   const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
+  const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -311,10 +313,11 @@ export default function Directory() {
         setIsTagModalOpen(false);
         setIsStageModalOpen(false);
         setIsCombineTagsOpen(false);
+        setIsTagGenderOpen(false);
         setShowFilterMenu(false);
       }
     };
-    if (isTagModalOpen || isStageModalOpen || isCombineTagsOpen || showFilterMenu) {
+    if (isTagModalOpen || isStageModalOpen || isCombineTagsOpen || isTagGenderOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
@@ -650,6 +653,13 @@ export default function Directory() {
             title={t('directory.combine_tags')}
           >
             <Combine className="w-4 h-4" /> {t('directory.combine_tags')}
+          </button>
+          <button
+            onClick={() => setIsTagGenderOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0"
+            title={t('directory.tag_gender') || 'Tag M/F'}
+          >
+            <Tag className="w-4 h-4" /> {t('directory.tag_gender') || 'Tag M/F'}
           </button>
           <button
             onClick={() => openSmartImport()}
@@ -1020,6 +1030,14 @@ export default function Directory() {
         <CombineTagsModal
           contacts={userContacts}
           onClose={() => setIsCombineTagsOpen(false)}
+        />
+      )}
+
+      {/* ── Tag Gender Modal (dry-run) ── */}
+      {isTagGenderOpen && (
+        <TagGenderModal
+          contacts={userContacts}
+          onClose={() => setIsTagGenderOpen(false)}
         />
       )}
 

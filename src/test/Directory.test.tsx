@@ -738,5 +738,30 @@ describe('Directory', () => {
     expect(writeText).not.toHaveBeenCalled();
     expect(await screen.findByText(/No email addresses/i)).toBeInTheDocument();
   });
+
+  it('renders Tag M/F button in the toolbar and opens TagGenderModal', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const tagGenderBtn = screen.getByRole('button', { name: /Tag M\/F/i });
+    expect(tagGenderBtn).toBeInTheDocument();
+
+    fireEvent.click(tagGenderBtn);
+    expect(await screen.findByText('Tag M / F')).toBeInTheDocument();
+  });
 });
+
 
