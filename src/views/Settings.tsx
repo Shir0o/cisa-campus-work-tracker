@@ -56,6 +56,7 @@ import { useNavShell, type NavShellPreference } from '../components/NavShellProv
 import { useLanguage } from '../components/LanguageProvider';
 import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
+import TestAccountPurgeModal from '../components/settings/TestAccountPurgeModal';
 import {
   subscribePartners,
   savePartners,
@@ -1219,6 +1220,42 @@ function WebhookConsoleSection() {
   );
 }
 
+function DangerZoneSection({ onOpenPurgeModal }: { onOpenPurgeModal: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.danger_zone', 'Data management & danger zone')}
+        sub={t('settings.danger_zone_sub', 'Administrative tools for cleaning up database traces and test records.')}
+      />
+      <div className="rounded-3xl border border-error/25 bg-surface-container p-5 max-w-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="font-serif text-base text-on-surface flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-error" />
+              {t('settings.test_account_purge', 'Test Account Purge')}
+            </h3>
+            <p className="text-[13px] text-on-surface-variant leading-relaxed">
+              {t(
+                'settings.test_account_purge_desc',
+                'Scans and scrubs non-person test accounts (reviewer* and cisa* emails) and their interaction logs, invitations, and prayers across Firestore.',
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenPurgeModal}
+            className="shrink-0 px-4 py-2.5 rounded-xl border border-error/40 text-error hover:bg-error/10 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {t('settings.scan_and_purge', 'Scan & Purge…')}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Team management pieces ─────────────────────────────────────────────
 
 function MemberCard({
@@ -1948,6 +1985,7 @@ export default function Settings() {
 
   const [editTarget, setEditTarget] = useState<AppUser | null>(null);
   const [removeTarget, setRemoveTarget] = useState<AppUser | null>(null);
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
 
   useEffect(() => {
     if (!isManager) return;
@@ -2256,6 +2294,8 @@ export default function Settings() {
 
       {(isAdmin || isManager) && <CalendarSyncPanel />}
 
+      {isAdmin && <DangerZoneSection onOpenPurgeModal={() => setShowPurgeModal(true)} />}
+
       {sharedTail}
 
       {/* Admin note */}
@@ -2306,6 +2346,12 @@ export default function Settings() {
               toggleApproval(uid, true);
               setRemoveTarget(null);
             }}
+          />
+        )}
+        {showPurgeModal && (
+          <TestAccountPurgeModal
+            isOpen={showPurgeModal}
+            onClose={() => setShowPurgeModal(false)}
           />
         )}
       </AnimatePresence>
