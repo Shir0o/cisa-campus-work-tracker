@@ -1,0 +1,448 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    /* Ink light — src/index.css :root */
+    .screen{
+      --bg:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --accent-line:rgba(10,10,11,0.18); --accent-soft:rgba(10,10,11,0.06);
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-sage:oklch(0.55 0.15 145);  --t-sage-soft:oklch(0.55 0.15 145 / 0.14);
+      --t-clay:oklch(0.55 0.15 42);   --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+      --wash:oklch(0.55 0.15 258 / 0.10);
+      --fade:#FFFFFF;
+    }
+    /* "system" follows the phone, which is the shipping default */
+    @media (prefers-color-scheme: dark){
+      .screen.sys{
+        --bg:#0A0A0B; --panel:#161618; --panel-2:#202023;
+        --text:#FAFAFA; --text-dim:#A1A1AA; --text-mute:#71717A;
+        --border:#2A2A2E; --border-soft:#232327;
+        --accent-line:rgba(255,255,255,0.18); --accent-soft:rgba(255,255,255,0.06);
+        --t-slate:oklch(0.82 0.14 258); --t-slate-soft:oklch(0.82 0.14 258 / 0.20);
+        --t-sage:oklch(0.82 0.14 145);  --t-sage-soft:oklch(0.82 0.14 145 / 0.20);
+        --t-clay:oklch(0.82 0.14 42);   --t-clay-soft:oklch(0.82 0.14 42 / 0.20);
+        --wash:oklch(0.82 0.14 258 / 0.16);
+        --fade:#0A0A0B;
+      }
+    }
+    /* Ink dark — src/index.css .dark */
+    .screen.night{
+      --bg:#0A0A0B; --panel:#161618; --panel-2:#202023;
+      --text:#FAFAFA; --text-dim:#A1A1AA; --text-mute:#71717A;
+      --border:#2A2A2E; --border-soft:#232327;
+      --accent-line:rgba(255,255,255,0.18); --accent-soft:rgba(255,255,255,0.06);
+      --t-slate:oklch(0.82 0.14 258); --t-slate-soft:oklch(0.82 0.14 258 / 0.20);
+      --t-sage:oklch(0.82 0.14 145);  --t-sage-soft:oklch(0.82 0.14 145 / 0.20);
+      --t-clay:oklch(0.82 0.14 42);   --t-clay-soft:oklch(0.82 0.14 42 / 0.20);
+      --wash:oklch(0.82 0.14 258 / 0.16);
+      --fade:#0A0A0B;
+    }
+
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--text-dim);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--text)}
+    svg{display:block}
+    button{font-family:inherit;border:0;background:transparent;color:inherit;cursor:pointer}
+
+    .screen{height:844px;background:var(--bg);color:var(--text);position:relative;overflow:hidden;
+      display:flex;flex-direction:column;cursor:pointer;
+      transition:background 420ms ease, color 420ms ease}
+
+    /* parallax ground — travels against the sections */
+    .wash{position:absolute;top:-180px;right:-150px;width:460px;height:460px;border-radius:999px;
+      background:radial-gradient(circle, var(--wash) 0%, transparent 68%);pointer-events:none;
+      transition:transform 760ms cubic-bezier(.22,.68,.24,1)}
+    .wash2{position:absolute;bottom:-220px;left:-180px;width:420px;height:420px;border-radius:999px;
+      background:radial-gradient(circle, var(--wash) 0%, transparent 70%);pointer-events:none;
+      transition:transform 900ms cubic-bezier(.22,.68,.24,1)}
+
+    /* stale scan (Q8) — the date, and nothing else */
+    .stale{position:relative;flex:none;margin:0;padding:10px 24px;background:var(--panel);
+      border-bottom:1px solid var(--border);font-size:12px;color:var(--text-dim);
+      display:flex;align-items:center;gap:8px}
+
+    .top{position:relative;flex:none;display:flex;align-items:center;gap:8px;padding:26px 20px 0;
+      transition:opacity 320ms ease, height 320ms ease}
+    .screen.full .top{opacity:0.34}
+    .ctl{width:34px;height:34px;flex:none;border-radius:999px;display:flex;align-items:center;
+      justify-content:center;color:var(--text-dim)}
+    .ctl[data-off="1"]{opacity:0.28}
+    .eyebrow{font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;
+      color:var(--text-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+    .screen.full .eyebrow{opacity:0}
+    .counter{margin-left:auto;font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:12px;
+      color:var(--text-mute);letter-spacing:0.06em;flex:none;font-variant-numeric:tabular-nums}
+
+    /* the Section. Short: centred. Long: scrolls in place (Q15). */
+    .body{position:relative;flex:1;min-height:0;overflow-y:auto;display:flex;padding:16px 24px}
+    .screen.full .body{padding:8px 22px}
+    .stage{margin:auto 0;width:100%;display:flex;flex-direction:column;gap:22px}
+    .fadeout{position:absolute;left:0;right:0;bottom:0;height:64px;pointer-events:none;
+      background:linear-gradient(to bottom, transparent, var(--fade));opacity:0.92}
+
+    @keyframes riseA{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+    @keyframes riseB{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+    .stage.ea > *{animation:riseA 540ms cubic-bezier(.2,.72,.2,1) both}
+    .stage.eb > *{animation:riseB 540ms cubic-bezier(.2,.72,.2,1) both}
+    .stage > *:nth-child(1){animation-delay:0ms}
+    .stage > *:nth-child(2){animation-delay:70ms}
+    .stage > *:nth-child(3){animation-delay:140ms}
+    .stage > *:nth-child(4){animation-delay:210ms}
+
+    .sech{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:38px;line-height:1.04;
+      letter-spacing:-0.035em;margin:0;text-wrap:pretty}
+    .pts{display:flex;flex-direction:column;gap:14px}
+    .pt{font-size:17px;line-height:1.55;color:var(--text-dim);text-wrap:pretty}
+
+    .blank{display:inline-block;min-width:78px;border-bottom:2px solid var(--accent-line);
+      margin:0 3px;cursor:pointer;
+      transition:background 260ms ease, color 260ms ease, border-color 260ms ease}
+    .blank.on{border-bottom-color:transparent;background:var(--t-sage-soft);color:var(--text);
+      border-radius:6px;padding:0 6px;min-width:0;font-weight:500}
+
+    .passage{margin:0;padding:22px 0 0;border-top:1px solid var(--border)}
+    .passage p{margin:0;font-size:19px;line-height:1.62;letter-spacing:-0.01em;color:var(--text);
+      text-wrap:pretty}
+    .cite{margin-top:14px;font-size:11px;font-weight:600;letter-spacing:0.12em;
+      text-transform:uppercase;color:var(--text-mute)}
+
+    .prompt{background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:18px;
+      display:flex;flex-direction:column;gap:9px}
+    .plabel{font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase}
+    .prompt.question .plabel{color:var(--t-slate)}
+    .prompt.discuss  .plabel{color:var(--t-sage)}
+    .prompt.activity .plabel{color:var(--t-clay)}
+    .prompt p{margin:0;font-size:16px;line-height:1.5;color:var(--text);text-wrap:pretty}
+
+    .bottom{position:relative;flex:none;padding:0 24px 24px;display:flex;flex-direction:column;gap:12px;
+      transition:opacity 320ms ease}
+    .screen.full .bottom{opacity:0.34;padding-bottom:16px}
+    .ticks{display:flex;gap:5px}
+    .tick{height:3px;flex:1;border-radius:999px;background:var(--panel-2);
+      transition:background 380ms ease}
+    .tick.on{background:var(--text)}
+    .hint{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;
+      font-size:12.5px;color:var(--text-mute)}
+    .screen.full .hint{height:20px;font-size:0}
+    .screen.full .hint svg{opacity:0.5}
+
+    /* auto-hidden edge index */
+    .grip{position:absolute;top:50%;right:0;transform:translateY(-50%);width:30px;min-height:120px;
+      display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:9px;
+      padding-right:8px;z-index:3;cursor:pointer}
+    .grip i{display:block;height:2px;width:12px;border-radius:999px;background:var(--accent-line);
+      transition:width 260ms ease, background 260ms ease}
+    .grip i.on{width:20px;background:var(--text)}
+
+    .scrub{position:absolute;inset:0;z-index:4;padding:24px 18px;gap:4px;
+      background:color-mix(in srgb, var(--bg) 84%, transparent);backdrop-filter:blur(16px);
+      display:flex;flex-direction:column;justify-content:center;
+      animation:riseA 260ms cubic-bezier(.2,.72,.2,1) both}
+    .scrub-h{font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
+      color:var(--text-mute);padding:0 12px 12px}
+    .srow{display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 12px;border-radius:14px;
+      cursor:pointer}
+    .srow.on{background:var(--accent-soft)}
+    .snum{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:11px;
+      color:var(--text-mute);flex:none;width:18px;letter-spacing:0.06em}
+    .srow.on .snum{color:var(--text)}
+    .sbody{min-width:0;display:flex;flex-direction:column;gap:2px}
+    .slabel{font-size:16px;font-weight:500;color:var(--text);line-height:1.25;text-wrap:pretty}
+    .sref{font-size:12px;color:var(--text-mute)}
+    .scrub-f{margin-top:14px;padding:0 12px;font-size:12px;color:var(--text-mute)}
+
+    /* the page never animates for someone who asked it not to */
+    @media (prefers-reduced-motion: reduce){
+      .stage.ea > *, .stage.eb > *, .scrub{animation:none}
+      .wash, .wash2, .screen, .tick, .blank, .top, .bottom{transition:none}
+    }
+  </style>
+</helmet>
+
+<div class="screen {{themeCls}} {{fullCls}}" onClick="{{advance}}">
+  <div class="wash" style="transform: translateY({{washA}})"></div>
+  <div class="wash2" style="transform: translateY({{washB}})"></div>
+
+  <sc-if value="{{isStale}}" hint-placeholder-val="{{true}}">
+    <div class="stale">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Thursday, September 10
+    </div>
+  </sc-if>
+
+  <div class="top">
+    <button class="ctl" data-off="{{backOff}}" onClick="{{back}}" aria-label="Previous section">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <div class="eyebrow">Peace that holds · Week 4</div>
+    <div class="counter">{{counter}}</div>
+    <button class="ctl" onClick="{{toggleFull}}" aria-label="Distraction-free mode">
+      <sc-if value="{{isFull}}" hint-placeholder-val="{{true}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/></svg>
+      </sc-if>
+      <sc-if value="{{notFull}}" hint-placeholder-val="{{true}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>
+      </sc-if>
+    </button>
+  </div>
+
+  <div class="body">
+    <div class="stage {{enterCls}}">
+      <h2 class="sech">{{sec.title}}</h2>
+
+      <div class="pts">
+        <sc-for list="{{sec.points}}" as="pt" hint-placeholder-count="2">
+          <div class="pt">
+            <sc-if value="{{pt.hasBlank}}" hint-placeholder-val="{{true}}">
+              <span>{{pt.before}}<span class="{{pt.cls}}" onClick="{{pt.tap}}">{{pt.shown}}</span>{{pt.after}}</span>
+            </sc-if>
+            <sc-if value="{{pt.plain}}" hint-placeholder-val="{{true}}">
+              <span>{{pt.before}}</span>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <figure class="passage">
+        <sc-if value="{{sec.pg.hasBlank}}" hint-placeholder-val="{{true}}">
+          <p>{{sec.pg.before}}<span class="{{sec.pg.cls}}" onClick="{{sec.pg.tap}}">{{sec.pg.shown}}</span>{{sec.pg.after}}</p>
+        </sc-if>
+        <sc-if value="{{sec.pg.plain}}" hint-placeholder-val="{{true}}">
+          <p>{{sec.pg.before}}</p>
+        </sc-if>
+        <figcaption class="cite">{{sec.ref}} · WEB</figcaption>
+      </figure>
+
+      <div class="prompt {{sec.kind}}">
+        <div class="plabel">{{sec.kindLabel}}</div>
+        <p>{{sec.prompt}}</p>
+      </div>
+    </div>
+
+    <sc-if value="{{sec.long}}" hint-placeholder-val="{{true}}">
+      <div class="fadeout"></div>
+    </sc-if>
+  </div>
+
+  <div class="bottom">
+    <div class="ticks">
+      <sc-for list="{{ticks}}" as="tk" hint-placeholder-count="4">
+        <div class="{{tk.cls}}"></div>
+      </sc-for>
+    </div>
+    <div class="hint">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+      {{hint}}
+    </div>
+  </div>
+
+  <sc-if value="{{navShut}}" hint-placeholder-val="{{true}}">
+    <div class="grip" onClick="{{openNav}}">
+      <sc-for list="{{ticks}}" as="tk" hint-placeholder-count="4">
+        <i class="{{tk.gcls}}"></i>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{navOpen}}" hint-placeholder-val="{{true}}">
+    <div class="scrub" onClick="{{closeNav}}">
+      <div class="scrub-h">Week 4 · Peace that holds</div>
+      <sc-for list="{{index}}" as="row" hint-placeholder-count="4">
+        <div class="{{row.cls}}" onClick="{{row.go}}">
+          <div class="snum">{{row.num}}</div>
+          <div class="sbody">
+            <div class="slabel">{{row.title}}</div>
+            <div class="sref">{{row.ref}}</div>
+          </div>
+        </div>
+      </sc-for>
+      <div class="scrub-f">Tap anywhere to close</div>
+    </div>
+  </sc-if>
+</div>
+
+<script data-dc-script data-props='{"theme":{"editor":"enum","options":["system","light","dark"],"default":"system","section":"Look"},"arrival":{"editor":"enum","options":["current","stale scan"],"default":"current","section":"State"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { i: 0, open: {}, nav: false, full: false };
+  }
+
+  sections() {
+    return [
+      {
+        title: "Where peace starts",
+        ref: "Romans 5:1–2",
+        points: [
+          { before: "Peace with God is a ", word: "standing", after: ", not a mood." },
+          { before: "The access we have was ", word: "given", after: ", never earned." },
+          { before: "What we stand in now is what we will stand in at the end." },
+        ],
+        pg: { before: "Being therefore justified by faith, we have peace with God through our Lord Jesus Christ; through whom we also have our access by faith into this grace in which we stand." },
+        kind: "discuss",
+        kindLabel: "Discuss",
+        prompt: "Where do you catch yourself treating peace with God as a feeling that comes and goes?",
+      },
+      {
+        title: "What suffering is doing",
+        ref: "Romans 5:3–4",
+        points: [
+          { before: "Suffering is not the opposite of hope — it is the ", word: "road", after: " to it." },
+          { before: "Character is not given. It is ", word: "produced", after: "." },
+        ],
+        pg: {
+          before: "We also rejoice in our sufferings, knowing that suffering produces perseverance; and perseverance, proven character; and proven character, ",
+          word: "hope",
+          after: ".",
+        },
+        kind: "activity",
+        kindLabel: "Activity",
+        prompt: "In pairs, two minutes each. Name one thing you are enduring, and one thing it has already produced in you.",
+      },
+      {
+        title: "Hope that does not shame",
+        ref: "Romans 5:5",
+        points: [
+          { before: "Hope is safe because of who ", word: "keeps", after: " it, not how strongly we hold it." },
+        ],
+        pg: { before: "and hope doesn't disappoint us, because God's love has been poured into our hearts through the Holy Spirit who was given to us." },
+        kind: "question",
+        kindLabel: "Question",
+        prompt: "What would change this week if your hope did not depend on how you felt on Tuesday?",
+      },
+      {
+        // Deliberately long — this is the Section that outgrows the screen and
+        // scrolls in place rather than being capped or shrunk (Q15).
+        title: "Carry it into the week",
+        ref: "Romans 5:6–8",
+        long: true,
+        points: [
+          { before: "The timing was not ours. Christ died at the ", word: "right", after: " time." },
+          { before: "We were not improved first. We were ", word: "weak", after: "." },
+          { before: "Love here is not a feeling God has. It is something God ", word: "commends", after: "." },
+          { before: "Nothing in the week ahead changes the standing this passage describes." },
+        ],
+        pg: { before: "For while we were yet weak, at the right time Christ died for the ungodly. For one will hardly die for a righteous man. Yet perhaps for a good person someone would even dare to die. But God commends his own love toward us, in that while we were yet sinners, Christ died for us." },
+        kind: "activity",
+        kindLabel: "Activity",
+        prompt: "Before you leave, tell one person in the room the single sentence from tonight you want to still be carrying on Friday.",
+      },
+    ];
+  }
+
+  // Blanks are addressed by Section and slot, so revealing one never reveals
+  // its twin in another Section.
+  blank(key, part) {
+    if (!part.word) return { plain: true, hasBlank: false, before: part.before };
+    const on = !!this.state.open[key];
+    return {
+      hasBlank: true,
+      plain: false,
+      before: part.before,
+      after: part.after,
+      shown: on ? part.word : "",
+      cls: on ? "blank on" : "blank",
+      tap: (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        this.setState({ open: { ...this.state.open, [key]: !on } });
+      },
+    };
+  }
+
+  go(n) {
+    // Advancing resets the scroll of a long Section so the next one starts at
+    // its own top rather than inheriting the last one's offset.
+    this.setState({ i: n, nav: false });
+    const body = document.querySelector(".body");
+    if (body) body.scrollTop = 0;
+  }
+
+  renderVals() {
+    const all = this.sections();
+    const i = this.state.i;
+    const s = all[i];
+    const last = i === all.length - 1;
+    const theme = this.props.theme ?? "system";
+    const pad = (n) => String(n + 1).padStart(2, "0");
+
+    return {
+      themeCls: theme === "dark" ? "night" : theme === "light" ? "day" : "sys",
+      fullCls: this.state.full ? "full" : "",
+      isFull: this.state.full,
+      notFull: !this.state.full,
+      isStale: (this.props.arrival ?? "current") === "stale scan",
+
+      // the two grounds travel at different rates against the sections
+      washA: -(i * 46) + "px",
+      washB: i * 34 + "px",
+      enterCls: i % 2 === 0 ? "ea" : "eb",
+
+      counter: pad(i) + " / " + pad(all.length - 1),
+      hint: last ? "End of Week 4" : "Tap anywhere to go on",
+      backOff: i === 0 ? "1" : "0",
+      navOpen: this.state.nav,
+      navShut: !this.state.nav,
+
+      sec: {
+        title: s.title,
+        ref: s.ref,
+        kind: s.kind,
+        kindLabel: s.kindLabel,
+        prompt: s.prompt,
+        long: !!s.long,
+        points: s.points.map((p, n) => this.blank(i + ":p" + n, p)),
+        pg: this.blank(i + ":pg", s.pg),
+      },
+
+      ticks: all.map((_, n) => ({
+        cls: n <= i ? "tick on" : "tick",
+        gcls: n === i ? "on" : "",
+      })),
+
+      index: all.map((sec, n) => ({
+        num: pad(n),
+        title: sec.title,
+        ref: sec.ref,
+        cls: n === i ? "srow on" : "srow",
+        go: (e) => {
+          if (e && e.stopPropagation) e.stopPropagation();
+          this.go(n);
+        },
+      })),
+
+      advance: () => {
+        if (this.state.nav) return;
+        if (last) return;
+        this.go(i + 1);
+      },
+      back: (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (i > 0) this.go(i - 1);
+      },
+      toggleFull: (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        this.setState({ full: !this.state.full });
+      },
+      openNav: (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        this.setState({ nav: true });
+      },
+      closeNav: () => this.setState({ nav: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

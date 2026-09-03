@@ -1,0 +1,151 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --accent-strong:#131316; --accent-on:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-sage:oklch(0.55 0.15 145);  --t-sage-soft:oklch(0.55 0.15 145 / 0.14);
+      --t-clay:oklch(0.55 0.15 42);   --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--text-dim);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--accent-strong)}
+    .display{font-family:"Plus Jakarta Sans",Lexend,ui-sans-serif,system-ui,sans-serif}
+
+    .page{padding:28px 22px 0;display:flex;flex-direction:column}
+
+    /* ── masthead ── */
+    .eyebrow{font-size:11px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
+      color:var(--text-mute)}
+    .title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:34px;line-height:1.08;
+      letter-spacing:-0.03em;margin:10px 0 0;text-wrap:pretty}
+    .meta{font-size:13px;color:var(--text-dim);margin-top:10px}
+    .rule{height:1px;background:var(--border);margin:22px 0 0}
+
+    /* ── section ── */
+    .sec{padding:30px 0 0;display:flex;flex-direction:column;gap:18px}
+    .sechead{display:flex;align-items:baseline;gap:10px}
+    .secnum{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:12px;
+      color:var(--text-mute);letter-spacing:0.06em;flex:none;padding-top:3px}
+    .sech{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:21px;line-height:1.2;
+      letter-spacing:-0.02em;margin:0;text-wrap:pretty}
+
+    .pts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:13px}
+    .pts li{font-size:15.5px;line-height:1.62;color:var(--text);padding-left:18px;position:relative;text-wrap:pretty}
+    .pts li::before{content:"";position:absolute;left:0;top:11px;width:5px;height:5px;border-radius:999px;
+      background:var(--accent-line)}
+
+    /* the Blank — hidden vs revealed */
+    .blank{display:inline-block;min-width:74px;border-bottom:2px solid var(--accent-line);
+      vertical-align:baseline;margin:0 2px}
+    .blank.on{border-bottom-color:transparent;background:var(--t-sage-soft);color:var(--text);
+      font-weight:500;border-radius:6px;padding:0 5px;min-width:0}
+
+    /* ── passage: full-bleed slab ── */
+    .passage{margin:4px -22px 0;padding:26px 22px 22px;background:var(--panel);
+      border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft)}
+    .passage p{margin:0;font-size:17px;line-height:1.72;letter-spacing:-0.005em;color:var(--text);text-wrap:pretty}
+    .passage figcaption{margin-top:14px;font-size:11.5px;font-weight:600;letter-spacing:0.1em;
+      text-transform:uppercase;color:var(--text-mute)}
+
+    /* ── prompt ── */
+    .prompt{border-left:3px solid var(--t-slate);padding:2px 0 2px 16px;display:flex;
+      flex-direction:column;gap:7px}
+    .prompt.discuss{border-left-color:var(--t-sage)}
+    .prompt.activity{border-left-color:var(--t-clay)}
+    .plabel{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+      color:var(--t-slate)}
+    .prompt.discuss .plabel{color:var(--t-sage)}
+    .prompt.activity .plabel{color:var(--t-clay)}
+    .prompt p{margin:0;font-size:15.5px;line-height:1.6;color:var(--text);text-wrap:pretty}
+
+    .foot{margin:34px -22px 0;padding:20px 22px 26px;border-top:1px solid var(--border);
+      display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+    .foot .fl{font-size:12px;color:var(--text-mute)}
+  </style>
+</helmet>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Romans · Fall 2026</div>
+    <h1 class="title">Peace that holds</h1>
+    <div class="meta">Week 4 · Thursday, September 10</div>
+    <div class="rule"></div>
+  </header>
+
+  <section class="sec">
+    <div class="sechead">
+      <div class="secnum">01</div>
+      <h2 class="sech">Where peace starts</h2>
+    </div>
+    <ul class="pts">
+      <li>Peace with God is a <span class="blank on">standing</span>, not a mood.</li>
+      <li>The access we have was <span class="blank"></span>, never earned.</li>
+      <li>What we stand in now is what we will stand in at the end.</li>
+    </ul>
+    <figure class="passage">
+      <p>Being therefore justified by faith, we have peace with God through our Lord Jesus Christ; through whom we also have our access by faith into this grace in which we stand. We rejoice in hope of the glory of God.</p>
+      <figcaption>Romans 5:1–2 · WEB</figcaption>
+    </figure>
+    <div class="prompt discuss">
+      <div class="plabel">Discuss</div>
+      <p>Where do you catch yourself treating peace with God as a feeling that comes and goes?</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sechead">
+      <div class="secnum">02</div>
+      <h2 class="sech">What suffering is doing</h2>
+    </div>
+    <ul class="pts">
+      <li>Suffering is not the opposite of hope — it is the <span class="blank"></span> to it.</li>
+      <li>Character is not given. It is <span class="blank on">produced</span>.</li>
+    </ul>
+    <figure class="passage">
+      <p>We also rejoice in our sufferings, knowing that suffering produces perseverance; and perseverance, proven character; and proven character, hope.</p>
+      <figcaption>Romans 5:3–4 · WEB</figcaption>
+    </figure>
+    <div class="prompt activity">
+      <div class="plabel">Activity</div>
+      <p>In pairs, two minutes each. Name one thing you are enduring right now, and one thing it has already produced in you.</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sechead">
+      <div class="secnum">03</div>
+      <h2 class="sech">Hope that does not shame</h2>
+    </div>
+    <ul class="pts">
+      <li>Hope is safe because of who <span class="blank"></span> it, not how strongly we hold it.</li>
+    </ul>
+    <div class="prompt">
+      <div class="plabel">Question</div>
+      <p>What would change this week if your hope did not depend on how you felt on Tuesday?</p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="fl">CISA Campus Work · Romans, Fall 2026</div>
+    <div class="fl">Week 4 of 12</div>
+  </footer>
+</div>
+</x-dc>
+</body>
+</html>

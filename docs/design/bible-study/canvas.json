@@ -1,0 +1,130 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "The design"
+    },
+    {
+      "id": "page-2",
+      "name": "Directions considered"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "page": "page-1",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Reader — public QR page",
+      "is_interactive": true
+    },
+    {
+      "file": "InApp.dc.html",
+      "page": "page-1",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Reader — inside the app (native / PWA)"
+    },
+    {
+      "file": "Editor.dc.html",
+      "page": "page-1",
+      "x": 940,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Admin editor — desktop"
+    },
+    {
+      "file": "DirectionA.dc.html",
+      "page": "page-2",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 1220,
+      "title": "Direction A — Close to Ink"
+    },
+    {
+      "file": "DirectionB.dc.html",
+      "page": "page-2",
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1300,
+      "title": "Direction B — Editorial"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "page": "page-1",
+      "x": 0,
+      "y": -580,
+      "w": 2380,
+      "text": "The public Bible study. One QR per Meeting; the page is read-only and never collects an answer; Prompts are for the room, out loud.\n\nThe student view on the left is LIVE — tap it. Everything follows one principle: the author decides, the page obeys. Sections sit exactly where they are written, the index is labelled from the headings, and nothing warns, auto-splits or shrinks type on the author's behalf."
+    },
+    {
+      "id": "note-reader",
+      "page": "page-1",
+      "x": 0,
+      "y": -330,
+      "w": 380,
+      "text": "The student view, built. Four Sections: tap to go on, the chevron steps back, tap a Blank to reveal it, tap the grip on the right edge for the index.\n\nSection 04 is deliberately longer than the screen — it SCROLLS in place instead of being capped or shrunk, which is the Q15 rule made visible. Advancing resets the scroll so the next Section starts at its own top.\n\nTwo grounds drift at different rates behind the sections, and each Section's parts rise in on a 70ms stagger. All of it collapses to plain cuts under prefers-reduced-motion.\n\nThe expand control is DISTRACTION-FREE mode, not the Fullscreen API — see the note below it. Theme defaults to following the phone; the tweak forces light or dark for review. The State tweak shows what a stale scan looks like: the date, and nothing else."
+    },
+    {
+      "id": "note-inapp",
+      "page": "page-1",
+      "x": 470,
+      "y": -330,
+      "w": 380,
+      "text": "The same Meeting for someone signed in, in the native app or the installed PWA. Back row and tab bar are the shell's real values — 46px tabs, 13px pill radius, 12px words, 1px hairline, gap 4, 7 above and 9 below.\n\nThe honest cost is visible here: the shell eats about 114px, so the same Section shows less than it does on the public page. Nothing is cut — it scrolls — but a Section authored to sit perfectly on the public page will not sit perfectly here.\n\nNo fake status bar and no fake home indicator: the real ones draw on top."
+    },
+    {
+      "id": "note-editor",
+      "page": "page-1",
+      "x": 940,
+      "y": -330,
+      "w": 520,
+      "text": "Desktop only, inside the app's own rail — this is staff-facing, so unlike the reader it stays strictly in Ink.\n\nThree things it is arguing for:\n\n1. The conventions are BUTTONS, not syntax to memorise. Passage, Blank, Question, Discuss, Activity. The author never types a marker, which is what makes the markdown-plus-conventions decision survivable.\n2. The live preview shows where the screen edge falls. If the author owns section breaks entirely, they have to be able to SEE the break they own — otherwise 'the author decides' means 'the author guesses'.\n3. The QR belongs next to the document, not in a settings page. One Meeting, one code, generated where it is authored.\n\nSplit into two sits in the header because it changes what the week IS, not how it reads."
+    },
+    {
+      "id": "note-record",
+      "page": "page-2",
+      "x": 0,
+      "y": -560,
+      "w": 860,
+      "text": "Kept as the record of what was considered before Direction C was chosen. Not live proposals."
+    },
+    {
+      "id": "note-a",
+      "page": "page-2",
+      "x": 0,
+      "y": -330,
+      "w": 380,
+      "text": "Strict Ink. The app's vocabulary unchanged — 24px section cards, chips for Prompt kind, 14px body.\n\nRejected: the density that makes an operational dashboard good makes a reading page cramped. It reads like a settings screen with scripture in it."
+    },
+    {
+      "id": "note-b",
+      "page": "page-2",
+      "x": 470,
+      "y": -330,
+      "w": 380,
+      "text": "Ink's materials, editorial register. 34px display, full-bleed Passage at 17px/1.72.\n\nRejected, but narrowly: it is a page you scroll rather than an experience you advance, and the QR audience never sees the rest of the app, so consistency bought less than it usually does."
+    },
+    {
+      "id": "note-fullscreen",
+      "page": "page-1",
+      "x": 0,
+      "y": 900,
+      "w": 860,
+      "text": "FULLSCREEN — the one thing that cannot be built as asked.\n\niPhone Safari does not expose the Fullscreen API for ordinary elements; only video can go fullscreen there. Android Chrome does support it. Since the students you described are scanning into Safari on a phone, requestFullscreen would do nothing for a large share of them, silently.\n\nSo the control in the prototype is a CSS distraction-free mode: the chrome dims and shrinks, the Section takes the room. The app already ships exactly this pattern for messages (body.msgs-fullscreen, src/index.css:3684), so it is a precedent rather than an invention.\n\nTrue fullscreen has one reliable route on iOS: Add to Home Screen. public/manifest.json already declares display: standalone, so an installed copy runs with no browser chrome at all. That is a prompt worth showing to a returning reader — and it is the one place the no-download promise gets a bit softer, so it should stay an invitation, never a wall.\n\nWorth confirming on your own target iOS version before anyone builds against it."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

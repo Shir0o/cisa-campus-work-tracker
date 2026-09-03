@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --border:#E4E4E7; --border-soft:#F0F0F2;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-sage:oklch(0.55 0.15 145);  --t-sage-soft:oklch(0.55 0.15 145 / 0.14);
+      --t-clay:oklch(0.55 0.15 42);   --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--text-dim);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--text)}
+    svg{display:block}
+
+    .app{height:844px;display:flex;flex-direction:column;background:var(--bg);position:relative;
+      overflow:hidden}
+
+    /* back row — the mobile shell's row for screens that aren't a tab */
+    .back{flex:none;height:52px;display:flex;align-items:center;gap:10px;padding:0 14px}
+    .bbtn{width:36px;height:36px;flex:none;border-radius:999px;display:flex;align-items:center;
+      justify-content:center;color:var(--text-dim)}
+    .btitle{min-width:0;display:flex;flex-direction:column}
+    .bt1{font-size:14px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;
+      text-overflow:ellipsis}
+    .bt2{font-size:11px;color:var(--text-mute)}
+    .bshare{margin-left:auto;width:36px;height:36px;flex:none;border-radius:999px;display:flex;
+      align-items:center;justify-content:center;color:var(--text-dim)}
+
+    /* the reader — same Section-per-screen, less room for it */
+    .body{flex:1;min-height:0;overflow:hidden;padding:6px 22px 14px;display:flex;flex-direction:column;
+      justify-content:center;gap:20px;position:relative}
+    .counter{position:absolute;top:6px;right:22px;font-family:"Plus Jakarta Sans",sans-serif;
+      font-weight:700;font-size:11px;color:var(--text-mute);letter-spacing:0.06em}
+    .sech{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:33px;line-height:1.06;
+      letter-spacing:-0.035em;margin:0;text-wrap:pretty}
+    .pts{display:flex;flex-direction:column;gap:12px}
+    .pt{font-size:16px;line-height:1.5;color:var(--text-dim);text-wrap:pretty}
+    .blank{display:inline-block;min-width:72px;border-bottom:2px solid var(--accent-line);margin:0 3px}
+    .blank.on{border-bottom-color:transparent;background:var(--t-sage-soft);color:var(--text);
+      border-radius:6px;padding:0 6px;min-width:0;font-weight:500}
+    .passage{margin:0;padding:18px 0 0;border-top:1px solid var(--border)}
+    .passage p{margin:0;font-size:17px;line-height:1.58;letter-spacing:-0.01em;text-wrap:pretty}
+    .cite{margin-top:11px;font-size:10.5px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
+      color:var(--text-mute)}
+    .prompt{background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:15px;
+      display:flex;flex-direction:column;gap:7px}
+    .plabel{font-size:10.5px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--t-sage)}
+    .prompt p{margin:0;font-size:15px;line-height:1.45;text-wrap:pretty}
+    .ticks{display:flex;gap:5px;margin-top:2px}
+    .tick{height:3px;flex:1;border-radius:999px;background:var(--panel-2)}
+    .tick.on{background:var(--text)}
+
+    .grip{position:absolute;top:50%;right:0;transform:translateY(-50%);width:26px;
+      display:flex;flex-direction:column;align-items:flex-end;gap:9px;padding-right:8px}
+    .grip i{display:block;height:2px;width:12px;border-radius:999px;background:var(--accent-line)}
+    .grip i.on{width:20px;background:var(--text)}
+
+    /* the shell's tab bar — gap 4, 9px sides, 7 above / 9 below, 46 tall, 13px pill */
+    .tabs{flex:none;display:flex;gap:4px;padding:7px 9px 9px;border-top:1px solid var(--border);
+      background:var(--bg)}
+    .tab{flex:1;min-height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+      gap:6px;font-size:12px;color:var(--text-dim)}
+    .tab.on{background:var(--accent-soft);color:var(--text);font-weight:600}
+    .dot{width:6px;height:6px;border-radius:3px;background:var(--t-slate)}
+  </style>
+</helmet>
+
+<div class="app">
+  <div class="back">
+    <div class="bbtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </div>
+    <div class="btitle">
+      <div class="bt1">Peace that holds</div>
+      <div class="bt2">Romans · Fall 2026 — Week 4</div>
+    </div>
+    <div class="bshare">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="counter">01 / 03</div>
+    <h2 class="sech">Where peace starts</h2>
+    <div class="pts">
+      <div class="pt">Peace with God is a <span class="blank on">standing</span>, not a mood.</div>
+      <div class="pt">The access we have was <span class="blank"></span>, never earned.</div>
+    </div>
+    <figure class="passage">
+      <p>Being therefore justified by faith, we have peace with God through our Lord Jesus Christ; through whom we also have our access by faith into this grace in which we stand.</p>
+      <figcaption class="cite">Romans 5:1–2 · WEB</figcaption>
+    </figure>
+    <div class="prompt">
+      <div class="plabel">Discuss</div>
+      <p>Where do you catch yourself treating peace with God as a feeling that comes and goes?</p>
+    </div>
+    <div class="ticks">
+      <div class="tick on"></div><div class="tick"></div><div class="tick"></div>
+    </div>
+    <div class="grip"><i class="on"></i><i></i><i></i></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab">Today</div>
+    <div class="tab on">Study</div>
+    <div class="tab">Prayer</div>
+    <div class="tab">Messages<span class="dot"></span></div>
+    <div class="tab">You</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
