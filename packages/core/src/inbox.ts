@@ -114,6 +114,7 @@ export function inboxItemsFor(
 export function traineeWaitingItems(
   uid: string,
   threads: ThreadMessageWithContact[],
+  allowedContactIds?: Set<string>,
 ): InboxItem[] {
   // A trainee's "what's waiting on you": nudges + questions from ANY full-timer
   // (no pairing — every full-timer stands over every trainee). Newest-first.
@@ -122,6 +123,7 @@ export function traineeWaitingItems(
 
   const items: InboxItem[] = [];
   for (const m of threads) {
+    if (allowedContactIds && !allowedContactIds.has(m.contactId)) continue;
     if (!fts.includes(m.from ?? "")) continue;
     if (m.kind !== "nudge" && m.kind !== "question") continue;
     const answered = threads.some(

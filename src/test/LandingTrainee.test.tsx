@@ -247,4 +247,30 @@ describe('LandingTrainee component', () => {
     // Impersonated name is Bob Trainee -> greeting uses Bob
     expect(screen.getByText(/Bob\./i)).toBeInTheDocument();
   });
+
+  it('passes myIds to traineeWaitingItems to scope waiting items to contacts in care', async () => {
+    mockAuthValue = {
+      user: { uid: 'u-trainee', displayName: 'Trainee Sam' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee',
+      effectiveUserName: 'Trainee Sam',
+    };
+    const { traineeWaitingItems } = await import('../lib/inbox');
+    render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+
+    expect(traineeWaitingItems).toHaveBeenCalledWith(
+      'u-trainee',
+      expect.any(Array),
+      expect.any(Set)
+    );
+    const lastCall = vi.mocked(traineeWaitingItems).mock.calls.at(-1);
+    const passedSet = lastCall?.[2] as Set<string>;
+    expect(passedSet.has('c1')).toBe(true);
+  });
 });
+
+

@@ -157,7 +157,10 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
 
   const fts = fullTimerIds();
   const ftFirst = useMemo(() => 'The team', []);
-  const waiting: InboxItem[] = useMemo(() => (uid ? traineeWaitingItems(uid, threads) : []), [uid, threads]);
+  const waiting: InboxItem[] = useMemo(
+    () => (uid ? traineeWaitingItems(uid, threads, myIds) : []),
+    [uid, threads, myIds],
+  );
   const waitingUnread = useMemo(
     () => waiting.filter((it) => !inbox.isRead(uid ?? '', it.id)).length,
     [waiting, inbox, uid],

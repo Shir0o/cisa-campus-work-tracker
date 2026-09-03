@@ -237,8 +237,8 @@ export default function LandingTrainee() {
   const firstOf = (uid?: string | null) => (nameByUid[uid ?? ""] || "The team").split(/\s+/)[0];
 
   const waiting = useMemo(
-    () => (uid ? traineeWaitingItems(uid, threads) : []),
-    [uid, threads],
+    () => (uid ? traineeWaitingItems(uid, threads, myIds) : []),
+    [uid, threads, myIds],
   );
   const waitingUnread = waiting.filter((it) => !inbox.isRead(uid ?? "", it.id)).length;
 

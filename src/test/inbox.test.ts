@@ -139,4 +139,17 @@ describe("traineeWaitingItems", () => {
     ]);
     expect(items.map((x) => x.id)).toEqual(["thread:normal_q"]);
   });
+
+  it("excludes nudges and questions for contacts not in the trainee's circle when allowedContactIds is provided", () => {
+    const items = traineeWaitingItems(
+      "t1",
+      [
+        thread({ id: "q_mine", contactId: "c_mine", from: "ft1", kind: "question", at: "2026-02-02T00:00:00Z" }),
+        thread({ id: "q_other", contactId: "c_other", from: "ft1", kind: "question", at: "2026-02-03T00:00:00Z" }),
+      ],
+      new Set(["c_mine"]),
+    );
+    expect(items.map((x) => x.id)).toEqual(["thread:q_mine"]);
+  });
 });
+
