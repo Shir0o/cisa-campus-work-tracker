@@ -1,9 +1,37 @@
 {
   "artboards": [
-    { "file": "Today.dc.html",   "x": 0,    "y": 0,   "w": 1107, "h": 662, "title": "Today — current" },
-    { "file": "Main.dc.html",    "x": 1187, "y": 0,   "w": 1107, "h": 662, "title": "Frame — proposed" },
-    { "file": "Panes.dc.html",   "x": 0,    "y": 782, "w": 1107, "h": 662, "title": "Panes — Discussion" },
-    { "file": "Editing.dc.html", "x": 1187, "y": 782, "w": 1107, "h": 662, "title": "Editing — the form" }
+    {
+      "file": "Today.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Today — current"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 1187,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Frame — proposed"
+    },
+    {
+      "file": "Panes.dc.html",
+      "x": 0,
+      "y": 782,
+      "w": 1107,
+      "h": 662,
+      "title": "Panes — Discussion"
+    },
+    {
+      "file": "Editing.dc.html",
+      "x": 1187,
+      "y": 782,
+      "w": 1107,
+      "h": 662,
+      "title": "Editing — the form"
+    }
   ],
   "annotations": [
     {
@@ -25,8 +53,10 @@
       "x": 0,
       "y": 1490,
       "w": 620,
-      "text": "Worth a second look before this is built:\n\n· Overview now carries the profile fields. Is anything you relied on in the aside missing at a glance, other than tags?\n· \"Lately\" and \"Prayers we're holding\" are gone from Overview. If either was load-bearing, say so — that is the one thing this costs."
+      "text": "Settled 2026-09-02.\n\n· The aside’s content moves into Overview as designed. “Cared for by” is promoted into the 56px head, so the one glance-level fact stays on screen from every tab.\n\n· “Lately” is dropped — it was the 3 newest interactions, a true preview of the tab beside it.\n\n· “Prayers we’re holding” STAYS. It is not a digest: it is every OPEN prayer, and the Prayer tab shows answered and closed ones too. Dropping it would have made open prayers harder to find than they are today."
     }
   ],
-  "launch": { "view": "canvas" }
+  "launch": {
+    "view": "canvas"
+  }
 }
