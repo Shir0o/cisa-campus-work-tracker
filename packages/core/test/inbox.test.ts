@@ -87,4 +87,18 @@ describe('traineeWaitingItems', () => {
     ]);
     expect(items.map((i) => i.id)).not.toContain('thread:n1');
   });
+
+  it('excludes nudges and questions for contacts not in allowedContactIds', () => {
+    const items = traineeWaitingItems(
+      TRAINEE,
+      [
+        msg({ id: 'n1', contactId: 'c1', from: FT, kind: 'nudge', at: '2026-07-05T10:00:00Z' }),
+        msg({ id: 'q2', contactId: 'c_other', from: FT, kind: 'question', at: '2026-07-05T11:00:00Z' }),
+      ],
+      new Set(['c1']),
+    );
+    const ids = items.map((i) => i.id);
+    expect(ids).toEqual(['thread:n1']);
+  });
 });
+
