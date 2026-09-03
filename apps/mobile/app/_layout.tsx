@@ -20,6 +20,7 @@ import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
 import { initReleaseStore } from '../src/lib/releases';
+import { MobileNotificationPermissionBanner } from '../src/components/notifications/MobileNotificationPermissionBanner';
 
 // Routes reachable while signed out — the public welcome form (a prospective
 // student fills it out themselves, no account needed) plus login itself.
@@ -96,6 +97,7 @@ function RootNavigator() {
             <Stack.Screen name="login" />
             <Stack.Screen name="signup" />
           </Stack>
+          <MobileNotificationPermissionBanner />
         </ImpersonateLayer>
       </View>
       {!user && !PUBLIC_ROUTES.includes(pathname) && <Redirect href="/login" />}
