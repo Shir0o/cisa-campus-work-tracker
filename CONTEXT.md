@@ -98,3 +98,9 @@ _Avoid_: Series, recurring event, schedule, repeat
 **Attendance taken**:
 The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so the record says explicitly that a person marked it and when.
 _Avoid_: Marked, complete, closed
+
+**Discussion**:
+The Full-timers-only thread on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. Distinct from **Follow up**, the thread on the same page between a Trainee and their gospel partner about the same contact.
+_Avoid_: Comments, team notes, internal thread, chat
+
+Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for the team** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
