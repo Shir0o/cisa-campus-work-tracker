@@ -1290,6 +1290,8 @@
       "notes_placeholder": "Añade algo de contexto sobre este contacto...",
       "delete_contact": "Eliminar contacto",
       "delete_contact_help": "Eliminar un contacto borra permanentemente su registro y su historial. Tienes que desplazarte al final de esta página para encontrarlo.",
+      "deleting": "Eliminando...",
+      "phone": "Teléfono",
       "what_we_know": "Lo que sabemos",
       "no_notes": "Aún no hay notas registradas para este contacto.",
       "lately": "Últimamente",

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
 import { useCommand } from "../lib/commands";
@@ -226,6 +226,16 @@ export default function Thread({
 
   const [draft, setDraft] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // A fill pane owns its scroll, so it has to place itself: open on — and stay
+  // pinned to — the newest message. The flow call sites ride the page's single
+  // content scroller and must not be yanked (#780).
+  useLayoutEffect(() => {
+    if (!pane) return;
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [pane, messages.length]);
 
   const post = () => {
     const body = draft.trim();
@@ -267,7 +277,15 @@ export default function Thread({
 
   return (
     <div className={cn("flex flex-col", pane && "cd-pane-thread")} data-thread-pane={pane ? "" : undefined}>
-      <div data-thread-list="" className={cn(messages.length > 0 && "flex flex-col space-y-4", messages.length === 0 && "hidden")}>
+      <div
+        ref={listRef}
+        data-thread-list=""
+        className={cn(
+          messages.length > 0 && "flex flex-col",
+          messages.length > 0 && (compact ? "space-y-3" : "space-y-4"),
+          messages.length === 0 && "hidden",
+        )}
+      >
         {messages.map((m) => (
           <ThreadMsg
             key={m.id}
@@ -290,7 +308,7 @@ export default function Thread({
       )}
 
       {/* Compose */}
-      <div data-thread-composer="" className={cn(messages.length > 0 && "mt-4", compact && messages.length > 0 && "space-y-3")}>
+      <div data-thread-composer="" className={cn(messages.length > 0 && "mt-4")}>
         <textarea
           ref={taRef}
           value={draft}

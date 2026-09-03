@@ -191,6 +191,86 @@ describe("Thread", () => {
     expect(composer.parentElement === pane).toBe(true);
   });
 
+  it("pane variant renders messages oldest-first, matching useThreads' order", () => {
+    // #780 styled the pane list `flex-direction: column-reverse`, which
+    // reversed an already-oldest-first array and made Discussion and Follow up
+    // read backwards. DOM order is the seam that survives the CSS fix.
+    hoisted.messages = [
+      message({ id: "a", body: "oldest" }),
+      message({ id: "b", body: "middle" }),
+      message({ id: "c", body: "newest" }),
+    ];
+    const { container } = render(
+      <Thread contactId="C-1" interactionId={null} meStaffId="u1" pane />,
+    );
+
+    const list = container.querySelector("[data-thread-list]");
+    const bodies = [...list.textContent.matchAll(/oldest|middle|newest/g)].map((m) => m[0]);
+    expect(bodies).toEqual(["oldest", "middle", "newest"]);
+  });
+
+  it("pane variant opens scrolled to the newest message", () => {
+    // The pane's whole point is that you land on what the team said last.
+    // jsdom reports scrollHeight 0, so stub it to the height a real scroller
+    // would have.
+    const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => 900,
+    });
+    try {
+      hoisted.messages = [
+        message({ id: "a", body: "oldest" }),
+        message({ id: "b", body: "newest" }),
+      ];
+      const { container } = render(
+        <Thread contactId="C-1" interactionId={null} meStaffId="u1" pane />,
+      );
+      const list = container.querySelector("[data-thread-list]") as HTMLElement;
+      expect(list.scrollTop).toBe(900);
+    } finally {
+      if (desc) Object.defineProperty(HTMLElement.prototype, "scrollHeight", desc);
+      else delete (HTMLElement.prototype as any).scrollHeight;
+    }
+  });
+
+  it("the default variant does not scroll itself", () => {
+    // Only the fill panes own their scroll; the flow call sites ride the
+    // page's single content scroller and must not be yanked.
+    const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollHeight");
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get: () => 900,
+    });
+    try {
+      hoisted.messages = [message({ id: "a", body: "oldest" })];
+      const { container } = render(
+        <Thread contactId="C-1" interactionId={null} meStaffId="u1" />,
+      );
+      const list = container.querySelector("[data-thread-list]") as HTMLElement;
+      expect(list.scrollTop).toBe(0);
+    } finally {
+      if (desc) Object.defineProperty(HTMLElement.prototype, "scrollHeight", desc);
+      else delete (HTMLElement.prototype as any).scrollHeight;
+    }
+  });
+
+  it("compact variant keeps its tighter message spacing", () => {
+    // #780 moved `space-y-3` off the list and onto the composer, where it does
+    // nothing; the nested-in-an-interaction-row list silently widened to
+    // space-y-4.
+    hoisted.messages = [
+      message({ id: "a", interactionId: "I-1", body: "one" }),
+      message({ id: "b", interactionId: "I-1", body: "two" }),
+    ];
+    const { container } = render(
+      <Thread contactId="C-1" interactionId="I-1" meStaffId="u1" compact />,
+    );
+    const list = container.querySelector("[data-thread-list]") as HTMLElement;
+    expect(list.className).toContain("space-y-3");
+    expect(list.className).not.toContain("space-y-4");
+  });
+
   it("compact variant does not opt into pane layout (must remain unchanged)", () => {
     const { container } = render(
       <Thread contactId="C-1" interactionId="I-1" meStaffId="u1" compact />,

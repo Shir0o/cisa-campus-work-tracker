@@ -1290,6 +1290,8 @@
       "notes_placeholder": "Add some context about this contact...",
       "delete_contact": "Delete Contact",
       "delete_contact_help": "Removing a contact permanently deletes their record and history. You'll need to scroll past the rest of this page to find this.",
+      "deleting": "Deleting...",
+      "phone": "Phone",
       "what_we_know": "What we know",
       "no_notes": "No notes recorded for this contact yet.",
       "lately": "Lately",
