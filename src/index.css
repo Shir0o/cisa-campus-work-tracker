@@ -3614,12 +3614,6 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .prt-card:hover .prt-remove { opacity: 1; }
 .prt-remove:hover { background: var(--danger-soft); color: var(--danger); border-color: rgba(181,80,63,0.28); }
-.prt-remove-confirm { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; }
-.prt-remove-yes, .prt-remove-no {
-  font: inherit; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 4px 9px; cursor: pointer; border: 1px solid transparent;
-}
-.prt-remove-yes { color: var(--danger); background: var(--danger-soft); border-color: rgba(181,80,63,0.28); }
-.prt-remove-no { color: var(--text-dim); background: var(--hover); }
 
 /* ── A1: hover-revealed controls must stay visible on touch devices ──────────
    On coarse/no-hover pointers there is no :hover state, so opacity:0-until-hover
@@ -3813,7 +3807,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .prm .prt-head--m .prt-remove {
     opacity: 1; flex: none; width: 32px; height: 32px; margin-top: -2px;
   }
-  .prm .prt-head--m .prt-remove-confirm { flex: none; margin-top: 0; }
 
   .prm .prt-week { margin-top: 16px; }
   .prm .prt-prayer.is-week { padding: 14px 14px; }

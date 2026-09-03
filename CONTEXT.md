@@ -33,6 +33,10 @@ _Avoid_: Bug ticket, customer support issue, help desk ticket
 Permanently deleting a logged conversation from a contact's Conversations (web) / Story (mobile) log. Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
 _Avoid_: Archive entry, trash a conversation
 
+**Remove from prayer list**:
+Taking a person off `/prayer` — the row menu's destructive action on the web card, the × on the mobile card. It hides them from *your* page only: the id joins the `cisa.prayer.hidden` set in that browser's local storage, the same bookkeeping "Choose people" does when you untick a name. Nothing is deleted and no teammate's page changes; Undo puts them straight back. Distinct from **Archived**, which is a mark on a single prayer, not something you do to a person (#714, #715).
+_Avoid_: Archive from prayer list, unhold, stop carrying
+
 **Global Search (⌘K)**:
 The desktop search palette that opens the do-everything navigation: jump to any destination, find a person, conversation, coordination note, or history entry, and run quick actions — role-filtered and ranked by frecency. ⌘K (Ctrl+K on other keyboards) opens it from anywhere; on mobile a search button opens the same palette full-screen. In rail mode the palette is mounted by the shell above the content; in top-bar mode it sits inside the bar; the keyboard shortcut is identical in both shells.
 **Questions for the team**:

@@ -855,28 +855,56 @@ describe('PrayerList', () => {
     expect(mockOpenLog).toHaveBeenCalledWith('c1');
   });
 
-  it('prompts confirmation on clicking Archive and removes contact from prayer list', async () => {
+  it('removes a person straight from the row menu (#715)', async () => {
     localStorage.clear();
     render(<PrayerList />);
     await waitFor(() => {
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     });
 
-    // Click "Archive from Prayer List"
-    const archiveBtns = screen.getAllByRole('button', { name: /Archive from Prayer List/i });
-    fireEvent.click(archiveBtns[0]);
+    fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
 
-    // Should now show confirmation prompt with Archive / Keep buttons
-    expect(screen.getByText(/Archive from prayer\?/i)).toBeInTheDocument();
-    const confirmArchiveBtn = screen.getByRole('button', { name: /^Archive$/i });
-    fireEvent.click(confirmArchiveBtn);
-
-    // Alice should now be removed from active view and added to hidden in localStorage
+    // No confirm step: she leaves at once and the hidden set records it.
     await waitFor(() => {
       expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
     });
     const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
     expect(hidden).toContain('c1');
+
+    localStorage.removeItem('cisa.prayer.hidden');
+  });
+
+  it('puts the person back when the removal is undone (#715)', async () => {
+    localStorage.clear();
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /More for Alice Johnson/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Remove Alice from prayer list/i }));
+
+    expect(await screen.findByText('Removed Alice from your prayer list')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
+    expect(hidden).not.toContain('c1');
+
+    localStorage.removeItem('cisa.prayer.hidden');
+  });
+
+  it('no longer spells removal as archiving on the stale strip (#714)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByTestId('stale-quick-actions').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole('button', { name: /Archive from Prayer List/i })).not.toBeInTheDocument();
   });
 
   it('displays Cared for by and Added by in contact header metadata (issue #716)', async () => {

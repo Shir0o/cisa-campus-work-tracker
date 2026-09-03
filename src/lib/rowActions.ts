@@ -21,6 +21,11 @@ export interface ContactRowActionsOptions {
  * The shared person-row action vocabulary (#332):
  * open · make a to-do · share · I followed up.
  * Consumers can hide actions they don't have the data/handlers for yet.
+ *
+ * These four are the shared vocabulary. A surface with its own destructive
+ * action — the prayer page's "Remove from prayer list" (#715) — appends a
+ * `separated` item of its own, so its wording stays translatable on the page
+ * that owns it.
  */
 export function buildContactRowActions({
   contact,

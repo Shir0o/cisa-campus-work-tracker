@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
@@ -146,5 +146,80 @@ describe('buildContactRowActions', () => {
   it('omits actions whose handlers are missing', () => {
     const actions = buildContactRowActions({ contact });
     expect(actions.map((a) => a.id)).toEqual([]);
+  });
+
+});
+
+describe('RowActions — the removal row (#715)', () => {
+  const rect = (top: number, height: number) =>
+    ({ top, bottom: top + height, height, left: 0, right: 0, width: 200, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+  const viewportHeight = window.innerHeight;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.innerHeight = viewportHeight;
+  });
+
+  it('draws a separator above an item that asks for one', () => {
+    render(
+      <RowActions
+        items={[
+          { id: 'open', label: 'Open page', onSelect: vi.fn() },
+          { id: 'remove', label: 'Remove from prayer list', danger: true, separated: true, onSelect: vi.fn() },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+    expect(screen.getByRole('separator')).toBeInTheDocument();
+  });
+
+  it('flips the popover above the trigger when there is no room below', () => {
+    // The prayer card's ⋯ sits low in a short window; a four-item menu opening
+    // downwards would land past the fold (#715).
+    vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLDivElement,
+    ) {
+      return this.getAttribute('role') === 'menu' ? rect(0, 160) : rect(560, 28);
+    });
+    window.innerHeight = 662;
+
+    render(<RowActions items={[{ id: 'a', label: 'A', onSelect: vi.fn() }]} />);
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+
+    expect(screen.getByRole('menu').className).toContain('bottom-9');
+    expect(screen.getByRole('menu').className).not.toContain('top-9');
+  });
+
+  it('re-measures when the page scrolls under an open menu', () => {
+    let triggerTop = 80;
+    vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLDivElement,
+    ) {
+      return this.getAttribute('role') === 'menu' ? rect(0, 160) : rect(triggerTop, 28);
+    });
+    window.innerHeight = 662;
+
+    render(<RowActions items={[{ id: 'a', label: 'A', onSelect: vi.fn() }]} />);
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+    expect(screen.getByRole('menu').className).toContain('top-9');
+
+    triggerTop = 560;
+    fireEvent.scroll(window);
+    expect(screen.getByRole('menu').className).toContain('bottom-9');
+  });
+
+  it('keeps the popover below the trigger when there is room', () => {
+    vi.spyOn(HTMLDivElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLDivElement,
+    ) {
+      return this.getAttribute('role') === 'menu' ? rect(0, 160) : rect(80, 28);
+    });
+    window.innerHeight = 662;
+
+    render(<RowActions items={[{ id: 'a', label: 'A', onSelect: vi.fn() }]} />);
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+
+    expect(screen.getByRole('menu').className).toContain('top-9');
   });
 });

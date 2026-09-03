@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+    .num { width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+  </style>
+</helmet>
+
+<div style="width: 1180px; min-height: 100%; background: #FFFFFF; color: #0A0A0B; padding: 36px 36px 40px;">
+
+  <div style="margin-bottom: 26px;">
+    <div style="font-size: 12px; letter-spacing: 0.1em; color: #A1A1AA;">ISSUE 715 · TODAY, MEASURED AT 1107 × 662</div>
+    <h1 class="h" style="margin: 6px 0 0; font-size: 27px; font-weight: 600; line-height: 1.15;">Removing one person is a round trip to the top of the page</h1>
+    <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.55; color: #52525B; max-width: 78ch; text-wrap: pretty;">The only control that takes a person off <b style="color:#0A0A0B; font-weight:500;">/prayer</b> is <b style="color:#0A0A0B; font-weight:500;">Choose people</b>, anchored in the header. The card you are looking at has no such control unless the contact has gone stale. Numbers below are added up from <code style="font-size:13px;">src/index.css</code>, <code style="font-size:13px;">App.tsx</code> and <code style="font-size:13px;">PrayerList.tsx</code> at the viewport the feedback was written from — text metrics move them a few px either way.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 372px minmax(0, 1fr); gap: 32px;">
+
+    <div>
+      <div style="font-size: 11px; letter-spacing: 0.08em; color: #A1A1AA; margin-bottom: 10px;">THE PAGE, TO SCALE</div>
+      <div style="position: relative; width: 340px; border: 1px solid #E4E4E7; border-radius: 14px; background: #F4F4F5; padding: 0 0 10px; overflow: hidden;">
+
+        <div style="height: 9px; background: #EAEAEC;"></div>
+
+        <div style="padding: 0 10px;">
+          <div style="height: 62px; margin-top: 9px; border-radius: 6px; background: #FFFFFF; border: 1px solid #E4E4E7; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 10px;">
+            <div style="height: 9px; width: 120px; border-radius: 3px; background: #E4E4E7;"></div>
+            <div style="height: 5px; width: 190px; border-radius: 3px; background: #F0F0F2;"></div>
+            <div style="height: 5px; width: 150px; border-radius: 3px; background: #F0F0F2;"></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 9px;">
+            <div style="height: 13px; flex-grow: 1; border-radius: 999px; background: #FFFFFF; border: 1px solid #E4E4E7;"></div>
+            <div style="height: 13px; width: 78px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 7.5px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.02em;">Choose people</div>
+          </div>
+
+          <div style="height: 5px; width: 120px; border-radius: 3px; background: #E4E4E7; margin-top: 9px;"></div>
+
+          <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 9px;">
+            <div style="height: 110px; border-radius: 7px; background: #FFFFFF; border: 1px solid #E4E4E7;"></div>
+            <div style="height: 110px; border-radius: 7px; background: #FFFFFF; border: 1px solid #E4E4E7;"></div>
+            <div style="height: 110px; border-radius: 7px; background: #FFFFFF; border: 1px solid #E4E4E7;"></div>
+            <div style="height: 110px; border-radius: 7px; background: #FFFFFF; border: 1px solid #E4E4E7; position: relative;">
+              <span style="position: absolute; right: 7px; top: 7px; width: 28px; height: 9px; border-radius: 999px; background: rgba(177,0,15,0.14); border: 1px solid rgba(177,0,15,0.35);"></span>
+            </div>
+          </div>
+        </div>
+
+        <div style="position: absolute; left: 0; right: 0; top: 170px; border-top: 2px dashed #B1000F;"></div>
+        <div style="position: absolute; right: 6px; top: 174px; font-size: 9px; font-weight: 600; color: #B1000F; letter-spacing: 0.04em;">FOLD — 574 px</div>
+
+        <div style="position: absolute; left: 6px; top: 86px; bottom: 70px; width: 2px; background: repeating-linear-gradient(to bottom, #B1000F 0 4px, transparent 4px 8px);"></div>
+        <div style="position: absolute; left: 1px; top: 76px; color: #B1000F;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+        </div>
+        <div style="position: absolute; left: 1px; bottom: 60px; color: #B1000F;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m5 12 7 7 7-7"/></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; font-size: 12.5px; line-height: 1.45; color: #52525B;">
+        <div style="display: flex; gap: 10px;"><span style="width: 74px; flex-shrink: 0; color: #0A0A0B;">574 px</span><span>the whole scroll area: 662 − 16 shell pad − 56 chrome strip − 16 shell pad</span></div>
+        <div style="display: flex; gap: 10px;"><span style="width: 74px; flex-shrink: 0; color: #0A0A0B;">274 px</span><span>where <b style="font-weight:500; color:#0A0A0B;">Choose people</b> sits — the only place on the page a person can be removed</span></div>
+        <div style="display: flex; gap: 10px;"><span style="width: 74px; flex-shrink: 0; color: #0A0A0B;">352 px</span><span>top of the first card: 32 padding + 220 header + 68 search row + 32 label</span></div>
+        <div style="display: flex; gap: 10px;"><span style="width: 74px; flex-shrink: 0; color: #0A0A0B;">≈408 px</span><span>card pitch, so the fourth card opens near y ≈ 1576 — roughly 1300 px of scrolling from the button and back</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+        <div style="border: 1px solid #E4E4E7; border-radius: 16px; padding: 18px 20px 20px; background: #FFFFFF;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="h" style="font-size: 16px; font-weight: 600;">Today</span>
+            <span style="font-size: 11px; font-weight: 600; color: #B1000F; background: rgba(177,0,15,0.10); border-radius: 999px; padding: 2px 9px;">7 steps</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 9px; margin-top: 14px; font-size: 13.5px; line-height: 1.4;">
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">1</span><span>Scroll back up to the header</span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">2</span><span>Click <b style="font-weight:500;">Choose people</b></span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">3</span><span>Find the name in a modal listing the <b style="font-weight:500;">whole roster</b>, A–Z — not only the people on the page</span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">4</span><span>Untick them</span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">5</span><span>Press <b style="font-weight:500;">Save</b></span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">6</span><span>The modal closes, leaving you at the header</span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(177,0,15,0.10); color: #B1000F;">7</span><span>Scroll back down to where you were reading</span></div>
+          </div>
+        </div>
+
+        <div style="border: 1px solid #0A0A0B; border-radius: 16px; padding: 18px 20px 20px; background: #FFFFFF;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="h" style="font-size: 16px; font-weight: 600;">Proposed</span>
+            <span style="font-size: 11px; font-weight: 600; color: #FFFFFF; background: #131316; border-radius: 999px; padding: 2px 9px;">2 steps</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 9px; margin-top: 14px; font-size: 13.5px; line-height: 1.4;">
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(10,10,11,0.06); color: #0A0A0B;">1</span><span>Open the ⋯ already sitting on the card you are reading</span></div>
+            <div style="display: flex; gap: 10px;"><span class="num" style="background: rgba(10,10,11,0.06); color: #0A0A0B;">2</span><span>Choose <b style="font-weight:500;">Remove from prayer list</b></span></div>
+          </div>
+          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid #F0F0F2; font-size: 13px; line-height: 1.5; color: #52525B;">
+            No scroll, no modal, no roster to search. The page keeps its place, and an <b style="color:#0A0A0B; font-weight:500;">Undo</b> sits at the bottom for five seconds — the snackbar this view already carries for clearing a prayer.
+          </div>
+          <div style="margin-top: 14px; font-size: 12.5px; line-height: 1.5; color: #52525B;">
+            <b style="color:#0A0A0B; font-weight:500;">Choose people stays.</b> It is the right tool for adding several at once and for a start-of-term tidy-up; it is the wrong tool for taking one name off the card in front of you.
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 22px;">
+        <div style="font-size: 11px; letter-spacing: 0.08em; color: #A1A1AA; margin-bottom: 10px;">WHAT EXISTS TODAY, PER SURFACE</div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;">
+
+          <div style="border: 1px solid #E4E4E7; border-radius: 14px; padding: 14px 16px; background: #F4F4F5;">
+            <div style="font-size: 13px; font-weight: 600;">Desktop card ⋯ menu</div>
+            <div style="font-size: 12px; color: #52525B; margin-top: 3px;">PrayerList.tsx:842 · rowActions.ts</div>
+            <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 11px; font-size: 12.5px; color: #52525B;">
+              <div>· Open Daniel&#39;s page</div>
+              <div>· Make a to-do</div>
+              <div>· I followed up</div>
+              <div style="color: #B1000F;">· nothing that removes</div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #E4E4E7; border-radius: 14px; padding: 14px 16px; background: #F4F4F5;">
+            <div style="font-size: 13px; font-weight: 600;">Desktop stale strip</div>
+            <div style="font-size: 12px; color: #52525B; margin-top: 3px;">PrayerList.tsx:911</div>
+            <div style="font-size: 12.5px; color: #52525B; margin-top: 11px; line-height: 1.5;">Carries <b style="color:#0A0A0B; font-weight:500;">Archive from Prayer List</b> — but the strip renders only when the contact has gone stale, so on a healthy card there is nothing.</div>
+          </div>
+
+          <div style="border: 1px solid #E4E4E7; border-radius: 14px; padding: 14px 16px; background: #F4F4F5;">
+            <div style="font-size: 13px; font-weight: 600;">Mobile card</div>
+            <div style="font-size: 12px; color: #52525B; margin-top: 3px;">PrayerListMobile.tsx:400</div>
+            <div style="font-size: 12.5px; color: #52525B; margin-top: 11px; line-height: 1.5;">Already has one: an <b style="color:#0A0A0B; font-weight:500;">×</b> on every card, confirming to <b style="color:#0A0A0B; font-weight:500;">Remove / Keep</b> in place. This issue is desktop catching up.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1180,"height":1010}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>
