@@ -177,15 +177,16 @@ describe('Contact Management', () => {
   it('Changing a Contact: updates contact details', async () => {
     const contact = mockContacts[0];
     render(
-      <ContactDetailsModal 
-        isOpen={true} 
-        onClose={vi.fn()} 
-        contact={contact} 
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        contact={contact}
       />
     );
 
-    // Enter edit mode
-    const editBtn = screen.getByTitle(/Edit details/i);
+    // #780: Edit action is in the head's overflow menu
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    const editBtn = screen.getByText('Edit details');
     fireEvent.click(editBtn);
 
     // Change role
@@ -215,12 +216,15 @@ describe('Contact Management', () => {
       <ContactDetailsModal 
         isOpen={true} 
         onClose={vi.fn()} 
-        contact={contact} 
+        contact={contact}
       />
     );
-
-    const deleteButtons = screen.getAllByText(/Delete Contact/i);
-    fireEvent.click(deleteButtons[0]);
+    // #780: Delete moved to a bordered danger block at the end of Overview.
+    // The heading and the button both render the same text; click the button
+    // inside the danger block.
+    const dangerBlock = screen.getAllByText(/Delete Contact/i)[1].closest('div');
+    const deleteBtn = dangerBlock!.querySelector('button')!;
+    fireEvent.click(deleteBtn);
 
     await waitFor(() => {
       expect(firestore.deleteDoc).toHaveBeenCalled();

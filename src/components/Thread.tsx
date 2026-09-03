@@ -29,6 +29,7 @@ interface ThreadProps {
   contactName?: string;
   compact?: boolean;
   scope?: "team" | null;
+  pane?: boolean;
 }
 
 interface ThrRowProps {
@@ -217,6 +218,7 @@ export default function Thread({
   contactName,
   compact = false,
   scope = null,
+  pane = false,
 }: ThreadProps) {
   const { user } = useAuth();
   const allMessages = useThreads(contactId);
@@ -264,8 +266,20 @@ export default function Thread({
         : "Add a comment…";
 
   return (
-    <div className="flex flex-col">
-      {messages.length === 0 ? (
+    <div className={cn("flex flex-col", pane && "cd-pane-thread")} data-thread-pane={pane ? "" : undefined}>
+      <div data-thread-list="" className={cn(messages.length > 0 && "flex flex-col space-y-4", messages.length === 0 && "hidden")}>
+        {messages.map((m) => (
+          <ThreadMsg
+            key={m.id}
+            m={m}
+            meStaffId={meStaffId}
+            contactId={contactId}
+            recipientUid={recipientUid}
+            contactName={contactName}
+          />
+        ))}
+      </div>
+      {messages.length === 0 && (
         <div className="text-sm italic text-on-surface-variant/70 pb-3">
           {compact
             ? "No comments on this interaction yet."
@@ -273,23 +287,10 @@ export default function Thread({
               ? "Nothing here yet — start the team's discussion below."
               : "Nothing here yet — leave the first comment below."}
         </div>
-      ) : (
-        <div className={cn("flex flex-col space-y-4", compact && "space-y-3")}>
-          {messages.map((m) => (
-            <ThreadMsg
-              key={m.id}
-              m={m}
-              meStaffId={meStaffId}
-              contactId={contactId}
-              recipientUid={recipientUid}
-              contactName={contactName}
-            />
-          ))}
-        </div>
       )}
 
       {/* Compose */}
-      <div className={cn(messages.length > 0 && "mt-4")}>
+      <div data-thread-composer="" className={cn(messages.length > 0 && "mt-4", compact && messages.length > 0 && "space-y-3")}>
         <textarea
           ref={taRef}
           value={draft}

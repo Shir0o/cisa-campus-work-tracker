@@ -145,7 +145,56 @@ describe("Thread", () => {
     expect(addThreadMessage).toHaveBeenCalledWith(
       "C-1",
       expect.objectContaining({ body: "Slack style reply", parentId: "m1" }),
-      expect.anything()
+      expect.anything(),
     );
   });
-});
+
+  it("pane variant: composer follows the message list in DOM order and both sit in the pane", () => {
+    hoisted.messages = [
+      message({ id: "a", from: "u3", fromName: "Zion Park", body: "earliest" }),
+      message({ id: "b", from: "u1", fromName: "Tony Wang", body: "newest" }),
+    ];
+    const { container } = render(
+      <Thread contactId="C-1" interactionId={null} meStaffId="u1" pane />,
+    );
+
+    const pane = container.querySelector("[data-thread-pane]");
+    expect(pane).toBeTruthy();
+    const list = pane.querySelector("[data-thread-list]");
+    const composer = pane.querySelector("[data-thread-composer]");
+    expect(list).toBeTruthy();
+    expect(composer).toBeTruthy();
+    // DOM order: list before composer so flex column lays them out as a fill.
+    expect(
+      list.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("pane variant: does not wrap composer after the list when messages render in flow", () => {
+    // Guards against the original #762 regression where the composer sat
+    // below every message and forced the user to scroll back down to reply.
+    hoisted.messages = [
+      message({ id: "a", from: "u3", fromName: "Zion Park", body: "first" }),
+      message({ id: "b", from: "u3", fromName: "Zion Park", body: "second" }),
+    ];
+    const { container } = render(
+      <Thread contactId="C-1" interactionId={null} meStaffId="u1" pane />,
+    );
+
+    const pane = container.querySelector("[data-thread-pane]");
+    expect(pane).toBeTruthy();
+    // The composer must be a direct child of the pane, not nested inside the
+    // list — that way the pane's flex layout can pin the composer to its
+    // bottom while the list scrolls.
+    const composer = pane.querySelector("[data-thread-composer]");
+    expect(pane.contains(composer)).toBe(true);
+    expect(composer.parentElement === pane).toBe(true);
+  });
+
+  it("compact variant does not opt into pane layout (must remain unchanged)", () => {
+    const { container } = render(
+      <Thread contactId="C-1" interactionId="I-1" meStaffId="u1" compact />,
+    );
+    expect(container.querySelector("[data-thread-pane]")).toBeNull();
+  });
+ });

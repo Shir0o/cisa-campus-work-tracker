@@ -23,6 +23,7 @@ import {
   Check,
   Tag,
   ArrowRightLeft,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   db,
@@ -195,6 +196,67 @@ function AuditActivityItem({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MoreMenu({
+  onLogInteraction,
+  onAddPrayer,
+  onEdit,
+  showEdit,
+}: {
+  onLogInteraction: () => void;
+  onAddPrayer: () => void;
+  onEdit: () => void;
+  showEdit: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = React.useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="More actions"
+        title="More actions"
+        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 z-30 min-w-[200px] bg-surface rounded-xl border border-outline-variant shadow-lg py-1.5">
+          <button
+            onClick={() => { setOpen(false); onLogInteraction(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors"
+          >
+            <MessageSquare className="w-4 h-4" /> Log interaction
+          </button>
+          <button
+            onClick={() => { setOpen(false); onAddPrayer(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors"
+          >
+            <Heart className="w-4 h-4" /> Add prayer
+          </button>
+          {showEdit && (
+            <button
+              onClick={() => { setOpen(false); onEdit(); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors"
+            >
+              <Edit3 className="w-4 h-4" /> Edit details
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1260,102 +1322,79 @@ export default function ContactDetailsModal({
                 </div>
               )
             ) : (
-              /* Desktop header — Field Notes: avatar, name, stage, since, actions */
+              /* Desktop header — single 56px row carrying avatar, name, stage,
+                 "Last connected … · Cared for by …", and a compact icon
+                 cluster on the right. The aside's "Cared for by" is promoted
+                 here so the one glance-level fact stays on screen from every
+                 tab (#780). */
               <header className="cd-head">
-                <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
-                  {contact.initials}
-                </div>
+                <div className="cd-head-avatar">{contact.initials}</div>
                 <div className="cd-head-main">
                   <div className="cd-name-row">
                     <h2 className="cd-name">{isEditing ? t('modals.contactDetails.edit_details') : contact.name}</h2>
                     {!isEditing && contact.pronouns && (
                       <span className="cd-pronouns">{contact.pronouns}</span>
                     )}
-                    {!isEditing && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-variant text-on-surface-variant">
-                        {contact.stage || t('modals.contactDetails.unassigned')}
-                      </span>
+                    {!isEditing && contact.stage && (
+                      <span className="cd-stage-pill">{contact.stage}</span>
                     )}
                   </div>
-
                   {!isEditing && (
-                    <>
-                      <div className="cd-since">
-                        {sinceText}
-                        {sinceBy && <span className="cd-by">{t('modals.contactDetails.contacted_by').replace('{name}', sinceBy)}</span>}
-                      </div>
-                      <div className="cd-meta">
-                        {[
-                          [contact.year, contact.major].filter(Boolean).join(" · ") || null,
-                          fmtDate(contact.createdAt) && t('modals.contactDetails.added').replace('{date}', fmtDate(contact.createdAt) || ''),
-                        ]
-                          .filter(Boolean)
-                          .map((item, i) => (
-                            <React.Fragment key={i}>
-                              {i > 0 && <span className="sep">·</span>}
-                              {item}
-                            </React.Fragment>
-                          ))}
-                      </div>
-                    </>
-                  )}
-
-                  {!isEditing && (
-                    <div className="cd-actions">
-                      {contact.phone && (
-                        <button
-                          onClick={callContact}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        >
-                          <Phone className="w-3.5 h-3.5" /> {t('modals.contactDetails.call')}
-                        </button>
-                      )}
-                      {contact.phone && (
-                        <button
-                          onClick={textContact}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" /> {t('modals.contactDetails.text')}
-                        </button>
-                      )}
-                      {contact.email && (
-                        <button
-                          onClick={emailContact}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        >
-                          <Mail className="w-3.5 h-3.5" /> {t('modals.contactDetails.email')}
-                        </button>
-                      )}
-                      <button
-                        onClick={startLogInteraction}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" /> {t('modals.contactDetails.log_interaction')}
-                      </button>
-                      <button
-                        onClick={startAddPrayer}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <Heart className="w-3.5 h-3.5" /> {t('modals.contactDetails.add_prayer')}
-                      </button>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        title={t('modals.contactDetails.edit_details')}
-                        aria-label={t('modals.contactDetails.edit_details')}
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="cd-head-sub">
+                      <span>{sinceText}</span>
+                      <span className="sep">·</span>
+                      <span>{t('modals.contactDetails.cared_for_by')} <b>{ownerName}</b></span>
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={handleClose}
-                  className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant shrink-0"
-                  title={t('modals.contactDetails.close')}
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {!isEditing && (
+                  <div className="cd-actions">
+                    {contact.phone && (
+                      <button
+                        onClick={callContact}
+                        title={t('modals.contactDetails.call')}
+                        aria-label={t('modals.contactDetails.call')}
+                        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </button>
+                    )}
+                    {contact.phone && (
+                      <button
+                        onClick={textContact}
+                        title={t('modals.contactDetails.text')}
+                        aria-label={t('modals.contactDetails.text')}
+                        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </button>
+                    )}
+                    {contact.email && (
+                      <button
+                        onClick={emailContact}
+                        title={t('modals.contactDetails.email')}
+                        aria-label={t('modals.contactDetails.email')}
+                        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
+                    )}
+                    <MoreMenu
+                      onLogInteraction={startLogInteraction}
+                      onAddPrayer={startAddPrayer}
+                      onEdit={() => setIsEditing(true)}
+                      showEdit={role !== 'viewer'}
+                    />
+                    <button
+                      onClick={handleClose}
+                      title={t('modals.contactDetails.close')}
+                      aria-label={t('modals.contactDetails.close')}
+                      className="w-9 h-9 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </header>
             )}
 
@@ -1417,7 +1456,7 @@ export default function ContactDetailsModal({
                   onSubmit={handleUpdate}
                   className={cn("space-y-6", !isMobile && "px-7 py-6")}
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="cd-form-grid grid grid-cols-1 gap-6">
                     {/* First Name */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
@@ -1685,8 +1724,8 @@ export default function ContactDetailsModal({
                   </div>
                 </form>
               ) : (
-                <div className="min-h-[400px]">
-{activeTab === "overview" && (
+                <>
+                {activeTab === "overview" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1702,45 +1741,6 @@ export default function ContactDetailsModal({
                             "No notes recorded for this contact yet."
                           )}
                         </div>
-                      </div>
-
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.lately')}</h3>
-                          <span className="cd-sec-sub">{t('modals.contactDetails.our_last_few_conversations')}</span>
-                        </div>
-                        {interactionsLoading ? (
-                          <div className="flex gap-3">
-                            <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-                            <div className="flex-1 space-y-2">
-                              <Skeleton className="h-3 w-24 rounded-full" />
-                              <Skeleton className="h-12 w-full rounded-xl" />
-                            </div>
-                          </div>
-                        ) : interactions.length === 0 ? (
-                          <div className="cd-empty">{t('modals.contactDetails.no_conversations')}</div>
-                        ) : (
-                          <div className="cd-tl">
-                            {visibleInteractions.slice(0, 3).map((i) => (
-                              <div className="cd-tl-item" key={i.id}>
-                                <div className="cd-tl-dot"></div>
-                                <div className="cd-tl-title">
-                                  <Translate showOriginalToggle text={i.content} />
-                                </div>
-                                <div className="cd-tl-meta">
-                                  {i.dateTime ? new Date(i.dateTime).toLocaleDateString() : ""}
-                                  <span className="sep">·</span>
-                                  <span>{i.userName || t('modals.contactDetails.someone')}</span>
-                                  {i.type && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-variant text-on-surface-variant">
-                                      {i.type}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
 
                       <div className="cd-sec">
@@ -1782,6 +1782,288 @@ export default function ContactDetailsModal({
                           </div>
                         )}
                       </div>
+
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.how_to_reach').replace('{name}', firstName)}</h3>
+                        </div>
+                        <div className="cd-kv">
+                          {contact.phone && (
+                            <div className="cd-kv-row">
+                              <Phone className="w-3.5 h-3.5 cd-kv-ico" />
+                              <span className="cd-kv-val">{contact.phone}</span>
+                            </div>
+                          )}
+                          {contact.email && (
+                            <div className="cd-kv-row">
+                              <Mail className="w-3.5 h-3.5 cd-kv-ico" />
+                              <span className="cd-kv-val dim">{contact.email}</span>
+                            </div>
+                          )}
+                          {contact.instagram && (
+                            <div className="cd-kv-row">
+                              <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
+                              <span className="cd-kv-val dim">{contact.instagram}</span>
+                            </div>
+                          )}
+                          {contact.role && (
+                            <div className="cd-kv-row">
+                              <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
+                              <span className="cd-kv-val dim">{contact.role}</span>
+                            </div>
+                          )}
+                          {contact.spiritualBackground && (
+                            <div className="cd-kv-row">
+                              <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
+                              <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
+                            </div>
+                          )}
+                          {!contact.phone && !contact.email && !contact.instagram && !contact.role && !contact.spiritualBackground && (
+                            <div className="cd-empty">{t('modals.contactDetails.none_yet')}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
+                        </div>
+                        <div className="cd-journey">
+                          {sortedStages.length === 0 && (
+                            <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
+                          )}
+                          {sortedStages.map((s, i) => {
+                            const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
+                            return (
+                              <div key={s.id} className={cn("cd-journey-step", state)}>
+                                <span className="cd-step-mark">
+                                  {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
+                                  {state === "done" && <span className="pd" />}
+                                </span>
+                                <span className="cd-step-name">{s.label}</span>
+                                {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.cared_for_by')}</h3>
+                        </div>
+                        <div className="cd-owner">
+                          <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
+                            {ownerInfo?.initials || "?"}
+                          </div>
+                          <div>
+                            <div className="cd-owner-name">{ownerName}</div>
+                            {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
+                          </div>
+                        </div>
+
+                        {canShare && transferOptions.length > 0 && (
+                          transferring ? (
+                            <div className="flex items-center gap-2 mt-3">
+                              <select
+                                className="cd-share-sel flex-1"
+                                autoFocus
+                                defaultValue=""
+                                onChange={(e) => e.target.value && transferOwner(e.target.value)}
+                              >
+                                <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
+                                {transferOptions.map((s) => (
+                                  <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => setTransferring(false)}
+                                className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setTransferring(true)}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start mt-2"
+                            >
+                              <ArrowRightLeft className="w-3 h-3" /> {t('modals.contactDetails.transfer_to')}
+                            </button>
+                          )
+                        )}
+                        {(addedByName || sinceBy) && (
+                          <div className="cd-whowho">
+                            {addedByName && (
+                              <div className="cd-lastby">
+                                <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
+                                  {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
+                                </div>
+                                <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                              </div>
+                            )}
+                            {sinceBy && (
+                              <div className="cd-lastby">
+                                <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
+                                  {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
+                                </div>
+                                <span>{t('modals.contactDetails.last_contacted_by')} <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.who_else_can_see')}</h3>
+                        </div>
+                        <div className="cd-share">
+                          {sharedWith.length === 0 && (
+                            <span className="text-xs text-on-surface-variant">
+                              {t('modals.contactDetails.just_owner_for_now').replace('{name', firstName)}
+                            </span>
+                          )}
+                          {sharedWith.map((s) => (
+                            <div key={s.id} className="cd-share-row">
+                              <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
+                              <span className="cd-share-name">{s.name}</span>
+                              <span className="cd-share-role">{s.role}</span>
+                              {canShare && (
+                                <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
+                              )}
+                            </div>
+                          ))}
+                          {canShare && shareOptions.length > 0 && (
+                            sharing ? (
+                              <div className="flex items-center gap-2">
+                                <select
+                                  className="cd-share-sel flex-1"
+                                  autoFocus
+                                  defaultValue=""
+                                  onChange={(e) => e.target.value && addShare(e.target.value)}
+                                >
+                                  <option value="" disabled>{t('modals.contactDetails.add_someone')}</option>
+                                  {shareOptions.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() => setSharing(false)}
+                                  className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setSharing(true)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
+                              >
+                                <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.tags')}</h3>
+                        </div>
+                        <div className="cd-tags">
+                          {formData.tags.length === 0 && !addingTag && (
+                            <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.none_yet')}</span>
+                          )}
+                          {formData.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              style={tagStyle(tag)}
+                              className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
+                            >
+                              {tag}
+                              <button onClick={() => removeTag(tag)} className="cd-tag-x" title={t('modals.contactDetails.remove_tag')}>×</button>
+                            </span>
+                          ))}
+                          {addingTag ? (
+                            <div className="flex flex-col gap-2 w-full">
+                              <span className="cd-tag-input-wrap">
+                                <input
+                                  className="cd-tag-input w-full"
+                                  autoFocus
+                                  value={tagInput}
+                                  onChange={(e) => setTagInput(e.target.value)}
+                                  placeholder={t('modals.contactDetails.new_tag_placeholder')}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") commitTag();
+                                    if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
+                                  }}
+                                  onBlur={() => {
+                                    if (tagInput.trim()) commitTag();
+                                    else setTimeout(() => setAddingTag(false), 200);
+                                  }}
+                                />
+                              </span>
+                              {(() => {
+                                const available = TAG_SUGGESTIONS.filter(
+                                  (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
+                                );
+                                if (available.length === 0) return null;
+                                return (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {available.slice(0, 4).map((s) => (
+                                      <button
+                                        key={s}
+                                        type="button"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          persistTags([...formData.tags, s], "added", s);
+                                          setTagInput("");
+                                          setAddingTag(false);
+                                        }}
+                                        style={tagStyle(s)}
+                                        className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
+                                      >
+                                        + {s}
+                                      </button>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setAddingTag(true)}
+                              className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
+                            >
+                              <Plus className="w-3 h-3" /> {t('modals.contactDetails.add')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {role !== 'viewer' && (
+                        <div className="cd-sec">
+                          <div className="rounded-2xl border border-error/30 p-5 bg-error/5">
+                            <h3 className="cd-sec-title text-error">{t('modals.contactDetails.delete_contact')}</h3>
+                            <p className="text-sm text-on-surface-variant mt-1">
+                              {t('modals.contactDetails.delete_contact_help')}
+                            </p>
+                            <button
+                              onClick={handleDelete}
+                              disabled={loading}
+                              className="mt-4 inline-flex items-center gap-2 px-4 h-10 rounded-full text-error font-semibold text-sm border border-error/30 hover:bg-error/10 transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              {loading ? (
+                                <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
+                              ) : (
+                                t('modals.contactDetails.delete_contact')
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
 {activeTab === "interactions" && (
@@ -2142,7 +2424,7 @@ export default function ContactDetailsModal({
                   )}
 
                   {activeTab === "thread" && (
-                    <div className="cd-sec">
+                    <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
                         <span className="cd-sec-sub">
@@ -2155,6 +2437,7 @@ export default function ContactDetailsModal({
                         meStaffId={currentUid ?? ""}
                         recipientUid={threadRecipient}
                         contactName={contact.name}
+                        pane
                       />
                     </div>
                   )}
@@ -2337,7 +2620,7 @@ export default function ContactDetailsModal({
                   )}
 
                   {activeTab === "discussion" && (role === "admin" || isAdmin) && (
-                    <div className="cd-sec">
+                    <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{t('modals.contactDetails.discussion')}</h3>
                         <span className="cd-sec-sub">
@@ -2351,6 +2634,7 @@ export default function ContactDetailsModal({
                         recipientUid={threadRecipient}
                         contactName={contact.name}
                         scope="team"
+                        pane
                       />
                     </div>
                   )}
@@ -2395,60 +2679,37 @@ export default function ContactDetailsModal({
                       </div>
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
 
-            {/* Footer */}
-            <div className={cn("cd-page-foot", isMobile && "hidden")}>
-              <div className="hidden sm:block">
-                <button
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-4 h-10 rounded-full text-error font-semibold text-sm hover:bg-error/10 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {loading ? (
-                    <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
-                  ) : (
-                    t('modals.contactDetails.delete_contact')
-                  )}
-                </button>
-              </div>
-
-              <div className="flex gap-3 w-full sm:w-auto">
-                {isEditing ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="flex-1 sm:flex-none px-6 h-10 rounded-full font-semibold text-on-surface-variant hover:bg-surface-variant text-sm transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      form="edit-contact-form"
-                      type="submit"
-                      disabled={loading}
-                      className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
-                    >
-                      {loading ? (
-                        <span className="animate-pulse">{t('modals.contactDetails.saving')}</span>
-                      ) : (
-                        t('modals.contactDetails.save_changes')
-                      )}
-                    </button>
-                  </>
-                ) : (
+            {/* Footer: Save/Cancel only while editing. Read mode has no
+               persistent chrome — Delete moved to the end of Overview (#780). */}
+            {isEditing && !isMobile && (
+              <div className="cd-page-foot">
+                <div className="flex gap-3 w-full sm:w-auto ml-auto">
                   <button
-                    onClick={handleClose}
-                    className="w-full sm:w-auto px-8 h-10 rounded-full bg-secondary-container text-on-secondary-container font-semibold  transition-all text-sm"
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 sm:flex-none px-6 h-10 rounded-full font-semibold text-on-surface-variant hover:bg-surface-variant text-sm transition-colors"
                   >
-                    Done
+                    Cancel
                   </button>
-                )}
+                  <button
+                    form="edit-contact-form"
+                    type="submit"
+                    disabled={loading}
+                    className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                  >
+                    {loading ? (
+                      <span className="animate-pulse">{t('modals.contactDetails.saving')}</span>
+                    ) : (
+                      t('modals.contactDetails.save_changes')
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Mobile-only delete button */}
             <div className={cn("sm:hidden px-6 pb-6 pt-0", isMobile && "hidden")}>
@@ -2466,255 +2727,6 @@ export default function ContactDetailsModal({
               </button>
             </div>
           </div>
-          {!isMobile && (
-            <aside className="cd-page-aside">
-              <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">{t('modals.contactDetails.how_to_reach').replace('{name}', firstName)}</h3>
-                <div className="cd-kv">
-                  {contact.phone && (
-                    <div className="cd-kv-row">
-                      <Phone className="w-3.5 h-3.5 cd-kv-ico" />
-                      <span className="cd-kv-val">{contact.phone}</span>
-                    </div>
-                  )}
-                  {contact.email && (
-                    <div className="cd-kv-row">
-                      <Mail className="w-3.5 h-3.5 cd-kv-ico" />
-                      <span className="cd-kv-val dim">{contact.email}</span>
-                    </div>
-                  )}
-                  {contact.instagram && (
-                    <div className="cd-kv-row">
-                      <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
-                      <span className="cd-kv-val dim">{contact.instagram}</span>
-                    </div>
-                  )}
-                  {contact.role && (
-                    <div className="cd-kv-row">
-                      <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
-                      <span className="cd-kv-val dim">{contact.role}</span>
-                    </div>
-                  )}
-                  {contact.spiritualBackground && (
-                    <div className="cd-kv-row">
-                      <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
-                      <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">{t('modals.contactDetails.where_they_are')}</h3>
-                <div className="cd-journey">
-                  {sortedStages.length === 0 && (
-                    <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
-                  )}
-                  {sortedStages.map((s, i) => {
-                    const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
-                    return (
-                      <div key={s.id} className={cn("cd-journey-step", state)}>
-                        <span className="cd-step-mark">
-                          {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
-                          {state === "done" && <span className="pd" />}
-                        </span>
-                        <span className="cd-step-name">{s.label}</span>
-                        {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">{t('modals.contactDetails.cared_for_by')}</h3>
-                <div className="cd-owner">
-                  <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
-                    {ownerInfo?.initials || "?"}
-                  </div>
-                  <div>
-                    <div className="cd-owner-name">{ownerName}</div>
-                    {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
-                  </div>
-                </div>
-
-                {canShare && transferOptions.length > 0 && (
-                  transferring ? (
-                    <div className="flex items-center gap-2 mt-2">
-                      <select
-                        className="cd-share-sel flex-1"
-                        autoFocus
-                        defaultValue=""
-                        onChange={(e) => e.target.value && transferOwner(e.target.value)}
-                      >
-                        <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
-                        {transferOptions.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => setTransferring(false)}
-                        className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setTransferring(true)}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start mt-2"
-                    >
-                      <ArrowRightLeft className="w-3 h-3" /> {t('modals.contactDetails.transfer_to')}
-                    </button>
-                  )
-                )}
-                {(addedByName || sinceBy) && (
-                  <div className="cd-whowho">
-                    {addedByName && (
-                      <div className="cd-lastby">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
-                          {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
-                        </div>
-                        <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
-                      </div>
-                    )}
-                    {sinceBy && (
-                      <div className="cd-lastby">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
-                          {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
-                        </div>
-                        <span>{t('modals.contactDetails.last_contacted_by')} <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">{t('modals.contactDetails.who_else_can_see')}</h3>
-                <div className="cd-share">
-                  {sharedWith.length === 0 && (
-                    <span className="text-xs text-on-surface-variant">
-                      {t('modals.contactDetails.just_owner_for_now').replace('{name}', ownerName.split(" ")[0] || t('modals.contactDetails.you'))}
-                    </span>
-                  )}
-                  {sharedWith.map((s) => (
-                    <div key={s.id} className="cd-share-row">
-                      <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
-                      <span className="cd-share-name">{s.name}</span>
-                      <span className="cd-share-role">{s.role}</span>
-                      {canShare && (
-                        <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
-                      )}
-                    </div>
-                  ))}
-                  {canShare && shareOptions.length > 0 && (
-                    sharing ? (
-                      <div className="flex items-center gap-2">
-                        <select
-                          className="cd-share-sel flex-1"
-                          autoFocus
-                          defaultValue=""
-                          onChange={(e) => e.target.value && addShare(e.target.value)}
-                        >
-                          <option value="" disabled>{t('modals.contactDetails.add_someone')}</option>
-                          {shareOptions.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => setSharing(false)}
-                          className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setSharing(true)}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
-                      >
-                        <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">{t('modals.contactDetails.tags')}</h3>
-                <div className="cd-tags">
-                  {formData.tags.length === 0 && !addingTag && (
-                    <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.none_yet')}</span>
-                  )}
-                  {formData.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      style={tagStyle(tag)}
-                      className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
-                    >
-                      {tag}
-                      <button onClick={() => removeTag(tag)} className="cd-tag-x" title={t('modals.contactDetails.remove_tag')}>×</button>
-                    </span>
-                  ))}
-                  {addingTag ? (
-                    <div className="flex flex-col gap-2 w-full">
-                      <span className="cd-tag-input-wrap">
-                        <input
-                          className="cd-tag-input w-full"
-                          autoFocus
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          placeholder={t('modals.contactDetails.new_tag_placeholder')}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") commitTag();
-                            if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
-                          }}
-                          onBlur={() => {
-                            if (tagInput.trim()) commitTag();
-                            else setTimeout(() => setAddingTag(false), 200);
-                          }}
-                        />
-                      </span>
-                      {(() => {
-                        const available = TAG_SUGGESTIONS.filter(
-                          (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
-                        );
-                        if (available.length === 0) return null;
-                        return (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {available.slice(0, 4).map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  persistTags([...formData.tags, s], "added", s);
-                                  setTagInput("");
-                                  setAddingTag(false);
-                                }}
-                                style={tagStyle(s)}
-                                className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
-                              >
-                                + {s}
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setAddingTag(true)}
-                      className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
-                    >
-                      <Plus className="w-3 h-3" /> {t('modals.contactDetails.add')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </aside>
-          )}
         </div>
       )}
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />

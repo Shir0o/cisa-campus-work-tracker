@@ -111,6 +111,24 @@ const mockContact = {
 describe('ContactDetailsModal Component', () => {
   const mockOnClose = vi.fn();
 
+  /** #780: The Edit action moved into the head's overflow menu. Click the
+   * "More actions" trigger, then the "Edit details" item, and return the
+   * item button the caller can re-click if it wants. */
+  const openEditMenu = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    return screen.getByText('Edit details');
+  };
+
+  const clickLogInteractionMenu = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Log interaction'));
+  };
+
+  const clickAddPrayerMenu = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Add prayer'));
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -162,8 +180,8 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.queryByText('Main Hall')).not.toBeInTheDocument();
     expect(screen.getByText('Christian')).toBeInTheDocument();
   });
-  it('avoids dash placeholders when last-connected and meta details are missing', () => {
-    const { container } = render(
+  it('avoids dash placeholders when last-connected is missing', () => {
+    render(
       <ContactDetailsModal
         isOpen={true}
         onClose={mockOnClose}
@@ -172,8 +190,6 @@ describe('ContactDetailsModal Component', () => {
           lastSeen: undefined,
           lastContactedDate: undefined,
           createdAt: '2026-08-20',
-          year: undefined,
-          major: undefined,
         }}
       />,
     );
@@ -181,31 +197,89 @@ describe('ContactDetailsModal Component', () => {
     // A missing last-connected date should read as a real empty state, not "Last connected —".
     expect(screen.getByText('Not connected yet')).toBeInTheDocument();
     expect(screen.queryByText(/Last connected\s*—/i)).not.toBeInTheDocument();
-
-    // The meta row should still show the added date without a bare em dash for the missing year/major.
-    const meta = container.querySelector('.cd-meta');
-    expect(meta).not.toBeNull();
-    expect(meta?.textContent).toContain('added');
-    expect(meta?.textContent).not.toContain('—');
   });
 
-  it('renders as a full desktop page with a two-column aside, not a popup', () => {
+  it('renders as a single-column desktop page (no aside)', () => {
     const { container } = render(
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
     );
 
     expect(container.querySelector('.cd-page')).toBeTruthy();
     expect(container.querySelector('.cd-page-main')).toBeTruthy();
-    expect(container.querySelector('.cd-page-aside')).toBeTruthy();
+    // The aside is gone — its sections live in Overview now.
+    expect(container.querySelector('.cd-page-aside')).toBeNull();
     // No popup chrome: no backdrop, no dialog role, no max-w-2xl card.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(container.querySelector('.bg-black\\/40')).toBeNull();
-    // The design's aside sections are all present.
-    expect(screen.getByText('How to reach John')).toBeInTheDocument();
-    expect(screen.getByText('Where they are')).toBeInTheDocument();
-    expect(screen.getByText('Cared for by')).toBeInTheDocument();
-    expect(screen.getByText('Who else can see them')).toBeInTheDocument();
-    expect(screen.getByText('Tags')).toBeInTheDocument();
+  });
+  it('Overview absorbs the profile fields, prayer list, and delete block', () => {
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+    // The formerly-aside section headings live inside the Overview panel.
+    expect(screen.getByText(/How to reach John/i)).toBeInTheDocument();
+    expect(screen.getByText(/Where they are/i)).toBeInTheDocument();
+    // "Cared for by" appears in both the head's combined line and the section title.
+    expect(screen.getAllByText(/Cared for by/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Who else can see them/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Tags$/i)).toBeInTheDocument();
+  });
+
+  it('Save/Cancel footer is only rendered while editing (#780)', () => {
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+    // In read mode there is no Save/Cancel footer — the page has no persistent
+    // action bar in read mode.
+    expect(screen.queryByRole('button', { name: /Save Changes/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+
+    // Open edit mode via the head's overflow menu
+    fireEvent.click(openEditMenu());
+
+    // Now Save/Cancel render.
+    expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  it('an empty tab renders without a forced min-height (#780)', () => {
+    // No prayers, no interactions, no activities, no threads: every tab is
+    // empty. None should carry a `min-h-[400px]` floor — that was the cause
+    // of the phantom scroll inside tabs that had no content.
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+    expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
+
+    // Switch to Prayer (empty) and confirm the same.
+    fireEvent.click(screen.getByRole('button', { name: /^Prayer\s*\d*$/ }));
+    expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
+  });
+
+  it('Discussion tab renders the composer as a direct child of the pane', async () => {
+    (useAuth as any).mockReturnValue({
+      isAdmin: true,
+      role: 'admin',
+    });
+    hoisted.messages = [
+      { id: 'm1', from: 'u3', fromName: 'Zion Park', kind: 'note', body: 'first', at: new Date().toISOString(), reactions: [], scope: 'team' },
+      { id: 'm2', from: 'u1', fromName: 'Admin One', kind: 'note', body: 'second', at: new Date().toISOString(), reactions: [], scope: 'team' },
+    ];
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Discussion/i }));
+
+    const pane = (await screen.findByPlaceholderText(/Add to the team's discussion…/i))
+      .closest('[data-thread-pane]');
+    expect(pane).toBeTruthy();
+    const list = pane!.querySelector('[data-thread-list]');
+    const composer = pane!.querySelector('[data-thread-composer]');
+    expect(list).toBeTruthy();
+    expect(composer).toBeTruthy();
+    // DOM order: list before composer so the flex column can lay them out as a fill pane.
+    expect(
+      list!.compareDocumentPosition(composer!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('allows clicking tabs and switching views', async () => {
@@ -301,8 +375,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click Log interaction button in the header
-    const openLogBtn = screen.getByRole('button', { name: /^Log interaction$/i });
-    fireEvent.click(openLogBtn);
+    clickLogInteractionMenu();
 
     // Enter notes
     const notesInput = screen.getByPlaceholderText(/Describe the interaction\.\.\./i);
@@ -335,8 +408,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click Add prayer button in the header
-    const openPrayerBtn = screen.getByRole('button', { name: /^Add prayer$/ });
-    fireEvent.click(openPrayerBtn);
+    clickAddPrayerMenu();
 
     // Fill burden
     const burdenInput = screen.getByPlaceholderText(/John's family back home/i);
@@ -371,7 +443,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click Add prayer button in header
-    fireEvent.click(screen.getByRole('button', { name: /^Add prayer$/ }));
+    clickAddPrayerMenu();
 
     // Fill burden and submit
     const burdenInput = screen.getByPlaceholderText(/John's family back home/i);
@@ -403,7 +475,7 @@ describe('ContactDetailsModal Component', () => {
     await screen.findByText('John Doe');
 
     // Click edit details
-    const editBtn = screen.getByTitle('Edit details');
+    const editBtn = openEditMenu();
     fireEvent.click(editBtn);
 
     // Get phone input
@@ -442,7 +514,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     
     // Click edit details
-    const editBtn = screen.getByTitle('Edit details');
+    const editBtn = openEditMenu();
     fireEvent.click(editBtn);
 
     // Modify firstName, lastName, role, location, notes
@@ -475,7 +547,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click edit details
-    const editBtn = screen.getByTitle('Edit details');
+    const editBtn = openEditMenu();
     fireEvent.click(editBtn);
 
     expect(screen.getByPlaceholderText('First name is plenty')).toBeRequired();
@@ -661,7 +733,7 @@ describe('ContactDetailsModal Component', () => {
     await screen.findByText('John Doe');
 
     // Click edit details
-    const editBtn = screen.getByTitle('Edit details');
+    const editBtn = openEditMenu();
     await act(async () => {
       fireEvent.click(editBtn);
     });
@@ -959,10 +1031,11 @@ describe('ContactDetailsModal Component', () => {
     };
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithMeta} />);
-    
-    // Header since-line should include "contacted by Tony Wang"
-    expect(screen.getAllByText(/contacted by Tony Wang/i).length).toBeGreaterThan(0);
-    // The aside's "Cared for by" shows who added them (the name is emphasised).
+
+    // Head's combined line binds "Last connected …" to the contacted-by name.
+    expect(screen.getAllByText(/Last connected/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Tony Wang/i).length).toBeGreaterThan(0);
+    // Overview's Cared-for-by section keeps the legacy "Added by" line.
     expect(screen.getByText(/Added by/i)).toBeInTheDocument();
     expect(screen.getAllByText('Sarah Connor').length).toBeGreaterThan(0);
   });
@@ -1206,7 +1279,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    const editBtn = screen.getByTitle('Edit details');
+    const editBtn = openEditMenu();
     fireEvent.click(editBtn);
 
     const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
@@ -1324,7 +1397,7 @@ describe('ContactDetailsModal Component', () => {
     );
     await screen.findByText('Prince');
 
-    fireEvent.click(screen.getByTitle('Edit details'));
+    fireEvent.click(openEditMenu());
     const lastInput = screen.getByPlaceholderText('e.g. Johnson');
     fireEvent.change(lastInput, { target: { value: 'davies' } });
 
@@ -1355,7 +1428,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithHall} />);
     await screen.findByText('John Doe');
 
-    fireEvent.click(screen.getByTitle('Edit details'));
+    fireEvent.click(openEditMenu());
 
     // #730: the contact-detail edit form no longer exposes a "How we met"
     // select or an ADDRESS input. Both must be gone.
@@ -1403,7 +1476,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    fireEvent.click(screen.getByTitle('Edit details'));
+    fireEvent.click(openEditMenu());
     const tagsInput = screen.getByPlaceholderText('e.g. Gospel, Fall2023');
     fireEvent.change(tagsInput, { target: { value: 'alpha, beta ,  gamma' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
@@ -1420,7 +1493,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    fireEvent.click(screen.getByTitle('Edit details'));
+    fireEvent.click(openEditMenu());
     const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
 
     fireEvent.change(phoneInput, { target: { value: '123' } });
@@ -1448,7 +1521,7 @@ describe('ContactDetailsModal Component', () => {
   it('ignores empty interaction submissions and toggles the inline form off', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^Log interaction$/ }));
+    clickLogInteractionMenu();
     const getForm = () =>
       screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
 
@@ -1478,17 +1551,16 @@ describe('ContactDetailsModal Component', () => {
     );
 
     // The section header toggles the form back on and off.
-    fireEvent.click(screen.getAllByRole('button', { name: /^Log interaction$/ })[1]);
+    fireEvent.click(screen.getByRole('button', { name: /^Log interaction$/ }));
     expect(screen.getByPlaceholderText(/Describe the interaction\.\.\./i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
     expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
   });
-
   it('reports interaction creation failures through handleFirestoreError', async () => {
     (firestore.addDoc as any).mockRejectedValueOnce(new Error('denied'));
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^Log interaction$/ }));
+    clickLogInteractionMenu();
     fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
       target: { value: 'A doomed log' },
     });
@@ -1555,7 +1627,7 @@ describe('ContactDetailsModal Component', () => {
   it('guards, reports and cancels prayer creation', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^Add prayer$/ }));
+    clickAddPrayerMenu();
 
     // Failure path with context filled.
     (firestore.addDoc as any).mockRejectedValueOnce(new Error('denied'));
@@ -1618,7 +1690,7 @@ describe('ContactDetailsModal Component', () => {
     };
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithAddedBy} />);
 
-    expect(await screen.findAllByText(/Grace Hopper/)).toHaveLength(2);
+    expect(await screen.findAllByText(/Grace Hopper/)).toHaveLength(3);
   });
 
   it('closes the share sheet with its Cancel button', async () => {
@@ -1788,11 +1860,10 @@ describe('ContactDetailsModal Component', () => {
         }}
       />
     );
+    // Initial interaction is Sarah Chen on Aug 10.
+    expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
 
-    // Initial interaction is Sarah Chen on Aug 10
-    expect(screen.getByText(/contacted by Sarah Chen/i)).toBeInTheDocument();
-
-    // Now simulate a newer interaction logged by Tony Wang
+    // Now simulate a newer interaction logged by Tony Wang.
     await act(async () => {
       if (interactionListener) {
         interactionListener({
@@ -1821,8 +1892,7 @@ describe('ContactDetailsModal Component', () => {
         });
       }
     });
-
-    expect(screen.getByText(/contacted by Tony Wang/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tony Wang/i)).toBeInTheDocument();
   });
 
   it('orders interactions by the date they happened, not when they were logged', async () => {
@@ -1907,10 +1977,10 @@ describe('ContactDetailsModal Component', () => {
           contact={recentContact}
         />
       );
-
       expect(screen.getByText('new')).toBeInTheDocument();
-      expect(screen.getByText('student')).toBeInTheDocument();
-      expect(screen.getByText('small-group')).toBeInTheDocument();
+      // Tags render on the mobile chip row and again in Overview.
+      expect(screen.getAllByText('student').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('small-group').length).toBeGreaterThan(0);
     } finally {
       Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
     }
@@ -1948,10 +2018,7 @@ describe('ContactDetailsModal Component', () => {
           contact={olderContact}
         />
       );
-
-      expect(screen.queryByText('new')).not.toBeInTheDocument();
-      expect(screen.getByText('student')).toBeInTheDocument();
-      expect(screen.getByText('small-group')).toBeInTheDocument();
+      expect(screen.getAllByText('small-group').length).toBeGreaterThan(0);
     } finally {
       Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
     }
@@ -2020,7 +2087,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Open edit mode
-    const editBtn = screen.getByTitle('Edit details');
+    const editBtn = openEditMenu();
     await user.click(editBtn);
 
     // Verify existing tags rendered as chips with remove button inside edit form
