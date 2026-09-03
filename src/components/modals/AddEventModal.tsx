@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { addDays, addWeeks, addMonths, format, parseISO, getDay, startOfMonth, endOfMonth, getWeekOfMonth, isBefore, isSameDay } from 'date-fns';
 
 import DatePicker from '../ui/DatePicker';
+import { Switch } from '../ui/Switch';
 import { useGatheringTypes } from '../../lib/gatheringTypes';
 import { useLanguage } from '../LanguageProvider';
 import type { Contact } from '../../types';
@@ -406,19 +407,11 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount, cont
                       <p className="text-[10px] text-on-surface-variant">{t('modals.repeat_this_event')}</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(f => ({ ...f, isRecurring: !f.isRecurring }))}
-                    className={cn(
-                      "w-10 h-6 rounded-full relative transition-colors duration-200 ease-in-out cursor-pointer",
-                      formData.isRecurring ? "bg-primary" : "bg-outline"
-                    )}
-                  >
-                    <div className={cn(
-                      "absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ease-in-out",
-                      formData.isRecurring && "translate-x-4"
-                    )} />
-                  </button>
+                  <Switch
+                    checked={formData.isRecurring}
+                    onChange={(next) => setFormData(f => ({ ...f, isRecurring: next }))}
+                    aria-label={t('modals.recurring_event')}
+                  />
                 </div>
 
                 {/* Recurrence Options */}

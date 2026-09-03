@@ -70,10 +70,20 @@ describe('SeasonChip', () => {
     fireEvent.click(screen.getByText('Winter'));
     expect(h.setSeason).toHaveBeenCalledWith('winter');
 
-    fireEvent.click(screen.getByRole('button', { name: /Club rush/i }));
-    expect(h.toggleClubRush).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('switch', { name: /Club rush/i }));
   });
+  it('exposes the club-rush toggle as a switch with the right state', () => {
+    const { rerender } = render(<SeasonChip />);
+    fireEvent.click(screen.getByTitle('Season & club rush'));
 
+    // #712 — the toggle has to read as a switch and announce its state.
+    const toggle = screen.getByRole('switch', { name: /Club rush/i });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    h.season.clubRush = true;
+    rerender(<SeasonChip />);
+    expect(screen.getByRole('switch', { name: /Club rush/i })).toHaveAttribute('aria-checked', 'true');
+  });
   it('offers a reset back to the current term when overridden', () => {
     h.season.isAuto = false;
     render(<SeasonChip />);

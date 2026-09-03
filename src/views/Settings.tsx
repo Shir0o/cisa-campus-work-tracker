@@ -50,6 +50,7 @@ import {
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Switch } from '../components/ui/Switch';
 import { useTheme } from '../components/ThemeProvider';
 import { useNavShell, type NavShellPreference } from '../components/NavShellProvider';
 import { useLanguage } from '../components/LanguageProvider';
@@ -574,12 +575,7 @@ function DayGoalSection() {
         sub={t('settings.day_goal_sub', 'A shared aim for an on-campus day — the same number for everyone.')}
       />
       <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
-        <button
-          type="button"
-          onClick={() => setOn(!goal.on)}
-          aria-pressed={goal.on}
-          className="flex items-center justify-between gap-4 text-left cursor-pointer group"
-        >
+        <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <h3 className="font-serif text-base text-on-surface leading-tight">
               {t('settings.day_goal_toggle', 'Give the day a goal')}
@@ -588,22 +584,12 @@ function DayGoalSection() {
               {t('settings.day_goal_toggle_sub', 'Each trainee aims to meet the same number of new people on an on-campus day.')}
             </p>
           </div>
-          <span
-            className={cn(
-              'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
-              goal.on ? 'bg-accent' : 'bg-outline-variant',
-            )}
-            role="switch"
-            aria-checked={goal.on}
-          >
-            <span
-              className={cn(
-                'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
-                goal.on ? 'translate-x-[22px]' : 'translate-x-0.5',
-              )}
-            />
-          </span>
-        </button>
+          <Switch
+            checked={goal.on}
+            onChange={(next) => setOn(next)}
+            aria-label={t('settings.day_goal_toggle', 'Give the day a goal')}
+          />
+        </div>
 
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
