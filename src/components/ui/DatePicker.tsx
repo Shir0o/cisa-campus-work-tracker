@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   format, 
   addMonths, 
@@ -40,6 +41,8 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
   const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
 
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
+  const [coords, setCoords] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // Handle placement & clicking outside to close
   useEffect(() => {
@@ -50,10 +53,23 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
         const rect = containerRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
+        const width = rect.width;
+        const left = rect.left;
+
         if (spaceBelow < 380 && spaceAbove > spaceBelow) {
           setPlacement('top');
+          setCoords({
+            bottom: window.innerHeight - rect.top + 8,
+            left,
+            width,
+          });
         } else {
           setPlacement('bottom');
+          setCoords({
+            top: rect.bottom + 8,
+            left,
+            width,
+          });
         }
       }
     };
@@ -63,7 +79,13 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
     window.addEventListener('scroll', updatePlacement, true);
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        popupRef.current &&
+        !popupRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -204,16 +226,33 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
       )}
 
       <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: placement === 'top' ? -10 : 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: placement === 'top' ? -10 : 10, scale: 0.95 }}
-            className={cn(
-              "absolute left-0 right-0 z-[110] bg-surface-container-highest rounded-3xl shadow-2xl border border-outline-variant overflow-hidden max-h-[min(380px,80vh)] overflow-y-auto custom-scrollbar",
-              placement === 'top' ? "bottom-full mb-2" : "top-full mt-2"
-            )}
-          >
+        {isOpen &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <div
+              ref={popupRef}
+              className={cn(
+                "fixed z-[110] max-h-[min(380px,80vh)]",
+                placement === 'top' ? "bottom-full" : "top-full"
+              )}
+              style={{
+                position: 'fixed',
+                ...(coords?.top !== undefined ? { top: coords.top } : {}),
+                ...(coords?.bottom !== undefined ? { bottom: coords.bottom } : {}),
+                left: coords ? coords.left : undefined,
+                width: coords ? coords.width : undefined,
+                zIndex: 110,
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: placement === 'top' ? -10 : 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: placement === 'top' ? -10 : 10, scale: 0.95 }}
+                className={cn(
+                  "w-full bg-surface-container-highest rounded-3xl shadow-2xl border border-outline-variant overflow-hidden max-h-[min(380px,80vh)] overflow-y-auto custom-scrollbar",
+                  placement === 'top' ? "bottom-full" : "top-full"
+                )}
+              >
             {/* M3 Header */}
             <div className="bg-surface-container px-6 py-4 border-b border-outline-variant">
               <p className="text-xs font-medium text-on-surface-variant mb-1">Select date</p>
@@ -359,7 +398,9 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
               </button>
             </div>
           </motion.div>
-        )}
+        </div>,
+        document.body
+      )}
       </AnimatePresence>
     </div>
   );
