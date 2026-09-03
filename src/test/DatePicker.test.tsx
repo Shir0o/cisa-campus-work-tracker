@@ -322,12 +322,29 @@ describe('DatePicker', () => {
 
       // Header should be rendered inside overlay container with top placement styling
       const header = screen.getByText('Select date');
-      const overlayContainer = header.closest('.absolute');
+      const overlayContainer = header.closest('.fixed, .absolute');
       expect(overlayContainer).not.toBeNull();
       expect(overlayContainer?.className).toContain('bottom-full');
       expect(overlayContainer?.className).toContain('max-h-[min(380px,80vh)]');
     } finally {
       Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
     }
+  });
+
+  it('renders calendar popup in portal attached to document.body so it is not clipped by overflow-hidden containers', () => {
+    const { container } = render(
+      <div style={{ overflow: 'hidden', height: 100, position: 'relative' }}>
+        <DatePicker label="End date" value="2026-06-15" onChange={vi.fn()} />
+      </div>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle calendar picker' }));
+
+    const header = screen.getByText('Select date');
+    const popup = header.closest('.z-\\[110\\]');
+    expect(popup).not.toBeNull();
+    // Verify popup is rendered under document.body via portal, not trapped inside overflow:hidden container
+    expect(container.contains(popup)).toBe(false);
+    expect(document.body.contains(popup)).toBe(true);
   });
 });

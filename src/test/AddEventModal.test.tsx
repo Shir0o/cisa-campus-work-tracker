@@ -149,6 +149,24 @@ describe('AddEventModal Component', () => {
     expect(screen.getByText('End By')).toBeInTheDocument();
   });
 
+  it('allows opening End By DatePicker and selecting a date in recurring options', async () => {
+    render(<AddEventModal isOpen={true} onClose={mockOnClose} currentEventCount={0} />);
+
+    // Toggle recurring
+    const toggleBtn = screen.getByText('Recurring Event').closest('.justify-between')?.querySelector('button')!;
+    fireEvent.click(toggleBtn);
+    await screen.findByText('Frequency');
+
+    // Find the toggle calendar picker button for End By
+    const pickerBtns = screen.getAllByRole('button', { name: 'Toggle calendar picker' });
+    // pickerBtns[0] is start date, pickerBtns[1] is End By date
+    expect(pickerBtns.length).toBe(2);
+    fireEvent.click(pickerBtns[1]);
+
+    // Expect calendar dropdown to open portaled to document.body
+    expect(screen.getByText('Select date')).toBeInTheDocument();
+  });
+
   it('submits recurring daily events via batch write', async () => {
     const batchMock = firestore.writeBatch(null as any);
     render(<AddEventModal isOpen={true} onClose={mockOnClose} currentEventCount={1} />);
