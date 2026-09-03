@@ -18,6 +18,16 @@
  *   - `.cd-pane-thread` keeps the message list above the composer — the pane
  *     layout is wired so the composer pins to the bottom of Discussion and
  *     Follow up.
+ *   - Every `cd-*` class the contact-detail markup renders has a rule in
+ *     `index.css`. #780 pasted its new rules over the `sections` / `header` /
+ *     `aside` blocks and deleted 24 classes the same commit's markup still
+ *     used, so every tab panel rendered unpadded and unstyled. Every
+ *     behavioural test stayed green: jsdom has no layout engine and the
+ *     guardrail only asserted the *new* rules existed. This invariant is the
+ *     general form of that defect.
+ *   - The fill-pane message list is not reversed. `useThreads` is documented
+ *     oldest-first and `Thread` maps it in DOM order, so `column-reverse` on
+ *     `[data-thread-list]` made Discussion and Follow up read backwards.
  *
  * If a future change re-introduces the phantom scroll, this test fails before
  * the change merges.
@@ -27,6 +37,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CSS_PATH = join(process.cwd(), 'src/index.css');
+/** The markup that renders the contact-detail page, desktop and mobile. */
+const MARKUP_PATHS = [
+  'src/components/modals/ContactDetailsModal.tsx',
+  'src/components/Thread.tsx',
+].map((p) => join(process.cwd(), p));
 
 /**
  * Extract the body of a top-level rule with the given selector. Tolerant
@@ -101,5 +116,29 @@ describe('contact-detail phantom-scroll guardrail (#780)', () => {
     // viewport moving).
     expect(css).toMatch(/@container\s+cd-main\s*\(min-width:\s*560px\)/);
     expect(css).toMatch(/\.cd-form-grid\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  });
+
+  it('every cd-* class the markup renders has a rule in index.css', () => {
+    // #780 deleted .cd-sec, .cd-sec-title, .cd-kv*, .cd-owner*, .cd-share*
+    // and .cd-journey* while its own markup kept using them. Comparing the
+    // rendered names against the defined ones catches the whole class of
+    // paste-over, not the 24 names that happened to go missing that time.
+    const markup = MARKUP_PATHS.map((p) => readFileSync(p, 'utf8')).join('\n');
+    const rendered = new Set(markup.match(/\bcd-[a-z0-9-]+/g) ?? []);
+    const defined = new Set(
+      (css.match(/\.cd-[a-z0-9-]+/g) ?? []).map((s) => s.slice(1)),
+    );
+    const undefinedClasses = [...rendered].filter((c) => !defined.has(c)).sort();
+    expect(undefinedClasses, 'cd-* classes rendered with no rule in index.css').toEqual([]);
+  });
+
+  it('the fill-pane message list is not reversed', () => {
+    // useThreads is oldest-first and Thread maps it in DOM order, so any
+    // column-reverse on the list renders the conversation backwards. It also
+    // does not do what it claims: scrollTop 0 in a reversed column is the
+    // flex start, which holds the *oldest* message.
+    // Matched against the raw stylesheet rather than ruleBody() because the
+    // offending rule shipped as a comma-separated selector list.
+    expect(css).not.toMatch(/\[data-thread-list\][^{}]*\{[^}]*column-reverse/);
   });
 });

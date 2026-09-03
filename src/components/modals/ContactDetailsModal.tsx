@@ -1783,173 +1783,106 @@ export default function ContactDetailsModal({
                         )}
                       </div>
 
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.how_to_reach').replace('{name}', firstName)}</h3>
-                        </div>
-                        <div className="cd-kv">
-                          {contact.phone && (
-                            <div className="cd-kv-row">
-                              <Phone className="w-3.5 h-3.5 cd-kv-ico" />
-                              <span className="cd-kv-val">{contact.phone}</span>
-                            </div>
-                          )}
-                          {contact.email && (
-                            <div className="cd-kv-row">
-                              <Mail className="w-3.5 h-3.5 cd-kv-ico" />
-                              <span className="cd-kv-val dim">{contact.email}</span>
-                            </div>
-                          )}
-                          {contact.instagram && (
-                            <div className="cd-kv-row">
-                              <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
-                              <span className="cd-kv-val dim">{contact.instagram}</span>
-                            </div>
-                          )}
-                          {contact.role && (
-                            <div className="cd-kv-row">
-                              <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
-                              <span className="cd-kv-val dim">{contact.role}</span>
-                            </div>
-                          )}
-                          {contact.spiritualBackground && (
-                            <div className="cd-kv-row">
-                              <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
-                              <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
-                            </div>
-                          )}
-                          {!contact.phone && !contact.email && !contact.instagram && !contact.role && !contact.spiritualBackground && (
-                            <div className="cd-empty">{t('modals.contactDetails.none_yet')}</div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
-                        </div>
-                        <div className="cd-journey">
-                          {sortedStages.length === 0 && (
-                            <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
-                          )}
-                          {sortedStages.map((s, i) => {
-                            const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
-                            return (
-                              <div key={s.id} className={cn("cd-journey-step", state)}>
-                                <span className="cd-step-mark">
-                                  {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
-                                  {state === "done" && <span className="pd" />}
-                                </span>
-                                <span className="cd-step-name">{s.label}</span>
-                                {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.cared_for_by')}</h3>
-                        </div>
-                        <div className="cd-owner">
-                          <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
-                            {ownerInfo?.initials || "?"}
+                      {/* The five groups that used to be the 320px aside. They pair up
+                          once the column can hold two — a container query, because the
+                          rail's 232/76px collapse changes the available width without
+                          the viewport moving (#780). */}
+                      <div className="cd-overview-grid">
+                        <div className="cd-sec">
+                          <div className="cd-sec-head">
+                            <h3 className="cd-sec-title">{t('modals.contactDetails.how_to_reach').replace('{name}', firstName)}</h3>
                           </div>
-                          <div>
-                            <div className="cd-owner-name">{ownerName}</div>
-                            {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
-                          </div>
-                        </div>
-
-                        {canShare && transferOptions.length > 0 && (
-                          transferring ? (
-                            <div className="flex items-center gap-2 mt-3">
-                              <select
-                                className="cd-share-sel flex-1"
-                                autoFocus
-                                defaultValue=""
-                                onChange={(e) => e.target.value && transferOwner(e.target.value)}
-                              >
-                                <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
-                                {transferOptions.map((s) => (
-                                  <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => setTransferring(false)}
-                                className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setTransferring(true)}
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start mt-2"
-                            >
-                              <ArrowRightLeft className="w-3 h-3" /> {t('modals.contactDetails.transfer_to')}
-                            </button>
-                          )
-                        )}
-                        {(addedByName || sinceBy) && (
-                          <div className="cd-whowho">
-                            {addedByName && (
-                              <div className="cd-lastby">
-                                <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
-                                  {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
-                                </div>
-                                <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                          <div className="cd-kv">
+                            {contact.phone && (
+                              <div className="cd-kv-row">
+                                <Phone className="w-3.5 h-3.5 cd-kv-ico" />
+                                <span className="cd-kv-val">{contact.phone}</span>
                               </div>
                             )}
-                            {sinceBy && (
-                              <div className="cd-lastby">
-                                <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
-                                  {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
-                                </div>
-                                <span>{t('modals.contactDetails.last_contacted_by')} <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
+                            {contact.email && (
+                              <div className="cd-kv-row">
+                                <Mail className="w-3.5 h-3.5 cd-kv-ico" />
+                                <span className="cd-kv-val dim">{contact.email}</span>
                               </div>
                             )}
+                            {contact.instagram && (
+                              <div className="cd-kv-row">
+                                <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
+                                <span className="cd-kv-val dim">{contact.instagram}</span>
+                              </div>
+                            )}
+                            {contact.role && (
+                              <div className="cd-kv-row">
+                                <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
+                                <span className="cd-kv-val dim">{contact.role}</span>
+                              </div>
+                            )}
+                            {contact.spiritualBackground && (
+                              <div className="cd-kv-row">
+                                <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
+                                <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
+                              </div>
+                            )}
+                            {!contact.phone && !contact.email && !contact.instagram && !contact.role && !contact.spiritualBackground && (
+                              <div className="cd-empty">{t('modals.contactDetails.none_yet')}</div>
+                            )}
                           </div>
-                        )}
-                      </div>
-
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.who_else_can_see')}</h3>
                         </div>
-                        <div className="cd-share">
-                          {sharedWith.length === 0 && (
-                            <span className="text-xs text-on-surface-variant">
-                              {t('modals.contactDetails.just_owner_for_now').replace('{name', firstName)}
-                            </span>
-                          )}
-                          {sharedWith.map((s) => (
-                            <div key={s.id} className="cd-share-row">
-                              <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
-                              <span className="cd-share-name">{s.name}</span>
-                              <span className="cd-share-role">{s.role}</span>
-                              {canShare && (
-                                <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
-                              )}
+
+                        <div className="cd-sec">
+                          <div className="cd-sec-head">
+                            <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
+                          </div>
+                          <div className="cd-journey">
+                            {sortedStages.length === 0 && (
+                              <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
+                            )}
+                            {sortedStages.map((s, i) => {
+                              const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
+                              return (
+                                <div key={s.id} className={cn("cd-journey-step", state)}>
+                                  <span className="cd-step-mark">
+                                    {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
+                                    {state === "done" && <span className="pd" />}
+                                  </span>
+                                  <span className="cd-step-name">{s.label}</span>
+                                  {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="cd-sec">
+                          <div className="cd-sec-head">
+                            <h3 className="cd-sec-title">{t('modals.contactDetails.cared_for_by')}</h3>
+                          </div>
+                          <div className="cd-owner">
+                            <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
+                              {ownerInfo?.initials || "?"}
                             </div>
-                          ))}
-                          {canShare && shareOptions.length > 0 && (
-                            sharing ? (
-                              <div className="flex items-center gap-2">
+                            <div>
+                              <div className="cd-owner-name">{ownerName}</div>
+                              {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
+                            </div>
+                          </div>
+
+                          {canShare && transferOptions.length > 0 && (
+                            transferring ? (
+                              <div className="flex items-center gap-2 mt-3">
                                 <select
                                   className="cd-share-sel flex-1"
                                   autoFocus
                                   defaultValue=""
-                                  onChange={(e) => e.target.value && addShare(e.target.value)}
+                                  onChange={(e) => e.target.value && transferOwner(e.target.value)}
                                 >
-                                  <option value="" disabled>{t('modals.contactDetails.add_someone')}</option>
-                                  {shareOptions.map((s) => (
+                                  <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
+                                  {transferOptions.map((s) => (
                                     <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
                                   ))}
                                 </select>
                                 <button
-                                  onClick={() => setSharing(false)}
+                                  onClick={() => setTransferring(false)}
                                   className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
                                 >
                                   Cancel
@@ -1957,88 +1890,161 @@ export default function ContactDetailsModal({
                               </div>
                             ) : (
                               <button
-                                onClick={() => setSharing(true)}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
+                                onClick={() => setTransferring(true)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start mt-2"
                               >
-                                <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
+                                <ArrowRightLeft className="w-3 h-3" /> {t('modals.contactDetails.transfer_to')}
                               </button>
                             )
                           )}
-                        </div>
-                      </div>
-
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.tags')}</h3>
-                        </div>
-                        <div className="cd-tags">
-                          {formData.tags.length === 0 && !addingTag && (
-                            <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.none_yet')}</span>
-                          )}
-                          {formData.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              style={tagStyle(tag)}
-                              className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
-                            >
-                              {tag}
-                              <button onClick={() => removeTag(tag)} className="cd-tag-x" title={t('modals.contactDetails.remove_tag')}>×</button>
-                            </span>
-                          ))}
-                          {addingTag ? (
-                            <div className="flex flex-col gap-2 w-full">
-                              <span className="cd-tag-input-wrap">
-                                <input
-                                  className="cd-tag-input w-full"
-                                  autoFocus
-                                  value={tagInput}
-                                  onChange={(e) => setTagInput(e.target.value)}
-                                  placeholder={t('modals.contactDetails.new_tag_placeholder')}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") commitTag();
-                                    if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
-                                  }}
-                                  onBlur={() => {
-                                    if (tagInput.trim()) commitTag();
-                                    else setTimeout(() => setAddingTag(false), 200);
-                                  }}
-                                />
-                              </span>
-                              {(() => {
-                                const available = TAG_SUGGESTIONS.filter(
-                                  (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
-                                );
-                                if (available.length === 0) return null;
-                                return (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {available.slice(0, 4).map((s) => (
-                                      <button
-                                        key={s}
-                                        type="button"
-                                        onMouseDown={(e) => {
-                                          e.preventDefault();
-                                          persistTags([...formData.tags, s], "added", s);
-                                          setTagInput("");
-                                          setAddingTag(false);
-                                        }}
-                                        style={tagStyle(s)}
-                                        className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
-                                      >
-                                        + {s}
-                                      </button>
-                                    ))}
+                          {(addedByName || sinceBy) && (
+                            <div className="cd-whowho">
+                              {addedByName && (
+                                <div className="cd-lastby">
+                                  <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
+                                    {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                                   </div>
-                                );
-                              })()}
+                                  <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                                </div>
+                              )}
+                              {sinceBy && (
+                                <div className="cd-lastby">
+                                  <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
+                                    {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
+                                  </div>
+                                  <span>{t('modals.contactDetails.last_contacted_by')} <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <button
-                              onClick={() => setAddingTag(true)}
-                              className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
-                            >
-                              <Plus className="w-3 h-3" /> {t('modals.contactDetails.add')}
-                            </button>
                           )}
+                        </div>
+
+                        <div className="cd-sec">
+                          <div className="cd-sec-head">
+                            <h3 className="cd-sec-title">{t('modals.contactDetails.who_else_can_see')}</h3>
+                          </div>
+                          <div className="cd-share">
+                            {sharedWith.length === 0 && (
+                              <span className="text-xs text-on-surface-variant">
+                                {t('modals.contactDetails.just_owner_for_now').replace('{name', firstName)}
+                              </span>
+                            )}
+                            {sharedWith.map((s) => (
+                              <div key={s.id} className="cd-share-row">
+                                <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
+                                <span className="cd-share-name">{s.name}</span>
+                                <span className="cd-share-role">{s.role}</span>
+                                {canShare && (
+                                  <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
+                                )}
+                              </div>
+                            ))}
+                            {canShare && shareOptions.length > 0 && (
+                              sharing ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    className="cd-share-sel flex-1"
+                                    autoFocus
+                                    defaultValue=""
+                                    onChange={(e) => e.target.value && addShare(e.target.value)}
+                                  >
+                                    <option value="" disabled>{t('modals.contactDetails.add_someone')}</option>
+                                    {shareOptions.map((s) => (
+                                      <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => setSharing(false)}
+                                    className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setSharing(true)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
+                                >
+                                  <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="cd-sec">
+                          <div className="cd-sec-head">
+                            <h3 className="cd-sec-title">{t('modals.contactDetails.tags')}</h3>
+                          </div>
+                          <div className="cd-tags">
+                            {formData.tags.length === 0 && !addingTag && (
+                              <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.none_yet')}</span>
+                            )}
+                            {formData.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                style={tagStyle(tag)}
+                                className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
+                              >
+                                {tag}
+                                <button onClick={() => removeTag(tag)} className="cd-tag-x" title={t('modals.contactDetails.remove_tag')}>×</button>
+                              </span>
+                            ))}
+                            {addingTag ? (
+                              <div className="flex flex-col gap-2 w-full">
+                                <span className="cd-tag-input-wrap">
+                                  <input
+                                    className="cd-tag-input w-full"
+                                    autoFocus
+                                    value={tagInput}
+                                    onChange={(e) => setTagInput(e.target.value)}
+                                    placeholder={t('modals.contactDetails.new_tag_placeholder')}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") commitTag();
+                                      if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
+                                    }}
+                                    onBlur={() => {
+                                      if (tagInput.trim()) commitTag();
+                                      else setTimeout(() => setAddingTag(false), 200);
+                                    }}
+                                  />
+                                </span>
+                                {(() => {
+                                  const available = TAG_SUGGESTIONS.filter(
+                                    (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
+                                  );
+                                  if (available.length === 0) return null;
+                                  return (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {available.slice(0, 4).map((s) => (
+                                        <button
+                                          key={s}
+                                          type="button"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            persistTags([...formData.tags, s], "added", s);
+                                            setTagInput("");
+                                            setAddingTag(false);
+                                          }}
+                                          style={tagStyle(s)}
+                                          className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
+                                        >
+                                          + {s}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setAddingTag(true)}
+                                className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
+                              >
+                                <Plus className="w-3 h-3" /> {t('modals.contactDetails.add')}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
