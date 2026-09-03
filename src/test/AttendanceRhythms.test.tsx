@@ -1,6 +1,6 @@
 import './useMediaQuery.mock';
 import React from 'react';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { vi, beforeEach, describe, it, expect, afterEach } from 'vitest';
 
 vi.mock('react-router-dom', () => ({
@@ -129,7 +129,7 @@ vi.mock('../lib/calendar/calendarSync', () => ({
 }));
 
 import Attendance from '../views/Attendance';
-import { onSnapshot } from 'firebase/firestore';
+import { onSnapshot, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 
@@ -230,6 +230,87 @@ describe('Attendance — Rhythms + This-week wiring (issue #776)', () => {
     render(<Attendance />);
     await waitFor(() => {
       expect(screen.getByText("Who we've missed lately")).toBeInTheDocument();
+    });
+  });
+  // ── Attendance taken as a fact on the Gathering (issue #776, stories 21-22) ──
+  describe('attendance taken', () => {
+    // A Gathering nobody came to, and one somebody recorded — both one-offs,
+    // so a single click on the row opens the summary they live in.
+    const takenEvents = [
+      { id: 'quiet', data: () => ({ name: 'Quiet Night', date: isoDaysFrom(-30), order: 1, type: 'Special', roster: ['c1'] }) },
+      {
+        id: 'recorded',
+        data: () => ({
+          name: 'Recorded Night',
+          date: isoDaysFrom(-29),
+          order: 2,
+          type: 'Special',
+          roster: ['c1'],
+          attendanceTakenAt: '2026-08-11T20:00:00.000Z',
+          attendanceTakenBy: 'Tony Wang',
+        }),
+      },
+    ];
+
+    beforeEach(() => {
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'contacts') {
+          callback({ docs: mockContacts, size: mockContacts.length });
+        } else if (ref?.path === 'events') {
+          callback({ docs: takenEvents, size: takenEvents.length });
+        } else if (ref?.path === 'users') {
+          callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) }], size: 1 });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+    });
+
+    it('records that a Gathering was held and nobody came', async () => {
+      render(<Attendance />);
+
+      fireEvent.click(await screen.findByText('Quiet Night'));
+      fireEvent.click(screen.getByRole('button', { name: 'We met — nobody came' }));
+
+      await waitFor(() =>
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'quiet' }),
+          expect.objectContaining({
+            attendanceTakenBy: 'Test User',
+            attendanceTakenById: 'u-test',
+            attendanceTakenAt: expect.any(String),
+          }),
+        ),
+      );
+    });
+
+    it('shows who took attendance, so a blank week reads as empty rather than unrecorded', async () => {
+      render(<Attendance />);
+
+      fireEvent.click(await screen.findByText('Recorded Night'));
+
+      expect(screen.getByText(/Attendance taken by/)).toBeInTheDocument();
+      expect(screen.getByText('Tony Wang')).toBeInTheDocument();
+      // Already recorded — nothing left to declare.
+      expect(screen.queryByRole('button', { name: 'We met — nobody came' })).not.toBeInTheDocument();
+    });
+
+    it('does not offer to close a Gathering that has not happened yet', async () => {
+      const future = [
+        { id: 'ahead', data: () => ({ name: 'Future Night', date: isoDaysFrom(9), order: 1, type: 'Special', roster: ['c1'] }) },
+      ];
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'contacts') callback({ docs: mockContacts, size: mockContacts.length });
+        else if (ref?.path === 'events') callback({ docs: future, size: 1 });
+        else callback({ docs: [], size: 0 });
+        return vi.fn();
+      });
+
+      render(<Attendance />);
+
+      await waitFor(() => expect(screen.getAllByText('Future Night').length).toBeGreaterThan(0));
+      expect(screen.queryByRole('button', { name: 'We met — nobody came' })).not.toBeInTheDocument();
     });
   });
 });
