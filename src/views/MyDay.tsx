@@ -526,18 +526,19 @@ export default function MyDay() {
     }
   };
 
-  const handleUpdatePrayerStatus = async (id: string, status: PrayerRecord["status"], answer?: string, answeredAt?: string) => {
+  const handleUpdatePrayerStatus = async (id: string, status: PrayerRecord["status"], answer?: string, answeredAt?: string, archiveReason?: string) => {
     const oldPrayer = prayers.find(p => p.id === id);
     if (status === "unanswered" && oldPrayer && oldPrayer.status !== "unanswered") {
       const previousStatus = oldPrayer.status;
       const previousAnswer = oldPrayer.answer;
       const previousAnsweredAt = oldPrayer.answeredAt;
-      await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt);
+      const previousArchiveReason = oldPrayer.archiveReason;
+      await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt, archiveReason);
       showUndoSnack(t('myDay.prayer_archived'), () => {
-        updatePrayerStatus(id, previousStatus, { uid, name: user?.displayName }, previousAnswer || undefined, previousAnsweredAt || undefined);
+        updatePrayerStatus(id, previousStatus, { uid, name: user?.displayName }, previousAnswer || undefined, previousAnsweredAt || undefined, previousArchiveReason || undefined);
       });
     } else {
-      await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt);
+      await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt, archiveReason);
     }
   };
 

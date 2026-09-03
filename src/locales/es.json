@@ -609,7 +609,11 @@
     "day_ago": "hace 1 día",
     "days_ago": "hace {n} días",
     "cared_for_by_name": "Cuidado por {name}",
-    "added_by_name": "Añadido por {name}"
+    "added_by_name": "Añadido por {name}",
+    "why_is_it_archived": "¿Por qué se archiva?",
+    "archive_reason_placeholder": "Una nota sobre por qué se archiva (opcional)",
+    "edit_archive_reason": "Editar motivo",
+    "archive_reason": "Motivo de archivo"
   },
   "ask": {
     "questions_for_team": "Preguntas para el equipo",

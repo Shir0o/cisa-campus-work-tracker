@@ -44,6 +44,7 @@ export async function updatePrayerStatus(
   by: { uid?: string | null; name?: string | null },
   answer?: string | null,
   answeredAt?: string | null,
+  archiveReason?: string | null,
 ): Promise<void> {
   try {
     const clean: Record<string, any> = {
@@ -54,6 +55,7 @@ export async function updatePrayerStatus(
     };
     if (answer !== undefined) clean.answer = answer;
     if (answeredAt !== undefined) clean.answeredAt = answeredAt;
+    if (archiveReason !== undefined) clean.archiveReason = archiveReason;
     await updateDoc(doc(db, "prayers", prayerId), clean);
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);

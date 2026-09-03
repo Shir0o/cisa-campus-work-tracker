@@ -186,6 +186,34 @@ describe('PrayerListMobile', () => {
     expect(onUpdateStatus).toHaveBeenCalledWith(p, 'answered', 'Updated testimony text', 'Aug 1');
   });
 
+  it('opens archive reason composer when status is set to unanswered and saves reason', async () => {
+    const onUpdateStatus = vi.fn();
+    const p = prayer({ status: 'pending' });
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [p] }], onUpdateStatus });
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'unanswered' } });
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'unanswered', undefined, undefined, undefined, undefined);
+
+    const textarea = await screen.findByPlaceholderText(/A note on why this is archived/i);
+    fireEvent.change(textarea, { target: { value: 'Moved out of state' } });
+    fireEvent.click(screen.getAllByText('Save')[0]);
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'unanswered', undefined, undefined, undefined, 'Moved out of state');
+  });
+
+  it('allows editing an existing archive reason on archived prayer', async () => {
+    const onUpdateStatus = vi.fn();
+    const p = prayer({ status: 'unanswered', archiveReason: 'Graduated' });
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [p] }], onUpdateStatus });
+
+    expect(screen.getByText('Graduated')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Edit Reason'));
+    const textarea = await screen.findByPlaceholderText(/A note on why this is archived/i);
+    fireEvent.change(textarea, { target: { value: 'Graduated and relocated' } });
+    fireEvent.click(screen.getAllByText('Save')[0]);
+
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'unanswered', undefined, undefined, undefined, 'Graduated and relocated');
+  });
+
   it('renders the contact photo when an avatar is present', () => {
     renderWithRouter({
       entries: [{ contact: contact({ avatar: 'https://example.com/a.jpg' }), prayers: [prayer()] }],

@@ -589,11 +589,11 @@ describe('MyDay', () => {
 
     // Clicking a status pill writes the mapped status to the shared prayer.
     fireEvent.click(screen.getByRole('button', { name: 'answered' }));
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String));
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String), undefined);
 
     // Archive maps to the existing "unanswered" status.
     fireEvent.click(screen.getByRole('button', { name: 'archive' }));
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined);
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined, undefined);
 
     // Prayer Log link navigates to the Prayer page.
     fireEvent.click(screen.getByRole('button', { name: /Prayer Log/i }));
@@ -614,7 +614,7 @@ describe('MyDay', () => {
     expect(answeredButton).not.toBeDisabled();
 
     fireEvent.click(answeredButton);
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String));
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String), undefined);
   });
 
   it('hides archived (unanswered) contact prayers', async () => {
@@ -746,14 +746,14 @@ describe('MyDay', () => {
 
     // Archive it
     fireEvent.click(screen.getByRole('button', { name: 'archive' }));
-    expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined);
+    expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined, undefined);
 
     // Snackbar should appear
     expect(await screen.findByText('Prayer archived')).toBeInTheDocument();
 
     // Click Undo
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'ongoing', expect.anything(), undefined, undefined);
+    expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'ongoing', expect.anything(), undefined, undefined, undefined);
 
     // Snackbar should disappear
     await waitFor(() => expect(screen.queryByText('Prayer archived')).not.toBeInTheDocument());

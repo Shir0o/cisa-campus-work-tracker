@@ -609,7 +609,11 @@
     "day_ago": "1 day ago",
     "days_ago": "{n} days ago",
     "cared_for_by_name": "Cared for by {name}",
-    "added_by_name": "Added by {name}"
+    "added_by_name": "Added by {name}",
+    "why_is_it_archived": "Why is this archived?",
+    "archive_reason_placeholder": "A note on why this is archived (optional)",
+    "edit_archive_reason": "Edit Reason",
+    "archive_reason": "Archive reason"
   },
   "ask": {
     "questions_for_team": "Questions for the team",

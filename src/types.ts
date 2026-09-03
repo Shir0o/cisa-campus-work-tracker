@@ -240,6 +240,8 @@ export interface PrayerRecord {
    *  `path` locates the Storage object for deletion, `url` is the download URL we
    *  render. */
   answeredPhotos?: VisitPhoto[];
+  /** Optional reason explaining why a prayer was archived (#708). */
+  archiveReason?: string;
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;
