@@ -432,7 +432,12 @@ describe('Settings', () => {
         { merge: true },
       );
 
-      fireEvent.click(screen.getByRole('switch'));
+      // #712 / shared Switch primitive: the toggle reads as a switch and
+      // announces its state to assistive tech, so the click target is
+      // the labelled role, not a hand-rolled <button>.
+      const toggle = screen.getByRole('switch', { name: /Give the day a goal/i });
+      expect(toggle).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(toggle);
       expect(setDoc).toHaveBeenLastCalledWith(
         expect.anything(),
         { on: false },

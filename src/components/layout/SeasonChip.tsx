@@ -5,6 +5,7 @@ import { useAuth } from '../AuthProvider';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../LanguageProvider';
 import { Translate } from '../Translate';
+import { Switch } from '../ui/Switch';
 
 // The "Spring · '26" strip under the brand. Shows the active season everywhere;
 // for staff (managers+) it opens a small popover to override the season + toggle
@@ -102,28 +103,16 @@ export default function SeasonChip({
               </button>
             )}
           </div>
-
-          <button
-            onClick={() => season.toggleClubRush()}
-            className="w-full flex items-center justify-between rounded-xl bg-surface-container-high border border-outline/30 px-3 py-2 cursor-pointer"
-          >
+          <div className="w-full flex items-center justify-between rounded-xl bg-surface-container-high border border-outline/30 px-3 py-2">
             <span className="inline-flex items-center gap-2 text-xs font-medium text-on-surface">
               <Sparkles className="w-3.5 h-3.5" /> {t('season.club_rush')}
             </span>
-            <span
-              className={cn(
-                'w-9 h-5 rounded-full relative transition-colors shrink-0',
-                season.clubRush ? 'bg-primary' : 'bg-outline',
-              )}
-            >
-              <span
-                className={cn(
-                  'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
-                  season.clubRush && 'translate-x-4',
-                )}
-              />
-            </span>
-          </button>
+            <Switch
+              checked={season.clubRush}
+              onChange={() => season.toggleClubRush()}
+              aria-label={t('season.club_rush')}
+            />
+          </div>
           <p className="text-[10px] text-on-surface-variant px-1 leading-snug">
             {t('season.club_rush_help')}
           </p>
