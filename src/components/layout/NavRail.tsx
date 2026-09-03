@@ -237,9 +237,9 @@ export default function NavRail(_props: NavRailProps = {}) {
           </div>
         )}
 
-        // No top padding: this block has no group label, so any top padding
-        // reads as an orphaned gap below the Elsewhere group (#747). The
-        // collapsed-mode divider above the icon provides its own separation.
+        {/* No top padding: this block has no group label, so any top padding
+            reads as an orphaned gap below the Elsewhere group (#747). The
+            collapsed-mode divider above the icon provides its own separation. */}
         <div className="pb-3">
           {collapsed && (
             <div

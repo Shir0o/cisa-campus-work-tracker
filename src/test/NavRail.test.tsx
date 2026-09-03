@@ -521,6 +521,14 @@ describe('NavRail (#664)', () => {
     expect(divider, `Collapsed Sign-up block should carry a divider above the icon`).not.toBeNull();
   });
 
+  it('does not render raw source code comments in the navigation rail (#747)', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail');
+    renderRail({ role: 'admin' });
+
+    expect(screen.queryByText(/No top padding/i)).toBeNull();
+    expect(screen.queryByText(/orphaned gap below the Elsewhere group/i)).toBeNull();
+  });
+
   // The impersonation eye moved to NavChromeStrip; the rail's chrome lives
   // in the spec's "strip above the content" and is tested separately.
  });
