@@ -1530,7 +1530,6 @@
     "replies_count": "{n} respuestas",
     "one_reply": "1 respuesta",
     "full_timer_badge": "Tiempo completo",
-
     "christian": "Cristiano",
     "catholic": "Católico",
     "other_religion": "Otra religión / trasfondo",
@@ -1612,5 +1611,35 @@
     "more_for": "Más para {name}",
     "this_visit": "esta visita",
     "a_visit": "Esta visita"
+  },
+  "teams": {
+    "yp": "Equipo JV",
+    "campus": "Equipo del campus",
+    "everyone": "Todos",
+    "title": "En qué equipo está cada uno",
+    "sub": "Un equipo por persona, para toda la lista. Esto es lo que leen los filtros de las novedades.",
+    "on_team": "{n} en {team}",
+    "unassigned": "Todavía sin equipo",
+    "unassigned_sub": "Siguen apareciendo en las novedades; sólo que los filtros por equipo no los alcanzan.",
+    "numbers_vary": "Los números cambian cada trimestre",
+    "set_team": "Poner a {name} en un equipo",
+    "take_off": "Sin equipo"
+  },
+  "whatsNew": {
+    "title": "Lo nuevo",
+    "sub": "A quién agregaron y con quién hablaron.",
+    "count_new": "{n} nuevos",
+    "mark_all_scanned": "Marcar todo como visto",
+    "whole_team": "Todo el equipo",
+    "whole_named_team": "Todo el {team}",
+    "clear": "Quitar filtros",
+    "talked": "Hablaron",
+    "filter_by_team": "Filtrar las novedades por equipo",
+    "filter_by_person": "Filtrar las novedades por compañero",
+    "nothing_from_person": "Nada de {name} esta semana",
+    "nothing_from_team": "Nada del {team} esta semana",
+    "try_whole_team": "Probá con todo el {team}, o ampliá a todos.",
+    "try_everyone": "Probá ampliando a todos.",
+    "show_everyone": "Mostrar a todos"
   }
 }

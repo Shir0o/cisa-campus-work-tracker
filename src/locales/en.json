@@ -1530,7 +1530,6 @@
     "replies_count": "{n} replies",
     "one_reply": "1 reply",
     "full_timer_badge": "Full-timer",
-
     "christian": "Christian",
     "catholic": "Catholic",
     "other_religion": "Other Religion / Background",
@@ -1612,5 +1611,35 @@
     "more_for": "More for {name}",
     "this_visit": "this visit",
     "a_visit": "This visit"
+  },
+  "teams": {
+    "yp": "YP team",
+    "campus": "Campus team",
+    "everyone": "Everyone",
+    "title": "Which team they're on",
+    "sub": "One team each, for the whole roster. This is what the filters on the news read.",
+    "on_team": "{n} on {team}",
+    "unassigned": "Not on a team yet",
+    "unassigned_sub": "They still show up on the news; the team chips just don't reach them.",
+    "numbers_vary": "Numbers vary by term",
+    "set_team": "Put {name} on a team",
+    "take_off": "Off the teams"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "sub": "Who was added, and who was talked to.",
+    "count_new": "{n} new",
+    "mark_all_scanned": "Mark all scanned",
+    "whole_team": "Whole team",
+    "whole_named_team": "Whole {team}",
+    "clear": "Clear",
+    "talked": "Talked",
+    "filter_by_team": "Filter the news by team",
+    "filter_by_person": "Filter the news by teammate",
+    "nothing_from_person": "Nothing from {name} this week",
+    "nothing_from_team": "Nothing from the {team} this week",
+    "try_whole_team": "Try the whole {team}, or widen to everyone.",
+    "try_everyone": "Try widening to everyone.",
+    "show_everyone": "Show everyone"
   }
 }

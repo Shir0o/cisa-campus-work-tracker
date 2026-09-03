@@ -68,6 +68,7 @@ import {
   clearTerm,
   type PartnersByTerm,
 } from '../lib/partners';
+import { TEAMS, teamLabelKey, isKnownTeam, saveUserTeam } from '../lib/teams';
 import { isRealPerson } from '../lib/permissions';
 import { useDayGoal, GOAL_MIN, GOAL_MAX } from '../lib/goal';
 import { useGatheringTypes } from '../lib/gatheringTypes';
@@ -1926,6 +1927,107 @@ function PartnersSection({ users }: { users: AppUser[] }) {
   );
 }
 
+// ── Which team they're on (#727) ───────────────────────────────────────────
+// The division above the pairs: six trainees on YP, six on Campus, numbers
+// vary by term. A second reading of the same roster the pairs above arrange —
+// who goes out with whom, and which team they're on — with neither derived
+// from the other. The feed's filter reads the PERSON's team, never the pair's,
+// so a pair that straddles two teams simply shows up under both chips.
+
+function TeamsSection({ users }: { users: AppUser[] }) {
+  const { t } = useLanguage();
+  const trainees = useMemo(
+    () => users.filter((u) => u.role === 'manager' && isRealPerson(u)),
+    [users],
+  );
+  const onTeam = (id: string) => trainees.filter((u) => u.team === id);
+  const unassigned = trainees.filter((u) => !isKnownTeam(u.team));
+
+  const row = (u: AppUser) => (
+    <div key={u.uid} className="flex items-center gap-2.5">
+      <Avatar name={u.displayName} photoURL={u.photoURL} size="sm" />
+      <span className="text-sm text-on-surface truncate">{u.displayName || 'Unnamed'}</span>
+      <div
+        role="group"
+        aria-label={t('teams.set_team', 'Put {name} on a team').replace('{name}', u.displayName || '')}
+        className="ml-auto inline-flex shrink-0 gap-1 rounded-full border border-outline-variant/40 bg-surface-container-low p-1"
+      >
+        {TEAMS.map((tm) => {
+          const on = u.team === tm.id;
+          return (
+            <button
+              key={tm.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => void saveUserTeam(u.uid, on ? null : tm.id)}
+              className={cn(
+                'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer',
+                on ? 'bg-surface text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
+              )}
+            >
+              {t(teamLabelKey(tm.id), tm.label)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('teams.title', "Which team they're on")}
+        sub={t('teams.sub', 'One team each, for the whole roster. This is what the filters on the news read.')}
+      />
+      <div className="flex flex-col gap-3 max-w-2xl">
+        <div className="flex flex-wrap gap-2">
+          {TEAMS.map((tm) => (
+            <span
+              key={tm.id}
+              className="rounded-full border border-outline-variant/40 px-3 py-1.5 text-[12px] text-on-surface-variant"
+            >
+              {t('teams.on_team', '{n} on {team}')
+                .replace('{n}', String(onTeam(tm.id).length))
+                .replace('{team}', t(teamLabelKey(tm.id), tm.label))}
+            </span>
+          ))}
+          <span className="rounded-full border border-outline-variant/40 px-3 py-1.5 text-[12px] text-on-surface-variant">
+            {t('teams.numbers_vary', 'Numbers vary by term')}
+          </span>
+        </div>
+
+        {TEAMS.map((tm) => (
+          <div key={tm.id} className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+            <div className="font-serif text-base text-on-surface mb-3">{t(teamLabelKey(tm.id), tm.label)}</div>
+            <div className="flex flex-col gap-1.5">
+              {onTeam(tm.id).length ? (
+                onTeam(tm.id).map(row)
+              ) : (
+                <span className="text-[13px] text-on-surface-variant">
+                  {t('teams.take_off', 'Off the teams')}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {!!unassigned.length && (
+          <div className="rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5">
+            <div className="font-serif text-base text-on-surface">{t('teams.unassigned', 'Not on a team yet')}</div>
+            <p className="text-[13px] text-on-surface-variant mt-0.5 mb-3 leading-relaxed">
+              {t(
+                'teams.unassigned_sub',
+                "They still show up on the news; the team chips just don't reach them.",
+              )}
+            </p>
+            <div className="flex flex-col gap-1.5">{unassigned.map(row)}</div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 export default function Settings() {
@@ -2251,6 +2353,8 @@ export default function Settings() {
       </section>
 
       {isAdmin && <PartnersSection users={users} />}
+
+      {isAdmin && <TeamsSection users={users} />}
 
       {isAdmin && <DayGoalSection />}
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Settings from '../views/Settings';
@@ -1200,5 +1200,87 @@ describe('Settings', () => {
       expect(mockSetNavShell).toHaveBeenLastCalledWith('topbar');
     });
   });
-});
+  // ── Which team they're on (#727) ──
 
+  describe('teams', () => {
+    const traineeDocs = [
+      {
+        id: 'mei',
+        data: () => ({
+          uid: 'mei', email: 'mei@test.com', displayName: 'Mei Tanaka',
+          approved: true, role: 'manager', photoURL: null, team: 'yp',
+        }),
+      },
+      {
+        id: 'jonah',
+        data: () => ({
+          uid: 'jonah', email: 'jonah@test.com', displayName: 'Jonah Reyes',
+          approved: true, role: 'manager', photoURL: null,
+        }),
+      },
+    ];
+
+    const renderWithTrainees = () => {
+      setupManagerAuth();
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'users') callback({ docs: traineeDocs });
+        else callback({ docs: [], size: 0 });
+        return vi.fn();
+      });
+      render(<Settings />);
+    };
+
+    it('lists the roster by team, and says who is not on one yet', async () => {
+      renderWithTrainees();
+
+      await waitFor(() => {
+        expect(screen.getByText("Which team they're on")).toBeInTheDocument();
+      });
+      expect(screen.getByText('1 on YP team')).toBeInTheDocument();
+      expect(screen.getByText('0 on Campus team')).toBeInTheDocument();
+      expect(screen.getByText('Not on a team yet')).toBeInTheDocument();
+    });
+
+    it('writes the single team field when a trainee is put on a team', async () => {
+      renderWithTrainees();
+
+      await waitFor(() => {
+        expect(screen.getByText('Not on a team yet')).toBeInTheDocument();
+      });
+
+      const picker = screen.getByRole('group', { name: 'Put Jonah Reyes on a team' });
+      fireEvent.click(within(picker).getByRole('button', { name: 'Campus team' }));
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'users/jonah' }),
+          { team: 'campus' },
+        );
+      });
+    });
+
+    it('takes them off the team when their own chip is pressed again', async () => {
+      renderWithTrainees();
+
+      await waitFor(() => {
+        expect(screen.getByText('1 on YP team')).toBeInTheDocument();
+      });
+
+      const picker = screen.getByRole('group', { name: 'Put Mei Tanaka on a team' });
+      fireEvent.click(within(picker).getByRole('button', { name: 'YP team' }));
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'users/mei' }),
+          { team: null },
+        );
+      });
+    });
+
+    it("stays out of a non-admin's Settings", () => {
+      setupNonManagerAuth();
+      render(<Settings />);
+      expect(screen.queryByText("Which team they're on")).not.toBeInTheDocument();
+    });
+  });
+});

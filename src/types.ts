@@ -268,6 +268,10 @@ export interface AppUser {
   photoURL: string;
   approved: boolean;
   role: 'admin' | 'manager' | 'operator' | 'viewer';
+  /** Which team they're on — a `TEAMS` id from `lib/teams` (#727). The division
+   *  above the pairs; absent means unassigned. Set by a full-timer in Settings,
+   *  read by the news feed's filter. Never trusted without `isKnownTeam`. */
+  team?: string | null;
 }
 
 export interface Invitation {

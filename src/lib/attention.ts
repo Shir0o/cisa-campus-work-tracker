@@ -343,3 +343,61 @@ export function partitionAttentionStacks(
   return { onYou, aroundTeam };
 }
 
+
+// ── Filtering the feed (#727) ───────────────────────────────────────────────
+// The filter cuts on the ACTOR — the trainee who added the contact or logged
+// the conversation — never on the contact. It is the only axis on which a team
+// means anything, and it is what makes "filter the news" and "group people into
+// teams" one feature rather than two.
+
+export interface AttentionFilter {
+  /** A team id from `lib/teams`, or null/absent for everyone. */
+  team?: string | null;
+  /** One teammate's uid, or null/absent for the whole (team's) roster. */
+  who?: string | null;
+}
+
+/** True when nothing is chosen and the feed should be left alone. */
+export function isRestingFilter(filter: AttentionFilter): boolean {
+  return !filter.team && !filter.who;
+}
+
+/**
+ * Keep the stacks at least one of whose actors satisfies the filter. Both
+ * clauses have to land on the SAME actor: asking for Grace inside the YP team
+ * matches nobody, because Grace is on Campus.
+ *
+ * A stack with no actor at all (a notification, an unassigned task) drops out
+ * as soon as a filter is on — filtering by who did it, when nobody did.
+ */
+export function filterAttentionStacks(
+  stacks: AttentionStack[],
+  filter: AttentionFilter,
+  teamOf: (uid: string) => string | null,
+): AttentionStack[] {
+  if (isRestingFilter(filter)) return stacks;
+  const { team, who } = filter;
+  return stacks.filter((s) =>
+    s.by.some((uid) => (!who || uid === who) && (!team || teamOf(uid) === team)),
+  );
+}
+
+/**
+ * The distinct actors present in these stacks — the people the teammate select
+ * offers, so it never lists someone with nothing on the feed. Pass a team to
+ * scope the options to the chip above the select.
+ */
+export function actorsInStacks(
+  stacks: AttentionStack[],
+  team?: string | null,
+  teamOf?: (uid: string) => string | null,
+): string[] {
+  const out = new Set<string>();
+  for (const s of stacks) {
+    for (const uid of s.by) {
+      if (team && teamOf && teamOf(uid) !== team) continue;
+      out.add(uid);
+    }
+  }
+  return [...out];
+}

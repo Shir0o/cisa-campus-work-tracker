@@ -60,7 +60,23 @@ service cloud.firestore {
                data.displayName is string && data.displayName.size() <= 128 &&
                (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 512)) &&
                data.role in ['admin', 'manager', 'operator', 'viewer'] &&
-               data.approved is bool;
+               data.approved is bool &&
+               hasValidTeam(data);
+      }
+
+      // Which team they're on (#727) — the division above the gospel-partner
+      // pairs. The set of ids lives in src/lib/teams.ts, not here, so adding a
+      // third team stays a one-line code change; the rules only insist it is a
+      // short string or absent. An unrecognised value reads as unassigned.
+      function hasValidTeam(data) {
+        return !('team' in data) || data.team == null ||
+               (data.team is string && data.team.size() <= 64);
+      }
+
+      // A person does not put themselves on a team; a full-timer arranges the
+      // teams the same way they arrange the pairs.
+      function teamUnchanged() {
+        return existing().get('team', null) == incoming().get('team', null);
       }
 
       allow get: if isValidId(userId) && (isOwner(userId) || isApprovedUser());
@@ -80,7 +96,7 @@ service cloud.firestore {
                       );
 
       allow update: if isValidId(userId) && (
-                      (isManager() && isValidUser(incoming())) ||
+                      (isManager() && (isAdmin() || teamUnchanged()) && isValidUser(incoming())) ||
                       (isOwner(userId) &&
                        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'pushToken']) &&
                        incoming().email == existing().email &&

@@ -227,6 +227,9 @@ export interface AppUser {
   approved: boolean;
   role: 'admin' | 'manager' | 'operator' | 'viewer';
   pushToken?: string | null;
+  /** Which team they're on — the division above the gospel-partner pairs
+   *  (#727). Absent means unassigned. */
+  team?: string | null;
 }
 
 export interface Invitation {
