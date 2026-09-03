@@ -36,6 +36,7 @@ import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import { ReleaseSheet } from "./components/release/ReleaseSheet";
+import { NotificationPermissionBanner } from "./components/notifications/NotificationPermissionBanner";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
@@ -552,6 +553,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <FeedbackFAB />
         <ReleaseSheet />
+        <NotificationPermissionBanner />
         <Toaster />
       </div>
     </LayoutContext.Provider>
