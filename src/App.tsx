@@ -454,7 +454,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   "flex-1 w-full min-h-0",
                   isMessagesPage
                     ? "flex flex-col overflow-hidden"
-                    : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+                    : selectedContact && contactId
+                      ? "overflow-hidden"
+                      : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
                 )}
               >
                 {selectedContact && contactId ? (
@@ -493,7 +495,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 "flex-1 w-full min-h-0",
                 isMessagesPage
                   ? "flex flex-col overflow-hidden"
-                  : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+                  : selectedContact && contactId
+                    ? "overflow-hidden"
+                    : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
               )}
             >
               {selectedContact && contactId ? (
