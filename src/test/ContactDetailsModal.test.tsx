@@ -1015,6 +1015,43 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
 
+  it('safely re-renders without React error #300 when access flips dynamically', () => {
+    let currentRole = 'admin';
+    (useAuth as any).mockImplementation(() => ({
+      user: { uid: 'admin-uid', displayName: 'Admin User' },
+      isAdmin: currentRole === 'admin',
+      role: currentRole,
+      effectiveUserId: currentRole === 'manager' ? 'trainee-bob-uid' : 'admin-uid',
+    }));
+
+    const contactCreatedByAdmin = {
+      ...mockContact,
+      createdBy: 'admin-uid',
+      coCreators: [],
+    };
+
+    // First render: full access (admin) -> runs all hooks
+    const { rerender } = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactCreatedByAdmin} />
+    );
+    expect(screen.queryByText('Access Restricted')).not.toBeInTheDocument();
+
+    // Second render: switch to trainee (manager) -> access denied -> early return!
+    currentRole = 'manager';
+    rerender(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactCreatedByAdmin} />
+    );
+    expect(screen.getByText('Access Restricted')).toBeInTheDocument();
+
+    // Third render: switch back to admin -> access granted again!
+    currentRole = 'admin';
+    rerender(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactCreatedByAdmin} />
+    );
+    expect(screen.queryByText('Access Restricted')).not.toBeInTheDocument();
+  });
+
+
   it('renders "contacted by" and "Created by" metadata when present', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-1', displayName: 'Admin User' },
