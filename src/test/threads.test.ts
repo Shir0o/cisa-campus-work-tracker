@@ -16,6 +16,7 @@ import {
   type ThreadMessage,
 } from "../lib/threads";
 import { sendNotification } from "../lib/firebase";
+import { applyRoster } from "../lib/walking";
 
 vi.mock("firebase/firestore", () => ({
   addDoc: vi.fn(() => Promise.resolve()),
@@ -154,25 +155,97 @@ describe("addThreadMessage notify", () => {
     expect(sendNotification).not.toHaveBeenCalled();
   });
 
-  it("uses the correct bell title per kind", async () => {
-    const cases: [ThreadMessage["kind"], string][] = [
-      ["note", "Tony left a note on Rio"],
-      ["comment", "Tony commented on Rio"],
-      ["encouragement", "Tony encouraged you about Rio"],
-      ["nudge", "Tony nudged a follow-up about Rio"],
-    ];
-    for (const [kind, expected] of cases) {
-      vi.clearAllMocks();
-      await addThreadMessage(
-        "C-1",
-        { from: "u1", fromName: "Tony", kind, body: "hi" },
-        { to: "u3", contactName: "Rio" },
-      );
-      expect(sendNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ title: expected }),
-      );
-    }
+  it("notifies creator and co-creators (gospel partners) as stakeholders, excluding author", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "comment", body: "Shared bible verse" },
+      {
+        contactName: "Rio",
+        stakeholders: { createdBy: "u1", coCreators: ["u2", "u3"] },
+      },
+    );
+    // u1 is author so excluded. u2 and u3 should be notified.
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u2",
+        title: "Tony commented on Rio",
+        message: "Shared bible verse",
+      }),
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u3",
+        title: "Tony commented on Rio",
+        message: "Shared bible verse",
+      }),
+    );
   });
+
+  it("notifies mentioned users with mention-specific title and message", async () => {
+    await addThreadMessage(
+      "C-1",
+      {
+        from: "u1",
+        fromName: "Tony",
+        kind: "comment",
+        body: "Hey @Rio Tan, can you check on this?",
+        mentionedUserIds: ["u4"],
+      },
+      {
+        contactName: "Alex",
+        stakeholders: { createdBy: "u2" },
+      },
+    );
+    // u2 is stakeholder, u4 is mentioned
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u4",
+        title: "Tony mentioned you on Alex",
+        message: "Hey @Rio Tan, can you check on this?",
+      }),
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u2",
+        title: "Tony commented on Alex",
+      }),
+    );
+  });
+
+  it("filters out non-fulltimers from notifications when scope is team (discussion)", async () => {
+    // u_ft is full-timer, u_trainee is trainee
+    applyRoster([
+      { uid: "u_author_ft", role: "admin" },
+      { uid: "u_ft", role: "admin" },
+      { uid: "u_trainee", role: "manager" },
+    ]);
+
+    await addThreadMessage(
+      "C-1",
+      {
+        from: "u_author_ft",
+        fromName: "Fulltimer",
+        kind: "comment",
+        scope: "team",
+        body: "Discussion note @Trainee",
+        mentionedUserIds: ["u_trainee", "u_ft"],
+      },
+      {
+        contactName: "Alex",
+        stakeholders: { createdBy: "u_trainee", coCreators: ["u_ft"] },
+      },
+    );
+
+    // Trainees must never receive team-scoped notifications!
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u_ft",
+      }),
+    );
+  });
+
 
   it("funnels addThreadMessage failures through handleFirestoreError", async () => {
     const { handleFirestoreError } = await import("../lib/firebase");

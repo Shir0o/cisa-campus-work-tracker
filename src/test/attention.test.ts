@@ -113,4 +113,38 @@ describe("partitionAttentionStacks (#595)", () => {
     expect(onYou.length).toBe(2);
     expect(aroundTeam.length).toBe(0);
   });
+
+  it("extracts mentioned thread messages and places them into onYou regardless of contact ownership", () => {
+    const threadWithMention: ThreadMessageWithContact = {
+      id: "t_mention",
+      contactId: "c_team", // Not owned by u1
+      from: "u2",
+      fromName: "Emerson",
+      kind: "comment",
+      body: "Hey @Tony Wang can you take a look?",
+      at: new Date().toISOString(),
+      interactionId: null,
+      reactions: [],
+      mentionedUserIds: ["u1"],
+    };
+
+    const rawItems = buildAttentionItems({
+      role: "admin",
+      uid: "u1",
+      contacts: sampleContacts,
+      threads: [threadWithMention],
+    });
+
+    const mentionItem = rawItems.find((i) => i.id === "thread:t_mention");
+    expect(mentionItem).toBeDefined();
+    expect(mentionItem?.mentioned).toBe(true);
+
+    const stacks = attentionStacksFor(rawItems, "u1");
+    const { onYou, aroundTeam } = partitionAttentionStacks(stacks, sampleContacts, "u1", "admin");
+
+    // Even though c_team is not owned by u1, being mentioned routes it to onYou!
+    expect(onYou.some((s) => s.contactId === "c_team")).toBe(true);
+    expect(aroundTeam.some((s) => s.contactId === "c_team")).toBe(false);
+  });
 });
+

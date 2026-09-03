@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
 import { useCommand } from "../lib/commands";
@@ -11,7 +11,16 @@ import {
   toggleReaction,
   useThreads,
   type ThreadMessage,
+  type ThreadStakeholders,
 } from "../lib/threads";
+import { MentionAutocomplete } from "./common/MentionAutocomplete";
+import {
+  extractMentionCandidate,
+  filterMentionCandidates,
+  reconcileMentionedUsers,
+  type MentionUser,
+} from "../lib/mentions";
+import { isFullTimer } from "../lib/walking";
 
 const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
 const getInitials = (name?: string) => {
@@ -20,6 +29,13 @@ const getInitials = (name?: string) => {
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   return name.slice(0, 2).toUpperCase();
 };
+
+export interface TeamMemberLike {
+  id: string;
+  name: string;
+  role?: string;
+  initials?: string;
+}
 
 interface ThreadProps {
   contactId: string;
@@ -30,7 +46,10 @@ interface ThreadProps {
   compact?: boolean;
   scope?: "team" | null;
   pane?: boolean;
+  teamMembers?: TeamMemberLike[];
+  contactStakeholders?: ThreadStakeholders | null;
 }
+
 
 interface ThrRowProps {
   m: ThreadMessage;
@@ -122,9 +141,19 @@ interface ThreadMsgProps {
   contactId: string;
   recipientUid?: string | null;
   contactName?: string;
+  teamMembers?: TeamMemberLike[];
+  contactStakeholders?: ThreadStakeholders | null;
 }
 
-function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: ThreadMsgProps) {
+function ThreadMsg({
+  m,
+  meStaffId,
+  contactId,
+  recipientUid,
+  contactName,
+  teamMembers = [],
+  contactStakeholders,
+}: ThreadMsgProps) {
   const { user } = useAuth();
   const allMessages = useThreads(contactId);
   const replies = repliesOf(allMessages, m.id);
@@ -132,9 +161,69 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
   const [draft, setDraft] = useState("");
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
+  // Mention autocomplete state
+  const [mentionMatch, setMentionMatch] = useState<{ query: string; atIndex: number } | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedUsers, setSelectedUsers] = useState<Array<{ uid: string; name: string }>>([]);
+
+  const mentionCandidates = useMemo(() => {
+    if (!mentionMatch) return [];
+    const candidates: MentionUser[] = teamMembers.map((tm) => {
+      const isFt = tm.role === "Full-timer" || tm.role === "admin" || tm.role === "full_timer" || isFullTimer(tm.id);
+      return {
+        uid: tm.id,
+        name: tm.name,
+        role: isFt ? "admin" : "manager",
+      };
+    });
+    return filterMentionCandidates(candidates, mentionMatch.query, m.scope === "team");
+  }, [mentionMatch, teamMembers, m.scope]);
+
+  const handleDraftChange = (val: string, cursorPos: number) => {
+    setDraft(val);
+    const match = extractMentionCandidate(val, cursorPos);
+    setMentionMatch(match);
+    setSelectedIndex(0);
+  };
+
+  const handleSelectMention = (targetUser: MentionUser) => {
+    if (!mentionMatch) return;
+    const before = draft.slice(0, mentionMatch.atIndex);
+    const after = draft.slice(mentionMatch.atIndex + 1 + mentionMatch.query.length);
+    const nextText = `${before}@${targetUser.name} ${after}`;
+    setDraft(nextText);
+    setSelectedUsers((prev) => [...prev, { uid: targetUser.uid, name: targetUser.name }]);
+    setMentionMatch(null);
+    setTimeout(() => {
+      if (replyRef.current) {
+        const nextPos = before.length + targetUser.name.length + 2;
+        replyRef.current.focus();
+        replyRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    }, 0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!mentionMatch || mentionCandidates.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((idx) => (idx + 1) % mentionCandidates.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((idx) => (idx - 1 + mentionCandidates.length) % mentionCandidates.length);
+    } else if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      handleSelectMention(mentionCandidates[selectedIndex]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setMentionMatch(null);
+    }
+  };
+
   const sendReply = () => {
     const body = draft.trim();
     if (!body) return;
+    const mentionedUserIds = reconcileMentionedUsers(body, selectedUsers);
     void addThreadMessage(
       contactId,
       {
@@ -145,10 +234,18 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
         fromName: user?.displayName || "Someone",
         kind: "comment",
         body,
+        ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
       },
-      { to: recipientUid, contactName },
+      {
+        to: recipientUid,
+        contactName,
+        ...(contactStakeholders ? { stakeholders: contactStakeholders } : {}),
+      },
     );
+
     setDraft("");
+    setSelectedUsers([]);
+    setMentionMatch(null);
     setReplying(false);
   };
 
@@ -159,7 +256,7 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
     shortcut: { key: "Enter", mod: true },
     minRole: "operator",
     when: (e) => e.target === replyRef.current,
-    available: () => replying,
+    available: () => replying && (!mentionMatch || mentionCandidates.length === 0),
     handler: sendReply,
   });
 
@@ -182,11 +279,19 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
           ))}
 
           {replying && (
-            <div className="pt-2">
+            <div className="pt-2 relative">
+              {mentionMatch && mentionCandidates.length > 0 && (
+                <MentionAutocomplete
+                  candidates={mentionCandidates}
+                  selectedIndex={selectedIndex}
+                  onSelect={handleSelectMention}
+                />
+              )}
               <textarea
                 ref={replyRef}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => handleDraftChange(e.target.value, e.target.selectionStart || 0)}
+                onKeyDown={handleKeyDown}
                 placeholder="Write a reply…"
                 rows={2}
                 autoFocus
@@ -219,6 +324,8 @@ export default function Thread({
   compact = false,
   scope = null,
   pane = false,
+  teamMembers = [],
+  contactStakeholders,
 }: ThreadProps) {
   const { user } = useAuth();
   const allMessages = useThreads(contactId);
@@ -227,6 +334,65 @@ export default function Thread({
   const [draft, setDraft] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Mention autocomplete state
+  const [mentionMatch, setMentionMatch] = useState<{ query: string; atIndex: number } | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedUsers, setSelectedUsers] = useState<Array<{ uid: string; name: string }>>([]);
+
+  const mentionCandidates = useMemo(() => {
+    if (!mentionMatch) return [];
+    const candidates: MentionUser[] = teamMembers.map((tm) => {
+      const isFt = tm.role === "Full-timer" || tm.role === "admin" || tm.role === "full_timer" || isFullTimer(tm.id);
+      return {
+        uid: tm.id,
+        name: tm.name,
+        role: isFt ? "admin" : "manager",
+      };
+    });
+    return filterMentionCandidates(candidates, mentionMatch.query, scope === "team");
+  }, [mentionMatch, teamMembers, scope]);
+
+  const handleDraftChange = (val: string, cursorPos: number) => {
+    setDraft(val);
+    const match = extractMentionCandidate(val, cursorPos);
+    setMentionMatch(match);
+    setSelectedIndex(0);
+  };
+
+  const handleSelectMention = (targetUser: MentionUser) => {
+    if (!mentionMatch) return;
+    const before = draft.slice(0, mentionMatch.atIndex);
+    const after = draft.slice(mentionMatch.atIndex + 1 + mentionMatch.query.length);
+    const nextText = `${before}@${targetUser.name} ${after}`;
+    setDraft(nextText);
+    setSelectedUsers((prev) => [...prev, { uid: targetUser.uid, name: targetUser.name }]);
+    setMentionMatch(null);
+    setTimeout(() => {
+      if (taRef.current) {
+        const nextPos = before.length + targetUser.name.length + 2;
+        taRef.current.focus();
+        taRef.current.setSelectionRange(nextPos, nextPos);
+      }
+    }, 0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!mentionMatch || mentionCandidates.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((idx) => (idx + 1) % mentionCandidates.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((idx) => (idx - 1 + mentionCandidates.length) % mentionCandidates.length);
+    } else if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      handleSelectMention(mentionCandidates[selectedIndex]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setMentionMatch(null);
+    }
+  };
 
   // A fill pane owns its scroll, so it has to place itself: open on — and stay
   // pinned to — the newest message. The flow call sites ride the page's single
@@ -243,6 +409,7 @@ export default function Thread({
       taRef.current?.focus();
       return;
     }
+    const mentionedUserIds = reconcileMentionedUsers(body, selectedUsers);
     void addThreadMessage(
       contactId,
       {
@@ -252,10 +419,18 @@ export default function Thread({
         fromName: user?.displayName || "Someone",
         kind: "comment",
         body,
+        ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
       },
-      { to: recipientUid, contactName },
+      {
+        to: recipientUid,
+        contactName,
+        ...(contactStakeholders ? { stakeholders: contactStakeholders } : {}),
+      },
     );
+
     setDraft("");
+    setSelectedUsers([]);
+    setMentionMatch(null);
   };
 
   useCommand({
@@ -265,6 +440,7 @@ export default function Thread({
     shortcut: { key: "Enter", mod: true },
     minRole: "operator",
     when: (e) => e.target === taRef.current,
+    available: () => !mentionMatch || mentionCandidates.length === 0,
     handler: post,
   });
 
@@ -294,6 +470,8 @@ export default function Thread({
             contactId={contactId}
             recipientUid={recipientUid}
             contactName={contactName}
+            teamMembers={teamMembers}
+            contactStakeholders={contactStakeholders}
           />
         ))}
       </div>
@@ -308,11 +486,19 @@ export default function Thread({
       )}
 
       {/* Compose */}
-      <div data-thread-composer="" className={cn(messages.length > 0 && "mt-4")}>
+      <div data-thread-composer="" className={cn("relative", messages.length > 0 && "mt-4")}>
+        {mentionMatch && mentionCandidates.length > 0 && (
+          <MentionAutocomplete
+            candidates={mentionCandidates}
+            selectedIndex={selectedIndex}
+            onSelect={handleSelectMention}
+          />
+        )}
         <textarea
           ref={taRef}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => handleDraftChange(e.target.value, e.target.selectionStart || 0)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={compact ? 2 : 3}
           className="w-full p-3 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
@@ -332,4 +518,5 @@ export default function Thread({
     </div>
   );
 }
+
 
