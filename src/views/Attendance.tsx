@@ -297,6 +297,16 @@ export default function Attendance() {
   // The first record on a Gathering stamps `attendanceTakenAt`/`By`/`ById`
   // on the event — the spec rejects deriving "taken" from a non-empty
   // present list because an empty room reads the same as no record at all.
+  // Story 21: a Gathering nobody came to can be recorded as held. Without this
+  // the stamp is only ever reachable by marking someone present, so an empty
+  // room stays indistinguishable from a Gathering nobody has opened.
+  const markAttendanceTaken = async (event: Event) => {
+    await stampAttendanceTaken(event, {
+      uid: user?.uid || null,
+      name: user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user'),
+    });
+  };
+
   const cycleAttendance = async (contact: Contact, eventId: string) => {
     try {
       const current = contact.attendance?.[eventId];
@@ -782,6 +792,7 @@ export default function Attendance() {
                           isCreatingContact={isCreatingContact}
                           handleCreateWalkInContact={handleCreateWalkInContact}
                           handleToggleRoster={handleToggleRoster}
+                          markAttendanceTaken={markAttendanceTaken}
                           handleDeleteEvent={handleDeleteEvent}
                           setEditingEvent={setEditingEvent}
                           openId={openId}
@@ -862,6 +873,7 @@ export default function Attendance() {
                   isCreatingContact={isCreatingContact}
                   handleCreateWalkInContact={handleCreateWalkInContact}
                   handleToggleRoster={handleToggleRoster}
+                  markAttendanceTaken={markAttendanceTaken}
                   handleDeleteEvent={handleDeleteEvent}
                   setEditingEvent={setEditingEvent}
                   setOpenId={setOpenId}
@@ -892,6 +904,7 @@ export default function Attendance() {
                         isCreatingContact={isCreatingContact}
                         handleCreateWalkInContact={handleCreateWalkInContact}
                         handleToggleRoster={handleToggleRoster}
+                        markAttendanceTaken={markAttendanceTaken}
                         handleDeleteEvent={handleDeleteEvent}
                         setEditingEvent={setEditingEvent}
                         openId={openId}
@@ -1077,6 +1090,7 @@ interface GatheringRowProps {
   isCreatingContact: boolean;
   handleCreateWalkInContact: (name: string, event: Event) => Promise<void>;
   handleToggleRoster: (event: Event, contactId: string, add: boolean) => Promise<void>;
+  markAttendanceTaken: (event: Event) => Promise<void>;
   handleDeleteEvent: (id: string, name: string) => Promise<void>;
   setEditingEvent: (e: Event | null) => void;
   openId: string | null;
@@ -1105,6 +1119,10 @@ function GatheringExpansion({
     isCreatingContact,
     handleCreateWalkInContact,
     handleToggleRoster,
+    markAttendanceTaken,
+    parseISO,
+    isValid,
+    format,
     t,
   } = rest;
   const ev = events.find((e) => e.id === gathering.id);
@@ -1117,6 +1135,8 @@ function GatheringExpansion({
   const exactMatch = nonRoster.some(
     (c) => c.name.trim().toLowerCase() === queryText.trim().toLowerCase(),
   );
+  const takenAt = ev.attendanceTakenAt ? parseISO(ev.attendanceTakenAt) : null;
+  const takenOn = takenAt && isValid(takenAt) ? format(takenAt, 'MMM d') : '';
 
   return (
     <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4 space-y-4">
@@ -1128,6 +1148,35 @@ function GatheringExpansion({
           <i className="w-2 h-2 rounded-full bg-outline inline-block" /> {t('attendance.missed')}
         </span>
         <span className="italic">{t('attendance.tap_name_to_update')}</span>
+      </div>
+
+      {/* Whether anyone has recorded this Gathering — and who. A blank week
+          reads as an empty room only once someone has said so. */}
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        {ev.attendanceTakenAt ? (
+          <span className="text-on-surface-variant">
+            {t('attendance.taken_by', 'Attendance taken by')}{' '}
+            <b className="text-on-surface font-medium">
+              {ev.attendanceTakenBy || t('attendance.unknown_user')}
+            </b>
+            {takenOn ? ` · ${takenOn}` : ''}
+          </span>
+        ) : (
+          <>
+            <span className="text-on-surface-variant italic">
+              {t('attendance.not_taken_yet', 'nobody has recorded this one yet')}
+            </span>
+            {!isFutureEventDate(ev.date) && (
+              <button
+                type="button"
+                onClick={() => markAttendanceTaken(ev)}
+                className="px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+              >
+                {t('attendance.nobody_came', 'We met — nobody came')}
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
