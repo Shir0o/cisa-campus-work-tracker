@@ -50,7 +50,7 @@ const baseProps = {
   awaiting: 2,
   composeFor: null,
   setComposeFor: vi.fn(),
-  onStopHolding: vi.fn(),
+  onRemoveFromPrayerList: vi.fn(),
   isOperator: true,
   isManager: true,
 };
@@ -151,12 +151,14 @@ describe('PrayerListMobile', () => {
     expect(onUpdateBurden).toHaveBeenCalledWith(p, 'New burden text');
   });
 
-  it('removes a held contact after confirmation', () => {
-    const onStopHolding = vi.fn();
-    renderWithRouter({ entries: [{ contact: contact(), prayers: [prayer()] }], onStopHolding });
+  it('removes a held contact at once, with no confirm step (#715)', () => {
+    const onRemoveFromPrayerList = vi.fn();
+    const alice = contact();
+    renderWithRouter({ entries: [{ contact: alice, prayers: [prayer()] }], onRemoveFromPrayerList });
     fireEvent.click(screen.getByTitle('Remove Alice from prayer list'));
-    fireEvent.click(screen.getByText('Remove'));
-    expect(onStopHolding).toHaveBeenCalledWith('c1');
+    // The way back is the page's Undo snackbar, not an inline Remove / Keep.
+    expect(screen.queryByText('Keep')).not.toBeInTheDocument();
+    expect(onRemoveFromPrayerList).toHaveBeenCalledWith(alice);
   });
 
   it('opens testimony composer when status is set to answered', async () => {
@@ -252,13 +254,11 @@ describe('PrayerListMobile', () => {
     expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
   });
 
-  it('keeps a contact after cancelling the remove confirmation', () => {
-    const onStopHolding = vi.fn();
-    renderWithRouter({ entries: [{ contact: contact(), prayers: [prayer()] }], onStopHolding });
-    fireEvent.click(screen.getByTitle('Remove Alice from prayer list'));
-    fireEvent.click(screen.getByText('Keep'));
-    expect(onStopHolding).not.toHaveBeenCalled();
+  it('leaves the removal alone until the × is pressed', () => {
+    const onRemoveFromPrayerList = vi.fn();
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [prayer()] }], onRemoveFromPrayerList });
     expect(screen.getByTitle('Remove Alice from prayer list')).toBeInTheDocument();
+    expect(onRemoveFromPrayerList).not.toHaveBeenCalled();
   });
 
   it('shows a read-only line when there is no prayer recorded this week for a non-operator', () => {
@@ -342,11 +342,11 @@ describe('PrayerListMobile', () => {
     mockOpenLogInteraction.mockClear();
     const staleDate = new Date(Date.now() - 40 * 86_400_000).toISOString();
     const stalePerson = contact({ lastContactedDate: staleDate });
-    const onStopHolding = vi.fn();
+    const onRemoveFromPrayerList = vi.fn();
 
     renderWithRouter({
       entries: [{ contact: stalePerson, prayers: [prayer()] }],
-      onStopHolding,
+      onRemoveFromPrayerList,
     });
 
     expect(screen.getByTestId('stale-badge')).toBeInTheDocument();
@@ -356,13 +356,8 @@ describe('PrayerListMobile', () => {
     fireEvent.click(screen.getByRole('button', { name: /Log Interaction/i }));
     expect(mockOpenLogInteraction).toHaveBeenCalledWith('c1');
 
-    // Click "Archive" button in quick actions -> triggers remove confirmation
-    fireEvent.click(screen.getByRole('button', { name: /^Archive$/i }));
-    expect(screen.getByRole('button', { name: /^Remove$/i })).toBeInTheDocument();
-
-    // Confirm remove
-    fireEvent.click(screen.getByRole('button', { name: /^Remove$/i }));
-    expect(onStopHolding).toHaveBeenCalledWith('c1');
+    // Removal is the card's × now, not a second spelling on the strip (#714).
+    expect(screen.queryByRole('button', { name: /^Archive$/i })).not.toBeInTheDocument();
   });
 
   it('does not render stale badge or quick actions on mobile when contact is active', () => {

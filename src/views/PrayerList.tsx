@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { Archive, Check, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, Users, X } from 'lucide-react';
+import { Check, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import {
@@ -468,6 +468,18 @@ export default function PrayerList() {
     });
   };
 
+  // Taking someone off the page (#715). Nothing is deleted — the id joins the
+  // `cisa.prayer.hidden` set in this browser, the same bookkeeping "Choose
+  // people" does when you untick a name — so it happens at once and the Undo
+  // snackbar holds the way back, rather than costing every removal a confirm.
+  const removeFromPrayerList = (contact: Contact) => {
+    stopHolding(contact.id);
+    showUndoSnack(
+      t('prayers.removed_from_your_list').replace('{name}', firstNameOf(contact.name)),
+      () => unhideContact(contact.id),
+    );
+  };
+
   // "Choose people" — the added become empty this-week composers; the removed
   // are hidden from the page (same bookkeeping as startHolding/stopHolding).
   const applyPick = (added: string[], removed: string[]) => {
@@ -532,7 +544,7 @@ export default function PrayerList() {
           awaiting={awaiting}
           composeFor={composeFor}
           setComposeFor={setComposeFor}
-          onStopHolding={stopHolding}
+          onRemoveFromPrayerList={removeFromPrayerList}
           isOperator={isOperator}
           onMakeTodo={openTodoFor}
           isManager={isManager}
@@ -686,7 +698,7 @@ export default function PrayerList() {
                 onUpdateStatus={handleUpdateStatus}
                 onUpdateBurden={handleUpdateBurden}
                 onOpenProfile={() => openContact(e.contact)}
-                onStopHolding={stopHolding}
+                onRemoveFromPrayerList={removeFromPrayerList}
                 isOperator={isOperator}
                 onMakeTodo={openTodoFor}
                 meUid={user?.uid ?? ''}
@@ -741,7 +753,7 @@ function PrayerThread({
   onUpdateStatus,
   onUpdateBurden,
   onOpenProfile,
-  onStopHolding,
+  onRemoveFromPrayerList,
   isOperator,
   onMakeTodo,
   meUid,
@@ -756,7 +768,7 @@ function PrayerThread({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
-  onStopHolding: (contactId: string) => void;
+  onRemoveFromPrayerList: (contact: Contact) => void;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
   meUid?: string;
@@ -766,7 +778,6 @@ function PrayerThread({
   const { t } = useLanguage();
   const { openLogInteraction } = useLayout();
    const [showEarlier, setShowEarlier] = useState(false);
-  const [confirmArchive, setConfirmArchive] = useState(false);
 
   const isStale = isContactStale(contact);
   const daysSinceInteraction = getDaysSinceLastInteraction(contact);
@@ -840,20 +851,37 @@ function PrayerThread({
           </div>
           <RowActions
             label={t('prayers.more_for_name').replace('{name}', contact.name)}
-            items={buildContactRowActions({
-              contact,
-              onOpen: onOpenProfile,
-              onMakeTodo: () => {
-                const latest = weekItem || lastItem || sorted[0];
-                if (latest) onMakeTodo?.(latest);
-              },
-              onFollowUp: () => {
-                if (!meUid) return;
-                UserEntityState.markDone(meUid, `contact:${contact.id}`);
-                UserEntityState.markDone(meUid, contact.id);
-              },
-              hide: ['share'],
-            })}
+            items={[
+              ...buildContactRowActions({
+                contact,
+                onOpen: onOpenProfile,
+                onMakeTodo: () => {
+                  const latest = weekItem || lastItem || sorted[0];
+                  if (latest) onMakeTodo?.(latest);
+                },
+                onFollowUp: () => {
+                  if (!meUid) return;
+                  UserEntityState.markDone(meUid, `contact:${contact.id}`);
+                  UserEntityState.markDone(meUid, contact.id);
+                },
+                hide: ['share'],
+              }),
+              // This page's own destructive row (#715). Not "Archive": on this
+              // page "Archived" already names a prayer's own mark, so archiving
+              // read as if it acted on the prayers (#714).
+              ...(isOperator
+                ? [
+                    {
+                      id: 'remove-prayer',
+                      label: t('prayers.remove_from_prayer_list').replace('{name}', firstName),
+                      icon: UserMinus,
+                      danger: true,
+                      separated: true,
+                      onSelect: () => onRemoveFromPrayerList(contact),
+                    },
+                  ]
+                : []),
+            ]}
           />
         </div>
       </div>
@@ -881,40 +909,6 @@ function PrayerThread({
               <MessageSquare className="w-3.5 h-3.5" />
               <span>{t('prayers.log_interaction', 'Log Interaction')}</span>
             </button>
-
-            {confirmArchive ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-on-surface-variant mr-1">
-                  {t('prayers.archive_confirm_prompt', 'Archive from prayer?')}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onStopHolding(contact.id);
-                    setConfirmArchive(false);
-                  }}
-                  className="px-2.5 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold border border-error/20"
-                >
-                  {t('prayers.archive_confirm_button', 'Archive')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmArchive(false)}
-                  className="px-2.5 py-1 rounded-full bg-surface-container border border-outline text-xs font-semibold"
-                >
-                  {t('prayers.keep_in_prayer', 'Keep')}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmArchive(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-variant hover:bg-surface-variant/80 text-on-surface-variant text-xs font-semibold transition-colors"
-              >
-                <Archive className="w-3.5 h-3.5" />
-                <span>{t('prayers.archive_from_prayer', 'Archive from Prayer List')}</span>
-              </button>
-            )}
           </div>
         </div>
       )}

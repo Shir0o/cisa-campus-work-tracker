@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Archive, Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
+import { Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade, getContactCaregiver, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
@@ -30,7 +30,7 @@ interface PrayerListMobileProps {
   awaiting: number;
   composeFor: string | null;
   setComposeFor: (id: string | null) => void;
-  onStopHolding: (contactId: string) => void;
+  onRemoveFromPrayerList: (contact: Contact) => void;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager: boolean;
@@ -101,7 +101,7 @@ export default function PrayerListMobile({
   awaiting,
   composeFor,
   setComposeFor,
-  onStopHolding,
+  onRemoveFromPrayerList,
   isOperator,
   onMakeTodo,
   isManager,
@@ -214,7 +214,7 @@ export default function PrayerListMobile({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             onOpenProfile={() => onOpenContact(e.contact)}
-            onRemove={() => onStopHolding(e.contact.id)}
+            onRemove={() => onRemoveFromPrayerList(e.contact)}
             setComposeFor={setComposeFor}
             isOperator={isOperator}
             onMakeTodo={onMakeTodo}
@@ -331,7 +331,6 @@ function PrayerThreadCard({
 }: PrayerThreadCardProps) {
   const { t } = useLanguage();
   const [showEarlier, setShowEarlier] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState(false);
   const { openLogInteraction } = useLayout();
  
    const isStale = isContactStale(contact);
@@ -398,32 +397,15 @@ function PrayerThreadCard({
           </div>
         </button>
 
-        {/* Remove Button */}
+        {/* Remove — immediate; the page's Undo snackbar holds the way back (#715) */}
         {isOperator && (
-          confirmRemove ? (
-            <div className="flex gap-1.5 shrink-0 self-start prt-remove-confirm">
-              <button
-                onClick={onRemove}
-                className="px-2 py-1 rounded-lg bg-error-container text-on-error-container text-xs font-semibold border border-error/20 prt-remove-yes"
-              >
-                {t('actions.remove')}
-              </button>
-              <button
-                onClick={() => setConfirmRemove(false)}
-                className="px-2 py-1 rounded-lg bg-surface-container border border-outline text-xs font-semibold prt-remove-no"
-              >
-                {t('prayers.keep')}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setConfirmRemove(true)}
-              className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant shrink-0 self-start prt-remove"
-              title={t('prayers.remove_from_prayer_list').replace('{name}', firstName)}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )
+          <button
+            onClick={onRemove}
+            className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant shrink-0 self-start prt-remove"
+            title={t('prayers.remove_from_prayer_list').replace('{name}', firstName)}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
 
@@ -449,14 +431,6 @@ function PrayerThreadCard({
             >
               <MessageSquare className="w-3 h-3" />
               <span>{t('prayers.log_interaction', 'Log Interaction')}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmRemove(true)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-variant hover:bg-surface-variant/80 text-on-surface-variant text-[11px] font-semibold transition-colors"
-            >
-              <Archive className="w-3 h-3" />
-              <span>{t('prayers.archive_confirm_button', 'Archive')}</span>
             </button>
           </div>
         </div>
