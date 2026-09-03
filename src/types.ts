@@ -196,6 +196,15 @@ export interface Event {
   parentEventId?: string;
   createdAt: string;
   roster?: string[];
+  /** ISO timestamp; stamped on the Gathering the first time attendance is
+   *  recorded for it. Absent on Gatherings created before this field
+   *  existed — those are read as "happened, but nobody marked it" until
+   *  someone does. Never stamped for a future-dated Gathering. */
+  attendanceTakenAt?: string;
+  /** Display name of the person who recorded attendance. */
+  attendanceTakenBy?: string;
+  /** uid of the same person, for join-free display. */
+  attendanceTakenById?: string;
 }
 
 // A managed "kind of gathering" (Weekly / Small Group / …) with a warm one-line
