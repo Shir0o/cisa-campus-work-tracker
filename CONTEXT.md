@@ -113,3 +113,8 @@ Three other things in this product carry the word and are not this: a **Prompt**
 Explicitly tagging a teammate in a Follow up thread, team Discussion, or chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
 _Avoid_: Tag, ping, callout
 
+**Test Account Purge**:
+An administrative action available to Full-timers in Settings that scrubs non-person test accounts (matching `reviewer*` or `cisa*` emails, or service/review account display names) and their associated traces (invitations, personal prayers, and interaction logs on contacts) across the system. It uses a two-phase dry-run scan and confirmation flow to prevent accidental data loss.
+_Avoid_: Reset database, wipe users, factory reset
+
+
