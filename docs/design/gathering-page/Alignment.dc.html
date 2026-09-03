@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; font-weight: 600; }
+    code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 12px; background: #F4F4F5; padding: 1px 5px; border-radius: 6px; }
+  </style>
+</helmet>
+
+<div style="background: #FFFFFF; color: #0A0A0B; min-height: 100%; padding: 36px 40px 40px;">
+
+  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px;">
+    <span style="font-size: 12px; letter-spacing: 0.1em; color: #A1A1AA;">ISSUE 765 · FIRST HALF</span>
+    <h1 class="h" style="margin: 0; font-size: 28px; line-height: 1.15; color: #0A0A0B;">The figures card sits 48&nbsp;px above the cards beside it</h1>
+    <p style="margin: 4px 0 0; font-size: 15px; line-height: 1.55; color: #52525B; max-width: 780px; text-wrap: pretty;">The section heading lives inside the left column, so the right column starts at the top of the grid row while the person cards start below the heading. Nothing lines up — and the card stretches to the row's full height on top of that.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px;">
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: #FFD4D8; color: #B1000F; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;">NOW</span>
+        <span style="font-size: 14px; color: #52525B;">Heading nested in the left column</span>
+      </div>
+
+      <div style="position: relative; background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 24px; padding: 24px;">
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 16px;">
+          <div>
+            <div style="height: 22px; display: flex; align-items: center;"><span class="h" style="font-size: 15px; color: #0A0A0B;">Who we've missed lately</span></div>
+            <div style="height: 12px; display: flex; align-items: center;"><span style="font-size: 11px; color: #A1A1AA;">They used to come, but it's been a few gatherings.</span></div>
+            <div style="height: 14px;"></div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="height: 56px; border-radius: 12px; background: #F4F4F5; border: 1px solid #F0F0F2;"></div>
+              <div style="height: 56px; border-radius: 12px; background: #F4F4F5; border: 1px solid #F0F0F2;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="height: 190px; border-radius: 12px; background: #F4F4F5; border: 1px solid #F0F0F2;"></div>
+          </div>
+        </div>
+
+        <div style="position: absolute; left: 24px; right: 24px; top: 72px; border-top: 1px dashed #B1000F; pointer-events: none;"></div>
+        <div style="position: absolute; right: 24px; top: 24px; width: 118px; height: 48px; border: 1px solid #B1000F; background: rgba(177, 0, 15, 0.06); border-radius: 6px; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+          <span style="font-size: 11px; font-weight: 600; color: #B1000F;">48 px early</span>
+        </div>
+      </div>
+
+      <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #52525B; text-wrap: pretty;">The dashed line is where the person cards begin. The figures card has already started, level with the heading, and it runs on past the cards because the grid stretches it.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: #E1FCDE; color: #016A1C; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;">PROPOSED</span>
+        <span style="font-size: 14px; color: #52525B;">One heading above a two-column grid</span>
+      </div>
+
+      <div style="position: relative; background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 24px; padding: 24px;">
+        <div style="height: 22px; display: flex; align-items: center;"><span class="h" style="font-size: 15px; color: #0A0A0B;">Who we've missed lately</span></div>
+        <div style="height: 12px; display: flex; align-items: center;"><span style="font-size: 11px; color: #A1A1AA;">They used to come, but it's been a few gatherings.</span></div>
+        <div style="height: 14px;"></div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1fr) 118px; gap: 16px; align-items: start;">
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="height: 56px; border-radius: 12px; background: #F4F4F5; border: 1px solid #F0F0F2;"></div>
+            <div style="height: 56px; border-radius: 12px; background: #F4F4F5; border: 1px solid #F0F0F2;"></div>
+          </div>
+          <div style="height: 122px; border-radius: 12px; background: #F4F4F5; border: 1px solid #F0F0F2;"></div>
+        </div>
+
+        <div style="position: absolute; left: 24px; right: 24px; top: 72px; border-top: 1px dashed #016A1C; pointer-events: none;"></div>
+      </div>
+
+      <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #52525B; text-wrap: pretty;">The heading spans the row, so both columns start on the same line. <code>align-items: start</code> stops the card stretching; <code>sticky top-8</code> keeps it with you down a long list.</p>
+    </div>
+  </div>
+
+  <div style="margin-top: 32px; padding-top: 28px; border-top: 1px solid #F0F0F2;">
+    <div style="display: grid; grid-template-columns: 250px 250px minmax(0, 1fr); gap: 28px; align-items: start;">
+
+      <div>
+        <div style="font-size: 12px; font-weight: 600; color: #B1000F; letter-spacing: 0.04em; margin-bottom: 10px;">NOW — INSIDE THE CARD</div>
+        <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px 24px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span class="h" style="font-size: 24px; line-height: 1;">31</span><span style="font-size: 12px; color: #52525B;">gatherings</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span class="h" style="font-size: 24px; line-height: 1;">17</span><span style="font-size: 12px; color: #52525B;">come, on average</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;"><span class="h" style="font-size: 24px; line-height: 1;">4</span><span style="font-size: 12px; color: #52525B;">gone quiet</span></div>
+          <span style="font-size: 13px; color: #52525B; font-style: italic;">Counting heads is just a way of noticing who's missing.</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 12px; font-weight: 600; color: #016A1C; letter-spacing: 0.04em; margin-bottom: 10px;">PROPOSED</div>
+        <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 4px 24px;">
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);"><span class="h" style="font-size: 24px; line-height: 1;">31</span><span style="font-size: 12px; color: #52525B;">gatherings</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);"><span class="h" style="font-size: 24px; line-height: 1;">17</span><span style="font-size: 12px; color: #52525B;">come, on average</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);"><span class="h" style="font-size: 24px; line-height: 1;">4</span><span style="font-size: 12px; color: #52525B;">gone quiet</span></div>
+          <p style="margin: 0; padding: 16px 0; font-size: 13px; line-height: 1.5; color: #52525B; font-style: italic;">Counting heads is just a way of noticing who's missing.</p>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; padding-top: 26px;">
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #52525B; text-wrap: pretty;">Three figures with no space between them read as one paragraph of numbers. Hairlines at <code>rgba(228,228,231,0.7)</code> and 16&nbsp;px of vertical room give each one its own line, and the card picks up the rhythm the person cards beside it already have.</p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #52525B; text-wrap: pretty;">Nothing else changes — same fill, same 24&nbsp;px radius, same border, same words.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1040,"height":980}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

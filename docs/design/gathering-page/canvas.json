@@ -1,0 +1,56 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 2160,
+      "title": "Gatherings — proposed",
+      "is_interactive": true
+    },
+    {
+      "file": "Alignment.dc.html",
+      "x": 0,
+      "y": 2300,
+      "w": 1040,
+      "h": 980,
+      "title": "The misaligned card"
+    },
+    {
+      "file": "SeriesCard.dc.html",
+      "x": 1120,
+      "y": 2300,
+      "w": 880,
+      "h": 1120,
+      "title": "Recurring series row",
+      "is_interactive": true
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": -320,
+      "y": 0,
+      "w": 260,
+      "text": "Issue #765\n\n\"the gathering page right card looks misaligned with 'who we've missed lately', and can we rethink how the recurring event works? it can create all of them once for all (as it's doing now), but we need a way to find the current week quickly\""
+    },
+    {
+      "id": "try-me",
+      "x": -320,
+      "y": 320,
+      "w": 260,
+      "text": "Try it: the week stepper at the top, and the date chips on a series row. Tapping a name moves them between Attended and We missed."
+    },
+    {
+      "id": "note-align",
+      "x": -320,
+      "y": 2300,
+      "w": 260,
+      "text": "The alignment fix, measured — plus the card's internal rhythm."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

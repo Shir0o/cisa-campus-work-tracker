@@ -86,3 +86,15 @@ _Avoid_: Question (bare), exercise, discussion question, application
 **Blank**:
 A word hidden in a Section's outline points or Passage that a reader taps to reveal — the fill-in-the-blank device, used to interrupt passive reading. Whether a Meeting uses Blanks at all is the author's choice, per Meeting.
 _Avoid_: Cloze, fill-in, hidden word, quiz
+
+**Gathering**:
+One occasion the team comes together and takes attendance for — a single Wednesday Bible Study, one Thursday College Meeting, a Welcome BBQ. A Gathering carries who was there and who was expected. It is not the document anyone reads in the room (that is a Meeting), and it is not the arc it belongs to (that is a Rhythm, or a Study).
+_Avoid_: Session, event, occurrence
+
+**Rhythm**:
+A Gathering that repeats on a fixed cadence — the Wednesday Bible Study, the Thursday Bible Study, the Thursday College Meeting. A Rhythm owns the name, kind, cadence, location and the expected roster; each turn of the cadence produces one Gathering, and a Gathering may override the roster for its week alone. A Study may be taught on a Rhythm, but the two are not the same thing: College Meeting is a Rhythm with no Study, and a Study's Meetings are documents rather than attendance records.
+_Avoid_: Series, recurring event, schedule, repeat
+
+**Attendance taken**:
+The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so the record says explicitly that a person marked it and when.
+_Avoid_: Marked, complete, closed

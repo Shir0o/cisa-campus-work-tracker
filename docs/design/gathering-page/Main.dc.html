@@ -1,0 +1,555 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; font-weight: 600; }
+    .hov:hover { background: rgba(127,127,127,0.08); }
+    .rowhov:hover { background: rgba(234,234,236,0.4); }
+    .cardhov:hover { border-color: rgba(19,19,22,0.4) !important; }
+    button { font-family: inherit; cursor: pointer; }
+  </style>
+</helmet>
+
+<div style="background: #FFFFFF; color: #0A0A0B; min-height: 100%; padding: 32px 0 48px;">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 32px;">
+
+  <!-- ══ Header ══ -->
+  <div style="display: flex; align-items: flex-end; gap: 24px;">
+    <div style="flex-grow: 1; min-width: 0;">
+      <p style="margin: 0; font-size: 14px; color: #52525B;">Wednesday, September 2</p>
+      <h1 class="h" style="margin: 4px 0 0; font-size: 36px; line-height: 1.1; color: #0A0A0B;">Gatherings</h1>
+      <p style="margin: 12px 0 0; font-size: 16px; line-height: 1.625; color: #52525B; max-width: 672px; text-wrap: pretty;">
+        We've come together <b style="color: #0A0A0B; font-weight: 600;">31 times</b> — about <span style="color: #0A0A0B; font-weight: 500;">17</span> people each time. This week's gatherings are at the top; a few faces have gone quiet, and they're just below.
+      </p>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
+      <button class="hov" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 0; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Log a gathering
+      </button>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;">
+    <button class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; font-size: 12px; font-weight: 500; color: #52525B;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Sync sheet
+    </button>
+    <button class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; font-size: 12px; font-weight: 500; color: #52525B;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Export
+    </button>
+  </div>
+
+  <!-- ══ This week — the new anchor ══ -->
+  <div style="margin-top: 48px;">
+    <div style="display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px;">
+      <div style="flex-grow: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;">
+        <h2 class="h" style="margin: 0; font-size: 24px; color: #0A0A0B;">{{week.heading}}</h2>
+        <span style="font-size: 14px; color: #52525B;">{{week.range}}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+        <button onClick="{{week.prev}}" class="hov" aria-label="Previous week" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; color: #52525B;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button onClick="{{week.today}}" class="hov" style="height: 36px; padding: 0 16px; border: 1px solid {{week.todayBorder}}; border-radius: 999px; background: {{week.todayBg}}; color: {{week.todayFg}}; font-size: 14px; font-weight: 500;">This week</button>
+        <button onClick="{{week.next}}" class="hov" aria-label="Next week" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; color: #52525B;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; overflow: hidden;">
+      <sc-for list="{{week.rows}}" as="row" hint-placeholder-count="2">
+        <div style="border-top: {{row.divider}};">
+          <button onClick="{{row.toggle}}" class="rowhov" style="width: 100%; display: flex; align-items: center; gap: 16px; padding: 20px; border: 0; background: transparent; text-align: left;">
+            <div style="width: 48px; flex-shrink: 0; text-align: center;">
+              <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">{{row.dow}}</div>
+              <div class="h" style="font-size: 26px; line-height: 1; color: {{row.dayColor}};">{{row.day}}</div>
+              <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">{{row.mon}}</div>
+            </div>
+            <div style="min-width: 0; flex-grow: 1;">
+              <div style="font-size: 16px; font-weight: 600; color: #0A0A0B;">{{row.name}}</div>
+              <div style="font-size: 14px; color: #52525B; margin-top: 2px;">{{row.meta}}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+              <span style="font-size: 14px; color: {{row.statusColor}}; white-space: nowrap;">{{row.statusText}}</span>
+              <sc-if value="{{row.isTodo}}" hint-placeholder-val="{{ true }}">
+                <span style="display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500; white-space: nowrap;">Take attendance</span>
+              </sc-if>
+              <sc-if value="{{row.isAhead}}" hint-placeholder-val="{{ false }}">
+                <span style="display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #0A0A0B; font-size: 13px; font-weight: 500; white-space: nowrap;">See who&#39;s coming</span>
+              </sc-if>
+              <sc-if value="{{row.canOpen}}" hint-placeholder-val="{{ true }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate({{row.caret}}deg);"><path d="M6 9l6 6 6-6"/></svg>
+              </sc-if>
+            </div>
+          </button>
+
+          <sc-if value="{{row.isOpen}}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 16px 20px 20px; border-top: 1px solid rgba(240, 240, 242, 0.4);">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: 12px; color: #52525B; margin-bottom: 16px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 8px; height: 8px; border-radius: 999px; background: #131316; display: inline-block;"></i> Here</span>
+                <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 8px; height: 8px; border-radius: 999px; background: #E4E4E7; display: inline-block;"></i> Missed</span>
+                <span style="font-style: italic;">Tap a name to update who was there.</span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px;">
+                <div>
+                  <div style="font-size: 12px; font-weight: 600; color: #0A0A0B; margin-bottom: 8px;">Attended <span style="color: #52525B;">{{row.hereCount}}</span></div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <sc-if value="{{row.noneHere}}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 14px; color: #52525B; font-style: italic;">No one marked yet.</span>
+                    </sc-if>
+                    <sc-for list="{{row.here}}" as="p" hint-placeholder-count="6">
+                      <button onClick="{{p.toggle}}" style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid rgba(19, 19, 22, 0.3); background: rgba(10, 10, 11, 0.03); color: #0A0A0B;">
+                        <span class="h" style="width: 32px; height: 32px; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">{{p.initials}}</span>
+                        <span style="font-size: 14px;">{{p.name}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 12px; font-weight: 600; color: #52525B; margin-bottom: 8px;">We missed <span>{{row.missCount}}</span></div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <sc-if value="{{row.noneMissed}}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size: 14px; color: #52525B; font-style: italic;">Everyone came.</span>
+                    </sc-if>
+                    <sc-for list="{{row.missed}}" as="p" hint-placeholder-count="4">
+                      <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 4px; border-radius: 999px; border: 1px solid #E4E4E7; color: #52525B; background: #FFFFFF;">
+                        <button onClick="{{p.toggle}}" style="display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; color: inherit;">
+                          <span class="h" style="width: 32px; height: 32px; border-radius: 999px; background: #EAEAEC; color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">{{p.initials}}</span>
+                          <span style="font-size: 14px;">{{p.name}}</span>
+                        </button>
+                        <span class="hov" style="padding: 6px; border-radius: 999px; display: inline-flex; color: #A1A1AA;">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        </span>
+                      </span>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(240, 240, 242, 0.3); display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; width: 100%; max-width: 384px; height: 32px; padding: 0 12px; border-radius: 14px; background: rgba(234, 234, 236, 0.5); border: 1px solid rgba(228, 228, 231, 0.3); font-size: 12px; color: #A1A1AA;">Add attendee or walk-in...</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ══ Who we've missed lately — heading now spans both columns ══ -->
+  <div style="margin-top: 48px;">
+    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 16px;">
+      <h2 class="h" style="margin: 0; font-size: 24px; color: #0A0A0B;">Who we've missed lately</h2>
+      <span style="font-size: 14px; color: #52525B;">They used to come, but it's been a few gatherings.</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start;">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+
+        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
+          <div style="display: flex; gap: 16px; min-width: 0;">
+            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">EN</span>
+            <div style="min-width: 0;">
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Elena Novak</span>
+                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">Regular</span>
+              </div>
+              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Friday Night Gathering · Aug 7 — 4 gatherings ago</div>
+              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Junior, Environmental Science</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+              Reach out
+            </span>
+            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
+          </div>
+        </div>
+
+        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
+          <div style="display: flex; gap: 16px; min-width: 0;">
+            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">SW</span>
+            <div style="min-width: 0;">
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Sam Whitfield</span>
+                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">Second Contact</span>
+              </div>
+              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Tuesday Small Group · Aug 14 — 3 gatherings ago</div>
+              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Freshman, undeclared</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+              Reach out
+            </span>
+            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
+          </div>
+        </div>
+
+        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
+          <div style="display: flex; gap: 16px; min-width: 0;">
+            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">AD</span>
+            <div style="min-width: 0;">
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Ana Duarte</span>
+                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">Regular</span>
+              </div>
+              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Friday Night Gathering · Jul 31 — 5 gatherings ago</div>
+              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Grad student, Public Health</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+              Reach out
+            </span>
+            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
+          </div>
+        </div>
+
+        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
+          <div style="display: flex; gap: 16px; min-width: 0;">
+            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">KN</span>
+            <div style="min-width: 0;">
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Kai Nakamura</span>
+                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">First Contact</span>
+              </div>
+              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Welcome BBQ · Aug 14 — 3 gatherings ago</div>
+              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Sophomore, Computer Science</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+              Reach out
+            </span>
+            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="align-self: start; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 4px 24px;">
+        <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);">
+          <span class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">31</span>
+          <span style="font-size: 12px; color: #52525B;">gatherings</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);">
+          <span class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">17</span>
+          <span style="font-size: 12px; color: #52525B;">come, on average</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);">
+          <span class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">4</span>
+          <span style="font-size: 12px; color: #52525B;">gone quiet</span>
+        </div>
+        <p style="margin: 0; padding: 16px 0; font-size: 14px; line-height: 1.5; color: #52525B; font-style: italic; text-wrap: pretty;">Counting heads is just a way of noticing who's missing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ When we met — series folded into one card each ══ -->
+  <div style="margin-top: 48px;">
+    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 16px;">
+      <h2 class="h" style="margin: 0; font-size: 24px; color: #0A0A0B;">When we met</h2>
+      <span style="font-size: 14px; color: #52525B;">Tap a gathering to see who came — and mark anyone you remember.</span>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px;">
+      <span style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #131316; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500;">All</span>
+      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #F0F0F2; color: #0A0A0B; font-size: 14px; font-weight: 500;">Weekly</span>
+      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #F0F0F2; color: #0A0A0B; font-size: 14px; font-weight: 500;">Small Group</span>
+      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #F0F0F2; color: #0A0A0B; font-size: 14px; font-weight: 500;">One-off</span>
+      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; border: 1px dashed #E4E4E7; color: #52525B; font-size: 12px; font-weight: 500;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 7H4M20 12H4M20 17H4"/></svg>
+        Manage kinds
+      </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <sc-for list="{{series}}" as="s" hint-placeholder-count="2">
+        <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            </span>
+            <div style="min-width: 0; flex-grow: 1;">
+              <div style="font-size: 16px; font-weight: 600; color: #0A0A0B;">{{s.name}}</div>
+              <div style="font-size: 14px; color: #52525B; margin-top: 2px;">{{s.cadence}}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+              <span style="font-size: 14px; color: #52525B; white-space: nowrap;">{{s.progress}}</span>
+              <button onClick="{{s.jump}}" class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #0A0A0B; font-size: 13px; font-weight: 500; white-space: nowrap;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1.6" fill="currentColor" stroke="none"/></svg>
+                Jump to this week
+              </button>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(228, 228, 231, 0.6);">
+            <sc-for list="{{s.weeks}}" as="w" hint-placeholder-count="17">
+              <button onClick="{{w.pick}}" title="{{w.title}}" style="width: 54px; padding: 6px 0 7px; border-radius: 10px; border: {{w.border}}; background: {{w.bg}}; color: {{w.fg}}; box-shadow: {{w.ring}}; text-align: center;">
+                <span style="display: block; font-size: 10px; letter-spacing: 0.06em; opacity: 0.7;">{{w.mon}}</span>
+                <span class="h" style="display: block; font-size: 15px; line-height: 1.3;">{{w.day}}</span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 12px; font-size: 11px; color: #52525B;">
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; background: #131316; display: inline-block;"></i> Marked</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; background: #FFFFFF; border: 2px solid #0A0A0B; display: inline-block;"></i> This week</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; background: #FFFFFF; border: 1px solid #E4E4E7; display: inline-block;"></i> Happened, not marked</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; border: 1px solid #F0F0F2; display: inline-block;"></i> Still ahead</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 16px; margin-top: 12px; padding: 14px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid rgba(228, 228, 231, 0.7);">
+            <div style="width: 44px; flex-shrink: 0; text-align: center;">
+              <div class="h" style="font-size: 22px; line-height: 1; color: #0A0A0B;">{{s.sel.day}}</div>
+              <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em; margin-top: 2px;">{{s.sel.mon}}</div>
+            </div>
+            <div style="min-width: 0; flex-grow: 1;">
+              <div style="font-size: 14px; font-weight: 600; color: #0A0A0B;">{{s.sel.label}}</div>
+              <div style="font-size: 13px; color: #52525B; margin-top: 2px;">{{s.sel.detail}}</div>
+            </div>
+            <span class="hov" style="display: inline-flex; padding: 8px 14px; border-radius: 999px; border: 1px solid #E4E4E7; font-size: 13px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">{{s.sel.action}}</span>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 16px; display: flex; align-items: center; gap: 16px; padding: 20px;">
+        <div style="width: 48px; flex-shrink: 0; text-align: center;">
+          <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">SAT</div>
+          <div class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">29</div>
+          <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">AUG</div>
+        </div>
+        <div style="min-width: 0; flex-grow: 1;">
+          <div style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Welcome BBQ</div>
+          <div style="font-size: 14px; color: #52525B; margin-top: 2px;">One-off · Riverside Park</div>
+        </div>
+        <div style="font-size: 14px; color: #52525B; white-space: nowrap;"><b style="color: #0A0A0B; font-weight: 600;">34</b> came</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+
+    <p style="margin: 20px 0 0; font-size: 13px; color: #A1A1AA; font-style: italic;">A recurring series is one row now, not seventeen — “Coming up” and “Also on the calendar” continue below, unchanged.</p>
+  </div>
+
+</div>
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":2160}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { week: 0, openRow: 'w0-fri', marks: {}, pick: { fri: 2, tue: 2 } };
+  }
+
+  roster() {
+    return [
+      { id: 'grace', name: 'Grace Lim', initials: 'GL' },
+      { id: 'daniel', name: 'Daniel Ortiz', initials: 'DO' },
+      { id: 'priya', name: 'Priya Raman', initials: 'PR' },
+      { id: 'hannah', name: 'Hannah Cho', initials: 'HC' },
+      { id: 'tobi', name: 'Tobi Adeyemi', initials: 'TA' },
+      { id: 'marcus', name: 'Marcus Webb', initials: 'MW' },
+      { id: 'ana', name: 'Ana Duarte', initials: 'AD' },
+      { id: 'elena', name: 'Elena Novak', initials: 'EN' },
+      { id: 'sam', name: 'Sam Whitfield', initials: 'SW' },
+      { id: 'kai', name: 'Kai Nakamura', initials: 'KN' }
+    ];
+  }
+
+  weeksData() {
+    return [
+      {
+        heading: 'Last week', range: 'Mon Aug 24 – Sun Aug 30',
+        rows: [
+          { id: 'wm1-tue', dow: 'TUE', day: '25', mon: 'AUG', name: 'Tuesday Small Group', meta: 'Small Group · 7:00pm · Kettle House', state: 'marked', seeded: true },
+          { id: 'wm1-fri', dow: 'FRI', day: '28', mon: 'AUG', name: 'Friday Night Gathering', meta: 'Weekly · 7:00pm · Bethel Hall', state: 'marked', seeded: true }
+        ]
+      },
+      {
+        heading: 'This week', range: 'Mon Aug 31 – Sun Sep 6',
+        rows: [
+          { id: 'w0-tue', dow: 'TUE', day: '1', mon: 'SEP', name: 'Tuesday Small Group', meta: 'Small Group · 7:00pm · Kettle House', state: 'marked', seeded: true },
+          { id: 'w0-fri', dow: 'FRI', day: '4', mon: 'SEP', name: 'Friday Night Gathering', meta: 'Weekly · 7:00pm · Bethel Hall', state: 'todo', seeded: false }
+        ]
+      },
+      {
+        heading: 'Next week', range: 'Mon Sep 7 – Sun Sep 13',
+        rows: [
+          { id: 'wp1-tue', dow: 'TUE', day: '8', mon: 'SEP', name: 'Tuesday Small Group', meta: 'Small Group · 7:00pm · Kettle House', state: 'ahead', seeded: false },
+          { id: 'wp1-fri', dow: 'FRI', day: '11', mon: 'SEP', name: 'Friday Night Gathering', meta: 'Weekly · 7:00pm · Bethel Hall', state: 'ahead', seeded: false }
+        ]
+      }
+    ];
+  }
+
+  isHere(row, personId) {
+    const key = row.id + '|' + personId;
+    const marks = this.state.marks;
+    if (Object.prototype.hasOwnProperty.call(marks, key)) return marks[key];
+    if (!row.seeded) return false;
+    return personId !== 'elena' && personId !== 'sam' && personId !== 'kai';
+  }
+
+  toggleMark(row, personId) {
+    const key = row.id + '|' + personId;
+    const next = Object.assign({}, this.state.marks);
+    next[key] = !this.isHere(row, personId);
+    this.setState({ marks: next });
+  }
+
+  buildRow(row, index) {
+    const here = [];
+    const missed = [];
+    this.roster().forEach((p) => {
+      const entry = {
+        id: p.id, name: p.name, initials: p.initials,
+        toggle: () => this.toggleMark(row, p.id)
+      };
+      if (this.isHere(row, p.id)) here.push(entry); else missed.push(entry);
+    });
+
+    const isOpen = this.state.openRow === row.id;
+    const ahead = row.state === 'ahead';
+    let statusText = here.length + ' here · ' + missed.length + ' missed';
+    if (ahead) statusText = '10 on the roster · 6 going';
+    if (row.state === 'todo' && here.length === 0) statusText = 'Not marked yet';
+
+    return {
+      id: row.id, dow: row.dow, day: row.day, mon: row.mon, name: row.name, meta: row.meta,
+      dayColor: row.state === 'ahead' ? '#A1A1AA' : '#0A0A0B',
+      divider: index === 0 ? 'none' : '1px solid rgba(228, 228, 231, 0.7)',
+      statusText: statusText,
+      statusColor: ahead ? '#A1A1AA' : '#52525B',
+      isTodo: row.state === 'todo' && here.length === 0,
+      isAhead: ahead,
+      canOpen: !ahead,
+      isOpen: isOpen && !ahead,
+      caret: isOpen && !ahead ? 180 : 0,
+      here: here, missed: missed,
+      hereCount: here.length, missCount: missed.length,
+      noneHere: here.length === 0, noneMissed: missed.length === 0,
+      toggle: () => { if (!ahead) this.setState({ openRow: isOpen ? null : row.id }); }
+    };
+  }
+
+  seriesData() {
+    return [
+      {
+        key: 'fri', name: 'Friday Night Gathering', cadence: 'Every Friday · 7:00pm · Bethel Hall · Aug 21 – Dec 11',
+        current: 2,
+        dates: [
+          ['AUG', '21', 'marked'], ['AUG', '28', 'marked'], ['SEP', '4', 'now'], ['SEP', '11', 'ahead'],
+          ['SEP', '18', 'ahead'], ['SEP', '25', 'ahead'], ['OCT', '2', 'ahead'], ['OCT', '9', 'ahead'],
+          ['OCT', '16', 'ahead'], ['OCT', '23', 'ahead'], ['OCT', '30', 'ahead'], ['NOV', '6', 'ahead'],
+          ['NOV', '13', 'ahead'], ['NOV', '20', 'ahead'], ['NOV', '27', 'ahead'], ['DEC', '4', 'ahead'],
+          ['DEC', '11', 'ahead']
+        ]
+      },
+      {
+        key: 'tue', name: 'Tuesday Small Group', cadence: 'Every Tuesday · 7:00pm · Kettle House · Aug 25 – Dec 8',
+        current: 2,
+        dates: [
+          ['AUG', '25', 'marked'], ['SEP', '1', 'marked'], ['SEP', '8', 'ahead'], ['SEP', '15', 'ahead'],
+          ['SEP', '22', 'ahead'], ['SEP', '29', 'ahead'], ['OCT', '6', 'ahead'], ['OCT', '13', 'ahead'],
+          ['OCT', '20', 'ahead'], ['OCT', '27', 'ahead'], ['NOV', '3', 'ahead'], ['NOV', '10', 'ahead'],
+          ['NOV', '17', 'ahead'], ['NOV', '24', 'ahead'], ['DEC', '1', 'ahead'], ['DEC', '8', 'ahead']
+        ]
+      }
+    ];
+  }
+
+  chipStyle(kind, selected) {
+    let s;
+    if (kind === 'marked') s = { bg: '#131316', fg: '#FFFFFF', border: '1px solid #131316' };
+    else if (kind === 'now') s = { bg: '#FFFFFF', fg: '#0A0A0B', border: '2px solid #0A0A0B' };
+    else if (kind === 'past') s = { bg: '#FFFFFF', fg: '#52525B', border: '1px solid #E4E4E7' };
+    else s = { bg: 'transparent', fg: '#A1A1AA', border: '1px solid #F0F0F2' };
+    s.ring = selected ? '0 0 0 2px #F4F4F5, 0 0 0 4px rgba(10, 10, 11, 0.35)' : 'none';
+    return s;
+  }
+
+  buildSeries(def) {
+    const picked = this.state.pick[def.key];
+    const weeks = def.dates.map((d, i) => {
+      const style = this.chipStyle(d[2], i === picked);
+      return {
+        mon: d[0], day: d[1], title: d[0] + ' ' + d[1],
+        bg: style.bg, fg: style.fg, border: style.border, ring: style.ring,
+        pick: () => {
+          const next = Object.assign({}, this.state.pick);
+          next[def.key] = i;
+          this.setState({ pick: next });
+        }
+      };
+    });
+
+    const d = def.dates[picked];
+    const kind = d[2];
+    let label = 'Marked · 18 here, 3 missed';
+    let action = 'Open';
+    let detail = def.name;
+    if (kind === 'now') { label = 'This week — not marked yet'; action = 'Take attendance'; }
+    if (kind === 'ahead') { label = 'Still ahead'; action = "See who's coming"; }
+    if (kind === 'past') { label = 'Happened — nobody marked'; action = 'Take attendance'; }
+    if (picked === def.current) detail = def.name + ' · this week';
+
+    const markedCount = def.dates.filter((x) => x[2] === 'marked').length;
+
+    return {
+      name: def.name, cadence: def.cadence,
+      progress: markedCount + ' of ' + def.dates.length + ' marked',
+      weeks: weeks,
+      sel: { day: d[1], mon: d[0], label: label, detail: detail, action: action },
+      jump: () => {
+        const next = Object.assign({}, this.state.pick);
+        next[def.key] = def.current;
+        this.setState({ pick: next });
+      }
+    };
+  }
+
+  renderVals() {
+    const weeks = this.weeksData();
+    const idx = this.state.week + 1;
+    const w = weeks[idx];
+    const atToday = this.state.week === 0;
+
+    return {
+      week: {
+        heading: w.heading,
+        range: w.range,
+        rows: w.rows.map((r, i) => this.buildRow(r, i)),
+        prev: () => this.setState({ week: Math.max(-1, this.state.week - 1) }),
+        next: () => this.setState({ week: Math.min(1, this.state.week + 1) }),
+        today: () => this.setState({ week: 0 }),
+        todayBg: atToday ? '#131316' : 'transparent',
+        todayFg: atToday ? '#FFFFFF' : '#0A0A0B',
+        todayBorder: atToday ? '#131316' : '#F0F0F2'
+      },
+      series: this.seriesData().map((s) => this.buildSeries(s))
+    };
+  }
+}
+</script>
+</body>
+</html>
