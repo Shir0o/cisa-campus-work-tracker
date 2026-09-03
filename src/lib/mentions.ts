@@ -63,10 +63,11 @@ export function reconcileMentionedUsers(
   text: string,
   selected: Array<{ uid: string; name: string }>,
 ): string[] {
+  const lowerText = text.toLowerCase();
   const presentUids = new Set<string>();
   for (const user of selected) {
-    const mentionString = `@${user.name}`;
-    if (text.includes(mentionString)) {
+    const mentionString = `@${user.name.toLowerCase()}`;
+    if (lowerText.includes(mentionString)) {
       presentUids.add(user.uid);
     }
   }

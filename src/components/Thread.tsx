@@ -20,6 +20,7 @@ import {
   reconcileMentionedUsers,
   type MentionUser,
 } from "../lib/mentions";
+import { isFullTimer } from "../lib/walking";
 
 const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
 const getInitials = (name?: string) => {
@@ -167,11 +168,14 @@ function ThreadMsg({
 
   const mentionCandidates = useMemo(() => {
     if (!mentionMatch) return [];
-    const candidates: MentionUser[] = teamMembers.map((tm) => ({
-      uid: tm.id,
-      name: tm.name,
-      role: tm.role === "Full-timer" || tm.role === "admin" ? "admin" : "manager",
-    }));
+    const candidates: MentionUser[] = teamMembers.map((tm) => {
+      const isFt = tm.role === "Full-timer" || tm.role === "admin" || tm.role === "full_timer" || isFullTimer(tm.id);
+      return {
+        uid: tm.id,
+        name: tm.name,
+        role: isFt ? "admin" : "manager",
+      };
+    });
     return filterMentionCandidates(candidates, mentionMatch.query, m.scope === "team");
   }, [mentionMatch, teamMembers, m.scope]);
 
@@ -338,11 +342,14 @@ export default function Thread({
 
   const mentionCandidates = useMemo(() => {
     if (!mentionMatch) return [];
-    const candidates: MentionUser[] = teamMembers.map((tm) => ({
-      uid: tm.id,
-      name: tm.name,
-      role: tm.role === "Full-timer" || tm.role === "admin" ? "admin" : "manager",
-    }));
+    const candidates: MentionUser[] = teamMembers.map((tm) => {
+      const isFt = tm.role === "Full-timer" || tm.role === "admin" || tm.role === "full_timer" || isFullTimer(tm.id);
+      return {
+        uid: tm.id,
+        name: tm.name,
+        role: isFt ? "admin" : "manager",
+      };
+    });
     return filterMentionCandidates(candidates, mentionMatch.query, scope === "team");
   }, [mentionMatch, teamMembers, scope]);
 

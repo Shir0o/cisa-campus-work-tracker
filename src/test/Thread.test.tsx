@@ -33,7 +33,10 @@ vi.mock("../lib/threads", () => {
   };
 });
 
-vi.mock("../lib/walking", () => ({ isTrainee: vi.fn(() => false) }));
+vi.mock("../lib/walking", () => ({
+  isTrainee: vi.fn(() => false),
+  isFullTimer: vi.fn(() => false),
+}));
 
 vi.mock("../components/AuthProvider", () => ({
   useAuth: () => ({ user: { uid: "u1", displayName: "Tony Wang" } }),

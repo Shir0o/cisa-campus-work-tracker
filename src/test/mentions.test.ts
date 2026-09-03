@@ -50,5 +50,9 @@ describe("mentions helper", () => {
     // Text only contains @Tony Wang
     const text = "Thanks @Tony Wang for the help!";
     expect(reconcileMentionedUsers(text, selected)).toEqual(["u1"]);
+
+    // Case-insensitive match check
+    const lowerText = "thanks @tony wang for the help!";
+    expect(reconcileMentionedUsers(lowerText, selected)).toEqual(["u1"]);
   });
 });
