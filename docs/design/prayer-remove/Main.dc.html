@@ -1,0 +1,293 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+    .mi:hover { background: #E4E4E7; color: #0A0A0B; }
+    .mi-danger:hover { background: rgba(177, 0, 15, 0.10); }
+    .rail-i:hover { background: rgba(255,255,255,0.08); color: #FFFFFF; }
+  </style>
+</helmet>
+
+<!-- 1107 x 662 — the viewport the feedback was written from (rail shell, expanded rail). -->
+<div style="width: 1107px; height: 662px; background: #FFFFFF; color: #0A0A0B; display: flex; padding: 16px; gap: 16px; overflow: hidden;">
+
+  <!-- ── Rail: 232px, radius 32, floating on the page ── -->
+  <div style="width: 232px; flex-shrink: 0; background: #0A0A0B; border-radius: 32px; box-shadow: 0 8px 32px rgba(10,10,11,0.14); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.10);">
+      <span class="h" style="width: 36px; height: 36px; border-radius: 14px; background: #FFFFFF; color: #0A0A0B; font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;">C</span>
+      <span style="line-height: 1.15; min-width: 0;">
+        <span class="h" style="display: block; font-size: 14px; font-weight: 600; color: #FFFFFF;">CISA Campus</span>
+        <span style="display: block; font-size: 10px; color: rgba(255,255,255,0.62);">Work Tracker</span>
+      </span>
+    </div>
+    <div style="padding: 12px 0 0;">
+      <sc-for list="{{nav}}" as="g" hint-placeholder-count="4">
+        <div style="padding: 12px 0;">
+          <div style="padding: 0 12px 4px; font-size: 11px; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; color: rgba(255,255,255,0.62);">{{g.label}}</div>
+          <sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+            <div class="rail-i" style="margin: 0 8px; height: 44px; padding: 0 12px; border-radius: 14px; display: flex; align-items: center; gap: 12px; background: {{it.bg}}; color: {{it.fg}}; font-size: 14px; font-weight: {{it.weight}};">
+              <span style="width: 18px; height: 18px; flex-shrink: 0; display: inline-flex;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7-4.6-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.9c0 5-7 9.6-7 9.6z"/></svg>
+              </span>
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{it.label}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ── Content column ── -->
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column;">
+
+    <!-- chrome strip, h-14 -->
+    <div style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px;">
+      <span style="flex-grow: 1;"></span>
+      <span style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid #A1A1AA; color: #52525B; font-size: 13px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        Search
+      </span>
+      <span style="width: 40px; height: 40px; border-radius: 999px; background: #F4F4F5; border: 1px solid #F0F0F2; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #52525B;">TW</span>
+    </div>
+
+    <!-- main: the scroll container. 662 - 16 - 56 - 16 = 574px tall. -->
+    <div style="flex-grow: 1; min-height: 0; position: relative; overflow: hidden;">
+
+      <sc-if value="{{anyOpen}}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{closeMenu}}" style="position: absolute; inset: 0; z-index: 40;"></div>
+      </sc-if>
+
+      <div style="padding: 32px;">
+
+        <!-- ans-head -->
+        <div style="border-bottom: 1px solid #F0F0F2; padding-bottom: 24px; margin-bottom: 30px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #52525B;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #016A1C; box-shadow: 0 0 0 4px rgba(93,128,113,0.14);"></span>
+            On our hearts
+          </div>
+          <div style="margin-top: 12px;">
+            <h1 class="h" style="margin: 0; font-size: 32px; font-weight: 500; letter-spacing: -0.015em; line-height: 1;">On our hearts</h1>
+            <p style="margin: 8px 0 0; font-size: 16px; line-height: 1.625; color: #52525B; max-width: 390px; text-wrap: pretty;"><span style="color: #016A1C; font-weight: 500;">14</span> prayers answered this year. <span style="color: rgba(82,82,91,0.7);">2 from last week still need an update below.</span></p>
+          </div>
+          <div style="display: inline-flex; margin-top: 18px; background: #EAEAEC; border: 1px solid #F0F0F2; border-radius: 999px; padding: 3px; gap: 2px;">
+            <span style="font-size: 12.5px; font-weight: 600; padding: 5px 14px; border-radius: 999px; background: #F4F4F5; color: #0A0A0B; box-shadow: 0 1px 2px rgba(32,45,72,0.10);">On our hearts</span>
+            <span style="font-size: 12.5px; font-weight: 600; padding: 5px 14px; border-radius: 999px; color: #52525B;">Answered</span>
+          </div>
+        </div>
+
+        <!-- search + filters + choose people -->
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+          <span style="position: relative; flex-grow: 1; max-width: 384px; height: 44px; border-radius: 999px; background: #F4F4F5; border: 1px solid #F0F0F2; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 14px; color: rgba(82,82,91,0.6);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+            Find someone…
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; border: 1px solid #F0F0F2; background: #F4F4F5; padding: 4px; flex-shrink: 0;">
+            <span style="padding: 0 12px; height: 32px; display: inline-flex; align-items: center; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 13px; font-weight: 500;">All</span>
+            <span style="padding: 0 12px; height: 32px; display: inline-flex; align-items: center; border-radius: 999px; color: #52525B; font-size: 13px; font-weight: 500;">Brothers</span>
+            <span style="padding: 0 12px; height: 32px; display: inline-flex; align-items: center; border-radius: 999px; color: #52525B; font-size: 13px; font-weight: 500;">Sisters</span>
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; height: 44px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 14px; color: #0A0A0B; flex-shrink: 0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4"/><path d="M15.4 5.2a3.2 3.2 0 0 1 0 5.6"/></svg>
+            Choose people
+          </span>
+        </div>
+
+        <!-- section label -->
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <span style="font-size: 11px; color: #52525B;">People we&#39;re praying for</span>
+          <span class="h" style="font-size: 14px; color: #52525B;">{{count}}</span>
+          <span style="flex-grow: 1; height: 1px; background: #F0F0F2;"></span>
+        </div>
+
+        <!-- cards -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <sc-for list="{{people}}" as="p" hint-placeholder-count="2">
+            <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 24px;">
+
+              <div style="display: flex; align-items: flex-start; gap: 16px;">
+                <span class="h" style="width: 56px; height: 56px; flex-shrink: 0; border-radius: 999px; background: rgba(10,10,11,0.06); color: #52525B; font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;">{{p.initials}}</span>
+                <div style="min-width: 0;">
+                  <div class="h" style="font-size: 18px; font-weight: 500; line-height: 1.2;">{{p.name}}</div>
+                  <div style="font-size: 13px; color: #52525B; margin-top: 2px;">{{p.meta}}</div>
+                </div>
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                  <div style="text-align: right;">
+                    <div class="h" style="font-size: 15px; line-height: 1.2; color: {{p.tone}};">{{p.carry}}</div>
+                    <div style="font-size: 11.5px; color: #52525B; margin-top: 2px;">{{p.total}}</div>
+                  </div>
+
+                  <!-- the ⋯ menu -->
+                  <div style="position: relative; flex-shrink: 0;">
+                    <button onClick="{{p.toggle}}" aria-label="More" style="width: 28px; height: 28px; border-radius: 999px; color: #52525B; display: inline-flex; align-items: center; justify-content: center; background: {{p.trigBg}};">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+                    </button>
+                    <sc-if value="{{p.menuOpen}}" hint-placeholder-val="{{ true }}">
+                      <div style="position: absolute; top: 36px; right: 0; z-index: 50; width: 216px; border-radius: 16px; background: #EAEAEC; border: 1px solid #F0F0F2; box-shadow: 0 16px 32px rgba(0,0,0,0.16); padding: 4px;">
+                        <div class="mi" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: #52525B;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg>
+                          <span>Open {{p.first}}&#39;s page</span>
+                        </div>
+                        <div class="mi" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: #52525B;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h11M4 12h11M4 18h7"/><path d="m16.5 17.5 1.8 1.8 3.2-3.6"/></svg>
+                          <span>Make a to-do</span>
+                        </div>
+                        <div class="mi" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: #52525B;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7-4.6-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.9c0 5-7 9.6-7 9.6z"/></svg>
+                          <span>I followed up</span>
+                        </div>
+                        <div style="height: 1px; background: #E4E4E7; margin: 4px 8px;"></div>
+                        <button onClick="{{p.remove}}" class="mi-danger" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: #B1000F; text-align: left;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.4"/><path d="M3.5 20v-1a5 5 0 0 1 5-5h3"/><path d="M15.5 17.5h5"/></svg>
+                          <span>Remove from prayer list</span>
+                        </button>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+
+              <!-- This week -->
+              <div style="margin-top: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                  <span style="font-size: 11px; color: #52525B;">This week</span>
+                  <span style="flex-grow: 1; height: 1px; background: #F0F0F2;"></span>
+                </div>
+                <div style="padding-left: 12px; border-left: 2px solid #131316;">
+                  <div style="display: flex; align-items: baseline; gap: 12px;">
+                    <span style="font-size: 13px; color: #52525B;">{{p.weekDate}}</span>
+                    <span style="margin-left: auto; font-size: 13px; color: #52525B;">Edit</span>
+                    <span style="font-size: 13px; color: #52525B;">Make a to-do</span>
+                  </div>
+                  <p style="margin: 6px 0 0; font-size: 14px; line-height: 1.625;">{{p.week}}</p>
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                    <span style="font-size: 11.5px; color: #52525B;">Mark</span>
+                    <span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(82,82,91,0.4); background: rgba(82,82,91,0.14); color: #52525B;">Ongoing</span>
+                    <span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #F0F0F2; color: #52525B;">Answered</span>
+                    <span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #F0F0F2; color: #52525B;">Archived</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- undo snackbar: fixed bottom-6, centered, max-w-sm -->
+      <sc-if value="{{snack}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 250; width: 352px;">
+          <div style="background: #EAEAEC; border: 1px solid #F0F0F2; border-radius: 16px; box-shadow: 0 16px 32px rgba(0,0,0,0.16); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+            <span style="font-size: 14px; font-weight: 500;">{{snack.text}}</span>
+            <span style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+              <button onClick="{{undo}}" style="padding: 6px 14px; border-radius: 12px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Undo</button>
+              <button onClick="{{dismiss}}" aria-label="Dismiss" style="color: #52525B; display: inline-flex;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1107,"height":662}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: 'daniel', gone: [], snack: null };
+  }
+
+  roster() {
+    return [
+      {
+        id: 'daniel',
+        name: 'Daniel Xu',
+        first: 'Daniel',
+        initials: 'DX',
+        meta: 'Sophomore · Cared for by Grace · Added by Tony',
+        carry: '2 ongoing',
+        tone: 'oklch(0.55 0.15 258)',
+        total: '7 prayers in all',
+        weekDate: 'Sep 1, 2026',
+        week: 'Finals in three weeks, and his roommate has started asking him why he goes to study. Pray for words, and for stamina.',
+      },
+      {
+        id: 'mei',
+        name: 'Mei Lin',
+        first: 'Mei',
+        initials: 'ML',
+        meta: 'Freshman · Cared for by Ruth',
+        carry: 'All answered',
+        tone: '#016A1C',
+        total: '4 prayers in all',
+        weekDate: 'Sep 2, 2026',
+        week: 'Her mother goes in for surgery on the 12th; she is deciding whether to fly home.',
+      },
+    ];
+  }
+
+  renderVals() {
+    var self = this;
+    var gone = this.state.gone;
+    var open = this.state.open;
+
+    var people = this.roster()
+      .filter(function (p) { return gone.indexOf(p.id) < 0; })
+      .map(function (p) {
+        return Object.assign({}, p, {
+          menuOpen: open === p.id,
+          trigBg: open === p.id ? '#EAEAEC' : 'transparent',
+          toggle: function () { self.setState({ open: open === p.id ? null : p.id }); },
+          remove: function () {
+            self.setState({
+              gone: gone.concat([p.id]),
+              open: null,
+              snack: { text: 'Removed ' + p.first + ' from your prayer list' },
+            });
+          },
+        });
+      });
+
+    return {
+      people: people,
+      count: String(people.length),
+      anyOpen: open !== null,
+      snack: this.state.snack,
+      closeMenu: function () { self.setState({ open: null }); },
+      undo: function () { self.setState({ gone: [], snack: null }); },
+      dismiss: function () { self.setState({ snack: null }); },
+      nav: [
+        { label: 'Today', items: [
+          { label: 'My Day', bg: 'transparent', fg: 'rgba(255,255,255,0.62)', weight: '400' },
+          { label: 'Coordination Notes', bg: 'transparent', fg: 'rgba(255,255,255,0.62)', weight: '400' },
+        ] },
+        { label: 'People', items: [
+          { label: 'The Journey', bg: 'transparent', fg: 'rgba(255,255,255,0.62)', weight: '400' },
+          { label: 'People', bg: 'transparent', fg: 'rgba(255,255,255,0.62)', weight: '400' },
+        ] },
+        { label: 'Prayer', items: [
+          { label: 'On our hearts', bg: '#FFFFFF', fg: '#0A0A0B', weight: '500' },
+          { label: 'Answered', bg: 'transparent', fg: 'rgba(255,255,255,0.62)', weight: '400' },
+        ] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

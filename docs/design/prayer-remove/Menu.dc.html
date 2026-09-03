@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+    .mi { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; font-size: 13.5px; color: #52525B; }
+    .sect { font-size: 11px; letter-spacing: 0.08em; color: #A1A1AA; margin-bottom: 10px; }
+    .card { border: 1px solid #E4E4E7; border-radius: 16px; background: #FFFFFF; padding: 18px 20px 20px; }
+  </style>
+</helmet>
+
+<div style="width: 820px; min-height: 100%; background: #FFFFFF; color: #0A0A0B; padding: 34px 32px 40px;">
+
+  <div style="margin-bottom: 24px;">
+    <div style="font-size: 12px; letter-spacing: 0.1em; color: #A1A1AA;">ISSUE 715 + 714 · THE ITEM, IN FULL</div>
+    <h1 class="h" style="margin: 6px 0 0; font-size: 26px; font-weight: 600; line-height: 1.15;">One item, one word, one undo</h1>
+    <p style="margin: 8px 0 0; font-size: 14.5px; line-height: 1.55; color: #52525B; text-wrap: pretty;">The change is a fourth entry in the row menu the card already has. Everything below is the detail that decides whether it feels right: where it sits, what it is called, what happens when it is pressed, and what it actually does to the data.</p>
+  </div>
+
+  <!-- ── before / after ── -->
+  <div class="sect">THE MENU, BEFORE AND AFTER</div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px;">
+
+    <div class="card">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 12px;">Today — 3 items</div>
+      <div style="width: 216px; border-radius: 16px; background: #EAEAEC; border: 1px solid #F0F0F2; box-shadow: 0 16px 32px rgba(0,0,0,0.10); padding: 4px;">
+        <div class="mi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg><span>Open Daniel&#39;s page</span></div>
+        <div class="mi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h11M4 12h11M4 18h7"/><path d="m16.5 17.5 1.8 1.8 3.2-3.6"/></svg><span>Make a to-do</span></div>
+        <div class="mi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7-4.6-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.9c0 5-7 9.6-7 9.6z"/></svg><span>I followed up</span></div>
+      </div>
+      <div style="font-size: 12.5px; color: #52525B; margin-top: 12px; line-height: 1.5;">The shared person-row vocabulary from #332. <b style="color:#0A0A0B; font-weight:500;">Share</b> is hidden on this page; nothing here removes anyone.</div>
+    </div>
+
+    <div class="card" style="border-color: #0A0A0B;">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 12px;">Proposed — 4 items</div>
+      <div style="width: 216px; border-radius: 16px; background: #EAEAEC; border: 1px solid #F0F0F2; box-shadow: 0 16px 32px rgba(0,0,0,0.10); padding: 4px;">
+        <div class="mi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg><span>Open Daniel&#39;s page</span></div>
+        <div class="mi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h11M4 12h11M4 18h7"/><path d="m16.5 17.5 1.8 1.8 3.2-3.6"/></svg><span>Make a to-do</span></div>
+        <div class="mi"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7-4.6-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.9c0 5-7 9.6-7 9.6z"/></svg><span>I followed up</span></div>
+        <div style="height: 1px; background: #E4E4E7; margin: 4px 8px;"></div>
+        <div class="mi" style="color: #B1000F;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.4"/><path d="M3.5 20v-1a5 5 0 0 1 5-5h3"/><path d="M15.5 17.5h5"/></svg><span>Remove from prayer list</span></div>
+      </div>
+      <div style="font-size: 12.5px; color: #52525B; margin-top: 12px; line-height: 1.5;">Last, below a hairline, in the error tone the menu already reserves for destructive rows. <b style="color:#0A0A0B; font-weight:500;">RowActions</b> has the danger tone but no separator yet — one optional flag on the item.</div>
+    </div>
+  </div>
+
+  <!-- ── the word ── -->
+  <div class="sect" style="margin-top: 26px;">THE WORD — WHY #714 IS THE SAME BUG</div>
+  <div class="card">
+    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #52525B;">On this page <b style="color:#0A0A0B; font-weight:500;">Archived</b> is already taken: it is what a prayer&#39;s <b style="color:#0A0A0B; font-weight:500;">unanswered</b> mark is called in the mark row, sitting inches from the button. So <b style="color:#0A0A0B; font-weight:500;">Archive from Prayer List</b> reads as if it does something to the prayers. It does not — it takes the <i>person</i> off the page. The string the app wants already exists: <code style="font-size:13px;">prayers.remove_from_prayer_list</code>, used today as the mobile tooltip.</p>
+    <div style="display: grid; grid-template-columns: 168px 1fr; gap: 10px 16px; margin-top: 16px; font-size: 13px; line-height: 1.45;">
+      <div style="color: #A1A1AA;">Menu item</div><div><b style="font-weight:500;">Remove from prayer list</b></div>
+      <div style="color: #A1A1AA;">Trigger tooltip</div><div>Remove Daniel from prayer list <span style="color:#52525B;">— unchanged, already written</span></div>
+      <div style="color: #A1A1AA;">After it happens</div><div>Removed Daniel from your prayer list <span style="color:#52525B;">— the snackbar</span></div>
+      <div style="color: #A1A1AA;">Stale strip</div><div>loses its Archive button — the menu now carries the action on every card, stale or not</div>
+      <div style="color: #A1A1AA;">Retired</div><div><code style="font-size:12.5px;">prayers.archive_from_prayer</code>, <code style="font-size:12.5px;">archive_confirm_prompt</code>, <code style="font-size:12.5px;">archive_confirm_button</code></div>
+    </div>
+  </div>
+
+  <!-- ── the gesture ── -->
+  <div class="sect" style="margin-top: 26px;">THE GESTURE — REMOVE, THEN OFFER UNDO</div>
+  <div class="card">
+    <div style="display: flex; gap: 20px; align-items: flex-start;">
+      <div style="flex-grow: 1;">
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #52525B;">No confirm dialog and no in-place Remove / Keep pair. The card leaves the moment the item is chosen, and a snackbar holds the way back for five seconds — the same gesture <b style="color:#0A0A0B; font-weight:500;">Clear this prayer</b> got in #706, using the <code style="font-size:13px;">UndoSnackbar</code> this view already renders.</p>
+        <p style="margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: #52525B;">It earns that because the action is cheap to reverse: nothing is deleted, and putting the person back is one click. A confirm step would cost every removal a decision and still not protect anything.</p>
+        <p style="margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: #52525B;"><b style="color:#0A0A0B; font-weight:500;">Mobile follows.</b> Its × keeps its place on the card but drops the inline Remove / Keep, so both surfaces spell the action the same way.</p>
+      </div>
+      <div style="width: 300px; flex-shrink: 0;">
+        <div style="background: #EAEAEC; border: 1px solid #F0F0F2; border-radius: 16px; box-shadow: 0 16px 32px rgba(0,0,0,0.12); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+          <span style="font-size: 14px; font-weight: 500;">Removed Daniel from your prayer list</span>
+          <span style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+            <span style="padding: 6px 14px; border-radius: 12px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Undo</span>
+            <span style="color: #52525B; display: inline-flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+          </span>
+        </div>
+        <div style="font-size: 12px; color: #A1A1AA; margin-top: 8px; line-height: 1.45;">Bottom centre, 24 px up, 352 px wide — where this page already puts Undo.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── what it does ── -->
+  <div class="sect" style="margin-top: 26px;">WHAT REMOVE ACTUALLY DOES</div>
+  <div class="card" style="background: #F4F4F5;">
+    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #52525B;">It adds the contact&#39;s id to <code style="font-size:13px;">cisa.prayer.hidden</code> in this browser&#39;s local storage — exactly what <b style="color:#0A0A0B; font-weight:500;">Choose people</b> does when you untick a name. The contact, their prayers, their history and their card everywhere else in the app are untouched, and nothing is written to Firestore.</p>
+    <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 14px; font-size: 13px; line-height: 1.45; color: #52525B;">
+      <div>· A teammate&#39;s prayer page does not change. This is your page, not the team&#39;s list.</div>
+      <div>· Signing in on another laptop brings the person back.</div>
+      <div>· Clearing site data brings everyone back.</div>
+    </div>
+    <p style="margin: 14px 0 0; font-size: 13px; line-height: 1.55; color: #52525B;">That is why the snackbar says <b style="color:#0A0A0B; font-weight:500;">your</b> prayer list while the section above the cards says <b style="color:#0A0A0B; font-weight:500;">People we&#39;re praying for</b>. The two disagree, and the copy here is the smallest honest patch.</p>
+    <div style="margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E4E4E7; font-size: 13px; line-height: 1.55;">
+      <b style="font-weight: 600;">Open question for the team, not settled here:</b> <span style="color: #52525B;">should the prayer list be shared, so removing someone removes them for everyone? That is a data-model change well past this issue — worth its own decision before the wording is settled for good.</span>
+    </div>
+  </div>
+
+  <!-- ── the fold ── -->
+  <div class="sect" style="margin-top: 26px;">ONE MEASUREMENT THE FOURTH ITEM FORCES</div>
+  <div class="card">
+    <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #52525B;">The popover opens 36 px below the trigger and, at four items with a separator, runs about 161 px. On the first card at 662 px tall the trigger sits near y ≈ 404 of a 574 px scroll area, so the menu ends level with the bottom edge — and every card below the first opens the menu against the fold or past it.</p>
+    <p style="margin: 10px 0 0; font-size: 13.5px; line-height: 1.55; color: #52525B;"><b style="color:#0A0A0B; font-weight:500;">So the popover should flip above the trigger when there is not room below it.</b> <code style="font-size:13px;">RowActions</code> is shared by the person, visit, prayer and outreach rows, so that lands everywhere at once — and it is the one piece of this change that is not a one-line addition.</p>
+  </div>
+
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":820,"height":1240}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

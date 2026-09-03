@@ -1,0 +1,62 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Proposed — the menu on the card",
+      "is_interactive": true
+    },
+    {
+      "file": "Today.dc.html",
+      "x": 0,
+      "y": 800,
+      "w": 1180,
+      "h": 1010,
+      "title": "Today — the round trip, measured"
+    },
+    {
+      "file": "Menu.dc.html",
+      "x": 1260,
+      "y": 0,
+      "w": 820,
+      "h": 1240,
+      "title": "The item, the word, the undo"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": -330,
+      "y": 0,
+      "w": 270,
+      "text": "Issue #715\n\n\"give me a way to remove someone from the prayer list in dropdown so that I don't have to go all the way to the top to choose people and remove name\"\n\nReported from /prayer at 1107x662."
+    },
+    {
+      "id": "try-me",
+      "x": -330,
+      "y": 300,
+      "w": 270,
+      "text": "Try it: the menu is open on Daniel's card. Choose Remove from prayer list — the card leaves, Mei rises, and Undo puts him back."
+    },
+    {
+      "id": "note-714",
+      "x": -330,
+      "y": 560,
+      "w": 270,
+      "text": "#714 is the other half of this: \"Archived\" already names a prayer's mark on this same page, so \"Archive from Prayer List\" reads as if it acts on the prayers. The board on the right settles the wording."
+    },
+    {
+      "id": "note-today",
+      "x": -330,
+      "y": 800,
+      "w": 270,
+      "text": "The measurements are added up from the stylesheets at the reported viewport, not eyeballed from a screenshot — text metrics move them a few px either way."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
