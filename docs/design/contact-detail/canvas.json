@@ -1,0 +1,32 @@
+{
+  "artboards": [
+    { "file": "Today.dc.html",   "x": 0,    "y": 0,   "w": 1107, "h": 662, "title": "Today — current" },
+    { "file": "Main.dc.html",    "x": 1187, "y": 0,   "w": 1107, "h": 662, "title": "Frame — proposed" },
+    { "file": "Panes.dc.html",   "x": 0,    "y": 782, "w": 1107, "h": 662, "title": "Panes — Discussion" },
+    { "file": "Editing.dc.html", "x": 1187, "y": 782, "w": 1107, "h": 662, "title": "Editing — the form" }
+  ],
+  "annotations": [
+    {
+      "id": "read-me",
+      "x": 0,
+      "y": -196,
+      "w": 620,
+      "text": "Contact detail, issue #762.\n\nAll four boards are the reported viewport — 1107×662, rail shell, light theme. Every value is lifted from src/index.css, App.tsx and ContactDetailsModal.tsx rather than invented.\n\nCrimson hatching = what the space is spent on today.\nGreen = what you get back."
+    },
+    {
+      "id": "the-number",
+      "x": 1187,
+      "y": -196,
+      "w": 620,
+      "text": "220 × 435  →  422 × 779\n\nHeight +92%, width +79%. Nothing is added to the page to achieve it: the aside, the footer, the tall head and a 32px phantom scroll are removed.\n\nThe two you have not seen before are the deleted aside and the two digests coming off Overview. They are also the two that buy the most room."
+    },
+    {
+      "id": "open-question",
+      "x": 0,
+      "y": 1490,
+      "w": 620,
+      "text": "Worth a second look before this is built:\n\n· Overview now carries the profile fields. Is anything you relied on in the aside missing at a glance, other than tags?\n· \"Lately\" and \"Prayers we're holding\" are gone from Overview. If either was load-bearing, say so — that is the one thing this costs."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}
