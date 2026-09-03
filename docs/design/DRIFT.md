@@ -11,7 +11,7 @@ not a flaw in the drawings — a canvas that could be diffed against React would
 just be React — but it means drift is found by accident, usually months later
 and usually by someone looking at something else.
 
-The nine entries below were all found in one sitting, prompted by a question
+The first ten entries below were all found in one sitting, prompted by a question
 about dark mode: eight by reading the artboards and the specs against the source
 line by line, and one (#9) only by walking the running app in both themes.
 Three were real bugs, three were the build ignoring a written decision, one was a
@@ -72,3 +72,14 @@ threshold. The spec has been amended to say this.
 - Nothing checks an artboard against a component, and nothing sensibly could.
   This file is the substitute, and #9 is the reminder that reading is not
   enough — the app has to be opened in both themes.
+
+### 2026-09-03 — the prayer compose box
+
+Found from user feedback on `/prayer` ([#705](https://github.com/Shir0o/cisa-campus-work-tracker/issues/705)),
+settled on the canvas at [`prayer-composer/`](prayer-composer/).
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 11 | The prayer compose boxes put `rounded-xl` on their textarea and photo dropzone. Same root cause as #4: Ink re-values `--radius-xl` to 32px for shell containers, and these controls are 62px, 54px and 38px tall, so CSS clamps the radius to half each box and paints three stadiums. Their panel is `rounded-2xl`, which is *not* re-valued and stays at Tailwind's 16px — so the nesting inverted, a 16px panel holding 31px children inside a 24px card. | **Neither — a bug** | Compose panels moved to `rounded-[14px]`, controls and the 64px answer thumbnails to `rounded-sm`, in all seven compose boxes. The nest now descends: card 24 → panel 14 → controls 10. `--radius-xl` is unchanged. `prayerComposerRadius.test.ts` pins it, since jsdom cannot observe a clamp. |
+| 12 | `@theme` re-values `--radius-sm`, `--radius`, `--radius-lg` and `--radius-xl` but never names `--radius-md`, `--radius-2xl` or `--radius-3xl`, which keep Tailwind's defaults. The utility ladder is therefore non-monotonic in three places — `sm` (10) > `md` (6), `lg` (24) > `2xl` (16), `xl` (32) > `3xl` (24) — so `rounded-xl` is the roundest non-pill step in the app, and reaching for `2xl` to tone it down gets you *less* round than `lg`. | **Neither — a bug** | **Open.** #11 fixes the one instance that was reported; the ladder itself is untouched and still misleads at 421 call sites. Re-basing it needs its own ADR — the drawing is [`prayer-composer/Ladder.dc.html`](prayer-composer/Ladder.dc.html). |
+| 13 | `--radius-pill: 999px` is declared in both theme blocks and on `@theme`, and has zero uses. All 580 pills are `rounded-full`, which reads no token at all — Tailwind compiles it to `calc(infinity * 1px)`. | **Build** | **Open.** Harmless, but the token implies a `rounded-pill` utility nobody calls. Delete it or adopt it; noted here so the next reader does not assume it is load-bearing. |

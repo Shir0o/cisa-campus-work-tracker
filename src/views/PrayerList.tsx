@@ -1235,13 +1235,13 @@ function PrayerItem({
                     key={ph.path}
                     src={ph.url}
                     alt={ph.name || 'photo'}
-                    className="w-16 h-16 object-cover rounded-lg border border-outline-variant"
+                    className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
                   />
                 ) : (
                   <span
                     key={ph.path}
                     title={ph.name}
-                    className="w-16 h-16 grid place-items-center rounded-lg border border-outline-variant text-on-surface-variant"
+                    className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
                   >
                     <ImageIcon className="w-4 h-4" />
                   </span>
@@ -1277,8 +1277,9 @@ function PrayerItem({
       {/* Testimony compose box.
           `rounded-[14px]` / `rounded-sm` rather than `rounded-2xl` / `rounded-xl`:
           Ink re-values `--radius-xl` to 32px, and these controls are short — the
-          textarea is 62px and the dropzone 38px — so a 32px radius clamps to half
-          the height and paints a lozenge (#705). The nest descends instead:
+          textarea is 62px here and 54px on mobile (text-xs), the dropzone 38px — so
+          a 32px radius clamps to half the height and paints a lozenge (#705). 10px
+          is the one value every height carries. The nest descends instead:
           card 24 → panel 14 → controls 10. See docs/design/prayer-composer/. */}
       {answering && (
         <div className="mt-3 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant max-w-xl">

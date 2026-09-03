@@ -149,7 +149,7 @@
   <div class="redline gd" style="left: 826px; top: 400px; width: 236px;">
     <b>32px &rarr; 10px</b>
     <span class="mono">rounded-xl &rarr; rounded-sm</span><br>
-    <span class="mono">--radius-sm</span>, Ink&rsquo;s &ldquo;small marks&rdquo; step. 10 of a possible 31 &mdash; the corner reads as a corner again, at both box heights.
+    <span class="mono">--radius-sm</span>, Ink&rsquo;s &ldquo;small marks&rdquo; step. 10 of a possible 31 &mdash; the corner reads as a corner again at every height in the box: 62px here, 54px on mobile, 38px on the photo row.
   </div>
 
   <div class="lead gd" style="left: 736px; top: 500px; width: 60px; height: 1px;"></div>
@@ -171,7 +171,7 @@
   <div class="redline gd" style="left: 826px; top: 552px; width: 236px;">
     <b>24px &rarr; 10px</b>
     <span class="mono">rounded-lg &rarr; rounded-sm</span><br>
-    A 64px thumbnail is a small mark, not a container.
+    A 64px thumbnail is a small mark, not a container. It never clamped &mdash; it moves so the identical thumbnail in the display box above does not end up a different shape.
   </div>
 
   <div style="position: absolute; left: 108px; top: 618px; width: 700px; font-size: 11px; color: #71717A; line-height: 1.5;">

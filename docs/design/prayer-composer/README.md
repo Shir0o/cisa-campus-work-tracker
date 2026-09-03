@@ -77,7 +77,13 @@ feature.
 | Compose panel (×7) | `rounded-2xl` 16px / `rounded-xl` 32px | `rounded-[14px]` |
 | Textarea (×7) | `rounded-xl` 32px &rarr; clamps to 31 | `rounded-sm` 10px |
 | Photo dropzone | `rounded-xl` 32px &rarr; clamps to 19 | `rounded-sm` 10px |
-| Composer thumbnails (×2) | `rounded-lg` 24px | `rounded-sm` 10px |
+| Answer thumbnails (×4) | `rounded-lg` 24px | `rounded-sm` 10px |
+
+The thumbnails are the one place the change reaches outside the compose box.
+A 64px square never clamps, so they are not part of the reported defect — but
+the *same* 64px thumbnail renders in the answered-testimony display box directly
+above, and fixing only the composer's copy would have left one control wearing
+two shapes in one row. Both nests still descend afterwards.
 
 `src/test/prayerComposerRadius.test.ts` is the guardrail: jsdom has no layout
 engine, so the clamp is unobservable behaviourally: the test reads the sources
@@ -87,9 +93,10 @@ and asserts the shape contract, in the style of `accentToken.test.ts`.
 
 - The same `rounded-xl` → 32px lands on **283 call sites**, including the
   answered-testimony *display* box and the edit textarea in this same row.
-  Re-basing them is a separate decision and a separate diff. The display box's
-  own 64px thumbnails were left at `rounded-lg` for the same reason — they
-  belong to that box, not to the composer.
+  Re-basing them is a separate decision and a separate diff. 283 was the count
+  at `main`; this change consumes 10 of them, leaving 273. The display box's own
+  *panel* is untouched and still asks for 32px — only its thumbnails moved, to
+  keep one control one shape.
 - `--radius-md`, `--radius-2xl` and `--radius-3xl` are never named on `@theme`,
   so the ladder is non-monotonic in three places (`sm` > `md`, `lg` > `2xl`,
   `xl` > `3xl`). Naming them would fix the class of bug rather than this
