@@ -599,6 +599,8 @@
     "archive_from_prayer": "Archive from Prayer List",
     "archive_confirm_prompt": "Archive from prayer?",
     "archive_confirm_button": "Archive",
+    "clear_prayer": "Clear this prayer",
+    "clear_prayer_undone": "Prayer cleared",
     "keep_in_prayer": "Keep",
     "no_one_in_particular": "— no one in particular",
     "pill_ongoing": "ongoing",
@@ -1123,6 +1125,7 @@
     "interacted_with": "interacted with",
     "updated_an_interaction_for": "updated an interaction for",
     "deleted_an_interaction_for": "removed a conversation for",
+    "cleared_a_prayer_for": "cleared a prayer for",
     "updated_the": "updated the",
     "for": "for",
     "notes": "Notes"

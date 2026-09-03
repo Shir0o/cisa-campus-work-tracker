@@ -52,6 +52,7 @@ const baseProps = {
   setComposeFor: vi.fn(),
   onStopHolding: vi.fn(),
   isOperator: true,
+  isManager: true,
 };
 
 function renderWithRouter(props: any = {}) {

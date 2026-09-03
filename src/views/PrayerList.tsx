@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useReducer, useState, useEffect, useMemo, useRef } from 'react';
 import {
   collection,
   onSnapshot,
@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { Archive, Check, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Users, X } from 'lucide-react';
+import { Archive, Check, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import {
@@ -43,8 +43,18 @@ import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
 import { Translate } from '../components/Translate';
+import { UndoSnackbar } from '../components/UndoSnackbar';
+import { useUndoSnack } from '../hooks/useUndoSnack';
+import {
+  getPendingPrayerRemovalIds,
+  schedulePrayerRemoval,
+  cancelPrayerRemoval,
+  subscribePrayerRemovals,
+} from '../lib/prayerRemoval';
+import { deletePrayerRecord } from '../lib/prayers';
 
-// ── week math, relative to today (Monday = start of week) ──────────────
+
+// ── week math
 const DAY_MS = 86_400_000;
 function weekStartOf(date: Date) {
   const x = new Date(date);
@@ -109,6 +119,9 @@ export default function PrayerList() {
   const { user, role } = useAuth();
   const { setSelectedContact } = useLayout();
   const isOperator = hasMinRole(role, 'operator');
+  // Clear-prayer (#706): the firestore delete rule for prayers/{id} is
+  // isManager (Full-timer + Trainee); mirror that here.
+  const isManager = hasMinRole(role, 'manager');
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -317,6 +330,44 @@ export default function PrayerList() {
     }
   };
 
+  // Clear-prayer affordance (#706). Two-beat gesture matching
+  // `interactionRemoval.ts`: the row leaves the UI immediately, the
+  // Firestore deleteDoc (and audit entry) only commit after the Undo
+  // window. Undo cancels the pending delete and the row stays.
+  // `getPendingPrayerRemovalIds` lets `visiblePrayers` drop rows the user
+  // has already cleared but Firestore hasn't synced yet.
+  const [prayersTick, bumpPrayers] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => subscribePrayerRemovals(bumpPrayers), []);
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
+  const pendingRemovalIds = useMemo(
+    () => new Set(getPendingPrayerRemovalIds()),
+    // bumpPrayers makes this re-derive on every registry notification.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [prayersTick],
+  );
+  const visiblePrayers = useMemo(
+    () => prayers.filter((p) => !pendingRemovalIds.has(p.id)),
+    [prayers, pendingRemovalIds],
+  );
+  const contactNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    contacts.forEach((c) => m.set(c.id, c.name));
+    return m;
+  }, [contacts]);
+  const handleClearPrayer = (prayer: PrayerRecord) => {
+    const contactName = contactNameById.get(prayer.contactId) ?? '';
+    showUndoSnack(t('prayers.clear_prayer_undone'), () =>
+      cancelPrayerRemoval(prayer.id),
+    );
+    schedulePrayerRemoval(prayer.id, () => {
+      void deletePrayerRecord(prayer.id, {
+        contactId: prayer.contactId,
+        contactName,
+        burden: prayer.burden,
+      });
+    });
+  };
+
   // Most recent prayer dated before this week — the one "last week" surfaces.
   const lastBeforeThisWeek = (ps: PrayerRecord[]) =>
     ps
@@ -326,7 +377,7 @@ export default function PrayerList() {
   // Burdens someone kept to themselves in the phone's log sheet never reach
   // this page — they live on their own contact's Prayer tab. Prayers written
   // before that toggle existed carry no flag and stay here (`isTeamPrayer`).
-  const teamPrayers = useMemo(() => prayers.filter(isTeamPrayer), [prayers]);
+  const teamPrayers = useMemo(() => visiblePrayers.filter(isTeamPrayer), [visiblePrayers]);
 
   // One entry per person we're holding (has a prayer, or we just started),
   // sorted by last name then first name — a stable, roster-style order that
@@ -476,7 +527,9 @@ export default function PrayerList() {
           onStopHolding={stopHolding}
           isOperator={isOperator}
           onMakeTodo={openTodoFor}
-        />
+          isManager={isManager}
+          onClearPrayer={handleClearPrayer}
+         />
         <ContactDetailsModal
           isOpen={!!profileContact}
           onClose={() => setProfileContact(null)}
@@ -494,7 +547,8 @@ export default function PrayerList() {
             onClose={() => setTodoFor(null)}
           />
         )}
-      </>
+        <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
+       </>
     );
   }
 
@@ -628,7 +682,8 @@ export default function PrayerList() {
                 isOperator={isOperator}
                 onMakeTodo={openTodoFor}
                 meUid={user?.uid ?? ''}
-              />
+                isManager={isManager}
+               />
             ))}
           </AnimatePresence>
         </div>
@@ -661,7 +716,8 @@ export default function PrayerList() {
           onClose={() => setTodoFor(null)}
         />
       )}
-    </PageContainer>
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
+     </PageContainer>
   );
 }
 
@@ -681,6 +737,8 @@ function PrayerThread({
   isOperator,
   onMakeTodo,
   meUid,
+  isManager,
+  onClearPrayer,
 }: {
   contact: Contact;
   prayers: PrayerRecord[];
@@ -694,10 +752,12 @@ function PrayerThread({
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
   meUid?: string;
+  isManager: boolean;
+  onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
   const { t } = useLanguage();
   const { openLogInteraction } = useLayout();
-  const [showEarlier, setShowEarlier] = useState(false);
+   const [showEarlier, setShowEarlier] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
 
   const isStale = isContactStale(contact);
@@ -862,6 +922,8 @@ function PrayerThread({
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
             onMakeTodo={onMakeTodo}
+            isManager={isManager}
+            onClearPrayer={onClearPrayer}
           />
         ) : isOperator ? (
           <AddThisWeek
@@ -888,10 +950,12 @@ function PrayerThread({
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
             onMakeTodo={onMakeTodo}
+            isManager={isManager}
+            onClearPrayer={onClearPrayer}
           />
         </div>
       )}
-
+ 
       {/* Earlier — folded away, expands inline (capped) */}
       {earlier.length > 0 && (
         <div className="mt-5">
@@ -924,10 +988,12 @@ function PrayerThread({
                   onUpdateBurden={onUpdateBurden}
                   isOperator={isOperator}
                   onMakeTodo={onMakeTodo}
+                  isManager={isManager}
+                  onClearPrayer={onClearPrayer}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
-                <div className="text-[13px] text-on-surface-variant pt-3 pl-1">
+                 <div className="text-[13px] text-on-surface-variant pt-3 pl-1">
                   {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
                   {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
                   <button onClick={onOpenProfile} className="text-accent hover:underline">
@@ -964,6 +1030,8 @@ function PrayerItem({
   onUpdateBurden,
   isOperator,
   onMakeTodo,
+  isManager,
+  onClearPrayer,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
@@ -972,6 +1040,8 @@ function PrayerItem({
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
+  isManager?: boolean;
+  onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
   const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
@@ -1065,6 +1135,16 @@ function PrayerItem({
             className="text-[13px] text-on-surface-variant hover:text-accent transition-colors"
           >
             {t('prayers.make_a_todo')}
+          </button>
+        )}
+        {!editing && isManager && onClearPrayer && (
+          <button
+            onClick={() => onClearPrayer(prayer)}
+            title={t('prayers.clear_prayer')}
+            className="inline-flex items-center gap-1 text-[13px] text-on-surface-variant hover:text-error transition-colors prt-prayer-clear"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>{t('prayers.clear_prayer')}</span>
           </button>
         )}
       </div>

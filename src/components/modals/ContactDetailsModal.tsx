@@ -163,7 +163,9 @@ function AuditActivityItem({
                 ? t('modals.contactDetails.audit_updated_interaction')
                 : activity.action === "deleted an interaction for"
                   ? t('modals.contactDetails.audit_deleted_interaction')
-                  : activity.action.startsWith("updated") &&
+                  : activity.action === "cleared a prayer for"
+                    ? t('activity.cleared_a_prayer_for')
+                    : activity.action.startsWith("updated") &&
                     activity.action !== "updated an interaction for" &&
                     activity.type === "edit" &&
                     activity.description

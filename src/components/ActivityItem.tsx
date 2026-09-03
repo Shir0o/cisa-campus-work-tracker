@@ -81,7 +81,9 @@ export function ActivityItem({
                   ? t('activity.updated_an_interaction_for')
                   : activity.action === "deleted an interaction for"
                     ? t('activity.deleted_an_interaction_for')
-                    : activity.action.startsWith("updated") &&
+                    : activity.action === "cleared a prayer for"
+                      ? t('activity.cleared_a_prayer_for')
+                      : activity.action.startsWith("updated") &&
                       activity.action !== "updated an interaction for" &&
                       activity.type === "edit" &&
                       activity.description

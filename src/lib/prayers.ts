@@ -1,5 +1,5 @@
-import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType } from "./firebase";
+import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { db, handleFirestoreError, logActivity, OperationType } from "./firebase";
 import { PrayerRecord } from "../types";
 
 // Start carrying something for a contact. Mirrors PrayerList.tsx's
@@ -255,5 +255,34 @@ export function isContactStale(
   const days = getDaysSinceLastInteraction(contact, now);
   if (days === null) return true;
   return days > thresholdDays;
+}
+
+/**
+ * Hard-delete a prayer from the top-level `prayers` collection (#706).
+ * Mirrors `interactionRemoval.ts`'s two-beat gesture: the row leaves the UI
+ * the moment the user taps Clear, but the Firestore deleteDoc (and its
+ * audit entry) only commit after the caller's Undo window via
+ * `schedulePrayerRemoval`. The Firestore rule for `prayers/{id}` requires
+ * isManager (Full-timer or Trainee); the UI gate mirrors that. The wrapper
+ * itself does not re-check the role — callers do, since they pass the
+ * contact name through and already know who's invoking.
+ */
+export async function deletePrayerRecord(
+  prayerId: string,
+  ctx: { contactId: string; contactName: string; burden: string },
+): Promise<void> {
+  try {
+    await deleteDoc(doc(db, "prayers", prayerId));
+    await logActivity({
+      action: "cleared a prayer for",
+      targetId: ctx.contactId,
+      targetName: ctx.contactName,
+      targetType: "contact",
+      type: "comment",
+      description: ctx.burden,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `prayers/${prayerId}`);
+  }
 }
 
