@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #A1A1AA; } a:hover { color: #FAFAFA; }
+    .bd { position: relative; width: 1107px; height: 662px; overflow: hidden;
+      background: #0A0A0B; color: #FAFAFA; font-family: "Lexend", ui-sans-serif, system-ui, sans-serif;
+      font-size: 14px; -webkit-font-smoothing: antialiased; }
+    .sf { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+    .rail { position: absolute; left: 0; top: 0; width: 76px; height: 662px; background: #202023; }
+    .rl { position: absolute; left: 12px; width: 52px; height: 1px; background: #2A2A2E; }
+    .ri { position: absolute; left: 28px; width: 20px; height: 20px; }
+    .chrome { position: absolute; left: 76px; top: 0; width: 1031px; height: 56px; }
+    .redline { position: absolute; color: #FF7B88; font-size: 11px; line-height: 1.45; letter-spacing: 0.01em; }
+    .redline b { font-weight: 600; display: block; font-size: 11.5px; }
+    .lead { position: absolute; background: #FF7B88; opacity: 0.55; }
+    .gd { color: #51E098; }
+    .gd.lead { background: #51E098; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10.5px; }
+  </style>
+</helmet>
+
+<div class="bd">
+
+  <!-- nav rail, collapsed: 76px, --rail #202023 -->
+  <div class="rail">
+    <div style="position: absolute; left: 16px; top: 10px; width: 44px; height: 44px; border-radius: 14px; background: #5B5BD6; display: flex; align-items: center; justify-content: center;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v6c0 4-3 6.5-7 8-4-1.5-7-4-7-8V7z"></path></svg>
+    </div>
+    <div class="rl" style="top: 63px;"></div>
+    <svg class="ri" style="top: 84px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16"></path><path d="M12 4v7"></path><path d="M8 11l4-4 4 4"></path></svg>
+    <svg class="ri" style="top: 118px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>
+    <svg class="ri" style="top: 152px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M10 10a2 2 0 113 1.7v1.3"></path><path d="M12 16.5v.01"></path></svg>
+    <div class="rl" style="top: 182px;"></div>
+    <svg class="ri" style="top: 202px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round"><path d="M6 16V9"></path><path d="M12 16V5"></path><path d="M18 16v-4"></path></svg>
+    <svg class="ri" style="top: 236px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="2"></rect><circle cx="12" cy="10" r="2"></circle><path d="M8.5 16c.8-1.4 2-2 3.5-2s2.7.6 3.5 2"></path></svg>
+    <svg class="ri" style="top: 270px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path><path d="M9 3v4"></path><path d="M15 3v4"></path></svg>
+    <svg class="ri" style="top: 304px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5"><rect x="4" y="4" width="7" height="7" rx="1.6"></rect><rect x="13" y="4" width="7" height="7" rx="1.6"></rect><rect x="4" y="13" width="7" height="7" rx="1.6"></rect><rect x="13" y="13" width="7" height="7" rx="1.6"></rect></svg>
+    <svg class="ri" style="top: 338px;" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 108-8"></path><path d="M4 12l-1.5-2"></path><path d="M12 8v4l3 2"></path></svg>
+    <div class="rl" style="top: 372px;"></div>
+    <svg class="ri" style="top: 392px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M9 12.5l2 2 4-4"></path></svg>
+    <svg class="ri" style="top: 426px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14a2 2 0 01-2 2H8l-4 4V6a2 2 0 012-2h12a2 2 0 012 2z"></path></svg>
+    <div class="rl" style="top: 596px;"></div>
+    <svg class="ri" style="top: 612px;" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"></path></svg>
+  </div>
+
+  <!-- top chrome, 56px -->
+  <div class="chrome">
+    <div style="position: absolute; left: 448px; top: 10px; width: 299px; height: 36px; border-radius: 999px; background: #161618; border: 1px solid #2A2A2E; display: flex; align-items: center; gap: 10px; padding: 0 14px; box-sizing: border-box;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <span style="font-size: 13px; color: #71717A; flex: 1;">Search or jump to&hellip;</span>
+      <span class="mono" style="color: #71717A;">&#8984;K</span>
+    </div>
+    <svg style="position: absolute; left: 768px; top: 19px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7"></path><path d="M10.5 20a2 2 0 003 0"></path></svg>
+    <div style="position: absolute; left: 796px; top: 20px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #A1A1AA;">
+      <span style="width: 5px; height: 5px; border-radius: 50%; background: #A1A1AA;"></span>
+      <span>Fall &rsquo;26</span><span style="color: #FAFAFA;">Club rush</span>
+    </div>
+    <svg style="position: absolute; left: 935px; top: 19px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+    <div style="position: absolute; left: 969px; top: 14px; width: 28px; height: 28px; border-radius: 50%; background: #2A2A2E; border: 1px solid #3F3F46;"></div>
+  </div>
+
+  <!-- content column: x 108 (rail 76 + lg:px-8 32) &rarr; 1075, w 967 -->
+  <div style="position: absolute; left: 108px; top: 88px; width: 967px;">
+
+    <!-- .bg-surface .border-outline-variant .rounded-3xl .p-6 &mdash; rounded-3xl resolves to 24px -->
+    <div style="background: #161618; border: 1px solid #232327; border-radius: 24px; padding: 24px; box-sizing: border-box;">
+
+      <div style="display: flex; align-items: flex-start; gap: 16px;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: #202023; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: #A1A1AA; flex: none;">DA</div>
+        <div style="min-width: 0;">
+          <div class="sf" style="font-size: 18px; line-height: 1.2; color: #FAFAFA;">David Alvarado</div>
+          <div style="font-size: 13px; color: #A1A1AA; margin-top: 2px;">Student</div>
+        </div>
+        <div style="margin-left: auto; text-align: right; flex: none;">
+          <div class="sf" style="font-size: 15px; line-height: 1.2; color: #51E098;">All answered</div>
+          <div style="font-size: 11.5px; color: #A1A1AA; margin-top: 2px;">1 prayer in all</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #71717A;">This week</span>
+        <span style="flex: 1; height: 1px; background: #232327;"></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 12px 14px; border-radius: 14px; color: #71717A; font-size: 13.5px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717A" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+        <span>Write what we&rsquo;re praying for David this week</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 14px;">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #71717A;">Last week</span>
+        <span style="flex: 1; height: 1px; background: #232327;"></span>
+      </div>
+
+      <!-- the row: pl-3 border-l-2 border-l-success/50 -->
+      <div style="margin-top: 10px; padding-left: 12px; border-left: 2px solid rgba(81, 224, 152, 0.5);">
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <span style="font-size: 13px; color: #A1A1AA;">Aug 20, 2026</span>
+          <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #51E098;">Answered</span>
+          <span style="margin-left: auto; font-size: 13px; color: #A1A1AA;">Edit</span>
+          <span style="font-size: 13px; color: #A1A1AA;">Make a to-do</span>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; margin: 6px 0 0; color: #A1A1AA;">Reconnect through text &mdash; he went quiet after the retreat.</p>
+
+        <!-- TESTIMONY COMPOSE BOX &mdash; proposed: 24 card &rarr; 14 panel &rarr; 10 controls -->
+        <div style="margin-top: 12px; padding: 12px; background: #19191B; border: 1px solid #232327; border-radius: 14px; max-width: 576px; box-sizing: border-box;">
+          <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: #A1A1AA; margin-bottom: 4px;">How was it answered?</div>
+
+          <!-- textarea: 62px tall. rounded-sm &rarr; --radius-sm &rarr; 10px. No clamp; 32% of half-height. -->
+          <div style="height: 62px; background: #161618; border: 1px solid #232327; border-radius: 10px; padding: 10px; box-sizing: border-box; font-size: 14px; line-height: 20px; color: #71717A;">A sentence on how God answered &mdash; the testimony.</div>
+
+          <!-- dropzone: 38px tall. Same 10px, and it survives the shorter box &mdash; 53% of half-height. -->
+          <div style="height: 38px; margin-top: 8px; border: 1px dashed #232327; border-radius: 10px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: #A1A1AA;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10" r="1.5"></circle><path d="M4 17l5-5 4 4 2-2 5 5"></path></svg>
+            <span>Add a photo of the answer (optional)</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <div style="width: 64px; height: 64px; border-radius: 10px; border: 1px solid #232327; background: linear-gradient(140deg, #2E3B33, #202023); box-sizing: border-box;"></div>
+            <div style="width: 64px; height: 64px; border-radius: 10px; border: 1px solid #232327; background: linear-gradient(140deg, #37312A, #202023); box-sizing: border-box;"></div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+            <div style="height: 24px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; font-size: 12px; color: #A1A1AA;">Skip</div>
+            <div style="height: 24px; padding: 0 12px; border-radius: 999px; display: flex; align-items: center; font-size: 12px; font-weight: 500; background: #FAFAFA; color: #0A0A0B;">Save</div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+          <span style="font-size: 11.5px; color: #A1A1AA;">Mark</span>
+          <span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #232327; color: #A1A1AA;">Ongoing</span>
+          <span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(81, 224, 152, 0.4); background: rgba(81, 224, 152, 0.1); color: #51E098;">Answered</span>
+          <span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid #232327; color: #A1A1AA;">Archived</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- what changes -->
+  <div class="lead gd" style="left: 736px; top: 428px; width: 84px; height: 1px;"></div>
+  <div class="redline gd" style="left: 826px; top: 400px; width: 236px;">
+    <b>32px &rarr; 10px</b>
+    <span class="mono">rounded-xl &rarr; rounded-sm</span><br>
+    <span class="mono">--radius-sm</span>, Ink&rsquo;s &ldquo;small marks&rdquo; step. 10 of a possible 31 &mdash; the corner reads as a corner again at every height in the box: 62px here, 54px on mobile, 38px on the photo row.
+  </div>
+
+  <div class="lead gd" style="left: 736px; top: 500px; width: 60px; height: 1px;"></div>
+  <div class="lead gd" style="left: 795px; top: 486px; width: 1px; height: 15px;"></div>
+  <div class="redline gd" style="left: 826px; top: 478px; width: 236px;">
+    <b>32px &rarr; 10px</b>
+    <span class="mono">rounded-xl &rarr; rounded-sm</span><br>
+    The 38px box is why 10 and not 14.
+  </div>
+
+  <div class="lead gd" style="left: 736px; top: 366px; width: 200px; height: 1px;"></div>
+  <div class="redline gd" style="left: 826px; top: 322px; width: 236px;">
+    <b>16px &rarr; 14px</b>
+    <span class="mono">rounded-2xl &rarr; rounded-[14px]</span><br>
+    <span class="mono">--radius</span>. Off the Tailwind-default step and onto an Ink one, and the nest finally descends: <b style="display: inline;">24 &rarr; 14 &rarr; 10</b>.
+  </div>
+
+  <div class="lead gd" style="left: 736px; top: 566px; width: 90px; height: 1px;"></div>
+  <div class="redline gd" style="left: 826px; top: 552px; width: 236px;">
+    <b>24px &rarr; 10px</b>
+    <span class="mono">rounded-lg &rarr; rounded-sm</span><br>
+    A 64px thumbnail is a small mark, not a container. It never clamped &mdash; it moves so the identical thumbnail in the display box above does not end up a different shape.
+  </div>
+
+  <div style="position: absolute; left: 108px; top: 618px; width: 700px; font-size: 11px; color: #71717A; line-height: 1.5;">
+    <span style="color: #51E098; font-weight: 600;">Proposed.</span>
+    Five values change, all inside the compose box. Nothing moves, nothing resizes, no copy changes.
+    Skip / Save stay pills and the photo-remove badge stays a circle &mdash; both are round on purpose.
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #A1A1AA; } a:hover { color: #FAFAFA; }
+    .bd { position: relative; width: 1107px; height: 662px; overflow: hidden;
+      background: #0A0A0B; color: #FAFAFA; font-family: "Lexend", ui-sans-serif, system-ui, sans-serif;
+      font-size: 14px; -webkit-font-smoothing: antialiased; }
+    .sf { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #71717A; }
+    .bad { color: #FF7B88; }
+    .good { color: #51E098; }
+    .col { width: 186px; }
+    .ta { height: 62px; background: #161618; border: 1px solid #232327; box-sizing: border-box;
+      padding: 10px; font-size: 12px; line-height: 20px; color: #52525B; overflow: hidden; }
+    .dz { height: 38px; margin-top: 8px; border: 1px dashed #232327; box-sizing: border-box;
+      display: flex; align-items: center; justify-content: center; font-size: 11px; color: #52525B; }
+    .zoom { width: 128px; height: 128px; background: #161618; border: 4px solid #2A2A2E;
+      box-sizing: border-box; border-top-right-radius: 0; border-bottom-right-radius: 0; border-bottom-left-radius: 0; }
+    .val { font-family: "Plus Jakarta Sans", "Lexend", sans-serif; font-size: 19px; color: #FAFAFA; margin-top: 10px; }
+    .note { font-size: 10.5px; line-height: 1.5; color: #71717A; margin-top: 3px; }
+  </style>
+</helmet>
+
+<div class="bd">
+
+  <div style="position: absolute; left: 64px; top: 36px; width: 860px;">
+    <div class="eyebrow">Issue #705 &middot; choosing the number</div>
+    <h1 class="sf" style="font-size: 28px; font-weight: 500; letter-spacing: -0.015em; margin: 10px 0 0; line-height: 1.15;">
+      Short boxes decide this, not the tall one
+    </h1>
+    <p style="font-size: 13px; line-height: 1.55; color: #A1A1AA; margin: 10px 0 0; max-width: 88ch; text-wrap: pretty;">
+      The compose box holds a 62px input and a 38px photo row. CSS scales a radius down when two on one side exceed
+      that side&rsquo;s length, so every value above 19px collapses to a stadium on the photo row &mdash; including 24.
+      Boxes below are drawn at their real heights; widths are cut to 186px to fit five side by side.
+    </p>
+  </div>
+
+  <div class="eyebrow" style="position: absolute; left: 64px; top: 172px;">At size</div>
+
+  <div style="position: absolute; left: 64px; top: 196px; display: flex; gap: 26px;">
+
+    <div class="col">
+      <div class="ta" style="border-radius: 32px;">A sentence on how&hellip;</div>
+      <div class="dz" style="border-radius: 32px;">Add a photo</div>
+      <div class="val bad" style="font-weight: 600;">32px</div>
+      <div class="note bad">Today. <span class="mono">rounded-xl</span><br>Clamps to 31 / 19. Both stadiums.</div>
+    </div>
+
+    <div class="col">
+      <div class="ta" style="border-radius: 24px;">A sentence on how&hellip;</div>
+      <div class="dz" style="border-radius: 24px;">Add a photo</div>
+      <div class="val">24px</div>
+      <div class="note"><span class="mono">rounded-lg</span>. The input survives; the photo row still clamps to 19.</div>
+    </div>
+
+    <div class="col">
+      <div class="ta" style="border-radius: 16px;">A sentence on how&hellip;</div>
+      <div class="dz" style="border-radius: 16px;">Add a photo</div>
+      <div class="val">16px</div>
+      <div class="note"><span class="mono">rounded-2xl</span>. No clamp, but 84% of the photo row&rsquo;s half-height.</div>
+    </div>
+
+    <div class="col">
+      <div class="ta" style="border-radius: 14px;">A sentence on how&hellip;</div>
+      <div class="dz" style="border-radius: 14px;">Add a photo</div>
+      <div class="val">14px</div>
+      <div class="note"><span class="mono">--radius</span>, Ink&rsquo;s interactive step. Proposed for the <em>panel</em>.</div>
+    </div>
+
+    <div class="col">
+      <div class="ta" style="border-radius: 10px; border-color: #51E098;">A sentence on how&hellip;</div>
+      <div class="dz" style="border-radius: 10px; border-color: #51E098;">Add a photo</div>
+      <div class="val good" style="font-weight: 600;">10px</div>
+      <div class="note good"><span class="mono">--radius-sm</span>. Proposed for the controls &mdash; the one value both heights carry.</div>
+    </div>
+
+  </div>
+
+  <div class="eyebrow" style="position: absolute; left: 64px; top: 386px;">Top-left corner of the 62px input, at 4&times;</div>
+
+  <div style="position: absolute; left: 64px; top: 412px; display: flex; gap: 26px;">
+    <div class="col"><div class="zoom" style="border-top-left-radius: 124px; border-color: #FF7B88;"></div></div>
+    <div class="col"><div class="zoom" style="border-top-left-radius: 96px;"></div></div>
+    <div class="col"><div class="zoom" style="border-top-left-radius: 64px;"></div></div>
+    <div class="col"><div class="zoom" style="border-top-left-radius: 56px;"></div></div>
+    <div class="col"><div class="zoom" style="border-top-left-radius: 40px; border-color: #51E098;"></div></div>
+  </div>
+
+  <div style="position: absolute; left: 64px; top: 556px; width: 500px;">
+    <div class="good" style="font-size: 12px; font-weight: 600;">The recommendation</div>
+    <div style="font-size: 12px; line-height: 1.6; color: #A1A1AA; margin-top: 5px;">
+      Panel <span style="color: #FAFAFA;">14</span>, controls and thumbnails <span style="color: #FAFAFA;">10</span>,
+      inside the card&rsquo;s existing <span style="color: #FAFAFA;">24</span>. Every value is already on Ink&rsquo;s scale, and the nest
+      descends for the first time.
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 604px; top: 556px; width: 439px;">
+    <div style="font-size: 12px; font-weight: 600; color: #A1A1AA;">If you want it rounder</div>
+    <div style="font-size: 12px; line-height: 1.6; color: #71717A; margin-top: 5px;">
+      16 on both controls is the most that reads as a rectangle here, and it is what
+      <span class="mono">rounded-2xl</span> already gives &mdash; a one-word change. It is not on the Ink scale,
+      which is the only reason it is second.
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 64px; top: 630px; width: 979px; font-size: 10.5px; color: #52525B;">
+    Heights derive from Tailwind&rsquo;s own type metrics: <span class="mono">rows=2</span> &times; 20px line + <span class="mono">p-2.5</span> + 1px border = 62px;
+    <span class="mono">py-2.5</span> + 16px line + 1px dashed border = 38px. The mobile composer is <span class="mono">text-xs</span>, so its textarea is 54px and clamps to 27px &mdash; a third height, same answer.
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

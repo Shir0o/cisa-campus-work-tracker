@@ -736,12 +736,12 @@ function PrayerItemMobile({
 
       {/* Testimony compose box */}
       {answering && (
-        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-xl border border-outline-variant/60">
+        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant/60">
           <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
             {t('prayers.how_was_it_answered')}
           </label>
           <textarea
-            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
+            className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
             autoFocus
             rows={2}
             value={howDraft}
@@ -797,12 +797,12 @@ function PrayerItemMobile({
 
       {/* Archive reason compose box */}
       {archiving && (
-        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-xl border border-outline-variant/60">
+        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant/60">
           <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
             {t('prayers.why_is_it_archived', 'Why is this archived?')}
           </label>
           <textarea
-            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
+            className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
             autoFocus
             rows={2}
             value={archiveReasonDraft}

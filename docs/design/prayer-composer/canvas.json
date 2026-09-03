@@ -1,0 +1,62 @@
+{
+  "artboards": [
+    {
+      "file": "Today.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Today — the composer as it renders"
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 1187,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Proposed — 24 → 14 → 10"
+    },
+    {
+      "file": "Ladder.dc.html",
+      "x": 0,
+      "y": 782,
+      "w": 1107,
+      "h": 662,
+      "title": "Why — the radius ladder"
+    },
+    {
+      "file": "Detail.dc.html",
+      "x": 1187,
+      "y": 782,
+      "w": 1107,
+      "h": 662,
+      "title": "Detail — choosing the number"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "read-me",
+      "x": 0,
+      "y": -212,
+      "w": 620,
+      "text": "“I think the answered circle border radius is too round.” — issue #705, /prayer, 1107×662, dark.\n\nThe element is the “How was it answered?” compose box. It is not a taste call: the input asks for a 32px radius inside a 62px-tall box, so CSS clamps it to 31px — exactly half the height — and it renders as a lozenge.\n\nCrimson = what renders today. Green = what is proposed."
+    },
+    {
+      "id": "the-number",
+      "x": 1187,
+      "y": -212,
+      "w": 620,
+      "text": "32 / 32 / 24 / 16  →  10 / 10 / 10 / 14\n\nSHIPPED — f5035ee.\n\nFive values change, all inside the compose box. Nothing moves, nothing resizes, no copy changes, and Skip / Save stay pills.\n\nThe nest descends for the first time: card 24 → panel 14 → controls 10.\n\nThese boards draw the desktop composer, but the same box exists seven times across three files — testimony and archive-reason, on desktop, mobile and the landing rows. All seven moved together; splitting them would leave one feature wearing two shapes."
+    },
+    {
+      "id": "scope",
+      "x": 0,
+      "y": 1476,
+      "w": 620,
+      "text": "Left alone, deliberately — and verified untouched in the shipped diff.\n\n· The same rounded-xl → 32px lands on 283 call sites, including the answered-testimony display box and the edit textarea in this very row. Re-basing them is a separate decision and a separate diff.\n\n· --radius-md, --radius-2xl and --radius-3xl are never re-valued, so the utility ladder is non-monotonic in three places. Naming them on @theme would fix the class of bug rather than this instance — worth an ADR, not this change.\n\n· --radius-pill: 999px is defined and has zero uses; all 580 pills are rounded-full."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

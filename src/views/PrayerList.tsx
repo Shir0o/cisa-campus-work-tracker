@@ -1235,13 +1235,13 @@ function PrayerItem({
                     key={ph.path}
                     src={ph.url}
                     alt={ph.name || 'photo'}
-                    className="w-16 h-16 object-cover rounded-lg border border-outline-variant"
+                    className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
                   />
                 ) : (
                   <span
                     key={ph.path}
                     title={ph.name}
-                    className="w-16 h-16 grid place-items-center rounded-lg border border-outline-variant text-on-surface-variant"
+                    className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
                   >
                     <ImageIcon className="w-4 h-4" />
                   </span>
@@ -1274,14 +1274,20 @@ function PrayerItem({
         </div>
       )}
 
-      {/* Testimony compose box */}
+      {/* Testimony compose box.
+          `rounded-[14px]` / `rounded-sm` rather than `rounded-2xl` / `rounded-xl`:
+          Ink re-values `--radius-xl` to 32px, and these controls are short — the
+          textarea is 62px here and 54px on mobile (text-xs), the dropzone 38px — so
+          a 32px radius clamps to half the height and paints a lozenge (#705). 10px
+          is the one value every height carries. The nest descends instead:
+          card 24 → panel 14 → controls 10. See docs/design/prayer-composer/. */}
       {answering && (
-        <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+        <div className="mt-3 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant max-w-xl">
           <label className="block text-[11px]   font-semibold text-on-surface-variant mb-1">
             {t('prayers.how_was_it_answered')}
           </label>
           <textarea
-            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+            className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
             autoFocus
             rows={2}
             value={howDraft}
@@ -1296,7 +1302,7 @@ function PrayerItem({
               e.preventDefault();
               addAnswerFiles(e.dataTransfer.files);
             }}
-            className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-outline-variant text-xs text-on-surface-variant hover:border-primary hover:text-on-surface transition-colors"
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-sm border border-dashed border-outline-variant text-xs text-on-surface-variant hover:border-primary hover:text-on-surface transition-colors"
           >
             <ImageIcon className="w-4 h-4" />
             {totalAnswerPhotos
@@ -1321,7 +1327,7 @@ function PrayerItem({
                   <img
                     src={ph.url}
                     alt={ph.name || 'photo'}
-                    className="w-16 h-16 object-cover rounded-lg border border-outline-variant"
+                    className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
                   />
                   <button
                     onClick={() => setAnswerPhotos((x) => x.filter((y) => y.path !== ph.path))}
@@ -1337,7 +1343,7 @@ function PrayerItem({
                   <img
                     src={newPhotoUrls[i]}
                     alt={f.name}
-                    className="w-16 h-16 object-cover rounded-lg border border-primary/30"
+                    className="w-16 h-16 object-cover rounded-sm border border-primary/30"
                   />
                   <button
                     onClick={() => setNewPhotoFiles((x) => x.filter((_, j) => j !== i))}
@@ -1372,12 +1378,12 @@ function PrayerItem({
 
       {/* Archive reason compose box */}
       {archiving && (
-        <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+        <div className="mt-3 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant max-w-xl">
           <label className="block text-[11px]   font-semibold text-on-surface-variant mb-1">
             {t('prayers.why_is_it_archived', 'Why is this archived?')}
           </label>
           <textarea
-            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+            className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
             autoFocus
             rows={2}
             value={archiveReasonDraft}

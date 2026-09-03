@@ -130,12 +130,12 @@ export function TeamPrayerRow({
           )}
 
           {answering && (
-            <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+            <div className="mt-3 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant max-w-xl">
               <label className="block text-xs font-medium text-on-surface-variant mb-1">
                 {t("prayers.how_was_it_answered", "How was it answered?")}
               </label>
               <textarea
-                className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+                className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
                 autoFocus
                 rows={2}
                 value={howDraft}
@@ -185,12 +185,12 @@ export function TeamPrayerRow({
           )}
 
           {archiving && (
-            <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+            <div className="mt-3 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant max-w-xl">
               <label className="block text-xs font-medium text-on-surface-variant mb-1">
                 {t("prayers.why_is_it_archived", "Why is this archived?")}
               </label>
               <textarea
-                className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+                className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
                 autoFocus
                 rows={2}
                 value={archiveReasonDraft}
@@ -367,12 +367,12 @@ export function PersonalPrayerRow({
           )}
 
           {answering && (
-            <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mt-3 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant max-w-xl" onClick={(e) => e.stopPropagation()}>
               <label className="block text-xs font-medium text-on-surface-variant mb-1">
                 {t("prayers.how_was_it_answered", "How was it answered?")}
               </label>
               <textarea
-                className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+                className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
                 autoFocus
                 rows={2}
                 value={howDraft}
