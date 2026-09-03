@@ -578,26 +578,6 @@ export default function ContactDetailsModal({
 
   const currentUid = effectiveUserId || user?.uid;
   const hasAccess = canSeeContact(role, currentUid, contact);
-  if (isOpen && !hasAccess) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-        <div className="w-full max-w-md bg-surface-container rounded-[28px] p-6 border border-outline-variant shadow-2xl text-on-surface">
-          <h2 className="font-serif text-xl font-semibold mb-2">{t('modals.contactDetails.access_restricted')}</h2>
-          <p className="text-sm text-on-surface-variant mb-6">
-            You do not have permission to view this contact record.
-          </p>
-          <div className="flex justify-end">
-            <button
-              onClick={handleClose}
-              className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const walkLabel = t('modals.contactDetails.follow_up');
   const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
@@ -1212,6 +1192,27 @@ export default function ContactDetailsModal({
     const d = new Date(date).getTime();
     return isNaN(d) ? null : Math.max(1, Math.floor((Date.now() - d) / 86_400_000));
   };
+
+  if (isOpen && !hasAccess) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="w-full max-w-md bg-surface-container rounded-[28px] p-6 border border-outline-variant shadow-2xl text-on-surface">
+          <h2 className="font-serif text-xl font-semibold mb-2">{t('modals.contactDetails.access_restricted')}</h2>
+          <p className="text-sm text-on-surface-variant mb-6">
+            You do not have permission to view this contact record.
+          </p>
+          <div className="flex justify-end">
+            <button
+              onClick={handleClose}
+              className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence>
