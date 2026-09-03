@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Archive, Clock, MessageSquare, Plus, Search, X } from 'lucide-react';
+import { Archive, Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade, getContactCaregiver, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
@@ -33,6 +33,8 @@ interface PrayerListMobileProps {
   onStopHolding: (contactId: string) => void;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
+  isManager: boolean;
+  onClearPrayer?: (prayer: PrayerRecord) => void;
 }
 
 const THIS_WEEK_START = (() => {
@@ -102,6 +104,8 @@ export default function PrayerListMobile({
   onStopHolding,
   isOperator,
   onMakeTodo,
+  isManager,
+  onClearPrayer,
 }: PrayerListMobileProps) {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -214,11 +218,12 @@ export default function PrayerListMobile({
             setComposeFor={setComposeFor}
             isOperator={isOperator}
             onMakeTodo={onMakeTodo}
+            isManager={isManager}
+            onClearPrayer={onClearPrayer}
           />
         ))}
       </div>
 
-      {/* ── Hold someone in prayer picker bottom sheet ── */}
       {pickerOpen && (
         <div
           className="fixed inset-0 z-[200] bg-black/35 flex items-end justify-center scrim"
@@ -285,7 +290,8 @@ export default function PrayerListMobile({
             </div>
           </div>
         </div>
-      )}
+        )}
+      {/* Hold someone in prayer picker bottom sheet */}
     </div>
   );
 }
@@ -303,6 +309,8 @@ interface PrayerThreadCardProps {
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
   team?: { uid?: string; id?: string; name?: string }[];
+  isManager: boolean;
+  onClearPrayer?: (prayer: PrayerRecord) => void;
 }
 
 function PrayerThreadCard({
@@ -318,13 +326,16 @@ function PrayerThreadCard({
   setComposeFor,
   isOperator,
   onMakeTodo,
+  isManager,
+  onClearPrayer,
 }: PrayerThreadCardProps) {
   const { t } = useLanguage();
-  const { openLogInteraction } = useLayout();
   const [showEarlier, setShowEarlier] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const { openLogInteraction } = useLayout();
+ 
+   const isStale = isContactStale(contact);
 
-  const isStale = isContactStale(contact);
   const daysSinceInteraction = getDaysSinceLastInteraction(contact);
 
   const caregiver = getContactCaregiver(contact, team);
@@ -462,6 +473,8 @@ function PrayerThreadCard({
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
             onMakeTodo={onMakeTodo}
+            isManager={isManager}
+            onClearPrayer={onClearPrayer}
           />
         ) : isOperator ? (
           <AddThisWeekMobile
@@ -492,6 +505,8 @@ function PrayerThreadCard({
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
             onMakeTodo={onMakeTodo}
+            isManager={isManager}
+            onClearPrayer={onClearPrayer}
           />
         </div>
       )}
@@ -528,6 +543,8 @@ function PrayerThreadCard({
                   onUpdateBurden={onUpdateBurden}
                   isOperator={isOperator}
                   onMakeTodo={onMakeTodo}
+                  isManager={isManager}
+                  onClearPrayer={onClearPrayer}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
@@ -568,6 +585,8 @@ function PrayerItemMobile({
   onUpdateBurden,
   isOperator,
   onMakeTodo,
+  isManager,
+  onClearPrayer,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
@@ -576,6 +595,8 @@ function PrayerItemMobile({
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
+  isManager?: boolean;
+  onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
   const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
@@ -636,6 +657,16 @@ function PrayerItemMobile({
             className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
           >
             {t('prayers.make_a_todo')}
+          </button>
+        )}
+        {!editing && isManager && onClearPrayer && (
+          <button
+            onClick={() => onClearPrayer(prayer)}
+            title={t('prayers.clear_prayer')}
+            className="inline-flex items-center gap-1 text-xs text-on-surface-variant/80 hover:text-error transition-colors prt-prayer-clear prt-prayer-clear--m"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>{t('prayers.clear_prayer')}</span>
           </button>
         )}
       </div>

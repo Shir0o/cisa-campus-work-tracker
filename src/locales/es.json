@@ -599,6 +599,8 @@
     "archive_from_prayer": "Archivar de la lista de oración",
     "archive_confirm_prompt": "¿Archivar de la lista de oración?",
     "archive_confirm_button": "Archivar",
+    "clear_prayer": "Borrar esta oración",
+    "clear_prayer_undone": "Oración borrada",
     "keep_in_prayer": "Mantener",
     "no_one_in_particular": "— nadie en particular",
     "pill_ongoing": "en curso",
@@ -1123,6 +1125,7 @@
     "interacted_with": "interactuó con",
     "updated_an_interaction_for": "actualizó una interacción para",
     "deleted_an_interaction_for": "eliminó una conversación para",
+    "cleared_a_prayer_for": "borró una oración para",
     "updated_the": "actualizó",
     "for": "para",
     "notes": "Notas"
