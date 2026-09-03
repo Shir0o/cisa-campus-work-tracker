@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
+import { isFullTimer } from "./walking";
 
 // "Walking together" threads — the single per-person conversation surface,
 // attached to a contact and (optionally) to one logged interaction. Stored as:
@@ -39,6 +40,7 @@ export interface ThreadMessage {
   body: string;
   at: string; // ISO
   reactions: ThreadReaction[];
+  mentionedUserIds?: string[];
 }
 
 // The small reaction set offered on every message.
@@ -58,23 +60,23 @@ export const THREAD_KINDS: Record<
 };
 
 const col = (contactId: string) => collection(db, "contacts", contactId, "threads");
-const ref = (contactId: string, id: string) =>
-  doc(db, "contacts", contactId, "threads", id);
+const ref = (contactId: string, messageId: string) =>
+  doc(db, "contacts", contactId, "threads", messageId);
 
-const norm = (v: string | null | undefined): string | null => v ?? null;
+const norm = (val?: string | null) => (val === "" || val === undefined ? null : val);
 
-/** Live subscription to a contact's thread messages, oldest-first. */
+/** Subscribe to all messages for a single contact, newest first. */
 export function subscribeThreads(
   contactId: string,
-  cb: (messages: ThreadMessage[]) => void,
-  onError?: (e: unknown) => void,
+  onUpdate: (messages: ThreadMessage[]) => void,
+  onError?: (err: unknown) => void,
 ): () => void {
+  const q = query(col(contactId), orderBy("at", "desc"));
   return onSnapshot(
-    query(col(contactId), orderBy("at", "asc")),
+    q,
     (snap) =>
-      cb(
+      onUpdate(
         snap.docs.map((d) => {
-          // Default required fields so a malformed/partial doc can't break render.
           const data = d.data() as Partial<ThreadMessage>;
           return {
             id: d.id,
@@ -87,6 +89,7 @@ export function subscribeThreads(
             body: data.body ?? "",
             at: data.at ?? new Date().toISOString(),
             reactions: Array.isArray(data.reactions) ? data.reactions : [],
+            mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
           };
         }),
       ),
@@ -97,20 +100,19 @@ export function subscribeThreads(
 /** A thread message tagged with the contact it belongs to. */
 export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
 
-/**
- * Live subscription to every thread message across all contacts, each tagged
- * with its contactId. Powers the full-timer inbox (My Day) and the trainee
- * cockpit, which read questions/nudges across contacts at once. No `orderBy`
- * (so it needs no collection-group index) — consumers sort as they like.
- */
+/** Subscribe to all thread messages across every contact via collectionGroup. */
 export function subscribeAllThreads(
-  cb: (messages: ThreadMessageWithContact[]) => void,
-  onError?: (e: unknown) => void,
+  onUpdate: (messages: ThreadMessageWithContact[]) => void,
+  onError?: (err: unknown) => void,
 ): () => void {
+  const q = query(
+    collectionGroup(db, "threads"),
+    orderBy("at", "desc"),
+  );
   return onSnapshot(
-    query(collectionGroup(db, "threads")),
+    q,
     (snap) =>
-      cb(
+      onUpdate(
         snap.docs.map((d) => {
           const data = d.data() as Partial<ThreadMessage>;
           const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
@@ -126,6 +128,7 @@ export function subscribeAllThreads(
             body: data.body ?? "",
             at: data.at ?? new Date().toISOString(),
             reactions: Array.isArray(data.reactions) ? data.reactions : [],
+            mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
           };
         }),
       ),
@@ -178,8 +181,13 @@ const NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: string) => string>
   nudge: (who, c) => `${who} nudged a follow-up about ${c}`,
 };
 
-/** Post a new message to a contact (and optionally to one interaction). When
- * `notify.to` is set, also ping that user's bell (the other party in the walk). */
+export interface ThreadStakeholders {
+  createdBy?: string | null;
+  coCreators?: string[] | null;
+}
+
+/** Post a new message to a contact (and optionally to one interaction). Dispatches
+ * notifications to mentioned users, contact stakeholders, or legacy notify.to. */
 export async function addThreadMessage(
   contactId: string,
   input: {
@@ -190,10 +198,16 @@ export async function addThreadMessage(
     fromName: string;
     kind: ThreadKind;
     body: string;
+    mentionedUserIds?: string[];
   },
-  notify?: { to?: string | null; contactName?: string },
+  notify?: {
+    to?: string | null;
+    contactName?: string;
+    stakeholders?: ThreadStakeholders | null;
+  },
 ): Promise<void> {
   const body = input.body.trim();
+  const mentionedUserIds = (input.mentionedUserIds || []).filter(Boolean);
   try {
     await addDoc(col(contactId), {
       interactionId: input.interactionId ?? null,
@@ -205,23 +219,85 @@ export async function addThreadMessage(
       body,
       at: new Date().toISOString(),
       reactions: [] as ThreadReaction[],
+      ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
     });
-    if (notify?.to) {
-      const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
+
+    const isTeamScope = input.scope === "team";
+    const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
+    const contactName = notify?.contactName || "this person";
+    const truncatedBody = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
+    const targetLink = isTeamScope
+      ? `/people/${contactId}?tab=discussion`
+      : `/people/${contactId}?tab=thread`;
+
+    // 1. Resolve recipients:
+    // Mentions: receive mention-specific alert
+    // Stakeholders: receive comment alert
+    // Legacy notify.to: receives kind-shaped alert
+    const notifiedUserIds = new Set<string>();
+
+    // Helper to check if a user is allowed to receive team-scoped messages
+    const isAllowedRecipient = (uid: string) => {
+      if (!isTeamScope) return true;
+      return isFullTimer(uid);
+    };
+
+    // Mentions take priority
+    for (const mUid of mentionedUserIds) {
+      if (mUid !== input.from && isAllowedRecipient(mUid)) {
+        notifiedUserIds.add(mUid);
+        void sendNotification({
+          userId: mUid,
+          title: isTeamScope
+            ? `${who} mentioned you in discussion on ${contactName}`
+            : `${who} mentioned you on ${contactName}`,
+          message: truncatedBody,
+          type: "info",
+          targetId: contactId,
+          link: targetLink,
+        });
+      }
+    }
+
+    // Stakeholders (creator + co-creators / gospel partners)
+    if (notify?.stakeholders) {
+      const stakeholderUids = [
+        notify.stakeholders.createdBy,
+        ...(notify.stakeholders.coCreators || []),
+      ].filter((id): id is string => !!id);
+
+      for (const sUid of stakeholderUids) {
+        if (sUid !== input.from && !notifiedUserIds.has(sUid) && isAllowedRecipient(sUid)) {
+          notifiedUserIds.add(sUid);
+          void sendNotification({
+            userId: sUid,
+            title: isTeamScope
+              ? `${who} posted in discussion on ${contactName}`
+              : `${who} commented on ${contactName}`,
+            message: truncatedBody,
+            type: "info",
+            targetId: contactId,
+            link: targetLink,
+          });
+        }
+      }
+    }
+
+    // Legacy fallback: notify.to if not already notified
+    if (notify?.to && notify.to !== input.from && !notifiedUserIds.has(notify.to) && isAllowedRecipient(notify.to)) {
       void sendNotification({
         userId: notify.to,
-        title: NOTIFY_TITLE[input.kind](who, notify.contactName || "this person"),
-        message: body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body,
+        title: NOTIFY_TITLE[input.kind](who, contactName),
+        message: truncatedBody,
         type: "info",
         targetId: contactId,
-        link: `/people/${contactId}?tab=thread`,
+        link: targetLink,
       });
     }
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
   }
 }
-
 
 /** Toggle the current user's reaction (by + emoji) on a message. */
 export async function toggleReaction(

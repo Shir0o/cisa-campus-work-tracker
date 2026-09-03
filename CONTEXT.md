@@ -108,3 +108,8 @@ The Full-timers-only thread on a contact, where staff reason together about how 
 _Avoid_: Comments, team notes, internal thread, chat
 
 Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for the team** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
+
+**Mention**:
+Explicitly tagging a teammate in a Follow up thread, team Discussion, or chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
+_Avoid_: Tag, ping, callout
+

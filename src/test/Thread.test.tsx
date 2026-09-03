@@ -277,4 +277,49 @@ describe("Thread", () => {
     );
     expect(container.querySelector("[data-thread-pane]")).toBeNull();
   });
- });
+
+  it("shows mention autocomplete on typing @ and includes mentionedUserIds on post", async () => {
+    const teamMembers = [
+      { id: "u2", name: "Zion Park", role: "Trainee", initials: "ZP" },
+      { id: "u3", name: "Rio Tan", role: "Full-timer", initials: "RT" },
+    ];
+
+    render(
+      <Thread
+        contactId="C-1"
+        meStaffId="u1"
+        teamMembers={teamMembers}
+        contactStakeholders={{ createdBy: "u2" }}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Add a comment…");
+    await userEvent.type(input, "Hey @Zio");
+
+    // Autocomplete listbox should appear
+    expect(screen.getByRole("listbox", { name: "Teammate mentions" })).toBeInTheDocument();
+    expect(screen.getByText("Zion Park")).toBeInTheDocument();
+
+    // Click candidate
+    await userEvent.click(screen.getByText("Zion Park"));
+
+    // Autocomplete inserts name with trailing space and closes listbox
+    expect(input).toHaveValue("Hey @Zion Park ");
+    expect(screen.queryByRole("listbox", { name: "Teammate mentions" })).toBeNull();
+
+    // Submit comment
+    await userEvent.click(screen.getByRole("button", { name: /Comment/ }));
+
+    expect(addThreadMessage).toHaveBeenCalledWith(
+      "C-1",
+      expect.objectContaining({
+        body: "Hey @Zion Park",
+        mentionedUserIds: ["u2"],
+      }),
+      expect.objectContaining({
+        stakeholders: { createdBy: "u2" },
+      }),
+    );
+  });
+});
+
