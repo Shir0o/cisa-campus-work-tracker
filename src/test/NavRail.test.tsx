@@ -484,6 +484,43 @@ describe('NavRail (#664)', () => {
     expect(signupLink).not.toHaveClass('mx-2');
   });
 
+  // ── No orphaned vertical gap above the Sign-up entry (#747) ─────────────
+  // Every other group in the rail (Today, People, Gatherings, Prayer,
+  // Elsewhere) carries a visible uppercase label that anchors its top
+  // padding. The Sign-up entry has no label, so the wrapper's top padding
+  // reads as dead space. The fix collapses that top padding so the entry
+  // sits visually flush with the Elsewhere group's bottom edge.
+
+  it('does not leave a redundant top-padding gap above the Sign-up entry when the rail is expanded (#747)', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail');
+    renderRail({ role: 'admin' });
+
+    const signupLink = screen.getByRole('link', { name: /Sign-up form/i });
+    // Inspect the wrapper's class list. The fix replaces the prior
+    // `py-3` (expanded) with `pb-3` only — no top padding at all.
+    const wrapper = signupLink.closest('ul')!.parentElement!;
+    const classes = wrapper.className.split(/\s+/);
+    expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('py-3');
+    expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('pt-3');
+    expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('py-2');
+    expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('pt-2');
+    expect(classes).toContain('pb-3');
+  });
+
+  it('draws the hairline divider above the Sign-up icon when the rail is collapsed (#747)', () => {
+    // Collapsed mode keeps the divider that separates the Sign-up block from
+    // the Elsewhere group above it. The divider stands in for the uppercase
+    // group label the other groups have — visual separation without top
+    // padding, so the orphaned-gap bug doesn't recur in collapsed mode.
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+
+    const signupLink = screen.getByRole('link', { name: /Sign-up form/i });
+    const block = signupLink.closest('ul')!.parentElement!;
+    const divider = block.querySelector('div.border-t');
+    expect(divider, `Collapsed Sign-up block should carry a divider above the icon`).not.toBeNull();
+  });
+
   // The impersonation eye moved to NavChromeStrip; the rail's chrome lives
   // in the spec's "strip above the content" and is tested separately.
-});
+ });
