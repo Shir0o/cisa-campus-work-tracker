@@ -31,3 +31,6 @@ credentials.json
 tmp/
 
 .worktrees/
+
+# Design canvas payloads are generated from the .dc.html sources beside them
+docs/design/**/[a-z]*-*.html
