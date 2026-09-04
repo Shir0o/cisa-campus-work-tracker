@@ -96,7 +96,7 @@ export function subscribeMeeting(
  */
 export async function saveMeeting(
   db: Firestore,
-  meeting: Omit<Meeting, 'createdAt' | 'updatedAt'> & { id?: string },
+  meeting: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   userId?: string,
 ): Promise<string> {
   const meetingId = meeting.id || `${meeting.studyId}-${meeting.date}`;

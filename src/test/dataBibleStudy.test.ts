@@ -7,6 +7,7 @@ import {
   setMeetingPublished,
   deleteMeeting,
 } from '../lib/data/bibleStudy';
+import type { Section } from '../lib/bibleStudy';
 
 vi.mock('../lib/firebase', () => ({ db: {} }));
 
@@ -126,13 +127,14 @@ describe('bibleStudy data service', () => {
   });
 
   it('saveMeeting handles new meeting creation and existing updates', async () => {
+    const emptySections: Section[] = [];
     const id = await saveMeeting(
       fakeDb,
       {
         studyId: 'romans',
         date: '2026-09-01',
         title: 'New Study',
-        sections: [],
+        sections: emptySections,
         published: true,
       },
       'u123',
@@ -145,7 +147,7 @@ describe('bibleStudy data service', () => {
       studyId: 'romans',
       date: '2026-09-01',
       title: 'Existing',
-      sections: [],
+      sections: emptySections,
       published: false,
     });
 
