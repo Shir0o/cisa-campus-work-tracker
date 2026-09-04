@@ -25,6 +25,10 @@ vi.mock('react-router-dom', () => ({
   ),
 }));
 
+vi.mock('../lib/useMediaQuery', () => ({
+  useMediaQuery: vi.fn(() => false),
+}));
+
 // ── TipTap (thin seam) ──────────────────────────────────────────────────────
 const mockEditor = {
   commands: {
@@ -2420,6 +2424,24 @@ describe('CoordinationNotes', () => {
           contactId: 'c-2',
           assigneeId: 'u-1',
         });
+      });
+    });
+
+    it('renders CoordinationNotesMobile on mobile viewport even while loading', async () => {
+      const { useMediaQuery } = await import('../lib/useMediaQuery');
+      vi.mocked(useMediaQuery).mockReturnValue(true);
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'u-admin', displayName: 'Admin User' },
+        isAdmin: true,
+        role: 'admin',
+      });
+      render(
+        <LanguageProvider>
+          <CoordinationNotes />
+        </LanguageProvider>,
+      );
+      await waitFor(() => {
+        expect(document.querySelector('.bdm')).toBeTruthy();
       });
     });
   });

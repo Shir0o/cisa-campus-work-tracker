@@ -10,7 +10,8 @@ import {
   Check,
   Plus,
   Sparkles,
-  Combine
+  Combine,
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -153,6 +154,26 @@ export default function Directory() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [headerMoreOpen, setHeaderMoreOpen] = useState(false);
+  const headerMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!headerMoreOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (headerMoreRef.current && !headerMoreRef.current.contains(e.target as Node)) {
+        setHeaderMoreOpen(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setHeaderMoreOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [headerMoreOpen]);
 
   // ── Last-connected signal: most recent interaction/comment per contact ──
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
@@ -646,33 +667,112 @@ export default function Directory() {
             .
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+        {/* Desktop actions (sm and up): three-across secondary actions + primary Add someone */}
+        <div className="hidden sm:flex flex-wrap items-center gap-2 shrink-0">
           <button
             onClick={() => setIsCombineTagsOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
             title={t('directory.combine_tags')}
           >
             <Combine className="w-4 h-4" /> {t('directory.combine_tags')}
           </button>
           <button
             onClick={() => setIsTagGenderOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
             title={t('directory.tag_gender') || 'Tag M/F'}
           >
             <Tag className="w-4 h-4" /> {t('directory.tag_gender') || 'Tag M/F'}
           </button>
           <button
             onClick={() => openSmartImport()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-line bg-primary/10 text-accent text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-line bg-primary/10 text-accent text-sm font-medium hover:bg-primary/20 transition-colors shrink-0 min-h-[44px]"
           >
             <Sparkles className="w-4 h-4 text-accent" /> {t('directory.smart_import')}
           </button>
           <button
             onClick={() => openNewContact()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0 min-h-[44px]"
           >
             <Plus className="w-4 h-4" /> {t('actions.add_someone')}
           </button>
+        </div>
+
+        {/* Mobile actions (< sm): Add someone primary action + More overflow control */}
+        <div className="flex sm:hidden items-center gap-2">
+          <button
+            onClick={() => openNewContact()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity min-h-[44px]"
+          >
+            <Plus className="w-4 h-4" /> {t('actions.add_someone')}
+          </button>
+          <div ref={headerMoreRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setHeaderMoreOpen((o) => !o)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-outline-variant text-sm font-medium transition-colors min-h-[44px]",
+                headerMoreOpen
+                  ? "bg-surface-variant text-on-surface"
+                  : "text-on-surface-variant hover:bg-surface-variant"
+              )}
+              aria-haspopup="menu"
+              aria-expanded={headerMoreOpen}
+              aria-label={t('actions.more', 'More')}
+            >
+              <span>{t('actions.more', 'More')}</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform", headerMoreOpen && "rotate-180")} />
+            </button>
+
+            <AnimatePresence>
+              {headerMoreOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                  transition={{ duration: 0.12 }}
+                  role="menu"
+                  className="absolute right-0 top-[calc(100%+8px)] w-48 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant p-1.5 space-y-0.5 z-30"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeaderMoreOpen(false);
+                      setIsCombineTagsOpen(true);
+                    }}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
+                  >
+                    <Combine className="w-4 h-4 text-on-surface-variant shrink-0" />
+                    <span>{t('directory.combine_tags')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeaderMoreOpen(false);
+                      setIsTagGenderOpen(true);
+                    }}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
+                  >
+                    <Tag className="w-4 h-4 text-on-surface-variant shrink-0" />
+                    <span>{t('directory.tag_gender') || 'Tag M/F'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeaderMoreOpen(false);
+                      openSmartImport();
+                    }}
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-accent hover:bg-surface-variant transition-colors min-h-[44px]"
+                  >
+                    <Sparkles className="w-4 h-4 text-accent shrink-0" />
+                    <span>{t('directory.smart_import')}</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -861,28 +961,28 @@ export default function Directory() {
                   setBulkStage(stagesData[0]?.label || '');
                   setIsStageModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                 title={t('directory.change_stage_for_selected')}
               >
                 <Kanban className="w-4 h-4" /> {t('directory.stage')}
               </button>
               <button
                 onClick={() => setIsTagModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                 title={t('directory.tag_selected')}
               >
                 <Tag className="w-4 h-4" /> {t('directory.tag')}
               </button>
               <button
                 onClick={handleBulkEmail}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                 title={t('directory.copy_emails')}
               >
                 <Copy className="w-4 h-4" /> {t('directory.copy_emails')}
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-error hover:bg-error/10 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-error hover:bg-error/10 transition-colors min-h-[44px]"
                 title={t('directory.remove_selected')}
               >
                 <Trash2 className="w-4 h-4" /> {t('directory.remove')}

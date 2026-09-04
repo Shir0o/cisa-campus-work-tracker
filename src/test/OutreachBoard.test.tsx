@@ -24,6 +24,10 @@ vi.mock('../App', () => ({
   useLayout: vi.fn(),
 }));
 
+vi.mock('../lib/useMediaQuery', () => ({
+  useMediaQuery: vi.fn(() => false),
+}));
+
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, path) => ({ path })),
   collectionGroup: vi.fn((_db, group) => ({ group })),
@@ -1045,5 +1049,15 @@ describe('OutreachBoard', () => {
 
     await screen.findByText('Bob Park');
     expect(screen.queryByText('Alice Chen')).not.toBeInTheDocument();
+  });
+
+  it('renders OutreachBoardMobile on mobile viewport even while loading', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    setupOnSnapshotWith({ stages: [], contacts: [] });
+    render(<OutreachBoard />);
+    await waitFor(() => {
+      expect(document.querySelector('.jrnm')).toBeTruthy();
+    });
   });
 });

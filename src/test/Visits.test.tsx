@@ -338,6 +338,32 @@ describe('Visits', () => {
     expect(screen.getByText('This week')).toBeInTheDocument();
   });
 
+  it('renders the mobile component while visits are still loading', async () => {
+    (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    // visits not yet loaded (subscribeVisits callback not fired)
+    (subscribeVisits as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => vi.fn());
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
+    expect(screen.getByText("Where we've been")).toBeInTheDocument();
+  });
+
+  it('renders clean DataLoadError on mobile when an error occurs', async () => {
+    (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    const firestore = await import('firebase/firestore');
+    const onSnapshotMock = firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>;
+    const original = onSnapshotMock.getMockImplementation();
+    onSnapshotMock.mockImplementation((_ref, _cb, errCb) => {
+      if (typeof errCb === 'function') errCb(new Error('permission-denied'));
+      return vi.fn();
+    });
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText(/Couldn't load/)).toBeInTheDocument());
+    expect(screen.queryByText("Where we've been")).not.toBeInTheDocument();
+    errSpy.mockRestore();
+    onSnapshotMock.mockImplementation(original!);
+  });
+
   it('filters out non-person admin logins when passing staff to LogVisitModal (#366, #367)', async () => {
     const firestore = await import('firebase/firestore');
     const onSnapshotMock = firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>;

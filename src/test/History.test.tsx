@@ -551,4 +551,42 @@ describe('History View', () => {
     expect(document.querySelector('.cd-page')).toBeTruthy();
     expect(screen.getAllByText('Alice Johnson').length).toBeGreaterThanOrEqual(1);
   });
+
+  it('renders mobile layout on mobile viewport', async () => {
+    const mediaQuery = await import('../lib/useMediaQuery');
+    vi.spyOn(mediaQuery, 'useMediaQuery').mockReturnValue(true);
+    renderWithActivity({
+      action: 'created a new contact',
+      targetName: 'Alice Johnson',
+      targetType: 'contact',
+      targetId: 'c1',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+    // Looking back title is rendered in mobile layout
+    expect(screen.getByText('Looking back')).toBeInTheDocument();
+  });
+
+  it('renders clean DataLoadError on mobile when an error occurs', async () => {
+    const mediaQuery = await import('../lib/useMediaQuery');
+    vi.spyOn(mediaQuery, 'useMediaQuery').mockReturnValue(true);
+    const firestore = await import('firebase/firestore');
+    const onSnapshotMock = firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>;
+    const original = onSnapshotMock.getMockImplementation();
+    onSnapshotMock.mockImplementation((_ref, _cb, errCb) => {
+      if (typeof errCb === 'function') errCb(new Error('firestore read failed'));
+      return vi.fn();
+    });
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Couldn't load/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
+    errSpy.mockRestore();
+    onSnapshotMock.mockImplementation(original!);
+  });
 });

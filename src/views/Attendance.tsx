@@ -554,24 +554,7 @@ export default function Attendance() {
     return <DataLoadError label={error} />;
   }
 
-  if (loading) {
-    return (
-      <PageContainer variant="wide" className="space-y-8 animate-pulse">
-        <div className="space-y-3">
-          <Skeleton className="h-4 w-64 opacity-70" />
-          <Skeleton className="h-10 w-72" />
-          <Skeleton className="h-16 w-full max-w-2xl opacity-70" />
-        </div>
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
-          ))}
-        </div>
-      </PageContainer>
-    );
-  }
-
-  if (isMobile && !loading && !error) {
+  if (isMobile) {
     return (
       <>
         <AttendanceMobile
@@ -610,6 +593,23 @@ export default function Attendance() {
           />
         )}
       </>
+    );
+  }
+
+  if (loading) {
+    return (
+      <PageContainer variant="wide" className="space-y-8 animate-pulse">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-64 opacity-70" />
+          <Skeleton className="h-10 w-72" />
+          <Skeleton className="h-16 w-full max-w-2xl opacity-70" />
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
+        </div>
+      </PageContainer>
     );
   }
 

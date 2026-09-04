@@ -791,7 +791,7 @@ export default function MyDay() {
     return <DataLoadError label={error} />;
   }
 
-  if (isMobile && !loading && !error) {
+  if (isMobile) {
     return (
       <>
         <MyDayMobile

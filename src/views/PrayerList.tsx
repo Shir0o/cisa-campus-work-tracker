@@ -500,25 +500,11 @@ export default function PrayerList() {
     return <DataLoadError label={error} />;
   }
 
-  if (loading && contacts.length === 0) {
-    return (
-      <PageContainer variant="wide" className="flex flex-col gap-8">
-        <Skeleton className="h-9 w-56" />
-        <Skeleton className="h-5 w-full max-w-md opacity-70" />
-        <div className="flex flex-col gap-4">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-40 w-full rounded-2xl" />
-          ))}
-        </div>
-      </PageContainer>
-    );
-  }
-
   const openContact = (contact: Contact) => {
     setSelectedContact(contact);
   };
 
-  if (isMobile && !loading && !error) {
+  if (isMobile) {
     return (
       <>
         <PrayerListMobile
@@ -560,6 +546,20 @@ export default function PrayerList() {
         )}
         <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
        </>
+    );
+  }
+
+  if (loading && contacts.length === 0) {
+    return (
+      <PageContainer variant="wide" className="flex flex-col gap-8">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-5 w-full max-w-md opacity-70" />
+        <div className="flex flex-col gap-4">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-2xl" />
+          ))}
+        </div>
+      </PageContainer>
     );
   }
 

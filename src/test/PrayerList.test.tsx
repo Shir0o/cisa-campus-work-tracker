@@ -21,6 +21,10 @@ vi.mock('../App', () => ({
   useLayout: vi.fn(),
 }));
 
+vi.mock('../lib/useMediaQuery', () => ({
+  useMediaQuery: vi.fn(() => false),
+}));
+
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, path) => ({ path })),
   query: vi.fn((ref) => ref),
@@ -986,6 +990,15 @@ describe('PrayerList', () => {
     );
     // There should be no local modal mounted inside PrayerList; App.tsx owns it
     expect(screen.queryByTestId('contact-modal')).toBeNull();
+  });
+
+  it('renders PrayerListMobile on mobile viewport even while loading', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(document.querySelector('.prm')).toBeTruthy();
+    });
   });
 });
 

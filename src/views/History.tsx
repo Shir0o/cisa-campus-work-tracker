@@ -377,7 +377,11 @@ export default function History() {
     );
   }
 
-  if (isMobile && !loading && !error) {
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
+
+  if (isMobile) {
     return (
       <>
         <HistoryMobile
@@ -462,9 +466,7 @@ export default function History() {
       </div>
 
       {/* The stream */}
-      {error ? (
-        <DataLoadError label={error} />
-      ) : loading ? (
+      {loading ? (
         <div className="text-center py-16 text-on-surface-variant">{t('history.gathering_last_few_days')}</div>
       ) : rows.length === 0 ? (
         <div className="text-center py-16">
