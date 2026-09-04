@@ -42,6 +42,7 @@ import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
+import { applyTeams } from "./lib/teams";
 import { applyPartners, subscribePartners } from "./lib/partners";
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
@@ -566,11 +567,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
 function RosterSync() {
   // Feed the full-timer/trainee roster from the users collection so the pure
-  // lib functions (inbox, attention) know who is a full-timer (issue #549).
+  // lib functions (inbox, attention) know who is a full-timer (issue #549),
+  // and which team each person is on for the news feed's filter (issue #727).
   React.useEffect(
     () =>
       onSnapshot(collection(db, "users"), (snap) => {
-        applyRoster(snap.docs.map((d) => ({ uid: d.id, role: d.data().role })));
+        const docs = snap.docs.map((d) => ({
+          uid: d.id,
+          ...(d.data() as { role?: string; team?: string | null; displayName?: string | null }),
+        }));
+        applyRoster(docs.map(({ uid, role }) => ({ uid, role })));
+        applyTeams(docs.map(({ uid, team, displayName }) => ({ uid, team, displayName })));
       }),
     [],
   );

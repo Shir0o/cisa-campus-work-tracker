@@ -22,9 +22,15 @@ import {
   attentionGroupsFor,
   partitionAttentionStacks,
   attentionPhrase,
+  filterAttentionStacks,
+  actorsInStacks,
+  isRestingFilter,
+  soleTeamOf,
   type AttentionStack,
   type AttentionItem,
 } from "../../lib/attention";
+import { TEAMS, teamLabelKey, rosterOnTeam } from "../../lib/teams";
+import { useLanguage } from "../LanguageProvider";
 import { useUserEntityState, UserEntityState } from "../../lib/userEntityState";
 import { Translate } from "../Translate";
 import {
@@ -50,6 +56,24 @@ const NODE: Record<
   task: { cls: "text-stage-violet bg-stage-violet-soft", Icon: ClipboardList },
   notification: { cls: "text-stage-accent bg-stage-accent-soft", Icon: Bell },
 };
+
+/** "Talked" — this stack holds a logged conversation, not just a new face
+ *  (#727). It reads `stack.kinds`, which has carried the item types per stack
+ *  since the day it was written and had no reader until now.
+ *
+ *  It stands on colour rather than on a border on purpose: the card's own
+ *  unread emphasis is a 1px `--outline-variant` border on an identical fill
+ *  (1.04:1 in light theme) and does not render, so a bordered marker would
+ *  inherit the same problem. See docs/design/news-filters/Highlight.dc.html. */
+function TalkedChip({ stack, label }: { stack: AttentionStack; label: string }) {
+  if (!stack.kinds.includes("interaction")) return null;
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-stage-accent bg-stage-accent-soft shrink-0">
+      <MessageSquare className="w-3 h-3" />
+      {label}
+    </span>
+  );
+}
 
 function AttentionSubItem({
   item,
@@ -157,6 +181,7 @@ function AttentionStackRow({
   mobile?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
   const newest = stack.items[0];
   const phrases = stack.items.slice(0, 3).map((it) => attentionPhrase(it, staffNameMap));
   const moreCount = stack.items.length - phrases.length;
@@ -243,6 +268,7 @@ function AttentionStackRow({
               {stack.unread > 0 && (
                 <span className="w-2 h-2 rounded-full bg-accent shrink-0 inline-block" />
               )}
+              <TalkedChip stack={stack} label={t("whatsNew.talked", "Talked")} />
             </div>
             <span className="text-xs text-on-surface-variant/80 shrink-0">{relTime(stack.at)}</span>
           </div>
@@ -347,6 +373,8 @@ function AmbientItemRow({
 }) {
   const newest = stack.items[0];
   const [reactOpen, setReactOpen] = useState(false);
+  const { t } = useLanguage();
+  const rowTeam = soleTeamOf(stack);
   const byName = newest.byName || (newest.by && staffNameMap[newest.by]) || "Someone";
   const actorFirst = byName.trim().split(/\s+/)[0];
 
@@ -403,9 +431,15 @@ function AmbientItemRow({
             >
               {contact?.name || "Contact"}
             </button>
+            <TalkedChip stack={stack} label={t("whatsNew.talked", "Talked")} />
             <span className="text-xs text-on-surface-variant truncate">
               {actionText}
             </span>
+            {rowTeam && (
+              <span className="text-[11px] text-on-surface-variant border border-outline-variant rounded-full px-1.5 py-px shrink-0">
+                {t(teamLabelKey(rowTeam))}
+              </span>
+            )}
           </div>
           {snippet && (
             <Translate
@@ -508,9 +542,14 @@ export default function AttentionFeed({
   className?: string;
 }) {
   const { user, effectiveUserId, role } = useAuth();
+  const { t } = useLanguage();
   const uid = effectiveUserId || user?.uid || "u1";
   const [showAllOnYou, setShowAllOnYou] = useState(false);
   const [showAllTeam, setShowAllTeam] = useState(false);
+  // The filter cuts on WHO DID IT (#727) — a team, then optionally one person
+  // inside it. One row governs the whole feed, not each column.
+  const [team, setTeam] = useState<string | null>(null);
+  const [pickedWho, setPickedWho] = useState<string | null>(null);
   const [liveInteractions, setLiveInteractions] = useState<Interaction[]>([]);
   const [liveThreads, setLiveThreads] = useState<ThreadMessageWithContact[]>([]);
 
@@ -601,17 +640,57 @@ export default function AttentionFeed({
   );
 
   const allStacks = useMemo(() => attentionStacksFor(rawItems, uid), [rawItems, uid]);
-  const { onYou, aroundTeam } = useMemo(
+
+  // The teammates the select offers: the team's roster, so a teammate who has
+  // done nothing this week is still offerable — that is exactly the person the
+  // "nothing from them" state exists for. Anyone with news but no team stays
+  // listed too, so the select can never hide something the feed is showing.
+  const teammateOptions = useMemo(() => {
+    const byUid = new Map<string, string>();
+    for (const m of rosterOnTeam(team)) byUid.set(m.uid, m.name);
+    for (const id of actorsInStacks(allStacks, team)) {
+      if (!byUid.has(id)) byUid.set(id, staffNameMap[id] || "Someone");
+    }
+    return [...byUid.entries()]
+      .map(([id, name]) => ({ uid: id, name: staffNameMap[id] || name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allStacks, team, staffNameMap]);
+
+  // A teammate picked inside one team is meaningless under another: the chip
+  // wins, and the select falls back to the whole team rather than to nothing.
+  const who = pickedWho && teammateOptions.some((o) => o.uid === pickedWho) ? pickedWho : null;
+
+  const filter = useMemo(() => ({ team, who }), [team, who]);
+
+  // Partition ONCE on the unfiltered feed, then narrow each side. The two-column
+  // shape is decided on the unfiltered partition, so narrowing to one team never
+  // collapses the layout underneath the person doing the narrowing.
+  const allSides = useMemo(
     () => partitionAttentionStacks(allStacks, contacts, uid, role),
     [allStacks, contacts, uid, role],
   );
+  const onYou = useMemo(() => filterAttentionStacks(allSides.onYou, filter), [allSides, filter]);
+  const aroundTeam = useMemo(
+    () => filterAttentionStacks(allSides.aroundTeam, filter),
+    [allSides, filter],
+  );
+  const stacks = useMemo(() => [...onYou, ...aroundTeam], [onYou, aroundTeam]);
+  const hasTeamColumn = allSides.aroundTeam.length > 0;
 
   if (allStacks.length === 0) {
     return null;
   }
 
-  const unreadCount = allStacks.filter((s) => s.unread > 0).length;
+  const unreadCount = stacks.filter((s) => s.unread > 0).length;
   const unreadOnYouCount = onYou.filter((s) => s.unread > 0).length;
+  const unreadAroundTeamCount = aroundTeam.filter((s) => s.unread > 0).length;
+  const resting = isRestingFilter(filter);
+  const teamLabel = team ? t(teamLabelKey(team)) : "";
+  // The name comes from the option list, not from the activity-built name map:
+  // the teammate this state is about is precisely the one with no activity.
+  const whoName = who
+    ? (teammateOptions.find((o) => o.uid === who)?.name || "Someone").trim().split(/\s+/)[0]
+    : "";
 
   const COLLAPSED_LIMIT = 5;
   const visibleOnYou = showAllOnYou ? onYou : onYou.slice(0, COLLAPSED_LIMIT);
@@ -624,19 +703,148 @@ export default function AttentionFeed({
   const aroundTeamGroups = attentionGroupsFor(visibleAroundTeam);
 
   const handleMarkAllScanned = () => {
-    const allItemIds = allStacks.flatMap((s) => s.items.map((i) => i.id));
+    // What's on screen, not what's behind the filter — "all" means all of what
+    // the person is looking at.
+    const allItemIds = stacks.flatMap((s) => s.items.map((i) => i.id));
     UserEntityState.markAllRead(uid, allItemIds);
   };
 
-  // If mobile or aroundTeam is empty (e.g. trainee view where all items are onYou), render stacked
-  const isSingleColumn = mobile || aroundTeam.length === 0;
+  const clearFilter = () => {
+    setTeam(null);
+    setPickedWho(null);
+  };
+
+  // If mobile or the team column is empty (e.g. trainee view where all items are
+  // onYou), render stacked
+  const isSingleColumn = mobile || !hasTeamColumn;
 
   return (
     <section className={cn("flex flex-col gap-4", className)}>
-      <div className="sr-only">
-        <h2>Needs your attention</h2>
-        <span>{unreadCount > 0 ? `${unreadCount} new` : "All clear"}</span>
+      {/* ── The feed's own header — it carries the filter row (#727) ── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-2.5 flex-wrap">
+            <h2 className="font-serif text-xl text-on-surface font-semibold m-0">
+              {t("whatsNew.title", "What's new")}
+            </h2>
+            {unreadCount > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+                {t("whatsNew.count_new", "{n} new").replace("{n}", String(unreadCount))}
+              </span>
+            )}
+            <span className="text-xs text-on-surface-variant">
+              {t("whatsNew.sub", "Who was added, and who was talked to.")}
+            </span>
+          </div>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={handleMarkAllScanned}
+              className="text-xs font-medium text-accent hover:underline cursor-pointer"
+            >
+              {t("whatsNew.mark_all_scanned", "Mark all scanned")}
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div
+            role="group"
+            aria-label={t("whatsNew.filter_by_team", "Filter the news by team")}
+            className="inline-flex flex-wrap gap-1 p-1 rounded-full bg-surface-container-low border border-outline-variant"
+          >
+            <button
+              type="button"
+              onClick={() => setTeam(null)}
+              aria-pressed={!team}
+              className={cn(
+                "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
+                !team ? "bg-background text-on-surface" : "text-on-surface-variant hover:text-on-surface",
+              )}
+            >
+              {t("teams.everyone", "Everyone")}
+            </button>
+            {TEAMS.map((tm) => (
+              <button
+                key={tm.id}
+                type="button"
+                onClick={() => setTeam(tm.id)}
+                aria-pressed={team === tm.id}
+                className={cn(
+                  "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
+                  team === tm.id
+                    ? "bg-background text-on-surface"
+                    : "text-on-surface-variant hover:text-on-surface",
+                )}
+              >
+                {t(teamLabelKey(tm.id), tm.label)}
+              </button>
+            ))}
+          </div>
+
+          <label
+            className={cn(
+              "inline-flex items-center gap-2 h-10 pl-3 pr-2 rounded-full bg-surface border text-sm text-on-surface focus-within:border-primary transition-colors",
+              who ? "border-primary" : "border-outline-variant",
+            )}
+          >
+            <Users className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
+            <select
+              value={who ?? "all"}
+              onChange={(e) => setPickedWho(e.target.value === "all" ? null : e.target.value)}
+              aria-label={t("whatsNew.filter_by_person", "Filter the news by teammate")}
+              className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer"
+            >
+              <option value="all">
+                {team
+                  ? t("whatsNew.whole_named_team", "Whole {team}").replace("{team}", teamLabel)
+                  : t("whatsNew.whole_team", "Whole team")}
+              </option>
+              {teammateOptions.map((o) => (
+                <option key={o.uid} value={o.uid}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {!resting && (
+            <button
+              type="button"
+              onClick={clearFilter}
+              className="text-xs font-medium text-accent hover:underline cursor-pointer"
+            >
+              {t("whatsNew.clear", "Clear")}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* The feed can be filtered down to nothing. Say so — vanishing reads as
+          a bug, not as a filter. */}
+      {stacks.length === 0 ? (
+        <div className="bg-surface border border-outline-variant/60 rounded-3xl px-6 py-11 text-center flex flex-col items-center gap-3.5">
+          <div className="flex flex-col gap-1">
+            <h3 className="font-serif text-xl text-on-surface font-semibold m-0">
+              {who
+                ? t("whatsNew.nothing_from_person", "Nothing from {name} this week").replace("{name}", whoName)
+                : t("whatsNew.nothing_from_team", "Nothing from the {team} this week").replace("{team}", teamLabel)}
+            </h3>
+            <p className="text-sm text-on-surface-variant m-0">
+              {who && team
+                ? t("whatsNew.try_whole_team", "Try the whole {team}, or widen to everyone.").replace("{team}", teamLabel)
+                : t("whatsNew.try_everyone", "Try widening to everyone.")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearFilter}
+            className="px-3.5 py-1.5 rounded-full border border-outline-variant bg-background text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+          >
+            {t("whatsNew.show_everyone", "Show everyone")}
+          </button>
+        </div>
+      ) : (
 
       <div className={cn(isSingleColumn ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start")}>
         {/* ── Left Column: "On you" ── */}
@@ -661,15 +869,6 @@ export default function AttentionFeed({
                 </span>
               )}
             </div>
-            {unreadOnYouCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllScanned}
-                className="text-xs font-medium text-accent hover:underline cursor-pointer"
-              >
-                Mark all scanned
-              </button>
-            )}
           </div>
 
           {onYou.length === 0 ? (
@@ -730,6 +929,11 @@ export default function AttentionFeed({
             <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
               <div className="flex items-baseline gap-2.5 flex-wrap">
                 <h3 className="font-serif text-lg text-on-surface font-semibold m-0">Around the team</h3>
+                {unreadAroundTeamCount > 0 && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+                    {t("whatsNew.count_new", "{n} new").replace("{n}", String(unreadAroundTeamCount))}
+                  </span>
+                )}
                 <span className="text-xs text-on-surface-variant">
                   Everything else the team has been doing. Nothing here is waiting on you.
                 </span>
@@ -789,7 +993,8 @@ export default function AttentionFeed({
             )}
           </section>
         )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
