@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { Check, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { Check, ChevronRight, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import {
@@ -79,6 +79,30 @@ const STATUS_TONE: Record<Status, string> = {
   answered: 'text-success',
   unanswered: 'text-error',
 };
+
+// The dot on the spine (#709). Colour says how the prayer landed; the halo is
+// the card colour, punching the spine out from behind the dot. Full static
+// strings, as with the mark pills below, so Tailwind's scanner keeps them.
+const DOT_TONE: Record<Status, string> = {
+  pending: 'block w-[9px] h-[9px] rounded-full bg-surface border-[1.5px] border-on-surface-variant',
+  ongoing: 'block w-[9px] h-[9px] rounded-full bg-stage-accent',
+  answered: 'block w-[9px] h-[9px] rounded-full bg-success',
+  unanswered: 'block w-[7px] h-[7px] rounded-full bg-surface border-[1.5px] border-on-surface-variant',
+};
+// The second ring is "this week" — where you are, said separately from how it
+// landed, because the old single rail could not say both.
+const DOT_HALO = 'shadow-[0_0_0_3px_var(--surface)]';
+// The eyebrow type spec, shared by the section labels, the nudge and the fold's
+// status column so the three stay one voice.
+const EYEBROW = 'font-sans text-[10.5px] font-semibold uppercase tracking-[0.06em]';
+// The tone for a folded line's mark. Reuses STATUS_TONE except for `unanswered`:
+// `text-error` reads as a problem, and on a folded-away prayer "Archived" is
+// just where it landed. The danger tone stays for "Needs an update".
+const FOLD_TONE: Record<Status, string> = {
+  ...STATUS_TONE,
+  unanswered: 'text-on-surface-variant/70',
+};
+const DOT_HALO_CURRENT = 'shadow-[0_0_0_3px_var(--surface),0_0_0_4.5px_var(--on-surface-variant)]';
 
 // Full static class strings for the mark pills so Tailwind's scanner keeps them.
 const MARK_ON: Record<Status, string> = {
@@ -785,13 +809,13 @@ function PrayerThread({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="bg-surface border border-outline-variant rounded-3xl p-5 sm:p-6   transition-shadow"
+      className="bg-surface border border-outline rounded-3xl p-5 sm:p-6   transition-shadow"
     >
       {/* Header: person + a quiet count of what's still open */}
       <div className="flex items-start gap-4">
         <button
           onClick={onOpenProfile}
-          className="flex items-center gap-3 text-left group min-w-0"
+          className="flex items-center gap-3 text-left group min-w-0 flex-1"
           title={t('prayers.open_profile')}
         >
           <Avatar contact={contact} size="lg" />
@@ -898,13 +922,24 @@ function PrayerThread({
         </div>
       )}
 
-      {/* This week */}
-      <div className="mt-5">
-        <SectionEyebrow label={t('prayers.this_week')} />
+      {/* ── The thread, on one spine (#709) ──────────────────────────────────
+         Was: three sections, each a full-width hairline rule over a prayer
+         wearing its own 2px left rail. The rail was carrying two unrelated
+         facts at once — where you are in the thread, and how the prayer landed
+         — so it ran from `--primary` (17:1 against the card) down to
+         `--outline-variant` (1.15:1, i.e. not drawn), and the horizontal rules
+         crossed the vertical rails without either reading as structure.
+         Now: one neutral spine at `--outline` carries the structure, and a 9px
+         dot on it carries the state. `This week` keeps its words as an inline
+         eyebrow instead of a rule. See docs/design/prayer-fold/. */}
+      <div className="relative mt-5 flex flex-col gap-4">
+        <span data-testid="prayer-spine" aria-hidden className="absolute left-[7.5px] top-2 bottom-2 w-px bg-outline" />
+
         {weekItem ? (
           <PrayerItem
             prayer={weekItem}
             variant="week"
+            label={t('prayers.this_week')}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
@@ -912,26 +947,30 @@ function PrayerThread({
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
-        ) : isOperator ? (
-          <AddThisWeek
-            firstName={firstName}
-            defaultOpen={autoCompose}
-            onAdd={(text) => onAddBurden(contact.id, text)}
-          />
         ) : (
-          <div className="text-sm text-on-surface-variant/60 italic pl-3">
-            {t('prayers.no_prayer_this_week')}
-          </div>
+          <TimelineRow dot={<span className={cn(DOT_TONE.pending, DOT_HALO_CURRENT)} />} contentClassName="pt-px">
+            <SectionEyebrow label={t('prayers.this_week')} current />
+            {isOperator ? (
+              <AddThisWeek
+                firstName={firstName}
+                defaultOpen={autoCompose}
+                onAdd={(text) => onAddBurden(contact.id, text)}
+              />
+            ) : (
+              <div className="text-sm text-on-surface-variant/60 italic mt-1.5">
+                {t('prayers.no_prayer_this_week')}
+              </div>
+            )}
+          </TimelineRow>
         )}
-      </div>
 
-      {/* Last week — always shown for context, with a mark to update */}
-      {lastItem && (
-        <div className="mt-5">
-          <SectionEyebrow label={t('prayers.last_week')} nudge={needsMark ? t('prayers.needs_update') : undefined} />
+        {/* Last week — always shown for context, with a mark to update */}
+        {lastItem && (
           <PrayerItem
             prayer={lastItem}
             variant="last"
+            label={t('prayers.last_week')}
+            nudge={needsMark ? t('prayers.needs_update') : undefined}
             needsMark={needsMark}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
@@ -940,78 +979,176 @@ function PrayerThread({
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
-        </div>
-      )}
- 
-      {/* Earlier — folded away, expands inline (capped) */}
-      {earlier.length > 0 && (
-        <div className="mt-5">
-          <button
-            onClick={() => setShowEarlier((v) => !v)}
-            className="flex items-center gap-3 w-full group"
-          >
-            <span
-              className={cn(
-                'text-on-surface-variant transition-transform duration-[160ms] text-[9px] opacity-70',
-                showEarlier && 'rotate-90',
-              )}
-              aria-hidden
+        )}
+
+        {/* Earlier — a node on the same spine, not a third hairline */}
+        {earlier.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowEarlier((v) => !v)}
+              aria-expanded={showEarlier}
+              className="flex items-center gap-3.5 w-full group text-left"
             >
-              ▶
-            </span>
-            <span className="font-sans text-[11px]   text-on-surface-variant group-hover:text-on-surface transition-colors">
-              {showEarlier ? t('prayers.hide') : t('prayers.earlier')} — {earlier.length} {earlier.length === 1 ? t('prayers.prayer') : t('prayers.prayers')}
-            </span>
-            <span className="flex-1 h-px bg-outline-variant" />
-          </button>
-          {showEarlier && (
-            <div className="mt-2">
-              {earlier.slice(0, EARLIER_CAP).map((p) => (
-                <PrayerItem
-                  key={p.id}
-                  prayer={p}
-                  variant="earlier"
-                  onUpdateStatus={onUpdateStatus}
-                  onUpdateBurden={onUpdateBurden}
-                  isOperator={isOperator}
-                  onMakeTodo={onMakeTodo}
-                  isManager={isManager}
-                  onClearPrayer={onClearPrayer}
-                />
-              ))}
-              {earlier.length > EARLIER_CAP && (
-                 <div className="text-[13px] text-on-surface-variant pt-3 pl-1">
-                  {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
-                  {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
-                  <button onClick={onOpenProfile} className="text-accent hover:underline">
-                    {t('prayers.see_full_history').replace('{name}', firstName)}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+              <span className="w-4 shrink-0 flex justify-center">
+                <span className="w-4 h-4 rounded-full border border-outline bg-surface text-on-surface-variant grid place-items-center">
+                  <ChevronRight
+                    aria-hidden
+                    strokeWidth={3}
+                    className={cn('w-[9px] h-[9px] transition-transform duration-[160ms]', showEarlier && 'rotate-90')}
+                  />
+                </span>
+              </span>
+              <span className="font-sans text-xs text-on-surface-variant group-hover:text-on-surface transition-colors">
+                {showEarlier ? t('prayers.hide') : t('prayers.earlier')} — {earlier.length} {earlier.length === 1 ? t('prayers.prayer') : t('prayers.prayers')}
+              </span>
+            </button>
+            {showEarlier && (
+              <div className="-mt-2">
+                {earlier.slice(0, EARLIER_CAP).map((p) => (
+                  <EarlierRow
+                    key={p.id}
+                    prayer={p}
+                    onUpdateStatus={onUpdateStatus}
+                    onUpdateBurden={onUpdateBurden}
+                    isOperator={isOperator}
+                    onMakeTodo={onMakeTodo}
+                    isManager={isManager}
+                    onClearPrayer={onClearPrayer}
+                  />
+                ))}
+                {earlier.length > EARLIER_CAP && (
+                  <div className="text-xs text-on-surface-variant pt-2 pl-[30px]">
+                    {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
+                    {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
+                    <button onClick={onOpenProfile} className="text-accent hover:underline">
+                      {t('prayers.see_full_history').replace('{name}', firstName)}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </motion.article>
   );
 }
 
-function SectionEyebrow({ label, nudge }: { label: string; nudge?: string }) {
+// One row on the spine: a 16px dot column, then the content. The dot's halo is
+// painted in the card colour so it punches a hole in the spine behind it.
+function TimelineRow({
+  dot,
+  children,
+  dotClassName,
+  contentClassName,
+}: {
+  dot: React.ReactNode;
+  children: React.ReactNode;
+  dotClassName?: string;
+  contentClassName?: string;
+}) {
   return (
-    <div className="flex items-center gap-3 mb-2">
-      <span className="font-sans text-[11px]   text-on-surface-variant">{label}</span>
-      {nudge && (
-        <span className="font-sans text-[11px]   text-error">{nudge}</span>
-      )}
-      <span className="flex-1 h-px bg-outline-variant" />
+    <div className="flex gap-3.5">
+      <div className={cn('w-4 shrink-0 flex justify-center pt-[5px]', dotClassName)} aria-hidden>
+        {dot}
+      </div>
+      <div className={cn('flex-1 min-w-0', contentClassName)}>{children}</div>
     </div>
   );
 }
 
+// The eyebrow keeps its words and loses its rule — uppercase and tracked is
+// where the differentiation the hairline was failing to give comes back from.
+function SectionEyebrow({ label, current }: { label: string; current?: boolean }) {
+  return (
+    <span className={cn(EYEBROW, current ? 'text-on-surface' : 'text-on-surface-variant')}>
+      {label}
+    </span>
+  );
+}
+
 // One individual prayer: date, status, inline edit, and a single mark (toggleable).
+// One earlier prayer, folded to a single line (#709). Opening the fold used to
+// print four full prayers back to back with no gap — 85px and a whole Mark chip
+// row each, for history nobody is marking. The line carries what you scan for
+// (when, how it landed, the burden); the controls arrive when you open it.
+function EarlierRow({
+  prayer,
+  onUpdateStatus,
+  onUpdateBurden,
+  isOperator,
+  onMakeTodo,
+  isManager,
+  onClearPrayer,
+}: {
+  prayer: PrayerRecord;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
+  onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
+  isOperator: boolean;
+  onMakeTodo?: (prayer: PrayerRecord) => void;
+  isManager?: boolean;
+  onClearPrayer?: (prayer: PrayerRecord) => void;
+}) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <TimelineRow
+      dot={<span data-testid="prayer-dot" className={cn(DOT_TONE[prayer.status], DOT_HALO)} />}
+      dotClassName="pt-[11px]"
+    >
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 h-[30px] pr-2 rounded-sm text-left hover:bg-surface-container-high/50 transition-colors group"
+      >
+        <span className="text-xs text-on-surface-variant w-[76px] shrink-0 whitespace-nowrap">{formatDate(prayer.date)}</span>
+        <span className={cn(EYEBROW, 'w-[84px] shrink-0 truncate', FOLD_TONE[prayer.status])}>
+          {t('prayers.status_' + prayer.status)}
+        </span>
+        {/* Open, the full burden is right below — don't print a clipped copy of
+            it on the line above. It stays in the accessible name either way, so
+            the disclosure is still named by what it opens. */}
+        <span
+          className={cn(
+            'text-[13px] text-on-surface-variant flex-1 min-w-0 truncate',
+            open && 'sr-only',
+          )}
+        >
+          {prayer.burden}
+        </span>
+        {open && <span className="flex-1" />}
+        <ChevronRight
+          aria-hidden
+          className={cn(
+            'w-3 h-3 shrink-0 text-on-surface-variant opacity-25 group-hover:opacity-75 transition-all duration-[160ms]',
+            open && 'rotate-90 opacity-75',
+          )}
+        />
+      </button>
+      {open && (
+        <PrayerItem
+          prayer={prayer}
+          variant="earlier"
+          inFold
+          onUpdateStatus={onUpdateStatus}
+          onUpdateBurden={onUpdateBurden}
+          isOperator={isOperator}
+          onMakeTodo={onMakeTodo}
+          isManager={isManager}
+          onClearPrayer={onClearPrayer}
+        />
+      )}
+    </TimelineRow>
+  );
+}
+
 function PrayerItem({
   prayer,
   variant,
+  label,
+  nudge,
+  inFold,
   needsMark,
   onUpdateStatus,
   onUpdateBurden,
@@ -1022,6 +1159,11 @@ function PrayerItem({
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
+  /** Inline eyebrow — "This week" / "Last week". Absent inside a fold. */
+  label?: string;
+  nudge?: string;
+  /** Rendered inside an opened EarlierRow, which already drew the dot and date. */
+  inFold?: boolean;
   needsMark?: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[], archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
@@ -1103,20 +1245,15 @@ function PrayerItem({
 
   const dimmed = prayer.status === 'answered' || variant === 'earlier';
 
-  return (
-    <div
-      className={cn(
-        'pl-3 border-l-2',
-        variant === 'week'
-          ? 'border-l-primary'
-          : prayer.status === 'answered'
-            ? 'border-l-success/50'
-            : 'border-l-outline-variant',
-      )}
-    >
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <span className="text-[13px] text-on-surface-variant">{formatDate(prayer.date)}</span>
-        {prayer.status !== 'pending' ? (
+  const body = (
+    <>
+      <div className={cn('flex items-baseline gap-2.5 flex-wrap', inFold && 'pt-0.5')}>
+        {label && <SectionEyebrow label={label} current={variant === 'week'} />}
+        {!inFold && <span className="text-xs text-on-surface-variant">{formatDate(prayer.date)}</span>}
+        {nudge && (
+          <span className={cn(EYEBROW, 'text-error')}>{nudge}</span>
+        )}
+        {inFold ? null : prayer.status !== 'pending' ? (
           <span className={cn('text-[10.5px]   font-semibold', STATUS_TONE[prayer.status])}>
             {t('prayers.status_' + prayer.status)}
           </span>
@@ -1126,7 +1263,7 @@ function PrayerItem({
           </span>
         ) : null}
         {!editing && isOperator && (
-          <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-accent transition-colors ml-auto">
+          <button onClick={startEdit} className={cn('text-[13px] text-on-surface-variant hover:text-accent transition-colors', !inFold && 'ml-auto')}>
             {t('actions.edit')}
           </button>
         )}
@@ -1441,7 +1578,23 @@ function PrayerItem({
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+
+  // Inside a fold the EarlierRow already drew the dot; everywhere else this
+  // entry is its own row on the spine.
+  if (inFold) return <div className="pb-3">{body}</div>;
+  return (
+    <TimelineRow
+      dot={
+        <span
+          data-testid="prayer-dot"
+          className={cn(DOT_TONE[prayer.status], variant === 'week' ? DOT_HALO_CURRENT : DOT_HALO)}
+        />
+      }
+    >
+      {body}
+    </TimelineRow>
   );
 }
 

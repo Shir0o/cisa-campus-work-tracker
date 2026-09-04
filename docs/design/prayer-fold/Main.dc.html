@@ -1,0 +1,311 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; text-align: left; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+
+    /* Dark is the default — it is the theme the feedback was written from, and
+       the one the line colours fail hardest in. `.t-light` overrides. */
+    .cv {
+      --c-page: #0A0A0B;
+      --c-rail: #202023; --c-rail-on: #FAFAFA; --c-rail-dim: #A1A1AA; --c-rail-line: #2A2A2E;
+      --c-rail-sel: #FAFAFA; --c-rail-sel-on: #0A0A0B;
+      --c-card: #161618;
+      --c-line: #2A2A2E;          /* --outline — the one structural line value */
+      --c-line-soft: #232327;     /* --outline-variant — kept only for chip rims */
+      --c-text: #FAFAFA; --c-dim: #A1A1AA; --c-mute: #71717A;
+      --c-ongoing: oklch(0.82 0.14 258); --c-ongoing-soft: oklch(0.82 0.14 258 / 0.20);
+      --c-success: #51E098;
+      --c-danger: #FF7B88;
+      --c-soft: rgba(255, 255, 255, 0.06);
+      --c-hover: rgba(255, 255, 255, 0.05);
+    }
+    .cv.t-light {
+      --c-page: #FFFFFF;
+      --c-rail: #0A0A0B; --c-rail-on: #FFFFFF; --c-rail-dim: rgba(255,255,255,0.62); --c-rail-line: rgba(255,255,255,0.10);
+      --c-rail-sel: #FFFFFF; --c-rail-sel-on: #0A0A0B;
+      --c-card: #F4F4F5;
+      --c-line: #E4E4E7;
+      --c-line-soft: #F0F0F2;
+      --c-text: #0A0A0B; --c-dim: #52525B; --c-mute: #A1A1AA;
+      --c-ongoing: oklch(0.55 0.15 258); --c-ongoing-soft: oklch(0.55 0.15 258 / 0.14);
+      --c-success: #016A1C;
+      --c-danger: #B1000F;
+      --c-soft: rgba(10, 10, 11, 0.06);
+      --c-hover: rgba(10, 10, 11, 0.04);
+    }
+
+    a { color: var(--c-dim); } a:hover { color: var(--c-text); }
+    .rail-i:hover { background: var(--c-rail-line); color: var(--c-rail-on); }
+    .lnk:hover { color: var(--c-text); }
+    .erow:hover { background: var(--c-hover); }
+    .erow:hover .echev { opacity: 0.75; }
+    .foldrow:hover .foldlbl { color: var(--c-text); }
+    .chip:hover { border-color: var(--c-line); color: var(--c-text); }
+  </style>
+</helmet>
+
+<!-- 1107 x 662 — the viewport the feedback was written from. -->
+<div class="cv {{themeClass}}" style="width: 1107px; height: 662px; background: var(--c-page); color: var(--c-text); display: flex; padding: 16px; gap: 16px; overflow: hidden;">
+
+  <!-- ── Rail: 232px, radius 32 ── -->
+  <div style="width: 232px; flex-shrink: 0; background: var(--c-rail); border-radius: 32px; display: flex; flex-direction: column; overflow: hidden;">
+    <div style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--c-rail-line);">
+      <span class="h" style="width: 36px; height: 36px; border-radius: 14px; background: var(--c-rail-sel); color: var(--c-rail-sel-on); font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;">C</span>
+      <span style="line-height: 1.15; min-width: 0;">
+        <span class="h" style="display: block; font-size: 14px; font-weight: 600; color: var(--c-rail-on);">CISA Campus</span>
+        <span style="display: block; font-size: 10px; color: var(--c-rail-dim);">Work Tracker</span>
+      </span>
+    </div>
+    <div style="padding: 12px 0 0; display: flex; flex-direction: column; gap: 18px;">
+      <sc-for list="{{nav}}" as="g" hint-placeholder-count="3">
+        <div>
+          <div style="padding: 0 12px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-rail-dim);">{{g.label}}</div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <sc-for list="{{g.items}}" as="it" hint-placeholder-count="2">
+              <div class="rail-i" style="margin: 0 8px; height: 40px; padding: 0 12px; border-radius: 14px; display: flex; align-items: center; gap: 12px; background: {{it.bg}}; color: {{it.fg}}; font-size: 14px; font-weight: {{it.weight}};">
+                <span style="width: 18px; height: 18px; flex-shrink: 0; display: inline-flex;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{it.d}}"/></svg>
+                </span>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{it.label}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ── Content column ── -->
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column;">
+
+    <div style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px;">
+      <span style="flex-grow: 1;"></span>
+      <span style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--c-line); color: var(--c-dim); font-size: 13px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        Search
+      </span>
+      <span style="width: 40px; height: 40px; border-radius: 999px; background: var(--c-card); border: 1px solid var(--c-line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: var(--c-dim);">TW</span>
+    </div>
+
+    <!-- scroll body. 662 − 32 padding − 56 chrome = 574px of room. -->
+    <div style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 0 32px;">
+
+      <div style="display: flex; align-items: baseline; gap: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--c-line); margin-bottom: 14px;">
+        <h1 class="h" style="margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.1;">On our hearts</h1>
+        <p style="margin: 0; font-size: 13.5px; color: var(--c-dim); flex-grow: 1;"><span style="color: var(--c-success); font-weight: 500;">12</span> answered this year. <span style="color: var(--c-mute);">1 from last week still needs an update.</span></p>
+      </div>
+
+      <!-- ── the card ── -->
+      <div style="background: var(--c-card); border: 1px solid var(--c-line); border-radius: 24px; padding: 24px;">
+
+        <!-- Header. The name is the flex child that grows, so it stops clipping. -->
+        <div style="display: flex; align-items: flex-start; gap: 16px;">
+          <span class="h" style="width: 56px; height: 56px; flex-shrink: 0; border-radius: 999px; background: var(--c-soft); color: var(--c-dim); font-size: 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;">DA</span>
+          <div style="flex-grow: 1; min-width: 0;">
+            <div class="h" style="font-size: 18px; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">David Alvarado</div>
+            <div style="font-size: 13px; color: var(--c-dim); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Student · Sophomore · Cared for by Grace</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+            <div style="text-align: right;">
+              <div class="h" style="font-size: 15px; line-height: 1.2; color: var(--c-ongoing);">1 ongoing</div>
+              <div style="font-size: 11.5px; color: var(--c-dim); margin-top: 2px;">9 prayers in all</div>
+            </div>
+            <span style="width: 28px; height: 28px; border-radius: 999px; color: var(--c-dim); display: inline-flex; align-items: center; justify-content: center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+            </span>
+          </div>
+        </div>
+
+        <!-- ── ONE spine. Neutral line, coloured dots. ── -->
+        <div style="position: relative; margin-top: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="position: absolute; left: 7.5px; top: 9px; bottom: 9px; width: 1px; background: var(--c-line);"></div>
+
+          <!-- This week -->
+          <div style="display: flex; gap: 14px;">
+            <div style="width: 16px; flex-shrink: 0; display: flex; justify-content: center; padding-top: 5px;">
+              <span style="width: 9px; height: 9px; border-radius: 50%; background: var(--c-ongoing); box-shadow: 0 0 0 3px var(--c-card), 0 0 0 4.5px var(--c-dim);"></span>
+            </div>
+            <div style="flex-grow: 1; min-width: 0;">
+              <div style="display: flex; align-items: baseline; gap: 10px;">
+                <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-text);">This week</span>
+                <span style="font-size: 12px; color: var(--c-dim);">Sep 1, 2026</span>
+                <span style="flex-grow: 1;"></span>
+                <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Edit</button>
+                <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Make a to-do</button>
+              </div>
+              <p style="margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--c-text); text-wrap: pretty;">Finals in three weeks, and his roommate has started asking him why he goes to study.</p>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <span style="font-size: 11.5px; color: var(--c-mute);">Mark</span>
+                <span style="font-size: 12px; height: 26px; display: inline-flex; align-items: center; padding: 0 11px; border-radius: 999px; border: 1px solid var(--c-ongoing); background: var(--c-ongoing-soft); color: var(--c-ongoing);">Ongoing</span>
+                <span class="chip" style="font-size: 12px; height: 26px; display: inline-flex; align-items: center; padding: 0 11px; border-radius: 999px; border: 1px solid var(--c-line-soft); color: var(--c-dim);">Answered</span>
+                <span class="chip" style="font-size: 12px; height: 26px; display: inline-flex; align-items: center; padding: 0 11px; border-radius: 999px; border: 1px solid var(--c-line-soft); color: var(--c-dim);">Archived</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Last week -->
+          <div style="display: flex; gap: 14px;">
+            <div style="width: 16px; flex-shrink: 0; display: flex; justify-content: center; padding-top: 5px;">
+              <span style="width: 9px; height: 9px; border-radius: 50%; background: var(--c-card); border: 1.5px solid var(--c-mute); box-shadow: 0 0 0 3px var(--c-card);"></span>
+            </div>
+            <div style="flex-grow: 1; min-width: 0;">
+              <div style="display: flex; align-items: baseline; gap: 10px;">
+                <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-dim);">Last week</span>
+                <span style="font-size: 12px; color: var(--c-dim);">Aug 25, 2026</span>
+                <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c-danger);">Needs an update</span>
+                <span style="flex-grow: 1;"></span>
+                <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Edit</button>
+                <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Make a to-do</button>
+              </div>
+              <p style="margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--c-dim); text-wrap: pretty;">His mother goes in for surgery on the 12th and he is deciding whether to fly home.</p>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                <span style="font-size: 11.5px; color: var(--c-mute);">Where did it land?</span>
+                <span class="chip" style="font-size: 12px; height: 26px; display: inline-flex; align-items: center; padding: 0 11px; border-radius: 999px; border: 1px solid var(--c-line-soft); color: var(--c-dim);">Ongoing</span>
+                <span class="chip" style="font-size: 12px; height: 26px; display: inline-flex; align-items: center; padding: 0 11px; border-radius: 999px; border: 1px solid var(--c-line-soft); color: var(--c-dim);">Answered</span>
+                <span class="chip" style="font-size: 12px; height: 26px; display: inline-flex; align-items: center; padding: 0 11px; border-radius: 999px; border: 1px solid var(--c-line-soft); color: var(--c-dim);">Archived</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- The fold — a node on the same spine, not a third hairline.
+               The whole row is the target, not the 16px node. -->
+          <button onClick="{{toggleFold}}" class="foldrow" style="display: flex; gap: 14px; align-items: center; height: 24px; width: 100%;">
+            <span style="width: 16px; flex-shrink: 0; display: flex; justify-content: center;">
+              <span style="width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--c-line); background: var(--c-card); color: var(--c-dim); display: inline-flex; align-items: center; justify-content: center;">
+                <span style="display: inline-flex; transform: {{foldRot}}; transition: transform 160ms;">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                </span>
+              </span>
+            </span>
+            <span class="foldlbl" style="font-size: 12px; color: var(--c-dim);">{{foldLabel}}</span>
+          </button>
+
+          <!-- Earlier: one 30px line each. Click a line to open it in place. -->
+          <sc-if value="{{foldOpen}}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top: -8px; display: flex; flex-direction: column; gap: 0;">
+              <sc-for list="{{earlier}}" as="e" hint-placeholder-count="4">
+                <div style="display: flex; gap: 14px;">
+                  <div style="width: 16px; flex-shrink: 0; display: flex; justify-content: center; padding-top: 11px;">
+                    <span style="width: {{e.dotSize}}; height: {{e.dotSize}}; border-radius: 50%; background: {{e.dotBg}}; border: {{e.dotBorder}}; box-shadow: 0 0 0 3px var(--c-card);"></span>
+                  </div>
+                  <div style="flex-grow: 1; min-width: 0;">
+                    <button onClick="{{e.toggle}}" class="erow" style="width: 100%; display: flex; align-items: center; gap: 12px; height: 30px; padding: 0 8px 0 0; border-radius: 8px;">
+                      <span style="font-size: 12px; color: var(--c-dim); width: 58px; flex-shrink: 0;">{{e.date}}</span>
+                      <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: {{e.tone}}; width: 66px; flex-shrink: 0;">{{e.status}}</span>
+                      <span style="font-size: 13px; color: var(--c-dim); flex-grow: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{e.burden}}</span>
+                      <span class="echev" style="flex-shrink: 0; color: var(--c-dim); opacity: {{e.chevOpacity}}; display: inline-flex; transform: {{e.rot}}; transition: transform 160ms;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                      </span>
+                    </button>
+                    <sc-if value="{{e.open}}" hint-placeholder-val="{{ false }}">
+                      <div style="padding: 2px 0 12px;">
+                        <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--c-dim); text-wrap: pretty;">{{e.burden}}</p>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                          <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Edit</button>
+                          <span style="color: var(--c-line);">·</span>
+                          <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Make a to-do</button>
+                          <span style="color: var(--c-line);">·</span>
+                          <button class="lnk" style="font-size: 12px; color: var(--c-dim);">Change the mark</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display: flex; gap: 14px; margin-top: 4px;">
+                <div style="width: 16px; flex-shrink: 0;"></div>
+                <div style="font-size: 12px; color: var(--c-mute);">3 older prayers — <span style="color: var(--c-dim); text-decoration: underline; text-underline-offset: 2px;">see David&#39;s full history</span></div>
+              </div>
+            </div>
+          </sc-if>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark","section":"Canvas"},"$preview":{"width":1107,"height":662}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { fold: true, open: null };
+  }
+
+  rows() {
+    return [
+      { id: 'a', date: 'Aug 18', status: 'Answered', kind: 'answered', burden: 'Getting to the Wednesday study without his shift clashing with it.' },
+      { id: 'b', date: 'Aug 11', status: 'Ongoing', kind: 'ongoing', burden: 'His visa paperwork for the winter trip home — it has been sitting three weeks.' },
+      { id: 'c', date: 'Aug 4', status: 'Answered', kind: 'answered', burden: 'A quieter roommate situation; he asked for this before the term started.' },
+      { id: 'd', date: 'Jul 28', status: 'Archived', kind: 'archived', burden: 'Finding a sublet near campus for the summer.' }
+    ];
+  }
+
+  renderVals() {
+    var self = this;
+    var open = this.state.open;
+    var fold = this.state.fold;
+
+    var tone = { answered: 'var(--c-success)', ongoing: 'var(--c-ongoing)', archived: 'var(--c-mute)' };
+    var dotBg = { answered: 'var(--c-success)', ongoing: 'var(--c-ongoing)', archived: 'var(--c-card)' };
+    var dotBorder = { answered: 'none', ongoing: 'none', archived: '1.5px solid var(--c-mute)' };
+    var dotSize = { answered: '9px', ongoing: '9px', archived: '7px' };
+
+    var earlier = this.rows().map(function (r) {
+      var isOpen = open === r.id;
+      return {
+        date: r.date,
+        status: r.status,
+        burden: r.burden,
+        tone: tone[r.kind],
+        dotBg: dotBg[r.kind],
+        dotBorder: dotBorder[r.kind],
+        dotSize: dotSize[r.kind],
+        open: isOpen,
+        rot: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+        chevOpacity: isOpen ? '0.75' : '0.25',
+        toggle: function () { self.setState({ open: isOpen ? null : r.id }); }
+      };
+    });
+
+    var dim = 'var(--c-rail-dim)';
+    return {
+      themeClass: (this.props.theme || 'dark') === 'light' ? 't-light' : '',
+      earlier: earlier,
+      foldOpen: fold,
+      foldRot: fold ? 'rotate(90deg)' : 'rotate(0deg)',
+      foldLabel: fold ? 'Hide the 4 earlier prayers' : '4 earlier prayers',
+      toggleFold: function () { self.setState({ fold: !fold }); },
+      nav: [
+        { label: 'Today', items: [
+          { label: 'My Day', d: 'M12 7v5l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', bg: 'transparent', fg: dim, weight: '400' },
+          { label: 'Coordination Notes', d: 'M6 3h9l4 4v14H6zM15 3v4h4M9 12h7M9 16h5', bg: 'transparent', fg: dim, weight: '400' }
+        ] },
+        { label: 'People', items: [
+          { label: 'The Journey', d: 'M4 19c4-1 5-6 8-7s5 2 8-3M4 19v-3M4 19h3', bg: 'transparent', fg: dim, weight: '400' },
+          { label: 'People', d: 'M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M10 5a3.2 3.2 0 1 0 0 6.4A3.2 3.2 0 0 0 10 5zM20 19v-1.4a3.5 3.5 0 0 0-2.6-3.4', bg: 'transparent', fg: dim, weight: '400' }
+        ] },
+        { label: 'Prayer', items: [
+          { label: 'On our hearts', d: 'M12 20.5s-7-4.6-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.9c0 5-7 9.6-7 9.6z', bg: 'var(--c-rail-sel)', fg: 'var(--c-rail-sel-on)', weight: '500' },
+          { label: 'Answered', d: 'M4 12.5 9 17.5 20 6.5', bg: 'transparent', fg: dim, weight: '400' }
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

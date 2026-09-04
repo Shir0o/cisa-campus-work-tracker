@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #A1A1AA; } a:hover { color: #FAFAFA; }
+    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; }
+    .cap { font-size: 11.5px; line-height: 1.55; color: #A1A1AA; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #71717A; }
+    .num { font-family: "Plus Jakarta Sans", "Lexend", sans-serif; font-weight: 600; }
+  </style>
+</helmet>
+
+<div style="width: 980px; background: #0A0A0B; color: #FAFAFA; padding: 32px 32px 40px; display: flex; flex-direction: column; gap: 26px;">
+
+  <div>
+    <div class="tag" style="color: oklch(0.82 0.14 258);">The rule</div>
+    <h2 class="h" style="margin: 8px 0 0; font-size: 26px; font-weight: 500; letter-spacing: -0.015em;">Lines are structure. Colour is state.</h2>
+    <p class="cap" style="margin: 8px 0 0; max-width: 720px; text-wrap: pretty; font-size: 13.5px;">Today a line does both jobs and does neither well: the thread&#39;s vertical rail is asked to say <span style="color:#FAFAFA;">where you are</span> and <span style="color:#FAFAFA;">how the prayer landed</span>, so it swings from 17.3:1 to 1.15:1 down one card. Split the jobs. One neutral rail carries the structure at a single value; a 9px dot on it carries the state.</p>
+  </div>
+
+  <!-- 1 · one line value -->
+  <div style="border: 1px solid #2A2A2E; border-radius: 20px; padding: 22px 24px;">
+    <div class="tag">1 · One line value, both themes</div>
+    <p class="cap" style="margin: 8px 0 18px; max-width: 700px;">Every structural line in the card — the card edge and the spine — becomes <span style="color:#FAFAFA;">--outline</span>, the value the app already uses for real dividers. <span style="color:#FAFAFA;">--outline-variant</span> stops being used for structure and keeps its one honest job, the rim on an unselected mark chip, where it is meant to be barely there. Be clear about the size of the win: this moves a hairline from 1.15 to 1.27 dark, 1.04 to 1.15 light. Both are still quiet, and that is correct — a hairline should be. <span style="color:#FAFAFA;">The change that matters is the 2px rail leaving at 17.3:1</span>, not the hairline getting darker.</p>
+    <div style="display: flex; gap: 20px;">
+      <sc-for list="{{lineRows}}" as="r" hint-placeholder-count="2">
+        <div style="flex-grow: 1; background: {{r.card}}; border: 1px solid {{r.outline}}; border-radius: 16px; padding: 18px 20px;">
+          <div class="h" style="font-size: 13px; font-weight: 600; color: {{r.text}};">{{r.theme}}</div>
+          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="width: 120px; height: 1px; background: {{r.outline}}; flex-shrink: 0;"></span>
+              <span style="font-size: 11px; color: {{r.dim}};">--outline {{r.outlineHex}}</span>
+              <span class="num" style="margin-left: auto; font-size: 12px; color: {{r.text}};">{{r.outlineRatio}}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="width: 120px; height: 1px; background: {{r.variant}}; flex-shrink: 0;"></span>
+              <span style="font-size: 11px; color: {{r.dim}};">--outline-variant {{r.variantHex}}</span>
+              <span class="num" style="margin-left: auto; font-size: 12px; color: #FF7B88;">{{r.variantRatio}}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="width: 120px; height: 1px; background: {{r.old}}; flex-shrink: 0;"></span>
+              <span style="font-size: 11px; color: {{r.dim}};">was: --primary, 2px</span>
+              <span class="num" style="margin-left: auto; font-size: 12px; color: #FF7B88;">{{r.oldRatio}}</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- 2 · the dot alphabet -->
+  <div style="border: 1px solid #2A2A2E; border-radius: 20px; padding: 22px 24px;">
+    <div class="tag">2 · The dot alphabet</div>
+    <p class="cap" style="margin: 8px 0 18px; max-width: 700px;">Nine pixels of colour instead of a 2×90px bar — about a third of the ink, and it lands on the spine where the eye is already travelling. <span style="color:#FAFAFA;">Status fills the dot. This week rings it.</span> Those are two independent facts today&#39;s rail tries to say with one value, which is why an ongoing prayer from this week and an answered one from August currently look like different kinds of object.</p>
+    <div style="display: flex; gap: 20px;">
+      <sc-for list="{{dotCards}}" as="d" hint-placeholder-count="2">
+        <div style="flex-grow: 1; background: {{d.card}}; border: 1px solid {{d.outline}}; border-radius: 16px; padding: 20px;">
+          <div class="h" style="font-size: 13px; font-weight: 600; color: {{d.text}}; margin-bottom: 16px;">{{d.theme}}</div>
+          <div style="position: relative; padding-left: 0;">
+            <div style="position: absolute; left: 7.5px; top: 10px; bottom: 10px; width: 1px; background: {{d.outline}};"></div>
+            <sc-for list="{{d.dots}}" as="k" hint-placeholder-count="5">
+              <div style="display: flex; gap: 14px; align-items: center; height: 40px;">
+                <span style="width: 16px; flex-shrink: 0; display: flex; justify-content: center;">
+                  <span style="width: {{k.size}}; height: {{k.size}}; border-radius: 50%; background: {{k.bg}}; border: {{k.border}}; box-shadow: {{k.shadow}};"></span>
+                </span>
+                <span style="min-width: 0;">
+                  <span style="display: block; font-size: 12px; color: {{d.text}};">{{k.name}}</span>
+                  <span style="display: block; font-size: 10.5px; color: {{d.dim}};">{{k.token}}</span>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- 3 · rhythm + the ledger -->
+  <div style="display: flex; gap: 20px; align-items: stretch;">
+
+    <div style="flex-grow: 1; border: 1px solid #2A2A2E; border-radius: 20px; padding: 22px 24px;">
+      <div class="tag">3 · The rhythm</div>
+      <p class="cap" style="margin: 8px 0 16px;">Everything on a 4px step, and the two rules that were doing the separating are gone — the spine separates now.</p>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <sc-for list="{{rhythm}}" as="s" hint-placeholder-count="6">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="height: 8px; width: {{s.w}}; background: {{s.tone}}; border-radius: 2px; flex-shrink: 0;"></span>
+            <span class="num" style="font-size: 11.5px; color: #FAFAFA; width: 34px; flex-shrink: 0;">{{s.px}}</span>
+            <span style="font-size: 11.5px; color: #A1A1AA; min-width: 0;">{{s.what}}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p class="cap" style="margin: 16px 0 0; color: #71717A;">The section eyebrows keep their words but lose their rules: <span style="color:#FAFAFA;">THIS WEEK</span> becomes 10.5px/600 uppercase, tracked, sitting inline with its date. That is where the differentiation the 11px grey label had lost comes back from — the label is doing the work the hairline was failing to do.</p>
+    </div>
+
+    <div style="width: 340px; flex-shrink: 0; border: 1px solid #2A2A2E; border-radius: 20px; padding: 22px 24px;">
+      <div class="tag">4 · What it costs to open</div>
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+        <sc-for list="{{ledger}}" as="l" hint-placeholder-count="3">
+          <div>
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+              <span style="font-size: 11.5px; color: #A1A1AA; flex-grow: 1;">{{l.what}}</span>
+              <span class="num" style="font-size: 13px; color: #71717A; text-decoration: line-through;">{{l.was}}</span>
+              <span class="num" style="font-size: 15px; color: {{l.tone}};">{{l.now}}</span>
+            </div>
+            <div style="margin-top: 6px; height: 6px; border-radius: 3px; background: #202023; overflow: hidden;">
+              <div style="height: 6px; width: {{l.bar}}; background: {{l.tone}}; border-radius: 3px;"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <p class="cap" style="margin: 16px 0 0; color: #71717A;">An earlier prayer collapses to one 30px line — dot, date, mark, the burden truncated. Click it and it opens in place with its text and its actions. The Mark chips and the Edit / to-do row stop being printed four times for history nobody is editing.</p>
+    </div>
+  </div>
+
+  <!-- 5 · carried elsewhere -->
+  <div style="border: 1px solid #2A2A2E; border-radius: 20px; padding: 22px 24px;">
+    <div class="tag">5 · Two things this touches beyond the fold</div>
+    <div style="display: flex; gap: 28px; margin-top: 12px;">
+      <div style="flex-grow: 1;">
+        <div style="font-size: 12.5px; color: #FAFAFA; font-weight: 500;">The card edge</div>
+        <p class="cap" style="margin: 5px 0 0; color: #71717A;">The card&#39;s own border is <span style="color:#A1A1AA;">--outline-variant</span> too, so it is invisible in both themes and each card floats with no edge. Moving it to <span style="color:#A1A1AA;">--outline</span> with the spine is one word and it is the same complaint. Called out separately because it is a page-wide change, not a fold change.</p>
+      </div>
+      <div style="flex-grow: 1;">
+        <div style="font-size: 12.5px; color: #FAFAFA; font-weight: 500;">Mobile has the same fold</div>
+        <p class="cap" style="margin: 5px 0 0; color: #71717A;"><span style="color:#A1A1AA;">PrayerListMobile.tsx</span> carries the same ▶ glyph (at 10px), the same three eyebrow rules and the same three rail colours at <span style="color:#A1A1AA;">pl-3.5 border-l-2</span>. It is not identical — two of its rules are <span style="color:#A1A1AA;">/60</span>, and its earlier list has <span style="color:#A1A1AA;">space-y-2</span>, so the no-gap cramming is desktop-only. The line colouring is the same bug on both; the cramming is worse here.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":980,"height":1580}}'>
+class Component extends DCLogic {
+  dotsFor(dark) {
+    var card = dark ? '#161618' : '#F4F4F5';
+    var dim = dark ? '#A1A1AA' : '#52525B';
+    var mute = dark ? '#71717A' : '#A1A1AA';
+    var ongoing = dark ? 'oklch(0.82 0.14 258)' : 'oklch(0.55 0.15 258)';
+    var success = dark ? '#51E098' : '#016A1C';
+    return [
+      { name: 'This week · ongoing', token: 'status fill + ring', size: '9px', bg: ongoing, border: 'none', shadow: '0 0 0 3px ' + card + ', 0 0 0 4.5px ' + dim },
+      { name: 'Ongoing', token: '--stage-accent', size: '9px', bg: ongoing, border: 'none', shadow: '0 0 0 3px ' + card },
+      { name: 'Answered', token: '--success', size: '9px', bg: success, border: 'none', shadow: '0 0 0 3px ' + card },
+      { name: 'Pending — not marked yet', token: '--on-surface-variant, hollow', size: '9px', bg: card, border: '1.5px solid ' + mute, shadow: '0 0 0 3px ' + card },
+      { name: 'Archived', token: '--on-surface-variant, hollow, 7px', size: '7px', bg: card, border: '1.5px solid ' + mute, shadow: '0 0 0 3px ' + card }
+    ];
+  }
+
+  renderVals() {
+    return {
+      lineRows: [
+        { theme: 'Dark', card: '#161618', text: '#FAFAFA', dim: '#A1A1AA', outline: '#2A2A2E', outlineHex: '#2A2A2E', outlineRatio: '1.27:1', variant: '#232327', variantHex: '#232327', variantRatio: '1.15:1', old: '#FAFAFA', oldRatio: '17.3:1' },
+        { theme: 'Light', card: '#F4F4F5', text: '#0A0A0B', dim: '#52525B', outline: '#E4E4E7', outlineHex: '#E4E4E7', outlineRatio: '1.15:1', variant: '#F0F0F2', variantHex: '#F0F0F2', variantRatio: '1.04:1', old: '#131316', oldRatio: '16.9:1' }
+      ],
+      dotCards: [
+        { theme: 'Dark', card: '#161618', text: '#FAFAFA', dim: '#A1A1AA', outline: '#2A2A2E', dots: this.dotsFor(true) },
+        { theme: 'Light', card: '#F4F4F5', text: '#0A0A0B', dim: '#52525B', outline: '#E4E4E7', dots: this.dotsFor(false) }
+      ],
+      rhythm: [
+        { px: '24', w: '48px', tone: '#FAFAFA', what: 'Card padding — unchanged' },
+        { px: '20', w: '40px', tone: '#A1A1AA', what: 'Header to the first entry' },
+        { px: '16', w: '32px', tone: '#A1A1AA', what: 'Between full entries, and above the fold node' },
+        { px: '10', w: '20px', tone: '#71717A', what: 'Burden to the mark row' },
+        { px: '6', w: '12px', tone: '#71717A', what: 'Eyebrow to the burden' },
+        { px: '30', w: '60px', tone: 'oklch(0.82 0.14 258)', what: 'One collapsed earlier row, end to end' }
+      ],
+      ledger: [
+        { what: 'Opening the fold costs', was: '396px', now: '150px', tone: '#51E098', bar: '38%' },
+        { what: 'One earlier prayer', was: '85px', now: '30px', tone: '#51E098', bar: '35%' },
+        { what: 'Card, fold open', was: '824px', now: '495px', tone: 'oklch(0.82 0.14 258)', bar: '64%' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

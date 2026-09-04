@@ -1,0 +1,62 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Proposed — one spine, coloured dots",
+      "is_interactive": true
+    },
+    {
+      "file": "Today.dc.html",
+      "x": 0,
+      "y": 800,
+      "w": 1180,
+      "h": 1180,
+      "title": "Today — the fold open, measured"
+    },
+    {
+      "file": "Lines.dc.html",
+      "x": 1300,
+      "y": 0,
+      "w": 980,
+      "h": 1580,
+      "title": "The line system, both themes"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": -330,
+      "y": 0,
+      "w": 270,
+      "text": "Issue #709\n\n\"the folded looks funky and crammed and the line coloring\"\n\nReported from /prayer at 1107x662, in the dark theme — so these artboards are dark too."
+    },
+    {
+      "id": "try-me",
+      "x": -330,
+      "y": 260,
+      "w": 270,
+      "text": "Try it: open and close the fold on the spine, then click any earlier line to open that prayer in place.\n\nThe chip above this artboard flips the whole thing to the light theme — the line colours have to survive both."
+    },
+    {
+      "id": "note-today",
+      "x": -330,
+      "y": 800,
+      "w": 270,
+      "text": "Heights here are added up from PrayerList.tsx and the Ink tokens, not measured off the screenshot. The contrast ratios on the right are what \"the line coloring\" turns out to mean."
+    },
+    {
+      "id": "note-lines",
+      "x": 1300,
+      "y": -210,
+      "w": 500,
+      "text": "The rule the other two artboards are built on, and the one change (the card's own border) that reaches past this card and so should be decided separately."
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}
