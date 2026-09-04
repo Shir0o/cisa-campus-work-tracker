@@ -242,8 +242,9 @@ export default function NavRail(_props: NavRailProps = {}) {
 
         {/* No top padding: this block has no group label, so any top padding
             reads as an orphaned gap below the Elsewhere group (#747). The
-            collapsed-mode divider above the icon provides its own separation. */}
-        <div className="pb-3">
+            collapsed-mode divider above the icon provides its own separation.
+            pb-6 ensures comfortable breathing room at the bottom of the slab (#794). */}
+        <div className="pb-6">
           {collapsed && (
             <div
               aria-hidden="true"
