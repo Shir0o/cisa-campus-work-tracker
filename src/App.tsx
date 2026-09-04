@@ -35,7 +35,6 @@ import SmartImportModal from "./components/modals/SmartImportModal";
 import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
-import { ReleaseSheet } from "./components/release/ReleaseSheet";
 import WhatsNewModal from "./components/WhatsNewModal";
 import whatsNewManifest from "./generated/whats-new.json";
 import { shouldShowWhatsNew, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
@@ -580,7 +579,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         />
 
         <FeedbackFAB />
-        <ReleaseSheet />
         <WhatsNewModal
           isOpen={isWhatsNewOpen}
           onClose={() => setIsWhatsNewOpen(false)}

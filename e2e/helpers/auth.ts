@@ -49,9 +49,9 @@ export async function signInAs(page: Page, role: Role) {
   // Wait for the authed app shell (sidebar) to render
   await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
 
-  // Dismiss "A few things are different" ReleaseSheet modal if shown
-  const carryOnBtn = page.getByRole('button', { name: /carry on/i });
-  if (await carryOnBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await carryOnBtn.click().catch(() => {});
+  // Dismiss "What's New" modal if shown
+  const gotItBtn = page.getByRole('button', { name: /got it/i });
+  if (await gotItBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await gotItBtn.click().catch(() => {});
   }
 }

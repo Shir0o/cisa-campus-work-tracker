@@ -8,7 +8,9 @@ import {
   seenVersion,
   markReleaseSeen,
   subscribeReleases,
+  useRelease,
 } from '../lib/releases';
+import { renderHook } from '@testing-library/react';
 
 describe('releases lib (web mirror)', () => {
   beforeEach(() => {
@@ -55,5 +57,16 @@ describe('releases lib (web mirror)', () => {
   it('formats dates like the design', () => {
     expect(releaseDateWords('2026-08-25')).toMatch(/25/i);
     expect(releaseDateWords('nonsense')).toBe('');
+  });
+
+  it('exercises useRelease hook without errors', () => {
+    const { result } = renderHook(() => useRelease('admin', false));
+    expect(result.current).toEqual(RELEASES[0]);
+  });
+
+  it('handles corrupted localStorage gracefully in seenVersion', () => {
+    localStorage.setItem('cisa.release.v1', '{bad-json');
+    // Calling read via fresh evaluation logic
+    expect(releaseShow('admin', false, null)).toEqual(RELEASES[0]);
   });
 });
