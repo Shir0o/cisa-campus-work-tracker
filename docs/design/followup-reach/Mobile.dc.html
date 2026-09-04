@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --warn:#BA5900; --warn-soft:#FFF2D2; --success:#016A1C;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+
+    .screen{padding:20px 16px 28px;display:flex;flex-direction:column;gap:18px}
+    .greet{display:flex;flex-direction:column;gap:2px}
+    .greet .hi{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:26px;
+      letter-spacing:-0.025em;line-height:1.1}
+    .greet .sub{font-size:13px;color:var(--on-surface-variant)}
+
+    .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+    .sec-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:17px;
+      letter-spacing:-0.015em}
+    .sec-act{font-size:12px;font-weight:500;color:var(--accent);text-decoration:underline;
+      text-underline-offset:2px}
+
+    .cards{display:flex;flex-direction:column;gap:10px}
+    .stack{border-radius:16px;border:1px solid var(--outline-variant);background:var(--surface);padding:14px}
+    .stack.open{background:var(--bg);box-shadow:inset 2px 0 0 0 var(--warn)}
+    .stack.closed{opacity:.74}
+    .stack-row{display:flex;align-items:flex-start;gap:12px}
+    .avatar{width:36px;height:36px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:12.5px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .line1{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .namewrap{display:flex;align-items:center;gap:7px;min-width:0}
+    .pname{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .unread-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .rel{font-size:11.5px;color:var(--on-surface-variant);opacity:.8;flex:none}
+    .phrases{font-size:11.5px;font-weight:500;color:var(--on-surface-variant);margin-top:3px}
+    .latest{font-size:11.5px;color:var(--on-surface-variant);margin:6px 0 0;line-height:1.5;
+      background:var(--warn-soft);border-radius:10px;padding:8px 9px}
+    .latest.plain{background:rgba(234,234,236,0.55)}
+    .latest b{color:var(--on-surface);font-weight:600}
+    .actions{display:flex;align-items:center;gap:8px;margin-top:11px}
+    .btn-s{flex:1;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      padding:0 14px;border-radius:999px;border:0;background:var(--primary);color:var(--on-primary);
+      font-size:13px;font-weight:500}
+    .btn-o{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;
+      border-radius:999px;border:1px solid var(--outline);background:transparent;color:var(--on-surface)}
+    .closed-line{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11.5px;
+      color:var(--success);font-weight:500}
+
+    .note{background:var(--surface-variant);border-radius:16px;padding:14px 15px;
+      display:flex;flex-direction:column;gap:6px}
+    .note b{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:13px;
+      letter-spacing:-0.01em}
+    .note p{margin:0;font-size:11.5px;line-height:1.62;color:var(--on-surface-variant)}
+    .note p strong{color:var(--on-surface);font-weight:600}
+  </style>
+</helmet>
+
+<div class="screen">
+  <div class="greet">
+    <div class="hi">Good morning, Sam</div>
+    <div class="sub">Thursday &middot; 3 to work through</div>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <div class="sec-head">
+      <span class="sec-name">What&rsquo;s new</span>
+      <span class="sec-act">Mark all seen</span>
+    </div>
+
+    <div class="cards">
+      <article class="stack open">
+        <div class="stack-row">
+          <div class="avatar">EV</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap">
+                <span class="pname">Elena Vargas</span>
+                <span class="unread-dot"></span>
+              </div>
+              <span class="rel">2h</span>
+            </div>
+            <div class="phrases">David asked you something</div>
+            <p class="latest plain">Ana &mdash; did Elena say anything about the retreat weekend? Her sister is visiting and I want to know before we count her in.</p>
+            <div class="actions">
+              <button class="btn-s">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Write back
+              </button>
+              <button class="btn-o" style="width:auto;padding:0 16px">Answered</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stack open">
+        <div class="stack-row">
+          <div class="avatar">TN</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap">
+                <span class="pname">Tomas Nguyen</span>
+                <span class="unread-dot"></span>
+              </div>
+              <span class="rel">6d</span>
+            </div>
+            <div class="phrases">Ana asked for a follow-up &middot; nobody yet</div>
+            <p class="latest"><b>Open 6 days.</b> He said he&rsquo;d come to the Wednesday study and has missed two &mdash; could someone text him and just ask how he is?</p>
+            <div class="actions">
+              <button class="btn-s">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                I followed up
+              </button>
+              <button class="btn-o" aria-label="Write back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stack closed">
+        <div class="stack-row">
+          <div class="avatar">PK</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap">
+                <span class="pname">Priya Kaur</span>
+              </div>
+              <span class="rel">Yest</span>
+            </div>
+            <div class="phrases">Grace added them</div>
+            <div class="closed-line">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Reviewed
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="note">
+    <b>What the narrow width decides</b>
+    <p>The two actions split rather than wrap and both clear the 44px floor. The verb fits the item &mdash; <strong>Write back</strong> on a question, <strong>I followed up</strong> on an ask, <strong>Reviewed</strong> on a new person &mdash; because &ldquo;I followed up&rdquo; on a card about a note would claim you texted the student.</p>
+    <p>The summary line carries the state in words, so nothing depends on the 2px edge surviving a small screen. &ldquo;Encourage&rdquo; is not offered on an open ask: a request to go and see someone is not a thing to react to.</p>
+    <p>This is the surface a Trainee actually lives in, which is why the <strong>notification and push half ships to both platforms at once</strong> while the worklist lands on web first &mdash; mobile still derives this column from a different module with its own read store.</p>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

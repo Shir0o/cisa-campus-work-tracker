@@ -1781,7 +1781,7 @@ ${JSON.stringify(contactsList)}`;
   // Remote Push Dispatch: sends an Expo push notification to target user's registered pushToken
   app.post("/api/send-push", async (req, res) => {
     try {
-      const { userId, title, body, data } = req.body;
+      const { userId, title, body, data, coalesceKey, coalesceMinutes } = req.body;
       if (!userId || !title) {
         return res.status(400).json({ success: false, error: "userId and title are required" });
       }
@@ -1797,6 +1797,27 @@ ${JSON.stringify(contactsList)}`;
 
       if (!pushToken || typeof pushToken !== "string") {
         return res.status(200).json({ success: true, pushSent: false, reason: "No pushToken registered for user" });
+      }
+
+      // Coalescing (#813). A follow-up ask or a question reaches everyone tied to
+      // the contact, so two Full-timers going back and forth on one person must
+      // not buzz three Trainees eight times. The window lives here rather than on
+      // the sending client because the senders are different people on different
+      // devices — only the server sees them all. Nothing is lost when a push is
+      // held: the bell still carries every message.
+      const throttleRef =
+        typeof coalesceKey === "string" && coalesceKey
+          ? db.collection("pushThrottle").doc(userId)
+          : null;
+      if (throttleRef) {
+        const windowMs = Math.max(0, Number(coalesceMinutes) || 60) * 60_000;
+        const throttleSnap = await throttleRef.get();
+        const lastIso = throttleSnap.data()?.[coalesceKey];
+        const lastMs = typeof lastIso === "string" ? new Date(lastIso).getTime() : NaN;
+        if (!Number.isNaN(lastMs) && Date.now() - lastMs < windowMs) {
+          return res.status(200).json({ success: true, pushSent: false, reason: "coalesced" });
+        }
+        await throttleRef.set({ [coalesceKey]: new Date().toISOString() }, { merge: true });
       }
 
       const pushResponse = await fetch("https://exp.host/--/api/v2/push/send", {

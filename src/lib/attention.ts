@@ -1,11 +1,34 @@
 import type { Contact, Interaction, Notification } from "../types";
-import { isFullTimer, fullTimerIds } from "./walking";
+import { isFullTimer, isTrainee } from "./walking";
 import { teamOf } from "./teams";
-import type { ThreadKind, ThreadMessageWithContact } from "./threads";
+import type { ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { UserEntityState } from "./userEntityState";
 
 export type AttentionKind = "contact" | "interaction" | "thread" | "task" | "notification";
+
+/** Everyone tied to a contact (#813): they added them, they are the adder's
+ *  gospel partner, or they are the assigned caregiver — the same three ties
+ *  `canSeeContact` has always used — plus the fourth, private one: teammates
+ *  keeping this person on their own My Day. That fourth tie is indexed by
+ *  person rather than by contact, so it cannot be resolved by whoever is
+ *  posting; it is resolved here, on the reader's own screen, from preferences
+ *  they already have loaded. */
+export function isTiedTo(
+  contact: Pick<Contact, "createdBy" | "addedBy" | "owner" | "coCreators"> | undefined,
+  uid: string,
+  personalContactIds?: Set<string> | null,
+  contactId?: string | null,
+): boolean {
+  if (contactId && personalContactIds?.has(contactId)) return true;
+  if (!contact || !uid) return false;
+  return (
+    contact.createdBy === uid ||
+    contact.addedBy === uid ||
+    contact.owner === uid ||
+    (contact.coCreators || []).includes(uid)
+  );
+}
 
 export interface AttentionItem {
   id: string; // e.g. "contact:<id>" | "interaction:<id>" | "thread:<id>" | "task:<id>" | "notif:<id>"
@@ -18,9 +41,14 @@ export interface AttentionItem {
   title?: string | null;
   body?: string | null;
   interactionId?: string | null;
-  reviewed?: boolean;
   kind?: string | null; // e.g. "question" | "nudge" | "note"
   mentioned?: boolean;
+  /** Follow-up asks: set once someone said they did it (or the asker retracted). */
+  closedAt?: string | null;
+  closedByName?: string | null;
+  /** Set on the asker's own outstanding questions, so they can see what they
+   *  are waiting on. Without it "both ends" is really one end. */
+  awaitingReply?: boolean;
 }
 
 
@@ -84,12 +112,26 @@ export function buildAttentionItems(params: {
     createdById?: string | null;
   }>;
   notifications?: Notification[];
+  /** The reader's own "keeping them" set — the fourth, private tie (#813). */
+  personalContactIds?: Set<string> | null;
 }): AttentionItem[] {
-  const { role, uid, contacts = [], interactions = [], threads = [], tasks = [], notifications = [] } = params;
+  const {
+    role,
+    uid,
+    contacts = [],
+    interactions = [],
+    threads = [],
+    tasks = [],
+    notifications = [],
+    personalContactIds = null,
+  } = params;
   const items: AttentionItem[] = [];
 
   const isFullTimerView = role === "admin" || role === "owner" || role === "full_timer" || isFullTimer(uid);
-  const isTraineeView = role === "trainee";
+  const contactById = new Map<string, Contact>();
+  for (const c of contacts) contactById.set(c.id, c);
+  const tied = (contactId?: string | null) =>
+    !!contactId && isTiedTo(contactById.get(contactId), uid, personalContactIds, contactId);
 
   if (isFullTimerView) {
     // 1. Team-added contacts (except full-timer's own)
@@ -101,7 +143,6 @@ export function buildAttentionItems(params: {
           at: c.createdAt ?? new Date().toISOString(),
           contactId: c.id,
           by: c.createdBy,
-          reviewed: !!c.reviewed,
           body: c.notes,
         });
       }
@@ -145,30 +186,65 @@ export function buildAttentionItems(params: {
             body: m.body,
             kind: m.kind,
             interactionId: m.interactionId ?? null,
+            closedAt: m.closedAt ?? null,
+            closedByName: m.closedByName ?? null,
           });
         }
       }
     }
-  } else if (isTraineeView) {
-    // Trainee: anything a full-timer wrote (answers/comments/nudges + questions).
-    // No pairing — accept from ANY full-timer and name the writer. Team-scope
-    // Discussion messages are Full-timer-only and must never reach trainees.
-    const fts = fullTimerIds();
+  } else if (role === "manager" || isTrainee(uid)) {
+    // A Trainee sees what was written about the people they are TIED to (#813).
+    // The branch this replaces gated on `role === "trainee"`, but a Trainee's
+    // role is `manager`, so it had never once executed — and had it executed it
+    // would have handed every Trainee every Full-timer's message about students
+    // they have never met. Students and Community members are deliberately not
+    // included: they do not get this feed, and staff notes are not theirs to
+    // read even about a person they signed up. Team-scope messages are
+    // Full-timer-only and must never reach anyone else.
     for (const m of threads) {
       if (m.scope === "team") continue;
-      if (m.from && fts.includes(m.from) && m.from !== uid) {
-        items.push({
-          id: "thread:" + m.id,
-          type: "thread",
-          at: m.at,
-          contactId: m.contactId,
-          by: m.from,
-          body: m.body,
-          kind: m.kind,
-          interactionId: m.interactionId ?? null,
-        });
-      }
+      if (!m.from || m.from === uid) continue;
+      if (!tied(m.contactId)) continue;
+      items.push({
+        id: "thread:" + m.id,
+        type: "thread",
+        at: m.at,
+        contactId: m.contactId,
+        by: m.from,
+        body: m.body,
+        kind: m.kind,
+        interactionId: m.interactionId ?? null,
+        closedAt: m.closedAt ?? null,
+        closedByName: m.closedByName ?? null,
+      });
     }
+  }
+
+  // The asker's own outstanding questions. `buildAttentionItems` has always
+  // tracked unanswered questions from *anyone else*, so the one person who
+  // cannot see a question is the person waiting on it.
+  for (const m of threads) {
+    if (m.kind !== "question" || m.from !== uid) continue;
+    if (m.scope === "team" && !isFullTimerView) continue;
+    const answered = threads.some(
+      (r) =>
+        r.from !== uid &&
+        r.contactId === m.contactId &&
+        (r.interactionId ?? null) === (m.interactionId ?? null) &&
+        ms(r.at) > ms(m.at),
+    );
+    if (answered) continue;
+    items.push({
+      id: "thread:" + m.id,
+      type: "thread",
+      at: m.at,
+      contactId: m.contactId,
+      by: m.from,
+      body: m.body,
+      kind: m.kind,
+      interactionId: m.interactionId ?? null,
+      awaitingReply: true,
+    });
   }
 
   // 4. Thread messages where current user is explicitly mentioned
@@ -187,6 +263,8 @@ export function buildAttentionItems(params: {
           body: m.body,
           kind: m.kind,
           interactionId: m.interactionId ?? null,
+          closedAt: m.closedAt ?? null,
+          closedByName: m.closedByName ?? null,
           mentioned: true,
         });
       } else {
@@ -273,9 +351,7 @@ export function attentionStacksFor(items: AttentionItem[], uid: string): Attenti
     const by = [...new Set(groupItems.map((i) => i.by).filter((b): b is string => Boolean(b)))];
     const kinds = [...new Set(groupItems.map((i) => i.type))];
 
-    const unread = groupItems.filter(
-      (i) => !UserEntityState.isRead(uid, i.id) && !i.reviewed,
-    ).length;
+    const unread = groupItems.filter((i) => !UserEntityState.isRead(uid, i.id)).length;
 
     stacks.push({
       id: "att:" + groupKey,
@@ -310,14 +386,37 @@ export function attentionGroupsFor(stacks: AttentionStack[]): AttentionGroup[] {
   return groups;
 }
 
+/** What happened, in words that fit what actually happened (#813). Every thread
+ *  item used to read "asked you something", so a note, a comment and an
+ *  encouragement all announced themselves as a question the reader owed an
+ *  answer to — which is why nobody trusted the line. */
 export function attentionPhrase(item: AttentionItem, staffNameMap?: Record<string, string>): string {
   const byName = item.byName || (item.by && staffNameMap?.[item.by]) || "Someone";
   const firstName = byName.trim().split(/\s+/)[0];
 
   if (item.type === "contact") return `${firstName} added them`;
-  if (item.type === "thread") return `${firstName} asked you something`;
-  if (item.type === "task") return `${firstName} assigned a task`;
+  if (item.type === "task") return `${firstName} assigned a to-do`;
   if (item.type === "notification") return item.title || "New notification";
+
+  if (item.type === "thread") {
+    switch (item.kind) {
+      case "question":
+        // The asker's own outstanding question reads from their side.
+        return item.awaitingReply
+          ? "You asked something · no reply yet"
+          : `${firstName} asked you something`;
+      case "nudge":
+        if (item.closedAt) return `${item.closedByName?.trim().split(/\s+/)[0] || "Someone"} followed up`;
+        return `${firstName} asked for a follow-up`;
+      case "encouragement":
+        return `${firstName} encouraged you`;
+      case "note":
+        return `${firstName} left a note`;
+      default:
+        return `${firstName} wrote back`;
+    }
+  }
+
   return `${firstName} logged ${item.title ? `“${item.title.length > 28 ? item.title.slice(0, 28) + "…" : item.title}”` : "time"}`;
 }
 
@@ -326,8 +425,9 @@ export function partitionAttentionStacks(
   contacts: Contact[],
   uid: string,
   role?: string,
+  personalContactIds?: Set<string> | null,
 ): { onYou: AttentionStack[]; aroundTeam: AttentionStack[] } {
-  const isTraineeView = role === "trainee";
+  void role;
   const contactMap = new Map<string, Contact>();
   for (const c of contacts) {
     contactMap.set(c.id, c);
@@ -337,30 +437,27 @@ export function partitionAttentionStacks(
   const aroundTeam: AttentionStack[] = [];
 
   for (const stack of stacks) {
-    if (isTraineeView) {
-      // For trainees, everything in their attention feed is from a full-timer or assigned to them
-      onYou.push(stack);
-      continue;
-    }
-
     // Direct items (tasks assigned to user, notifications for user)
     const hasDirectTaskOrNotif = stack.items.some(
       (it) => it.type === "task" || it.type === "notification",
     );
 
-    // Direct question or nudge in thread (where user didn't ask it, someone asked them), or explicit mention
+    // Something addressed to you: a question or a follow-up ask on a person you
+    // are involved with, an explicit mention, or a question you are waiting on.
     const hasThreadAskOrMention = stack.items.some(
-      (it) => it.type === "thread" && (it.kind === "question" || it.kind === "nudge" || it.mentioned),
+      (it) =>
+        it.type === "thread" &&
+        (it.kind === "question" || it.kind === "nudge" || it.mentioned || it.awaitingReply),
     );
 
-    // Check contact ownership/assignment
-    const contact = stack.contactId ? contactMap.get(stack.contactId) : undefined;
-    const isOwnedContact =
-      contact &&
-      (contact.owner === uid ||
-        contact.addedBy === uid ||
-        (!contact.owner && contact.createdBy === uid) ||
-        (contact.coCreators && contact.coCreators.includes(uid)));
+    // One definition of "tied to this person", shared with the notification
+    // reach — two different answers is how this drifted in the first place.
+    const isOwnedContact = isTiedTo(
+      stack.contactId ? contactMap.get(stack.contactId) : undefined,
+      uid,
+      personalContactIds,
+      stack.contactId,
+    );
 
     if (hasDirectTaskOrNotif || hasThreadAskOrMention || isOwnedContact) {
       onYou.push(stack);

@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --warn:#BA5900; --warn-soft:#FFF2D2; --success:#016A1C; --flag:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:11.5px;color:var(--on-surface)}
+
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:38px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.03;
+      letter-spacing:-0.03em;margin:0;max-width:20ch}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:72ch;margin:12px 0 0;line-height:1.68}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:23px;letter-spacing:-0.02em;margin:0}
+    .sec-sub{font-size:13.5px;color:var(--on-surface-variant);margin:6px 0 0;max-width:80ch;line-height:1.65}
+    .rule{height:1px;background:var(--outline);border:0;margin:0}
+
+    /* ── the four ties ────────────────────────────────────────────────────── */
+    .ties{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:18px}
+    .tie{background:var(--surface);border-radius:24px;padding:22px 24px;
+      display:flex;flex-direction:column;gap:12px}
+    .tie.missing{background:var(--warn-soft)}
+    .tie-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+    .tie-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:19px;
+      letter-spacing:-0.018em;margin:0}
+    .tie-said{font-size:12.5px;color:var(--on-surface-variant);margin:4px 0 0;line-height:1.55}
+    .pill{flex:none;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      padding:4px 10px;border-radius:999px;white-space:nowrap}
+    .pill.ships{background:var(--stage-teal-soft);color:var(--stage-teal)}
+    .pill.gap{background:var(--bg);color:var(--warn)}
+    .rows{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--outline-variant)}
+    .row{display:grid;grid-template-columns:118px 1fr;gap:14px;padding:9px 0;
+      border-bottom:1px solid var(--outline-variant);align-items:baseline}
+    .row:last-child{border-bottom:0}
+    .row dt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.055em;
+      color:var(--on-surface-variant);margin:0}
+    .row dd{margin:0;font-size:12.5px;line-height:1.6;color:var(--on-surface)}
+    .row dd em{color:var(--on-surface-variant);font-style:normal}
+    .yes{color:var(--success);font-weight:600}
+    .no{color:var(--warn);font-weight:600}
+    .tie p.why{margin:0;font-size:12.5px;line-height:1.68;color:var(--on-surface-variant)}
+    .tie p.why strong{color:var(--on-surface);font-weight:600}
+
+    /* ── the two paths ────────────────────────────────────────────────────── */
+    .paths{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:26px}
+    .path{border:1px solid var(--outline);border-radius:24px;padding:24px 26px;
+      display:flex;flex-direction:column;gap:14px}
+    .path h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:17px;
+      letter-spacing:-0.015em;margin:0}
+    .path .kick{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--stage-accent)}
+    .path p{margin:0;font-size:12.5px;line-height:1.68;color:var(--on-surface-variant)}
+    .path p strong{color:var(--on-surface);font-weight:600}
+    .flow{display:flex;flex-direction:column;gap:8px;background:var(--surface);
+      border-radius:16px;padding:16px 18px}
+    .step{display:flex;align-items:flex-start;gap:11px;font-size:12.5px;line-height:1.55}
+    .step i{width:19px;height:19px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:10px;font-weight:600;font-style:normal;
+      display:flex;align-items:center;justify-content:center;margin-top:1px}
+    .step b{font-weight:600;color:var(--on-surface)}
+    .step span{color:var(--on-surface-variant)}
+
+    .finding{border-left:2px solid var(--flag);padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:9px}
+    .finding-tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--flag)}
+    .finding p{margin:0;font-size:13.5px;line-height:1.68;color:var(--on-surface-variant);max-width:92ch}
+    .finding strong{color:var(--on-surface);font-weight:600}
+
+    .costs{background:var(--surface-variant);border-radius:24px;padding:28px 30px;
+      display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:30px}
+    .costs h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;margin:0 0 8px}
+    .costs p{margin:0 0 8px;font-size:12.5px;line-height:1.68;color:var(--on-surface-variant)}
+    .costs p:last-child{margin-bottom:0}
+    .costs strong{color:var(--on-surface);font-weight:600}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>Who is tied to a person</h1>
+    <p class="lede">The issue names three ties and the code has four. Two of them already receive a follow-up; two do not. They are not equivalent: three live on the contact document and can be read by whoever is posting, and the fourth lives in each teammate&rsquo;s own preferences and cannot. That asymmetry, not the count, is what decides how the reach is built.</p>
+  </header>
+
+  <hr class="rule">
+
+  <section class="ties">
+
+    <article class="tie">
+      <div class="tie-top">
+        <div>
+          <h3 class="tie-name">Added her</h3>
+          <p class="tie-said">&ldquo;the assigned/created person&rdquo;</p>
+        </div>
+        <span class="pill ships">Already reached</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Where</dt><dd><code>contact.createdBy</code>, falling back to <code>contact.addedBy</code></dd></div>
+        <div class="row"><dt>Readable</dt><dd><span class="yes">At write time</span> <em>&mdash; on the contact document the poster is already looking at</em></dd></div>
+        <div class="row"><dt>Today</dt><dd>Passed as <code>stakeholders.createdBy</code> from <code>ContactDetailsModal</code>; notified in <code>threads.ts</code></dd></div>
+      </dl>
+      <p class="why">The strongest tie in the product &mdash; <code>canSeeContact</code> treats it as the first test of whether a trainee may see a person at all. Nothing changes here.</p>
+    </article>
+
+    <article class="tie">
+      <div class="tie-top">
+        <div>
+          <h3 class="tie-name">Gospel partner</h3>
+          <p class="tie-said">&ldquo;as pair of the one who created it&rdquo;</p>
+        </div>
+        <span class="pill ships">Already reached</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Where</dt><dd><code>contact.coCreators</code> &mdash; stamped at creation by <code>stampPartners</code></dd></div>
+        <div class="row"><dt>Readable</dt><dd><span class="yes">At write time</span> <em>&mdash; a plain array on the contact</em></dd></div>
+        <div class="row"><dt>Today</dt><dd>Passed as <code>stakeholders.coCreators</code>; notified alongside the creator</dd></div>
+      </dl>
+      <p class="why">Stamped once, at creation, from the term&rsquo;s pairs. <strong>A pair formed after the contact was added is not on it</strong> &mdash; the array is a snapshot, not a live join. Worth knowing before anyone reports the partner tie as broken.</p>
+    </article>
+
+    <article class="tie missing">
+      <div class="tie-top">
+        <div>
+          <h3 class="tie-name">Assigned to her</h3>
+          <p class="tie-said">&ldquo;the assigned/created person&rdquo;</p>
+        </div>
+        <span class="pill gap">Not reached</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Where</dt><dd><code>contact.owner</code> &mdash; the caregiver, set at creation and transferable</dd></div>
+        <div class="row"><dt>Readable</dt><dd><span class="yes">At write time</span> <em>&mdash; same document, one more field</em></dd></div>
+        <div class="row"><dt>Today</dt><dd>Read by <code>canSeeContact</code> and by the feed&rsquo;s <em>On you</em> split &mdash; and by nothing in the notify path</dd></div>
+      </dl>
+      <p class="why">The clearest bug of the four. <code>permissions.ts</code> has said for a year that owner is one of the three ties that let you see a person; the notify path was written with two of the three. <strong>One line: add <code>owner</code> to <code>ThreadStakeholders</code>.</strong></p>
+    </article>
+
+    <article class="tie missing">
+      <div class="tie-top">
+        <div>
+          <h3 class="tie-name">Keeping her</h3>
+          <p class="tie-said">&ldquo;the one who added the contact to their sheep&rdquo;</p>
+        </div>
+        <span class="pill gap">Not reached</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Where</dt><dd><code>userPreferences/&lt;uid&gt;.personalContactIds</code> &mdash; one array per teammate</dd></div>
+        <div class="row"><dt>Readable</dt><dd><span class="no">Not at write time</span> <em>&mdash; it is indexed by person, not by contact</em></dd></div>
+        <div class="row"><dt>Today</dt><dd>Read only by the owning user, on their own My Day</dd></div>
+      </dl>
+      <p class="why">Not a missing line &mdash; a <strong>different shape</strong>. To answer &ldquo;who keeps Elena?&rdquo; at post time you would read every teammate&rsquo;s preference document and scan it. Unset means &ldquo;everyone I created&rdquo;, so absence is not an answer either. This tie is why the reach has two paths rather than one.</p>
+    </article>
+
+  </section>
+
+  <hr class="rule">
+
+  <section style="display:flex;flex-direction:column;gap:22px">
+    <div>
+      <h2>Two paths, because two shapes</h2>
+      <p class="sec-sub">Three ties are on the contact and can be pushed. The fourth is on the reader and must be pulled. Trying to run all four down one path is what makes this feature look hard.</p>
+    </div>
+
+    <div class="paths">
+      <article class="path">
+        <span class="kick">Push &mdash; at write time</span>
+        <h3>The bell, to the three ties on the contact</h3>
+        <div class="flow">
+          <div class="step"><i>1</i><span>Someone posts the follow-up in the contact&rsquo;s Follow up thread.</span></div>
+          <div class="step"><i>2</i><span><code>addThreadMessage</code> reads <b>createdBy</b>, <b>coCreators</b> and <b>owner</b> off the contact it was handed.</span></div>
+          <div class="step"><i>3</i><span>One notification document per recipient, minus the poster and anyone already mentioned.</span></div>
+          <div class="step"><i>4</i><span>Each recipient dismisses their own copy. <b>Per-person state, already tracked.</b></span></div>
+        </div>
+        <p>This is the path that ships today, one field short. <strong>Its per-person dismissal problem is already solved</strong>: a personal notification is deleted when set aside, a broadcast one records <code>dismissedBy</code>, and the bell reads at most 20. Nothing accumulates.</p>
+        <p>Cost of the fix: one field on <code>ThreadStakeholders</code>, one line at each of the three call sites in <code>ContactDetailsModal</code>.</p>
+      </article>
+
+      <article class="path">
+        <span class="kick">Pull &mdash; at read time</span>
+        <h3>The feed, for the people keeping her</h3>
+        <div class="flow">
+          <div class="step"><i>1</i><span>My Day already loads <b>your</b> <code>personalContactIds</code> &mdash; it is what draws Your sheep.</span></div>
+          <div class="step"><i>2</i><span>It already subscribes to <b>every</b> thread message via <code>subscribeAllThreads</code>.</span></div>
+          <div class="step"><i>3</i><span><code>buildAttentionItems</code> keeps a <b>nudge</b> on a contact in your set &mdash; the join happens on your own screen.</span></div>
+          <div class="step"><i>4</i><span>No document is written for you, so there is nothing of yours to clean up.</span></div>
+        </div>
+        <p>Both halves of the join are already in memory on My Day. <strong>The pull costs one filter clause and no reads at all</strong>, and it never exposes who keeps whom.</p>
+        <p>It also fixes the same tie for the other three, who reach the feed today only by an accident of role: a trainee&rsquo;s feed takes anything a Full-timer wrote, on any contact, whether or not it is theirs.</p>
+      </article>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section class="finding">
+    <div class="finding-tag">Why not just push to the keepers too</div>
+    <p>Because it is a privacy change wearing a performance costume. The rule at <code>firestore.rules:122</code> lets any Trainee or Full-timer read <em>every</em> teammate&rsquo;s preference document, so the fan-out would technically work &mdash; a client would read the whole roster&rsquo;s preferences on every post, and <strong>a Trainee&rsquo;s device would learn which people every teammate is privately carrying</strong>. Nothing in the product asks for that.</p>
+    <p>The pull needs none of it: your own preferences and the thread stream are both already on your screen. And the write path would still be wrong &mdash; someone adding Elena to their My Day <em>after</em> the question was posted would never receive it, because the fan-out already happened.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section style="display:flex;flex-direction:column;gap:22px">
+    <div>
+      <h2>Why a follow-up ask is not a to-do</h2>
+      <p class="sec-sub">The strongest objection to this whole design, and it deserves answering in full: the product already has a thing for &ldquo;someone should contact this person&rdquo;, it has better machinery, and both log modals already create it.</p>
+    </div>
+
+    <div class="paths">
+      <article class="path">
+        <span class="kick">What the to-do already has</span>
+        <h3>It is genuinely better equipped</h3>
+        <div class="flow">
+          <div class="step"><i>1</i><span><code>LogVisitModal</code> already asks <b>&ldquo;Anything to follow up?&rdquo;</b> &rarr; <b>&ldquo;Yes, put it on the list&rdquo;</b>, placeholder <em>&ldquo;e.g. Ask after her mum on Friday&rdquo;</em> &mdash; the definition, verbatim, already shipping.</span></div>
+          <div class="step"><i>2</i><span><code>Task</code> carries <b>assigneeId</b>, <b>dueDate</b>, <b>status</b>, <b>contactId</b>, <b>sourceInteractionId</b>, <b>createdById</b>.</span></div>
+          <div class="step"><i>3</i><span>It notifies the assignee (<code>todos.ts:184</code>) and an assigned pending to-do is one of <b>only three things that reach a Trainee&rsquo;s My Day today</b>.</span></div>
+          <div class="step"><i>4</i><span>A real done state, on the server, visible to everyone &mdash; everything this design had to invent.</span></div>
+        </div>
+        <p>Beside it the <code>nudge</code> message has no owner, no date, no done state, and lands on a feed branch that has never executed. <strong>On the machinery alone, the to-do wins outright.</strong></p>
+      </article>
+
+      <article class="path">
+        <span class="kick">Why it still loses</span>
+        <h3>An ask is not an assignment</h3>
+        <div class="flow">
+          <div class="step"><i>1</i><span>A to-do list is <b>personal</b> &mdash; the things I have taken on.</span></div>
+          <div class="step"><i>2</i><span>Putting someone else&rsquo;s name and a date on an errand <b>creates an obligation</b>, whoever meant it kindly.</span></div>
+          <div class="step"><i>3</i><span>A follow-up ask says <b>&ldquo;this wants doing&rdquo;</b> to everyone tied and lets someone pick it up. No owner is the feature.</span></div>
+          <div class="step"><i>4</i><span>So it borrows the to-do&rsquo;s <b>resolution</b> &mdash; explicit, shared, server-side &mdash; and refuses its <b>assignment</b>.</span></div>
+        </div>
+        <p>The cost is honest: this rebuilds a close that <code>Task</code> already has. What it buys is that a Full-timer can raise something without handing a named Trainee a deadline &mdash; and that both remain available, because the to-do path is untouched. <strong>When David does want Ana to own it by Friday, he assigns a to-do.</strong></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="costs">
+    <div>
+      <h3>What this asks of the data</h3>
+      <p><strong>One field on <code>ThreadStakeholders</code></strong> (<code>owner</code>), threaded through the three <code>ContactDetailsModal</code> call sites &mdash; and <code>stakeholders</code> added to mobile&rsquo;s <code>postThreadMessage</code>, which passes only <code>to</code> and therefore notifies nobody when a Trainee posts.</p>
+      <p><strong>Two fields on an ask</strong> &mdash; <code>closedBy</code>, <code>closedAt</code> &mdash; plus the matching allowance in <code>firestore.rules</code> for <code>contacts/&lt;id&gt;/threads</code>, or every close is rejected while the button looks like it worked. That is the exact failure the teams field hit in #727.</p>
+      <p><strong>One document per person</strong> at <code>inboxState/&lt;uid&gt;</code>. No new collection on the contact, no new notification type.</p>
+    </div>
+    <div>
+      <h3>What it asks of the copy</h3>
+      <p><code>AttentionFeed</code>&rsquo;s strings are hardcoded English, unlike the namespaces around it &mdash; and so are <code>LandingTrainee</code>&rsquo;s statuses. <strong>Every line and every verb here goes through <code>src/locales/en.json</code> and <code>es.json</code></strong> or <code>npm run check:i18n</code> fails.</p>
+      <p>The word is <strong>follow up</strong> only when someone contacts the person. <code>nudge</code> stays the internal kind name; nothing user-facing says it.</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1240,"height":2960}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

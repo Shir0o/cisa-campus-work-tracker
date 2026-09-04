@@ -1,0 +1,434 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --stage-amber:oklch(0.55 0.15 42); --stage-amber-soft:oklch(0.55 0.15 42 / 0.14);
+      --warn:#BA5900; --warn-soft:#FFF2D2; --success:#016A1C; --flag:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:12px;color:var(--on-surface)}
+
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:40px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:42px;line-height:1.02;
+      letter-spacing:-0.03em;margin:0;max-width:23ch}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:76ch;margin:14px 0 0;line-height:1.68}
+    .lede strong{color:var(--on-surface);font-weight:600}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:24px;letter-spacing:-0.02em;margin:0}
+    .sec-sub{font-size:13.5px;color:var(--on-surface-variant);margin:6px 0 0;max-width:84ch;line-height:1.65}
+    .rule{height:1px;background:var(--outline);border:0;margin:0}
+    .kicker{display:inline-block;font-size:10.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.07em;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+    .kicker.new{background:var(--stage-accent-soft);color:var(--stage-accent)}
+
+    .split{display:grid;grid-template-columns:1fr 400px;gap:44px;align-items:start}
+    .ann{display:flex;flex-direction:column;gap:12px;padding-top:6px}
+    .ann h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;
+      letter-spacing:-0.015em;margin:0}
+    .ann p{margin:0;font-size:13px;line-height:1.68;color:var(--on-surface-variant)}
+    .ann strong{color:var(--on-surface);font-weight:600}
+
+    /* the feed column + stack card */
+    .col{background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;
+      padding:18px;display:flex;flex-direction:column;gap:12px}
+    .col-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .col-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15px;letter-spacing:-0.01em}
+    .col-who{font-size:11.5px;color:var(--on-surface-variant)}
+    .stack{border-radius:16px;border:1px solid var(--outline-variant);background:var(--surface);padding:16px}
+    .stack.live{background:var(--bg)}
+    .stack.open{background:var(--bg);box-shadow:inset 2px 0 0 0 var(--warn)}
+    .stack.closed{background:var(--surface);opacity:.74}
+    .stack-row{display:flex;align-items:flex-start;gap:14px}
+    .avatar{width:44px;height:44px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:14px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .line1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .namewrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pname{font-size:16px;font-weight:500;color:var(--on-surface)}
+    .unread-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .rel{font-size:12px;color:var(--on-surface-variant);opacity:.8;flex:none}
+    .phrases{font-size:12px;font-weight:500;color:var(--on-surface-variant);margin-top:4px}
+    .latest{font-size:12px;color:var(--on-surface-variant);margin:6px 0 0;
+      background:rgba(234,234,236,0.5);border-radius:10px;padding:9px 10px;line-height:1.55}
+    .latest.warn{background:var(--warn-soft)}
+    .latest b{color:var(--on-surface);font-weight:600}
+    .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .btn-s{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:0;
+      background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:500}
+    .btn-o{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface);
+      font-size:12px;font-weight:500}
+    .closed-line{display:flex;align-items:center;gap:7px;margin-top:11px;font-size:12px;
+      color:var(--success);font-weight:500}
+
+    /* the inline composer */
+    .composer{margin-top:12px;border:1px solid var(--outline);background:var(--bg);border-radius:14px;
+      padding:12px;display:flex;flex-direction:column;gap:11px}
+    .seg{display:flex;gap:0;background:var(--surface-variant);border-radius:999px;padding:3px;align-self:flex-start}
+    .seg button{padding:5px 13px;border-radius:999px;border:0;background:transparent;
+      font-size:11.5px;font-weight:500;color:var(--on-surface-variant)}
+    .seg button.on{background:var(--bg);color:var(--on-surface);font-weight:600;
+      box-shadow:0 1px 2px rgba(10,10,11,0.08)}
+    .field{font-size:13px;line-height:1.55;color:var(--on-surface);min-height:38px}
+    .field .cursor{display:inline-block;width:1.5px;height:15px;background:var(--on-surface);
+      vertical-align:-3px;margin-left:1px}
+    .composer-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .reach{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+    .reach-lab{font-size:11px;font-weight:600;color:var(--stage-accent)}
+    .faces{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+    .face{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 2px;border-radius:999px;
+      background:var(--stage-accent-soft);font-size:11px;color:var(--on-surface)}
+    .face i{width:18px;height:18px;border-radius:999px;background:var(--bg);color:var(--accent);
+      font-size:8.5px;font-weight:600;font-style:normal;display:flex;align-items:center;justify-content:center}
+    .face span{color:var(--on-surface-variant);font-size:10px}
+
+    /* phone push */
+    .phone{width:300px;border-radius:26px;background:var(--surface-variant);padding:14px 12px 18px;
+      display:flex;flex-direction:column;gap:10px}
+    .phone-lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);padding:0 4px}
+    .push{background:var(--bg);border-radius:16px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start}
+    .push i{width:26px;height:26px;flex:none;border-radius:7px;background:var(--accent-soft);color:var(--accent);
+      display:flex;align-items:center;justify-content:center}
+    .push-body{flex:1;min-width:0}
+    .push-app{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+      color:var(--text-mute)}
+    .push-title{font-size:12.5px;font-weight:600;margin-top:2px;line-height:1.35}
+    .push-text{font-size:11.5px;color:var(--on-surface-variant);line-height:1.45;margin-top:2px}
+
+    .ladder{display:flex;flex-direction:column;gap:16px}
+    .rung{display:grid;grid-template-columns:1fr 360px;gap:36px;align-items:start;
+      padding:20px 22px;border-radius:24px;background:var(--surface-variant)}
+    .rung .stage{background:var(--surface);border-radius:18px;padding:14px}
+    .rung h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15.5px;
+      letter-spacing:-0.012em;margin:0 0 8px}
+    .rung p{margin:0 0 8px;font-size:12.5px;line-height:1.66;color:var(--on-surface-variant)}
+    .rung p:last-child{margin-bottom:0}
+    .rung strong{color:var(--on-surface);font-weight:600}
+
+    .finding{border-left:2px solid var(--flag);padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:9px}
+    .finding-tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--flag)}
+    .finding p{margin:0;font-size:13.5px;line-height:1.68;color:var(--on-surface-variant);max-width:94ch}
+    .finding strong{color:var(--on-surface);font-weight:600}
+
+    .tabs{background:var(--surface);border-radius:24px;padding:26px 28px;display:flex;
+      flex-direction:column;gap:16px}
+    .tabrow{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:8px 15px;border-radius:999px;font-size:12.5px;font-weight:500;
+      background:var(--bg);border:1px solid var(--outline-variant);color:var(--on-surface-variant)}
+    .tab.was{text-decoration:line-through;opacity:.5}
+    .tab.now{background:var(--primary);color:var(--on-primary);border-color:var(--primary);font-weight:600}
+    .tabs .cols{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:28px}
+    .tabs h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15px;margin:0 0 7px}
+    .tabs p{margin:0;font-size:12.5px;line-height:1.66;color:var(--on-surface-variant)}
+    .tabs strong{color:var(--on-surface);font-weight:600}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>A Full-timer asks a Trainee about someone, and it actually lands</h1>
+    <p class="lede">David wants to ask Ana about Elena. Today he cannot: the contact&rsquo;s thread only posts comments, the bell calls every kind &ldquo;commented on&rdquo;, the branch that would put it on Ana&rsquo;s My Day has never run, and nothing about a contact has ever reached a phone with the app closed. The drawing below is one path through all four &mdash; <strong>he writes it where he already is, it reaches everyone tied to Elena, and it ends in a way both of them can see.</strong></p>
+  </header>
+
+  <hr class="rule">
+
+  <section class="split">
+    <div class="col">
+      <div class="col-head">
+        <div class="col-name">Around the team</div>
+        <div class="col-who">David&rsquo;s My Day &mdash; where he already works</div>
+      </div>
+
+      <div class="stack live">
+        <div class="stack-row">
+          <div class="avatar">EV</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap">
+                <span class="pname">Elena Vargas</span>
+                <span class="unread-dot"></span>
+              </div>
+              <span class="rel">2h ago</span>
+            </div>
+            <div class="phrases">Ana added them</div>
+
+            <div class="composer">
+              <div class="seg">
+                <button>Comment</button>
+                <button class="on">Question</button>
+                <button>Ask a follow-up</button>
+              </div>
+              <div class="field">Ana &mdash; did Elena say anything about the retreat weekend? Her sister is visiting and I want to know before we count her in.<span class="cursor"></span></div>
+              <div class="composer-foot">
+                <div class="reach">
+                  <span class="reach-lab">Goes to</span>
+                  <div class="faces">
+                    <span class="face"><i>AR</i>Ana <span>added her</span></span>
+                    <span class="face"><i>SC</i>Sam <span>partner</span></span>
+                    <span class="face"><i>GK</i>Grace <span>assigned</span></span>
+                    <span class="face"><i>+2</i>keeping her</span>
+                  </div>
+                </div>
+                <button class="btn-s">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 14-7-5.5 14L11 13z"/></svg>
+                  Post
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="stack-row">
+          <div class="avatar">TN</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname">Tomas Nguyen</span><span class="unread-dot"></span></div>
+              <span class="rel">5h ago</span>
+            </div>
+            <div class="phrases">Sam logged &ldquo;coffee after class&rdquo;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <span class="kicker new">Three new things on one card</span>
+      <h3>He writes it without leaving the list</h3>
+      <p>The comment icon on a feed card today marks the stack scanned and opens the whole contact modal on the thread tab &mdash; you lose your place in the list you were working down. Here it opens <strong>in the card</strong>. Posting returns you to the feed with that card marked seen.</p>
+      <p>The <strong>segmented control</strong> is what makes a question a question. <code>THREAD_KINDS</code> has carried five kinds since it was written and <code>Thread.tsx</code> hardcodes <code>kind: "comment"</code> at both post sites, so <code>"question"</code> has never once been written in the web app.</p>
+      <p>The <strong>reach line</strong> names who will see it, in the order the ties are read. The people privately keeping Elena on their own My Day are a count, never names &mdash; that list is theirs, not the team&rsquo;s.</p>
+      <p>Typing <code>@Ana</code> narrows all of it to Ana: one bell, one push, no card for the other four.</p>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section class="split">
+    <div class="phone">
+      <div class="phone-lab">Ana&rsquo;s phone &mdash; app closed</div>
+      <div class="push">
+        <i>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        </i>
+        <div class="push-body">
+          <div class="push-app">CISA Campus Work Tracker</div>
+          <div class="push-title">David asked about Elena Vargas</div>
+          <div class="push-text">Ana — did Elena say anything about the retreat weekend? Her sister is visiting and I want to…</div>
+        </div>
+      </div>
+      <div class="phone-lab" style="padding-top:6px">Then, when she opens it</div>
+      <div class="stack live" style="border-radius:16px">
+        <div class="stack-row">
+          <div class="avatar">EV</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname" style="font-size:14px">Elena Vargas</span><span class="unread-dot"></span></div>
+              <span class="rel">now</span>
+            </div>
+            <div class="phrases">David asked you something</div>
+            <p class="latest">Ana &mdash; did Elena say anything about the retreat weekend?</p>
+            <div class="actions">
+              <button class="btn-s">Write back</button>
+              <button class="btn-o">Answered</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <span class="kicker new">The half that has never worked</span>
+      <h3>It reaches her phone, not just the app</h3>
+      <p><code>sendPushNotification</code> &mdash; the Expo path that reaches a phone with the app closed &mdash; is called from <code>services/chat.ts</code> and a Settings test button, and <strong>nowhere else</strong>. The bell&rsquo;s <code>sendNotification</code> never calls it. On web, <code>showWebPushNotification</code> fires from inside an <code>onSnapshot</code> in a mounted component, so it only fires if the tab is already open.</p>
+      <p>So a question about a person has never reached anyone who was not already looking. Chat has proved the path works; this uses it. <strong>At most one push per contact per person per hour</strong> &mdash; two Full-timers going back and forth must not buzz three Trainees eight times. Everything still lands in the bell.</p>
+      <p>The card says <strong>&ldquo;David asked you something&rdquo;</strong>, not the generic line. <code>attentionPhrase</code> currently says that sentence for <em>every</em> thread item &mdash; notes, comments and encouragements included &mdash; which is why nobody trusts it.</p>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section style="display:flex;flex-direction:column;gap:22px">
+    <div>
+      <h2>How each one ends</h2>
+      <p class="sec-sub">Two kinds, two endings. A question ends when someone answers it; a follow-up ask ends only when a person says they did the thing. Nothing closes implicitly &mdash; not logging an Interaction, not replying.</p>
+    </div>
+
+    <div class="ladder">
+
+      <article class="rung">
+        <div class="stage">
+          <div class="col">
+            <div class="col-head">
+              <div class="col-name">On you</div>
+              <div class="col-who">David&rsquo;s My Day &mdash; the asker&rsquo;s end</div>
+            </div>
+            <div class="stack closed">
+              <div class="stack-row">
+                <div class="avatar">EV</div>
+                <div class="grow">
+                  <div class="line1">
+                    <div class="namewrap"><span class="pname">Elena Vargas</span></div>
+                    <span class="rel">1h ago</span>
+                  </div>
+                  <div class="phrases">Ana wrote back</div>
+                  <p class="latest">She&rsquo;s in &mdash; her sister comes the Friday, not the Saturday. I&rsquo;ll put her on the list.</p>
+                  <div class="closed-line">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    Answered by Ana
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>A question ends by being answered</h3>
+          <p>No resolve button and no status to maintain: <strong>the first reply from someone other than the asker answers it.</strong> That keeps it consistent with <code>/questions</code>, which decided deliberately that &ldquo;asking and reading are ONE list and nothing is ever resolved&rdquo;.</p>
+          <p>An <strong>Answered</strong> button exists for the case the reply happens in person &mdash; Ana tells David at Wednesday&rsquo;s study &mdash; so the loop can be closed by hand without a fake message.</p>
+          <p>New: <strong>David sees his own unanswered questions.</strong> Today <code>attention.ts:128</code> tracks unanswered questions from <em>anyone else</em>, so an asker can see the team&rsquo;s outstanding questions and never their own. One inverted filter, and &ldquo;both ends&rdquo; stops being one end.</p>
+        </div>
+      </article>
+
+      <article class="rung">
+        <div class="stage">
+          <div class="col">
+            <div class="col-head">
+              <div class="col-name">On you</div>
+              <div class="col-who">Sam&rsquo;s My Day &mdash; a follow-up ask, nobody yet</div>
+            </div>
+            <div class="stack open">
+              <div class="stack-row">
+                <div class="avatar">TN</div>
+                <div class="grow">
+                  <div class="line1">
+                    <div class="namewrap"><span class="pname">Tomas Nguyen</span><span class="unread-dot"></span></div>
+                    <span class="rel">6d ago</span>
+                  </div>
+                  <div class="phrases">David asked for a follow-up &middot; nobody yet</div>
+                  <p class="latest warn"><b>Open 6 days.</b> He said he&rsquo;d come to the Wednesday study and has missed two &mdash; could someone text him and just ask how he is?</p>
+                  <div class="actions">
+                    <button class="btn-s">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      I followed up
+                    </button>
+                    <button class="btn-o">Write back</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>An ask is not an assignment</h3>
+          <p>No owner and no due date &mdash; that is the whole difference between this and a to-do. A to-do is a personal list; putting someone else&rsquo;s name and a date on an errand makes an obligation, and this is meant to say <em>this wants doing</em> to everyone tied and let someone pick it up.</p>
+          <p>The <strong>age is shown as a fact</strong> and nothing else: no colour shift, no reordering, no reminder. Drop it and an unowned ask becomes invisible, which is how &ldquo;no obligation&rdquo; turns into &ldquo;nobody does it&rdquo;. Escalating it would just be obligation with extra steps.</p>
+          <p>Anyone tied closes it with <strong>I followed up</strong>. David can retract it with <strong>Never mind</strong> &mdash; if he catches Tomas himself on Wednesday, the alternative is three Trainees carrying a dead ask or someone falsely claiming they did it.</p>
+        </div>
+      </article>
+
+      <article class="rung">
+        <div class="stage">
+          <div class="col">
+            <div class="col-head">
+              <div class="col-name">On you</div>
+              <div class="col-who">After Sam texts him</div>
+            </div>
+            <div class="stack closed">
+              <div class="stack-row">
+                <div class="avatar">TN</div>
+                <div class="grow">
+                  <div class="line1">
+                    <div class="namewrap"><span class="pname">Tomas Nguyen</span></div>
+                    <span class="rel">20m ago</span>
+                  </div>
+                  <div class="phrases">Sam followed up</div>
+                  <p class="latest">Texted him &mdash; he&rsquo;s been on nights at work. Says he&rsquo;ll be there next week.</p>
+                  <div class="closed-line">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    Closed by Sam &middot; 20m ago
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Closed once, for everyone tied</h3>
+          <p>Sam pressed the button. The card resolves on David&rsquo;s screen, and Ana&rsquo;s, and both keepers&rsquo;, without any of them touching it. <strong>There is no per-person dismissal to track, because the thing tracked is the ask, not five people&rsquo;s reading of it.</strong></p>
+          <p><strong>Closing is always explicit.</strong> Logging an Interaction with Tomas does not close it and neither does replying in the thread &mdash; you might have texted him about something else entirely, and silently closing David&rsquo;s ask would lose it with nobody noticing.</p>
+          <p>It stays visible, resolved, until the date bucket rolls over. Vanishing the instant someone acts hides the useful half: that it was done, and by whom.</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section class="finding">
+    <div class="finding-tag">Four dead things this walks over &mdash; all of them readers with no writer, or branches with no caller</div>
+    <p><strong>The Trainee&rsquo;s feed has never run.</strong> <code>attention.ts:92</code> gates on <code>role === "trainee"</code>; a Trainee is <code>manager</code>. Five months, no test, no execution &mdash; and had it run it would have handed every Trainee every Full-timer&rsquo;s message about students they have never met. It is deleted, not revived: Trainee items now come from <strong>the four ties</strong>, the same set the notification uses, so the feed and the bell agree on who is involved.</p>
+    <p><strong>The bell flattens every kind</strong> into &ldquo;commented on&rdquo; (<code>threads.ts:270</code>), because the one path that uses the kind-shaped titles is skipped for anyone already notified as a stakeholder. <strong><code>contact.reviewed</code> has four readers and no writer</strong> outside the seed scripts &mdash; so the Trainee-facing &ldquo;awaiting a look&rdquo; could never resolve, and one of its branches would have rendered the literal string <em>&ldquo;undefined weighed in&rdquo;</em>. Both are recorded in <a href="#">DRIFT.md</a>, rows 21&ndash;28.</p>
+  </section>
+
+  <section class="tabs">
+    <div>
+      <span class="kicker">The words on the contact page</span>
+      <div class="tabrow" style="margin-top:12px">
+        <span class="tab">Overview</span>
+        <span class="tab now">Interactions</span>
+        <span class="tab was">Follow-up</span>
+        <span class="tab now">Conversation</span>
+        <span class="tab">Prayer</span>
+        <span class="tab was">Discussion</span>
+        <span class="tab now">Full-timers</span>
+        <span class="tab">History</span>
+      </div>
+    </div>
+    <div class="cols">
+      <div>
+        <h3>Follow-up &rarr; Conversation</h3>
+        <p>A <strong>follow up</strong> is texting or emailing the contact after the first encounter. It was never a name for a place staff write &mdash; and the tab titled &ldquo;Follow-up&rdquo; describes itself, in its own subtitle, as <em>&ldquo;Comments on {name}&rdquo;</em>.</p>
+      </div>
+      <div>
+        <h3>Interactions stays Interactions</h3>
+        <p>The word appears 41 times in <code>en.json</code>, including the tab itself. Two stray strings say &ldquo;conversations&rdquo; six lines from <code>"No interactions logged yet."</code> &mdash; those are corrected, and mobile&rsquo;s &ldquo;Story&rdquo; joins them.</p>
+      </div>
+      <div>
+        <h3>Discussion &rarr; Full-timers</h3>
+        <p>&ldquo;Conversation&rdquo; and &ldquo;Discussion&rdquo; are near-synonyms for two different audiences. The person who needs the distinction is the Full-timer, who sees both tabs and has to remember which one Ana can read. <strong>The label should carry the answer.</strong></p>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1440,"height":2760}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

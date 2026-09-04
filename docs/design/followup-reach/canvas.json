@@ -1,0 +1,92 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 2760,
+      "title": "Asking a Trainee about someone"
+    },
+    {
+      "file": "Inbox.dc.html",
+      "x": 1560,
+      "y": 0,
+      "w": 1320,
+      "h": 2500,
+      "title": "The feed becomes a worklist"
+    },
+    {
+      "file": "Reach.dc.html",
+      "x": 3000,
+      "y": 0,
+      "w": 1240,
+      "h": 2960,
+      "title": "Who is tied to a person"
+    },
+    {
+      "file": "Options.dc.html",
+      "x": 4360,
+      "y": 0,
+      "w": 1320,
+      "h": 1900,
+      "title": "Info, dismissible, or open"
+    },
+    {
+      "file": "Mobile.dc.html",
+      "x": 0,
+      "y": 2900,
+      "w": 390,
+      "h": 844,
+      "title": "My Day — 390"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -420,
+      "w": 520,
+      "text": "Issue #813 asked who a follow-up should reach. Grilling it turned up the harder question underneath: how does a Full-timer ask a Trainee about a contact at all, and how does it draw their attention when the Trainee never opens the contact page?\n\nAnswer: they write it from the feed card they already work in, it reaches everyone tied to that person by bell AND push, and it ends in a way both ends can see.\n\nFourteen findings came out of the reading. Eight became DRIFT.md rows 21-28."
+    },
+    {
+      "id": "dead-note",
+      "x": 620,
+      "y": -420,
+      "w": 440,
+      "text": "Four things this design walks over, all found by reading rather than clicking:\n\n· Thread.tsx hardcodes kind \"comment\" — a question has never been postable.\n· attention.ts gates the Trainee feed on role === \"trainee\"; a Trainee is \"manager\". The branch has never run.\n· contact.reviewed: four readers, zero writers.\n· Real push is wired to chat and nothing else.\n\nNone would have surfaced from a screenshot."
+    },
+    {
+      "id": "inbox-note",
+      "x": 1560,
+      "y": -420,
+      "w": 460,
+      "text": "The inbox need: \"the ones I've viewed vs the ones that are new\" — plus the ones opened and deliberately left for later.\n\nThat is two facts, and userEntityState.ts already models them as two (read = seen, done = handled). They are in localStorage and the feed collapses them into one click.\n\nSeparate them, move them to inboxState/<uid>, and the count means \"not completed\" while the dot means \"never opened\". Opening something never makes the number fall."
+    },
+    {
+      "id": "reach-note",
+      "x": 3000,
+      "y": -420,
+      "w": 460,
+      "text": "Four ties, not three. Three live on the contact and are pushed at write time — one of them, owner, is simply missing from the notify path.\n\nThe fourth, who keeps this person on their own My Day, is private to each teammate and is pulled on the reader's screen instead.\n\nThe second half of this sheet answers the strongest objection to the whole design: the to-do already does this, better. It loses anyway, and the reason is the load-bearing one."
+    },
+    {
+      "id": "options-note",
+      "x": 4360,
+      "y": -420,
+      "w": 440,
+      "text": "The three ways this could go, kept as the record of why C won — with the arithmetic underneath.\n\nRevised since first publish: C keeps its shared close but gives up its convenience. Only the explicit button closes an ask. Logging an Interaction does not, and neither does replying — you may have texted them about something else entirely."
+    },
+    {
+      "id": "mobile-note",
+      "x": 470,
+      "y": 2900,
+      "w": 340,
+      "text": "The surface a Trainee actually lives in.\n\nWhich is why the notification and push half ships to BOTH platforms at once, while the worklist lands on web first — mobile derives this column from a different module (inboxItemsFor) with its own read store, and building a worklist on a fourth storage layer would be worse than waiting."
+    }
+  ],
+  "launch": {
+    "view": "focused",
+    "file": "Main.dc.html"
+  }
+}

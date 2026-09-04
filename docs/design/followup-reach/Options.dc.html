@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --warn:#BA5900; --warn-soft:#FFF2D2; --success:#016A1C; --flag:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:11.5px;color:var(--on-surface)}
+
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:38px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.03;
+      letter-spacing:-0.03em;margin:0;max-width:22ch}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:74ch;margin:12px 0 0;line-height:1.68}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:23px;letter-spacing:-0.02em;margin:0}
+    .sec-sub{font-size:13.5px;color:var(--on-surface-variant);margin:6px 0 0;max-width:80ch;line-height:1.65}
+    .rule{height:1px;background:var(--outline);border:0;margin:0}
+
+    .opts{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:20px;align-items:stretch}
+    .opt{border-radius:24px;padding:24px 24px 26px;display:flex;flex-direction:column;gap:16px;
+      background:var(--surface)}
+    .opt.picked{background:var(--bg);border:2px solid var(--primary)}
+    .opt-head{display:flex;flex-direction:column;gap:7px}
+    .badge{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-size:10.5px;
+      font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:4px 10px;border-radius:999px;
+      background:var(--accent-soft);color:var(--accent)}
+    .badge.picked{background:var(--primary);color:var(--on-primary)}
+    .opt h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:21px;
+      letter-spacing:-0.02em;margin:0;line-height:1.15}
+    .opt .one{font-size:12.5px;line-height:1.6;color:var(--on-surface-variant);margin:0}
+
+    .mini{background:var(--surface-variant);border-radius:16px;padding:14px;display:flex;
+      flex-direction:column;gap:9px}
+    .opt.picked .mini{background:var(--surface)}
+    .mini-lab{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant)}
+    .mrow{display:flex;align-items:center;gap:9px;background:var(--bg);border-radius:11px;padding:9px 10px}
+    .mrow.dim{opacity:.5}
+    .mrow.edge{box-shadow:inset 2px 0 0 0 var(--warn)}
+    .mrow.done{opacity:.62}
+    .mdot{width:26px;height:26px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:9.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+    .mtext{flex:1;min-width:0;font-size:11px;line-height:1.4;color:var(--on-surface)}
+    .mtext b{font-weight:600}
+    .mtext span{display:block;color:var(--on-surface-variant);font-size:10.5px;margin-top:1px}
+    .mx{flex:none;color:var(--text-mute)}
+    .mchk{flex:none;color:var(--success)}
+    .mstack{font-size:10.5px;color:var(--on-surface-variant);text-align:center;padding-top:2px}
+
+    .facts{display:flex;flex-direction:column;gap:0;margin-top:auto}
+    .fact{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;align-items:baseline;
+      border-top:1px solid var(--outline-variant)}
+    .fact dt{margin:0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.055em;
+      color:var(--on-surface-variant)}
+    .fact dd{margin:0;font-size:12px;line-height:1.55;color:var(--on-surface)}
+    .fact dd.good{color:var(--success)}
+    .fact dd.bad{color:var(--warn)}
+
+    .tradeoff{border-left:2px solid var(--outline);padding-left:14px;display:flex;flex-direction:column;gap:6px}
+    .opt.picked .tradeoff{border-left-color:var(--primary)}
+    .tradeoff .t-lab{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant)}
+    .tradeoff p{margin:0;font-size:12px;line-height:1.62;color:var(--on-surface-variant)}
+    .tradeoff p strong{color:var(--on-surface);font-weight:600}
+
+    .arith{background:var(--surface);border-radius:24px;padding:28px 30px;
+      display:grid;grid-template-columns:340px 1fr;gap:36px;align-items:start}
+    .arith h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:19px;
+      letter-spacing:-0.018em;margin:0 0 8px}
+    .arith p{margin:0 0 9px;font-size:13px;line-height:1.68;color:var(--on-surface-variant)}
+    .arith p:last-child{margin-bottom:0}
+    .arith strong{color:var(--on-surface);font-weight:600}
+    .bars{display:flex;flex-direction:column;gap:12px}
+    .bar{display:grid;grid-template-columns:210px 1fr 90px;gap:16px;align-items:center}
+    .bar-lab{font-size:12.5px;color:var(--on-surface)}
+    .bar-lab span{display:block;font-size:11px;color:var(--on-surface-variant);margin-top:1px}
+    .track{height:22px;border-radius:8px;background:var(--surface-variant);overflow:hidden}
+    .fill{height:100%;border-radius:8px}
+    .bar-num{font-size:12.5px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+
+    .finding{border-left:2px solid var(--flag);padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:9px}
+    .finding-tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--flag)}
+    .finding p{margin:0;font-size:13.5px;line-height:1.68;color:var(--on-surface-variant);max-width:92ch}
+    .finding strong{color:var(--on-surface);font-weight:600}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>Info, dismissible, or open &mdash; the three ways this can go</h1>
+    <p class="lede">The issue poses a two-way choice and is right that both sides are bad. Read plainly, though, the dilemma comes from an assumption neither side questions: that <em>a follow-up sent to five people is five things</em>. If it is one thing, the tracking question stops being a question. All three are drawn honestly below, including the one recommended.</p>
+  </header>
+
+  <hr class="rule">
+
+  <section class="opts">
+
+    <article class="opt">
+      <div class="opt-head">
+        <span class="badge">Option A</span>
+        <h3>Just information</h3>
+        <p class="one">The follow-up appears in everyone&rsquo;s feed and is never resolved. It ages out with the date bucket, like every other item.</p>
+      </div>
+
+      <div class="mini">
+        <div class="mini-lab">Sam&rsquo;s feed, a fortnight in</div>
+        <div class="mrow"><span class="mdot">EV</span><span class="mtext"><b>Elena Vargas</b><span>David asked for a follow-up</span></span></div>
+        <div class="mrow dim"><span class="mdot">TN</span><span class="mtext"><b>Tomas Nguyen</b><span>David asked for a follow-up</span></span></div>
+        <div class="mrow dim"><span class="mdot">PK</span><span class="mtext"><b>Priya Kaur</b><span>Ana asked for a follow-up</span></span></div>
+        <div class="mstack">&hellip; and 11 more, all still there</div>
+      </div>
+
+      <div class="tradeoff">
+        <span class="t-lab">The case for it</span>
+        <p>Nothing to build and nothing to store. It is where the product already is, minus the two missing ties, and the feed&rsquo;s date buckets do eventually carry things away on their own.</p>
+      </div>
+      <div class="tradeoff">
+        <span class="t-lab">The tradeoff</span>
+        <p><strong>Exactly the accumulation the issue predicts.</strong> Worse with five recipients than with two: nobody can tell an unhandled request from a handled one, so the feed teaches people to stop reading it &mdash; and a feed nobody reads makes the reach fix pointless.</p>
+      </div>
+
+      <dl class="facts">
+        <div class="fact"><dt>Tracks</dt><dd>Nothing</dd></div>
+        <div class="fact"><dt>Cost</dt><dd class="good">None</dd></div>
+        <div class="fact"><dt>Fails at</dt><dd class="bad">Week three</dd></div>
+      </dl>
+    </article>
+
+    <article class="opt">
+      <div class="opt-head">
+        <span class="badge">Option B</span>
+        <h3>Each person dismisses their own</h3>
+        <p class="one">Five copies, five dismissals. Everyone clears their own; nobody&rsquo;s clearing touches anyone else&rsquo;s.</p>
+      </div>
+
+      <div class="mini">
+        <div class="mini-lab">Same follow-up, five copies</div>
+        <div class="mrow"><span class="mdot">AR</span><span class="mtext"><b>Ana</b><span>cleared on her phone</span></span><span class="mx"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+        <div class="mrow"><span class="mdot">SC</span><span class="mtext"><b>Sam</b><span>still open &mdash; never saw Ana clear it</span></span></div>
+        <div class="mrow"><span class="mdot">GK</span><span class="mtext"><b>Grace</b><span>still open</span></span></div>
+        <div class="mstack">+ 2 keepers, both still open</div>
+      </div>
+
+      <div class="tradeoff">
+        <span class="t-lab">The case for it</span>
+        <p>It is how the bell already works, and it works: one document per recipient, set aside deletes your own, and the panel caps at 20. Per-person state that is genuinely tracked, on the server, across devices.</p>
+      </div>
+      <div class="tradeoff">
+        <span class="t-lab">The tradeoff</span>
+        <p><strong>Five people can each clear a follow-up nobody did.</strong> Clearing means &ldquo;I have read this&rdquo;, but the button says &ldquo;I followed up&rdquo; &mdash; so the one fact everybody needs, whether Elena was actually asked, is the one fact nobody can see.</p>
+      </div>
+
+      <dl class="facts">
+        <div class="fact"><dt>Tracks</dt><dd>Five readings</dd></div>
+        <div class="fact"><dt>Cost</dt><dd>Fan-out per post</dd></div>
+        <div class="fact"><dt>Fails at</dt><dd class="bad">Duplicated work</dd></div>
+      </dl>
+    </article>
+
+    <article class="opt picked">
+      <div class="opt-head">
+        <span class="badge picked">Option C &mdash; drawn as Main</span>
+        <h3>One open item, closed once</h3>
+        <p class="one">The ask is one piece of state on the person, not a copy in five inboxes. Anyone tied closes it, once, for all five.</p>
+      </div>
+
+      <div class="mini">
+        <div class="mini-lab">One item, five views of it</div>
+        <div class="mrow edge"><span class="mdot">TN</span><span class="mtext"><b>Tomas Nguyen</b><span>Open 6 days &middot; David asked</span></span></div>
+        <div class="mrow done"><span class="mdot">TN</span><span class="mtext"><b>Tomas Nguyen</b><span>Closed by Sam &middot; 20m ago</span></span><span class="mchk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+        <div class="mstack">Same two rows on all five screens</div>
+      </div>
+
+      <div class="tradeoff">
+        <span class="t-lab">The case for it</span>
+        <p>It answers the question by deleting it: <strong>there is no per-person dismissal to track</strong>, so nothing accumulates and nothing has to be reconciled across devices. And it says the thing the team actually needs to know &mdash; whether the person has been contacted, and by whom.</p>
+      </div>
+      <div class="tradeoff">
+        <span class="t-lab">The tradeoff</span>
+        <p><strong>You cannot dismiss it on your own.</strong> An ask that is not yours stays on your feed until somebody does it &mdash; which is the point, and will still occasionally be an annoyance. The asker&rsquo;s <em>Never mind</em> is the escape hatch, and the card goes quiet rather than louder as it ages.</p>
+      </div>
+
+      <dl class="facts">
+        <div class="fact"><dt>Tracks</dt><dd>One close</dd></div>
+        <div class="fact"><dt>Cost</dt><dd>Two fields + a rule</dd></div>
+        <div class="fact"><dt>Fails at</dt><dd class="bad">A stalled item</dd></div>
+      </dl>
+    </article>
+
+  </section>
+
+  <hr class="rule">
+
+  <section class="arith">
+    <div>
+      <h3>The accumulation, counted</h3>
+      <p>Twelve trainees, a term of roughly fourteen weeks, and a modest <strong>three follow-ups posted per trainee per week</strong> &mdash; about <strong>500 follow-ups</strong> over the term, each landing on the four ties this issue asks for. That is around <strong>2,000 deliveries</strong>, or <strong>168 per person</strong>.</p>
+      <p>Option A carries all 168 in one person&rsquo;s feed until their buckets roll over. Option B turns the same 168 into 168 deliberate dismissals &mdash; a dozen a week of clearing things by hand, none of which tells anyone anything.</p>
+      <p>Option C is the only number that does not scale with the size of the reach: 500 closes across the whole team, <strong>42 per person</strong>, and every one of them is a follow-up that actually happened.</p>
+    </div>
+    <div class="bars">
+      <div class="bar">
+        <div class="bar-lab">A &mdash; just information<span>items carried, one person, one term</span></div>
+        <div class="track"><div class="fill" style="width:100%;background:var(--warn)"></div></div>
+        <div class="bar-num">168</div>
+      </div>
+      <div class="bar">
+        <div class="bar-lab">B &mdash; each dismisses their own<span>deliberate dismissals, one person, one term</span></div>
+        <div class="track"><div class="fill" style="width:100%;background:var(--warn)"></div></div>
+        <div class="bar-num">168</div>
+      </div>
+      <div class="bar">
+        <div class="bar-lab">C &mdash; one open item<span>closes, one person, one term &mdash; each one a real follow-up</span></div>
+        <div class="track"><div class="fill" style="width:25%;background:var(--stage-teal)"></div></div>
+        <div class="bar-num">42</div>
+      </div>
+      <div class="bar">
+        <div class="bar-lab" style="color:var(--on-surface-variant)">C, per week<span>three a week, and none of it is bookkeeping</span></div>
+        <div class="track"><div class="fill" style="width:2%;background:var(--stage-teal)"></div></div>
+        <div class="bar-num">3</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="finding">
+    <div class="finding-tag">The half-option worth naming, and rejecting</div>
+    <p>C plus a personal &ldquo;hide this from my feed&rdquo; escape hatch looks like the best of both and is the worst of both: it reintroduces exactly the per-person state C was chosen to avoid, and it does it in <code>localStorage</code>, where it will disagree between someone&rsquo;s phone and their laptop for the rest of the term. If an open follow-up genuinely does not concern you, <strong>the fix is that you should not have been on its reach in the first place</strong> &mdash; which is a question about the four ties, and belongs on the other sheet.</p>
+    <p>The narrower version that <em>is</em> worth keeping: the poster choosing to send an ask to <strong>one named person</strong> rather than to everyone tied. That is the existing <code>@mention</code>, it already notifies only that person, and it needs nothing new.</p>
+    <p><strong>Settled since this sheet was first drawn:</strong> closing is <em>only</em> the explicit button. Logging an Interaction does not close an ask and neither does replying in the thread &mdash; you may have texted them about something else entirely, and closing David&rsquo;s ask silently would lose it with nobody noticing. C keeps its shared close and gives up its convenience.</p>
+  </section>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1320,"height":1900}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

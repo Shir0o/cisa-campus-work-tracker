@@ -1266,8 +1266,8 @@
       "contacted_by": "contacted by {name}",
       "added": "added {date}",
       "overview": "Overview",
-      "follow_up": "Follow-up",
-      "discussion": "Discussion",
+      "follow_up": "Conversation",
+      "discussion": "Full-timers",
       "interactions": "Interactions",
       "history": "History",
       "first_name": "FIRST NAME",
@@ -1299,8 +1299,8 @@
       "what_we_know": "What we know",
       "no_notes": "No notes recorded for this contact yet.",
       "lately": "Lately",
-      "our_last_few_conversations": "Our last few conversations",
-      "no_conversations": "No conversations logged yet.",
+      "our_last_few_conversations": "Our last few interactions",
+      "no_conversations": "No interactions logged yet.",
       "someone": "Someone",
       "prayers_we_re_holding": "Prayers we're praying for",
       "nothing_open": "Nothing open right now.",
@@ -1319,7 +1319,7 @@
       "date": "Date",
       "logging": "Logging...",
       "think_this_through_together": "Think this through together",
-      "thread_sub": "Comments on {name} — anyone who can see them can weigh in, and reply to a comment.",
+      "thread_sub": "Everyone tied to {name} sees this — whoever added them, their gospel partner, and whoever they are assigned to.",
       "prayer_burden_label": "What are we praying for?",
       "prayer_context_label": "More context",
       "optional": "(optional)",
@@ -1534,7 +1534,6 @@
     "replies_count": "{n} replies",
     "one_reply": "1 reply",
     "full_timer_badge": "Full-timer",
-
     "christian": "Christian",
     "catholic": "Catholic",
     "other_religion": "Other Religion / Background",
@@ -1646,5 +1645,16 @@
     "try_whole_team": "Try the whole {team}, or widen to everyone.",
     "try_everyone": "Try widening to everyone.",
     "show_everyone": "Show everyone"
+  },
+  "thread": {
+    "kind_comment": "Comment",
+    "kind_question": "Question",
+    "kind_follow_up": "Ask a follow-up",
+    "send_post": "Post",
+    "compose_kind_group": "What are you writing",
+    "placeholder_comment": "Write something…",
+    "placeholder_question": "What do you want to know? Everyone tied to this person will see it.",
+    "placeholder_follow_up": "What wants doing — text them, email them? Say enough that anyone could pick it up.",
+    "placeholder_full_timers": "Add to the Full-timers thread…"
   }
 }

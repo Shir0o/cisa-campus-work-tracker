@@ -16,6 +16,8 @@ import {
 } from "firebase/firestore";
 import {
   THREAD_NOTIFY_TITLE,
+  stakeholderUidsOf,
+  type ThreadStakeholders,
   type ThreadKind,
   type ThreadMessage,
   type ThreadMessageWithContact,
@@ -121,7 +123,11 @@ export async function addThreadMessage(
   db: Firestore,
   contactId: string,
   input: { interactionId?: string | null; from: string; fromName: string; kind: ThreadKind; body: string },
-  notify?: { to?: string | null; contactName?: string },
+  notify?: {
+    to?: string | null;
+    contactName?: string;
+    stakeholders?: ThreadStakeholders | null;
+  },
   onNotify?: (payload: ThreadNotifyPayload) => void,
 ): Promise<void> {
   const body = input.body.trim();
@@ -134,14 +140,20 @@ export async function addThreadMessage(
     at: new Date().toISOString(),
     reactions: [] as ThreadReaction[],
   });
-  if (notify?.to && onNotify) {
-    const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
-    onNotify({
-      userId: notify.to,
-      title: THREAD_NOTIFY_TITLE[input.kind](who, notify.contactName || "this person"),
-      message: body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body,
-      type: "info",
-      targetId: contactId,
-    });
+  if (!onNotify) return;
+
+  // Everyone tied to the contact, then the legacy single recipient — deduped, so
+  // nobody is told twice. Before this, mobile passed only `to`, which
+  // `walkingRecipient` leaves null for a Trainee: a Trainee posting from the
+  // contact screen notified nobody at all (#813).
+  const recipients = new Set(stakeholderUidsOf(notify?.stakeholders, input.from));
+  if (notify?.to && notify.to !== input.from) recipients.add(notify.to);
+  if (recipients.size === 0) return;
+
+  const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
+  const title = THREAD_NOTIFY_TITLE[input.kind](who, notify?.contactName || "this person");
+  const message = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
+  for (const userId of recipients) {
+    onNotify({ userId, title, message, type: "info", targetId: contactId });
   }
 }

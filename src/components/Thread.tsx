@@ -11,6 +11,7 @@ import {
   toggleReaction,
   useThreads,
   type ThreadMessage,
+  type ThreadKind,
   type ThreadStakeholders,
 } from "../lib/threads";
 import { MentionAutocomplete } from "./common/MentionAutocomplete";
@@ -21,6 +22,7 @@ import {
   type MentionUser,
 } from "../lib/mentions";
 import { isFullTimer } from "../lib/walking";
+import { useLanguage } from "./LanguageProvider";
 
 const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
 const getInitials = (name?: string) => {
@@ -155,6 +157,7 @@ function ThreadMsg({
   contactStakeholders,
 }: ThreadMsgProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const allMessages = useThreads(contactId);
   const replies = repliesOf(allMessages, m.id);
   const [replying, setReplying] = useState(false);
@@ -315,6 +318,58 @@ function ThreadMsg({
   );
 }
 
+// The three things a person can write on a contact (#813). "Ask a follow-up" is
+// the existing `nudge` kind, which until now could only be posted from the
+// outreach list and a component that was never mounted — and it is worded as an
+// ask, not an assignment: no owner, no due date. Encouragements and plain notes
+// are posted from elsewhere and are not offered here.
+type ComposeKind = Extract<ThreadKind, "comment" | "question" | "nudge">;
+
+const COMPOSE_KINDS: Record<
+  ComposeKind,
+  { label: string; placeholder: string }
+> = {
+  comment: { label: "thread.kind_comment", placeholder: "thread.placeholder_comment" },
+  question: { label: "thread.kind_question", placeholder: "thread.placeholder_question" },
+  nudge: { label: "thread.kind_follow_up", placeholder: "thread.placeholder_follow_up" },
+};
+
+const COMPOSE_ORDER: ComposeKind[] = ["comment", "question", "nudge"];
+
+function ComposeKindPicker({
+  value,
+  onChange,
+}: {
+  value: ComposeKind;
+  onChange: (k: ComposeKind) => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <div
+      role="group"
+      aria-label={t("thread.compose_kind_group")}
+      className="mb-2 inline-flex gap-0.5 p-0.5 rounded-full bg-surface-variant"
+    >
+      {COMPOSE_ORDER.map((k) => (
+        <button
+          key={k}
+          type="button"
+          aria-pressed={value === k}
+          onClick={() => onChange(k)}
+          className={cn(
+            "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer",
+            value === k
+              ? "bg-surface text-on-surface font-semibold shadow-xs"
+              : "text-on-surface-variant font-medium hover:text-on-surface",
+          )}
+        >
+          {t(COMPOSE_KINDS[k].label)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Thread({
   contactId,
   interactionId = null,
@@ -328,10 +383,17 @@ export default function Thread({
   contactStakeholders,
 }: ThreadProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const allMessages = useThreads(contactId);
   const messages = threadsFor(allMessages, interactionId, scope);
 
   const [draft, setDraft] = useState("");
+  // What is being written (#813). THREAD_KINDS has carried five kinds since it
+  // was written and this composer hardcoded "comment" at both post sites, so a
+  // Full-timer has never been able to ask a question on a contact and
+  // `NOTIFY_TITLE.question` has never rendered. Three are offered: the two the
+  // team asked for, plus the plain comment that was the only option.
+  const [composeKind, setComposeKind] = useState<ComposeKind>("comment");
   const taRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -417,7 +479,7 @@ export default function Thread({
         scope,
         from: meStaffId,
         fromName: user?.displayName || "Someone",
-        kind: "comment",
+        kind: canPickKind ? composeKind : "comment",
         body,
         ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
       },
@@ -431,6 +493,7 @@ export default function Thread({
     setDraft("");
     setSelectedUsers([]);
     setMentionMatch(null);
+    setComposeKind("comment");
   };
 
   useCommand({
@@ -444,12 +507,13 @@ export default function Thread({
     handler: post,
   });
 
-  const placeholder =
-    scope === "team"
-      ? "Add to the team's discussion…"
-      : compact
-        ? "Add a comment…"
-        : "Add a comment…";
+  // The Full-timers tab is staff reasoning together about how to care for a
+  // person; a follow-up ask belongs on the Conversation, where everyone tied can
+  // see it. So the picker is offered on the open thread only.
+  const canPickKind = scope !== "team";
+  const placeholder = canPickKind
+    ? t(COMPOSE_KINDS[composeKind].placeholder)
+    : t("thread.placeholder_full_timers");
 
   return (
     <div className={cn("flex flex-col", pane && "cd-pane-thread")} data-thread-pane={pane ? "" : undefined}>
@@ -494,6 +558,8 @@ export default function Thread({
             onSelect={handleSelectMention}
           />
         )}
+        {canPickKind && <ComposeKindPicker value={composeKind} onChange={setComposeKind} />}
+
         <textarea
           ref={taRef}
           value={draft}
@@ -511,7 +577,7 @@ export default function Thread({
             disabled={!draft.trim()}
             className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition disabled:opacity-50"
           >
-            <Send className="w-3.5 h-3.5" /> Comment
+            <Send className="w-3.5 h-3.5" /> {t("thread.send_post")}
           </button>
         </div>
       </div>

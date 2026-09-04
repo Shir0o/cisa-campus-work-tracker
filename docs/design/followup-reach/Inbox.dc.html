@@ -1,0 +1,393 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --stage-accent:oklch(0.55 0.15 258); --stage-accent-soft:oklch(0.55 0.15 258 / 0.14);
+      --stage-teal:oklch(0.55 0.15 145); --stage-teal-soft:oklch(0.55 0.15 145 / 0.14);
+      --warn:#BA5900; --warn-soft:#FFF2D2; --success:#016A1C; --flag:oklch(0.55 0.15 12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:11.5px;color:var(--on-surface)}
+
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:38px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.03;
+      letter-spacing:-0.03em;margin:0;max-width:21ch}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:74ch;margin:12px 0 0;line-height:1.68}
+    .lede strong{color:var(--on-surface);font-weight:600}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:23px;letter-spacing:-0.02em;margin:0}
+    .sec-sub{font-size:13.5px;color:var(--on-surface-variant);margin:6px 0 0;max-width:82ch;line-height:1.65}
+    .rule{height:1px;background:var(--outline);border:0;margin:0}
+    .kicker{display:inline-block;font-size:10.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.07em;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+    .kicker.new{background:var(--stage-accent-soft);color:var(--stage-accent)}
+
+    .split{display:grid;grid-template-columns:1fr 380px;gap:44px;align-items:start}
+    .ann{display:flex;flex-direction:column;gap:12px;padding-top:6px}
+    .ann h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;
+      letter-spacing:-0.015em;margin:0}
+    .ann p{margin:0;font-size:13px;line-height:1.68;color:var(--on-surface-variant)}
+    .ann strong{color:var(--on-surface);font-weight:600}
+
+    /* the worklist column */
+    .col{background:var(--surface);border:1px solid var(--outline-variant);border-radius:24px;
+      padding:18px;display:flex;flex-direction:column;gap:12px}
+    .col-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    .col-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;
+      letter-spacing:-0.012em;display:flex;align-items:baseline;gap:9px}
+    .count{font-size:12px;font-weight:500;color:var(--on-surface-variant)}
+    .col-tools{display:flex;align-items:center;gap:10px}
+    .filter{display:flex;background:var(--surface-variant);border-radius:999px;padding:3px}
+    .filter button{padding:5px 13px;border-radius:999px;border:0;background:transparent;
+      font-size:11.5px;font-weight:500;color:var(--on-surface-variant)}
+    .filter button.on{background:var(--bg);color:var(--on-surface);font-weight:600;
+      box-shadow:0 1px 2px rgba(10,10,11,0.08)}
+    .scan{font-size:12px;font-weight:500;color:var(--accent);text-decoration:underline;
+      text-underline-offset:2px}
+    .group-lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);padding:6px 2px 0}
+
+    .stack{border-radius:16px;border:1px solid var(--outline-variant);background:var(--bg);padding:15px}
+    .stack.seen{background:var(--surface)}
+    .stack.open{box-shadow:inset 2px 0 0 0 var(--warn)}
+    .stack.done{background:var(--surface);opacity:.55}
+    .stack-row{display:flex;align-items:flex-start;gap:13px}
+    .avatar{width:40px;height:40px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:13px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .line1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .namewrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pname{font-size:15px;font-weight:500}
+    .unread-dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .rel{font-size:11.5px;color:var(--on-surface-variant);opacity:.8;flex:none}
+    .phrases{font-size:11.5px;font-weight:500;color:var(--on-surface-variant);margin-top:3px}
+    .actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px}
+    .btn-s{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:0;
+      background:var(--primary);color:var(--on-primary);font-size:11.5px;font-weight:500}
+    .btn-o{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface);
+      font-size:11.5px;font-weight:500}
+    .done-line{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:11.5px;
+      color:var(--success);font-weight:500}
+    .snack{display:flex;align-items:center;justify-content:space-between;gap:14px;
+      background:var(--primary);color:var(--on-primary);border-radius:14px;padding:11px 14px;
+      font-size:12.5px;margin-top:4px}
+    .snack b{font-weight:500}
+    .snack button{background:transparent;border:0;color:var(--on-primary);font-size:12.5px;
+      font-weight:600;text-decoration:underline;text-underline-offset:2px}
+
+    /* the two axes diagram */
+    .axes{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:26px}
+    .axis{background:var(--surface);border-radius:24px;padding:24px 26px;
+      display:flex;flex-direction:column;gap:13px}
+    .axis h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:19px;
+      letter-spacing:-0.018em;margin:0}
+    .axis .one{font-size:12.5px;line-height:1.62;color:var(--on-surface-variant);margin:0}
+    .axis .one strong{color:var(--on-surface);font-weight:600}
+    .marks{display:flex;flex-direction:column;gap:9px;background:var(--bg);border-radius:16px;padding:15px}
+    .mark{display:flex;align-items:flex-start;gap:11px;font-size:12px;line-height:1.5}
+    .mark i{flex:none;margin-top:2px}
+    .mark b{font-weight:600;color:var(--on-surface)}
+    .mark span{color:var(--on-surface-variant)}
+    .dotmark{width:8px;height:8px;border-radius:999px;background:var(--accent);margin-top:6px}
+
+    /* words table */
+    .words{width:100%;border-collapse:collapse}
+    .words th{text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.06em;color:var(--on-surface-variant);padding:0 16px 10px 0;
+      border-bottom:1px solid var(--outline)}
+    .words td{padding:11px 16px 11px 0;border-bottom:1px solid var(--outline-variant);
+      font-size:12.5px;line-height:1.55;vertical-align:top}
+    .words td.item{font-weight:600;color:var(--on-surface);white-space:nowrap}
+    .words td.line{color:var(--on-surface-variant);font-style:italic}
+    .verb{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;
+      font-size:11.5px;font-weight:600;background:var(--accent-soft);color:var(--on-surface)}
+    .verb.owe{background:var(--warn-soft);color:var(--warn)}
+    .verb.look{background:var(--stage-accent-soft);color:var(--stage-accent)}
+    .verb.info{background:var(--surface-variant);color:var(--on-surface-variant)}
+    .verb.none{background:transparent;color:var(--text-mute);font-weight:500;padding-left:0}
+
+    .finding{border-left:2px solid var(--flag);padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:9px}
+    .finding-tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--flag)}
+    .finding p{margin:0;font-size:13.5px;line-height:1.68;color:var(--on-surface-variant);max-width:92ch}
+    .finding strong{color:var(--on-surface);font-weight:600}
+
+    .costs{background:var(--surface-variant);border-radius:24px;padding:28px 30px;
+      display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:30px}
+    .costs h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:15.5px;margin:0 0 8px}
+    .costs p{margin:0;font-size:12.5px;line-height:1.68;color:var(--on-surface-variant)}
+    .costs strong{color:var(--on-surface);font-weight:600}
+  </style>
+</helmet>
+
+<div class="sheet">
+  <header>
+    <h1>The feed becomes a worklist</h1>
+    <p class="lede">A Full-timer needs the contacts Trainees add to behave like an inbox &mdash; <strong>the ones I have looked at, and the ones that are new</strong> &mdash; without losing the ones opened and deliberately left for later. That is two facts, not one, and the code already models them as two: <code>userEntityState.ts</code> defines <code>read</code> as &ldquo;seen / scanned&rdquo; and <code>done</code> as &ldquo;cleared / handled&rdquo;. They are in <code>localStorage</code>, and the feed collapses them into one gesture. This separates them and moves them to the server.</p>
+  </header>
+
+  <hr class="rule">
+
+  <section class="split">
+    <div class="col">
+      <div class="col-top">
+        <div class="col-name">Around the team <span class="count">8 to work through</span></div>
+        <div class="col-tools">
+          <div class="filter">
+            <button class="on">New</button>
+            <button>All</button>
+          </div>
+          <span class="scan">Mark all seen</span>
+        </div>
+      </div>
+
+      <div class="group-lab">New people</div>
+
+      <article class="stack">
+        <div class="stack-row">
+          <div class="avatar">EV</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname">Elena Vargas</span><span class="unread-dot"></span></div>
+              <span class="rel">2h</span>
+            </div>
+            <div class="phrases">Ana added them</div>
+            <div class="actions">
+              <button class="btn-s">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                Reviewed
+              </button>
+              <button class="btn-o">Open</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stack seen">
+        <div class="stack-row">
+          <div class="avatar">PK</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname">Priya Kaur</span></div>
+              <span class="rel">Yest</span>
+            </div>
+            <div class="phrases">Grace added them &middot; opened, not finished</div>
+            <div class="actions">
+              <button class="btn-s">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                Reviewed
+              </button>
+              <button class="btn-o">Open</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <div class="group-lab">Everything else</div>
+
+      <article class="stack open">
+        <div class="stack-row">
+          <div class="avatar">TN</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname">Tomas Nguyen</span><span class="unread-dot"></span></div>
+              <span class="rel">6d</span>
+            </div>
+            <div class="phrases">David asked for a follow-up &middot; nobody yet</div>
+            <div class="actions">
+              <button class="btn-s">I followed up</button>
+              <button class="btn-o">Write back</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stack seen">
+        <div class="stack-row">
+          <div class="avatar">MO</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname">Maya Osei</span></div>
+              <span class="rel">3d</span>
+            </div>
+            <div class="phrases">Sam left a note</div>
+            <div class="actions">
+              <button class="btn-s">Got it</button>
+              <button class="btn-o">Open</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stack done">
+        <div class="stack-row">
+          <div class="avatar">LO</div>
+          <div class="grow">
+            <div class="line1">
+              <div class="namewrap"><span class="pname">Lila Okwuosa</span></div>
+              <span class="rel">3d</span>
+            </div>
+            <div class="phrases">Ana logged &ldquo;coffee after class&rdquo;</div>
+            <div class="done-line">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Reviewed
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <div class="snack">
+        <b>Marked Lila Okwuosa reviewed.</b>
+        <button>Undo</button>
+      </div>
+    </div>
+
+    <div class="ann">
+      <span class="kicker new">One column, one list</span>
+      <h3>Not a new page, and not History</h3>
+      <p>The worklist is the column that is already there &mdash; you already go to it and click the comment icon. A second destination is a second place to keep clean, and the orphaned <code>FromTraineesInbox.tsx</code> (exported, imported nowhere) is what happens when one gets built and forgotten.</p>
+      <p><strong>History cannot be the home.</strong> It reads the <code>activities</code> collection &mdash; a separate audit log, <code>limit(100)</code> team-wide &mdash; which shares no item identities with the feed. Marking a row viewed there could never make the feed agree, so you would keep two viewed-states over two records of the same events.</p>
+      <p>New people sort first. That is a <strong>sort, not a second list</strong> &mdash; splitting contacts out means deciding, every time, where the things that are neither go.</p>
+      <p><code>lib/inbox.ts</code> and <code>FromTraineesInbox.tsx</code> are deleted on web. Mobile still uses <code>inboxItemsFor</code> and keeps it until the two derivations are unified.</p>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section style="display:flex;flex-direction:column;gap:22px">
+    <div>
+      <h2>Two facts, kept apart</h2>
+      <p class="sec-sub">The whole point: <strong>opening something must never make the number go down.</strong> Today one click does both, which is why an inbox built on it would lie.</p>
+    </div>
+
+    <div class="axes">
+      <article class="axis">
+        <h3>Seen</h3>
+        <p class="one">Passive. You opened the contact, so you know who this is. <strong>Set only by opening</strong> &mdash; never by scrolling past, and never by &ldquo;Mark all seen&rdquo; claiming you reviewed anyone.</p>
+        <div class="marks">
+          <div class="mark"><span class="dotmark"></span><span><b>Shows as</b> the accent dot beside the name. Gone once you have opened them.</span></div>
+          <div class="mark"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7"/><circle cx="12" cy="12" r="3"/></svg></i><span><b>Set by</b> opening the contact &mdash; the card&rsquo;s name or Open.</span></div>
+          <div class="mark"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></i><span><b>Never</b> set by the card scrolling into view. Nothing in <code>AttentionFeed</code> does this today and nothing should start.</span></div>
+        </div>
+      </article>
+
+      <article class="axis">
+        <h3>Completed</h3>
+        <p class="one">Deliberate. You are finished with this item. <strong>This is the number in the header</strong> &mdash; &ldquo;8 to work through&rdquo; counts everything not completed, seen or not.</p>
+        <div class="marks">
+          <div class="mark"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#016A1C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></i><span><b>Shows as</b> the card greying in place with an Undo &mdash; it clears when you leave, not under your cursor.</span></div>
+          <div class="mark"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12a9 9 0 1 1-6.2-8.5"/></svg></i><span><b>Set by</b> a button whose words fit the item &mdash; see below.</span></div>
+          <div class="mark"><i><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"/><path d="M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg></i><span><b>Opened but not completed</b> is a real state &mdash; you looked, it needs more from you, it stays in the count.</span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div>
+      <h2>The words, per item</h2>
+      <p class="sec-sub">&ldquo;I followed up&rdquo; on a card about a note claims you texted the student, which you did not. Three families of verb: <strong>things you look at</strong>, <strong>things you owe someone</strong>, and <strong>things that are only information</strong>.</p>
+    </div>
+
+    <table class="words">
+      <thead>
+        <tr><th style="width:220px">Item</th><th style="width:340px">The line</th><th style="width:170px">The button</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="item">Contact added</td>
+          <td class="line">Ana added them</td>
+          <td><span class="verb look">Reviewed</span></td>
+          <td>You looked at a new person. Nothing is owed to anyone.</td>
+        </tr>
+        <tr>
+          <td class="item">Interaction logged</td>
+          <td class="line">Ana logged &ldquo;coffee after class&rdquo;</td>
+          <td><span class="verb look">Reviewed</span></td>
+          <td>Same act &mdash; oversight, not obligation.</td>
+        </tr>
+        <tr>
+          <td class="item">Question</td>
+          <td class="line">David asked you something</td>
+          <td><span class="verb owe">Answered</span></td>
+          <td>A reply completes it on its own; the button is for when you answered in person.</td>
+        </tr>
+        <tr>
+          <td class="item">Follow-up ask</td>
+          <td class="line">David asked for a follow-up</td>
+          <td><span class="verb owe">I followed up</span></td>
+          <td>The only card where this sentence is true: you contacted the person.</td>
+        </tr>
+        <tr>
+          <td class="item">Note &middot; Comment</td>
+          <td class="line">Sam left a note &middot; Sam wrote back</td>
+          <td><span class="verb info">Got it</span></td>
+          <td>Information. Nothing was asked of you, so nothing should claim you did it.</td>
+        </tr>
+        <tr>
+          <td class="item">Encouragement</td>
+          <td class="line">&mdash; not an inbox item &mdash;</td>
+          <td><span class="verb none">none</span></td>
+          <td>A quiet summarised line on My Day. Needing to dismiss praise is worse than the praise is worth.</td>
+        </tr>
+        <tr>
+          <td class="item">To-do assigned</td>
+          <td class="line">Ana assigned a to-do</td>
+          <td><span class="verb none">none</span></td>
+          <td>The to-do already owns its own done state. A second one would disagree with it.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="rule">
+
+  <section class="finding">
+    <div class="finding-tag">The finding that forces the server &mdash; and the one that makes it cheap</div>
+    <p><code>contact.reviewed</code> exists, is documented as &ldquo;whether the full-timer walking with the adder has reviewed this contact&rdquo;, is read in <strong>four</strong> places &mdash; and is written by nothing but the seed scripts. It has been <code>undefined</code> on every real contact since it was added, so the viewed axis has always fallen through to <code>localStorage</code>: mark ten people reviewed on your laptop, open your phone, all ten are new again.</p>
+    <p>It cannot simply be turned on, either. One boolean on a shared document means <em>somebody</em> reviewed it &mdash; with several Full-timers, the first to look clears it for everyone. And writing per-person state onto the contact makes every glance a write to a document twelve clients are subscribed to. <strong>The state belongs to the person, so it lives with the person</strong>: one document at <code>inboxState/&lt;uid&gt;</code> holding the two id sets, under a rule that already exists in the same shape for <code>userPreferences/&lt;uid&gt;</code>.</p>
+  </section>
+
+  <section class="costs">
+    <div>
+      <h3>Migration is a copy</h3>
+      <p><code>userEntityState.ts</code> already migrates three legacy stores on first load. Do the same one level up: first load with no server document uploads the local sets, then the server is authoritative. <strong>Starting clean would show every Full-timer their whole contact history as New on launch day</strong> &mdash; the worst possible first impression of an inbox.</p>
+    </div>
+    <div>
+      <h3>Who gets it</h3>
+      <p>Both roles. A Trainee with four open questions needs the count more than a Full-timer does &mdash; less time in the app, more chance of missing something. <code>inboxItemsFor</code> no-ops for non-Full-timers by design, but that guard was about <em>oversight of the team</em>, which is genuinely Full-timer-only. A personal worklist is not.</p>
+    </div>
+    <div>
+      <h3>Growth, and the one real cost</h3>
+      <p>Roughly 170 items per person per term. A document of ids is fine for years, but unbounded is a smell &mdash; <strong>prune ids older than a term</strong> on write. And the copy is hardcoded English, like the rest of <code>AttentionFeed</code>: every string here goes through <code>en.json</code> and <code>es.json</code> or <code>npm run check:i18n</code> fails.</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1320,"height":2500}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

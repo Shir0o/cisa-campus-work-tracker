@@ -211,7 +211,17 @@ export function useContactDetailData(contactId: string) {
       await addThreadMessage(
         contactId,
         { interactionId: input.interactionId ?? null, from: uid, fromName: by.name, kind: input.kind, body: input.body },
-        { to: threadRecipient, contactName: contact.name },
+        {
+          to: threadRecipient,
+          contactName: contact.name,
+          // Without these, `walkingRecipient` returns null for a Trainee and the
+          // post notified nobody at all — web has always passed them (#813).
+          stakeholders: {
+            createdBy: contact.createdBy || contact.addedBy,
+            coCreators: contact.coCreators,
+            owner: contact.owner,
+          },
+        },
       );
     },
 

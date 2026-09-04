@@ -256,7 +256,7 @@ describe('ContactDetailsModal Component', () => {
     expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
   });
 
-  it('Discussion tab renders the composer as a direct child of the pane', async () => {
+  it('Full-timers tab renders the composer as a direct child of the pane', async () => {
     (useAuth as any).mockReturnValue({
       isAdmin: true,
       role: 'admin',
@@ -267,9 +267,9 @@ describe('ContactDetailsModal Component', () => {
     ];
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Discussion/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Full-timers/i }));
 
-    const pane = (await screen.findByPlaceholderText(/Add to the team's discussion…/i))
+    const pane = (await screen.findByPlaceholderText(/Add to the Full-timers thread…/i))
       .closest('[data-thread-pane]');
     expect(pane).toBeTruthy();
     const list = pane!.querySelector('[data-thread-list]');
@@ -298,12 +298,12 @@ describe('ContactDetailsModal Component', () => {
     fireEvent.click(prayerTab);
     expect(screen.getByText("Prayers we're praying for")).toBeInTheDocument();
 
-    // Click Discussion tab (labeled "Discussion")
-    const commentsTab = screen.getByRole('button', { name: /Discussion/i });
+    // Click the Full-timers tab (was labelled "Discussion" before #813)
+    const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
     await act(async () => {
       fireEvent.click(commentsTab);
     });
-    expect(await screen.findByPlaceholderText(/Add to the team's discussion…/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/Add to the Full-timers thread…/i)).toBeInTheDocument();
   });
 
   it('allows adding a tag', async () => {
@@ -337,25 +337,25 @@ describe('ContactDetailsModal Component', () => {
   it('allows posting a comment', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    // Switch to Discussion tab
-    const commentsTab = screen.getByRole('button', { name: /Discussion/i });
+    // Switch to the Full-timers tab
+    const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
     await act(async () => {
       fireEvent.click(commentsTab);
     });
 
     // Type comment
-    const commentInput = await screen.findByPlaceholderText(/Add to the team's discussion…/i);
+    const commentInput = await screen.findByPlaceholderText(/Add to the Full-timers thread…/i);
     await act(async () => {
       fireEvent.change(commentInput, { target: { value: 'John is doing great!' } });
     });
 
     // Wait for React to flush state and enable the button by re-querying it
     await waitFor(() => {
-      const btn = screen.getByRole('button', { name: /Comment/i });
+      const btn = screen.getByRole('button', { name: /^Post$/ });
       expect(btn).not.toBeDisabled();
     });
     
-    const submitBtn = screen.getByRole('button', { name: /Comment/i });
+    const submitBtn = screen.getByRole('button', { name: /^Post$/ });
     await act(async () => {
       fireEvent.click(submitBtn);
     });
@@ -833,11 +833,11 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    // Switch to Discussion tab
-    const commentsTab = screen.getByRole('button', { name: /Discussion/i });
+    // Switch to the Full-timers tab
+    const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
     fireEvent.click(commentsTab);
 
-    const commentInput = await screen.findByPlaceholderText(/Add to the team's discussion…/i);
+    const commentInput = await screen.findByPlaceholderText(/Add to the Full-timers thread…/i);
 
     // Type comment
     await act(async () => {

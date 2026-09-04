@@ -34,7 +34,6 @@ describe("AttentionFeed Component (#330, #595)", () => {
       name: "Alex Johnson",
       createdBy: "u3",
       createdAt: new Date().toISOString(),
-      reviewed: false,
       stage: "Freshman Contact",
       owner: "u3",
     } as Contact,
@@ -166,7 +165,6 @@ describe("AttentionFeed Component (#330, #595)", () => {
       createdBy: "u3",
       owner: uid,
       createdAt: new Date().toISOString(),
-      reviewed: false,
     })) as Contact[];
 
     render(
@@ -192,7 +190,6 @@ describe("AttentionFeed Component (#330, #595)", () => {
       createdBy: "u2",
       owner: "u2",
       createdAt: new Date(now - 60000).toISOString(),
-      reviewed: true,
       stage: "Student",
     } as Contact;
 

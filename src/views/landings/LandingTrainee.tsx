@@ -242,17 +242,13 @@ export default function LandingTrainee() {
   );
   const waitingUnread = waiting.filter((it) => !inbox.isRead(uid ?? "", it.id)).length;
 
-  // Which of your people a full-timer has weighed in on (any thread reply, or
-  // an explicit review) — drives the "weighed in" / "awaiting a look" status.
-  const weighedInBy = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const m of threads) {
-      if (m.from && isFullTimer(m.from) && !(m.contactId in map)) {
-        map[m.contactId] = (m.fromName || "The team").split(/\s+/)[0];
-      }
-    }
-    return map;
-  }, [threads]);
+  // The "weighed in" / "Awaiting a look" status is gone (#813). It measured
+  // whether a Full-timer had POSTED, while promising that looking was what was
+  // being counted — and its other half read `contact.reviewed`, a field with
+  // four readers and no writer, so it could never resolve. Reviewing is now
+  // explicitly private: a Trainee learns nothing about a Full-timer's attention
+  // unless the Full-timer deliberately sends something, which already shows up
+  // as a question, a note or an encouragement.
 
   const openContact = (
     c: Contact | undefined | null,
@@ -395,34 +391,17 @@ export default function LandingTrainee() {
         />
         {myPeople.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {myPeople.map(({ contact, days, note }) => {
-              const seen = weighedInBy[contact.id] || !!contact.reviewed;
-              return (
-                <ReachCard
-                  key={contact.id}
-                  contact={contact}
-                  days={days}
-                  note={note}
-                  stages={stages}
-                  onOpen={() => openContact(contact)}
-                  onMessage={() => openMessage(contact.phone)}
-                   statusNode={
-                    weighedInBy[contact.id] ? (
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full px-2 py-0.5",
-                          seen
-                            ? "text-success bg-success/10"
-                            : "text-on-surface-variant bg-surface-variant",
-                        )}
-                      >
-                        {seen ? `${weighedInBy[contact.id]} weighed in` : "Awaiting a look"}
-                      </span>
-                    ) : undefined
-                  }
-                />
-              );
-            })}
+            {myPeople.map(({ contact, days, note }) => (
+              <ReachCard
+                key={contact.id}
+                contact={contact}
+                days={days}
+                note={note}
+                stages={stages}
+                onOpen={() => openContact(contact)}
+                onMessage={() => openMessage(contact.phone)}
+              />
+            ))}
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-2">

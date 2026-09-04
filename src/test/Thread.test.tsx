@@ -74,10 +74,10 @@ describe("Thread", () => {
   it("posts a message with author and trimmed body", async () => {
     render(<Thread contactId="C-1" interactionId={null} meStaffId="u1" />);
     await userEvent.type(
-      screen.getByPlaceholderText("Add a comment…"),
+      screen.getByPlaceholderText("Write something…"),
       "Great first contact",
     );
-    await userEvent.click(screen.getByRole("button", { name: /Comment/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Post$/ }));
     expect(addThreadMessage).toHaveBeenCalledWith(
       "C-1",
       {
@@ -126,7 +126,7 @@ describe("Thread", () => {
 
   it("posts with ⌘↵ from the textarea", async () => {
     render(<Thread contactId="C-1" meStaffId="u1" />);
-    const ta = screen.getByPlaceholderText("Add a comment…");
+    const ta = screen.getByPlaceholderText("Write something…");
     await userEvent.type(ta, "quick post");
     fireEvent.keyDown(ta, { key: "Enter", ctrlKey: true });
     expect(addThreadMessage).toHaveBeenCalledWith(
@@ -296,7 +296,7 @@ describe("Thread", () => {
       />,
     );
 
-    const input = screen.getByPlaceholderText("Add a comment…");
+    const input = screen.getByPlaceholderText("Write something…");
     await userEvent.type(input, "Hey @Zio");
 
     // Autocomplete listbox should appear
@@ -311,7 +311,7 @@ describe("Thread", () => {
     expect(screen.queryByRole("listbox", { name: "Teammate mentions" })).toBeNull();
 
     // Submit comment
-    await userEvent.click(screen.getByRole("button", { name: /Comment/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Post$/ }));
 
     expect(addThreadMessage).toHaveBeenCalledWith(
       "C-1",
@@ -324,5 +324,68 @@ describe("Thread", () => {
       }),
     );
   });
+
+  // #813 — THREAD_KINDS has carried five kinds since it was written and this
+  // composer hardcoded "comment" at both post sites, so a Full-timer had never
+  // been able to ask a question on a contact at all.
+  describe("what is being written", () => {
+    it("posts a plain comment by default", async () => {
+      render(<Thread contactId="C-1" meStaffId="u1" contactName="Elena" />);
+      await userEvent.type(screen.getByPlaceholderText("Write something…"), "just noting this");
+      await userEvent.click(screen.getByRole("button", { name: /^Post$/ }));
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        "C-1",
+        expect.objectContaining({ kind: "comment" }),
+        expect.anything(),
+      );
+    });
+
+    it("posts a question when Question is chosen", async () => {
+      render(<Thread contactId="C-1" meStaffId="u1" contactName="Elena" />);
+      await userEvent.click(screen.getByRole("button", { name: "Question" }));
+      await userEvent.type(
+        screen.getByPlaceholderText(/What do you want to know/),
+        "did she say anything about the retreat?",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /^Post$/ }));
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        "C-1",
+        expect.objectContaining({ kind: "question" }),
+        expect.anything(),
+      );
+    });
+
+    it("posts a follow-up ask when Ask a follow-up is chosen", async () => {
+      render(<Thread contactId="C-1" meStaffId="u1" contactName="Elena" />);
+      await userEvent.click(screen.getByRole("button", { name: "Ask a follow-up" }));
+      await userEvent.type(
+        screen.getByPlaceholderText(/What wants doing/),
+        "could someone text her before Friday?",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /^Post$/ }));
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        "C-1",
+        expect.objectContaining({ kind: "nudge" }),
+        expect.anything(),
+      );
+    });
+
+    it("falls back to a comment after posting, so the next message is not an ask by accident", async () => {
+      render(<Thread contactId="C-1" meStaffId="u1" contactName="Elena" />);
+      await userEvent.click(screen.getByRole("button", { name: "Ask a follow-up" }));
+      await userEvent.type(screen.getByPlaceholderText(/What wants doing/), "text her");
+      await userEvent.click(screen.getByRole("button", { name: /^Post$/ }));
+      expect(screen.getByPlaceholderText("Write something…")).toBeTruthy();
+    });
+
+    // The Full-timers tab is staff reasoning together; an ask belongs on the
+    // Conversation, where everyone tied to the person can see it.
+    it("offers no kind picker on the Full-timers thread", () => {
+      render(<Thread contactId="C-1" meStaffId="u1" contactName="Elena" scope="team" />);
+      expect(screen.queryByRole("button", { name: "Ask a follow-up" })).toBeNull();
+      expect(screen.getByPlaceholderText("Add to the Full-timers thread…")).toBeTruthy();
+    });
+  });
+
 });
 

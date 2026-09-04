@@ -23,8 +23,8 @@ vi.mock("../lib/firebase", () => ({
 const staffNameMap = { mei: "Mei Tanaka", grace: "Grace Lim" };
 
 const contacts: Contact[] = [
-  { id: "kofi", name: "Kofi Mensah", createdBy: "mei", owner: "mei", createdAt: new Date().toISOString(), reviewed: false } as Contact,
-  { id: "aisha", name: "Aisha Rahman", createdBy: "grace", owner: "grace", createdAt: new Date().toISOString(), reviewed: false } as Contact,
+  { id: "kofi", name: "Kofi Mensah", createdBy: "mei", owner: "mei", createdAt: new Date().toISOString() } as Contact,
+  { id: "aisha", name: "Aisha Rahman", createdBy: "grace", owner: "grace", createdAt: new Date().toISOString() } as Contact,
 ];
 
 const interactions: Interaction[] = [
