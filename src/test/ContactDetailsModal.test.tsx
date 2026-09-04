@@ -24,7 +24,7 @@ vi.mock('../lib/threads', () => ({
   addThreadMessage: vi.fn(() => Promise.resolve()),
   toggleReaction: vi.fn(() => Promise.resolve()),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
-  THREAD_REACTIONS: ["🙏", "❤️", "🌱", "✅"],
+  THREAD_REACTIONS: ["❤️"],
 }));
 
 // Mock Auth
