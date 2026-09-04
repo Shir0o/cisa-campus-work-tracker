@@ -15,6 +15,7 @@ import { useLayout } from '../../App';
 import { roleLabel } from '../../lib/permissions';
 import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
+import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
 import { UserAvatar } from '../ui/UserAvatar';
 import { LanguageToggle } from '../LanguageToggle';
@@ -71,6 +72,12 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
     // fill with a bottom rule would read as a leftover. The strip is just a
     // row on the page; its controls carry their own raised surface.
     <div className="hidden lg:flex items-center gap-1 sm:gap-2 h-14 shrink-0">
+      {/* The route trail (#803). The band used to be pure spacer: the rail says
+          which section is selected but never which record, and on a leaf route
+          it said nothing at all. `pl-6` lines the trail up with the page's own
+          gutter below it, not with the column edge. */}
+      <PageTrail className="pl-6" />
+
       {/* Push the strip actions to the right — the rail owns the left side. */}
       <div className="flex-1" />
 

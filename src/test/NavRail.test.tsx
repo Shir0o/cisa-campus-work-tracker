@@ -231,6 +231,22 @@ describe('NavRail (#664)', () => {
     expect(link).toHaveAttribute('aria-current', 'page');
   });
 
+  it('keeps People selected on a contact route (#803)', () => {
+    // `/people/:contactId` is neither `/directory` nor a child of it, so
+    // matching the pathname left the rail with nothing lit at all.
+    renderRail({ route: '/people/NduKn2BpBzrRql5Z9mHk', role: 'admin' });
+    const link = screen.getByRole('link', { name: /People/ });
+    expect(link).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('still selects exactly one destination on a contact route', () => {
+    renderRail({ route: '/people/NduKn2BpBzrRql5Z9mHk', role: 'admin' });
+    const currents = screen
+      .getAllByRole('link')
+      .filter((el) => el.getAttribute('aria-current') === 'page');
+    expect(currents).toHaveLength(1);
+  });
+
   it('only one destination is marked current at a time', () => {
     renderRail({ route: '/prayer', role: 'admin' });
     const currents = screen

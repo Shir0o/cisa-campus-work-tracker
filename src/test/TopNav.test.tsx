@@ -21,11 +21,13 @@ const h = vi.hoisted(() => ({
     ownerViewRole: null,
     logOut: vi.fn(),
   } as any,
+  // `as any` like `auth` above: the trail reads `selectedContact` off this
+  // stub, and tests set it per case rather than every layout field.
   layout: {
     isMobileMenuOpen: false,
     setIsMobileMenuOpen: vi.fn(),
     setSearchOpen: vi.fn(),
-  },
+  } as any,
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -34,6 +36,7 @@ vi.mock('../components/AuthProvider', () => ({
 
 vi.mock('../App', () => ({
   useLayout: () => h.layout,
+  useOptionalLayout: () => h.layout,
 }));
 
 vi.mock('react-router-dom', async (orig) => ({
@@ -93,6 +96,40 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+  });
+
+  // ── Where am I, on a route that sits under a destination (#803) ──────────
+  describe('a contact route', () => {
+    it('selects the People tab rather than leaving every tab unselected', () => {
+      renderTopNav('/people/NduKn2BpBzrRql5Z9mHk');
+      const tab = screen.getAllByRole('link').find((el) => el.getAttribute('href') === '/directory');
+      expect(tab).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('does not hold "More" open-looking on a route its section already owns', () => {
+      // The old test was `!primary.some(p => p.href === pathname)`, which was
+      // true for every contact, so More lit up and wore a fallback glyph.
+      renderTopNav('/people/NduKn2BpBzrRql5Z9mHk');
+      const more = screen.getByRole('button', { name: /more/i });
+      // Resting, not held: the held state drops the `hover:` prefix.
+      expect(more.className).toContain('text-on-surface-variant');
+      expect(more.className).not.toMatch(/(^|\s)bg-surface-container-high/);
+    });
+
+    it('renders the trail row with a way back to People', () => {
+      h.layout = { ...h.layout, selectedContact: { name: 'David Alvarado' } };
+      renderTopNav('/people/NduKn2BpBzrRql5Z9mHk');
+      expect(screen.getByRole('link', { name: /back to people/i })).toHaveAttribute(
+        'href',
+        '/directory',
+      );
+      expect(screen.getByText('David Alvarado')).toBeInTheDocument();
+    });
+  });
+
+  it('does not render a trail row on a top-level route', () => {
+    renderTopNav('/directory');
+    expect(screen.queryByRole('navigation', { name: /breadcrumb/i })).not.toBeInTheDocument();
   });
 
   it('renders More menu and opens it to reveal alphabetically sorted destinations and external links', () => {

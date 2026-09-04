@@ -95,6 +95,15 @@ export function useLayout() {
   return context;
 }
 
+/**
+ * The layout context where a consumer only *enriches* itself with it — the
+ * route trail reads the open contact's name from here to label its leaf, and
+ * renders a shorter trail rather than throwing when there is no provider.
+ */
+export function useOptionalLayout(): LayoutContextType | undefined {
+  return useContext(LayoutContext);
+}
+
 function EmailPasswordForm() {
   const { signInWithEmail } = useAuth();
   const [email, setEmail] = React.useState("");
