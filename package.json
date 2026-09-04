@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && mkdir -p dist/functions/api && cp -f functions/api/[[path]].ts dist/functions/api/ && mkdir -p dist/functions/__/auth dist/functions/__/firebase && cp -f functions/__/auth/[[path]].ts dist/functions/__/auth/ && cp -f functions/__/firebase/init.json.ts dist/functions/__/firebase/init.json.ts",
+    "build": "npm run whats-new:compile && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs && mkdir -p dist/functions/api && cp -f functions/api/[[path]].ts dist/functions/api/ && mkdir -p dist/functions/__/auth dist/functions/__/firebase && cp -f functions/__/auth/[[path]].ts dist/functions/__/auth/ && cp -f functions/__/firebase/init.json.ts dist/functions/__/firebase/init.json.ts",
+    "whats-new:compile": "tsx scripts/compile-whats-new.ts",
+    "whats-new:draft": "tsx scripts/draft-whats-new.ts",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",

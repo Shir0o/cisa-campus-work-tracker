@@ -19,6 +19,7 @@ import { Sech } from '../v2/Widget';
 import { MemberBack, MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
 import { InviteSheet } from './InviteSheet';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
+import { M2Release } from '../release/M2Release';
 
 const LOOKS: { key: 'light' | 'dark' | 'system'; label: string }[] = [
   { key: 'light', label: 'Daylight' },
@@ -45,6 +46,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
   const [fullTimers, setFullTimers] = React.useState<FullTimerSummary[]>([]);
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [feedbackOpen, setFeedbackOpen] = React.useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = React.useState(false);
 
   // Quiet on error, as the home's own roster read is — this list only names who
   // you can message, and the rest of the screen stands without it.
@@ -279,6 +281,31 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         </View>
 
         <View>
+          <Sech label={t('mobile.member.whats_new', "What's New")} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('mobile.member.whats_new', "What's New")}
+            onPress={() => setWhatsNewOpen(true)}
+            style={({ pressed }) => ({
+              backgroundColor: c.widget.tile,
+              borderRadius: radius.tile,
+              padding: 18,
+              opacity: pressed ? 0.85 : 1,
+              ...c.widget.shadow,
+            })}
+          >
+            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+              {t('mobile.member.whats_new', "What's New")}
+            </Text>
+            <Text
+              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+            >
+              {t('mobile.member.whats_new_sub', 'See the latest updates and improvements in CISA')}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View>
           <Sech label={t('mobile.member.account_session')} />
           <Pressable
             accessibilityRole="button"
@@ -320,6 +347,11 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
       <FeedbackSheet
         visible={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
+      />
+      <M2Release
+        role={appRole}
+        forceOpen={whatsNewOpen}
+        onClose={() => setWhatsNewOpen(false)}
       />
     </>
   );

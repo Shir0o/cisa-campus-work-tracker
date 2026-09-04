@@ -117,4 +117,6 @@ _Avoid_: Tag, ping, callout
 An administrative action available to Full-timers in Settings that scrubs non-person test accounts (matching `reviewer*` or `cisa*` emails, or service/review account display names) and their associated traces (invitations, personal prayers, and interaction logs on contacts) across the system. It uses a two-phase dry-run scan and confirmation flow to prevent accidental data loss.
 _Avoid_: Reset database, wipe users, factory reset
 
-
+**What's New Announcement**:
+An in-app modal presented to users upon launching an updated web PWA or mobile build, highlighting user-facing changes and improvements for that release. Backed by markdown manifests in `content/whats-new/` compiled into static manifests, tracking the latest seen release ID locally on each device, and always re-accessible via Settings.
+_Avoid_: Release popup, changelog blast, splash alert

@@ -57,6 +57,9 @@ import { useLanguage } from '../components/LanguageProvider';
 import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import TestAccountPurgeModal from '../components/settings/TestAccountPurgeModal';
+import WhatsNewModal from '../components/WhatsNewModal';
+import whatsNewManifest from '../generated/whats-new.json';
+import type { WhatsNewManifest } from '../scripts/compile-whats-new';
 import {
   subscribePartners,
   savePartners,
@@ -558,6 +561,43 @@ function LanguageSection() {
             </button>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+// ── What's New ─────────────────────────────────────────────────────────
+
+function WhatsNewSection({ onOpen }: { onOpen: () => void }) {
+  const { t } = useLanguage();
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.whats_new', "What's New")}
+        sub={t('settings.whats_new_sub', 'See the latest updates, features, and improvements added to CISA.')}
+      />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-accent shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-serif text-base text-on-surface leading-tight">
+              {whatsNewManifest.latestReleaseId ? `v${(whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? 'Latest'}` : t('settings.whats_new', "What's New")}
+            </h3>
+            <p className="text-[13px] text-on-surface-variant mt-0.5">
+              {(whatsNewManifest as WhatsNewManifest).releases[0]?.title ?? t('settings.whats_new_sub', 'Latest release notes')}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="px-5 py-2.5 rounded-xl bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer shrink-0"
+        >
+          {t('settings.whats_new_button', 'View latest release notes')}
+        </button>
       </div>
     </section>
   );
@@ -2088,6 +2128,7 @@ export default function Settings() {
   const [editTarget, setEditTarget] = useState<AppUser | null>(null);
   const [removeTarget, setRemoveTarget] = useState<AppUser | null>(null);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
 
   useEffect(() => {
     if (!isManager) return;
@@ -2252,6 +2293,14 @@ export default function Settings() {
         <NavigationSection />
         <NotificationsSection />
         <LanguageSection />
+        <WhatsNewSection onOpen={() => setWhatsNewOpen(true)} />
+
+        <WhatsNewModal
+          isOpen={whatsNewOpen}
+          onClose={() => setWhatsNewOpen(false)}
+          manifest={whatsNewManifest as WhatsNewManifest}
+          platform="web"
+        />
 
         <p className="mt-12 text-center text-[13px] text-on-surface-variant/70 italic">
           {t('settings.more_account_settings', 'More account settings will arrive in time.')}
@@ -2275,6 +2324,7 @@ export default function Settings() {
       <NavigationSection />
       <NotificationsSection />
       <LanguageSection />
+      <WhatsNewSection onOpen={() => setWhatsNewOpen(true)} />
 
       <section className="mt-10">
         <SectionHeader
@@ -2458,6 +2508,12 @@ export default function Settings() {
             onClose={() => setShowPurgeModal(false)}
           />
         )}
+        <WhatsNewModal
+          isOpen={whatsNewOpen}
+          onClose={() => setWhatsNewOpen(false)}
+          manifest={whatsNewManifest as WhatsNewManifest}
+          platform="web"
+        />
       </AnimatePresence>
     </PageContainer>
   );

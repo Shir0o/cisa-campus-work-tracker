@@ -1466,6 +1466,8 @@
       "tell_the_team": "Dile al equipo",
       "tell_us_how_its_going": "Cuéntanos cómo va",
       "tell_us_sub": "Una idea, algo que no funcionó o un agradecimiento",
+      "whats_new": "Novedades",
+      "whats_new_sub": "Consulta las últimas actualizaciones y mejoras en CISA",
       "account_session": "Cuenta y sesión",
       "log_out": "Cerrar sesión",
       "messages": "Mensajes",
@@ -1598,8 +1600,9 @@
     "ft_more": {
       "intro": "Las pantallas que a veces necesitas en movimiento. Todo lo más pesado vive en el escritorio.",
       "foot": "Las páginas del tablero, las reuniones y los tipos se leen principalmente aquí: edítalos en un escritorio.",
-      "see_it_as_they_do": "Verlo como ellos lo ven",
-      "tell_us_how_its_going": "Cuéntanos cómo va"
+      "see_it_as_they_do": "Verlo como ellos",
+      "whats_new": "Novedades",
+      "tell_us_how_its_going": "Cuéntanos cómo va todo"
     },
     "board": {
       "title": "El Tablero",
