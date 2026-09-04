@@ -64,6 +64,8 @@ const Messages = lazyWithRetry(() => import("./views/Messages"));
 const Questions = lazyWithRetry(() => import("./views/Questions"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
+const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
+const BibleStudyEditor = lazyWithRetry(() => import("./views/BibleStudyEditor"));
 
 
 interface LayoutContextType {
@@ -626,6 +628,23 @@ export default function App() {
                 />
 
                 <Route
+                  path="/s/:studyId"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <PublicStudyReader />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="/s/:studyId/:date"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <PublicStudyReader />
+                    </React.Suspense>
+                  }
+                />
+
+                <Route
                   path="/"
                   element={
                     <ProtectedRoute>
@@ -645,6 +664,28 @@ export default function App() {
                       <RoleGuard minRole="viewer">
                         <DashboardLayout>
                           <Attendance />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/bible-study"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <React.Suspense
+                            fallback={
+                              <div className="p-8 space-y-6">
+                                <Skeleton className="h-10 w-64" />
+                                <Skeleton className="h-96 w-full rounded-3xl" />
+                              </div>
+                            }
+                          >
+                            <BibleStudyEditor />
+                          </React.Suspense>
                         </DashboardLayout>
                       </RoleGuard>
                     </ProtectedRoute>

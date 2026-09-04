@@ -114,7 +114,7 @@ describe('canAccessRoute()', () => {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
     manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -280,6 +280,7 @@ describe('TopNav primary tabs per role', () => {
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
     expect(adminMoreLabels).toEqual([
       'Answered',
+      'Bible study',
       'Gatherings',
       'Gospel',
       'Looking back',
@@ -547,7 +548,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/questions'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/messages'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
