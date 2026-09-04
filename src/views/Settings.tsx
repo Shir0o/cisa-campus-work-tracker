@@ -242,7 +242,21 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
 function AccountSection() {
   const { user, logOut, role, isApproved } = useAuth();
   const { t } = useLanguage();
+  const [showEditName, setShowEditName] = useState(false);
   const myRole = (role as AppRole) ?? null;
+
+  const handleSaveSelfName = async (newName: string) => {
+    if (!user?.uid) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        displayName: newName,
+        updatedAt: serverTimestamp(),
+      });
+      setShowEditName(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+    }
+  };
 
   return (
     <section className="mt-10">
@@ -254,7 +268,18 @@ function AccountSection() {
         <div className="flex items-center gap-4 min-w-0">
           <Avatar name={user?.displayName || user?.email} photoURL={user?.photoURL} size="lg" />
           <div className="min-w-0">
-            <h3 className="font-serif text-xl text-on-surface truncate">{user?.displayName || 'Campus user'}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-serif text-xl text-on-surface truncate">{user?.displayName || 'Campus user'}</h3>
+              <button
+                type="button"
+                onClick={() => setShowEditName(true)}
+                className="p-1.5 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors"
+                aria-label="Edit name"
+                title="Edit name"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <p className="text-sm text-on-surface-variant truncate">{user?.email}</p>
             <div className="flex flex-wrap gap-2 mt-2">
               <span
@@ -284,6 +309,16 @@ function AccountSection() {
           {t('actions.log_out', 'Log out')}
         </button>
       </div>
+
+      <AnimatePresence>
+        {showEditName && (
+          <EditSelfNameModal
+            currentName={user?.displayName || ''}
+            onClose={() => setShowEditName(false)}
+            onSave={handleSaveSelfName}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
@@ -1262,14 +1297,14 @@ function DangerZoneSection({ onOpenPurgeModal }: { onOpenPurgeModal: () => void 
 function MemberCard({
   user,
   isYou,
-  canEditRole,
+  canEdit,
   canRemove,
   onEdit,
   onRemove,
 }: {
   user: AppUser;
   isYou: boolean;
-  canEditRole: boolean;
+  canEdit: boolean;
   canRemove: boolean;
   onEdit: () => void;
   onRemove: () => void;
@@ -1286,7 +1321,7 @@ function MemberCard({
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpen]);
 
-  const hasMenu = canEditRole || canRemove;
+  const hasMenu = canEdit || canRemove;
 
   return (
     <div
@@ -1322,7 +1357,7 @@ function MemberCard({
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 z-20 w-44 rounded-xl border border-outline-variant/60 bg-surface shadow-lg py-1">
-              {canEditRole && (
+              {canEdit && (
                 <button
                   onClick={() => {
                     setMenuOpen(false);
@@ -1330,7 +1365,7 @@ function MemberCard({
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-on-surface hover:bg-surface-container-high text-left"
                 >
-                  <Pencil className="w-3.5 h-3.5" /> Edit role
+                  <Pencil className="w-3.5 h-3.5" /> Edit member
                 </button>
               )}
               {canRemove && (
@@ -1379,7 +1414,7 @@ function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => v
   );
 }
 
-function EditRoleModal({
+function EditMemberModal({
   user,
   isAdmin,
   onClose,
@@ -1388,11 +1423,22 @@ function EditRoleModal({
   user: AppUser;
   isAdmin: boolean;
   onClose: () => void;
-  onSave: (uid: string, role: AppRole) => void;
+  onSave: (uid: string, updates: { displayName: string; role: AppRole }) => void;
 }) {
+  const [displayName, setDisplayName] = useState(user.displayName || '');
   const [role, setRole] = useState<AppRole>(user.role || 'viewer');
   // RBAC: only an admin can grant the Full-timer (admin) role.
   const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
+
+  const trimmedName = displayName.trim();
+  const canSave = trimmedName.length > 0 && trimmedName.length <= 128;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSave) return;
+    onSave(user.uid, { displayName: trimmedName, role });
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div
@@ -1408,7 +1454,7 @@ function EditRoleModal({
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         className="relative w-full max-w-sm bg-surface-container rounded-3xl border border-outline-variant/50 p-6 shadow-2xl"
       >
-        <h3 className="font-serif text-xl text-on-surface mb-4">Edit role</h3>
+        <h3 className="font-serif text-xl text-on-surface mb-4">Edit member</h3>
         <div className="flex items-center gap-3 mb-5">
           <Avatar name={user.displayName || user.email} photoURL={user.photoURL} />
           <div className="min-w-0">
@@ -1416,32 +1462,129 @@ function EditRoleModal({
             <div className="text-[13px] text-on-surface-variant truncate">{user.email}</div>
           </div>
         </div>
-        <label className="text-sm text-on-surface-variant block mb-1.5">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as AppRole)}
-          className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface mb-6 cursor-pointer"
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onSave(user.uid, role)}
-            className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors"
-          >
-            Save
-          </button>
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="edit-member-name" className="text-sm text-on-surface-variant block mb-1.5">
+              Display name
+            </label>
+            <input
+              id="edit-member-name"
+              type="text"
+              value={displayName}
+              maxLength={128}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Jane Doe"
+              className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
+              autoFocus
+            />
+          </div>
+          <div className="mb-6">
+            <label htmlFor="edit-member-role" className="text-sm text-on-surface-variant block mb-1.5">
+              Role
+            </label>
+            <select
+              id="edit-member-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as AppRole)}
+              className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
+            >
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSave}
+              className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function EditSelfNameModal({
+  currentName,
+  onClose,
+  onSave,
+}: {
+  currentName: string;
+  onClose: () => void;
+  onSave: (newName: string) => void;
+}) {
+  const [name, setName] = useState(currentName);
+  const trimmedName = name.trim();
+  const canSave = trimmedName.length > 0 && trimmedName.length <= 128;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSave) return;
+    onSave(trimmedName);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        className="relative w-full max-w-sm bg-surface-container rounded-3xl border border-outline-variant/50 p-6 shadow-2xl"
+      >
+        <h3 className="font-serif text-xl text-on-surface mb-4">Edit your name</h3>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            <label htmlFor="edit-self-name" className="text-sm text-on-surface-variant block mb-1.5">
+              Display name
+            </label>
+            <input
+              id="edit-self-name"
+              type="text"
+              value={name}
+              maxLength={128}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface"
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl bg-surface-container-high text-on-surface-variant font-medium hover:bg-surface-variant transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!canSave}
+              className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
+        </form>
       </motion.div>
     </div>
   );
@@ -2182,11 +2325,16 @@ export default function Settings() {
     }
   };
 
-  const changeRole = async (uid: string, newRole: AppRole) => {
+
+  const updateMember = async (uid: string, updates: { displayName: string; role: AppRole }) => {
     setUpdatingId(uid);
     const userPath = `users/${uid}`;
     try {
-      await updateDoc(doc(db, 'users', uid), { role: newRole, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, 'users', uid), {
+        displayName: updates.displayName,
+        role: updates.role,
+        updatedAt: serverTimestamp(),
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, userPath);
     } finally {
@@ -2376,7 +2524,7 @@ export default function Settings() {
                   key={u.uid}
                   user={u}
                   isYou={isYou}
-                  canEditRole={isAdmin && !isYou}
+                  canEdit={isAdmin && !isYou}
                   canRemove={isManager && !isYou}
                   onEdit={() => setEditTarget(u)}
                   onRemove={() => setRemoveTarget(u)}
@@ -2432,12 +2580,12 @@ export default function Settings() {
           />
         )}
         {editTarget && (
-          <EditRoleModal
+          <EditMemberModal
             user={editTarget}
             isAdmin={isAdmin}
             onClose={() => setEditTarget(null)}
-            onSave={(uid, newRole) => {
-              changeRole(uid, newRole);
+            onSave={(uid, updates) => {
+              updateMember(uid, updates);
               setEditTarget(null);
             }}
           />

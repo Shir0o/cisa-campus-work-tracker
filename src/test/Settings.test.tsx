@@ -733,7 +733,7 @@ describe('Settings', () => {
       confirmSpy.mockRestore();
     });
 
-    it('handles role updates through EditRoleModal', async () => {
+    it('handles member updates through EditMemberModal', async () => {
       setupManagerAuth();
       setupManagerSnapshot();
 
@@ -748,22 +748,26 @@ describe('Settings', () => {
       // Alice is first approved member
       fireEvent.click(optionsButtons[0]);
 
-      // Click "Edit role"
-      const editRoleButton = screen.getByText('Edit role');
-      fireEvent.click(editRoleButton);
+      // Click "Edit member"
+      const editMemberButton = screen.getByText('Edit member');
+      fireEvent.click(editMemberButton);
 
       // Verify Modal rendered
-      expect(screen.getByText('Edit role')).toBeInTheDocument();
+      expect(screen.getByText('Edit member')).toBeInTheDocument();
       expect(screen.getByText('alice@test.com')).toBeInTheDocument();
 
       // Cancel modal
       const cancelModalButton = screen.getByRole('button', { name: 'Cancel' });
       fireEvent.click(cancelModalButton);
-      expect(screen.queryByText('Edit role')).not.toBeInTheDocument();
+      expect(screen.queryByText('Edit member')).not.toBeInTheDocument();
 
-      // Re-open and save
+      // Re-open and save with new name and role
       fireEvent.click(optionsButtons[0]);
-      fireEvent.click(screen.getByText('Edit role'));
+      fireEvent.click(screen.getByText('Edit member'));
+
+      // Change display name
+      const nameInput = screen.getByLabelText('Display name');
+      fireEvent.change(nameInput, { target: { value: 'Alice Wonderland' } });
 
       // Change role select
       const roleSelect = screen.getByDisplayValue('Student');
@@ -775,10 +779,64 @@ describe('Settings', () => {
       await waitFor(() => {
         expect(updateDoc).toHaveBeenCalledWith(
           expect.objectContaining({ path: 'users/u1' }),
-          expect.objectContaining({ role: 'viewer', updatedAt: 'mock-timestamp' })
+          expect.objectContaining({
+            displayName: 'Alice Wonderland',
+            role: 'viewer',
+            updatedAt: 'mock-timestamp',
+          })
         );
       });
     });
+
+    it('disables saving in EditMemberModal when display name is empty or only whitespace', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+
+      render(<Settings />);
+
+      const alice = await screen.findByText('Alice Johnson');
+      expect(alice).toBeInTheDocument();
+
+      const optionsButtons = screen.getAllByRole('button', { name: /Member options/i });
+      fireEvent.click(optionsButtons[0]);
+      const editBtn = await screen.findByText('Edit member');
+      fireEvent.click(editBtn);
+
+      const nameInput = screen.getByLabelText('Display name');
+      fireEvent.change(nameInput, { target: { value: '   ' } });
+
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      expect(saveButton).toBeDisabled();
+    });
+
+    it('allows a user to edit their own display name in AccountSection', async () => {
+      setupNonManagerAuth({ role: 'operator', isApproved: true });
+
+      render(<Settings />);
+
+      // Find and click "Edit name" button in AccountSection
+      const editNameButton = screen.getByRole('button', { name: /edit name/i });
+      fireEvent.click(editNameButton);
+
+      // Modal appears
+      expect(screen.getByText('Edit your name')).toBeInTheDocument();
+      const input = screen.getByLabelText('Display name');
+      fireEvent.change(input, { target: { value: 'New Self Name' } });
+
+      const saveBtn = screen.getByRole('button', { name: 'Save' });
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'users/u-viewer' }),
+          expect.objectContaining({
+            displayName: 'New Self Name',
+            updatedAt: 'mock-timestamp',
+          })
+        );
+      });
+    });
+
 
     it('handles removing access through RemoveConfirmModal', async () => {
       setupManagerAuth();
@@ -835,13 +893,13 @@ describe('Settings', () => {
       fireEvent.click(optionsButtons[0]);
 
       // Verify menu is open
-      expect(screen.getByText('Edit role')).toBeInTheDocument();
+      expect(screen.getByText('Edit member')).toBeInTheDocument();
 
       // Mousedown on document outside ref
       fireEvent.mouseDown(document.body);
 
       // Verify menu is closed
-      expect(screen.queryByText('Edit role')).not.toBeInTheDocument();
+      expect(screen.queryByText('Edit member')).not.toBeInTheDocument();
     });
   });
 
