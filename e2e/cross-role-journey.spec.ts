@@ -87,8 +87,12 @@ test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () =>
     await expect(page.getByRole('heading', { name: testContactName })).toBeVisible({ timeout: 5_000 });
 
     // 3. Edit contact stage from First Contact to Second Contact
+    const moreActionsBtn = page.getByRole('button', { name: /more actions/i }).first();
+    await expect(moreActionsBtn).toBeVisible({ timeout: 5_000 });
+    await moreActionsBtn.click();
+
     const editBtn = page.getByRole('button', { name: /edit details/i }).first();
-    await expect(editBtn).toBeVisible();
+    await expect(editBtn).toBeVisible({ timeout: 5_000 });
     await editBtn.click();
 
     const stageSelect = page.getByRole('combobox', { name: /stage/i }).first();

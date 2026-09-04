@@ -64,8 +64,12 @@ test.describe('The Journey Board (#628)', () => {
     await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible({
       timeout: 5_000,
     });
-    // Switch into the editor — "Edit details" is admin-only and is shown
-    // in the contact details header.
+    // Switch into the editor — "Edit details" is admin/fulltimer-only and is in
+    // the "More actions" overflow menu in the contact details header.
+    const moreActionsBtn = page.getByRole('button', { name: /more actions/i }).first();
+    await expect(moreActionsBtn).toBeVisible({ timeout: 5_000 });
+    await moreActionsBtn.click();
+
     const editBtn = page.getByRole('button', { name: /^edit details$/i }).first();
     await expect(editBtn).toBeVisible({ timeout: 5_000 });
     await editBtn.click();
