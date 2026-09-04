@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
+import { ChevronRight, Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade, getContactCaregiver, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
@@ -48,14 +48,26 @@ const THIS_WEEK_END = THIS_WEEK_START + 7 * 24 * 3600 * 1000;
 const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
 const EARLIER_CAP = 4;
 
+// The dot on the spine (#709) — mirrors PrayerList.tsx. Colour says how the
+// prayer landed; the halo is the card colour, punching the spine out behind it.
+const DOT_TONE: Record<Status, string> = {
+  pending: 'block w-[9px] h-[9px] rounded-full bg-surface border-[1.5px] border-on-surface-variant',
+  ongoing: 'block w-[9px] h-[9px] rounded-full bg-stage-accent',
+  answered: 'block w-[9px] h-[9px] rounded-full bg-success',
+  unanswered: 'block w-[7px] h-[7px] rounded-full bg-surface border-[1.5px] border-on-surface-variant',
+};
+const DOT_HALO = 'shadow-[0_0_0_3px_var(--surface)]';
+const DOT_HALO_CURRENT = 'shadow-[0_0_0_3px_var(--surface),0_0_0_4.5px_var(--on-surface-variant)]';
+
+// The eyebrow type spec, shared by the section labels and the nudge.
+const EYEBROW = 'font-sans text-[10px] font-semibold uppercase tracking-[0.06em]';
+
 const STATUS_TONE: Record<Status, string> = {
   pending: 'text-on-surface-variant',
   ongoing: 'text-stage-accent',
   answered: 'text-success',
   unanswered: 'text-error',
 };
-
-
 
 const firstNameOf = (name: string) => name.split(' ')[0];
 
@@ -358,7 +370,7 @@ function PrayerThreadCard({
     : { label: t('prayers.all_answered'), tone: 'rest' };
 
   return (
-    <article className="bg-surface border border-outline-variant/45 rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
+    <article className="bg-surface border border-outline rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2 prt-head prt-head--m">
         <button onClick={onOpenProfile} className="flex items-center gap-3 text-left min-w-0 flex-1 prt-person">
@@ -436,13 +448,21 @@ function PrayerThreadCard({
         </div>
       )}
 
-      {/* This week */}
-      <div className="mt-2 prt-week">
-        <SectionEyebrow label={t('prayers.this_week')} />
+      {/* ── The thread, on one spine (#709). Same move as the desktop card:
+           the rail was carrying both where-you-are and how-it-landed, so it ran
+           from `--primary` down to an undrawn `--outline-variant`. One neutral
+           spine now carries the structure and a dot carries the state. The fold
+           itself stays as it is here — mobile already spaces its earlier
+           prayers (`space-y-2`) and marks them with a native select, so the
+           desktop cramming this issue reports is not present.
+           See docs/design/prayer-fold/. ── */}
+      <div className="relative mt-2 flex flex-col gap-3 prt-week">
+        <span data-testid="prayer-spine" aria-hidden className="absolute left-[7.5px] top-2 bottom-2 w-px bg-outline" />
         {weekItem ? (
           <PrayerItemMobile
             prayer={weekItem}
             variant="week"
+            label={t('prayers.this_week')}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
@@ -450,30 +470,34 @@ function PrayerThreadCard({
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
-        ) : isOperator ? (
-          <AddThisWeekMobile
-            firstName={firstName}
-            defaultOpen={autoCompose}
-            onAdd={async (text) => {
-              const ok = await onAddBurden(contact.id, text);
-              if (ok) setComposeFor(null);
-              return ok;
-            }}
-          />
         ) : (
-          <div className="text-xs text-on-surface-variant/65 italic pl-3.5 py-1">
-            {t('prayers.no_prayer_this_week')}
-          </div>
+          <TimelineRowMobile dot={<span className={cn(DOT_TONE.pending, DOT_HALO_CURRENT)} />}>
+            <SectionEyebrow label={t('prayers.this_week')} current />
+            {isOperator ? (
+              <AddThisWeekMobile
+                firstName={firstName}
+                defaultOpen={autoCompose}
+                onAdd={async (text) => {
+                  const ok = await onAddBurden(contact.id, text);
+                  if (ok) setComposeFor(null);
+                  return ok;
+                }}
+              />
+            ) : (
+              <div className="text-xs text-on-surface-variant/65 italic mt-1 py-1">
+                {t('prayers.no_prayer_this_week')}
+              </div>
+            )}
+          </TimelineRowMobile>
         )}
-      </div>
 
-      {/* Last week */}
-      {lastItem && (
-        <div className="mt-3">
-          <SectionEyebrow label={t('prayers.last_week')} nudge={needsMark ? t('prayers.needs_update') : undefined} />
+        {/* Last week */}
+        {lastItem && (
           <PrayerItemMobile
             prayer={lastItem}
             variant="last"
+            label={t('prayers.last_week')}
+            nudge={needsMark ? t('prayers.needs_update') : undefined}
             needsMark={needsMark}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
@@ -482,71 +506,80 @@ function PrayerThreadCard({
             isManager={isManager}
             onClearPrayer={onClearPrayer}
           />
-        </div>
-      )}
+        )}
 
-      {/* Earlier */}
-      {earlier.length > 0 && (
-        <div className="mt-3">
-          <button
-            onClick={() => setShowEarlier((v) => !v)}
-            className="flex items-center gap-3 w-full group py-1"
-          >
-            <span
-              className={cn(
-                'text-on-surface-variant transition-transform text-[10px]',
-                showEarlier && 'rotate-90',
-              )}
-              aria-hidden
+        {/* Earlier — a node on the same spine, not a third hairline */}
+        {earlier.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowEarlier((v) => !v)}
+              aria-expanded={showEarlier}
+              className="flex items-center gap-3.5 w-full group text-left"
             >
-              ▶
-            </span>
-            <span className="font-sans text-[11px]   text-on-surface-variant group-hover:text-on-surface transition-colors">
-              {showEarlier ? t('prayers.hide') : t('prayers.earlier')} — {earlier.length} {earlier.length === 1 ? t('prayers.prayer') : t('prayers.prayers')}
-            </span>
-            <span className="flex-1 h-px bg-outline-variant" />
-          </button>
-          {showEarlier && (
-            <div className="mt-2 space-y-2">
-              {earlier.slice(0, EARLIER_CAP).map((p) => (
-                <PrayerItemMobile
-                  key={p.id}
-                  prayer={p}
-                  variant="earlier"
-                  onUpdateStatus={onUpdateStatus}
-                  onUpdateBurden={onUpdateBurden}
-                  isOperator={isOperator}
-                  onMakeTodo={onMakeTodo}
-                  isManager={isManager}
-                  onClearPrayer={onClearPrayer}
-                />
-              ))}
-              {earlier.length > EARLIER_CAP && (
-                <div className="text-[12px] text-on-surface-variant pt-2 pl-1">
-                  {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
-                  {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
-                  <button onClick={onOpenProfile} className="text-accent font-semibold hover:underline">
-                    {t('prayers.see_full_history').replace('{name}', firstName)}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+              <span className="w-4 shrink-0 flex justify-center">
+                <span className="w-4 h-4 rounded-full border border-outline bg-surface text-on-surface-variant grid place-items-center">
+                  <ChevronRight
+                    aria-hidden
+                    strokeWidth={3}
+                    className={cn('w-[9px] h-[9px] transition-transform duration-[160ms]', showEarlier && 'rotate-90')}
+                  />
+                </span>
+              </span>
+              <span className="font-sans text-[11px] text-on-surface-variant group-hover:text-on-surface transition-colors">
+                {showEarlier ? t('prayers.hide') : t('prayers.earlier')} — {earlier.length} {earlier.length === 1 ? t('prayers.prayer') : t('prayers.prayers')}
+              </span>
+            </button>
+            {showEarlier && (
+              <div className="-mt-1 space-y-3">
+                {earlier.slice(0, EARLIER_CAP).map((p) => (
+                  <PrayerItemMobile
+                    key={p.id}
+                    prayer={p}
+                    variant="earlier"
+                    onUpdateStatus={onUpdateStatus}
+                    onUpdateBurden={onUpdateBurden}
+                    isOperator={isOperator}
+                    onMakeTodo={onMakeTodo}
+                    isManager={isManager}
+                    onClearPrayer={onClearPrayer}
+                  />
+                ))}
+                {earlier.length > EARLIER_CAP && (
+                  <div className="text-[12px] text-on-surface-variant pt-1 pl-[30px]">
+                    {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
+                    {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
+                    <button onClick={onOpenProfile} className="text-accent font-semibold hover:underline">
+                      {t('prayers.see_full_history').replace('{name}', firstName)}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </article>
   );
 }
 
-function SectionEyebrow({ label, nudge }: { label: string; nudge?: string }) {
+// One row on the spine: a 16px dot column, then the content.
+function TimelineRowMobile({ dot, children }: { dot: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 mb-1.5">
-      <span className="font-sans text-[10px]   text-on-surface-variant">{label}</span>
-      {nudge && (
-        <span className="font-sans text-[10px]   text-error font-semibold">{nudge}</span>
-      )}
-      <span className="flex-1 h-px bg-outline-variant/60" />
+    <div className="flex gap-3.5">
+      <div className="w-4 shrink-0 flex justify-center pt-1" aria-hidden>
+        {dot}
+      </div>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
+  );
+}
+
+// The eyebrow keeps its words and loses its rule.
+function SectionEyebrow({ label, current }: { label: string; current?: boolean }) {
+  return (
+    <span className={cn(EYEBROW, current ? 'text-on-surface' : 'text-on-surface-variant')}>
+      {label}
+    </span>
   );
 }
 
@@ -554,6 +587,8 @@ function SectionEyebrow({ label, nudge }: { label: string; nudge?: string }) {
 function PrayerItemMobile({
   prayer,
   variant,
+  label,
+  nudge,
   needsMark,
   onUpdateStatus,
   onUpdateBurden,
@@ -564,6 +599,9 @@ function PrayerItemMobile({
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
+  /** Inline eyebrow — "This week" / "Last week". Absent inside the fold. */
+  label?: string;
+  nudge?: string;
   needsMark?: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, photos?: any, archiveReason?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
@@ -597,270 +635,271 @@ function PrayerItemMobile({
   const MARK_OPTIONS: Status[] = ['ongoing', 'answered', 'unanswered'];
 
   return (
-    <div
-      className={cn(
-        'pl-3.5 border-l-2 py-1 prt-prayer prt-prayer--m',
-        variant === 'week'
-          ? 'border-l-primary'
-          : prayer.status === 'answered'
-            ? 'border-l-success/50'
-            : 'border-l-outline-variant',
-      )}
+    <TimelineRowMobile
+      dot={
+        <span className={cn(DOT_TONE[prayer.status], variant === 'week' ? DOT_HALO_CURRENT : DOT_HALO)} />
+      }
     >
-      <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="text-[12px] text-on-surface-variant/80">{formatDate(prayer.date)}</span>
-        {prayer.status !== 'pending' ? (
-          <span className={cn('text-[10px]   font-semibold', STATUS_TONE[prayer.status])}>
-            {t('prayers.status_' + prayer.status)}
-          </span>
-        ) : variant !== 'week' ? (
-          <span className="text-[10px]   font-semibold text-on-surface-variant/70">
-            {t('prayers.status_pending')}
-          </span>
-        ) : null}
-        {!editing && isOperator && (
-          <button
-            onClick={startEdit}
-            className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
-          >
-            {t('actions.edit')}
-          </button>
-        )}
-        {!editing && onMakeTodo && (
-          <button
-            onClick={() => onMakeTodo(prayer)}
-            title={t('prayers.make_todo_from_prayer')}
-            className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
-          >
-            {t('prayers.make_a_todo')}
-          </button>
-        )}
-        {!editing && isManager && onClearPrayer && (
-          <button
-            onClick={() => onClearPrayer(prayer)}
-            title={t('prayers.clear_prayer')}
-            className="inline-flex items-center gap-1 text-xs text-on-surface-variant/80 hover:text-error transition-colors prt-prayer-clear prt-prayer-clear--m"
-          >
-            <Trash2 className="w-3 h-3" />
-            <span>{t('prayers.clear_prayer')}</span>
-          </button>
-        )}
-      </div>
-
-      {editing ? (
-        <div className="mt-2 flex flex-col gap-2">
-          <textarea
-            autoFocus
-            rows={3}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="w-full p-2.5 rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
-          />
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => {
-                setDraft(prayer.burden);
-                setEditing(false);
-              }}
-              className="px-3.5 py-1.5 rounded-full text-xs text-on-surface-variant hover:text-on-surface"
-            >
-              {t('actions.cancel')}
-            </button>
-            <button
-              onClick={save}
-              disabled={!draft.trim() || saving}
-              className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold disabled:opacity-50"
-            >
-              {saving ? t('prayers.saving') : t('actions.save')}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className={cn('text-sm leading-relaxed mt-1 whitespace-pre-wrap prt-prayer-text', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
-          <Translate text={prayer.burden} />
-        </p>
-      )}
-
-      {/* Answer testimony */}
-      {!editing && !answering && prayer.status === 'answered' && (prayer.answer || prayer.answeredAt) && (
-        <div className="mt-2.5 text-xs bg-success/5 border border-success/15 rounded-xl p-3 max-w-full">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-success  ">
-              {t('prayers.status_answered')}{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+      <div className="py-1 prt-prayer prt-prayer--m">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          {label && <SectionEyebrow label={label} current={variant === 'week'} />}
+          <span className="text-[12px] text-on-surface-variant/80">{formatDate(prayer.date)}</span>
+          {nudge && (
+            <span className={cn(EYEBROW, 'text-error')}>{nudge}</span>
+          )}
+          {prayer.status !== 'pending' ? (
+            <span className={cn('text-[10px]   font-semibold', STATUS_TONE[prayer.status])}>
+              {t('prayers.status_' + prayer.status)}
             </span>
-            {isOperator && (
-              <button
-                onClick={() => {
-                  setHowDraft(prayer.answer || "");
-                  setAnswering(true);
-                }}
-                className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
-              >
-                {t('prayers.edit_testimony')}
-              </button>
-            )}
-          </div>
-          {prayer.answer && (
-            <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
-              "<Translate text={prayer.answer} />"
-            </p>
+          ) : variant !== 'week' ? (
+            <span className="text-[10px]   font-semibold text-on-surface-variant/70">
+              {t('prayers.status_pending')}
+            </span>
+          ) : null}
+          {!editing && isOperator && (
+            <button
+              onClick={startEdit}
+              className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
+            >
+              {t('actions.edit')}
+            </button>
+          )}
+          {!editing && onMakeTodo && (
+            <button
+              onClick={() => onMakeTodo(prayer)}
+              title={t('prayers.make_todo_from_prayer')}
+              className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
+            >
+              {t('prayers.make_a_todo')}
+            </button>
+          )}
+          {!editing && isManager && onClearPrayer && (
+            <button
+              onClick={() => onClearPrayer(prayer)}
+              title={t('prayers.clear_prayer')}
+              className="inline-flex items-center gap-1 text-xs text-on-surface-variant/80 hover:text-error transition-colors prt-prayer-clear prt-prayer-clear--m"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>{t('prayers.clear_prayer')}</span>
+            </button>
           )}
         </div>
-      )}
 
-      {/* Testimony compose box */}
-      {answering && (
-        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant/60">
-          <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
-            {t('prayers.how_was_it_answered')}
-          </label>
-          <textarea
-            className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
-            autoFocus
-            rows={2}
-            value={howDraft}
-            onChange={(e) => setHowDraft(e.target.value)}
-            placeholder={t('prayers.answer_placeholder')}
-          />
-          <div className="mt-2 flex justify-end gap-2">
-            <button
-              type="button"
-              className="px-3 py-1 rounded-full text-[11px] text-on-surface-variant hover:bg-surface-variant"
-              onClick={() => setAnswering(false)}
-            >
-              {t('prayers.skip')}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded-full text-[11px] bg-primary text-on-primary font-semibold"
-              onClick={() => {
-                onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || format(new Date(), 'MMM d'));
-                setAnswering(false);
-              }}
-            >
-              {t('actions.save')}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Archive reason display */}
-      {!editing && !archiving && prayer.status === 'unanswered' && prayer.archiveReason && (
-        <div className="mt-2.5 text-xs bg-surface-variant/40 border border-outline-variant/60 rounded-xl p-3 max-w-full">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-on-surface-variant">
-              {t('prayers.archive_reason', 'Archive reason')}
-            </span>
-            {isOperator && (
+        {editing ? (
+          <div className="mt-2 flex flex-col gap-2">
+            <textarea
+              autoFocus
+              rows={3}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              className="w-full p-2.5 rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+            />
+            <div className="flex gap-2 justify-end">
               <button
                 onClick={() => {
-                  setArchiveReasonDraft(prayer.archiveReason || "");
-                  setArchiving(true);
+                  setDraft(prayer.burden);
+                  setEditing(false);
                 }}
-                className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
+                className="px-3.5 py-1.5 rounded-full text-xs text-on-surface-variant hover:text-on-surface"
               >
-                {t('prayers.edit_archive_reason', 'Edit Reason')}
+                {t('actions.cancel')}
               </button>
+              <button
+                onClick={save}
+                disabled={!draft.trim() || saving}
+                className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold disabled:opacity-50"
+              >
+                {saving ? t('prayers.saving') : t('actions.save')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className={cn('text-sm leading-relaxed mt-1 whitespace-pre-wrap prt-prayer-text', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
+            <Translate text={prayer.burden} />
+          </p>
+        )}
+
+        {/* Answer testimony */}
+        {!editing && !answering && prayer.status === 'answered' && (prayer.answer || prayer.answeredAt) && (
+          <div className="mt-2.5 text-xs bg-success/5 border border-success/15 rounded-xl p-3 max-w-full">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-success  ">
+                {t('prayers.status_answered')}{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+              </span>
+              {isOperator && (
+                <button
+                  onClick={() => {
+                    setHowDraft(prayer.answer || "");
+                    setAnswering(true);
+                  }}
+                  className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
+                >
+                  {t('prayers.edit_testimony')}
+                </button>
+              )}
+            </div>
+            {prayer.answer && (
+              <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
+                "<Translate text={prayer.answer} />"
+              </p>
             )}
           </div>
-          <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
-            "<Translate text={prayer.archiveReason} />"
-          </p>
-        </div>
-      )}
+        )}
 
-      {/* Archive reason compose box */}
-      {archiving && (
-        <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant/60">
-          <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
-            {t('prayers.why_is_it_archived', 'Why is this archived?')}
-          </label>
-          <textarea
-            className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
-            autoFocus
-            rows={2}
-            value={archiveReasonDraft}
-            onChange={(e) => setArchiveReasonDraft(e.target.value)}
-            placeholder={t('prayers.archive_reason_placeholder', 'A note on why this is archived (optional)')}
-          />
-          <div className="mt-2 flex justify-end gap-2">
-            <button
-              type="button"
-              className="px-3 py-1 rounded-full text-[11px] text-on-surface-variant hover:bg-surface-variant"
-              onClick={() => setArchiving(false)}
-            >
-              {t('prayers.skip')}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded-full text-[11px] bg-primary text-on-primary font-semibold"
-              onClick={() => {
-                onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, archiveReasonDraft.trim());
-                setArchiving(false);
-              }}
-            >
-              {t('actions.save')}
-            </button>
+        {/* Testimony compose box */}
+        {answering && (
+          <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant/60">
+            <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
+              {t('prayers.how_was_it_answered')}
+            </label>
+            <textarea
+              className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
+              autoFocus
+              rows={2}
+              value={howDraft}
+              onChange={(e) => setHowDraft(e.target.value)}
+              placeholder={t('prayers.answer_placeholder')}
+            />
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1 rounded-full text-[11px] text-on-surface-variant hover:bg-surface-variant"
+                onClick={() => setAnswering(false)}
+              >
+                {t('prayers.skip')}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1 rounded-full text-[11px] bg-primary text-on-primary font-semibold"
+                onClick={() => {
+                  onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || format(new Date(), 'MMM d'));
+                  setAnswering(false);
+                }}
+              >
+                {t('actions.save')}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Marks status dropdown */}
-      {isOperator && (
-        <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
-          <span className="text-[10.5px]   text-on-surface-variant/75 prt-mark-label">
-            {variant === 'last' && needsMark ? t('prayers.where_did_it_land') : t('prayers.mark_status')}
-          </span>
-          <div className={cn(
-            "relative border rounded-xl bg-surface-container-low transition-all prt-mark-select",
-            prayer.status && `status-${prayer.status}`
-          )}>
-            <select
-              value={prayer.status || ""}
-              onChange={(e) => {
-                const val = e.target.value as Status | '';
-                if (!val) {
-                  setAnswering(false);
-                  setArchiving(false);
-                  onUpdateStatus(prayer, 'pending');
-                  return;
-                }
-                if (val === 'answered') {
-                  setArchiving(false);
-                  onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || format(new Date(), 'MMM d'));
-                  if (!prayer.answer) {
-                    setHowDraft("");
-                    setAnswering(true);
-                  }
-                } else if (val === 'unanswered') {
-                  setAnswering(false);
-                  onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, prayer.archiveReason || undefined);
-                  if (!prayer.archiveReason) {
-                    setArchiveReasonDraft("");
+        {/* Archive reason display */}
+        {!editing && !archiving && prayer.status === 'unanswered' && prayer.archiveReason && (
+          <div className="mt-2.5 text-xs bg-surface-variant/40 border border-outline-variant/60 rounded-xl p-3 max-w-full">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-on-surface-variant">
+                {t('prayers.archive_reason', 'Archive reason')}
+              </span>
+              {isOperator && (
+                <button
+                  onClick={() => {
+                    setArchiveReasonDraft(prayer.archiveReason || "");
                     setArchiving(true);
-                  }
-                } else {
-                  setAnswering(false);
-                  setArchiving(false);
-                  onUpdateStatus(prayer, val);
-                }
-              }}
-              className="w-full h-11 pl-3.5 pr-9 bg-transparent outline-none border-0 text-sm font-semibold appearance-none cursor-pointer text-on-surface-variant/90"
-            >
-              <option value="">{t('prayers.not_yet_marked')}</option>
-              {MARK_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {t('prayers.status_' + o)}
-                </option>
-              ))}
-            </select>
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/60 prt-mark-select-caret">
-              ▾
-            </span>
+                  }}
+                  className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
+                >
+                  {t('prayers.edit_archive_reason', 'Edit Reason')}
+                </button>
+              )}
+            </div>
+            <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
+              "<Translate text={prayer.archiveReason} />"
+            </p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Archive reason compose box */}
+        {archiving && (
+          <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-[14px] border border-outline-variant/60">
+            <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
+              {t('prayers.why_is_it_archived', 'Why is this archived?')}
+            </label>
+            <textarea
+              className="w-full p-2.5 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
+              autoFocus
+              rows={2}
+              value={archiveReasonDraft}
+              onChange={(e) => setArchiveReasonDraft(e.target.value)}
+              placeholder={t('prayers.archive_reason_placeholder', 'A note on why this is archived (optional)')}
+            />
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1 rounded-full text-[11px] text-on-surface-variant hover:bg-surface-variant"
+                onClick={() => setArchiving(false)}
+              >
+                {t('prayers.skip')}
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1 rounded-full text-[11px] bg-primary text-on-primary font-semibold"
+                onClick={() => {
+                  onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, archiveReasonDraft.trim());
+                  setArchiving(false);
+                }}
+              >
+                {t('actions.save')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Marks status dropdown */}
+        {isOperator && (
+          <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
+            <span className="text-[10.5px]   text-on-surface-variant/75 prt-mark-label">
+              {variant === 'last' && needsMark ? t('prayers.where_did_it_land') : t('prayers.mark_status')}
+            </span>
+            <div className={cn(
+              "relative border rounded-xl bg-surface-container-low transition-all prt-mark-select",
+              prayer.status && `status-${prayer.status}`
+            )}>
+              <select
+                value={prayer.status || ""}
+                onChange={(e) => {
+                  const val = e.target.value as Status | '';
+                  if (!val) {
+                    setAnswering(false);
+                    setArchiving(false);
+                    onUpdateStatus(prayer, 'pending');
+                    return;
+                  }
+                  if (val === 'answered') {
+                    setArchiving(false);
+                    onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || format(new Date(), 'MMM d'));
+                    if (!prayer.answer) {
+                      setHowDraft("");
+                      setAnswering(true);
+                    }
+                  } else if (val === 'unanswered') {
+                    setAnswering(false);
+                    onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, prayer.archiveReason || undefined);
+                    if (!prayer.archiveReason) {
+                      setArchiveReasonDraft("");
+                      setArchiving(true);
+                    }
+                  } else {
+                    setAnswering(false);
+                    setArchiving(false);
+                    onUpdateStatus(prayer, val);
+                  }
+                }}
+                className="w-full h-11 pl-3.5 pr-9 bg-transparent outline-none border-0 text-sm font-semibold appearance-none cursor-pointer text-on-surface-variant/90"
+              >
+                <option value="">{t('prayers.not_yet_marked')}</option>
+                {MARK_OPTIONS.map((o) => (
+                  <option key={o} value={o}>
+                    {t('prayers.status_' + o)}
+                  </option>
+                ))}
+              </select>
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/60 prt-mark-select-caret">
+                ▾
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </TimelineRowMobile>
   );
 }
 

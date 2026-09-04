@@ -269,6 +269,19 @@ describe('PrayerListMobile', () => {
     expect(screen.getByText(/No prayer recorded for this week/)).toBeInTheDocument();
   });
 
+  // #709 — the mobile card carried the same rail bug as the desktop one: the
+  // colour said both where-you-are and how-it-landed, so it ran from --primary
+  // down to an undrawn --outline-variant. Structure is one spine now; state is
+  // a dot on it.
+  it('draws one neutral spine instead of a per-entry coloured rail', () => {
+    const { container } = renderWithRouter({
+      entries: [{ contact: contact(), prayers: [prayer(), prayer({ id: 'p2', date: '2020-01-01', status: 'answered' })] }],
+    });
+    expect(container.querySelector('.border-l-primary')).toBeNull();
+    expect(container.querySelector('.border-l-success\\/50')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="prayer-spine"]')).toHaveLength(1);
+  });
+
   it('expands the earlier prayers fold and caps the count', () => {
     const many = Array.from({ length: 6 }, (_, i) => prayer({ id: `p${i}`, date: `2020-01-0${i + 1}` }));
     renderWithRouter({

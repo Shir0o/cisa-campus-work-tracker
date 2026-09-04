@@ -518,6 +518,76 @@ describe('PrayerList', () => {
     expect(screen.queryByText('Earlier 1')).not.toBeInTheDocument();
   });
 
+  // #709 — an opened fold used to print a full prayer per entry: date row,
+  // burden, and the whole Mark chip row, four times over, with no gap between
+  // them. Each earlier prayer is now one summary line you open in place.
+  it('collapses each earlier prayer to a summary line and opens it in place', async () => {
+    const prayers = [
+      { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e1', data: () => ({ contactId: 'c1', burden: 'Earlier one', date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(), status: 'ongoing' }) },
+      { id: 'p_e2', data: () => ({ contactId: 'c1', burden: 'Earlier two', date: new Date(Date.now() - 22 * 24 * 3600 * 1000).toISOString(), status: 'answered' }) },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 2 });
+      else if (ref?.path === 'prayers') callback({ docs: prayers, size: 4 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('This week burden')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Earlier — 2 prayers/i }));
+
+    // This week and last week each carry a mark row; the two folded prayers
+    // add none until they are opened.
+    const markRows = () => screen.getAllByRole('button', { name: 'Ongoing' }).length;
+    expect(markRows()).toBe(2);
+
+    // The burden is on the summary line, but its controls are not rendered yet.
+    const summary = screen.getByRole('button', { name: /Earlier one/i });
+    expect(summary).toHaveAttribute('aria-expanded', 'false');
+    expect(within(summary).queryByText('Edit')).not.toBeInTheDocument();
+
+    fireEvent.click(summary);
+    const expanded = screen.getByRole('button', { name: /Earlier one/i });
+    expect(expanded).toHaveAttribute('aria-expanded', 'true');
+    expect(markRows()).toBe(3);
+
+    fireEvent.click(expanded);
+    expect(screen.getByRole('button', { name: /Earlier one/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(markRows()).toBe(2);
+  });
+
+  // #709 — "the line coloring". The rail carried both where-you-are and
+  // how-it-landed, so it ran from --primary (17:1 on the card) to
+  // --outline-variant (1.15:1). Structure is now one neutral spine; state is a
+  // dot on it. No prayer entry carries a coloured left border any more.
+  it('draws one neutral spine instead of a per-entry coloured rail', async () => {
+    const prayers = [
+      { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'ongoing' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'answered' }) },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 2 });
+      else if (ref?.path === 'prayers') callback({ docs: prayers, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    const { container } = render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('This week burden')).toBeInTheDocument());
+
+    expect(container.querySelector('.border-l-primary')).toBeNull();
+    expect(container.querySelector('.border-l-success\\/50')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="prayer-spine"]')).toHaveLength(1);
+    // One dot per entry, carrying the status the rail used to carry.
+    expect(container.querySelectorAll('[data-testid="prayer-dot"]')).toHaveLength(2);
+  });
+
   it('handles writing and saving a testimony when marking prayer as answered', async () => {
     render(<PrayerList />);
 
