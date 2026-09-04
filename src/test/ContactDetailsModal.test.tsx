@@ -1174,6 +1174,12 @@ describe('ContactDetailsModal Component', () => {
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: 'user-456' } });
 
+    // App-styled confirmation dialogue is displayed
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    expect(confirmDialog).toBeInTheDocument();
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
@@ -1250,6 +1256,11 @@ describe('ContactDetailsModal Component', () => {
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: 'user-456' } });
 
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    expect(confirmDialog).toBeInTheDocument();
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
@@ -1295,6 +1306,11 @@ describe('ContactDetailsModal Component', () => {
 
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: 'user-456' } });
+
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    expect(confirmDialog).toBeInTheDocument();
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
+    fireEvent.click(confirmBtn);
 
     await waitFor(() => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
