@@ -61,8 +61,8 @@ describe("THREAD_KINDS / reactions config", () => {
     expect(THREAD_KINDS.question.tone).toBe("amber");
   });
 
-  it("offers the small reaction set", () => {
-    expect(THREAD_REACTIONS).toEqual(["🙏", "❤️", "🌱", "✅"]);
+  it("offers the heart reaction", () => {
+    expect(THREAD_REACTIONS).toEqual(["❤️"]);
   });
 });
 

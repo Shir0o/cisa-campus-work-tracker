@@ -21,7 +21,7 @@ vi.mock("../lib/threads", () => {
   const norm = (v: any) => v ?? null;
   return {
     THREAD_KINDS,
-    THREAD_REACTIONS: ["🙏", "❤️", "🌱", "✅"],
+    THREAD_REACTIONS: ["❤️"],
     threadsFor: (msgs: any[], iid: any = null, scope: any = null) =>
       msgs.filter((m) => norm(m.interactionId) === norm(iid) && norm(m.scope) === norm(scope) && !m.parentId),
     countFor: (msgs: any[], iid: any = null, scope: any = null) =>
@@ -96,8 +96,10 @@ describe("Thread", () => {
     hoisted.messages = [message({ id: "a", from: "u3", reactions: [] })];
     render(<Thread contactId="C-1" meStaffId="u1" />);
     const addButtons = screen.getAllByTitle("Add reaction");
-    await userEvent.click(addButtons[0]); // 🙏
-    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "🙏");
+    expect(addButtons).toHaveLength(1);
+    expect(addButtons[0]).toHaveTextContent("❤️");
+    await userEvent.click(addButtons[0]);
+    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
   });
 
   it("renders an empty state when there are no messages", () => {
@@ -114,14 +116,14 @@ describe("Thread", () => {
 
   it("shows reaction tallies and toggles the viewer's existing reaction", async () => {
     hoisted.messages = [
-      message({ id: "a", from: "u3", reactions: [{ by: "u1", emoji: "🙏" }] }),
+      message({ id: "a", from: "u3", reactions: [{ by: "u1", emoji: "❤️" }] }),
     ];
     render(<Thread contactId="C-1" meStaffId="u1" />);
     const tallyButton = screen.getByTitle("React");
-    expect(tallyButton).toHaveTextContent("🙏");
+    expect(tallyButton).toHaveTextContent("❤️");
     expect(tallyButton).toHaveTextContent("1");
     await userEvent.click(tallyButton);
-    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "🙏");
+    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
   });
 
   it("posts with ⌘↵ from the textarea", async () => {
