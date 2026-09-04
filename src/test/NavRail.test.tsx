@@ -520,7 +520,7 @@ describe('NavRail (#664)', () => {
     expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('pt-3');
     expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('py-2');
     expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('pt-2');
-    expect(classes).toContain('pb-3');
+    expect(classes).toContain('pb-6');
   });
 
   it('draws the hairline divider above the Sign-up icon when the rail is collapsed (#747)', () => {
