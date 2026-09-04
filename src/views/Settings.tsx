@@ -2459,6 +2459,7 @@ export default function Settings() {
   return (
     <PageContainer variant="reading">
       <header className="mb-8">
+        <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">{t('settings.title', 'Settings')}</h1>
         <p className="text-base text-on-surface-variant mt-2">
           {currentUser?.displayName
             ? `${t('settings.signed_in_as', 'Signed in as')} ${currentUser.displayName}${myRole ? ` · ${ROLE_LABEL[myRole]}` : ''}`

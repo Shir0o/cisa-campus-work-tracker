@@ -237,6 +237,12 @@ describe('Settings', () => {
   // ── 4. Manager view renders team section ──
 
   describe('manager view team section', () => {
+    it('renders level 1 Settings heading in manager view', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+      expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    });
+
     it('renders Your team, search input, Add someone button, and member names', async () => {
       setupManagerAuth();
       setupManagerSnapshot();
