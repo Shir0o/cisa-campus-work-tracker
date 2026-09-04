@@ -286,6 +286,7 @@ export default function ContactDetailsModal({
   // gates this affordance via `canShare`, so the picker only lists teammates
   // who are not already the current owner.
   const [transferring, setTransferring] = useState(false);
+  const [pendingTransferOwner, setPendingTransferOwner] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
@@ -673,26 +674,23 @@ export default function ContactDetailsModal({
   // says who currently has pastoral responsibility for this contact. Hand it
   // off to another teammate and the audit log will say so. The firestore
   // rules gate this by `isAdmin() || existing().owner == request.auth.uid`.
-  const transferOwner = async (newOwnerId: string) => {
-    if (!contact) return;
-    if (!canShare) return;
+  const handleSelectTransferTarget = (newOwnerId: string) => {
+    if (!contact || !canShare) return;
     if (newOwnerId === ownerId) {
       setTransferring(false);
       return;
     }
+    setPendingTransferOwner(newOwnerId);
+  };
+
+  const confirmTransferOwner = async () => {
+    if (!contact || !pendingTransferOwner) return;
+    const newOwnerId = pendingTransferOwner;
     const newOwner = teamMembers.find((m) => m.id === newOwnerId);
     const previousOwnerId = ownerId;
     const previousOwner = teamMembers.find((m) => m.id === previousOwnerId);
     const recipientName = newOwner?.name || newOwnerId;
-    const ok = window.confirm(
-      t('modals.contactDetails.transfer_confirm')
-        .replace('{name}', contact.name.split(' ')[0] || contact.name)
-        .replace('{recipient}', recipientName),
-    );
-    if (!ok) {
-      setTransferring(false);
-      return;
-    }
+
     // Drop the previous owner from coCreators in the same write so the audit
     // stays clean — a former owner should not be self-sharing the contact.
     const patch: Record<string, unknown> = { owner: newOwnerId };
@@ -718,6 +716,7 @@ export default function ContactDetailsModal({
         ? `From ${previousOwner.name} to ${recipientName}`
         : `To ${recipientName}`,
     });
+    setPendingTransferOwner(null);
     setTransferring(false);
   };
 
@@ -1875,7 +1874,7 @@ export default function ContactDetailsModal({
                                   className="cd-share-sel flex-1"
                                   autoFocus
                                   defaultValue=""
-                                  onChange={(e) => e.target.value && transferOwner(e.target.value)}
+                                  onChange={(e) => e.target.value && handleSelectTransferTarget(e.target.value)}
                                 >
                                   <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
                                   {transferOptions.map((s) => (
@@ -2753,6 +2752,53 @@ export default function ContactDetailsModal({
           </div>
         </div>
       )}
+
+      {/* Transfer Ownership Confirmation Dialog */}
+      {pendingTransferOwner && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('modals.contactDetails.transfer_to')}
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-scrim/55 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div className="relative w-full max-w-sm bg-surface rounded-3xl border border-outline-variant shadow-2xl p-6 flex flex-col gap-4 text-on-surface animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-primary/10 text-accent shrink-0">
+                <ArrowRightLeft className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-serif text-base font-semibold text-on-surface">
+                  {t('modals.contactDetails.transfer_to')}
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              {t('modals.contactDetails.transfer_confirm')
+                .replace('{name}', contact?.name?.split(' ')[0] || contact?.name || '')
+                .replace('{recipient}', teamMembers.find((m) => m.id === pendingTransferOwner)?.name || pendingTransferOwner)}
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-outline-variant/50">
+              <button
+                type="button"
+                onClick={() => setPendingTransferOwner(null)}
+                className="px-4 py-2 rounded-full text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+              >
+                {t('common.cancel') || 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={confirmTransferOwner}
+                className="px-5 py-2 rounded-full text-xs font-semibold bg-primary text-on-primary hover:opacity-90 active:scale-[0.98] transition-all"
+              >
+                {t('modals.contactDetails.transfer_to')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </AnimatePresence>
   );

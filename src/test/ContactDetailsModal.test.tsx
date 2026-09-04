@@ -1174,6 +1174,12 @@ describe('ContactDetailsModal Component', () => {
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: 'user-456' } });
 
+    // App-styled confirmation dialogue is displayed
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    expect(confirmDialog).toBeInTheDocument();
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
@@ -1250,10 +1256,68 @@ describe('ContactDetailsModal Component', () => {
     const select = screen.getByRole('combobox');
     fireEvent.change(select, { target: { value: 'user-456' } });
 
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    expect(confirmDialog).toBeInTheDocument();
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ owner: 'user-456' })
+      );
+    });
+  });
+
+  it('allows owner transfer when contact has no explicit owner field and user is creator', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'creator-1', displayName: 'Creator User' },
+      isAdmin: false,
+      role: 'operator',
+      effectiveUserId: 'creator-1',
+    });
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
+            { id: 'user-789', data: () => ({ name: 'Rio Park', role: 'Trainee' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    const contactWithoutOwner = {
+      ...mockContact,
+      owner: undefined,
+      createdBy: 'creator-1',
+      coCreators: [],
+    };
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithoutOwner as any} />);
+    await screen.findByText('John Doe');
+
+    const transferTrigger = screen.getByRole('button', { name: /transfer to/i });
+    fireEvent.click(transferTrigger);
+
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'user-456' } });
+
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    expect(confirmDialog).toBeInTheDocument();
+    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: 'user-456',
+        })
       );
     });
   });
