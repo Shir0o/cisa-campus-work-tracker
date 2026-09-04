@@ -247,7 +247,7 @@ export default function FeedbackFAB() {
               role="dialog"
               aria-modal="true"
               aria-label={t('feedback.leave_note_for_team')}
-              className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-2xl shadow-2xl p-5 focus:outline-none ${
+              className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-xl shadow-2xl p-5 focus:outline-none ${
                 isMessagesPage ? 'bottom-44 lg:bottom-44 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
               }`}
             >
@@ -311,7 +311,7 @@ export default function FeedbackFAB() {
                     maxLength={600}
                     placeholder={activePlaceholder}
                     aria-label={t('feedback.your_note')}
-                    className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
+                    className="w-full resize-none bg-surface border border-outline-variant rounded-sm p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
                   />
 
                   <div className="flex items-center justify-between gap-3">

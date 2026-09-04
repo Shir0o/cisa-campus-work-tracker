@@ -55,6 +55,11 @@ to flatten `--accent` toward `--text` for visual consistency, re-introduce
 headroom instead — the regression test in `src/test/accentToken.test.ts`
 will fail otherwise.
 
+**Border Radius Scale (CSS tokens)**:
+The monotonic scale governing corner curvature across the application: Shell container 32px (`--radius-2xl`), Cards/Modals 24px (`--radius-xl`), Sub-containers 20px (`--radius-lg`), Nested panels 14px (`--radius`), Form inputs/controls 10px (`--radius-sm`), and Pills/Avatars (`rounded-full`). Invariant: nested elements must descend in radius (Card 24px → Panel 14px → Control 10px), and controls must never clamp to lozenges/stadiums (ADR 0009).
+_Avoid_: Arbitrary px radii on inputs, lozenge inputs
+
+
 **In-app Notification**:
 An alert delivered to the notification bell in the top navigation bar (and optionally mirrored as an OS push notification) informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
 _Avoid_: Bell popup, system toast, activity blast
