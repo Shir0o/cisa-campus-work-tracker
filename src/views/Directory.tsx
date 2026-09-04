@@ -34,6 +34,7 @@ import { visibleContacts, seesAllPeople } from '../lib/permissions';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
+import Select from '../components/ui/Select';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
 import TagGenderModal from '../components/modals/TagGenderModal';
@@ -831,49 +832,49 @@ export default function Directory() {
                   <div className="space-y-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.stage')}</label>
-                      <select
+                      <Select
                         value={filterStage}
                         onChange={(e) => setFilterStage(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                        className="h-10 text-sm"
                       >
                         {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? t('directory.all_stages') : s}</option>)}
-                      </select>
+                      </Select>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.group')}</label>
-                      <select
+                      <Select
                         value={filterRole}
                         onChange={(e) => setFilterRole(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                        className="h-10 text-sm"
                       >
                         {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? t('directory.all_groups') : r}</option>)}
-                      </select>
+                      </Select>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.spiritual_background')}</label>
-                      <select
+                      <Select
                         value={filterSpiritualBackground}
                         onChange={(e) => setFilterSpiritualBackground(e.target.value)}
-                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                        className="h-10 text-sm"
                       >
                         {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? t('directory.all_backgrounds') : sb}</option>)}
-                      </select>
+                      </Select>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.added_when')}</label>
-                      <select
+                      <Select
                         value={filterAddedWhen}
                         onChange={(e) => setFilterAddedWhen(e.target.value as 'all' | 'today' | 'week' | 'month')}
-                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                        className="h-10 text-sm"
                       >
                         <option value="all">{t('directory.all_time')}</option>
                         <option value="today">{t('directory.added_today')}</option>
                         <option value="week">{t('directory.added_this_week')}</option>
                         <option value="month">{t('directory.added_this_month')}</option>
-                      </select>
+                      </Select>
                       <div className="pt-2 space-y-1.5">
                         <span className="text-xs font-medium text-on-surface-variant px-1">{t('directory.custom_range')}</span>
                         <div className="flex items-center gap-2">
@@ -1168,19 +1169,19 @@ export default function Directory() {
               <form onSubmit={handleBulkStage} className="p-6 space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-on-surface-variant px-1">{t('directory.stage')}</label>
-                  <select
+                  <Select
                     required
                     data-testid="bulk-stage-select"
                     value={bulkStage}
                     onChange={e => setBulkStage(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-on-surface"
+                    className="h-12 px-4"
                   >
                     {stagesData.map(s => (
                       <option key={s.id} value={s.label}>
                         {s.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="pt-2 flex gap-3">
