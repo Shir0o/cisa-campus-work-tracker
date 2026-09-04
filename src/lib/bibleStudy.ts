@@ -61,8 +61,21 @@ function slugify(text: string): string {
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .join('-');
+}
+
+function parseHeading(line: string): string | null {
+  let hashes = 0;
+  while (hashes < line.length && line[hashes] === '#') {
+    hashes++;
+  }
+  if (hashes >= 1 && hashes <= 3 && hashes < line.length && (line[hashes] === ' ' || line[hashes] === '\t')) {
+    const title = line.slice(hashes).trim();
+    return title;
+  }
+  return null;
 }
 
 export function parseMeeting(md: string): Section[] {
@@ -74,12 +87,12 @@ export function parseMeeting(md: string): Section[] {
   let currentLines: string[] = [];
 
   for (const line of lines) {
-    const headingMatch = line.match(/^#{1,3}\s+(.*)$/);
-    if (headingMatch) {
+    const headingTitle = parseHeading(line);
+    if (headingTitle !== null) {
       if (currentTitle || currentLines.length > 0) {
         rawSections.push({ title: currentTitle || 'Untitled', lines: currentLines });
       }
-      currentTitle = headingMatch[1].trim();
+      currentTitle = headingTitle;
       currentLines = [];
     } else {
       currentLines.push(line);

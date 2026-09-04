@@ -380,9 +380,9 @@ Activity: In pairs, two minutes each. Name one thing you are enduring, and one t
               <div className="text-[11px] text-on-surface-variant truncate font-mono">{qrUrl}</div>
             </div>
             <a
-              href={`/s/${studyId}/${date}`}
+              href={`/s/${encodeURIComponent(studyId)}/${encodeURIComponent(date)}`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80"
             >
               Open
