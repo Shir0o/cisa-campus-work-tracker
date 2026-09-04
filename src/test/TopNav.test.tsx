@@ -21,11 +21,13 @@ const h = vi.hoisted(() => ({
     ownerViewRole: null,
     logOut: vi.fn(),
   } as any,
+  // `as any` like `auth` above: the trail reads `selectedContact` off this
+  // stub, and tests set it per case rather than every layout field.
   layout: {
     isMobileMenuOpen: false,
     setIsMobileMenuOpen: vi.fn(),
     setSearchOpen: vi.fn(),
-  },
+  } as any,
 }));
 
 vi.mock('../components/AuthProvider', () => ({
