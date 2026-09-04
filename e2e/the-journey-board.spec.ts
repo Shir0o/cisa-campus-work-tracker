@@ -13,10 +13,11 @@
  *    contact editor updates the board without permission errors and the
  *    contact moves columns on a hard reload,
  *  - the Trainee sees the same updated board,
- *  - a Full-timer can move Lila again straight from the contact page's stage
- *    pill, without going through the editor (#677),
  *  - Student is redirected to `/` when they try to open `/board`,
  *  - the Full-timer's `/coordination` markdown view renders.
+ *
+ * A separate describe at the end covers moving a stage from the contact page
+ * itself (#677).
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -153,8 +154,20 @@ test.describe('The Journey Board (#628)', () => {
     await expect(body).toBeVisible();
     await expect(body).not.toContainText('Missing or insufficient permissions');
   });
+});
 
-  test('Full-timer can move Lila to Regular from the contact page itself (#677)', async ({ page }) => {
+/**
+ * Moving a stage from the contact page (#677).
+ *
+ * Deliberately its own describe, not part of the serial chain above: that
+ * chain is currently red at its "advance via the contact editor" step (the
+ * same failure reproduces on `main`), and a serial describe stops at its
+ * first failure — which skipped this test rather than running it. It is also
+ * written to work from whichever stage Lila is in when it runs, so it does
+ * not depend on the chain having moved her first.
+ */
+test.describe('Stage move from the contact page (#677)', () => {
+  test('Full-timer can move Lila to Regular without opening the editor', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await gotoBoard(page);
 
