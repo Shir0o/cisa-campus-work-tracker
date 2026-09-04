@@ -85,4 +85,25 @@ describe('whatsNew Service', () => {
     expect(state.getLastSeenId()).toBe('2026-09-03-v1.4.0');
     expect(state.shouldShow(sampleManifest)).toBe(false);
   });
+
+  it('preserves category property when filtering items for platform', () => {
+    const releaseWithCategories: WhatsNewRelease = {
+      id: '2026-09-04-v1.4.1',
+      version: '1.4.1',
+      title: 'Platform Updates',
+      date: '2026-09-04',
+      platforms: ['web', 'mobile'],
+      items: [
+        { text: 'Web feature', platforms: ['web'], category: 'feature' },
+        { text: 'Mobile fix', platforms: ['mobile'], category: 'fix' },
+        { text: 'Shared ui update', platforms: ['web', 'mobile'], category: 'ui' },
+      ],
+    };
+
+    const webResult = getWhatsNewForPlatform(releaseWithCategories, 'web');
+    expect(webResult?.items).toEqual([
+      { text: 'Web feature', platforms: ['web'], category: 'feature' },
+      { text: 'Shared ui update', platforms: ['web', 'mobile'], category: 'ui' },
+    ]);
+  });
 });

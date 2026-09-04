@@ -1,8 +1,10 @@
 export type PlatformTarget = 'web' | 'mobile';
+export type WhatsNewCategory = 'feature' | 'ui' | 'fix';
 
 export interface WhatsNewItem {
   text: string;
   platforms: PlatformTarget[];
+  category?: WhatsNewCategory;
 }
 
 export interface WhatsNewRelease {
@@ -76,17 +78,31 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
   const items: WhatsNewItem[] = [];
 
   let inOverview = false;
+  let currentCategory: WhatsNewCategory | undefined = undefined;
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
     if (trimmed.startsWith('# Overview')) {
       inOverview = true;
+      currentCategory = undefined;
       continue;
     }
 
-    if (trimmed.startsWith('#')) {
+    const headingMatch = trimmed.match(/^#+\s+(.+)$/);
+    if (headingMatch) {
       inOverview = false;
+      const headingText = headingMatch[1].toLowerCase();
+      if (headingText.includes('new feat') || headingText.includes('features') || headingText.includes('feature')) {
+        currentCategory = 'feature';
+      } else if (headingText.includes('ui') || headingText.includes('ux') || headingText.includes('design')) {
+        currentCategory = 'ui';
+      } else if (headingText.includes('bug') || headingText.includes('fix')) {
+        currentCategory = 'fix';
+      } else {
+        currentCategory = undefined;
+      }
       continue;
     }
 
@@ -95,7 +111,9 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
       inOverview = false;
       let text = bulletMatch[1].trim();
       let itemPlatforms: PlatformTarget[] = ['web', 'mobile'];
+      let itemCategory: WhatsNewCategory | undefined = currentCategory;
 
+      // Check inline platform tags
       if (/^\[Web\]/i.test(text)) {
         itemPlatforms = ['web'];
         text = text.replace(/^\[Web\]\s*/i, '');
@@ -104,7 +122,19 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
         text = text.replace(/^\[Mobile\]\s*/i, '');
       }
 
-      items.push({ text, platforms: itemPlatforms });
+      // Check inline category tags (e.g. [Feature], [UI], [Bug Fix], [Fix])
+      if (/^\[(?:new\s+)?feat(?:ure)?\]/i.test(text)) {
+        itemCategory = 'feature';
+        text = text.replace(/^\[(?:new\s+)?feat(?:ure)?\]\s*/i, '');
+      } else if (/^\[(?:ui(?:\/ux)?|ux)\]/i.test(text)) {
+        itemCategory = 'ui';
+        text = text.replace(/^\[(?:ui(?:\/ux)?|ux)\]\s*/i, '');
+      } else if (/^\[(?:bug\s*fix|fix)\]/i.test(text)) {
+        itemCategory = 'fix';
+        text = text.replace(/^\[(?:bug\s*fix|fix)\]\s*/i, '');
+      }
+
+      items.push({ text, platforms: itemPlatforms, ...(itemCategory ? { category: itemCategory } : {}) });
     } else if (inOverview) {
       overviewLines.push(trimmed);
     }
