@@ -24,19 +24,19 @@ const CATEGORY_CONFIG: Record<
   feature: {
     label: 'New Features',
     icon: Zap,
-    badgeClass: 'bg-primary/10 text-primary border-primary/20',
+    badgeClass: 'bg-primary/15 text-primary border-primary/30 font-semibold',
     bulletIconClass: 'text-primary',
   },
   ui: {
     label: 'UI/UX Updates',
     icon: Palette,
-    badgeClass: 'bg-stage-accent-soft/30 text-stage-accent border-stage-accent/20',
+    badgeClass: 'bg-stage-accent-soft/40 text-stage-accent border-stage-accent/30 font-semibold',
     bulletIconClass: 'text-stage-accent',
   },
   fix: {
     label: 'Bug Fixes',
     icon: Bug,
-    badgeClass: 'bg-stage-teal-soft/30 text-stage-teal border-stage-teal/20',
+    badgeClass: 'bg-stage-teal-soft/40 text-stage-teal border-stage-teal/30 font-semibold',
     bulletIconClass: 'text-stage-teal',
   },
 };
@@ -89,9 +89,9 @@ export default function WhatsNewModal({
     >
       <div className="relative w-full max-w-lg bg-surface-container border border-outline-variant/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/40 bg-surface-container-high/40">
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline-variant/30 bg-surface-container-high/40">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10 text-accent">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -111,9 +111,9 @@ export default function WhatsNewModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 overflow-y-auto space-y-4">
+        <div className="px-6 pt-3.5 pb-5 overflow-y-auto space-y-4">
           {currentNotes.overview && (
-            <p className="text-sm text-on-surface-variant leading-relaxed pb-1 border-b border-outline-variant/20">
+            <p className="text-sm text-on-surface-variant leading-relaxed pb-3 border-b border-outline-variant/20">
               {currentNotes.overview}
             </p>
           )}
@@ -140,7 +140,7 @@ export default function WhatsNewModal({
                     {group.items.map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3">
                         <CheckCircle2
-                          className={`w-4 h-4 shrink-0 mt-0.5 ${conf ? conf.bulletIconClass : 'text-accent'}`}
+                          className={`w-4 h-4 shrink-0 mt-0.5 ${conf ? conf.bulletIconClass : 'text-on-surface-variant'}`}
                         />
                         <span className="text-sm text-on-surface leading-snug">{item.text}</span>
                       </div>
