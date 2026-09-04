@@ -809,6 +809,28 @@ service cloud.firestore {
       allow write: if false; // Only written via Firebase Admin SDK backend
     }
 
+    // 19. Bible Study Meetings — public QR accessible reading documents
+    match /bible_study_meetings/{meetingId} {
+      function isValidMeeting(data) {
+        return data.keys().hasAll(['studyId', 'date', 'title', 'published']) &&
+               data.studyId is string && data.studyId.size() <= 128 &&
+               data.date is string && data.date.size() <= 64 &&
+               data.title is string && data.title.size() <= 200 &&
+               data.published is bool &&
+               (!('md' in data) || (data.md is string && data.md.size() <= 100000)) &&
+               (!('siblingId' in data) || (data.siblingId is string && data.siblingId.size() <= 128));
+      }
+
+      // Public unauthenticated read of published meetings. Drafts readable only by staff (admins).
+      allow get: if (resource.data.published == true) || isAdmin();
+      allow list: if (resource.data.published == true) || isAdmin();
+
+      // Only Full-timers (admin) can create, edit, publish, or delete. Anonymous write is strictly denied.
+      allow create: if isValidId(meetingId) && isAdmin() && isValidMeeting(incoming());
+      allow update: if isValidId(meetingId) && isAdmin() && isValidMeeting(incoming());
+      allow delete: if isValidId(meetingId) && isAdmin();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

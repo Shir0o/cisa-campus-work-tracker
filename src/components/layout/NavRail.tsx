@@ -13,6 +13,7 @@ import {
   FileText,
   MessageSquare,
   MessageCircleQuestion,
+  BookOpen,
   LayoutDashboard,
   ExternalLink,
   type LucideIcon,
@@ -45,6 +46,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/coordination': FileText,
   '/messages': MessageSquare,
   '/questions': MessageCircleQuestion,
+  '/bible-study': BookOpen,
 };
 
 function NavGlyph({ href, size = 20, className }: { href: string; size?: number; className?: string }) {

@@ -2169,4 +2169,120 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
   });
+
+  describe('Bible Study Meetings Collection (Issue #774)', () => {
+    const seedMeetingUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('BS1: unauthenticated read of a published Meeting succeeds', async () => {
+      await seedMeetingUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'bible_study_meetings', 'romans-wk1'), {
+          studyId: 'romans',
+          date: '2026-09-10',
+          title: 'Where peace starts',
+          published: true,
+          md: '## Where peace starts',
+        });
+      });
+
+      const unauthDb = getFirestore();
+      await assertSucceeds(getDoc(doc(unauthDb, 'bible_study_meetings', 'romans-wk1')));
+    });
+
+    it('BS2: unauthenticated read of a draft Meeting is denied', async () => {
+      await seedMeetingUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'bible_study_meetings', 'romans-wk2-draft'), {
+          studyId: 'romans',
+          date: '2026-09-17',
+          title: 'Draft Week',
+          published: false,
+          md: '## Draft',
+        });
+      });
+
+      const unauthDb = getFirestore();
+      await assertFails(getDoc(doc(unauthDb, 'bible_study_meetings', 'romans-wk2-draft')));
+
+      // Staff (admin) CAN read the draft
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDoc(doc(adminDb, 'bible_study_meetings', 'romans-wk2-draft')));
+    });
+
+    it('BS3: unauthenticated write of any kind to any path in the collection is denied', async () => {
+      const unauthDb = getFirestore();
+      await assertFails(setDoc(doc(unauthDb, 'bible_study_meetings', 'romans-wk1'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Hacked',
+        published: true,
+      }));
+    });
+
+    it('BS4: non-Full-timer (Trainee/Student/Viewer) cannot publish or write', async () => {
+      await seedMeetingUsers();
+      const traineeDb = getFirestore({ uid: 'trainee1' });
+      const studentDb = getFirestore({ uid: 'student1' });
+      const viewerDb = getFirestore({ uid: 'viewer1' });
+
+      await assertFails(setDoc(doc(traineeDb, 'bible_study_meetings', 'romans-wk1'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Trainee Write',
+        published: true,
+      }));
+      await assertFails(setDoc(doc(studentDb, 'bible_study_meetings', 'romans-wk1'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Student Write',
+        published: true,
+      }));
+      await assertFails(setDoc(doc(viewerDb, 'bible_study_meetings', 'romans-wk1'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Viewer Write',
+        published: true,
+      }));
+    });
+
+    it('BS5: Full-timer (admin) can create, update, and publish Meetings', async () => {
+      await seedMeetingUsers();
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(adminDb, 'bible_study_meetings', 'romans-wk1'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Where peace starts',
+        published: true,
+        md: '## Where peace starts',
+      }));
+
+      await assertSucceeds(updateDoc(doc(adminDb, 'bible_study_meetings', 'romans-wk1'), {
+        title: 'Where peace starts (revised)',
+      }));
+    });
+
+    it('BS6: standing guard — unauthenticated read of Board documents is still denied', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'board_docs', 'doc-team-pastoral'), {
+          date: '2026-09-10',
+          title: 'Pastoral Coordination Notes',
+          md: 'Confidential pastoral notes',
+          audience: 'team',
+        });
+      });
+
+      const unauthDb = getFirestore();
+      await assertFails(getDoc(doc(unauthDb, 'board_docs', 'doc-team-pastoral')));
+    });
+  });
 });

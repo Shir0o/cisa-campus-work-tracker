@@ -61,6 +61,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/coordination': FileText,
   '/messages': MessageSquare,
   '/questions': MessageCircleQuestion,
+  '/bible-study': BookOpen,
   '/settings': SettingsIcon,
 };
 

@@ -60,6 +60,7 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
   '/coordination/trash': 'admin',
+  '/bible-study': 'admin',
   'https://shared-calendar-6u6.pages.dev/': 'admin',
 };
 
@@ -99,6 +100,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
+  { href: '/bible-study', label: 'Bible study', minRole: 'admin' },
   { href: '/outreach', label: 'Gospel', minRole: 'viewer' },
   { href: '/visits', label: 'Visits', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
@@ -190,7 +192,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
   Today: ['/', '/coordination', '/questions'],
   People: ['/board', '/directory', '/visits', '/outreach', '/history'],
-  Gatherings: ['/attendance', '/messages'],
+  Gatherings: ['/attendance', '/bible-study', '/messages'],
   Prayer: ['/prayer', '/answered'],
 };
 
