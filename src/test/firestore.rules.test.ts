@@ -287,6 +287,56 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets the creator transfer a contact when owner is not yet set (fallback to createdBy)', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact_no_owner'), {
+          name: 'Legacy Contact', email: 'legacy@example.com', createdBy: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_no_owner'), {
+        owner: 'operator2',
+        coCreators: [],
+      }));
+    });
+
+    it('lets the creator transfer a contact when owner is not yet set (fallback to addedBy)', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact_added_by'), {
+          name: 'Legacy Contact 2', email: 'legacy2@example.com', addedBy: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_added_by'), {
+        owner: 'operator2',
+        coCreators: [],
+      }));
+    });
+
+    it('rejects a non-creator non-owner non-admin from transferring contact without owner', async () => {
+      const db = getFirestore({ uid: 'operator3' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact_no_owner'), {
+          name: 'Legacy Contact', email: 'legacy@example.com', createdBy: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertFails(updateDoc(doc(db, 'contacts', 'contact_no_owner'), {
+        owner: 'operator3',
+        coCreators: [],
+      }));
+    });
+
     it('rejects a non-owner non-admin from updating owner', async () => {
       const db = getFirestore({ uid: 'operator3' });
 
