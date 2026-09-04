@@ -60,16 +60,18 @@ vi.mock('../components/layout/NotificationCenter', () => ({
   default: () => <div data-testid="notification-center" />,
 }));
 
-vi.mock('../App', () => ({
-  useLayout: () => ({
+vi.mock('../App', () => {
+  // One stub for both accessors — the trail reads the optional one.
+  const layout = () => ({
     isMobileMenuOpen: false,
     setIsMobileMenuOpen: vi.fn(),
     openNewContact: vi.fn(),
     openLogInteraction: vi.fn(),
     searchOpen: false,
     setSearchOpen: vi.fn(),
-  }),
-}));
+  });
+  return { useLayout: layout, useOptionalLayout: layout };
+});
 
 vi.mock('motion/react', () => ({
   motion: {

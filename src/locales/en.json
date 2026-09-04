@@ -28,7 +28,9 @@
     "elsewhere": "Elsewhere",
     "open_navigation": "Open navigation",
     "close_menu": "Close menu",
-    "profile": "Profile"
+    "profile": "Profile",
+    "trail": "Breadcrumb",
+    "back_to": "Back to {place}"
   },
   "actions": {
     "add_someone": "Add someone",
@@ -1534,7 +1536,6 @@
     "replies_count": "{n} replies",
     "one_reply": "1 reply",
     "full_timer_badge": "Full-timer",
-
     "christian": "Christian",
     "catholic": "Catholic",
     "other_religion": "Other Religion / Background",

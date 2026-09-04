@@ -39,12 +39,14 @@ import {
 } from '../../lib/permissions';
 import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
+import PageTrail from './PageTrail';
 import NotificationCenter from './NotificationCenter';
 import { LanguageToggle } from '../LanguageToggle';
 import { useI18n } from '../LanguageProvider';
 import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
 import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
+import { sectionHrefFor } from '../../lib/navTrail';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
 // same way). Fallback to LayoutDashboard for anything unmapped.
@@ -89,6 +91,10 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
 
   const primary = primaryNavFor(role);
   const moreItems = moreNavFor(role);
+  // The destination this route belongs to. A route that sits *under* one (a
+  // contact, a room) used to match no tab, so the bar lit "More" with a
+  // fallback glyph and claimed the record lived nowhere (#803).
+  const section = sectionHrefFor(pathname);
   const externalLinks = navExternalFor(role);
 
   // Close "More" / avatar menus on outside click or Escape.
@@ -171,34 +177,35 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
             {primary.map((item) => {
               const href = item.href;
               const label = href === '/' ? homeLabel : item.label;
+              // Not NavLink's own `isActive`: that matches the pathname, which
+              // is exactly what missed the routes under a destination.
+              const isActive = section === href;
               return (
-                <NavLink
+                // `Link`, not `NavLink`: NavLink derives `aria-current` from
+                // its own pathname match — the match that missed the routes
+                // sitting under a destination.
+                <Link
                   key={href}
                   to={href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      'relative flex items-center gap-2 h-10 px-3 rounded-xl transition-colors',
-                      isActive
-                        ? 'text-on-primary font-medium bg-primary'
-                        : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
-                      <Translate as="span" className="text-sm whitespace-nowrap" text={label} />
-                      {/* 16×4 active bar (design B) */}
-                      <span
-                        className={cn(
-                          'absolute left-1/2 -bottom-[13px] -translate-x-1/2 w-4 h-1 rounded-full transition-opacity',
-                          isActive ? 'opacity-100 bg-on-primary' : 'opacity-0',
-                        )}
-                      />
-                    </>
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'relative flex items-center gap-2 h-10 px-3 rounded-xl transition-colors',
+                    isActive
+                      ? 'text-on-primary font-medium bg-primary'
+                      : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
                   )}
-                </NavLink>
+                >
+                  <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
+                  <Translate as="span" className="text-sm whitespace-nowrap" text={label} />
+                  {/* 16×4 active bar (design B) */}
+                  <span
+                    className={cn(
+                      'absolute left-1/2 -bottom-[13px] -translate-x-1/2 w-4 h-1 rounded-full transition-opacity',
+                      isActive ? 'opacity-100 bg-on-primary' : 'opacity-0',
+                    )}
+                  />
+                </Link>
               );
             })}
 
@@ -212,14 +219,14 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 }}
                 className={cn(
                   'relative flex items-center gap-2 h-10 px-3 rounded-xl transition-colors text-sm',
-                  moreOpen || (pathname !== '/' && !primary.some((p) => p.href === pathname))
+                  moreOpen || (section !== null && section !== '/' && !primary.some((p) => p.href === section))
                     ? 'text-on-surface bg-surface-container-high'
                     : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
                 )}
                 aria-haspopup="menu"
                 aria-expanded={moreOpen}
               >
-                <NavGlyph href={pathname} size={18} className={moreOpen ? 'text-accent' : ''} />
+                <NavGlyph href={section ?? pathname} size={18} className={moreOpen ? 'text-accent' : ''} />
                 <span className="whitespace-nowrap">{t('actions.more', 'More')}</span>
                 <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', moreOpen && 'rotate-180')} />
                 {waitingAsks > 0 && !moreOpen && (
@@ -419,6 +426,14 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
             </AnimatePresence>
           </div>
         </div>
+
+        {/* The route trail (#803). TopNav's row is already full — brand, three
+            primary tabs, More and the chrome — so the trail gets 40px of its
+            own inside the sticky block, above the single bottom rule, which is
+            what keeps it reading as chrome rather than as page content. It is
+            `leafOnly` here: the active tab already names a top-level place, and
+            a band to repeat it is not worth 5% of the viewport. */}
+        <PageTrail leafOnly className="px-3 lg:px-5 h-10" />
       </header>
 
       {/* Mobile nav drawer — all destinations + signup (replaces the old rail drawer) */}
@@ -458,27 +473,25 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
             {NAV_ITEMS.filter((item) => canAccessRoute(role as AppRole, item.href)).map((item) => {
               const href = item.href;
               const label = href === '/' ? homeLabel : item.label;
+              // Not NavLink's own `isActive`: that matches the pathname, which
+              // is exactly what missed the routes under a destination.
+              const isActive = section === href;
               return (
-                <NavLink
+                <Link
                   key={href}
                   to={href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
-                      isActive
-                        ? 'bg-primary text-on-primary font-medium'
-                        : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
-                      <Translate as="span" text={label} />
-                    </>
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
+                    isActive
+                      ? 'bg-primary text-on-primary font-medium'
+                      : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
                   )}
-                </NavLink>
+                >
+                  <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
+                  <Translate as="span" text={label} />
+                </Link>
               );
             })}
 

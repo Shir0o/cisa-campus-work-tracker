@@ -109,3 +109,24 @@ dark theme at 1107×662 and settled on the canvas at [`prayer-fold/`](prayer-fol
 | 18 | The fold's disclosure arrow was a literal `▶` text glyph at `text-[9px]` (desktop) / `text-[10px]` (mobile), so it sat off the baseline of the label beside it and could not take a stroke weight. | **Neither — a bug** | A real `ChevronRight`, in a 16px node on the spine. |
 | 19 | The thread card's own border was `border-outline-variant` — the same undrawn 1.15:1 / 1.04:1 value as the rules — so every card on the page floated with no edge. | **Neither — a bug** | Moved to `--outline` with the spine. It only reaches 1.27:1 / 1.15:1; a hairline is meant to be quiet, and the spread was the bug, not the quietness. |
 | 20 | The person's name clipped to *David Alvara…* with ~380px of the header row empty beside it: the left button was a flex child that never grew, so it was sized to its own content and then truncated. | **Neither — a bug** | `flex-1` on that button. Found in the reporter's screenshot, not by reading the markup — the mechanism was not obvious from the source. |
+
+### 2026-09-03 — the chrome strip's blank half
+
+Found from user feedback on `/people/:contactId`
+([#803](https://github.com/Shir0o/cisa-campus-work-tracker/issues/803) —
+*"what do we do with the top blank space to the left of the search bar"*),
+reported at 1491×806 and settled on the canvas at
+[`chrome-strip/`](chrome-strip/). #21 is the reported one; #22 and #23 were
+found by measuring the band and by drawing the same fix in the other shell.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 21 | `NavChromeStrip` is `TopNav`'s chrome hoisted into the rail shell, still right-aligned behind a `flex-1` spacer. At the reporter's width that leaves **773 × 56 px** of the content column empty on every page in rail mode — a row reserved for a bar that ADR 0003 removed. The strip's own comment already said "there is no bar to be the edge of". | **Neither — an inheritance** | The band carries the route trail (`‹ People / David Alvarado`) at 13px, `pl-6` so it lines up with the page's gutter rather than the column edge. Three other directions were drawn and rejected on the canvas: a full page-header row, removing the band, and stretching search into it. |
+| 22 | `RailItem`'s `isActive` tested `currentPath === item.href \|\| currentPath.startsWith(item.href + '/')`. `/people/:contactId` is neither `/directory` nor a child of it, so **no rail destination was selected at all** on a contact page. Nothing in the rail shell said where you were. | **Neither — a bug** | `sectionHrefFor` in `src/lib/navTrail.ts` resolves a path to the destination it belongs to; both shells select on it, and the trail reads the same map. `RailItem` moved from `NavLink` to `Link` — NavLink derives `aria-current` from its own pathname match, which is exactly the match that was wrong. |
+| 23 | The top bar was not merely silent on the same route, it was **wrong**: More held its active state for any path outside the primary three, and its glyph was `NavGlyph href={pathname}`, which falls through to the dashboard icon for an unmapped path. So a contact page showed a highlighted *More* wearing a generic square. | **Neither — a bug** | Both now read `sectionHrefFor(pathname)`: the People tab lights, More rests. The trail gets a 40px row of its own inside the sticky header block, `leafOnly` — a top-level route's active tab already names it. |
+
+`TopNav`'s brand tile is `rounded-xl` on a 36×36 box, so `--radius-xl` (32px)
+clamps to 18 and paints a circle — the same defect as #4 and #11, in the one
+place neither fixed. Drawn as it renders on
+[`chrome-strip/TopBar.dc.html`](chrome-strip/TopBar.dc.html) and **left open**:
+it is not what #803 reported, and it wants the ladder conversation in #12.
