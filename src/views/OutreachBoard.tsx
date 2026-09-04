@@ -648,6 +648,22 @@ export default function OutreachBoard() {
     return <DataLoadError label={error} />;
   }
 
+  if (isMobile) {
+    return (
+      <OutreachBoardMobile
+        stages={stages}
+        contacts={boardContacts}
+        unmappedContacts={unmappedContacts}
+        lastTouchByContact={lastTouchByContact}
+        onOpenContact={setSelectedContact}
+        onMove={handleUpdateContactStage}
+        onShapeJourney={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
+        isAdmin={isAdmin}
+        onAddContact={openNewContact}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col h-full bg-background overflow-hidden">
@@ -682,22 +698,6 @@ export default function OutreachBoard() {
           </div>
         </div>
       </div>
-    );
-  }
-
-  if (isMobile && !loading && !error) {
-    return (
-      <OutreachBoardMobile
-        stages={stages}
-        contacts={boardContacts}
-        unmappedContacts={unmappedContacts}
-        lastTouchByContact={lastTouchByContact}
-        onOpenContact={setSelectedContact}
-        onMove={handleUpdateContactStage}
-        onShapeJourney={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
-        isAdmin={isAdmin}
-        onAddContact={openNewContact}
-      />
     );
   }
 

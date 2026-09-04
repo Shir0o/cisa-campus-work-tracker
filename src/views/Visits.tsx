@@ -149,7 +149,11 @@ export default function Visits() {
     </>
   );
 
-  if (isMobile && !loading && !error) {
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
+
+  if (isMobile) {
     return (
       <>
         <VisitsMobile
@@ -211,9 +215,7 @@ export default function Visits() {
         </button>
       </header>
 
-      {error ? (
-        <DataLoadError label={error} />
-      ) : loading ? (
+      {loading ? (
         <div className="text-center py-16 text-on-surface-variant">{t('visits.gathering')}</div>
       ) : (
         <>

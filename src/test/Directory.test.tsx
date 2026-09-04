@@ -762,6 +762,70 @@ describe('Directory', () => {
     fireEvent.click(tagGenderBtn);
     expect(await screen.findByText('Tag M / F')).toBeInTheDocument();
   });
+
+  it('toggles mobile More menu and triggers actions from dropdown', async () => {
+    const openSmartImport = vi.fn();
+    (useLayout as any).mockReturnValue({
+      openNewContact: vi.fn(),
+      setSelectedContact: vi.fn(),
+      openSmartImport,
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Locate mobile "More" button
+    const moreBtn = screen.getByRole('button', { name: 'More' });
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Open More menu
+    fireEvent.click(moreBtn);
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'true');
+
+    // Check menu items
+    const combineItem = screen.getAllByRole('menuitem', { name: /combine tags/i })[0];
+    const tagGenderItem = screen.getByRole('menuitem', { name: /Tag M\/F/i });
+    const smartImportItem = screen.getByRole('menuitem', { name: /smart import/i });
+    expect(combineItem).toBeInTheDocument();
+    expect(tagGenderItem).toBeInTheDocument();
+    expect(smartImportItem).toBeInTheDocument();
+
+    // Click Smart Import item
+    fireEvent.click(smartImportItem);
+    expect(openSmartImport).toHaveBeenCalled();
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Reopen and test Escape key closes menu
+    fireEvent.click(moreBtn);
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Reopen and test mousedown outside closes menu
+    fireEvent.click(moreBtn);
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.mouseDown(document.body);
+    expect(moreBtn).toHaveAttribute('aria-expanded', 'false');
+
+    // Reopen and test Tag Gender item
+    fireEvent.click(moreBtn);
+    fireEvent.click(tagGenderItem);
+    expect(await screen.findByText('Tag M / F')).toBeInTheDocument();
+
+    // Close Tag Gender modal
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Tag M / F')).not.toBeInTheDocument();
+    });
+
+    // Reopen and test Combine Tags item
+    fireEvent.click(moreBtn);
+    const newCombineItem = await screen.findByRole('menuitem', { name: /combine tags/i });
+    fireEvent.click(newCombineItem);
+    expect(await screen.findByText('No duplicate or overlapping tags found.')).toBeInTheDocument();
+  });
 });
 
 

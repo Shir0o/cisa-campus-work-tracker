@@ -960,4 +960,15 @@ describe('MyDay', () => {
     const done = screen.getByText('Zeta done').closest('.py-4')!;
     expect(pending.compareDocumentPosition(done)).toBe(4);
   });
+
+  it('renders mobile layout on mobile viewport even while loading', async () => {
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    // onSnapshot doesn't emit data yet, so loading remains true
+    vi.mocked(onSnapshot).mockImplementation(() => vi.fn());
+    render(<MyDay />);
+    await waitFor(() => {
+      // MyDayMobile root element is present
+      expect(document.querySelector('.md-mobile')).toBeInTheDocument();
+    });
+  });
 });

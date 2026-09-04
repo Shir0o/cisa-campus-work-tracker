@@ -1735,7 +1735,7 @@ export default function CoordinationNotes() {
     </div>
   );
 
-  if (isMobile && !loadingDocs && !loadingNotes) {
+  if (isMobile) {
     return (
       <>
         <CoordinationNotesMobile

@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#eaeef4"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": false,
@@ -23,7 +23,7 @@
       "package": "com.cisa.campus",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
-        "backgroundColor": "#5c5595"
+        "backgroundColor": "#FFFFFF"
       },
       "googleServicesFile": "./google-services.json"
     },
@@ -41,7 +41,7 @@
         "expo-notifications",
         {
           "icon": "./assets/adaptive-icon-foreground.png",
-          "color": "#5c5595"
+          "color": "#0A0A0B"
         }
       ],
       [
@@ -62,7 +62,7 @@
         {
           "image": "./assets/adaptive-icon-foreground.png",
           "resizeMode": "contain",
-          "backgroundColor": "#eaeef4"
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],

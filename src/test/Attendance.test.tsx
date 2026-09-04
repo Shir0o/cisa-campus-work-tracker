@@ -463,4 +463,15 @@ describe('Attendance', () => {
       }),
     );
   });
+
+  it('renders AttendanceMobile on mobile viewport even while loading', async () => {
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    // On mobile with no events yet (loading state)
+    render(<Attendance />);
+    await waitFor(() => {
+      // AttendanceMobile container rendered
+      expect(document.querySelector('.gthm')).toBeTruthy();
+    });
+  });
 });
