@@ -39,6 +39,7 @@ export type ReaderAction =
   | { type: "advance" }
   | { type: "back" }
   | { type: "jump"; index: number }
+  | { type: "setTotalSections"; count: number }
   | { type: "revealBlank"; key: string }
   | { type: "openIndex" }
   | { type: "closeIndex" }
@@ -231,6 +232,11 @@ export function readerReducer(state: ReaderState, action: ReaderAction): ReaderS
     case 'jump': {
       const targetIndex = Math.max(0, Math.min(action.index, state.totalSections - 1));
       return { ...state, sectionIndex: targetIndex, navOpen: false };
+    }
+    case 'setTotalSections': {
+      const total = Math.max(1, action.count);
+      const targetIndex = Math.min(state.sectionIndex, total - 1);
+      return { ...state, totalSections: total, sectionIndex: targetIndex };
     }
     case 'revealBlank': {
       const current = !!state.openBlanks[action.key];

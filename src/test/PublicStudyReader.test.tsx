@@ -112,4 +112,61 @@ describe('PublicStudyReader (above the seam)', () => {
     // After click, the word appears
     expect(screen.getByText('standing')).toBeInTheDocument();
   });
+
+  it('advances sections on tap, goes back with back button, and jumps via section drawer', async () => {
+    (bibleData.subscribePublishedStudyMeetings as any).mockImplementation((_db: any, _studyId: string, cb: any) => {
+      cb([sampleMeeting]);
+      return () => {};
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/s/romans']}>
+        <Routes>
+          <Route path="/s/:studyId" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Where peace starts')).toBeInTheDocument();
+
+    // Tap anywhere to advance to section 2
+    fireEvent.click(screen.getByText('Where peace starts'));
+    expect(await screen.findByText('What suffering is doing')).toBeInTheDocument();
+
+    // Tap previous section button
+    const backBtn = screen.getByLabelText('Previous section');
+    fireEvent.click(backBtn);
+    expect(await screen.findByText('Where peace starts')).toBeInTheDocument();
+
+    // Toggle distraction-free unadorned mode
+    const distractionBtn = screen.getByLabelText('Distraction-free mode');
+    fireEvent.click(distractionBtn);
+    fireEvent.click(distractionBtn);
+
+    // Open section index scrubber
+    const openGrip = screen.getByLabelText('Open section index');
+    fireEvent.click(openGrip);
+
+    // Click jump in scrubber
+    const indexRows = screen.getAllByText('What suffering is doing');
+    fireEvent.click(indexRows[0]);
+    expect(await screen.findByText('What suffering is doing')).toBeInTheDocument();
+  });
+
+  it('renders loading state and empty state when no meetings exist', async () => {
+    (bibleData.subscribePublishedStudyMeetings as any).mockImplementation((_db: any, _studyId: string, cb: any) => {
+      cb([]);
+      return () => {};
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/s/romans']}>
+        <Routes>
+          <Route path="/s/:studyId" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('No Study Available')).toBeInTheDocument();
+  });
 });

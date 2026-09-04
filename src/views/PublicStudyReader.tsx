@@ -48,16 +48,17 @@ export default function PublicStudyReader() {
   // When sections length changes
   useEffect(() => {
     if (sections.length > 0 && state.totalSections !== sections.length) {
-      dispatch({ type: 'jump', index: Math.min(state.sectionIndex, sections.length - 1) });
+      dispatch({ type: 'setTotalSections', count: sections.length });
     }
-  }, [sections.length, state.totalSections, state.sectionIndex]);
+  }, [sections.length, state.totalSections]);
 
   const currentSection: Section | undefined = sections[state.sectionIndex];
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  const total = sections.length || state.totalSections;
   const pad = (n: number) => String(n + 1).padStart(2, '0');
-  const counterText = sections.length > 0 ? `${pad(state.sectionIndex)} / ${pad(sections.length - 1)}` : '';
-  const isLast = state.sectionIndex === sections.length - 1;
+  const counterText = total > 0 ? `${pad(state.sectionIndex)} / ${pad(total)}` : '';
+  const isLast = state.sectionIndex >= total - 1;
 
   const handleAdvance = () => {
     if (state.navOpen) return;
