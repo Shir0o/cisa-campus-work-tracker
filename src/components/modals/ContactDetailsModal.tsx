@@ -2416,6 +2416,11 @@ export default function ContactDetailsModal({
                                             recipientUid={threadRecipient}
                                             contactName={contact.name}
                                             compact
+                                            teamMembers={teamMembers}
+                                            contactStakeholders={{
+                                              createdBy: contact.createdBy || contact.addedBy,
+                                              coCreators: contact.coCreators,
+                                            }}
                                           />
                                         </div>
                                       )}
@@ -2445,7 +2450,13 @@ export default function ContactDetailsModal({
                         recipientUid={threadRecipient}
                         contactName={contact.name}
                         pane
+                        teamMembers={teamMembers}
+                        contactStakeholders={{
+                          createdBy: contact.createdBy || contact.addedBy,
+                          coCreators: contact.coCreators,
+                        }}
                       />
+
                     </div>
                   )}
 
@@ -2642,7 +2653,13 @@ export default function ContactDetailsModal({
                         contactName={contact.name}
                         scope="team"
                         pane
+                        teamMembers={teamMembers}
+                        contactStakeholders={{
+                          createdBy: contact.createdBy || contact.addedBy,
+                          coCreators: contact.coCreators,
+                        }}
                       />
+
                     </div>
                   )}
 

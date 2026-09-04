@@ -20,7 +20,9 @@ export interface AttentionItem {
   interactionId?: string | null;
   reviewed?: boolean;
   kind?: string | null; // e.g. "question" | "nudge" | "note"
+  mentioned?: boolean;
 }
+
 
 export interface AttentionStack {
   id: string; // "att:contact:<id>" or "att:target:<id>" or "att:<id>"
@@ -169,7 +171,33 @@ export function buildAttentionItems(params: {
     }
   }
 
+  // 4. Thread messages where current user is explicitly mentioned
+  for (const m of threads) {
+    if (m.scope === "team" && !isFullTimerView) continue;
+    if (m.from && m.from !== uid && m.mentionedUserIds?.includes(uid)) {
+      // Ensure we don't duplicate if it was already added above as a question or full-timer item
+      const existing = items.find((it) => it.id === "thread:" + m.id);
+      if (!existing) {
+        items.push({
+          id: "thread:" + m.id,
+          type: "thread",
+          at: m.at,
+          contactId: m.contactId,
+          by: m.from,
+          body: m.body,
+          kind: m.kind,
+          interactionId: m.interactionId ?? null,
+          mentioned: true,
+        });
+      } else {
+        existing.mentioned = true;
+      }
+    }
+  }
+
+
   // Tasks assigned to user (pending)
+
   for (const t of tasks) {
     if (t.assigneeId === uid && t.status !== "completed") {
       items.push({
@@ -320,9 +348,9 @@ export function partitionAttentionStacks(
       (it) => it.type === "task" || it.type === "notification",
     );
 
-    // Direct question or nudge in thread (where user didn't ask it, someone asked them)
-    const hasThreadAsk = stack.items.some(
-      (it) => it.type === "thread" && (it.kind === "question" || it.kind === "nudge"),
+    // Direct question or nudge in thread (where user didn't ask it, someone asked them), or explicit mention
+    const hasThreadAskOrMention = stack.items.some(
+      (it) => it.type === "thread" && (it.kind === "question" || it.kind === "nudge" || it.mentioned),
     );
 
     // Check contact ownership/assignment
@@ -334,11 +362,12 @@ export function partitionAttentionStacks(
         (!contact.owner && contact.createdBy === uid) ||
         (contact.coCreators && contact.coCreators.includes(uid)));
 
-    if (hasDirectTaskOrNotif || hasThreadAsk || isOwnedContact) {
+    if (hasDirectTaskOrNotif || hasThreadAskOrMention || isOwnedContact) {
       onYou.push(stack);
     } else {
       aroundTeam.push(stack);
     }
+
   }
 
   return { onYou, aroundTeam };

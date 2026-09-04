@@ -32,7 +32,6 @@ import { prefetchTranslations } from '../lib/translator';
 import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
-import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import PageContainer from '../components/layout/PageContainer';
 import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import type { TodoPerson } from '../lib/todos';
@@ -156,8 +155,6 @@ export default function PrayerList() {
   const [startedIds, setStartedIds] = useState<Set<string>>(new Set());
   // A contact whose this-week compose should auto-open (just started holding).
   const [composeFor, setComposeFor] = useState<string | null>(null);
-  // Contact whose full profile/history is open in the modal.
-  const [profileContact, setProfileContact] = useState<Contact | null>(null);
   // Whether the "Choose people" picker is open.
   const [picking, setPicking] = useState(false);
   const { language, t } = useLanguage();
@@ -519,7 +516,6 @@ export default function PrayerList() {
 
   const openContact = (contact: Contact) => {
     setSelectedContact(contact);
-    setProfileContact(contact);
   };
 
   if (isMobile && !loading && !error) {
@@ -550,11 +546,6 @@ export default function PrayerList() {
           isManager={isManager}
           onClearPrayer={handleClearPrayer}
          />
-        <ContactDetailsModal
-          isOpen={!!profileContact}
-          onClose={() => setProfileContact(null)}
-          contact={profileContact}
-        />
         {todoFor && (
           <FromEntryTodoComposer
             text={todoFor.prayer.burden}
@@ -708,12 +699,6 @@ export default function PrayerList() {
           </AnimatePresence>
         </div>
       )}
-
-      <ContactDetailsModal
-        isOpen={!!profileContact}
-        onClose={() => setProfileContact(null)}
-        contact={profileContact}
-      />
 
       {picking && (
         <PickHeldModal

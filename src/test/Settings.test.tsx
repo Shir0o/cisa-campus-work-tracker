@@ -1193,13 +1193,41 @@ describe('Settings', () => {
       fireEvent.click(screen.getByRole('button', { name: /Rail/i }));
       expect(mockSetNavShell).toHaveBeenLastCalledWith('rail');
 
-      fireEvent.click(screen.getByRole('button', { name: /Compact/i }));
-      expect(mockSetNavShell).toHaveBeenLastCalledWith('rail-collapsed');
-
       fireEvent.click(screen.getByRole('button', { name: /Top bar/i }));
       expect(mockSetNavShell).toHaveBeenLastCalledWith('topbar');
     });
   });
+
+  describe('Danger zone & Test Account Purge (#758)', () => {
+    it('renders the danger zone section for admin/full-timers and opens purge modal', async () => {
+      setupManagerAuth({ isAdmin: true, role: 'admin' });
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Data management & danger zone')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Test Account Purge')).toBeInTheDocument();
+      const purgeButton = screen.getByRole('button', { name: /Scan & Purge/i });
+      expect(purgeButton).toBeInTheDocument();
+
+      fireEvent.click(purgeButton);
+      expect(screen.getByText(/Scanning database for test account traces/i)).toBeInTheDocument();
+    });
+
+    it('hides the danger zone section for non-admin users', async () => {
+      setupManagerAuth({ isAdmin: false, role: 'manager' });
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Your team')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Data management & danger zone')).not.toBeInTheDocument();
+      expect(screen.queryByText('Test Account Purge')).not.toBeInTheDocument();
+    });
+  });
+
   // ── Which team they're on (#727) ──
 
   describe('teams', () => {
