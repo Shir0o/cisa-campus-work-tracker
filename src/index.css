@@ -8,13 +8,16 @@
   --font-mono: var(--font-sans);
   --font-code: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Bento shape → Ink shape: 14 interactive, 24 containers, 10 small marks,
-     32 shell-level containers, 999 for pills/avatars. The values are exposed
-     on `@theme` so Tailwind's rounded-* utilities pick them up at the new sizes. */
+  /* Ink monotonic shape ladder (ADR 0009):
+     10 small marks / short controls, 12 intermediate, 14 interactive / panels,
+     20 sub-containers, 24 cards & dialogs, 32 shell-level containers, 40 large outer. */
   --radius-sm: 10px;
+  --radius-md: 12px;
   --radius: 14px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-3xl: 40px;
   --radius-pill: 999px;
 
   /* Shell-level shadow for raised chrome (the floating nav rail). The Ink

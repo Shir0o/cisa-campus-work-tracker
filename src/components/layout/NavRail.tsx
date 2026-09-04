@@ -132,9 +132,9 @@ export default function NavRail(_props: NavRailProps = {}) {
       onScrollCapture={() => setTip(null)}
       className={cn(
         // A floating slab, not a flush column: the gutter around it is what
-        // makes it read as an object (ADR 0003). `rounded-xl` is --radius-xl
-        // (32px), the shell-container step. The parent owns the padding.
-        'hidden lg:flex shrink-0 bg-rail rounded-xl shadow-shell flex-col h-full overflow-hidden',
+        // makes it read as an object (ADR 0003). `rounded-2xl` is --radius-2xl
+        // (32px), the shell-container step (ADR 0009). The parent owns the padding.
+        'hidden lg:flex shrink-0 bg-rail rounded-2xl shadow-shell flex-col h-full overflow-hidden',
         railWidth,
         'transition-[width] duration-200',
       )}

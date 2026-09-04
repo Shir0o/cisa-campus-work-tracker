@@ -160,7 +160,7 @@ export default function SubmitFeedback() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2 }}
-            className="bg-surface-container border border-outline-variant p-6 rounded-3xl "
+            className="bg-surface-container border border-outline-variant p-6 rounded-xl"
           >
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Kind selection */}
@@ -179,13 +179,13 @@ export default function SubmitFeedback() {
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => setKind(k.id)}
-                        className={`flex items-center gap-3 p-3.5 rounded-3xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
+                        className={`flex items-center gap-3 p-3.5 rounded border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                           on
                             ? `${tone.softBg} border-transparent ${tone.text} `
                             : 'bg-surface border-outline-variant text-on-surface hover:bg-surface-container-high'
                         }`}
                       >
-                        <div className={`p-2 rounded-xl shrink-0 ${on ? tone.chip : 'bg-surface-container text-on-surface-variant'}`}>
+                        <div className={`p-2 rounded-sm shrink-0 ${on ? tone.chip : 'bg-surface-container text-on-surface-variant'}`}>
                           <Icon className="w-5 h-5" />
                         </div>
                         <span className="font-semibold text-sm"><Translate text={k.label} /></span>
@@ -210,7 +210,7 @@ export default function SubmitFeedback() {
                   onKeyDown={handleKeyDown}
                   maxLength={5000}
                   placeholder={activePlaceholder}
-                  className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
+                  className="w-full bg-surface border border-outline-variant rounded-sm p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
                 />
                 <div className="flex justify-between items-center mt-2 px-1 text-xs text-on-surface-variant">
                   <span>{user?.displayName || t('common.you')} · {translatedRole}</span>
