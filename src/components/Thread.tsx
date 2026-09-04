@@ -285,6 +285,7 @@ function ThreadMsg({
                   candidates={mentionCandidates}
                   selectedIndex={selectedIndex}
                   onSelect={handleSelectMention}
+                  anchorEl={replyRef.current}
                 />
               )}
               <textarea
@@ -492,6 +493,7 @@ export default function Thread({
             candidates={mentionCandidates}
             selectedIndex={selectedIndex}
             onSelect={handleSelectMention}
+            anchorEl={taRef.current}
           />
         )}
         <textarea

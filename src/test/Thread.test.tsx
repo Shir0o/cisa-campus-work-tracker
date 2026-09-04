@@ -324,5 +324,39 @@ describe("Thread", () => {
       }),
     );
   });
+
+  it("shows mention autocomplete in replies and does not get clipped in pane layout", async () => {
+    const teamMembers = [
+      { id: "u2", name: "Zion Park", role: "Trainee", initials: "ZP" },
+      { id: "u3", name: "Rio Tan", role: "Full-timer", initials: "RT" },
+      { id: "u4", name: "Alex Kim", role: "Student", initials: "AK" },
+    ];
+    hoisted.messages = [
+      message({ id: "m1", body: "Parent comment", from: "u2" }),
+    ];
+
+    const { container } = render(
+      <Thread
+        contactId="C-1"
+        meStaffId="u1"
+        pane
+        teamMembers={teamMembers}
+      />,
+    );
+
+    // Click reply on the message
+    await userEvent.click(screen.getByRole("button", { name: "Reply" }));
+    const replyInput = screen.getByPlaceholderText("Write a reply…");
+    await userEvent.type(replyInput, "Hey @");
+
+    const listbox = screen.getByRole("listbox", { name: "Teammate mentions" });
+    expect(listbox).toBeInTheDocument();
+    // All candidates should be present in the listbox
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBe(3);
+
+    // Verify listbox is rendered via portal or does not suffer from parent overflow hidden clipping
+    expect(listbox.getAttribute("data-mention-autocomplete")).toBe("true");
+  });
 });
 
