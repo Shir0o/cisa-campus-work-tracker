@@ -129,7 +129,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
   return (
     <article
       className={cn(
-        'rounded-3xl bg-surface p-5 border transition-colors',
+        'rounded-3xl bg-surface p-5 border transition-colors break-inside-avoid mb-4',
         open ? 'border-accent-line ring-4 ring-accent-soft' : 'border-outline-variant',
       )}
     >
@@ -597,7 +597,7 @@ export default function Questions() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2 items-start">
+        <div className="columns-1 lg:columns-2 gap-4">
           {shown.map((m) => (
             <QuestionCard
               key={m.id}
