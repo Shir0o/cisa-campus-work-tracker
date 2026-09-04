@@ -58,6 +58,7 @@ import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import TestAccountPurgeModal from '../components/settings/TestAccountPurgeModal';
 import WhatsNewModal from '../components/WhatsNewModal';
+import { Select } from '../components/ui/Select';
 import whatsNewManifest from '../generated/whats-new.json';
 import type { WhatsNewManifest } from '../scripts/compile-whats-new';
 import {
@@ -1522,7 +1523,7 @@ function EditMemberModal({
             <label htmlFor="edit-member-role" className="text-sm text-on-surface-variant block mb-1.5">
               Role
             </label>
-            <select
+            <Select
               id="edit-member-role"
               value={role}
               onChange={(e) => setRole(e.target.value as AppRole)}
@@ -1533,7 +1534,7 @@ function EditMemberModal({
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="flex gap-3">
             <button
@@ -1757,21 +1758,18 @@ function InviteModal({
 
           <div>
             <label htmlFor="pre-add-role-select" className="text-sm text-on-surface-variant block mb-1.5">Role</label>
-            <div className="relative">
-              <select
-                id="pre-add-role-select"
-                value={role}
-                onChange={(e) => setRole(e.target.value as AppRole)}
-                className="w-full pl-4 pr-10 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer appearance-none"
-              >
-                {options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            </div>
+            <Select
+              id="pre-add-role-select"
+              value={role}
+              onChange={(e) => setRole(e.target.value as AppRole)}
+              className="w-full pl-4 pr-10 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
+            >
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="flex gap-3 pt-1">

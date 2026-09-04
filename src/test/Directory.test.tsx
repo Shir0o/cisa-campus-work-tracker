@@ -194,7 +194,7 @@ describe('Directory', () => {
     const filtersButton = screen.getByText('Filters');
     fireEvent.click(filtersButton);
 
-    const stageSelect = screen.getByText('Stage').nextElementSibling as HTMLSelectElement;
+    const stageSelect = screen.getByText('Stage').parentElement?.querySelector('select') as HTMLSelectElement;
     fireEvent.change(stageSelect, { target: { value: 'Regular' } });
 
     expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
@@ -212,7 +212,7 @@ describe('Directory', () => {
     fireEvent.click(filtersButton);
 
     // Filter by Role = Leader
-    const roleSelect = screen.getByText('Group').nextElementSibling as HTMLSelectElement;
+    const roleSelect = screen.getByText('Group').parentElement?.querySelector('select') as HTMLSelectElement;
     fireEvent.change(roleSelect, { target: { value: 'Leader' } });
     expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
@@ -224,7 +224,7 @@ describe('Directory', () => {
 
     // Filter by Spiritual Background = Christian
     fireEvent.click(filtersButton);
-    const spiritualSelect = screen.getByText('Spiritual background').nextElementSibling as HTMLSelectElement;
+    const spiritualSelect = screen.getByText('Spiritual background').parentElement?.querySelector('select') as HTMLSelectElement;
     fireEvent.change(spiritualSelect, { target: { value: 'Christian' } });
     expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
@@ -256,7 +256,7 @@ describe('Directory', () => {
 
     fireEvent.click(screen.getByText('Filters'));
 
-    const groupSelect = screen.getByText('Group').nextElementSibling as HTMLSelectElement;
+    const groupSelect = screen.getByText('Group').parentElement?.querySelector('select') as HTMLSelectElement;
     const optionValues = Array.from(groupSelect.options).map((o) => o.value);
     expect(optionValues).toContain('All');
     expect(optionValues).toContain('Student');
@@ -315,7 +315,7 @@ describe('Directory', () => {
     });
 
     fireEvent.click(screen.getByText('Filters'));
-    const addedSelect = screen.getByText('Added').nextElementSibling as HTMLSelectElement;
+    const addedSelect = screen.getByText('Added').parentElement?.querySelector('select') as HTMLSelectElement;
 
     // Filter by Added today
     fireEvent.change(addedSelect, { target: { value: 'today' } });
@@ -664,7 +664,7 @@ describe('Directory', () => {
     // Set the "month" preset AND a From=7 days ago / To=today window.
     // Month User (18 days ago) is inside "month" but OUTSIDE the 7-day window —
     // intersection filters it out.
-    const addedSelect = screen.getByText('Added').nextElementSibling as HTMLSelectElement;
+    const addedSelect = screen.getByText('Added').parentElement?.querySelector('select') as HTMLSelectElement;
     fireEvent.change(addedSelect, { target: { value: 'month' } });
 
     const fromInput = await waitFor(() => screen.getByLabelText(/From/i)) as HTMLInputElement;
