@@ -324,15 +324,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
-  const [isWhatsNewOpen, setIsWhatsNewOpen] = React.useState(false);
-  const previousIdentityKey = React.useRef(effectiveIdentityKey);
-
-  React.useEffect(() => {
-    const lastSeen = localStorage.getItem(WHATS_NEW_STORAGE_KEY);
-    if (shouldShowWhatsNew(whatsNewManifest as WhatsNewManifest, lastSeen, 'web')) {
-      setIsWhatsNewOpen(true);
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = React.useState(() => {
+    try {
+      const lastSeen = typeof window !== 'undefined' ? localStorage.getItem(WHATS_NEW_STORAGE_KEY) : null;
+      return shouldShowWhatsNew(whatsNewManifest as WhatsNewManifest, lastSeen, 'web');
+    } catch {
+      return false;
     }
-  }, []);
+  });
+  const previousIdentityKey = React.useRef(effectiveIdentityKey);
 
   // Contact detail is now a real URL route (`/people/:contactId`), so the
   // browser back button and top-nav links always leave the detail page. The
