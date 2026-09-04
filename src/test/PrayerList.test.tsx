@@ -963,6 +963,30 @@ describe('PrayerList', () => {
     expect(screen.getByText(/Cared for by Mei Tanaka/)).toBeInTheDocument();
     expect(screen.getByText(/Added by Tony Wang/)).toBeInTheDocument();
   });
+
+  it('delegates contact opening to global setSelectedContact and does not mount a local ContactDetailsModal (#713)', async () => {
+    const mockSetSelectedContact = vi.fn();
+    (useLayout as any).mockReturnValue({
+      setSelectedContact: mockSetSelectedContact,
+      openLogInteraction: vi.fn(),
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Click on Alice's profile button
+    const openProfileBtn = screen.getAllByTitle('Open profile')[0];
+    fireEvent.click(openProfileBtn);
+
+    expect(mockSetSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Johnson' }),
+    );
+    // There should be no local modal mounted inside PrayerList; App.tsx owns it
+    expect(screen.queryByTestId('contact-modal')).toBeNull();
+  });
 });
 
 
