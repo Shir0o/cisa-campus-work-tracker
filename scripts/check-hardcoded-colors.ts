@@ -99,6 +99,21 @@ export function isCommentLine(line: string): boolean {
   );
 }
 
+/**
+ * Escape hatch for the narrow false positive the guard cannot distinguish:
+ * a raw colour that is a *persisted data value* rather than a colour being
+ * applied — e.g. the board's stage-colour aliases, which are Tailwind class
+ * strings stored in Firestore and used here only as lookup keys.
+ *
+ * A reason is required, so the marker cannot be used to silence a genuine
+ * hardcoded colour without saying why in the diff.
+ */
+const SUPPRESS_PATTERN = /colour-token-ignore:\s*\S/;
+
+export function isSuppressedLine(line: string): boolean {
+  return SUPPRESS_PATTERN.test(line);
+}
+
 export function isTargetFile(path: string): boolean {
   if (!(path.startsWith('src/') || path.startsWith('apps/mobile/src/'))) return false;
   if (!/\.tsx?$/.test(path)) return false;
@@ -110,7 +125,7 @@ export function isTargetFile(path: string): boolean {
 
 /**
  * End-to-end check for one file: read its diff and emit violations, ignoring
- * comment lines. Each violation is annotated with the file it came from.
+ * comment lines and lines carrying a `colour-token-ignore:` marker. Each violation is annotated with the file it came from.
  */
 export function checkFile(file: string, base: string): Violation[] {
   const diff = execSync(`git diff --unified=0 ${base}...HEAD -- ${file}`, {
@@ -118,7 +133,7 @@ export function checkFile(file: string, base: string): Violation[] {
   });
   const violations: Violation[] = [];
   for (const hit of parseUnifiedDiff(diff)) {
-    if (isCommentLine(hit.text)) continue;
+    if (isCommentLine(hit.text) || isSuppressedLine(hit.text)) continue;
     for (const raw of findRawHits(hit.text)) {
       violations.push({ file, line: hit.line, ...raw });
     }

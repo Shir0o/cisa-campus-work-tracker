@@ -11,6 +11,7 @@ import {
   Edit3,
   Calendar,
   MessageSquare,
+  ChevronDown,
   ChevronRight,
   Send,
   UserCircle,
@@ -67,6 +68,8 @@ import { tagStyle, TAG_SUGGESTIONS, getEffectiveContactTags, normalizeTagList } 
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
 import { useUndoSnack } from "../../hooks/useUndoSnack";
+import { StageMenu, StageMoveSheet } from "../ui/StagePicker";
+import { stageToneStyle } from "../../lib/stageTones";
 import { UndoSnackbar } from "../UndoSnackbar";
 import {
   scheduleInteractionRemoval,
@@ -282,6 +285,8 @@ export default function ContactDetailsModal({
   const [prayersLoading, setPrayersLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string; initials: string }[]>([]);
 
+  // True while the mobile "Where is {name} now?" stage sheet is open (#677).
+  const [movingStage, setMovingStage] = useState(false);
   // True while the aside's Transfer affordance is open. The owner/admin
   // gates this affordance via `canShare`, so the picker only lists teammates
   // who are not already the current owner.
@@ -743,6 +748,55 @@ export default function ContactDetailsModal({
     }
   };
 
+  /**
+   * Move the contact to `nextStage` ("" clears it) straight from their page
+   * (#677). Writes the same `stage` field and the same history line the edit
+   * form does, then offers the move back through the shared undo snackbar.
+   *
+   * Undo passes the stage it is reversing as `from` rather than letting this
+   * re-read the contact: the live snapshot may not have caught up yet, and a
+   * stale read would make the undo look like a no-op. `silent` keeps it from
+   * offering to undo the undo.
+   */
+  const moveStage = async (
+    nextStage: string,
+    opts?: { from?: string; silent?: boolean },
+  ) => {
+    const previous = opts?.from ?? (currentContact.stage || "");
+    if (nextStage === previous) return;
+    hasActionRef.current = true;
+    try {
+      await updateDoc(doc(db, "contacts", contact.id), {
+        stage: nextStage,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.uid,
+        updatedByName:
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+      });
+
+      const change = `stage: "${previous}" → "${nextStage}"`;
+      logActivity({
+        action: `updated ${change} for`,
+        targetId: contact.id,
+        targetName: currentContact.name,
+        targetType: "contact",
+        type: "edit",
+        userName:
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+        description: change,
+      } as any);
+
+      if (!opts?.silent) {
+        const message = nextStage
+          ? t('modals.contactDetails.moved_to').replace('{stage}', nextStage)
+          : t('modals.contactDetails.moved_out_of_steps');
+        showUndoSnack(message, () => moveStage(previous, { from: nextStage, silent: true }));
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
+    }
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneError) return;
@@ -1179,9 +1233,14 @@ export default function ContactDetailsModal({
     contact.createdByName ||
     (contact.addedBy ? teamMembers.find((m) => m.id === contact.addedBy)?.name : null);
   const sortedStages = [...stages].sort((a, b) => a.order - b.order);
-  const stageIdx = contact.stage
-    ? sortedStages.findIndex((s) => s.label === contact.stage)
+  const stageIdx = currentContact.stage
+    ? sortedStages.findIndex((s) => s.label === currentContact.stage)
     : -1;
+  // Moving a stage is an edit, so it sits behind the same gate as the Edit
+  // action: operator and up. Viewers keep the read-only pill and step list.
+  const canMoveStage = (isAdmin || hasMinRole(role, "operator")) && sortedStages.length > 0;
+  const currentStageIndex = stageIdx === -1 ? 0 : stageIdx;
+  const currentStageInfo = stageIdx === -1 ? undefined : sortedStages[stageIdx];
   const canUpdatePrayers = isAdmin || hasMinRole(role, "operator");
   const openPrayers = prayers.filter(
     (p) => p.status !== "answered" && p.status !== "unanswered",
@@ -1281,6 +1340,25 @@ export default function ContactDetailsModal({
                             </span>
                           ))}
                         </div>
+                        {canMoveStage ? (
+                          <button
+                            onClick={() => setMovingStage(true)}
+                            style={stageToneStyle(currentStageInfo?.color, currentStageIndex)}
+                            aria-label={`${t('modals.contactDetails.move_to_step')}: ${currentContact.stage || t('modals.contactDetails.not_in_step')}`}
+                            className={cn(
+                              "cdm-stage-btn mt-2.5 inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-full text-sm font-semibold",
+                              currentContact.stage
+                                ? "bg-[var(--tone-soft)] border border-[var(--tone)]/40 text-[var(--tone)]"
+                                : "border border-outline text-on-surface-variant",
+                            )}
+                          >
+                            <span className={cn("w-2 h-2 rounded-full", currentContact.stage ? "bg-[var(--tone)]" : "bg-outline")} />
+                            <span className="truncate max-w-[200px]">{currentContact.stage || t('modals.contactDetails.not_in_step')}</span>
+                            <ChevronDown className="w-3.5 h-3.5 opacity-75" />
+                          </button>
+                        ) : currentContact.stage ? (
+                          <span className="cd-stage-pill mt-2.5">{currentContact.stage}</span>
+                        ) : null}
                         <p className="text-xs text-on-surface-variant cdm-meta mt-3">
                           {[contact.role, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
@@ -1335,9 +1413,15 @@ export default function ContactDetailsModal({
                     {!isEditing && contact.pronouns && (
                       <span className="cd-pronouns">{contact.pronouns}</span>
                     )}
-                    {!isEditing && contact.stage && (
-                      <span className="cd-stage-pill">{contact.stage}</span>
-                    )}
+                    {!isEditing && (canMoveStage ? (
+                      <StageMenu
+                        stages={sortedStages}
+                        current={currentContact.stage || ""}
+                        onSelect={moveStage}
+                      />
+                    ) : currentContact.stage ? (
+                      <span className="cd-stage-pill">{currentContact.stage}</span>
+                    ) : null)}
                   </div>
                   {!isEditing && (
                     <div className="cd-head-sub">
@@ -1839,14 +1923,34 @@ export default function ContactDetailsModal({
                             )}
                             {sortedStages.map((s, i) => {
                               const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
-                              return (
-                                <div key={s.id} className={cn("cd-journey-step", state)}>
+                              const body = (
+                                <>
                                   <span className="cd-step-mark">
                                     {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
                                     {state === "done" && <span className="pd" />}
                                   </span>
                                   <span className="cd-step-name">{s.label}</span>
                                   {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
+                                </>
+                              );
+                              // The step list is where the pipeline is already
+                              // explained, so it doubles as the move target
+                              // for anyone who may edit (#677).
+                              return canMoveStage && state !== "on" ? (
+                                <button
+                                  key={s.id}
+                                  onClick={() => moveStage(s.label)}
+                                  className={cn("cd-journey-step is-move", state)}
+                                >
+                                  {body}
+                                  <span className="cd-step-move">
+                                    {t('modals.contactDetails.move_here')}
+                                    <ChevronRight className="w-3 h-3" />
+                                  </span>
+                                </button>
+                              ) : (
+                                <div key={s.id} className={cn("cd-journey-step", state)}>
+                                  {body}
                                 </div>
                               );
                             })}
@@ -2799,6 +2903,15 @@ export default function ContactDetailsModal({
         </div>
       )}
 
+      {movingStage && (
+        <StageMoveSheet
+          stages={sortedStages}
+          current={currentContact.stage || ""}
+          contactName={currentContact.name}
+          onSelect={moveStage}
+          onClose={() => setMovingStage(false)}
+        />
+      )}
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </AnimatePresence>
   );

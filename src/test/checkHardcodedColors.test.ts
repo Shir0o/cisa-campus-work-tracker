@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   findRawHits,
   isCommentLine,
+  isSuppressedLine,
   isTargetFile,
 } from "../../scripts/check-hardcoded-colors";
 import { parseUnifiedDiff } from "../../scripts/_diff-base";
@@ -242,5 +243,24 @@ describe("check-hardcoded-colors — parseUnifiedDiff", () => {
   it("returns no hits for a diff with only context and removals", () => {
     const diff = [`@@ -1,2 +1,2 @@`, ` keep`, `-removed`].join("\n");
     expect(parseUnifiedDiff(diff)).toEqual([]);
+  });
+});
+
+describe("check-hardcoded-colors — isSuppressedLine", () => {
+  it("skips a line carrying the marker with a reason", () => {
+    expect(
+      isSuppressedLine(
+        `  'bg-orange-500': 'ochre', // colour-token-ignore: persisted value`,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not skip the marker without a reason", () => {
+    expect(isSuppressedLine(`const c = '#fff'; // colour-token-ignore:`)).toBe(false);
+    expect(isSuppressedLine(`const c = '#fff'; // colour-token-ignore`)).toBe(false);
+  });
+
+  it("does not skip an ordinary line", () => {
+    expect(isSuppressedLine(`const c = '#fff'; // red`)).toBe(false);
   });
 });
