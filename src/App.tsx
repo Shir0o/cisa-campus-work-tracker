@@ -36,6 +36,10 @@ import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import { ReleaseSheet } from "./components/release/ReleaseSheet";
+import WhatsNewModal from "./components/WhatsNewModal";
+import whatsNewManifest from "./generated/whats-new.json";
+import { shouldShowWhatsNew, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
+import type { WhatsNewManifest } from "./scripts/compile-whats-new";
 import { NotificationPermissionBanner } from "./components/notifications/NotificationPermissionBanner";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
@@ -320,6 +324,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = React.useState(() => {
+    try {
+      const lastSeen = typeof window !== 'undefined' ? localStorage.getItem(WHATS_NEW_STORAGE_KEY) : null;
+      return shouldShowWhatsNew(whatsNewManifest as WhatsNewManifest, lastSeen, 'web');
+    } catch {
+      return false;
+    }
+  });
   const previousIdentityKey = React.useRef(effectiveIdentityKey);
 
   // Contact detail is now a real URL route (`/people/:contactId`), so the
@@ -560,6 +572,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <FeedbackFAB />
         <ReleaseSheet />
+        <WhatsNewModal
+          isOpen={isWhatsNewOpen}
+          onClose={() => setIsWhatsNewOpen(false)}
+          manifest={whatsNewManifest as WhatsNewManifest}
+          platform="web"
+        />
         <NotificationPermissionBanner />
         <Toaster />
       </div>
