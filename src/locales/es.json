@@ -1533,6 +1533,7 @@
     "replies_count": "{n} respuestas",
     "one_reply": "1 respuesta",
     "full_timer_badge": "Tiempo completo",
+
     "christian": "Cristiano",
     "catholic": "Católico",
     "other_religion": "Otra religión / trasfondo",
@@ -1626,7 +1627,7 @@
     "unassigned_sub": "Siguen apareciendo en las novedades; sólo que los filtros por equipo no los alcanzan.",
     "numbers_vary": "Los números cambian cada trimestre",
     "set_team": "Poner a {name} en un equipo",
-    "take_off": "Sin equipo"
+    "nobody_yet": "Todavía nadie en este equipo."
   },
   "whatsNew": {
     "title": "Lo nuevo",

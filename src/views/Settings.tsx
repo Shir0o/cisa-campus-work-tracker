@@ -1962,7 +1962,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
               onClick={() => void saveUserTeam(u.uid, on ? null : tm.id)}
               className={cn(
                 'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer',
-                on ? 'bg-surface text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
+                on ? 'bg-background text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
               )}
             >
               {t(teamLabelKey(tm.id), tm.label)}
@@ -2004,7 +2004,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
                 onTeam(tm.id).map(row)
               ) : (
                 <span className="text-[13px] text-on-surface-variant">
-                  {t('teams.take_off', 'Off the teams')}
+                  {t('teams.nobody_yet', 'Nobody on this team yet.')}
                 </span>
               )}
             </div>

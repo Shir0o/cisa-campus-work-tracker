@@ -42,16 +42,36 @@ export function isKnownTeam(id?: string | null): boolean {
 }
 
 // ── module-level roster ─────────────────────────────────────────────────────
+//
+// Names travel with the team because the feed's own name map is built from
+// activity (contacts, interactions, threads), so it cannot name a teammate who
+// has done nothing this week — and that teammate is exactly the one the "nothing
+// from them" state exists for. The users subscription in App's RosterSync
+// already has both fields; carrying the name costs nothing extra.
 
+export interface TeamMember {
+  uid: string;
+  team: string;
+  name: string;
+}
+
+let ROSTER: readonly TeamMember[] = [];
 let TEAM_BY_UID: ReadonlyMap<string, string> = new Map();
 
-/** Replace the roster from a users collection read (`team` field). */
-export function applyTeams(users: Array<{ uid: string; team?: string | null }>): void {
-  const next = new Map<string, string>();
+/** Replace the roster from a users collection read (`team` + `displayName`). */
+export function applyTeams(
+  users: Array<{ uid: string; team?: string | null; displayName?: string | null }>,
+): void {
+  const roster: TeamMember[] = [];
+  const byUid = new Map<string, string>();
   for (const u of users) {
-    if (u.uid && isKnownTeam(u.team)) next.set(u.uid, u.team as string);
+    if (!u.uid || !isKnownTeam(u.team)) continue;
+    const team = u.team as string;
+    byUid.set(u.uid, team);
+    roster.push({ uid: u.uid, team, name: u.displayName?.trim() || "" });
   }
-  TEAM_BY_UID = next;
+  ROSTER = roster;
+  TEAM_BY_UID = byUid;
 }
 
 /** The team this person is on, or null when they are unassigned. */
@@ -61,11 +81,14 @@ export function teamOf(uid?: string | null): string | null {
 
 /** Everyone assigned to a team. */
 export function uidsOnTeam(teamId: string): string[] {
-  const out: string[] = [];
-  TEAM_BY_UID.forEach((team, uid) => {
-    if (team === teamId) out.push(uid);
-  });
-  return out;
+  return ROSTER.filter((m) => m.team === teamId).map((m) => m.uid);
+}
+
+/** The people the teammate select offers: a team's roster, or everyone on any
+ *  team when no team is chosen. Members whose name we never learned are left
+ *  out — an option reading "Someone" is worse than one fewer option. */
+export function rosterOnTeam(teamId?: string | null): TeamMember[] {
+  return ROSTER.filter((m) => (!teamId || m.team === teamId) && !!m.name);
 }
 
 // ── Firestore ───────────────────────────────────────────────────────────────

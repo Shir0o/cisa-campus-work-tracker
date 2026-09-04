@@ -1,5 +1,6 @@
 import type { Contact, Interaction, Notification } from "../types";
 import { isFullTimer, fullTimerIds } from "./walking";
+import { teamOf } from "./teams";
 import type { ThreadKind, ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { UserEntityState } from "./userEntityState";
@@ -373,7 +374,6 @@ export function isRestingFilter(filter: AttentionFilter): boolean {
 export function filterAttentionStacks(
   stacks: AttentionStack[],
   filter: AttentionFilter,
-  teamOf: (uid: string) => string | null,
 ): AttentionStack[] {
   if (isRestingFilter(filter)) return stacks;
   const { team, who } = filter;
@@ -387,17 +387,21 @@ export function filterAttentionStacks(
  * offers, so it never lists someone with nothing on the feed. Pass a team to
  * scope the options to the chip above the select.
  */
-export function actorsInStacks(
-  stacks: AttentionStack[],
-  team?: string | null,
-  teamOf?: (uid: string) => string | null,
-): string[] {
+export function actorsInStacks(stacks: AttentionStack[], team?: string | null): string[] {
   const out = new Set<string>();
   for (const s of stacks) {
     for (const uid of s.by) {
-      if (team && teamOf && teamOf(uid) !== team) continue;
+      if (team && teamOf(uid) !== team) continue;
       out.add(uid);
     }
   }
   return [...out];
+}
+
+/** The team a stack's actors are on, for the tag on an "Around the team" row.
+ *  Null when they are unassigned or disagree — a tag that could name either of
+ *  two teams says nothing. */
+export function soleTeamOf(stack: AttentionStack): string | null {
+  const teams = [...new Set(stack.by.map((uid) => teamOf(uid)).filter(Boolean))];
+  return teams.length === 1 ? (teams[0] as string) : null;
 }

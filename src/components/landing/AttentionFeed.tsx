@@ -25,10 +25,11 @@ import {
   filterAttentionStacks,
   actorsInStacks,
   isRestingFilter,
+  soleTeamOf,
   type AttentionStack,
   type AttentionItem,
 } from "../../lib/attention";
-import { TEAMS, teamLabelKey, teamOf } from "../../lib/teams";
+import { TEAMS, teamLabelKey, rosterOnTeam } from "../../lib/teams";
 import { useLanguage } from "../LanguageProvider";
 import { useUserEntityState, UserEntityState } from "../../lib/userEntityState";
 import { Translate } from "../Translate";
@@ -64,21 +65,14 @@ const NODE: Record<
  *  unread emphasis is a 1px `--outline-variant` border on an identical fill
  *  (1.04:1 in light theme) and does not render, so a bordered marker would
  *  inherit the same problem. See docs/design/news-filters/Highlight.dc.html. */
-function TalkedChip({ label }: { label: string }) {
+function TalkedChip({ stack, label }: { stack: AttentionStack; label: string }) {
+  if (!stack.kinds.includes("interaction")) return null;
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-stage-accent bg-stage-accent-soft shrink-0">
       <MessageSquare className="w-3 h-3" />
       {label}
     </span>
   );
-}
-
-/** The team a stack's actor is on, for the tag on an "Around the team" row.
- *  Null when the actors are unassigned or disagree — a tag that could name
- *  either of two teams says nothing. */
-function soleTeamOf(stack: AttentionStack): string | null {
-  const teams = [...new Set(stack.by.map((uid) => teamOf(uid)).filter(Boolean))];
-  return teams.length === 1 ? (teams[0] as string) : null;
 }
 
 function AttentionSubItem({
@@ -274,7 +268,7 @@ function AttentionStackRow({
               {stack.unread > 0 && (
                 <span className="w-2 h-2 rounded-full bg-accent shrink-0 inline-block" />
               )}
-              {stack.kinds.includes("interaction") && <TalkedChip label={t("whatsNew.talked", "Talked")} />}
+              <TalkedChip stack={stack} label={t("whatsNew.talked", "Talked")} />
             </div>
             <span className="text-xs text-on-surface-variant/80 shrink-0">{relTime(stack.at)}</span>
           </div>
@@ -437,7 +431,7 @@ function AmbientItemRow({
             >
               {contact?.name || "Contact"}
             </button>
-            {stack.kinds.includes("interaction") && <TalkedChip label={t("whatsNew.talked", "Talked")} />}
+            <TalkedChip stack={stack} label={t("whatsNew.talked", "Talked")} />
             <span className="text-xs text-on-surface-variant truncate">
               {actionText}
             </span>
@@ -555,7 +549,7 @@ export default function AttentionFeed({
   // The filter cuts on WHO DID IT (#727) — a team, then optionally one person
   // inside it. One row governs the whole feed, not each column.
   const [team, setTeam] = useState<string | null>(null);
-  const [pickedWho, setWho] = useState<string | null>(null);
+  const [pickedWho, setPickedWho] = useState<string | null>(null);
   const [liveInteractions, setLiveInteractions] = useState<Interaction[]>([]);
   const [liveThreads, setLiveThreads] = useState<ThreadMessageWithContact[]>([]);
 
@@ -647,36 +641,41 @@ export default function AttentionFeed({
 
   const allStacks = useMemo(() => attentionStacksFor(rawItems, uid), [rawItems, uid]);
 
-  // The teammates the select offers: only people who actually appear on the
-  // feed, scoped by the chip above it.
-  const actorOptions = useMemo(() => {
-    const uids = actorsInStacks(allStacks, team, teamOf);
-    return uids
-      .map((id) => ({ uid: id, name: staffNameMap[id] || "Someone" }))
+  // The teammates the select offers: the team's roster, so a teammate who has
+  // done nothing this week is still offerable — that is exactly the person the
+  // "nothing from them" state exists for. Anyone with news but no team stays
+  // listed too, so the select can never hide something the feed is showing.
+  const teammateOptions = useMemo(() => {
+    const byUid = new Map<string, string>();
+    for (const m of rosterOnTeam(team)) byUid.set(m.uid, m.name);
+    for (const id of actorsInStacks(allStacks, team)) {
+      if (!byUid.has(id)) byUid.set(id, staffNameMap[id] || "Someone");
+    }
+    return [...byUid.entries()]
+      .map(([id, name]) => ({ uid: id, name: staffNameMap[id] || name }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [allStacks, team, staffNameMap]);
 
   // A teammate picked inside one team is meaningless under another: the chip
   // wins, and the select falls back to the whole team rather than to nothing.
-  const who = pickedWho && actorOptions.some((o) => o.uid === pickedWho) ? pickedWho : null;
+  const who = pickedWho && teammateOptions.some((o) => o.uid === pickedWho) ? pickedWho : null;
 
   const filter = useMemo(() => ({ team, who }), [team, who]);
-  const stacks = useMemo(
-    () => filterAttentionStacks(allStacks, filter, teamOf),
-    [allStacks, filter],
-  );
 
-  const { onYou, aroundTeam } = useMemo(
-    () => partitionAttentionStacks(stacks, contacts, uid, role),
-    [stacks, contacts, uid, role],
-  );
-
-  // The two-column shape is decided on the UNFILTERED feed, so narrowing to one
-  // team doesn't collapse the layout underneath the person doing the narrowing.
-  const hasTeamColumn = useMemo(
-    () => partitionAttentionStacks(allStacks, contacts, uid, role).aroundTeam.length > 0,
+  // Partition ONCE on the unfiltered feed, then narrow each side. The two-column
+  // shape is decided on the unfiltered partition, so narrowing to one team never
+  // collapses the layout underneath the person doing the narrowing.
+  const allSides = useMemo(
+    () => partitionAttentionStacks(allStacks, contacts, uid, role),
     [allStacks, contacts, uid, role],
   );
+  const onYou = useMemo(() => filterAttentionStacks(allSides.onYou, filter), [allSides, filter]);
+  const aroundTeam = useMemo(
+    () => filterAttentionStacks(allSides.aroundTeam, filter),
+    [allSides, filter],
+  );
+  const stacks = useMemo(() => [...onYou, ...aroundTeam], [onYou, aroundTeam]);
+  const hasTeamColumn = allSides.aroundTeam.length > 0;
 
   if (allStacks.length === 0) {
     return null;
@@ -684,9 +683,14 @@ export default function AttentionFeed({
 
   const unreadCount = stacks.filter((s) => s.unread > 0).length;
   const unreadOnYouCount = onYou.filter((s) => s.unread > 0).length;
+  const unreadAroundTeamCount = aroundTeam.filter((s) => s.unread > 0).length;
   const resting = isRestingFilter(filter);
   const teamLabel = team ? t(teamLabelKey(team)) : "";
-  const whoName = who ? (staffNameMap[who] || "Someone").trim().split(/\s+/)[0] : "";
+  // The name comes from the option list, not from the activity-built name map:
+  // the teammate this state is about is precisely the one with no activity.
+  const whoName = who
+    ? (teammateOptions.find((o) => o.uid === who)?.name || "Someone").trim().split(/\s+/)[0]
+    : "";
 
   const COLLAPSED_LIMIT = 5;
   const visibleOnYou = showAllOnYou ? onYou : onYou.slice(0, COLLAPSED_LIMIT);
@@ -707,7 +711,7 @@ export default function AttentionFeed({
 
   const clearFilter = () => {
     setTeam(null);
-    setWho(null);
+    setPickedWho(null);
   };
 
   // If mobile or the team column is empty (e.g. trainee view where all items are
@@ -755,7 +759,7 @@ export default function AttentionFeed({
               aria-pressed={!team}
               className={cn(
                 "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
-                !team ? "bg-surface text-on-surface" : "text-on-surface-variant hover:text-on-surface",
+                !team ? "bg-background text-on-surface" : "text-on-surface-variant hover:text-on-surface",
               )}
             >
               {t("teams.everyone", "Everyone")}
@@ -769,7 +773,7 @@ export default function AttentionFeed({
                 className={cn(
                   "text-[13px] px-3 py-1.5 rounded-full transition-colors cursor-pointer",
                   team === tm.id
-                    ? "bg-surface text-on-surface"
+                    ? "bg-background text-on-surface"
                     : "text-on-surface-variant hover:text-on-surface",
                 )}
               >
@@ -787,7 +791,7 @@ export default function AttentionFeed({
             <Users className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
             <select
               value={who ?? "all"}
-              onChange={(e) => setWho(e.target.value === "all" ? null : e.target.value)}
+              onChange={(e) => setPickedWho(e.target.value === "all" ? null : e.target.value)}
               aria-label={t("whatsNew.filter_by_person", "Filter the news by teammate")}
               className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer"
             >
@@ -796,7 +800,7 @@ export default function AttentionFeed({
                   ? t("whatsNew.whole_named_team", "Whole {team}").replace("{team}", teamLabel)
                   : t("whatsNew.whole_team", "Whole team")}
               </option>
-              {actorOptions.map((o) => (
+              {teammateOptions.map((o) => (
                 <option key={o.uid} value={o.uid}>
                   {o.name}
                 </option>
@@ -925,6 +929,11 @@ export default function AttentionFeed({
             <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
               <div className="flex items-baseline gap-2.5 flex-wrap">
                 <h3 className="font-serif text-lg text-on-surface font-semibold m-0">Around the team</h3>
+                {unreadAroundTeamCount > 0 && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+                    {t("whatsNew.count_new", "{n} new").replace("{n}", String(unreadAroundTeamCount))}
+                  </span>
+                )}
                 <span className="text-xs text-on-surface-variant">
                   Everything else the team has been doing. Nothing here is waiting on you.
                 </span>

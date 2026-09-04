@@ -84,6 +84,8 @@ service cloud.firestore {
       
       allow create: if isValidId(userId) && isOwner(userId) && 
                       isValidUser(incoming()) &&
+                      // Nobody signs themselves onto a team on the way in.
+                      (isAdmin() || incoming().get('team', null) == null) &&
                       // Self-registration defaults: unapproved viewer OR check invitation
                       (
                         (incoming().approved == false && incoming().role == 'viewer') || 

@@ -572,9 +572,12 @@ function RosterSync() {
   React.useEffect(
     () =>
       onSnapshot(collection(db, "users"), (snap) => {
-        const docs = snap.docs.map((d) => ({ uid: d.id, ...(d.data() as { role?: string; team?: string | null }) }));
+        const docs = snap.docs.map((d) => ({
+          uid: d.id,
+          ...(d.data() as { role?: string; team?: string | null; displayName?: string | null }),
+        }));
         applyRoster(docs.map(({ uid, role }) => ({ uid, role })));
-        applyTeams(docs.map(({ uid, team }) => ({ uid, team })));
+        applyTeams(docs.map(({ uid, team, displayName }) => ({ uid, team, displayName })));
       }),
     [],
   );

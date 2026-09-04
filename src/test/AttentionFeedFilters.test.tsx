@@ -50,8 +50,8 @@ describe("AttentionFeed filters (#727)", () => {
     localStorage.clear();
     __resetUserEntityStateCache();
     applyTeams([
-      { uid: "mei", team: "yp" },
-      { uid: "grace", team: "campus" },
+      { uid: "mei", team: "yp", displayName: "Mei Tanaka" },
+      { uid: "grace", team: "campus", displayName: "Grace Lim" },
     ]);
   });
 
@@ -109,10 +109,24 @@ describe("AttentionFeed filters (#727)", () => {
       .getAllByRole("option")
       .map((o) => o.textContent);
     expect(named).toEqual(["Whole team", "Grace Lim", "Mei Tanaka"]);
-    for (const uid of ["mei", "grace"]) {
-      fireEvent.change(select, { target: { value: uid } });
-      expect(screen.queryByText("Show everyone")).not.toBeInTheDocument();
-    }
+  });
+
+  it("offers a rostered teammate who has done nothing, and says so when picked", () => {
+    // Andre is on Campus and has nothing on the feed — the state the canvas drew.
+    applyTeams([
+      { uid: "mei", team: "yp", displayName: "Mei Tanaka" },
+      { uid: "grace", team: "campus", displayName: "Grace Lim" },
+      { uid: "andre", team: "campus", displayName: "Andre Baptiste" },
+    ]);
+    feed();
+
+    const select = screen.getByRole("combobox", { name: "Filter the news by teammate" });
+    expect(within(select).getByRole("option", { name: "Andre Baptiste" })).toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "andre" } });
+    expect(screen.getByText("Nothing from Andre this week")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show everyone" }));
+    expect(screen.getByText("Kofi Mensah")).toBeInTheDocument();
   });
 
   it("offers a way back out of an empty filter", () => {
@@ -127,9 +141,20 @@ describe("AttentionFeed filters (#727)", () => {
 
   it("recounts the header against the filter", () => {
     feed();
-    expect(screen.getByText("2 new")).toBeInTheDocument();
+    const headerRow = () => screen.getByRole("heading", { name: "What's new" }).parentElement!;
+    expect(within(headerRow()).getByText("2 new")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "YP team" }));
-    expect(screen.getByText("1 new")).toBeInTheDocument();
+    expect(within(headerRow()).getByText("1 new")).toBeInTheDocument();
+  });
+
+  it("recounts the Around the team column too, not just the header", () => {
+    feed();
+    // Neither contact is u1's, so both sit in the team column.
+    const teamCol = () => screen.getByRole("region", { name: "Around the team" });
+    expect(within(teamCol()).getByText("2 new")).toBeInTheDocument();
+    // Aisha is Grace's, on Campus — narrowing to YP leaves only Kofi.
+    fireEvent.click(screen.getByRole("button", { name: "YP team" }));
+    expect(within(teamCol()).getByText("1 new")).toBeInTheDocument();
   });
 
   it("marks a stack Talked when it holds a logged conversation", () => {

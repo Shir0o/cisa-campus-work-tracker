@@ -155,6 +155,74 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(userRef, { pushToken: 'x'.repeat(201) }));
       await assertFails(updateDoc(userRef, { pushToken: 12345 }));
     });
+
+    // ── Which team they're on (#727) ──
+    // A team is a field on the trainee, arranged by a full-timer in Settings
+    // the same way the gospel-partner pairs are. Nobody puts themselves on one.
+
+    const seedUser = async (uid: string, extra: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', uid), {
+          email: `${uid}@example.com`,
+          displayName: uid,
+          photoURL: null,
+          role: 'manager',
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ...extra,
+        });
+      });
+    };
+
+    it('An admin can put a trainee on a team, and take them off again', async () => {
+      await seedUser('admin1', { role: 'admin' });
+      await seedUser('trainee1');
+      const db = getFirestore({ uid: 'admin1', email: 'admin1@example.com' });
+
+      await assertSucceeds(updateDoc(doc(db, 'users', 'trainee1'), { team: 'yp' }));
+      await assertSucceeds(updateDoc(doc(db, 'users', 'trainee1'), { team: null }));
+    });
+
+    it('A trainee cannot put themselves — or anyone else — on a team', async () => {
+      await seedUser('trainee2');
+      await seedUser('trainee3');
+      const db = getFirestore({ uid: 'trainee2', email: 'trainee2@example.com' });
+
+      await assertFails(updateDoc(doc(db, 'users', 'trainee2'), { team: 'yp' }));
+      await assertFails(updateDoc(doc(db, 'users', 'trainee3'), { team: 'campus' }));
+    });
+
+    it('A trainee can still make their ordinary edits while a team is set on them', async () => {
+      await seedUser('trainee4', { team: 'yp' });
+      const db = getFirestore({ uid: 'trainee4', email: 'trainee4@example.com' });
+
+      await assertSucceeds(updateDoc(doc(db, 'users', 'trainee4'), { displayName: 'Renamed' }));
+    });
+
+    it('Nobody signs themselves onto a team on the way in', async () => {
+      const db = getFirestore({ uid: 'newbie', email: 'newbie@example.com' });
+
+      await assertFails(setDoc(doc(db, 'users', 'newbie'), {
+        email: 'newbie@example.com',
+        displayName: 'Newbie',
+        photoURL: null,
+        role: 'viewer',
+        approved: false,
+        team: 'yp',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+    });
+
+    it('A team must be a short string, not a document', async () => {
+      await seedUser('admin2', { role: 'admin' });
+      await seedUser('trainee5');
+      const db = getFirestore({ uid: 'admin2', email: 'admin2@example.com' });
+
+      await assertFails(updateDoc(doc(db, 'users', 'trainee5'), { team: 12345 }));
+      await assertFails(updateDoc(doc(db, 'users', 'trainee5'), { team: 'x'.repeat(65) }));
+    });
   });
 
   describe('Contacts', () => {

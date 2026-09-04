@@ -1533,6 +1533,7 @@
     "replies_count": "{n} replies",
     "one_reply": "1 reply",
     "full_timer_badge": "Full-timer",
+
     "christian": "Christian",
     "catholic": "Catholic",
     "other_religion": "Other Religion / Background",
@@ -1626,7 +1627,7 @@
     "unassigned_sub": "They still show up on the news; the team chips just don't reach them.",
     "numbers_vary": "Numbers vary by term",
     "set_team": "Put {name} on a team",
-    "take_off": "Off the teams"
+    "nobody_yet": "Nobody on this team yet."
   },
   "whatsNew": {
     "title": "What's new",
