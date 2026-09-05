@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#5c5595"
     },
     "ios": {
       "supportsTablet": false,
@@ -64,7 +64,7 @@
         {
           "image": "./assets/adaptive-icon-foreground.png",
           "resizeMode": "contain",
-          "backgroundColor": "#FFFFFF"
+          "backgroundColor": "#5c5595"
         }
       ]
     ],
