@@ -11,7 +11,6 @@ import {
   toggleReaction,
   useThreads,
   type ThreadMessage,
-  type ThreadKind,
   type ThreadStakeholders,
 } from "../lib/threads";
 import { MentionAutocomplete } from "./common/MentionAutocomplete";
@@ -22,6 +21,11 @@ import {
   type MentionUser,
 } from "../lib/mentions";
 import { isFullTimer } from "../lib/walking";
+import {
+  COMPOSE_KINDS,
+  ComposeKindPicker,
+  type ComposeKind,
+} from "./ComposeKindPicker";
 import { useLanguage } from "./LanguageProvider";
 
 const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
@@ -315,58 +319,6 @@ function ThreadMsg({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// The three things a person can write on a contact (#813). "Ask a follow-up" is
-// the existing `nudge` kind, which until now could only be posted from the
-// outreach list and a component that was never mounted — and it is worded as an
-// ask, not an assignment: no owner, no due date. Encouragements and plain notes
-// are posted from elsewhere and are not offered here.
-type ComposeKind = Extract<ThreadKind, "comment" | "question" | "nudge">;
-
-const COMPOSE_KINDS: Record<
-  ComposeKind,
-  { label: string; placeholder: string }
-> = {
-  comment: { label: "thread.kind_comment", placeholder: "thread.placeholder_comment" },
-  question: { label: "thread.kind_question", placeholder: "thread.placeholder_question" },
-  nudge: { label: "thread.kind_follow_up", placeholder: "thread.placeholder_follow_up" },
-};
-
-const COMPOSE_ORDER: ComposeKind[] = ["comment", "question", "nudge"];
-
-function ComposeKindPicker({
-  value,
-  onChange,
-}: {
-  value: ComposeKind;
-  onChange: (k: ComposeKind) => void;
-}) {
-  const { t } = useLanguage();
-  return (
-    <div
-      role="group"
-      aria-label={t("thread.compose_kind_group")}
-      className="mb-2 inline-flex gap-0.5 p-0.5 rounded-full bg-surface-variant"
-    >
-      {COMPOSE_ORDER.map((k) => (
-        <button
-          key={k}
-          type="button"
-          aria-pressed={value === k}
-          onClick={() => onChange(k)}
-          className={cn(
-            "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer",
-            value === k
-              ? "bg-surface text-on-surface font-semibold shadow-xs"
-              : "text-on-surface-variant font-medium hover:text-on-surface",
-          )}
-        >
-          {t(COMPOSE_KINDS[k].label)}
-        </button>
-      ))}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import AttentionFeed from "../components/landing/AttentionFeed";
 import { __resetUserEntityStateCache } from "../lib/userEntityState";
+import { __resetInboxState } from "../lib/inboxState";
 import { applyTeams } from "../lib/teams";
 import type { Contact, Interaction } from "../types";
 
@@ -17,6 +18,8 @@ vi.mock("../components/AuthProvider", () => ({
 vi.mock("../lib/firebase", () => ({
   db: {},
   auth: { currentUser: { uid: "u1" } },
+  handleFirestoreError: vi.fn(),
+  OperationType: { READ: "read", WRITE: "write", LIST: "list", CREATE: "create", UPDATE: "update" },
 }));
 
 // Mei is on YP, Grace on Campus.
@@ -49,6 +52,7 @@ describe("AttentionFeed filters (#727)", () => {
   beforeEach(() => {
     localStorage.clear();
     __resetUserEntityStateCache();
+    __resetInboxState();
     applyTeams([
       { uid: "mei", team: "yp", displayName: "Mei Tanaka" },
       { uid: "grace", team: "campus", displayName: "Grace Lim" },
@@ -139,22 +143,22 @@ describe("AttentionFeed filters (#727)", () => {
     expect(screen.getByText("Kofi Mensah")).toBeInTheDocument();
   });
 
-  it("recounts the header against the filter", () => {
+  it("recounts the header against the filter — the count is what is left to work through", () => {
     feed();
     const headerRow = () => screen.getByRole("heading", { name: "What's new" }).parentElement!;
-    expect(within(headerRow()).getByText("2 new")).toBeInTheDocument();
+    expect(within(headerRow()).getByText("2 to work through")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "YP team" }));
-    expect(within(headerRow()).getByText("1 new")).toBeInTheDocument();
+    expect(within(headerRow()).getByText("1 to work through")).toBeInTheDocument();
   });
 
   it("recounts the Around the team column too, not just the header", () => {
     feed();
     // Neither contact is u1's, so both sit in the team column.
     const teamCol = () => screen.getByRole("region", { name: "Around the team" });
-    expect(within(teamCol()).getByText("2 new")).toBeInTheDocument();
+    expect(within(teamCol()).getByText("2 to work through")).toBeInTheDocument();
     // Aisha is Grace's, on Campus — narrowing to YP leaves only Kofi.
     fireEvent.click(screen.getByRole("button", { name: "YP team" }));
-    expect(within(teamCol()).getByText("1 new")).toBeInTheDocument();
+    expect(within(teamCol()).getByText("1 to work through")).toBeInTheDocument();
   });
 
   it("marks a stack Talked when it holds a logged conversation", () => {
