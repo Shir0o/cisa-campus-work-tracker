@@ -4,6 +4,7 @@ import { onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Settings from '../views/Settings';
 import { useAuth } from '../components/AuthProvider';
 import { partnersTermKey } from '../lib/partners';
+import { FirstRunStore } from '../lib/firstRun';
 import React from 'react';
 
 // ── Mocks ──────────────────────────────────────────────────────────────
@@ -234,6 +235,27 @@ describe('Settings', () => {
     });
   });
 
+  it('restores a dismissed getting-started checklist and confirms', () => {
+    setupNonManagerAuth({ role: 'operator' });
+    FirstRunStore.putAway('fr:operator:u-viewer');
+
+    render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /Show getting started checklist/i }));
+
+    expect(FirstRunStore.isAway('fr:operator:u-viewer')).toBe(false);
+    expect(screen.getByText(/back on your home screen/i)).toBeInTheDocument();
+  });
+
+
+  it('restores using the impersonated effectiveUserId, not the raw auth uid', () => {
+    setupNonManagerAuth({ role: 'manager', effectiveUserId: 'cisa-trainee' });
+    FirstRunStore.putAway('fr:manager:cisa-trainee');
+
+    render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /Show getting started checklist/i }));
+
+    expect(FirstRunStore.isAway('fr:manager:cisa-trainee')).toBe(false);
+  });
   // ── 4. Manager view renders team section ──
 
   describe('manager view team section', () => {

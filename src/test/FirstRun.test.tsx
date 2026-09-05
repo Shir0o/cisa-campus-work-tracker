@@ -137,7 +137,7 @@ describe('FirstRun logic (#335)', () => {
       );
 
       expect(screen.getByText('Your first week')).toBeInTheDocument();
-      expect(screen.getByText('1 of 5')).toBeInTheDocument();
+      expect(screen.getByText('1 of 5 complete')).toBeInTheDocument();
       expect(screen.getByText("Add someone you've met")).toBeInTheDocument();
 
       // Click "Show me" for an uncompleted step
@@ -151,6 +151,47 @@ describe('FirstRun logic (#335)', () => {
       fireEvent.click(putAwayBtn);
       expect(onDismiss).toHaveBeenCalled();
       expect(screen.queryByText('Your first week')).not.toBeInTheDocument();
+    });
+
+    it('renders an accessible progress meter reflecting completion', () => {
+      render(
+        <MemoryRouter>
+          <FirstRunCard
+            role="trainee"
+            userId="trainee-1"
+            context={{
+              contactsCount: 1,
+              interactionsCount: 0,
+              messagesCount: 0,
+              prayersCount: 0,
+              todosCompletedCount: 0,
+            }}
+          />
+        </MemoryRouter>,
+      );
+
+      const meter = screen.getByRole('progressbar', { name: /getting started progress/i });
+      expect(meter).toHaveAttribute('aria-valuemin', '0');
+      expect(meter).toHaveAttribute('aria-valuemax', '5');
+      expect(meter).toHaveAttribute('aria-valuenow', '1');
+    });
+
+    it('renders again after FirstRunStore.bringBack restores a dismissed card', () => {
+      FirstRunStore.putAway('fr:trainee:trainee-1');
+      const view = render(
+        <MemoryRouter>
+          <FirstRunCard role="trainee" userId="trainee-1" context={{ contactsCount: 1 }} />
+        </MemoryRouter>,
+      );
+      expect(view.container).toBeEmptyDOMElement();
+
+      FirstRunStore.bringBack('fr:trainee:trainee-1');
+      view.rerender(
+        <MemoryRouter>
+          <FirstRunCard role="trainee" userId="trainee-1" context={{ contactsCount: 1 }} />
+        </MemoryRouter>,
+      );
+      expect(screen.getByText('Your first week')).toBeInTheDocument();
     });
 
     it('does not render if all steps are completed', () => {

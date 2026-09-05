@@ -101,6 +101,13 @@ export const FirstRunStore = {
   },
 };
 
+export function firstRunKey(
+  role: string | undefined | null,
+  userId: string | undefined | null,
+): string {
+  return `fr:${(role || 'trainee').toLowerCase()}:${userId || 'anon'}`;
+}
+
 export interface FirstRunPredicateContext {
   userId?: string | null;
   contactsCount?: number;
@@ -230,8 +237,7 @@ export function evaluateFirstRun(
   ctx: FirstRunPredicateContext,
 ): FirstRunData {
   const normRole = (role || 'trainee').toLowerCase();
-  const uid = userId || 'anon';
-  const key = `fr:${normRole}:${uid}`;
+  const key = firstRunKey(role, userId);
 
   const steps = computeFirstRunSteps(normRole, ctx);
   const doneCount = steps.filter((s) => s.done).length;

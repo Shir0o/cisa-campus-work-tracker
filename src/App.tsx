@@ -26,7 +26,7 @@ import Landing from "./views/landings/Landing";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LanguageProvider } from "./components/LanguageProvider";
-import { Plus } from "lucide-react";
+import { Plus, Eye, EyeOff } from "lucide-react";
 import { Skeleton } from "./components/ui/Skeleton";
 import { Contact } from "./types";
 import ContactDetailsModal from "./components/modals/ContactDetailsModal";
@@ -107,11 +107,14 @@ function EmailPasswordForm() {
   const { signInWithEmail } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const passwordRef = React.useRef<HTMLInputElement>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setShowPassword(false);
     setError(null);
     setBusy(true);
     try {
@@ -138,15 +141,29 @@ function EmailPasswordForm() {
         className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
         required
       />
+    <div className="relative">
       <input
-        type="password"
+        ref={passwordRef}
+        type={showPassword ? "text" : "password"}
         autoComplete="current-password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        className="w-full px-4 py-3 pr-12 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
         required
       />
+      <button
+        type="button"
+        onClick={() => {
+          setShowPassword((v) => !v);
+          passwordRef.current?.focus();
+        }}
+        aria-label={showPassword ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors"
+      >
+        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+      </button>
+    </div>
       {error && <p className="text-sm text-error px-1">{error}</p>}
       <button
         type="submit"

@@ -55,6 +55,10 @@ to flatten `--accent` toward `--text` for visual consistency, re-introduce
 headroom instead — the regression test in `src/test/accentToken.test.ts`
 will fail otherwise.
 
+**First-Run Checklist (Getting started card)**:
+The role-aware onboarding card (`FirstRunCard`) on the home screen and role landings. Each step is reactively derived from live records — contacts added, conversations logged, questions asked, prayers offered — never manually ticked, so the card always tells the truth about progress. Shows an accessible progress meter and an "X of Y complete" count; dismissed with "Put this away" (persisted per user + role in localStorage) and restored from Settings > Getting started. It disappears quietly once every step is done (ADR 0010 — reactive in-situ checklists, no overlay tours).
+_Avoid_: Onboarding tour, walkthrough, tutorial overlay
+
 **Border Radius Scale (CSS tokens)**:
 The monotonic scale governing corner curvature across the application: Shell container 32px (`--radius-2xl`), Cards/Modals 24px (`--radius-xl`), Sub-containers 20px (`--radius-lg`), Nested panels 14px (`--radius`), Form inputs/controls 10px (`--radius-sm`), and Pills/Avatars (`rounded-full`). Invariant: nested elements must descend in radius (Card 24px → Panel 14px → Control 10px), and controls must never clamp to lozenges/stadiums (ADR 0009).
 _Avoid_: Arbitrary px radii on inputs, lozenge inputs
