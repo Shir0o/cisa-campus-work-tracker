@@ -149,6 +149,15 @@ export const UserEntityState = {
     return hasDone(get(uid), entityRef);
   },
 
+  /** Everything this browser has recorded for a person, so the server store can
+   *  be seeded from it exactly once (#813). `inboxState.ts` is the only caller:
+   *  starting the worklist clean would show every Full-timer their whole contact
+   *  history as new on launch day. */
+  allRefs(uid: string): { read: string[]; done: string[] } {
+    const bucket = get(uid);
+    return { read: [...bucket.read], done: [...bucket.done] };
+  },
+
   getState(uid: string, entityRef: string): { read: boolean; done: boolean } {
     const bucket = get(uid);
     return {

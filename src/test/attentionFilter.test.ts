@@ -17,7 +17,7 @@ const stack = (id: string, by: string[]): AttentionStack =>
     bucket: "today",
     by,
     kinds: ["contact"],
-    unread: 0,
+    seen: false,
   }) as AttentionStack;
 
 // Mei and Daniel are on YP; Grace and Jonah on Campus.

@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import AttentionFeed from "../components/landing/AttentionFeed";
-import { UserEntityState, __resetUserEntityStateCache } from "../lib/userEntityState";
+import { __resetUserEntityStateCache } from "../lib/userEntityState";
+import { InboxState, __resetInboxState } from "../lib/inboxState";
 import type { Contact, Interaction } from "../types";
 import type { ThreadMessageWithContact } from "../lib/threads";
 
 vi.mock("../components/AuthProvider", () => ({
   useAuth: () => ({
-    user: { uid: "u1", email: "tony@cisa.org" },
+    user: { uid: "u1", email: "tony@cisa.org", displayName: "Tony Wang" },
     effectiveUserId: "u1",
     role: "admin",
   }),
@@ -17,27 +18,51 @@ vi.mock("../components/AuthProvider", () => ({
 vi.mock("../lib/firebase", () => ({
   db: {},
   auth: { currentUser: { uid: "u1" } },
+  handleFirestoreError: vi.fn(),
+  OperationType: { READ: "read", WRITE: "write", LIST: "list", CREATE: "create", UPDATE: "update" },
 }));
 
-describe("AttentionFeed Component (#330, #595)", () => {
+const addThreadMessage = vi.fn(async () => {});
+const closeFollowUpAsk = vi.fn(async () => {});
+const reopenFollowUpAsk = vi.fn(async () => {});
+
+vi.mock("../lib/threads", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/threads")>();
+  return {
+    ...actual,
+    addThreadMessage: (...args: unknown[]) => addThreadMessage(...(args as [])),
+    closeFollowUpAsk: (...args: unknown[]) => closeFollowUpAsk(...(args as [])),
+    reopenFollowUpAsk: (...args: unknown[]) => reopenFollowUpAsk(...(args as [])),
+    subscribeAllThreads: () => () => {},
+  };
+});
+
+// ── The feed is the worklist (#813) ─────────────────────────────────────────
+// The two axes are the whole point: opening something must never make the
+// count fall, and the completion verb has to fit what the card is about.
+
+describe("AttentionFeed — the feed as a worklist (#813)", () => {
   const uid = "u1";
 
   beforeEach(() => {
     localStorage.clear();
     __resetUserEntityStateCache();
+    __resetInboxState();
     vi.clearAllMocks();
   });
 
-  const sampleContacts: Contact[] = [
-    {
+  const contact = (over: Partial<Contact> = {}): Contact =>
+    ({
       id: "c1",
       name: "Alex Johnson",
       createdBy: "u3",
       createdAt: new Date().toISOString(),
       stage: "Freshman Contact",
       owner: "u3",
-    } as Contact,
-  ];
+      ...over,
+    }) as Contact;
+
+  const sampleContacts: Contact[] = [contact()];
 
   const sampleInteractions: Interaction[] = [
     {
@@ -52,113 +77,243 @@ describe("AttentionFeed Component (#330, #595)", () => {
     } as unknown as Interaction,
   ];
 
-  const sampleThreads: ThreadMessageWithContact[] = [
-    {
-      id: "t1",
-      contactId: "c1",
-      from: "u3",
-      fromName: "Zion",
-      kind: "question",
-      body: "How should we follow up with Alex?",
-      at: new Date().toISOString(),
-      interactionId: null,
-      reactions: [],
-    },
-  ];
+  const question: ThreadMessageWithContact = {
+    id: "t1",
+    contactId: "c1",
+    from: "u3",
+    fromName: "Zion",
+    kind: "question",
+    body: "How should we follow up with Alex?",
+    at: new Date().toISOString(),
+    interactionId: null,
+    reactions: [],
+  };
 
-  it("renders the two-column desktop feed with On you and date headers", () => {
+  const feed = (props: Partial<React.ComponentProps<typeof AttentionFeed>> = {}) =>
     render(
       <AttentionFeed
         contacts={sampleContacts}
         interactions={sampleInteractions}
-        threads={sampleThreads}
+        threads={[question]}
         staffNameMap={{ u3: "Zion" }}
+        {...props}
       />,
     );
 
+  const header = () => screen.getByRole("heading", { name: "What's new" }).parentElement!;
+
+  it("counts what is left to work through, not what is unread", () => {
+    feed();
     expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
     expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
-    expect(screen.getByText("Today")).toBeInTheDocument();
-    expect(screen.getAllByText("1 new").length).toBeGreaterThanOrEqual(1);
+    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
   });
 
-  it("marks stack done and removes it when 'I followed up' is clicked", () => {
-    const onToast = vi.fn();
+  it("groups new people ahead of everything else", () => {
     render(
       <AttentionFeed
-        contacts={sampleContacts}
-        interactions={sampleInteractions}
-        threads={sampleThreads}
+        contacts={[contact(), contact({ id: "c2", name: "Bo Chen", owner: "u1" })]}
+        interactions={[]}
+        threads={[{ ...question, id: "t2", contactId: "c2" }]}
         staffNameMap={{ u3: "Zion" }}
-        onToast={onToast}
       />,
     );
+    const labels = screen.getAllByText(/New people|Everything else/).map((n) => n.textContent);
+    expect(labels[0]).toBe("New people");
+  });
 
-    const followUpBtn = screen.getByText("I followed up");
-    fireEvent.click(followUpBtn);
+  // The bug this PR exists to fix.
+  it("opening the person marks it seen WITHOUT lowering the count", () => {
+    const onOpenContact = vi.fn();
+    feed({ onOpenContact });
 
-    expect(UserEntityState.isDone(uid, "contact:c1")).toBe(true);
+    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Alex Johnson"));
+
+    expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: "c1" }), {
+      tab: undefined,
+    });
+    expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true);
+    expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(false);
+    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+  });
+
+  // The dot is derived inside a memo, so the store changing has to reach it.
+  it("clears the accent dot as soon as the person is opened", () => {
+    const { container } = feed({ onOpenContact: vi.fn() });
+    const dots = () => container.querySelectorAll(".bg-accent.rounded-full");
+    expect(dots().length).toBe(1);
+
+    fireEvent.click(screen.getByText("Alex Johnson"));
+    expect(dots().length).toBe(0);
+  });
+
+  it("'Mark all seen' touches the seen axis only", () => {
+    feed();
+    fireEvent.click(screen.getByText("Mark all seen"));
+
+    expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true);
+    expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(false);
+    // Still to work through — nobody claimed to have reviewed anyone.
+    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+  });
+
+  it("greys a completed card in place and offers an Undo, rather than vanishing it", () => {
+    feed();
+    fireEvent.click(screen.getByRole("button", { name: /Answered/ }));
+
+    expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(true);
+    // Still on screen, under the cursor where it was.
+    expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
+    expect(within(header()).queryByText("1 to work through")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(false);
+    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+  });
+
+  it("clears completed work on the next visit", () => {
+    const { unmount } = feed();
+    fireEvent.click(screen.getByRole("button", { name: /Answered/ }));
+    unmount();
+
+    feed();
     expect(screen.queryByText("Alex Johnson")).not.toBeInTheDocument();
   });
 
-  it("marks all scanned when clicking 'Mark all scanned'", () => {
+  describe("the verb fits the item", () => {
+    // `mine` is created by u1, so it contributes no "somebody added them" item
+    // of its own — the card is about the thread and nothing else.
+    const mine = contact({ createdBy: "u1", owner: "u1" });
+
+    const cases: Array<[string, ThreadMessageWithContact[], string]> = [
+      ["a question is Answered", [question], "Answered"],
+      [
+        "a follow-up ask is I followed up",
+        [{ ...question, id: "t_nudge", kind: "nudge", body: "Could someone text Tomas?" }],
+        "I followed up",
+      ],
+      [
+        "a note is Got it",
+        [{ ...question, id: "t_note", kind: "note", body: "Sam left a note" }],
+        "Got it",
+      ],
+      [
+        "a comment is Got it",
+        [{ ...question, id: "t_com", kind: "comment", body: "Sam wrote back" }],
+        "Got it",
+      ],
+    ];
+
+    for (const [name, threads, verb] of cases) {
+      it(name, () => {
+        render(
+          <AttentionFeed
+            contacts={[mine]}
+            interactions={[]}
+            threads={threads}
+            staffNameMap={{ u3: "Zion" }}
+          />,
+        );
+        expect(screen.getByRole("button", { name: new RegExp(verb) })).toBeInTheDocument();
+      });
+    }
+
+    it("a contact nobody has written about is Reviewed", () => {
+      render(
+        <AttentionFeed contacts={sampleContacts} interactions={[]} threads={[]} staffNameMap={{ u3: "Zion" }} />,
+      );
+      expect(screen.getByRole("button", { name: /Reviewed/ })).toBeInTheDocument();
+    });
+
+    it("a to-do offers no button — it already owns its own done state", () => {
+      render(
+        <AttentionFeed
+          contacts={[]}
+          interactions={[]}
+          threads={[]}
+          tasks={[{ id: "todo1", title: "Ring the hall", status: "pending", assigneeId: "u1" }]}
+          staffNameMap={{}}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: /Reviewed|Got it|Answered|I followed up/ })).toBeNull();
+    });
+  });
+
+  it("closes the follow-up ask for everyone when 'I followed up' is pressed", () => {
     render(
       <AttentionFeed
-        contacts={sampleContacts}
-        interactions={sampleInteractions}
-        threads={sampleThreads}
+        contacts={[contact({ createdBy: "u1", owner: "u1" })]}
+        interactions={[]}
+        threads={[{ ...question, id: "t_nudge", kind: "nudge", body: "Could someone text Alex?" }]}
         staffNameMap={{ u3: "Zion" }}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: /I followed up/ }));
+    expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge", {
+      uid: "u1",
+      name: "Tony Wang",
+    });
 
-    const markAllBtn = screen.getByText("Mark all scanned");
-    fireEvent.click(markAllBtn);
-
-    expect(UserEntityState.isRead(uid, "contact:c1")).toBe(true);
-    expect(UserEntityState.isRead(uid, "interaction:i1")).toBe(true);
-    expect(UserEntityState.isRead(uid, "thread:t1")).toBe(true);
-    expect(screen.queryByText("1 new")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "t_nudge");
   });
 
-  it("expands to show all items when clicking 'All 3'", () => {
+  it("an encouragement is summarised, never a card", () => {
     render(
       <AttentionFeed
-        contacts={sampleContacts}
-        interactions={sampleInteractions}
-        threads={sampleThreads}
-        staffNameMap={{ u3: "Zion" }}
+        contacts={[contact({ owner: "u1" })]}
+        interactions={[]}
+        threads={[
+          { ...question, id: "t_enc", kind: "encouragement", body: "Praying for you both!", fromName: "Zion Park" },
+        ]}
+        staffNameMap={{ u3: "Zion Park" }}
       />,
     );
-
-    const expandBtn = screen.getByText("All 3");
-    fireEvent.click(expandBtn);
-
-    expect(screen.getAllByText("Met at library for study session").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("How should we follow up with Alex?").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Zion encouraged you.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Got it/ })).toBeNull();
   });
 
-  it("calls onOpenContact with initialTab='thread' when clicking 'Comment'", () => {
-    const onOpenContact = vi.fn();
-    render(
-      <AttentionFeed
-        contacts={sampleContacts}
-        interactions={sampleInteractions}
-        threads={sampleThreads}
-        staffNameMap={{ u3: "Zion" }}
-        onOpenContact={onOpenContact}
-      />,
-    );
+  it("writes back from inside the card, without leaving the list", async () => {
+    feed();
+    fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
 
-    const commentBtn = screen.getByText("Comment");
-    fireEvent.click(commentBtn);
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "She said yes to Wednesday." } });
+    fireEvent.click(screen.getByRole("button", { name: "Post" }));
 
-    expect(onOpenContact).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "c1" }),
-      { tab: "thread" },
-    );
+    await vi.waitFor(() => expect(addThreadMessage).toHaveBeenCalled());
+    const [contactId, input] = addThreadMessage.mock.calls[0] as unknown as [string, { kind: string; body: string }];
+    expect(contactId).toBe("c1");
+    expect(input.kind).toBe("comment");
+    expect(input.body).toBe("She said yes to Wednesday.");
+    // You are still in the feed, and the card is now seen.
+    expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
+    await vi.waitFor(() => expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true));
   });
 
-  it("handles Show more and Show less toggle for > 5 stacks in onYou and aroundTeam", () => {
+  it("offers the same three kinds the Conversation tab does", () => {
+    feed();
+    fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
+    const picker = screen.getByRole("group", { name: "What are you writing" });
+    expect(within(picker).getByRole("button", { name: "Comment" })).toBeInTheDocument();
+    expect(within(picker).getByRole("button", { name: "Question" })).toBeInTheDocument();
+    expect(within(picker).getByRole("button", { name: "Ask a follow-up" })).toBeInTheDocument();
+  });
+
+  it("New narrows to what has not been opened; All brings it back", () => {
+    feed();
+    fireEvent.click(screen.getByText("Mark all seen"));
+
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    expect(screen.getByText("Nothing new right now")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show everything" }));
+    expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
+  });
+
+  it("handles Show more and Show less toggle for > 5 stacks", () => {
     const manyOwnedContacts: Contact[] = Array.from({ length: 8 }, (_, i) => ({
       id: `c_owned_${i}`,
       name: `Person ${i}`,
@@ -167,12 +322,7 @@ describe("AttentionFeed Component (#330, #595)", () => {
       createdAt: new Date().toISOString(),
     })) as Contact[];
 
-    render(
-      <AttentionFeed
-        contacts={manyOwnedContacts}
-        staffNameMap={{ u3: "Zion" }}
-      />,
-    );
+    render(<AttentionFeed contacts={manyOwnedContacts} staffNameMap={{ u3: "Zion" }} threads={[]} interactions={[]} />);
 
     expect(screen.getByText("Show 3 more people")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Show 3 more people"));
@@ -182,64 +332,11 @@ describe("AttentionFeed Component (#330, #595)", () => {
     expect(screen.getByText("Show 3 more people")).toBeInTheDocument();
   });
 
-  it("renders Around the team column for ambient team touches with quick reactions", () => {
-    const now = Date.now();
-    const teamContact: Contact = {
-      id: "c_ambient",
-      name: "Emerson Ahn",
-      createdBy: "u2",
-      owner: "u2",
-      createdAt: new Date(now - 60000).toISOString(),
-      stage: "Student",
-    } as Contact;
-
-    const teamInteraction: Interaction = {
-      id: "i_ambient",
-      contactId: "c_ambient",
-      userId: "u2",
-      content: "Shared during prayer time about exam stress.",
-      createdAt: new Date(now).toISOString(),
-      dateTime: new Date(now).toISOString(),
-      type: "small_group",
-      title: "Tuesday small group",
-    } as unknown as Interaction;
-
-
-    render(
-      <AttentionFeed
-        contacts={[teamContact]}
-        interactions={[teamInteraction]}
-        staffNameMap={{ u2: "Caleb" }}
-      />,
-    );
-
-    expect(screen.getByRole("region", { name: "Around the team" })).toBeInTheDocument();
-    expect(screen.getByText("Emerson Ahn")).toBeInTheDocument();
-    expect(screen.getByText("Caleb logged Tuesday small group")).toBeInTheDocument();
-
-    const landedBtn = screen.getByTitle("Tell them it landed");
-    fireEvent.click(landedBtn);
-    expect(screen.getByText("🙏")).toBeInTheDocument();
-  });
-
-  it("toggles sub-item read state and opens encourage reactions", () => {
-    render(
-      <AttentionFeed
-        contacts={sampleContacts}
-        interactions={sampleInteractions}
-        threads={sampleThreads}
-        staffNameMap={{ u3: "Zion" }}
-      />,
-    );
-
+  it("expands to show every item behind a card", () => {
+    feed();
     fireEvent.click(screen.getByText("All 3"));
-    const encourageBtns = screen.getAllByText("Encourage");
-    fireEvent.click(encourageBtns[0]);
-    expect(screen.getByText("🙏")).toBeInTheDocument();
-
-    const scannedBtns = screen.getAllByText("Mark scanned");
-    fireEvent.click(scannedBtns[0]);
-    expect(UserEntityState.isRead(uid, "contact:c1")).toBe(true);
+    expect(screen.getAllByText("Met at library for study session").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("How should we follow up with Alex?").length).toBeGreaterThanOrEqual(1);
   });
 
   // #reviewer-appstore-orphan-fix: when an activity points at a contactId
@@ -250,10 +347,6 @@ describe("AttentionFeed Component (#330, #595)", () => {
   // if missing, do nothing.
   it("does not call onOpenContact when the stack's contactId is missing from contacts (orphan reference)", () => {
     const onOpenContact = vi.fn();
-    // Note: contacts array does NOT include 'c_orphan'. The interaction below
-    // references it — this is the exact prod shape of the bad activity
-    // (reviewer-appstore logged an interaction for 'xnkdzn' on a deleted
-    // contact l3vJMlCsJEprKqxzZLYc — see CHANGELOG).
     const orphanInteraction: Interaction = {
       id: "i_orphan",
       contactId: "c_orphan",
@@ -269,26 +362,21 @@ describe("AttentionFeed Component (#330, #595)", () => {
       <AttentionFeed
         contacts={sampleContacts}
         interactions={[orphanInteraction]}
+        threads={[]}
         staffNameMap={{ u2: "Caleb" }}
         onOpenContact={onOpenContact}
       />,
     );
 
-    // The row renders the "Contact" fallback name (capital C, when contact
-    // prop is undefined but stack.contactId exists).
     const fallbackBtn = screen.getAllByText("Contact")[0];
     fireEvent.click(fallbackBtn);
 
-    // The fix: never pass a string id to a Contact-typed consumer.
-    // Either onOpenContact is not called at all, OR it is called with a real
-    // Contact object — never with a raw string.
     for (const call of onOpenContact.mock.calls) {
       const arg = call[0];
       expect(typeof arg).not.toBe("string");
       if (arg && typeof arg === "object" && "id" in arg) {
-        expect((arg as Contact).id).toBe("c_orphan"); // would still fail lookup
+        expect((arg as Contact).id).toBe("c_orphan");
       }
     }
   });
 });
-

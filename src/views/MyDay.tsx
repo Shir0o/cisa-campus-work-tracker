@@ -89,6 +89,7 @@ import {
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
 import AttentionFeed from "../components/landing/AttentionFeed";
+import { subscribeInboxState } from "../lib/inboxState";
 import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
 import { UndoSnackbar } from "../components/UndoSnackbar";
@@ -636,10 +637,15 @@ export default function MyDay() {
       setDesktopMessagingApp(prefs.desktopMessagingApp);
     });
     const unsubPersonalPrayers = subscribePersonalPrayers(uid, setPersonalPrayers);
+    // The My Day worklist's two axes, seen and completed (#813). Seeded from
+    // whatever this browser already had, so nobody's history reappears as new
+    // the first time the server document is written.
+    const unsubInbox = subscribeInboxState(uid);
     return () => {
       unsubTasks();
       unsubPrefs();
       unsubPersonalPrayers();
+      unsubInbox();
     };
   }, [uid]);
 
@@ -912,7 +918,12 @@ export default function MyDay() {
 
         {/* ── Needs your attention — the unified attention feed ── */}
         {uid && (
-          <AttentionFeed contacts={contacts} onOpenContact={openContact} className="mt-8" />
+          <AttentionFeed
+            contacts={contacts}
+            personalContactIds={personalContactIds}
+            onOpenContact={openContact}
+            className="mt-8"
+          />
         )}
 
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}

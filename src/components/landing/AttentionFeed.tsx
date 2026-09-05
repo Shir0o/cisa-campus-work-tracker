@@ -8,9 +8,10 @@ import {
   Heart,
   Bell,
   Check,
-  ChevronRight,
   ClipboardList,
   ChevronDown,
+  ChevronRight,
+  Send,
 } from "lucide-react";
 import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../AuthProvider";
@@ -19,25 +20,53 @@ import { Avatar } from "./primitives";
 import {
   buildAttentionItems,
   attentionStacksFor,
-  attentionGroupsFor,
+  worklistGroupsFor,
   partitionAttentionStacks,
   attentionPhrase,
   filterAttentionStacks,
   actorsInStacks,
   isRestingFilter,
   soleTeamOf,
+  worklistVerbFor,
+  openAsksIn,
+  wantsAReply,
+  encouragementSummary,
   type AttentionStack,
   type AttentionItem,
+  type WorklistVerb,
+  type WorklistBucket,
 } from "../../lib/attention";
 import { TEAMS, teamLabelKey, rosterOnTeam } from "../../lib/teams";
 import { useLanguage } from "../LanguageProvider";
-import { useUserEntityState, UserEntityState } from "../../lib/userEntityState";
+import { InboxState } from "../../lib/inboxState";
 import { Translate } from "../Translate";
+import { UndoSnackbar } from "../UndoSnackbar";
+import { useUndoSnack } from "../../hooks/useUndoSnack";
+import { COMPOSE_KINDS, ComposeKindPicker, type ComposeKind } from "../ComposeKindPicker";
 import {
   addThreadMessage,
+  closeFollowUpAsk,
+  daysOpen,
+  reopenFollowUpAsk,
   subscribeAllThreads,
   type ThreadMessageWithContact,
 } from "../../lib/threads";
+
+// ── The feed is the worklist (#813) ─────────────────────────────────────────
+// Two independent facts per card:
+//
+//   seen      — you opened the person. The accent dot, and nothing else.
+//   completed — you are finished with this. The header count is everything NOT
+//               completed, seen or not.
+//
+// They used to be one gesture: "I followed up" marked every id in the stack
+// done and "Comment" marked the whole stack scanned, so opening something made
+// the number fall and an inbox built on it would have lied. Both now live per
+// person on the server (`lib/inboxState.ts`), so a laptop and a phone agree.
+//
+// Drawn in docs/design/followup-reach/Inbox.dc.html — including the verb table
+// below, which exists because "I followed up" on a card about a note claims you
+// texted the student, which you did not.
 
 const IBX_ENCOURAGE: Record<string, string> = {
   "🙏": "Praying for you both! Let me know if you need anything.",
@@ -46,15 +75,33 @@ const IBX_ENCOURAGE: Record<string, string> = {
   "✅": "Awesome follow up! Let me know if I can support you here.",
 };
 
-const NODE: Record<
-  string,
-  { cls: string; Icon: typeof Users }
-> = {
+const NODE: Record<string, { cls: string; Icon: typeof Users }> = {
   contact: { cls: "text-stage-teal bg-stage-teal-soft", Icon: Users },
   interaction: { cls: "text-stage-accent bg-stage-accent-soft", Icon: MessageSquare },
   thread: { cls: "text-stage-amber bg-stage-amber-soft", Icon: HelpCircle },
   task: { cls: "text-stage-violet bg-stage-violet-soft", Icon: ClipboardList },
   notification: { cls: "text-stage-accent bg-stage-accent-soft", Icon: Bell },
+};
+
+/** One word per completion, chosen by what the card is about. */
+const VERB_LABEL: Record<WorklistVerb, string> = {
+  reviewed: "whatsNew.verb_reviewed",
+  answered: "whatsNew.verb_answered",
+  followedUp: "whatsNew.verb_followed_up",
+  gotIt: "whatsNew.verb_got_it",
+};
+
+/** What the Undo snackbar says, in the same word as the button that ran. */
+const VERB_SNACK: Record<WorklistVerb, string> = {
+  reviewed: "whatsNew.snack_reviewed",
+  answered: "whatsNew.snack_answered",
+  followedUp: "whatsNew.snack_followed_up",
+  gotIt: "whatsNew.snack_got_it",
+};
+
+const GROUP_LABEL: Record<WorklistBucket, string> = {
+  newPeople: "whatsNew.group_new_people",
+  everythingElse: "whatsNew.group_everything_else",
 };
 
 /** "Talked" — this stack holds a logged conversation, not just a new face
@@ -75,100 +122,136 @@ function TalkedChip({ stack, label }: { stack: AttentionStack; label: string }) 
   );
 }
 
-function AttentionSubItem({
-  item,
-  contact,
-  actorFirst,
-  read,
-  onComment,
-  onToggleRead,
-  onEncourageWithEmoji,
-  mobile,
-}: {
-  item: AttentionItem;
-  contact?: Contact;
-  actorFirst: string;
-  read: boolean;
-  onComment: () => void;
-  onToggleRead: () => void;
-  onEncourageWithEmoji: (emoji: string) => void;
-  mobile?: boolean;
-}) {
+/** The items behind a card, for when the summary line is not enough. Read-only:
+ *  seen is set by opening the person, never by ticking a row here. */
+function AttentionSubItem({ item }: { item: AttentionItem }) {
+  const { t } = useLanguage();
   const nodeInfo = NODE[item.type] || { cls: "text-stage-accent bg-stage-accent-soft", Icon: Users };
   const Icon = nodeInfo.Icon;
-  const [reactOpen, setReactOpen] = useState(false);
+  const fallback =
+    item.type === "contact"
+      ? t("whatsNew.item_new_contact")
+      : item.type === "thread"
+        ? t("whatsNew.item_message")
+        : t("whatsNew.item_interaction");
 
   return (
-    <div
-      className={cn(
-        "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-xl border transition-colors",
-        read ? "bg-surface border-outline-variant/60" : "bg-primary-container/20 border-outline-variant is-unread",
-      )}
-    >
-      <div className="flex items-start gap-3 min-w-0">
-        <span className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5", nodeInfo.cls)}>
-          <Icon className="w-3.5 h-3.5" />
-        </span>
-        <div className="min-w-0 text-sm">
-          <div className="font-medium text-on-surface flex items-center gap-2">
-            <span>{item.title || (item.type === "contact" ? "New Contact" : item.type === "thread" ? "Question" : "Interaction")}</span>
-            {!read && <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />}
-          </div>
-          {item.body && <Translate as="p" className="text-xs text-on-surface-variant line-clamp-2 mt-0.5" text={item.body} />}
-          <span className="text-[11px] text-on-surface-variant/70 mt-1 block">{relTime(item.at)}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-        {item.by && (
-          <div className="relative">
-            <button
-              onClick={() => setReactOpen(!reactOpen)}
-              className="px-2.5 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <Heart className="w-3 h-3 text-stage-accent" /> Encourage
-            </button>
-            {reactOpen && (
-              <div className="absolute right-0 bottom-full mb-1 z-20 flex gap-1 p-1 bg-surface rounded-full shadow-lg border border-outline-variant">
-                {Object.keys(IBX_ENCOURAGE).map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => {
-                      onEncourageWithEmoji(emoji);
-                      setReactOpen(false);
-                    }}
-                    className="w-7 h-7 rounded-full hover:bg-surface-variant flex items-center justify-center text-sm cursor-pointer"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+    <div className="flex items-start gap-3 p-3 rounded-xl border bg-surface border-outline-variant/60">
+      <span
+        className={cn(
+          "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+          nodeInfo.cls,
         )}
+      >
+        <Icon className="w-3.5 h-3.5" />
+      </span>
+      <div className="min-w-0 text-sm">
+        <div className="font-medium text-on-surface">{item.title || fallback}</div>
+        {item.body && (
+          <Translate
+            as="p"
+            className="text-xs text-on-surface-variant line-clamp-2 mt-0.5"
+            text={item.body}
+          />
+        )}
+        <span className="text-[11px] text-on-surface-variant/70 mt-1 block">
+          {relTime(item.at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Write back without leaving the list. The comment icon used to open the whole
+ *  contact modal, which loses your place in a worklist you are working down. */
+function CardComposer({
+  contact,
+  uid,
+  meName,
+  mobile,
+  onPosted,
+  onCancel,
+}: {
+  contact: Contact;
+  uid: string;
+  meName: string;
+  mobile?: boolean;
+  onPosted: (kind: ComposeKind) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useLanguage();
+  const [kind, setKind] = useState<ComposeKind>("comment");
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const post = async () => {
+    const body = draft.trim();
+    if (!body || busy) return;
+    setBusy(true);
+    await addThreadMessage(
+      contact.id,
+      { interactionId: null, scope: null, from: uid, fromName: meName, kind, body },
+      {
+        contactName: contact.name,
+        stakeholders: {
+          createdBy: contact.createdBy ?? null,
+          coCreators: contact.coCreators ?? null,
+          owner: contact.owner ?? null,
+        },
+      },
+    );
+    setBusy(false);
+    setDraft("");
+    onPosted(kind);
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-outline-variant/60">
+      <ComposeKindPicker value={kind} onChange={setKind} dense={mobile} />
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={t(COMPOSE_KINDS[kind].placeholder)}
+        rows={mobile ? 3 : 2}
+        autoFocus
+        className="w-full p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
+      />
+      <div className={cn("mt-2 flex items-center gap-2", mobile ? "flex-col-reverse" : "justify-end")}>
         <button
-          onClick={onComment}
-          className="px-2.5 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant flex items-center gap-1 transition-colors cursor-pointer"
+          type="button"
+          onClick={onCancel}
+          className={cn(
+            "px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+            mobile ? "w-full min-h-11" : "h-8",
+          )}
         >
-          <MessageSquare className="w-3 h-3" /> Comment
+          {t("actions.cancel")}
         </button>
         <button
-          onClick={onToggleRead}
-          className="px-2.5 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+          type="button"
+          onClick={post}
+          disabled={!draft.trim() || busy}
+          className={cn(
+            "inline-flex items-center justify-center gap-1.5 px-3 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition disabled:opacity-50 cursor-pointer",
+            mobile ? "w-full min-h-11" : "h-8",
+          )}
         >
-          {read ? "Scanned ✓" : "Mark scanned"}
+          <Send className="w-3.5 h-3.5" /> {t("thread.send_post")}
         </button>
       </div>
     </div>
   );
 }
 
-function AttentionStackRow({
+function WorklistCard({
   stack,
   contact,
   staffNameMap,
   uid,
+  meName,
+  completed,
   onOpenContact,
+  onComplete,
   onToast,
   mobile,
 }: {
@@ -176,67 +259,57 @@ function AttentionStackRow({
   contact?: Contact;
   staffNameMap: Record<string, string>;
   uid: string;
+  meName: string;
+  completed: boolean;
   onOpenContact?: (contactId: string, initialTab?: "overview" | "thread" | "history") => void;
+  onComplete: (stack: AttentionStack, verb: WorklistVerb) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const [reactOpen, setReactOpen] = useState(false);
+
   const newest = stack.items[0];
+  const verb = worklistVerbFor(stack);
+  const openAsks = openAsksIn(stack);
+  const hasOpenAsk = openAsks.length > 0;
+  const rowTeam = soleTeamOf(stack);
+
   const phrases = stack.items.slice(0, 3).map((it) => attentionPhrase(it, staffNameMap));
   const moreCount = stack.items.length - phrases.length;
+  if (hasOpenAsk) phrases.push(t("whatsNew.nobody_yet"));
+  else if (stack.seen && !completed) phrases.push(t("whatsNew.opened_not_finished"));
 
   const latestText =
     newest.type === "thread"
       ? newest.body
       : newest.type === "contact"
-        ? contact?.notes || "A new face to welcome."
+        ? contact?.notes || ""
         : newest.body || contact?.notes || "";
 
-  const handleFollowedUp = () => {
-    UserEntityState.markDone(uid, stack.id);
-    if (stack.contactId) {
-      UserEntityState.markDone(uid, `contact:${stack.contactId}`);
-      UserEntityState.markDone(uid, stack.contactId);
-    }
-    if (stack.targetId) {
-      UserEntityState.markDone(uid, `target:${stack.targetId}`);
-      UserEntityState.markDone(uid, stack.targetId);
-    }
-    stack.items.forEach((it) => UserEntityState.markDone(uid, it.id));
-    onToast?.(`Marked as followed up.`);
+  const openThem = () => {
+    // Seen is set here and only here — opening the person is the whole of it.
+    InboxState.markSeen(uid, stack.id);
+    if (stack.contactId && onOpenContact) onOpenContact(stack.contactId);
   };
 
-  const handleScanAll = () => {
-    UserEntityState.markAllRead(
-      uid,
-      stack.items.map((i) => i.id),
-    );
-  };
-
-  const handleComment = () => {
-    handleScanAll();
-    if (stack.contactId && onOpenContact) {
-      onOpenContact(stack.contactId, "thread");
-    }
-  };
-
-  const handleEncourage = async (item: AttentionItem, emoji: string) => {
+  const handleEncourage = async (emoji: string) => {
     if (!stack.contactId) return;
     const body = IBX_ENCOURAGE[emoji];
     if (!body) return;
     try {
       await addThreadMessage(stack.contactId, {
         from: uid,
-        fromName: (staffNameMap && staffNameMap[uid]) || "Someone",
+        fromName: meName,
         kind: "encouragement",
         body,
-        interactionId: item.interactionId ?? null,
+        interactionId: newest.interactionId ?? null,
       });
-      UserEntityState.markRead(uid, item.id);
-      onToast?.(`Encouragement posted`);
+      onToast?.(t("whatsNew.encouragement_posted"));
     } catch {
-      onToast?.(`Could not post encouragement`);
+      onToast?.(t("whatsNew.could_not_post_encouragement"));
     }
   };
 
@@ -244,39 +317,50 @@ function AttentionStackRow({
     <div
       className={cn(
         "rounded-2xl border p-4 transition-all duration-200",
-        stack.unread > 0
-          ? "bg-surface border-outline-variant shadow-xs"
-          : "bg-surface/60 border-outline-variant/40",
+        completed
+          ? "bg-surface/60 border-outline-variant/40 opacity-60"
+          : stack.seen
+            ? "bg-surface/60 border-outline-variant/40"
+            : "bg-surface border-outline-variant shadow-xs",
+        hasOpenAsk && !completed && "border-l-2 border-l-warning",
       )}
     >
       <div className="flex items-start gap-3.5">
-        <Avatar
-          contact={contact || ({ name: "Person" } as Contact)}
-          size={mobile ? "sm" : "md"}
-        />
+        <Avatar contact={contact || ({ name: "Person" } as Contact)} size={mobile ? "sm" : "md"} />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => stack.contactId && onOpenContact && onOpenContact(stack.contactId)}
+                onClick={openThem}
                 className="font-medium text-base text-on-surface hover:text-accent transition-colors truncate text-left cursor-pointer"
               >
-                {contact?.name || (stack.contactId ? "Contact" : "Activity")}
+                {contact?.name || (stack.contactId ? t("whatsNew.a_contact") : t("whatsNew.activity"))}
               </button>
-              {stack.unread > 0 && (
+              {!stack.seen && !completed && (
                 <span className="w-2 h-2 rounded-full bg-accent shrink-0 inline-block" />
               )}
-              <TalkedChip stack={stack} label={t("whatsNew.talked", "Talked")} />
+              <TalkedChip stack={stack} label={t("whatsNew.talked")} />
+              {rowTeam && (
+                <span className="text-[11px] text-on-surface-variant border border-outline-variant rounded-full px-1.5 py-px shrink-0">
+                  {t(teamLabelKey(rowTeam))}
+                </span>
+              )}
             </div>
             <span className="text-xs text-on-surface-variant/80 shrink-0">{relTime(stack.at)}</span>
           </div>
 
-          <div className="text-xs text-on-surface-variant font-medium mt-1 truncate">
+          <div className="text-xs text-on-surface-variant font-medium mt-1">
             {phrases.join(" · ")}
-            {moreCount > 0 && ` · ${moreCount} more`}
+            {moreCount > 0 && ` · ${t("whatsNew.n_more").replace("{n}", String(moreCount))}`}
           </div>
+
+          {hasOpenAsk && !completed && (
+            <div className="text-[11px] font-medium text-warning mt-1">
+              {t("whatsNew.open_days").replace("{n}", String(daysOpen(openAsks[0])))}
+            </div>
+          )}
 
           {latestText && (
             <Translate
@@ -286,223 +370,148 @@ function AttentionStackRow({
             />
           )}
 
-          <div className="flex items-center gap-2 mt-3 flex-wrap">
-            <button
-              type="button"
-              onClick={handleFollowedUp}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
+          {completed ? (
+            <div className="flex items-center gap-1.5 mt-2.5 text-xs font-medium text-success">
+              <Check className="w-3.5 h-3.5" />
+              {verb ? t(VERB_LABEL[verb]) : t("whatsNew.verb_got_it")}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "mt-3 flex items-center gap-2",
+                mobile ? "flex-wrap" : "flex-wrap",
+              )}
             >
-              <Check className="w-3.5 h-3.5" /> I followed up
-            </button>
-
-            <button
-              type="button"
-              onClick={handleComment}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5" /> Comment
-            </button>
-
-            {stack.items.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setOpen(!open)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+              {/* Two words, as drawn: what finishes this, and how to answer it.
+                  Everything else is an icon. */}
+              <div
+                className={cn(
+                  "flex items-center gap-2",
+                  mobile ? "grid grid-cols-2 w-full" : "flex-wrap",
+                )}
               >
-                <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} />
-                {open ? "Hide" : `All ${stack.items.length}`}
-              </button>
-            )}
+                {verb && (
+                  <button
+                    type="button"
+                    onClick={() => onComplete(stack, verb)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 transition-colors shadow-xs cursor-pointer",
+                      mobile ? "min-h-11" : "py-1.5",
+                    )}
+                  >
+                    <Check className="w-3.5 h-3.5" /> {t(VERB_LABEL[verb])}
+                  </button>
+                )}
 
-            {stack.unread > 0 && (
-              <button
-                type="button"
-                onClick={handleScanAll}
-                className="text-xs font-medium text-on-surface-variant hover:text-on-surface px-2 py-1 transition-colors ml-auto cursor-pointer"
-              >
-                Mark scanned
-              </button>
-            )}
-          </div>
+                {stack.contactId && contact && (
+                  <button
+                    type="button"
+                    onClick={() => setComposing((v) => !v)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+                      mobile ? "min-h-11" : "py-1.5",
+                    )}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {wantsAReply(stack) ? t("whatsNew.write_back") : t("whatsNew.comment")}
+                  </button>
+                )}
+              </div>
 
-          {open && (
-            <div className="mt-3.5 pt-3 border-t border-outline-variant/60 flex flex-col gap-2">
-              {stack.items.map((it) => {
-                const isRead = UserEntityState.isRead(uid, it.id);
-                const actorName = (it.by && staffNameMap[it.by]) || "Someone";
-                const actorFirst = actorName.trim().split(/\s+/)[0];
-                return (
-                  <AttentionSubItem
-                    key={it.id}
-                    item={it}
-                    contact={contact}
-                    actorFirst={actorFirst}
-                    read={isRead}
-                    onComment={handleComment}
-                    onToggleRead={() => {
-                      if (isRead) UserEntityState.markUnread(uid, it.id);
-                      else UserEntityState.markRead(uid, it.id);
-                    }}
-                    onEncourageWithEmoji={(emoji) => handleEncourage(it, emoji)}
-                    mobile={mobile}
-                  />
-                );
-              })}
+              <div className={cn("flex items-center gap-1.5", mobile ? "w-full" : "ml-auto")}>
+                {stack.items.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setOpen(!open)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1 px-2.5 rounded-full border border-outline-variant text-[11px] font-medium text-on-surface-variant hover:bg-surface-variant transition-colors cursor-pointer",
+                      mobile ? "min-h-11 flex-1" : "py-1",
+                    )}
+                  >
+                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} />
+                    {open
+                      ? t("whatsNew.hide")
+                      : t("whatsNew.all_n").replace("{n}", String(stack.items.length))}
+                  </button>
+                )}
+
+                {/* A request to go and see someone is not a thing to react to. */}
+                {stack.contactId && !hasOpenAsk && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setReactOpen(!reactOpen)}
+                      title={t("whatsNew.tell_them_it_landed")}
+                      aria-label={t("whatsNew.encourage")}
+                      className={cn(
+                        "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer",
+                        mobile ? "w-11 h-11" : "w-8 h-8",
+                      )}
+                    >
+                      <Heart className="w-3.5 h-3.5 text-stage-accent" />
+                    </button>
+                    {reactOpen && (
+                      <div className="absolute right-0 bottom-full mb-1 z-20 flex gap-1 p-1 bg-surface rounded-full shadow-lg border border-outline-variant">
+                        {Object.keys(IBX_ENCOURAGE).map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              void handleEncourage(emoji);
+                              setReactOpen(false);
+                            }}
+                            className="w-7 h-7 rounded-full hover:bg-surface-variant flex items-center justify-center text-sm cursor-pointer"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {stack.contactId && (
+                  <button
+                    type="button"
+                    onClick={openThem}
+                    title={t("whatsNew.open_their_page")}
+                    aria-label={t("whatsNew.open_their_page")}
+                    className={cn(
+                      "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer",
+                      mobile ? "w-11 h-11" : "w-8 h-8",
+                    )}
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function AmbientItemRow({
-  stack,
-  contact,
-  staffNameMap,
-  uid,
-  onOpenContact,
-  onToast,
-}: {
-  stack: AttentionStack;
-  contact?: Contact;
-  staffNameMap: Record<string, string>;
-  uid: string;
-  onOpenContact?: (contactId: string, initialTab?: "overview" | "thread" | "history") => void;
-  onToast?: (msg: string) => void;
-}) {
-  const newest = stack.items[0];
-  const [reactOpen, setReactOpen] = useState(false);
-  const { t } = useLanguage();
-  const rowTeam = soleTeamOf(stack);
-  const byName = newest.byName || (newest.by && staffNameMap[newest.by]) || "Someone";
-  const actorFirst = byName.trim().split(/\s+/)[0];
-
-  const actionText =
-    newest.type === "contact"
-      ? `${actorFirst} added them — a new face`
-      : newest.type === "interaction"
-        ? `${actorFirst} logged ${newest.title || "interaction"}`
-        : newest.type === "thread"
-          ? `${actorFirst} asked the team`
-          : attentionPhrase(newest, staffNameMap);
-
-  const snippet =
-    newest.body ||
-    (newest.type === "contact" ? contact?.notes : undefined) ||
-    "";
-
-  const handleEncourage = async (emoji: string) => {
-    if (!stack.contactId) return;
-    const body = IBX_ENCOURAGE[emoji];
-    if (!body) return;
-    try {
-      await addThreadMessage(stack.contactId, {
-        from: uid,
-        fromName: (staffNameMap && staffNameMap[uid]) || "Someone",
-        kind: "encouragement",
-        body,
-        interactionId: newest.interactionId ?? null,
-      });
-      UserEntityState.markRead(uid, newest.id);
-      onToast?.(`Encouragement posted`);
-    } catch {
-      onToast?.(`Could not post encouragement`);
-    }
-  };
-
-  const handleComment = () => {
-    UserEntityState.markRead(uid, newest.id);
-    if (stack.contactId && onOpenContact) {
-      onOpenContact(stack.contactId, "thread");
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-surface-variant/50 transition-colors group">
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <Avatar contact={contact || ({ name: "Person" } as Contact)} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => stack.contactId && onOpenContact && onOpenContact(stack.contactId)}
-              className="text-sm font-medium text-on-surface hover:text-accent transition-colors truncate cursor-pointer"
-            >
-              {contact?.name || "Contact"}
-            </button>
-            <TalkedChip stack={stack} label={t("whatsNew.talked", "Talked")} />
-            <span className="text-xs text-on-surface-variant truncate">
-              {actionText}
-            </span>
-            {rowTeam && (
-              <span className="text-[11px] text-on-surface-variant border border-outline-variant rounded-full px-1.5 py-px shrink-0">
-                {t(teamLabelKey(rowTeam))}
-              </span>
-            )}
-          </div>
-          {snippet && (
-            <Translate
-              as="p"
-              className="text-xs text-on-surface-variant/80 truncate mt-0.5"
-              text={snippet}
-            />
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1 shrink-0 relative">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setReactOpen(!reactOpen)}
-            title="Tell them it landed"
-            aria-label="Tell them it landed"
-            className="w-8 h-8 rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-          >
-            <Heart className="w-3.5 h-3.5" />
-          </button>
-          {reactOpen && (
-            <div className="absolute right-0 bottom-full mb-1 z-20 flex gap-1 p-1 bg-surface rounded-full shadow-lg border border-outline-variant">
-              {Object.keys(IBX_ENCOURAGE).map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => {
-                    handleEncourage(emoji);
-                    setReactOpen(false);
-                  }}
-                  className="w-7 h-7 rounded-full hover:bg-surface-variant flex items-center justify-center text-sm cursor-pointer"
-                >
-                  {emoji}
-                </button>
+          {open && !completed && (
+            <div className="mt-3.5 pt-3 border-t border-outline-variant/60 flex flex-col gap-2">
+              {stack.items.map((it) => (
+                <AttentionSubItem key={it.id} item={it} />
               ))}
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={handleComment}
-          title="Comment"
-          aria-label="Comment"
-          className="w-8 h-8 rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-        </button>
-
-        {stack.contactId && (
-          <button
-            type="button"
-            onClick={() => onOpenContact && onOpenContact(stack.contactId!)}
-            title="Open their page"
-            aria-label="Open their page"
-            className="w-8 h-8 rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        )}
       </div>
+
+      {composing && contact && !completed && (
+        <CardComposer
+          contact={contact}
+          uid={uid}
+          meName={meName}
+          mobile={mobile}
+          onCancel={() => setComposing(false)}
+          onPosted={() => {
+            setComposing(false);
+            InboxState.markSeen(uid, stack.id);
+            onToast?.(t("whatsNew.posted"));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -514,6 +523,7 @@ export default function AttentionFeed({
   tasks = [],
   notifications = [],
   staffNameMap: propsStaffNameMap,
+  personalContactIds,
   onOpenContact,
   onToast,
   mobile,
@@ -533,6 +543,8 @@ export default function AttentionFeed({
   }>;
   notifications?: Notification[];
   staffNameMap?: Record<string, string>;
+  /** The reader's own "keeping them" set — the fourth, private tie (#813). */
+  personalContactIds?: Set<string> | null;
   onOpenContact?: (
     c: Contact,
     opts?: { tab?: "overview" | "thread" | "history"; interactionId?: string | null },
@@ -544,17 +556,29 @@ export default function AttentionFeed({
   const { user, effectiveUserId, role } = useAuth();
   const { t } = useLanguage();
   const uid = effectiveUserId || user?.uid || "u1";
+  const meName = user?.displayName || propsStaffNameMap?.[uid] || "Someone";
   const [showAllOnYou, setShowAllOnYou] = useState(false);
   const [showAllTeam, setShowAllTeam] = useState(false);
   // The filter cuts on WHO DID IT (#727) — a team, then optionally one person
   // inside it. One row governs the whole feed, not each column.
   const [team, setTeam] = useState<string | null>(null);
   const [pickedWho, setPickedWho] = useState<string | null>(null);
+  // New = not yet opened. It defaults off: "opened, but not finished" is a real
+  // state, and hiding it behind a filter is how work goes missing.
+  const [newOnly, setNewOnly] = useState(false);
   const [liveInteractions, setLiveInteractions] = useState<Interaction[]>([]);
   const [liveThreads, setLiveThreads] = useState<ThreadMessageWithContact[]>([]);
+  // Completed HERE, this visit. A card you finish greys in place and clears when
+  // you leave — never under your cursor while you are still reading it.
+  const [completedHere, setCompletedHere] = useState<Set<string>>(new Set());
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
-  // Subscribe to read/done state changes live
-  useUserEntityState();
+  // Seen and completed change under the memos below, not in the props, so the
+  // derivation has to be told. Without the tick in its dependency list,
+  // `allStacks` would keep the seen flags it was built with and the accent dot
+  // would outlive the click that cleared it.
+  const [inboxTick, setInboxTick] = useState(0);
+  useEffect(() => InboxState.subscribe(() => setInboxTick((n) => n + 1)), []);
 
   useEffect(() => {
     if (propsInteractions) return;
@@ -590,8 +614,9 @@ export default function AttentionFeed({
   const interactions = propsInteractions || liveInteractions;
   // Team-scope Discussion is Full-timer-only; hide it from any other role even
   // before the security rules filter it out server-side.
-  const threads = (propsThreads || liveThreads).filter(
-    (m) => m.scope !== "team" || role === "admin",
+  const threads = useMemo(
+    () => (propsThreads || liveThreads).filter((m) => m.scope !== "team" || role === "admin"),
+    [propsThreads, liveThreads, role],
   );
 
   const staffNameMap = useMemo(() => {
@@ -603,7 +628,7 @@ export default function AttentionFeed({
       const n = i.userName ?? i.createdByName;
       if (u && n) m[u] ??= n;
     }
-    for (const t of threads) if (t.from && t.fromName) m[t.from] ??= t.fromName;
+    for (const m2 of threads) if (m2.from && m2.fromName) m[m2.from] ??= m2.fromName;
     return m;
   }, [propsStaffNameMap, contacts, interactions, threads]);
 
@@ -635,11 +660,22 @@ export default function AttentionFeed({
         threads,
         tasks,
         notifications,
+        personalContactIds,
       }),
-    [role, uid, contacts, interactions, threads, tasks, notifications],
+    [role, uid, contacts, interactions, threads, tasks, notifications, personalContactIds],
   );
 
-  const allStacks = useMemo(() => attentionStacksFor(rawItems, uid), [rawItems, uid]);
+  const allStacks = useMemo(() => {
+    void inboxTick; // the seen axis, read from the store inside
+    return attentionStacksFor(rawItems, uid);
+  }, [rawItems, uid, inboxTick]);
+
+  // Praise is summarised, never a card: needing to dismiss an encouragement is
+  // worse than the encouragement is worth.
+  const encouraged = useMemo(
+    () => encouragementSummary(threads, uid, contacts, personalContactIds),
+    [threads, uid, contacts, personalContactIds],
+  );
 
   // The teammates the select offers: the team's roster, so a teammate who has
   // done nothing this week is still offerable — that is exactly the person the
@@ -662,28 +698,41 @@ export default function AttentionFeed({
 
   const filter = useMemo(() => ({ team, who }), [team, who]);
 
+  // Completed work leaves the list — but only work that was already completed
+  // when this visit began. What you finish while you are looking at it stays put
+  // and greys, with an Undo.
+  const isCompleted = (stack: AttentionStack) => InboxState.isCompleted(uid, stack.id);
+  const stillListed = (stack: AttentionStack) =>
+    !isCompleted(stack) || completedHere.has(stack.id);
+
   // Partition ONCE on the unfiltered feed, then narrow each side. The two-column
   // shape is decided on the unfiltered partition, so narrowing to one team never
   // collapses the layout underneath the person doing the narrowing.
   const allSides = useMemo(
-    () => partitionAttentionStacks(allStacks, contacts, uid, role),
-    [allStacks, contacts, uid, role],
+    () => partitionAttentionStacks(allStacks, contacts, uid, role, personalContactIds),
+    [allStacks, contacts, uid, role, personalContactIds],
   );
-  const onYou = useMemo(() => filterAttentionStacks(allSides.onYou, filter), [allSides, filter]);
-  const aroundTeam = useMemo(
-    () => filterAttentionStacks(allSides.aroundTeam, filter),
-    [allSides, filter],
-  );
-  const stacks = useMemo(() => [...onYou, ...aroundTeam], [onYou, aroundTeam]);
+
+  const narrow = (side: AttentionStack[]) =>
+    filterAttentionStacks(side, filter).filter(
+      (s) => stillListed(s) && (!newOnly || !s.seen || completedHere.has(s.id)),
+    );
+
+  const onYou = narrow(allSides.onYou);
+  const aroundTeam = narrow(allSides.aroundTeam);
+  const stacks = [...onYou, ...aroundTeam];
   const hasTeamColumn = allSides.aroundTeam.length > 0;
 
-  if (allStacks.length === 0) {
+  if (allStacks.length === 0 && encouraged.count === 0) {
     return null;
   }
 
-  const unreadCount = stacks.filter((s) => s.unread > 0).length;
-  const unreadOnYouCount = onYou.filter((s) => s.unread > 0).length;
-  const unreadAroundTeamCount = aroundTeam.filter((s) => s.unread > 0).length;
+  // The number that must never fall when you merely open something: everything
+  // still to work through, seen or not.
+  const toWorkThrough = stacks.filter((s) => !isCompleted(s)).length;
+  const onYouOpen = onYou.filter((s) => !isCompleted(s)).length;
+  const aroundTeamOpen = aroundTeam.filter((s) => !isCompleted(s)).length;
+  const anyUnseen = stacks.some((s) => !s.seen);
   const resting = isRestingFilter(filter);
   const teamLabel = team ? t(teamLabelKey(team)) : "";
   // The name comes from the option list, not from the activity-built name map:
@@ -699,14 +748,44 @@ export default function AttentionFeed({
   const visibleAroundTeam = showAllTeam ? aroundTeam : aroundTeam.slice(0, COLLAPSED_LIMIT);
   const hiddenTeamCount = aroundTeam.length - visibleAroundTeam.length;
 
-  const onYouGroups = attentionGroupsFor(visibleOnYou);
-  const aroundTeamGroups = attentionGroupsFor(visibleAroundTeam);
+  const onYouGroups = worklistGroupsFor(visibleOnYou);
+  const aroundTeamGroups = worklistGroupsFor(visibleAroundTeam);
 
-  const handleMarkAllScanned = () => {
+  /** Seen only. It must never claim you reviewed anyone. */
+  const handleMarkAllSeen = () => {
     // What's on screen, not what's behind the filter — "all" means all of what
     // the person is looking at.
-    const allItemIds = stacks.flatMap((s) => s.items.map((i) => i.id));
-    UserEntityState.markAllRead(uid, allItemIds);
+    InboxState.markSeen(
+      uid,
+      stacks.map((s) => s.id),
+    );
+  };
+
+  const handleComplete = (stack: AttentionStack, verb: WorklistVerb) => {
+    // A follow-up ask is closed once, for everyone tied to the contact: the
+    // thing tracked is the errand, not five people's reading of it.
+    const asks = verb === "followedUp" && stack.contactId ? openAsksIn(stack) : [];
+    for (const ask of asks) {
+      void closeFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""), {
+        uid,
+        name: meName,
+      });
+    }
+    InboxState.markCompleted(uid, stack.id);
+    setCompletedHere((prev) => new Set(prev).add(stack.id));
+
+    const name = (stack.contactId && contactMap.get(stack.contactId)?.name) || t("whatsNew.this_one");
+    showUndoSnack(t(VERB_SNACK[verb]).replace("{name}", name), () => {
+      InboxState.undoCompleted(uid, stack.id);
+      setCompletedHere((prev) => {
+        const next = new Set(prev);
+        next.delete(stack.id);
+        return next;
+      });
+      for (const ask of asks) {
+        void reopenFollowUpAsk(stack.contactId!, ask.id.replace(/^thread:/, ""));
+      }
+    });
   };
 
   const clearFilter = () => {
@@ -718,39 +797,107 @@ export default function AttentionFeed({
   // onYou), render stacked
   const isSingleColumn = mobile || !hasTeamColumn;
 
+  const renderCards = (group: { bucket: WorklistBucket; stacks: AttentionStack[] }) => (
+    <div key={group.bucket} className="flex flex-col gap-2.5">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/70 px-1">
+        {t(GROUP_LABEL[group.bucket])}
+      </div>
+      <div className="flex flex-col gap-3">
+        {group.stacks.map((stack) => (
+          <WorklistCard
+            key={stack.id}
+            stack={stack}
+            contact={stack.contactId ? contactMap.get(stack.contactId) : undefined}
+            staffNameMap={staffNameMap}
+            uid={uid}
+            meName={meName}
+            completed={isCompleted(stack)}
+            onOpenContact={handleOpenContact}
+            onComplete={handleComplete}
+            onToast={onToast}
+            mobile={mobile}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <section className={cn("flex flex-col gap-4", className)}>
-      {/* ── The feed's own header — it carries the filter row (#727) ── */}
+      {/* ── The worklist header — the count, the two views, and Mark all seen ── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between gap-3 flex-wrap">
           <div className="flex items-baseline gap-2.5 flex-wrap">
             <h2 className="font-serif text-xl text-on-surface font-semibold m-0">
-              {t("whatsNew.title", "What's new")}
+              {t("whatsNew.title")}
             </h2>
-            {unreadCount > 0 && (
+            {toWorkThrough > 0 && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
-                {t("whatsNew.count_new", "{n} new").replace("{n}", String(unreadCount))}
+                {t("whatsNew.to_work_through").replace("{n}", String(toWorkThrough))}
               </span>
             )}
-            <span className="text-xs text-on-surface-variant">
-              {t("whatsNew.sub", "Who was added, and who was talked to.")}
-            </span>
+            <span className="text-xs text-on-surface-variant">{t("whatsNew.sub")}</span>
           </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={handleMarkAllScanned}
-              className="text-xs font-medium text-accent hover:underline cursor-pointer"
+          <div className="flex items-center gap-3">
+            <div
+              role="group"
+              aria-label={t("whatsNew.filter_by_state")}
+              className="inline-flex gap-0.5 p-0.5 rounded-full bg-surface-variant"
             >
-              {t("whatsNew.mark_all_scanned", "Mark all scanned")}
-            </button>
-          )}
+              <button
+                type="button"
+                aria-pressed={newOnly}
+                onClick={() => setNewOnly(true)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer",
+                  newOnly
+                    ? "bg-surface text-on-surface font-semibold shadow-xs"
+                    : "text-on-surface-variant font-medium hover:text-on-surface",
+                )}
+              >
+                {t("whatsNew.filter_new")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={!newOnly}
+                onClick={() => setNewOnly(false)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11.5px] transition-colors cursor-pointer",
+                  !newOnly
+                    ? "bg-surface text-on-surface font-semibold shadow-xs"
+                    : "text-on-surface-variant font-medium hover:text-on-surface",
+                )}
+              >
+                {t("whatsNew.filter_all")}
+              </button>
+            </div>
+            {anyUnseen && (
+              <button
+                type="button"
+                onClick={handleMarkAllSeen}
+                className="text-xs font-medium text-accent hover:underline cursor-pointer"
+              >
+                {t("whatsNew.mark_all_seen")}
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Praise, summarised. Nothing here asks anything of you. */}
+        {encouraged.count > 0 && (
+          <p className="text-xs text-on-surface-variant m-0 flex items-center gap-1.5">
+            <Heart className="w-3.5 h-3.5 text-stage-accent shrink-0" />
+            {(encouraged.count > encouraged.names.length
+              ? t("whatsNew.encouraged_you_many").replace("{n}", String(encouraged.count))
+              : t("whatsNew.encouraged_you")
+            ).replace("{names}", encouraged.names.join(", "))}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <div
             role="group"
-            aria-label={t("whatsNew.filter_by_team", "Filter the news by team")}
+            aria-label={t("whatsNew.filter_by_team")}
             className="inline-flex flex-wrap gap-1 p-1 rounded-full bg-surface-container-low border border-outline-variant"
           >
             <button
@@ -762,7 +909,7 @@ export default function AttentionFeed({
                 !team ? "bg-background text-on-surface" : "text-on-surface-variant hover:text-on-surface",
               )}
             >
-              {t("teams.everyone", "Everyone")}
+              {t("teams.everyone")}
             </button>
             {TEAMS.map((tm) => (
               <button
@@ -792,13 +939,13 @@ export default function AttentionFeed({
             <select
               value={who ?? "all"}
               onChange={(e) => setPickedWho(e.target.value === "all" ? null : e.target.value)}
-              aria-label={t("whatsNew.filter_by_person", "Filter the news by teammate")}
+              aria-label={t("whatsNew.filter_by_person")}
               className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer"
             >
               <option value="all">
                 {team
-                  ? t("whatsNew.whole_named_team", "Whole {team}").replace("{team}", teamLabel)
-                  : t("whatsNew.whole_team", "Whole team")}
+                  ? t("whatsNew.whole_named_team").replace("{team}", teamLabel)
+                  : t("whatsNew.whole_team")}
               </option>
               {teammateOptions.map((o) => (
                 <option key={o.uid} value={o.uid}>
@@ -814,7 +961,7 @@ export default function AttentionFeed({
               onClick={clearFilter}
               className="text-xs font-medium text-accent hover:underline cursor-pointer"
             >
-              {t("whatsNew.clear", "Clear")}
+              {t("whatsNew.clear")}
             </button>
           )}
         </div>
@@ -826,176 +973,160 @@ export default function AttentionFeed({
         <div className="bg-surface border border-outline-variant/60 rounded-3xl px-6 py-11 text-center flex flex-col items-center gap-3.5">
           <div className="flex flex-col gap-1">
             <h3 className="font-serif text-xl text-on-surface font-semibold m-0">
-              {who
-                ? t("whatsNew.nothing_from_person", "Nothing from {name} this week").replace("{name}", whoName)
-                : t("whatsNew.nothing_from_team", "Nothing from the {team} this week").replace("{team}", teamLabel)}
+              {newOnly && resting
+                ? t("whatsNew.nothing_new")
+                : who
+                  ? t("whatsNew.nothing_from_person").replace("{name}", whoName)
+                  : t("whatsNew.nothing_from_team").replace("{team}", teamLabel)}
             </h3>
             <p className="text-sm text-on-surface-variant m-0">
-              {who && team
-                ? t("whatsNew.try_whole_team", "Try the whole {team}, or widen to everyone.").replace("{team}", teamLabel)
-                : t("whatsNew.try_everyone", "Try widening to everyone.")}
+              {newOnly && resting
+                ? t("whatsNew.try_all")
+                : who && team
+                  ? t("whatsNew.try_whole_team").replace("{team}", teamLabel)
+                  : t("whatsNew.try_everyone")}
             </p>
           </div>
           <button
             type="button"
-            onClick={clearFilter}
+            onClick={() => (newOnly && resting ? setNewOnly(false) : clearFilter())}
             className="px-3.5 py-1.5 rounded-full border border-outline-variant bg-background text-[13px] font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
           >
-            {t("whatsNew.show_everyone", "Show everyone")}
+            {newOnly && resting ? t("whatsNew.show_all") : t("whatsNew.show_everyone")}
           </button>
         </div>
       ) : (
-
-      <div className={cn(isSingleColumn ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start")}>
-        {/* ── Left Column: "On you" ── */}
-        <section
-          aria-label="On you"
+        <div
           className={cn(
-            "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
-            !isSingleColumn && "lg:col-span-6",
+            isSingleColumn
+              ? "flex flex-col gap-6"
+              : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start",
           )}
         >
-          <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
-            <div className="flex items-baseline gap-2.5 flex-wrap">
-              <h3 className="font-serif text-lg text-on-surface font-semibold m-0">On you</h3>
-              <span className="text-xs text-on-surface-variant">
-                {onYou.length === 0
-                  ? "Nothing waiting on you right now."
-                  : `${onYou.length} ${onYou.length === 1 ? "person" : "people"}, because you carry them.`}
-              </span>
-              {unreadOnYouCount > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
-                  {unreadOnYouCount} new
-                </span>
-              )}
-            </div>
-          </div>
-
-          {onYou.length === 0 ? (
-            <p className="text-xs text-on-surface-variant italic py-2">All clear here.</p>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {onYouGroups.map((group) => (
-                <div key={group.bucket} className="flex flex-col gap-2.5">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/70 px-1">
-                    {group.label}
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    {group.stacks.map((stack) => (
-                      <AttentionStackRow
-                        key={stack.id}
-                        stack={stack}
-                        contact={stack.contactId ? contactMap.get(stack.contactId) : undefined}
-                        staffNameMap={staffNameMap}
-                        uid={uid}
-                        onOpenContact={handleOpenContact}
-                        onToast={onToast}
-                        mobile={mobile}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {hiddenOnYouCount > 0 && !showAllOnYou && (
-            <button
-              type="button"
-              onClick={() => setShowAllOnYou(true)}
-              className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
-            >
-              Show {hiddenOnYouCount} more {hiddenOnYouCount === 1 ? "person" : "people"}
-            </button>
-          )}
-
-          {showAllOnYou && onYou.length > COLLAPSED_LIMIT && (
-            <button
-              type="button"
-              onClick={() => setShowAllOnYou(false)}
-              className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
-            >
-              Show less
-            </button>
-          )}
-        </section>
-
-        {/* ── Right Column: "Around the team" ── */}
-        {!isSingleColumn && (
+          {/* ── Left Column: "On you" ── */}
           <section
-            aria-label="Around the team"
-            className="bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs lg:col-span-6"
+            aria-label={t("whatsNew.on_you")}
+            className={cn(
+              "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
+              !isSingleColumn && "lg:col-span-6",
+            )}
           >
             <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
               <div className="flex items-baseline gap-2.5 flex-wrap">
-                <h3 className="font-serif text-lg text-on-surface font-semibold m-0">Around the team</h3>
-                {unreadAroundTeamCount > 0 && (
+                <h3 className="font-serif text-lg text-on-surface font-semibold m-0">
+                  {t("whatsNew.on_you")}
+                </h3>
+                <span className="text-xs text-on-surface-variant">
+                  {onYou.length === 0
+                    ? t("whatsNew.nothing_waiting")
+                    : t(onYou.length === 1 ? "whatsNew.because_you_carry_one" : "whatsNew.because_you_carry").replace(
+                        "{n}",
+                        String(onYou.length),
+                      )}
+                </span>
+                {onYouOpen > 0 && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
-                    {t("whatsNew.count_new", "{n} new").replace("{n}", String(unreadAroundTeamCount))}
+                    {t("whatsNew.to_work_through").replace("{n}", String(onYouOpen))}
                   </span>
                 )}
-                <span className="text-xs text-on-surface-variant">
-                  Everything else the team has been doing. Nothing here is waiting on you.
-                </span>
               </div>
             </div>
 
-            {aroundTeam.length === 0 ? (
-              <p className="text-xs text-on-surface-variant italic py-2">No recent team touches.</p>
+            {onYou.length === 0 ? (
+              <p className="text-xs text-on-surface-variant italic py-2">
+                {t("whatsNew.all_clear_here")}
+              </p>
             ) : (
-              <div className="flex flex-col gap-4">
-                {aroundTeamGroups.map((group) => (
-                  <div key={group.bucket} className="flex flex-col gap-1.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/70 px-1 border-b border-outline-variant/30 pb-1">
-                      {group.label}
-                    </div>
-                    <div className="flex flex-col divide-y divide-outline-variant/30">
-                      {group.stacks.map((stack) => (
-                        <AmbientItemRow
-                          key={stack.id}
-                          stack={stack}
-                          contact={stack.contactId ? contactMap.get(stack.contactId) : undefined}
-                          staffNameMap={staffNameMap}
-                          uid={uid}
-                          onOpenContact={handleOpenContact}
-                          onToast={onToast}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div className="flex flex-col gap-5">{onYouGroups.map(renderCards)}</div>
             )}
 
-            {hiddenTeamCount > 0 && !showAllTeam && (
-              <div className="mt-2 pt-3 border-t border-dashed border-outline-variant flex items-center justify-between gap-3">
-                <span className="text-xs text-on-surface-variant">
-                  {hiddenTeamCount} older {hiddenTeamCount === 1 ? "update" : "updates"} across the team
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAllTeam(true)}
-                  className="px-3 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
-                >
-                  Show them
-                </button>
-              </div>
-            )}
-
-            {showAllTeam && aroundTeam.length > COLLAPSED_LIMIT && (
+            {hiddenOnYouCount > 0 && !showAllOnYou && (
               <button
                 type="button"
-                onClick={() => setShowAllTeam(false)}
+                onClick={() => setShowAllOnYou(true)}
                 className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
               >
-                Show less
+                {t(
+                  hiddenOnYouCount === 1 ? "whatsNew.show_more_person" : "whatsNew.show_more_people",
+                ).replace("{n}", String(hiddenOnYouCount))}
+              </button>
+            )}
+
+            {showAllOnYou && onYou.length > COLLAPSED_LIMIT && (
+              <button
+                type="button"
+                onClick={() => setShowAllOnYou(false)}
+                className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
+              >
+                {t("whatsNew.show_less")}
               </button>
             )}
           </section>
-        )}
+
+          {/* ── Right Column: "Around the team" ── */}
+          {!isSingleColumn && (
+            <section
+              aria-label={t("whatsNew.around_the_team")}
+              className="bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs lg:col-span-6"
+            >
+              <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
+                <div className="flex items-baseline gap-2.5 flex-wrap">
+                  <h3 className="font-serif text-lg text-on-surface font-semibold m-0">
+                    {t("whatsNew.around_the_team")}
+                  </h3>
+                  {aroundTeamOpen > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+                      {t("whatsNew.to_work_through").replace("{n}", String(aroundTeamOpen))}
+                    </span>
+                  )}
+                  <span className="text-xs text-on-surface-variant">
+                    {t("whatsNew.around_the_team_sub")}
+                  </span>
+                </div>
+              </div>
+
+              {aroundTeam.length === 0 ? (
+                <p className="text-xs text-on-surface-variant italic py-2">
+                  {t("whatsNew.no_team_touches")}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-5">{aroundTeamGroups.map(renderCards)}</div>
+              )}
+
+              {hiddenTeamCount > 0 && !showAllTeam && (
+                <div className="mt-2 pt-3 border-t border-dashed border-outline-variant flex items-center justify-between gap-3">
+                  <span className="text-xs text-on-surface-variant">
+                    {t(
+                      hiddenTeamCount === 1
+                        ? "whatsNew.older_update_across_team"
+                        : "whatsNew.older_updates_across_team",
+                    ).replace("{n}", String(hiddenTeamCount))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTeam(true)}
+                    className="px-3 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+                  >
+                    {t("whatsNew.show_them")}
+                  </button>
+                </div>
+              )}
+
+              {showAllTeam && aroundTeam.length > COLLAPSED_LIMIT && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTeam(false)}
+                  className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
+                >
+                  {t("whatsNew.show_less")}
+                </button>
+              )}
+            </section>
+          )}
         </div>
       )}
+
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </section>
   );
 }
-

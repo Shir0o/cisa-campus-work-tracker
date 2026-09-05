@@ -3,7 +3,7 @@ import { isFullTimer, isTrainee } from "./walking";
 import { teamOf } from "./teams";
 import type { ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
-import { UserEntityState } from "./userEntityState";
+import { InboxState } from "./inboxState";
 
 export type AttentionKind = "contact" | "interaction" | "thread" | "task" | "notification";
 
@@ -61,7 +61,10 @@ export interface AttentionStack {
   bucket: DateBucket;
   by: string[];
   kinds: AttentionKind[];
-  unread: number;
+  /** Have you opened this person yet? The accent dot's only input (#813).
+   *  Deliberately NOT the completion axis: opening something must never make
+   *  the "to work through" count fall. */
+  seen: boolean;
 }
 
 export interface AttentionGroup {
@@ -128,6 +131,9 @@ export function buildAttentionItems(params: {
   const items: AttentionItem[] = [];
 
   const isFullTimerView = role === "admin" || role === "owner" || role === "full_timer" || isFullTimer(uid);
+  // Staff only. Students and Community members do not get this feed, and staff
+  // notes are not theirs to read even about someone they signed up.
+  const isStaff = isFullTimerView || role === "manager" || isTrainee(uid);
   const contactById = new Map<string, Contact>();
   for (const c of contacts) contactById.set(c.id, c);
   const tied = (contactId?: string | null) =>
@@ -165,59 +171,49 @@ export function buildAttentionItems(params: {
         });
       }
     }
+  }
 
-    // 3. Unanswered thread questions from anyone else
-    for (const m of threads) {
-      if (m.kind === "question" && m.from && m.from !== uid) {
-        const answered = threads.some(
-          (r) =>
-            r.from === uid &&
-            r.contactId === m.contactId &&
-            (r.interactionId ?? null) === (m.interactionId ?? null) &&
-            ms(r.at) > ms(m.at),
-        );
-        if (!answered) {
-          items.push({
-            id: "thread:" + m.id,
-            type: "thread",
-            at: m.at,
-            contactId: m.contactId,
-            by: m.from,
-            body: m.body,
-            kind: m.kind,
-            interactionId: m.interactionId ?? null,
-            closedAt: m.closedAt ?? null,
-            closedByName: m.closedByName ?? null,
-          });
-        }
-      }
-    }
-  } else if (role === "manager" || isTrainee(uid)) {
-    // A Trainee sees what was written about the people they are TIED to (#813).
-    // The branch this replaces gated on `role === "trainee"`, but a Trainee's
-    // role is `manager`, so it had never once executed — and had it executed it
-    // would have handed every Trainee every Full-timer's message about students
-    // they have never met. Students and Community members are deliberately not
-    // included: they do not get this feed, and staff notes are not theirs to
-    // read even about a person they signed up. Team-scope messages are
-    // Full-timer-only and must never reach anyone else.
-    for (const m of threads) {
-      if (m.scope === "team") continue;
-      if (!m.from || m.from === uid) continue;
-      if (!tied(m.contactId)) continue;
-      items.push({
-        id: "thread:" + m.id,
-        type: "thread",
-        at: m.at,
-        contactId: m.contactId,
-        by: m.from,
-        body: m.body,
-        kind: m.kind,
-        interactionId: m.interactionId ?? null,
-        closedAt: m.closedAt ?? null,
-        closedByName: m.closedByName ?? null,
-      });
-    }
+  // Everything written on a contact you are TIED to reaches you (#813) — the
+  // same four ties the notification uses, so the feed and the bell agree on
+  // who is involved. A Full-timer additionally sees unanswered questions on
+  // anyone at all: that is the oversight this feed was built for, and it is
+  // the one thing that is genuinely Full-timer-only.
+  //
+  // This used to be two branches that disagreed. The Full-timer's saw nothing
+  // but questions, so a note, a comment and a follow-up ask on a contact they
+  // carry never reached them — three rows of the completion-verb table could
+  // not render.
+  for (const m of threads) {
+    if (!isStaff) break;
+    if (m.scope === "team" && !isFullTimerView) continue;
+    if (m.kind === "encouragement") continue; // summarised, never a card
+    if (!m.from || m.from === uid) continue;
+
+    const unansweredQuestion =
+      m.kind === "question" &&
+      !threads.some(
+        (r) =>
+          r.from === uid &&
+          r.contactId === m.contactId &&
+          (r.interactionId ?? null) === (m.interactionId ?? null) &&
+          ms(r.at) > ms(m.at),
+      );
+
+    if (!tied(m.contactId) && !(isFullTimerView && unansweredQuestion)) continue;
+    if (m.kind === "question" && !unansweredQuestion) continue;
+
+    items.push({
+      id: "thread:" + m.id,
+      type: "thread",
+      at: m.at,
+      contactId: m.contactId,
+      by: m.from,
+      body: m.body,
+      kind: m.kind,
+      interactionId: m.interactionId ?? null,
+      closedAt: m.closedAt ?? null,
+      closedByName: m.closedByName ?? null,
+    });
   }
 
   // The asker's own outstanding questions. `buildAttentionItems` has always
@@ -250,6 +246,9 @@ export function buildAttentionItems(params: {
   // 4. Thread messages where current user is explicitly mentioned
   for (const m of threads) {
     if (m.scope === "team" && !isFullTimerView) continue;
+    // An encouragement stays out even when it names you: needing to dismiss
+    // praise is worse than the praise is worth (#813).
+    if (m.kind === "encouragement") continue;
     if (m.from && m.from !== uid && m.mentionedUserIds?.includes(uid)) {
       // Ensure we don't duplicate if it was already added above as a question or full-timer item
       const existing = items.find((it) => it.id === "thread:" + m.id);
@@ -316,15 +315,9 @@ export function attentionStacksFor(items: AttentionItem[], uid: string): Attenti
   const byGroup = new Map<string, AttentionItem[]>();
 
   for (const item of items) {
-    // Check if item or entity is marked done in UserEntityState
-    if (UserEntityState.isDone(uid, item.id)) continue;
-    if (item.contactId && (UserEntityState.isDone(uid, `contact:${item.contactId}`) || UserEntityState.isDone(uid, item.contactId))) {
-      continue;
-    }
-    if (item.targetId && (UserEntityState.isDone(uid, `target:${item.targetId}`) || UserEntityState.isDone(uid, item.targetId))) {
-      continue;
-    }
-
+    // Nothing is dropped here for having been completed. A card that vanishes
+    // under the cursor is how the feed used to lose things; the worklist greys
+    // it in place instead and clears it when you leave (#813).
     const groupKey = item.contactId
       ? `contact:${item.contactId}`
       : item.targetId
@@ -351,10 +344,10 @@ export function attentionStacksFor(items: AttentionItem[], uid: string): Attenti
     const by = [...new Set(groupItems.map((i) => i.by).filter((b): b is string => Boolean(b)))];
     const kinds = [...new Set(groupItems.map((i) => i.type))];
 
-    const unread = groupItems.filter((i) => !UserEntityState.isRead(uid, i.id)).length;
+    const stackId = "att:" + groupKey;
 
     stacks.push({
-      id: "att:" + groupKey,
+      id: stackId,
       contactId,
       targetId,
       items: groupItems,
@@ -362,7 +355,7 @@ export function attentionStacksFor(items: AttentionItem[], uid: string): Attenti
       bucket,
       by,
       kinds,
-      unread,
+      seen: InboxState.isSeen(uid, stackId),
     });
   });
 
@@ -418,6 +411,115 @@ export function attentionPhrase(item: AttentionItem, staffNameMap?: Record<strin
   }
 
   return `${firstName} logged ${item.title ? `“${item.title.length > 28 ? item.title.slice(0, 28) + "…" : item.title}”` : "time"}`;
+}
+
+// ── The worklist (#813) ─────────────────────────────────────────────────────
+// Two independent facts per card — seen (you opened the person) and completed
+// (you are finished with this) — plus one word for the completion that fits
+// what the card is actually about. "I followed up" on a card about a note
+// claims you texted the student, which you did not.
+
+/** The completion verb a card offers, or null when it offers none.
+ *  Three families: things you look at, things you owe someone, and things that
+ *  are only information. See docs/design/followup-reach/Inbox.dc.html. */
+export type WorklistVerb = "followedUp" | "answered" | "reviewed" | "gotIt";
+
+const OPEN_ASK = (it: AttentionItem) =>
+  it.type === "thread" && it.kind === "nudge" && !it.closedAt;
+
+/** The follow-up asks on this card still waiting on someone. */
+export function openAsksIn(stack: AttentionStack): AttentionItem[] {
+  return stack.items.filter(OPEN_ASK);
+}
+
+/**
+ * One verb for the whole card, chosen by the most demanding thing on it: an
+ * errand you owe the contact outranks a question you owe a teammate, which
+ * outranks a person you only have to look at, which outranks information.
+ *
+ * A card with nothing but a to-do (which owns its own done state) or nothing
+ * but an encouragement offers no button at all — a second done state would
+ * only disagree with the first.
+ */
+export function worklistVerbFor(stack: AttentionStack): WorklistVerb | null {
+  if (stack.items.some(OPEN_ASK)) return "followedUp";
+  if (stack.items.some((it) => it.type === "thread" && it.kind === "question")) {
+    return "answered";
+  }
+  if (stack.items.some((it) => it.type === "contact" || it.type === "interaction")) {
+    return "reviewed";
+  }
+  // Anything left that is only information — a note, a comment, a bell, or an
+  // ask somebody has already closed. Nothing was asked of you, so nothing
+  // should claim you did it.
+  if (stack.items.some((it) => it.type === "notification" || it.type === "thread")) {
+    return "gotIt";
+  }
+  return null;
+}
+
+/** True when the card is about somebody the team has only just added. */
+export function isNewPerson(stack: AttentionStack): boolean {
+  return stack.kinds.includes("contact");
+}
+
+/** True when the card wants words back — a question, or an ask nobody has taken. */
+export function wantsAReply(stack: AttentionStack): boolean {
+  return stack.items.some(
+    (it) => it.type === "thread" && (it.kind === "question" || OPEN_ASK(it)),
+  );
+}
+
+export type WorklistBucket = "newPeople" | "everythingElse";
+
+export interface WorklistGroup {
+  bucket: WorklistBucket;
+  stacks: AttentionStack[];
+}
+
+/**
+ * New people first, everything else after, each newest-first.
+ *
+ * A sort, not a second list: splitting contacts into their own list means
+ * deciding, every time, where the things that are neither go.
+ */
+export function worklistGroupsFor(stacks: AttentionStack[]): WorklistGroup[] {
+  const newPeople = stacks.filter(isNewPerson);
+  const everythingElse = stacks.filter((s) => !isNewPerson(s));
+  const groups: WorklistGroup[] = [];
+  if (newPeople.length > 0) groups.push({ bucket: "newPeople", stacks: newPeople });
+  if (everythingElse.length > 0) {
+    groups.push({ bucket: "everythingElse", stacks: everythingElse });
+  }
+  return groups;
+}
+
+/**
+ * The encouragements sent to you, as a count and the people who sent them.
+ * They are summarised on My Day rather than being cards: nothing is asked of
+ * you by praise, so nothing should ask you to clear it.
+ */
+export function encouragementSummary(
+  threads: ThreadMessageWithContact[],
+  uid: string,
+  contacts: Contact[],
+  personalContactIds?: Set<string> | null,
+): { count: number; names: string[] } {
+  const contactById = new Map<string, Contact>();
+  for (const c of contacts) contactById.set(c.id, c);
+
+  const names: string[] = [];
+  let count = 0;
+  for (const m of threads) {
+    if (m.kind !== "encouragement" || !m.from || m.from === uid) continue;
+    if (!isTiedTo(contactById.get(m.contactId), uid, personalContactIds, m.contactId)) {
+      continue;
+    }
+    count += 1;
+    const first = (m.fromName || "Someone").trim().split(/\s+/)[0];
+    if (!names.includes(first)) names.push(first);
+  }
+  return { count, names };
 }
 
 export function partitionAttentionStacks(

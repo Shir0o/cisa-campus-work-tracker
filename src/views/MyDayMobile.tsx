@@ -294,7 +294,12 @@ export default function MyDayMobile({
       {/* ── Needs your attention — unified attention feed ── */}
       {uid && (
         <div className="px-5 mt-2">
-          <AttentionFeed contacts={contacts} onOpenContact={onOpenContact} mobile={true} />
+          <AttentionFeed
+            contacts={contacts}
+            personalContactIds={personalContactIds}
+            onOpenContact={onOpenContact}
+            mobile={true}
+          />
         </div>
       )}
 

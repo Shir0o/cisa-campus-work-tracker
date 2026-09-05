@@ -890,7 +890,7 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  describe('My Day — user preferences & personal prayers', () => {
+  describe('My Day — user preferences, inbox state & personal prayers', () => {
     const seedUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'u1'), { role: 'admin', approved: true });
@@ -926,6 +926,52 @@ describeRules('Firestore Security Rules', () => {
       await seedUsers();
       const db = getFirestore({ uid: 'pending1' });
       await assertFails(setDoc(doc(db, 'userPreferences', 'pending1'), { personalContactIds: [] }));
+    });
+
+    // The worklist's two per-person axes (#813). Get this wrong and every write
+    // is rejected while the UI looks like it worked — the trap #727 hit.
+    it('MP6: Owner can write and read their own inbox state', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'u1' });
+      const ref = doc(db, 'inboxState', 'u1');
+      await assertSucceeds(
+        setDoc(ref, {
+          seen: { 'att:contact:c1': '2026-09-04T12:00:00.000Z' },
+          completed: { 'att:contact:c2': '2026-09-04T12:00:00.000Z' },
+          migratedAt: '2026-09-04T12:00:00.000Z',
+        }),
+      );
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(
+        updateDoc(ref, { 'seen.att:contact:c3': '2026-09-04T13:00:00.000Z' }),
+      );
+      await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('MP7: A manager can read and write another user\u2019s inbox state, but a non-manager cannot', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'inboxState', 'u1'), {
+          seen: { 'att:contact:c1': '2026-09-04T12:00:00.000Z' },
+        });
+      });
+      const dbManager = getFirestore({ uid: 'u2' });
+      await assertSucceeds(getDoc(doc(dbManager, 'inboxState', 'u1')));
+      await assertSucceeds(
+        setDoc(doc(dbManager, 'inboxState', 'u1'), { seen: {}, completed: {} }),
+      );
+
+      // Reviewing is private: a Student learns nothing about a Full-timer's
+      // attention, and cannot forge it either.
+      const dbStudent = getFirestore({ uid: 'student1' });
+      await assertFails(getDoc(doc(dbStudent, 'inboxState', 'u1')));
+      await assertFails(setDoc(doc(dbStudent, 'inboxState', 'u1'), { seen: {} }));
+    });
+
+    it('MP8: An unapproved user cannot touch their own inbox state', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'pending1' });
+      await assertFails(setDoc(doc(db, 'inboxState', 'pending1'), { seen: {}, completed: {} }));
     });
 
     it('MP4: Owner can create, read, update and delete their personal prayers', async () => {

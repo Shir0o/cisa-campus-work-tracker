@@ -123,6 +123,16 @@ service cloud.firestore {
       allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
     }
 
+    // 2c. Inbox state — the My Day worklist's two per-person axes, `seen` and
+    // `completed` (#813). Same shape and same rule as userPreferences above:
+    // it is one private document per person, holding maps of item id → ISO
+    // stamp. It lives here rather than as a flag on the contact because the
+    // question "have *I* looked at this" cannot be answered by one boolean on
+    // a document a dozen Full-timers share.
+    match /inboxState/{userId} {
+      allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
+    }
+
     // 3. Invitations Collection
     match /invitations/{email} {
       function isValidInvitation(data) {
