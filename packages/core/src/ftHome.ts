@@ -134,7 +134,11 @@ export function ftInboxRows(
             : `${who} asked you something about ${name}`,
       sub:
         item.type === "contact"
-          ? item.reviewed
+          // Was `item.reviewed` — a field with no writer, so this always read
+          // "Waiting on a look from you" however many times you had looked
+          // (#813, DRIFT rows 24-25). The reader's own read state is real, is
+          // per person, and is already computed on the next line.
+          ? ctx.isRead(item.id)
             ? "You've had a look"
             : "Waiting on a look from you"
           : item.body || "",
