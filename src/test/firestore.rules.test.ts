@@ -1809,6 +1809,98 @@ describeRules('Firestore Security Rules', () => {
       });
     };
 
+    // ── Closing a follow-up ask (#813) ──────────────────────────────────────
+    // An ask is one shared open item, so anyone who can see the contact may
+    // record that they followed up; it closes once, for everyone tied, rather
+    // than each of them dismissing a copy. Without this allowance every close
+    // would be rejected while the button looked like it had worked — the exact
+    // trap the `team` field hit in #727.
+    describe('closing a follow-up ask', () => {
+      it('lets someone other than the asker record that they followed up', async () => {
+        await seedThreadUsers();
+        await seedMsg('ask1', { kind: 'nudge', from: 'operator1' });
+        const db = getFirestore({ uid: 'operator2' });
+        await assertSucceeds(
+          updateDoc(doc(db, 'contacts/contact1/threads/ask1'), {
+            closedBy: 'operator2',
+            closedByName: 'Op Two',
+            closedAt: new Date().toISOString(),
+          }),
+        );
+      });
+
+      it('lets the asker retract their own ask', async () => {
+        await seedThreadUsers();
+        await seedMsg('ask2', { kind: 'nudge', from: 'operator1' });
+        const db = getFirestore({ uid: 'operator1' });
+        await assertSucceeds(
+          updateDoc(doc(db, 'contacts/contact1/threads/ask2'), {
+            closedBy: 'operator1',
+            closedByName: 'Op One',
+            closedAt: new Date().toISOString(),
+          }),
+        );
+      });
+
+      it('undoes a close by clearing all three fields together', async () => {
+        await seedThreadUsers();
+        await seedMsg('ask3', {
+          kind: 'nudge',
+          closedBy: 'operator2',
+          closedByName: 'Op Two',
+          closedAt: new Date().toISOString(),
+        });
+        const db = getFirestore({ uid: 'operator2' });
+        await assertSucceeds(
+          updateDoc(doc(db, 'contacts/contact1/threads/ask3'), {
+            closedBy: null,
+            closedByName: null,
+            closedAt: null,
+          }),
+        );
+      });
+
+      it('refuses to record someone else as having followed up', async () => {
+        await seedThreadUsers();
+        await seedMsg('ask4', { kind: 'nudge' });
+        const db = getFirestore({ uid: 'operator2' });
+        await assertFails(
+          updateDoc(doc(db, 'contacts/contact1/threads/ask4'), {
+            closedBy: 'operator1',
+            closedByName: 'Op One',
+            closedAt: new Date().toISOString(),
+          }),
+        );
+      });
+
+      it('refuses to close anything that is not a follow-up ask', async () => {
+        await seedThreadUsers();
+        await seedMsg('note1', { kind: 'comment' });
+        const db = getFirestore({ uid: 'operator2' });
+        await assertFails(
+          updateDoc(doc(db, 'contacts/contact1/threads/note1'), {
+            closedBy: 'operator2',
+            closedByName: 'Op Two',
+            closedAt: new Date().toISOString(),
+          }),
+        );
+      });
+
+      it('refuses to smuggle a body edit in alongside the close', async () => {
+        await seedThreadUsers();
+        await seedMsg('ask5', { kind: 'nudge' });
+        const db = getFirestore({ uid: 'operator2' });
+        await assertFails(
+          updateDoc(doc(db, 'contacts/contact1/threads/ask5'), {
+            closedBy: 'operator2',
+            closedByName: 'Op Two',
+            closedAt: new Date().toISOString(),
+            body: 'rewritten',
+          }),
+        );
+      });
+    });
+
     it('lets the author create a message (from == uid, empty reactions)', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'operator1' });
@@ -1913,11 +2005,12 @@ describeRules('Firestore Security Rules', () => {
       }
     });
 
-    it('lets a full-timer mark a contact reviewed (bool only)', async () => {
+    // `reviewed` was deleted in #813 — four readers, no writer outside the seed
+    // scripts — so nothing may write it any more.
+    it('no longer lets anyone write the retired `reviewed` flag', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), { reviewed: true }));
-      await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), { reviewed: 'yes' }));
+      await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), { reviewed: true }));
     });
   });
 

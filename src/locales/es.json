@@ -1271,8 +1271,8 @@
       "contacted_by": "contactado por {name}",
       "added": "añadido {date}",
       "overview": "Resumen",
-      "follow_up": "Seguimiento",
-      "discussion": "Discusión",
+      "follow_up": "Conversación",
+      "discussion": "Tiempo completo",
       "interactions": "Interacciones",
       "history": "Historial",
       "first_name": "NOMBRE",
@@ -1304,8 +1304,8 @@
       "what_we_know": "Lo que sabemos",
       "no_notes": "Aún no hay notas registradas para este contacto.",
       "lately": "Últimamente",
-      "our_last_few_conversations": "Nuestras últimas conversaciones",
-      "no_conversations": "Aún no hay conversaciones registradas.",
+      "our_last_few_conversations": "Nuestras últimas interacciones",
+      "no_conversations": "Aún no hay interacciones registradas.",
       "someone": "Alguien",
       "prayers_we_re_holding": "Oraciones por las que oramos",
       "nothing_open": "Nada abierto ahora mismo.",
@@ -1324,7 +1324,7 @@
       "date": "Fecha",
       "logging": "Registrando...",
       "think_this_through_together": "Piénsalo juntos",
-      "thread_sub": "Comentarios sobre {name}: cualquiera que pueda verlos puede opinar y responder a un comentario.",
+      "thread_sub": "Todos los vinculados a {name} ven esto: quien lo agregó, su compañero del evangelio y la persona asignada.",
       "prayer_burden_label": "¿Por qué oramos?",
       "prayer_context_label": "Más contexto",
       "optional": "(opcional)",
@@ -1657,5 +1657,16 @@
     "try_whole_team": "Probá con todo el {team}, o ampliá a todos.",
     "try_everyone": "Probá ampliando a todos.",
     "show_everyone": "Mostrar a todos"
+  },
+  "thread": {
+    "kind_comment": "Comentario",
+    "kind_question": "Pregunta",
+    "kind_follow_up": "Pedir un seguimiento",
+    "send_post": "Publicar",
+    "compose_kind_group": "Qué estás escribiendo",
+    "placeholder_comment": "Escribe algo…",
+    "placeholder_question": "¿Qué quieres saber? Todos los vinculados a esta persona lo verán.",
+    "placeholder_follow_up": "¿Qué hay que hacer: enviarle un mensaje, un correo? Di lo suficiente para que cualquiera pueda encargarse.",
+    "placeholder_full_timers": "Añade al hilo de tiempo completo…"
   }
 }

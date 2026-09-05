@@ -28,6 +28,10 @@ export interface ThreadMessage {
   body: string;
   at: string; // ISO
   reactions: ThreadReaction[];
+  /** Follow-up asks only: who said they did it, and when (#813). */
+  closedBy?: string | null;
+  closedByName?: string | null;
+  closedAt?: string | null;
 }
 
 /** A thread message tagged with the contact it belongs to. */
@@ -78,5 +82,29 @@ export const THREAD_NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: stri
   comment: (who, c) => `${who} commented on ${c}`,
   question: (who, c) => `${who} asked about ${c}`,
   encouragement: (who, c) => `${who} encouraged you about ${c}`,
-  nudge: (who, c) => `${who} nudged a follow-up about ${c}`,
+  nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
 };
+
+/** Everyone tied to a contact: they added them, they are the adder's gospel
+ *  partner, or they are the assigned caregiver (#813). The fourth tie —
+ *  teammates keeping this person on their own My Day — is private to each of
+ *  them and is resolved on their own feed, never fanned out from a write. */
+export interface ThreadStakeholders {
+  createdBy?: string | null;
+  coCreators?: string[] | null;
+  owner?: string | null;
+}
+
+/** The uids on the contact document, deduped, minus the poster. */
+export function stakeholderUidsOf(
+  stakeholders: ThreadStakeholders | null | undefined,
+  from: string,
+): string[] {
+  if (!stakeholders) return [];
+  const all = [
+    stakeholders.createdBy,
+    stakeholders.owner,
+    ...(stakeholders.coCreators || []),
+  ].filter((id): id is string => !!id);
+  return [...new Set(all)].filter((id) => id !== from);
+}

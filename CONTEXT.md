@@ -30,7 +30,7 @@ _Avoid_: Test database, sandbox Firestore, staging db
 An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators.
 _Avoid_: Bug ticket, customer support issue, help desk ticket
 **Remove an interaction**:
-Permanently deleting a logged conversation from a contact's Conversations (web) / Story (mobile) log. Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
+Permanently deleting a logged conversation from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
 _Avoid_: Archive entry, trash a conversation
 
 **Remove from prayer list**:
@@ -113,20 +113,44 @@ _Avoid_: Series, recurring event, schedule, repeat
 The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so the record says explicitly that a person marked it and when.
 _Avoid_: Marked, complete, closed
 
-**Discussion**:
-The Full-timers-only thread on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. Distinct from **Follow up**, the thread on the same page between a Trainee and their gospel partner about the same contact.
-_Avoid_: Comments, team notes, internal thread, chat
+**Full-timers (contact tab)**:
+The Full-timers-only thread on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. The tab is named for its audience on purpose: it sits beside **Conversation**, which is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
+_Avoid_: Discussion, Private, Comments, internal thread, chat
 
 Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for the team** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
 
 **Mention**:
-Explicitly tagging a teammate in a Follow up thread, team Discussion, or chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
+Explicitly tagging a teammate in a Conversation thread, the Full-timers tab, or a chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
 _Avoid_: Tag, ping, callout
 
 **Test Account Purge**:
 An administrative action available to Full-timers in Settings that scrubs non-person test accounts (matching `reviewer*` or `cisa*` emails, or service/review account display names) and their associated traces (invitations, personal prayers, and interaction logs on contacts) across the system. It uses a two-phase dry-run scan and confirmation flow to prevent accidental data loss.
 _Avoid_: Reset database, wipe users, factory reset
 
+
+
+
+**Follow up**:
+Texting or emailing a contact after the first encounter — or, less often, doing the thing a Trainee promised them. An act directed at the *person*, and the only thing the phrase means. Replying to a teammate in the app is not following up, however much it looks like closing a loop; the two were conflated because the contact's staff thread used to be titled "Follow-up" (it is now **Conversation**).
+_Avoid_: Replying, responding, chasing, touching base
+
+**Follow-up ask**:
+One staff member saying a **Follow up** wants doing, written into a contact's **Conversation** thread. It reaches everyone tied to that contact, carries no owner and no deadline, and stays open — showing how long it has been open as a plain fact — until someone tied presses "I followed up" or the asker retracts it with "Never mind". Deliberately *not* a to-do: a to-do is a personal list with an assignee, and putting someone else's name and date on an errand creates an obligation this is meant to avoid. Nothing closes it implicitly — not logging an Interaction, not replying in the thread.
+_Avoid_: Nudge, reminder, assigned follow-up, task
+
+**Conversation (contact tab)**:
+The staff thread on a contact, open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** tab, which is the same kind of thread restricted to staff.
+_Avoid_: Follow-up, Thread, Comments, Walking together
+
+**Tied to a contact**:
+The four relationships that make someone a recipient of what is written on a person: they added them, they are the adder's gospel partner (`coCreators`), they are the assigned caregiver (`owner`), or they keep that person on their own My Day. The first three live on the contact document and can be resolved by whoever is posting; the fourth is private to each teammate and is resolved on the reader's own screen instead. Everything written in a **Conversation** reaches all four unless an `@mention` narrows it to one person.
+_Avoid_: Stakeholder, watcher, subscriber, assigned
+
+**Seen / Completed**:
+The two independent things a person records about an item in their My Day worklist. **Seen** is passive — you opened the contact — and shows as the unread dot. **Completed** is deliberate: *Reviewed* for something you only had to look at, *I followed up* or *Answered* for something you owed someone, *Got it* for information. The worklist count is the number **not completed**, so opening things never makes the number fall. Both are per person and stored server-side, so they agree across someone's phone and laptop.
+_Avoid_: Read/done, scanned, dismissed, cleared, archived
+
 **What's New Announcement**:
 An in-app modal presented to users upon launching an updated web PWA or mobile build, highlighting user-facing changes and improvements for that release. Backed by markdown manifests in `content/whats-new/` compiled into static manifests, tracking the latest seen release ID locally on each device, and always re-accessible via Settings.
 _Avoid_: Release popup, changelog blast, splash alert
+

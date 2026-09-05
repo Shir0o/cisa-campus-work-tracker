@@ -142,7 +142,7 @@ service cloud.firestore {
     match /contacts/{contactId} {
       function isValidContact(data) {
         // Optional fields are guarded with `!('x' in data)` first: a partial
-        // update (e.g. flipping only `reviewed`) produces a merged doc that may
+        // update (e.g. flipping only `stage`) produces a merged doc that may
         // omit an optional key, and `data.x == null` errors ("Property x is
         // undefined") on an absent key rather than returning false.
         return data.name is string && data.name.size() <= 128 &&
@@ -151,8 +151,7 @@ service cloud.firestore {
                (!('role' in data) || data.role == null || (data.role is string && data.role.size() <= 64)) &&
                (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 128)) &&
                (!('metVia' in data) || data.metVia == null || (data.metVia is string && data.metVia.size() <= 64)) &&
-               (!('stage' in data) || data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
-               (!('reviewed' in data) || data.reviewed == null || data.reviewed is bool);
+               (!('stage' in data) || data.stage == null || (data.stage is string && data.stage.size() <= 64));
       }
 
       allow read: if isApprovedUser();
@@ -180,7 +179,7 @@ service cloud.firestore {
                         'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
                         'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
                         'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
-                        'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',
+                        'lastSeen', 'avatar', 'hasNewActivity',
                         'lastContactedBy', 'lastContactedById', 'lastContactedDate',
                         'updatedAt', 'updatedBy', 'updatedByName'
                       ]) ||
@@ -268,12 +267,38 @@ service cloud.firestore {
         // Reactions: any approved operator may toggle the reactions array on a
         // shared-scope message; Full-timer-only Discussion reactions stay with
         // Full-timers. Body edits: author only (kind/from/at are immutable).
+        // Closing a follow-up ask (#813): a `nudge` is one shared open item, so
+        // anyone who can see the contact may say they followed up — it closes
+        // once, for everyone tied, rather than each of them dismissing a copy.
+        // `closedBy` must be the caller (you cannot record someone else having
+        // done it), and only these three keys may move; the body, kind and
+        // author stay immutable. Clearing all three is the undo, and is also how
+        // the asker retracts ("Never mind").
+        function isCloseOfAsk(before, after) {
+          return before.kind == 'nudge' &&
+                 (
+                   (after.get('closedBy', null) == request.auth.uid &&
+                    after.get('closedAt', null) is string &&
+                    after.get('closedAt', null).size() <= 40 &&
+                    (after.get('closedByName', null) == null ||
+                     (after.get('closedByName', null) is string && after.get('closedByName', null).size() <= 128)))
+                   ||
+                   (after.get('closedBy', null) == null &&
+                    after.get('closedAt', null) == null &&
+                    after.get('closedByName', null) == null)
+                 );
+        }
+
         allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (
                         incoming().diff(existing()).affectedKeys().hasOnly(['reactions'])
                         || (
                           incoming().diff(existing()).affectedKeys().hasOnly(['body']) &&
                           existing().from == request.auth.uid &&
                           incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000
+                        )
+                        || (
+                          incoming().diff(existing()).affectedKeys().hasOnly(['closedBy', 'closedByName', 'closedAt']) &&
+                          isCloseOfAsk(existing(), incoming())
                         )
                       );
         allow delete: if isValidId(threadId) && isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isManager() || existing().from == request.auth.uid);

@@ -7,9 +7,11 @@ import {
   orderBy,
   query,
   runTransaction,
+  updateDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
+import { sendPushNotification } from "./push";
 import { isFullTimer } from "./walking";
 
 // "Walking together" threads — the single per-person conversation surface,
@@ -41,6 +43,13 @@ export interface ThreadMessage {
   at: string; // ISO
   reactions: ThreadReaction[];
   mentionedUserIds?: string[];
+  /** Follow-up asks only: who said they did it, and when. One shared close,
+   *  written once and read by everyone tied — there is no per-person dismissal
+   *  to track, because the thing tracked is the ask, not five people's reading
+   *  of it (#813). `closedBy === from` means the asker retracted it. */
+  closedBy?: string | null;
+  closedByName?: string | null;
+  closedAt?: string | null;
 }
 
 // The single like reaction offered on every message.
@@ -90,6 +99,9 @@ export function subscribeThreads(
             at: data.at ?? new Date().toISOString(),
             reactions: Array.isArray(data.reactions) ? data.reactions : [],
             mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
+            closedBy: data.closedBy ?? null,
+            closedByName: data.closedByName ?? null,
+            closedAt: data.closedAt ?? null,
           };
         }),
       ),
@@ -129,6 +141,9 @@ export function subscribeAllThreads(
             at: data.at ?? new Date().toISOString(),
             reactions: Array.isArray(data.reactions) ? data.reactions : [],
             mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
+            closedBy: data.closedBy ?? null,
+            closedByName: data.closedByName ?? null,
+            closedAt: data.closedAt ?? null,
           };
         }),
       ),
@@ -172,18 +187,56 @@ export function countFor(
   ).length;
 }
 
-// Plain-spoken bell title for a posted message, from the poster's view.
+// Plain-spoken bell title for a posted message, from the poster's view. Every
+// recipient gets the title for the KIND that was written — a question must not
+// arrive as "commented on", which is what the stakeholder path used to send
+// regardless of kind (#813).
 const NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: string) => string> = {
   note: (who, c) => `${who} left a note on ${c}`,
   comment: (who, c) => `${who} commented on ${c}`,
   question: (who, c) => `${who} asked about ${c}`,
   encouragement: (who, c) => `${who} encouraged you about ${c}`,
-  nudge: (who, c) => `${who} nudged a follow-up about ${c}`,
+  nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
 };
 
+const TEAM_NOTIFY_TITLE = (who: string, contact: string) =>
+  `${who} posted in the Full-timers thread on ${contact}`;
+
+/** Everyone tied to a contact: they added them, they are the adder's gospel
+ *  partner, or they are the assigned caregiver. The fourth tie — teammates
+ *  keeping this person on their own My Day — is private to each of them and is
+ *  resolved on their own feed instead, never fanned out from here (#813). */
 export interface ThreadStakeholders {
   createdBy?: string | null;
   coCreators?: string[] | null;
+  owner?: string | null;
+}
+
+/** The uids on the contact document, deduped, minus the poster. */
+export function stakeholderUidsOf(
+  stakeholders: ThreadStakeholders | null | undefined,
+  from: string,
+): string[] {
+  if (!stakeholders) return [];
+  const all = [
+    stakeholders.createdBy,
+    stakeholders.owner,
+    ...(stakeholders.coCreators || []),
+  ].filter((id): id is string => !!id);
+  return [...new Set(all)].filter((id) => id !== from);
+}
+
+/** A push that says something happened about one person. Held to one per
+ *  contact per person per hour, server-side; the bell keeps every message. */
+function pushAbout(userId: string, contactId: string, title: string, body: string, link: string) {
+  void sendPushNotification({
+    userId,
+    title,
+    body,
+    data: { link, targetId: contactId },
+    coalesceKey: `contact:${contactId}`,
+    coalesceMinutes: 60,
+  });
 }
 
 /** Post a new message to a contact (and optionally to one interaction). Dispatches
@@ -242,61 +295,129 @@ export async function addThreadMessage(
       return isFullTimer(uid);
     };
 
-    // Mentions take priority
+    // An @mention narrows everything to the person named: they are the only one
+    // who gets the personal wording, and the only one pushed.
+    const narrowed = mentionedUserIds.length > 0;
+
     for (const mUid of mentionedUserIds) {
       if (mUid !== input.from && isAllowedRecipient(mUid)) {
         notifiedUserIds.add(mUid);
+        const title = isTeamScope
+          ? `${who} mentioned you in the Full-timers thread on ${contactName}`
+          : `${who} mentioned you on ${contactName}`;
         void sendNotification({
           userId: mUid,
-          title: isTeamScope
-            ? `${who} mentioned you in discussion on ${contactName}`
-            : `${who} mentioned you on ${contactName}`,
+          title,
           message: truncatedBody,
           type: "info",
           targetId: contactId,
           link: targetLink,
         });
+        pushAbout(mUid, contactId, title, truncatedBody, targetLink);
       }
     }
 
-    // Stakeholders (creator + co-creators / gospel partners)
-    if (notify?.stakeholders) {
-      const stakeholderUids = [
-        notify.stakeholders.createdBy,
-        ...(notify.stakeholders.coCreators || []),
-      ].filter((id): id is string => !!id);
-
-      for (const sUid of stakeholderUids) {
-        if (sUid !== input.from && !notifiedUserIds.has(sUid) && isAllowedRecipient(sUid)) {
-          notifiedUserIds.add(sUid);
-          void sendNotification({
-            userId: sUid,
-            title: isTeamScope
-              ? `${who} posted in discussion on ${contactName}`
-              : `${who} commented on ${contactName}`,
-            message: truncatedBody,
-            type: "info",
-            targetId: contactId,
-            link: targetLink,
-          });
-        }
-      }
-    }
-
-    // Legacy fallback: notify.to if not already notified
-    if (notify?.to && notify.to !== input.from && !notifiedUserIds.has(notify.to) && isAllowedRecipient(notify.to)) {
+    // Everyone tied to the contact: creator, gospel partners, and the assigned
+    // caregiver. `owner` was a tie everywhere in the product except here.
+    for (const sUid of stakeholderUidsOf(notify?.stakeholders, input.from)) {
+      if (notifiedUserIds.has(sUid) || !isAllowedRecipient(sUid)) continue;
+      notifiedUserIds.add(sUid);
+      const title = isTeamScope
+        ? TEAM_NOTIFY_TITLE(who, contactName)
+        : NOTIFY_TITLE[input.kind](who, contactName);
       void sendNotification({
-        userId: notify.to,
-        title: NOTIFY_TITLE[input.kind](who, contactName),
+        userId: sUid,
+        title,
         message: truncatedBody,
         type: "info",
         targetId: contactId,
         link: targetLink,
       });
+      // A mention means "this one is for you" — the rest hear about it in the
+      // bell without their phone going off.
+      if (!narrowed) pushAbout(sUid, contactId, title, truncatedBody, targetLink);
+    }
+
+    // Legacy fallback: notify.to when the caller passed no stakeholders.
+    if (notify?.to && notify.to !== input.from && !notifiedUserIds.has(notify.to) && isAllowedRecipient(notify.to)) {
+      const title = NOTIFY_TITLE[input.kind](who, contactName);
+      void sendNotification({
+        userId: notify.to,
+        title,
+        message: truncatedBody,
+        type: "info",
+        targetId: contactId,
+        link: targetLink,
+      });
+      if (!narrowed) pushAbout(notify.to, contactId, title, truncatedBody, targetLink);
     }
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
   }
+}
+
+// ── Closing a follow-up ask (#813) ──────────────────────────────────────────
+// A follow up is texting or emailing the contact after the first encounter. So
+// an ask is closed by a person saying they did that — never implicitly. Logging
+// an Interaction does not close one and neither does replying in the thread:
+// you may have texted them about something else entirely, and closing the ask
+// silently would lose it with nobody noticing.
+
+/** Mark a follow-up ask done. Anyone tied to the contact may close it, and it
+ *  closes for all of them at once. `retract` records the asker withdrawing it
+ *  ("Never mind") rather than anyone having followed up. */
+export async function closeFollowUpAsk(
+  contactId: string,
+  messageId: string,
+  by: { uid: string; name?: string | null },
+): Promise<void> {
+  try {
+    await updateDoc(ref(contactId, messageId), {
+      closedBy: by.uid,
+      closedByName: by.name || null,
+      closedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    handleFirestoreError(
+      e,
+      OperationType.UPDATE,
+      `contacts/${contactId}/threads/${messageId}`,
+    );
+  }
+}
+
+/** Undo a close — the snackbar's only job. */
+export async function reopenFollowUpAsk(
+  contactId: string,
+  messageId: string,
+): Promise<void> {
+  try {
+    await updateDoc(ref(contactId, messageId), {
+      closedBy: null,
+      closedByName: null,
+      closedAt: null,
+    });
+  } catch (e) {
+    handleFirestoreError(
+      e,
+      OperationType.UPDATE,
+      `contacts/${contactId}/threads/${messageId}`,
+    );
+  }
+}
+
+/** True when this message is a follow-up ask still waiting on someone. */
+export function isOpenAsk(m: Pick<ThreadMessage, "kind" | "closedAt">): boolean {
+  return m.kind === "nudge" && !m.closedAt;
+}
+
+/** Whole days an ask has been open — the card states it as a fact and does
+ *  nothing else with it. An open item that shouts louder every day is the
+ *  accumulation problem wearing a different coat. */
+export function daysOpen(m: Pick<ThreadMessage, "at">, now: number = Date.now()): number {
+  const t = new Date(m.at).getTime();
+  if (Number.isNaN(t)) return 0;
+  return Math.max(0, Math.floor((now - t) / 86_400_000));
 }
 
 /** Toggle the current user's reaction (by + emoji) on a message. */

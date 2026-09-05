@@ -28,9 +28,6 @@ export interface Contact {
   updatedAt?: string;
   createdBy?: string;
   createdByName?: string;
-  // Whether the full-timer walking with the adder has reviewed this contact
-  // (used by the "Walking together" inbox). createdBy doubles as "added by".
-  reviewed?: boolean;
   updatedBy?: string;
   updatedByName?: string;
   hasNewActivity?: boolean;

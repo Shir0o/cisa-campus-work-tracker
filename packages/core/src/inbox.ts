@@ -23,7 +23,6 @@ export interface InboxItem {
   contactId: string;
   by: string; // the team member who did it
   interactionId?: string | null;
-  reviewed?: boolean;
   title?: string;
   body?: string;
   kind?: ThreadKind; // set on thread items (question / nudge)
@@ -57,7 +56,6 @@ export function inboxItemsFor(
         at: c.createdAt ?? "",
         contactId: c.id,
         by: c.createdBy,
-        reviewed: !!c.reviewed,
       });
     }
   }

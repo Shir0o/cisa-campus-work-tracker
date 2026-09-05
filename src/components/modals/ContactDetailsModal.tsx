@@ -2523,6 +2523,7 @@ export default function ContactDetailsModal({
                                             contactStakeholders={{
                                               createdBy: contact.createdBy || contact.addedBy,
                                               coCreators: contact.coCreators,
+                                              owner: contact.owner,
                                             }}
                                           />
                                         </div>
@@ -2557,6 +2558,7 @@ export default function ContactDetailsModal({
                         contactStakeholders={{
                           createdBy: contact.createdBy || contact.addedBy,
                           coCreators: contact.coCreators,
+                          owner: contact.owner,
                         }}
                       />
 
@@ -2760,6 +2762,7 @@ export default function ContactDetailsModal({
                         contactStakeholders={{
                           createdBy: contact.createdBy || contact.addedBy,
                           coCreators: contact.coCreators,
+                          owner: contact.owner,
                         }}
                       />
 

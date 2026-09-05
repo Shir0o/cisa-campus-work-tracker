@@ -7,6 +7,9 @@ export async function sendPushNotification(input: {
   title: string;
   body?: string;
   data?: Record<string, unknown>;
+  /** At most one push per key per `coalesceMinutes`, enforced server-side (#813). */
+  coalesceKey?: string;
+  coalesceMinutes?: number;
 }): Promise<void> {
   const baseUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!baseUrl) {

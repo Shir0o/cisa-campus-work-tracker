@@ -328,7 +328,7 @@ function AttentionStackRow({
           {open && (
             <div className="mt-3.5 pt-3 border-t border-outline-variant/60 flex flex-col gap-2">
               {stack.items.map((it) => {
-                const isRead = UserEntityState.isRead(uid, it.id) || !!it.reviewed;
+                const isRead = UserEntityState.isRead(uid, it.id);
                 const actorName = (it.by && staffNameMap[it.by]) || "Someone";
                 const actorFirst = actorName.trim().split(/\s+/)[0];
                 return (

@@ -7,6 +7,11 @@ export interface PushPayload {
   title: string;
   body?: string;
   data?: Record<string, unknown>;
+  /** Collapses repeats: at most one push per key per `coalesceMinutes` (#813).
+   *  The window is enforced on the server, because the senders are different
+   *  people on different devices and only the server sees them all. */
+  coalesceKey?: string;
+  coalesceMinutes?: number;
 }
 
 export async function sendPushNotification(input: PushPayload): Promise<void> {
