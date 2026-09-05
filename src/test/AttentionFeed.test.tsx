@@ -379,4 +379,29 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
       }
     }
   });
+
+  it("renders Around the team stacked on mobile when there is team activity (#841)", () => {
+    // A contact owned by another teammate (u2) with no direct ask for u1 lands in Around the team
+    const teamContact = contact({ id: "c_team", name: "Sam Wilson", createdBy: "u2", owner: "u2" });
+    const teamInteraction: Interaction = {
+      id: "i_team",
+      contactId: "c_team",
+      userId: "u2",
+      content: "Chatted after class",
+      createdAt: new Date().toISOString(),
+      dateTime: new Date().toISOString(),
+      type: "meetup",
+      title: "Chatted after class",
+    } as unknown as Interaction;
+
+    feed({
+      contacts: [...sampleContacts, teamContact],
+      interactions: [...sampleInteractions, teamInteraction],
+      mobile: true,
+    });
+
+    expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Around the team" })).toBeInTheDocument();
+    expect(screen.getByText("Sam Wilson")).toBeInTheDocument();
+  });
 });
