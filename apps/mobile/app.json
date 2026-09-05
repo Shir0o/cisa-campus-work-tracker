@@ -51,6 +51,8 @@
             "useFrameworks": "static"
           },
           "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
             "extraGradleProperties": {
               "org.gradle.jvmargs": "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
             }
