@@ -23,7 +23,7 @@
       "package": "com.cisa.campus",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#5c5595"
       },
       "googleServicesFile": "./google-services.json"
     },
@@ -41,7 +41,7 @@
         "expo-notifications",
         {
           "icon": "./assets/adaptive-icon-foreground.png",
-          "color": "#0A0A0B"
+          "color": "#5c5595"
         }
       ],
       [
