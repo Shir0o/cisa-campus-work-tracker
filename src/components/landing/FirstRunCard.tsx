@@ -66,8 +66,23 @@ export default function FirstRunCard({
           </p>
         </div>
         <span className="shrink-0 text-xs font-medium text-on-surface-variant border border-outline-variant rounded-full px-2.5 py-0.5 bg-surface-container/50">
-          {data.doneCount} of {data.totalCount}
+          {data.doneCount} of {data.totalCount} complete
         </span>
+      </div>
+
+      {/* Progress meter */}
+      <div
+        role="progressbar"
+        aria-label="Getting started progress"
+        aria-valuemin={0}
+        aria-valuemax={data.totalCount}
+        aria-valuenow={data.doneCount}
+        className="h-1.5 w-full rounded-full bg-surface-container-high overflow-hidden"
+      >
+        <div
+          className="h-full rounded-full bg-success transition-all"
+          style={{ width: `${(data.doneCount / data.totalCount) * 100}%` }}
+        />
       </div>
 
       {/* Rows */}

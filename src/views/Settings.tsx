@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { AppUser, Invitation } from '../types';
+import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
 import PageContainer from '../components/layout/PageContainer';
 import {
@@ -2247,6 +2248,40 @@ function TeamsSection({ users }: { users: AppUser[] }) {
 }
 
 // ── Main ───────────────────────────────────────────────────────────────
+function GettingStartedSection() {
+  const { t } = useLanguage();
+  const { user: currentUser, role, effectiveUserId } = useAuth();
+  const [restored, setRestored] = useState(false);
+ 
+  const handleRestore = () => {
+    FirstRunStore.bringBack(firstRunKey(role, effectiveUserId || currentUser?.uid));
+    setRestored(true);
+  };
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.getting_started', 'Getting started')}
+        sub={t('settings.getting_started_sub', 'Bring back the first-week checklist if you put it away.')}
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleRestore}
+          className="px-4 py-2 text-sm font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full transition-colors"
+        >
+          {t('settings.show_checklist', 'Show getting started checklist')}
+        </button>
+        {restored && (
+          <p role="status" className="text-sm text-on-surface-variant">
+            {t('settings.checklist_restored', 'The getting-started checklist is back on your home screen.')}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager, role, isApproved } = useAuth();
@@ -2440,6 +2475,7 @@ export default function Settings() {
         <NotificationsSection />
         <LanguageSection />
         <WhatsNewSection onOpen={() => setWhatsNewOpen(true)} />
+        <GettingStartedSection />
 
         <WhatsNewModal
           isOpen={whatsNewOpen}
@@ -2472,6 +2508,7 @@ export default function Settings() {
       <NotificationsSection />
       <LanguageSection />
       <WhatsNewSection onOpen={() => setWhatsNewOpen(true)} />
+      <GettingStartedSection />
 
       <section className="mt-10">
         <SectionHeader

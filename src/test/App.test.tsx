@@ -204,6 +204,41 @@ describe('App Component', () => {
     });
   });
 
+  it('starts with the password obscured and a "Show password" toggle', () => {
+    render(<App />);
+    const passwordInput = screen.getByPlaceholderText('Password');
+    expect(passwordInput).toHaveAttribute('type', 'password');
+    expect(screen.getByRole('button', { name: 'Show password' })).toBeInTheDocument();
+  });
+
+  it('toggles password visibility to plaintext and back, keeping focus on the field', () => {
+    render(<App />);
+    const passwordInput = screen.getByPlaceholderText('Password');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(passwordInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: 'Hide password' })).toBeInTheDocument();
+    expect(passwordInput).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(passwordInput).toHaveAttribute('type', 'password');
+    expect(screen.getByRole('button', { name: 'Show password' })).toBeInTheDocument();
+  });
+
+  it('resets the password back to obscured when the form is submitted', () => {
+    render(<App />);
+    const emailInput = screen.getByPlaceholderText('Email');
+    const passwordInput = screen.getByPlaceholderText('Password');
+
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(passwordInput).toHaveAttribute('type', 'text');
+
+    fireEvent.click(screen.getByRole('button', { name: /Sign in with email/i }));
+    expect(passwordInput).toHaveAttribute('type', 'password');
+  });
+
   it('renders access restricted screen when user is not approved', () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = false;
