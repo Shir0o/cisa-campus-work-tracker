@@ -8,7 +8,7 @@ export default function Support() {
   const { t } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-background text-on-surface py-12 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-background text-on-surface py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <button
@@ -117,6 +117,6 @@ export default function Support() {
           {t('support.footer')}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

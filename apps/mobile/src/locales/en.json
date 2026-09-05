@@ -1466,6 +1466,8 @@
       "tell_the_team": "Tell the team",
       "tell_us_how_its_going": "Tell us how it's going",
       "tell_us_sub": "An idea, something that felt off, or a thank-you",
+      "whats_new": "What's New",
+      "whats_new_sub": "See the latest updates and improvements in CISA",
       "account_session": "Account & Session",
       "log_out": "Log out",
       "messages": "Messages",
@@ -1599,6 +1601,7 @@
       "intro": "The screens you sometimes need on the move. Everything heavier lives on the desktop.",
       "foot": "Board pages, gatherings and kinds are read-mostly here — edit them at a desk.",
       "see_it_as_they_do": "See it as they do",
+      "whats_new": "What's New",
       "tell_us_how_its_going": "Tell us how it's going"
     },
     "board": {

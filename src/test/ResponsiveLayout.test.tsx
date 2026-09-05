@@ -46,15 +46,17 @@ vi.mock('../components/AuthProvider', () => ({
   }),
 }));
 
-vi.mock('../App', () => ({
-  useLayout: () => ({
+vi.mock('../App', () => {
+  // One stub for both accessors — the trail reads the optional one.
+  const layout = () => ({
     isMobileMenuOpen: true,
     setIsMobileMenuOpen: mockSetIsMobileMenuOpen,
     openNewContact: vi.fn(),
     openLogInteraction: vi.fn(),
     setSearchOpen: vi.fn(),
-  }),
-}));
+  });
+  return { useLayout: layout, useOptionalLayout: layout };
+});
 
 vi.mock('../components/layout/SeasonChip', () => ({
   default: () => <div data-testid="season-chip" />,

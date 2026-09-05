@@ -10,25 +10,37 @@
 import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { releaseDateWords, type AppRole } from '@cisa/core';
+import { releaseDateWords, releaseFor, type AppRole } from '@cisa/core';
 import { markReleaseSeen, useRelease } from '../../lib/releases';
 import { useV2Theme } from '../../theme/v2';
 
 const TITLE = 'A few things are different';
 const SUB = 'Since you last opened this. Everything else is where you left it.';
 
-export function M2Release({ role, inWindow }: { role: AppRole | null | undefined; inWindow?: boolean }) {
+export function M2Release({
+  role,
+  inWindow,
+  forceOpen,
+  onClose,
+}: {
+  role: AppRole | null | undefined;
+  inWindow?: boolean;
+  forceOpen?: boolean;
+  onClose?: () => void;
+}) {
   const { c, font, fs } = useV2Theme();
   const insets = useSafeAreaInsets();
-  const rel = useRelease(role, inWindow);
+  const relAuto = useRelease(role, inWindow);
+  const rel = forceOpen ? (relAuto ?? releaseFor(role)) : relAuto;
   const [gone, setGone] = React.useState(false);
 
   const close = () => {
     if (rel) void markReleaseSeen(rel.version);
     setGone(true);
+    onClose?.();
   };
 
-  const live = !!rel && !gone;
+  const live = forceOpen ? !gone : (!!rel && !gone);
   if (!live || !rel) return null;
 
   return (

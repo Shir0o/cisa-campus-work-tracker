@@ -1,0 +1,42 @@
+{
+  "artboards": [
+    { "file": "Today.dc.html", "x": 0, "y": 0, "w": 1491, "h": 806, "title": "Today — the blank half, measured" },
+    { "file": "Main.dc.html", "x": 1591, "y": 0, "w": 1491, "h": 806, "title": "A — the trail, rail shell (chosen)" },
+    { "file": "TopBar.dc.html", "x": 3182, "y": 0, "w": 1491, "h": 1000, "title": "A — the trail, top-bar shell" },
+    { "file": "Actions.dc.html", "x": 0, "y": 1120, "w": 1491, "h": 806, "title": "B — the page's own header row" },
+    { "file": "Reclaim.dc.html", "x": 1591, "y": 1120, "w": 1491, "h": 806, "title": "C — reclaim the row" },
+    { "file": "WideSearch.dc.html", "x": 0, "y": 2046, "w": 1491, "h": 806, "title": "D — let search take the space" },
+    { "file": "Spine.dc.html", "x": 1591, "y": 2046, "w": 1491, "h": 812, "title": "A, across every route shape" }
+  ],
+  "annotations": [
+    {
+      "id": "read-me",
+      "x": 0,
+      "y": -300,
+      "w": 680,
+      "text": "“What do we do with the top blank space to the left of the search bar? Might be reserved for the top nav bar, but with side nav it looks strange.” — issue #803, /people/NduKn2BpBzrRql5Z9mHk, 1491×806.\n\nIt is 773 × 56 px, and the reporter's guess is right: NavChromeStrip is the top bar's chrome hoisted into the rail shell, right-aligned behind a flex-1 spacer. There was a bar for it to be the edge of; now there isn't.\n\nTwo findings came out of measuring it, not one. The second: on /people/:contactId no rail destination is selected either, because isActive tests /directory and its children and the contact route is neither. On a contact page nothing in the shell says where you are.\n\nCrimson = what renders today. Green = what a direction proposes."
+    },
+    {
+      "id": "recommendation",
+      "x": 1591,
+      "y": -300,
+      "w": 680,
+      "text": "Chosen: A, the trail.\n\nIt is the only one of the four that adds something the app is missing rather than rearranging what it has — the section a record belongs to, and a way back to it. Desktop has no back control on a contact page today; mobile has had one since the start.\n\nIt also costs the least. No page owes the shell a header (B), no page owes it a clear corner (C), and nothing has to be re-sized (D). The trail reads from a route→label map that permissions.ts already holds as NAV_ITEMS; /people/:contactId needs one added row pointing at /directory — the same missing link that leaves the rail unselected.\n\nThe honest cost: the leaf repeats the name the card's header carries 40 px below. It is set at 13 px against the card's 17 px serif so it reads as a trail rather than a second title, but it is a repetition, and B is the direction that removes it.\n\nB, C and D are drawn to be chosen, not to lose. Each names its own tradeoff on its board."
+    },
+    {
+      "id": "shell-question",
+      "x": 3182,
+      "y": -300,
+      "w": 680,
+      "text": "“A, except that it will be overridden when the nav bar is on top?”\n\nCorrect as drawn, and it makes A a shared component with two mount points rather than a patch on one strip.\n\nNavChromeStrip only exists in the rail shell. In the top-bar shell TopNav owns a single row and it is already full — brand, three primary tabs, More and the chrome spend about 1150 of 1451 px at this width. So the trail gets a 40 px row of its own inside the sticky header block, above its one bottom rule.\n\nThe rule that keeps the two honest: the row is unconditional in the rail shell, because the band is there whether or not it is filled and the rail cannot name a record. It is conditional in the top-bar shell — only on a route with a leaf — because the active primary tab already names a top-level place and 40 px is 5% of the viewport.\n\nBelow 1024 px neither renders. Every preference falls through to the top bar there, and the page's own mobile header already carries ‹ People."
+    },
+    {
+      "id": "not-drawn",
+      "x": 0,
+      "y": 2918,
+      "w": 680,
+      "text": "Left alone, deliberately.\n\n· The card body. These boards draw Overview at low fidelity on purpose; the subject is the chrome above it, and #780 settled the pane's layout already.\n\n· TopNav's brand tile is rounded-xl on a 36×36 box. --radius-xl is 32 px, so it clamps to 18 and renders as a circle — exactly the defect DRIFT #4 fixed in the rail and did not fix here. Drawn as it renders. Worth its own line in the register, not this change.\n\n· The rail's own gaps. NavRail has no collapse control and no Settings row — collapsing is a Settings-page preference and Settings lives in the avatar menu.\n\n· Dark. Drawn on the Spine board and not on the direction boards. DRIFT #9 is explicit that reading is not enough — walk both themes in the running app before this ships."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

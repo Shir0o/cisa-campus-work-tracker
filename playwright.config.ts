@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { whatsNewSeenStorageState } from './e2e/helpers/whats-new';
+
 /**
  * Web E2E tests. Default (and CI) mode is the Firebase Local Emulator:
  * `npm run test:e2e:emulator` boots Auth + Firestore emulators, seeds them via
@@ -18,6 +20,10 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:3000',
+    // Fresh profiles would otherwise pop the "What's New" modal on every page
+    // load; its full-viewport backdrop intercepts clicks and every spec times
+    // out. Seed the "already seen" key instead of dismissing it per test.
+    storageState: whatsNewSeenStorageState,
     // Retries are off by design (determinism) — keep traces for failures so
     // the CI report upload is actually useful.
     trace: 'retain-on-failure',

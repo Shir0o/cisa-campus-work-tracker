@@ -47,4 +47,14 @@ describe('M2Release', () => {
     const tree = renderRelease({ role: 'admin', inWindow: true });
     expect(tree.queryByText('A few things are different')).toBeNull();
   });
+
+  it('opens on-demand when forceOpen is true even if already seen', async () => {
+    await markReleaseSeen(RELEASES[0].version);
+    const onClose = jest.fn();
+    const tree = renderRelease({ role: 'admin', forceOpen: true, onClose });
+    expect(tree.getByText('A few things are different')).toBeTruthy();
+
+    fireEvent.press(tree.getByText('Carry on'));
+    expect(onClose).toHaveBeenCalled();
+  });
 });

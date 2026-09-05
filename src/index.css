@@ -8,13 +8,16 @@
   --font-mono: var(--font-sans);
   --font-code: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Bento shape → Ink shape: 14 interactive, 24 containers, 10 small marks,
-     32 shell-level containers, 999 for pills/avatars. The values are exposed
-     on `@theme` so Tailwind's rounded-* utilities pick them up at the new sizes. */
+  /* Ink monotonic shape ladder (ADR 0009):
+     10 small marks / short controls, 12 intermediate, 14 interactive / panels,
+     20 sub-containers, 24 cards & dialogs, 32 shell-level containers, 40 large outer. */
   --radius-sm: 10px;
+  --radius-md: 12px;
   --radius: 14px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-3xl: 40px;
   --radius-pill: 999px;
 
   /* Shell-level shadow for raised chrome (the floating nav rail). The Ink
@@ -4029,6 +4032,8 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   min-height: 56px;
   border-bottom: 1px solid var(--outline-variant);
   flex: none;
+  /* the stage menu (#677) drops out of the header over the tab bar */
+  position: relative; z-index: 20;
 }
 .cd-head-avatar {
   width: 40px; height: 40px;
@@ -4060,6 +4065,42 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   background: var(--surface-variant); color: var(--on-surface-variant);
   white-space: nowrap;
 }
+/* ── the stage pill as a move control (#677) ──
+   Same geometry as the read-only pill; it gains a chevron, a hover state and
+   a dropdown so the move is reachable from every tab. Viewers keep the plain
+   pill above. */
+.cd-stage-wrap { position: relative; flex: none; display: inline-flex; }
+.cd-stage-pill.is-menu {
+  gap: 5px; padding-right: 5px;
+  border: 1px solid transparent; cursor: pointer;
+  font-family: var(--font-sans); max-width: 220px; overflow: hidden;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+/* the label truncates, the chevron never does */
+.cd-stage-pill.is-menu > span:first-child { min-width: 0; }
+.cd-stage-pill.is-menu.unset {
+  background: transparent; border-color: var(--outline);
+  color: var(--text-mute); font-style: italic;
+}
+.cd-stage-pill.is-menu:hover,
+.cd-stage-pill.is-menu.open {
+  background: var(--surface-variant); border-color: var(--outline);
+  color: var(--on-surface); font-style: normal;
+}
+.cd-stage-pill.is-menu .chev { opacity: .7; transition: transform 140ms ease; flex: none; }
+.cd-stage-pill.is-menu.open .chev { transform: rotate(180deg); }
+
+.cd-stage-menu {
+  position: absolute; left: 0; top: calc(100% + 8px); z-index: 30;
+  min-width: 244px; max-width: 300px;
+  background: var(--surface); border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+  padding: 6px 0;
+}
+.cd-stage-menu-label { padding: 6px 16px 8px; font-size: 11.5px; font-weight: 600; color: var(--text-mute); }
+/* Stages are admin-editable and there can be many, so the list scrolls. */
+.cd-stage-menu-list { max-height: 288px; overflow-y: auto; scrollbar-width: thin; }
+.cd-stage-menu-rule { height: 1px; background: var(--outline-variant); margin: 6px 0; }
 .cd-head-sub {
   font-size: 12.5px; color: var(--on-surface-variant);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -4200,6 +4241,23 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cd-step-name { font-size: 14px; color: var(--on-surface-variant); }
 .cd-journey-step.on .cd-step-name { color: var(--on-surface); font-weight: 600; }
 .cd-step-here { margin-left: auto; font-size: 12px; color: var(--accent); font-weight: 600; }
+/* A step row that can be moved to (#677): the same rhythm as the read-only
+   row, with a hover ground that bleeds into the section's padding. */
+.cd-journey-step.is-move {
+  width: calc(100% + 16px); margin: 0 -8px; padding: 10px 8px;
+  border-left: 0; border-right: 0; border-bottom: 0;
+  border-radius: var(--radius-sm);
+  background: none; text-align: left; font-family: var(--font-sans);
+  cursor: pointer; transition: background-color 120ms ease;
+}
+.cd-journey-step.is-move:hover { background: var(--hover); }
+.cd-step-move {
+  margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-mute);
+  display: inline-flex; align-items: center; gap: 3px;
+  opacity: 0; transition: opacity 120ms ease;
+}
+.cd-journey-step.is-move:hover .cd-step-move,
+.cd-journey-step.is-move:focus-visible .cd-step-move { opacity: 1; color: var(--accent); }
 
 .cd-owner { display: flex; align-items: center; gap: 12px; }
 .cd-owner-name { font-weight: 600; font-size: 14.5px; color: var(--on-surface); }

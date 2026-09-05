@@ -53,7 +53,7 @@ Settled with the reporter over eight rounds; every one had a live alternative.
 Values were lifted from `src/index.css` and the real component source — the
 stack card is `AttentionFeed.tsx:243–300` at its real dimensions, the thread
 pane is `Thread.tsx` in `pane` mode. Eight findings from that reading became
-rows 21–28 in [`../DRIFT.md`](../DRIFT.md); the ones the design depends on:
+rows 24–31 in [`../DRIFT.md`](../DRIFT.md); the ones the design depends on:
 
 - **`kind: "question"` has never been posted.** `Thread.tsx` hardcodes
   `kind: "comment"` at both post sites, so a Full-timer has never been able to

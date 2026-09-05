@@ -12,6 +12,7 @@ describe("PrivacyPolicy", () => {
       </MemoryRouter>
     );
 
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("Privacy Policy")).toBeInTheDocument();
     expect(screen.getByText("Enterprise Access & Data Protection Notice")).toBeInTheDocument();
     expect(screen.getByText("1. Overview & Purpose")).toBeInTheDocument();

@@ -12,6 +12,7 @@ describe("Support Component", () => {
       </MemoryRouter>
     );
 
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByText("App Support & Help Center")).toBeInTheDocument();
     expect(screen.getByText("CISA Campus Work Tracker Support & Documentation")).toBeInTheDocument();
     expect(screen.getByText("Contact Support")).toBeInTheDocument();

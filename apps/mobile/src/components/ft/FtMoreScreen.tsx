@@ -16,6 +16,7 @@ import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 import { useImpersonateSheet } from '../impersonate/ImpersonateLayer';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
+import { M2Release } from '../release/M2Release';
 
 export function FtMoreScreen() {
   return (
@@ -32,6 +33,7 @@ function FtMore() {
   const router = useRouter();
   const { open: openImpersonateSheet } = useImpersonateSheet();
   const [feedbackOpen, setFeedbackOpen] = React.useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = React.useState(false);
 
   const moreLabel = (key: string) => {
     const labels: Record<string, string> = {
@@ -149,6 +151,34 @@ function FtMore() {
           )}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={t('mobile.ft_more.whats_new', "What's New")}
+            onPress={() => setWhatsNewOpen(true)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              minHeight: 58,
+              paddingHorizontal: 18,
+              borderTopWidth: 1,
+              borderTopColor: c.widget.line,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
+              {t('mobile.ft_more.whats_new', "What's New")}
+            </Text>
+            <View
+              style={{
+                width: 9,
+                height: 9,
+                borderRightWidth: 2,
+                borderTopWidth: 2,
+                borderColor: c.widget.ink3,
+                transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t('mobile.ft_more.tell_us_how_its_going', "Tell us how it's going")}
             onPress={() => setFeedbackOpen(true)}
             style={({ pressed }) => ({
@@ -190,6 +220,11 @@ function FtMore() {
         </Text>
       </ScrollView>
       <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <M2Release
+        role={role}
+        forceOpen={whatsNewOpen}
+        onClose={() => setWhatsNewOpen(false)}
+      />
     </SafeAreaView>
   );
 }

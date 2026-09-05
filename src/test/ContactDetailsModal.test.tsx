@@ -24,7 +24,7 @@ vi.mock('../lib/threads', () => ({
   addThreadMessage: vi.fn(() => Promise.resolve()),
   toggleReaction: vi.fn(() => Promise.resolve()),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
-  THREAD_REACTIONS: ["🙏", "❤️", "🌱", "✅"],
+  THREAD_REACTIONS: ["❤️"],
 }));
 
 // Mock Auth
@@ -2556,5 +2556,140 @@ describe('removing interactions (#650)', () => {
   });
 });
 
+// ── Moving a stage from the contact page (#677) ────────────────────
+//
+// Before this, the only way to change a contact's stage was Edit details →
+// the PIPELINE STAGE select → Save. These cover the two direct affordances
+// that replaced that detour: the header pill's menu (reachable from every
+// tab) and the "Where they are" step rows in Overview.
+describe('stage move (#677)', () => {
+  const mockOnClose = vi.fn();
 
+  const STAGE_DOCS = [
+    { id: 's1', data: () => ({ label: 'First Contact', color: 'bg-primary-fixed-dim', order: 0 }) },
+    { id: 's2', data: () => ({ label: 'Second Contact', color: 'bg-primary', order: 1 }) },
+    { id: 's3', data: () => ({ label: 'Regular', color: 'bg-secondary', order: 2 }) },
+    { id: 's4', data: () => ({ label: 'Church', color: 'bg-board-sage', order: 3 }) },
+  ];
 
+  const renderWithRole = async (role: string, contact: any = mockContact) => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' },
+      isAdmin: role === 'admin',
+      role,
+    });
+    const utils = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />,
+    );
+    // The stage list is fetched on mount; wait for it to land.
+    await screen.findByRole('button', { name: /Move to a step/i });
+    return utils;
+  };
+
+  beforeEach(() => {
+    (firestore.getDocs as any).mockResolvedValue({ size: STAGE_DOCS.length, docs: STAGE_DOCS });
+  });
+
+  it('opens the step menu from the header pill and moves the contact', async () => {
+    await renderWithRole('operator');
+
+    fireEvent.click(screen.getByRole('button', { name: /Move to a step/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Church/ }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ stage: 'Church' }),
+      );
+    });
+  });
+
+  it('moves the contact from a step row in Where they are', async () => {
+    const { container } = await renderWithRole('operator');
+
+    const row = within(container.querySelector('.cd-journey') as HTMLElement)
+      .getByRole('button', { name: /First Contact/ });
+    fireEvent.click(row);
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ stage: 'First Contact' }),
+      );
+    });
+  });
+
+  it('records the move in history the way the edit form does', async () => {
+    await renderWithRole('operator');
+
+    fireEvent.click(screen.getByRole('button', { name: /Move to a step/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Church/ }));
+
+    await waitFor(() => {
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetId: 'contact-abc',
+          type: 'edit',
+          description: expect.stringContaining('stage: "Regular" → "Church"'),
+        }),
+      );
+    });
+  });
+
+  it('offers an undo that puts the contact back', async () => {
+    await renderWithRole('operator');
+
+    fireEvent.click(screen.getByRole('button', { name: /Move to a step/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Church/ }));
+
+    await waitFor(() => expect(firestore.updateDoc).toHaveBeenCalled());
+    (firestore.updateDoc as any).mockClear();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Undo$/i }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ stage: 'Regular' }),
+      );
+    });
+  });
+
+  it('lets an operator place a contact that has no stage yet', async () => {
+    await renderWithRole('operator', { ...mockContact, stage: '' });
+
+    const trigger = screen.getByRole('button', { name: /Move to a step/i });
+    expect(trigger).toHaveTextContent(/Not in a step yet/i);
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('menuitem', { name: /Second Contact/ }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ stage: 'Second Contact' }),
+      );
+    });
+  });
+
+  it('keeps the page read-only for viewers', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Read Only' },
+      isAdmin: false,
+      role: 'viewer',
+    });
+    const { container } = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('.cd-journey-step').length).toBe(STAGE_DOCS.length);
+    });
+
+    // The stage still reads, but nothing about it is actionable.
+    expect(screen.queryByRole('button', { name: /Move to a step/i })).not.toBeInTheDocument();
+    expect(
+      within(container.querySelector('.cd-journey') as HTMLElement).queryAllByRole('button'),
+    ).toHaveLength(0);
+  });
+});

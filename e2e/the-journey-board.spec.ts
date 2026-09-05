@@ -15,6 +15,9 @@
  *  - the Trainee sees the same updated board,
  *  - Student is redirected to `/` when they try to open `/board`,
  *  - the Full-timer's `/coordination` markdown view renders.
+ *
+ * A separate describe at the end covers moving a stage from the contact page
+ * itself (#677).
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -61,8 +64,12 @@ test.describe('The Journey Board (#628)', () => {
     await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible({
       timeout: 5_000,
     });
-    // Switch into the editor — "Edit details" is admin-only and is shown
-    // in the contact details header.
+    // Switch into the editor — "Edit details" is admin/fulltimer-only and is in
+    // the "More actions" overflow menu in the contact details header.
+    const moreActionsBtn = page.getByRole('button', { name: /more actions/i }).first();
+    await expect(moreActionsBtn).toBeVisible({ timeout: 5_000 });
+    await moreActionsBtn.click();
+
     const editBtn = page.getByRole('button', { name: /^edit details$/i }).first();
     await expect(editBtn).toBeVisible({ timeout: 5_000 });
     await editBtn.click();
@@ -150,5 +157,45 @@ test.describe('The Journey Board (#628)', () => {
     const body = page.locator('body');
     await expect(body).toBeVisible();
     await expect(body).not.toContainText('Missing or insufficient permissions');
+  });
+});
+
+/**
+ * Moving a stage from the contact page (#677).
+ *
+ * Deliberately its own describe, not part of the serial chain above: that
+ * chain is currently red at its "advance via the contact editor" step (the
+ * same failure reproduces on `main`), and a serial describe stops at its
+ * first failure — which skipped this test rather than running it. It is also
+ * written to work from whichever stage Lila is in when it runs, so it does
+ * not depend on the chain having moved her first.
+ */
+test.describe('Stage move from the contact page (#677)', () => {
+  test('Full-timer can move Lila to Regular without opening the editor', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await gotoBoard(page);
+
+    await expect(page.getByText('Lila Chen').first()).toBeVisible({ timeout: 10_000 });
+    await page.getByText('Lila Chen').first().click();
+    await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible({
+      timeout: 5_000,
+    });
+
+    // The header's stage pill is the move control — no Edit-details detour.
+    const stagePill = page.getByRole('button', { name: /move to a step/i }).first();
+    await expect(stagePill).toBeVisible({ timeout: 5_000 });
+    await stagePill.click();
+    await page.getByRole('menuitem', { name: /^Regular/ }).click();
+
+    // The move is confirmed by the shared undo snackbar and writes cleanly.
+    await expect(page.getByText(/moved to regular/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
+
+    // And it survives a hard reload: the pill now reads Regular.
+    await gotoBoard(page);
+    await page.getByText('Lila Chen').first().click();
+    await expect(
+      page.getByRole('button', { name: /move to a step: regular/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
   });
 });

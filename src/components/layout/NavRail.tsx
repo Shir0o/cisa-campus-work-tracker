@@ -29,6 +29,7 @@ import {
   type NavGroupLabel,
 } from '../../lib/permissions';
 import { useNavShell } from '../NavShellProvider';
+import { sectionHrefFor } from '../../lib/navTrail';
 import { Translate } from '../Translate';
 import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 import { SIGNUP_TITLE } from './SignupInvite';
@@ -131,9 +132,9 @@ export default function NavRail(_props: NavRailProps = {}) {
       onScrollCapture={() => setTip(null)}
       className={cn(
         // A floating slab, not a flush column: the gutter around it is what
-        // makes it read as an object (ADR 0003). `rounded-xl` is --radius-xl
-        // (32px), the shell-container step. The parent owns the padding.
-        'hidden lg:flex shrink-0 bg-rail rounded-xl shadow-shell flex-col h-full overflow-hidden',
+        // makes it read as an object (ADR 0003). `rounded-2xl` is --radius-2xl
+        // (32px), the shell-container step (ADR 0009). The parent owns the padding.
+        'hidden lg:flex shrink-0 bg-rail rounded-2xl shadow-shell flex-col h-full overflow-hidden',
         railWidth,
         'transition-[width] duration-200',
       )}
@@ -241,8 +242,9 @@ export default function NavRail(_props: NavRailProps = {}) {
 
         {/* No top padding: this block has no group label, so any top padding
             reads as an orphaned gap below the Elsewhere group (#747). The
-            collapsed-mode divider above the icon provides its own separation. */}
-        <div className="pb-3">
+            collapsed-mode divider above the icon provides its own separation.
+            pb-6 ensures comfortable breathing room at the bottom of the slab (#794). */}
+        <div className="pb-6">
           {collapsed && (
             <div
               aria-hidden="true"
@@ -306,8 +308,10 @@ interface RailItemProps {
 }
 
 function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemProps) {
-  const isActive =
-    currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href + '/'));
+  // `sectionHrefFor` resolves a path to the destination it belongs to, so a
+  // route that sits *under* one still lights its item. Matching the pathname
+  // directly left `/people/:contactId` selecting nothing at all (#803).
+  const isActive = sectionHrefFor(currentPath) === item.href;
   const label = item.href === '/' && role === 'admin' ? 'My Day' : item.label;
   // The spec requires the count to be readable on a screen reader even when
   // the badge is reduced to a dot (#665, "unread counts to remain visible when
@@ -316,9 +320,11 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
   const a11yLabel = unread > 0 ? `${label}, ${unread} waiting` : label;
 
   return (
-    <NavLink
+    // `Link`, not `NavLink`: NavLink derives `aria-current` from its own
+    // pathname match, which is the match that missed routes under a
+    // destination. Active state is computed above and set here.
+    <Link
       to={item.href}
-      end={item.href === '/'}
       aria-current={isActive ? 'page' : undefined}
       aria-label={unread > 0 ? a11yLabel : undefined}
       // The collapsed rail is icon-only, so the destination's label is
@@ -378,7 +384,7 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
         />
       )}
       {collapsed && <span className="sr-only">{label}</span>}
-    </NavLink>
+    </Link>
   );
 }
 

@@ -37,8 +37,8 @@ export interface ThreadMessage {
 /** A thread message tagged with the contact it belongs to. */
 export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
 
-// The small reaction set offered on every message.
-export const THREAD_REACTIONS = ["🙏", "❤️", "🌱", "✅"] as const;
+// The single like reaction offered on every message.
+export const THREAD_REACTIONS = ["❤️"] as const;
 
 // Each kind gets its own tone + label. Icons live in the Thread component (so
 // this stays free of JSX). nudge = a follow-up reminder, rendered distinctly.

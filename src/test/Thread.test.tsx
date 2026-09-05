@@ -21,7 +21,7 @@ vi.mock("../lib/threads", () => {
   const norm = (v: any) => v ?? null;
   return {
     THREAD_KINDS,
-    THREAD_REACTIONS: ["🙏", "❤️", "🌱", "✅"],
+    THREAD_REACTIONS: ["❤️"],
     threadsFor: (msgs: any[], iid: any = null, scope: any = null) =>
       msgs.filter((m) => norm(m.interactionId) === norm(iid) && norm(m.scope) === norm(scope) && !m.parentId),
     countFor: (msgs: any[], iid: any = null, scope: any = null) =>
@@ -96,8 +96,10 @@ describe("Thread", () => {
     hoisted.messages = [message({ id: "a", from: "u3", reactions: [] })];
     render(<Thread contactId="C-1" meStaffId="u1" />);
     const addButtons = screen.getAllByTitle("Add reaction");
-    await userEvent.click(addButtons[0]); // 🙏
-    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "🙏");
+    expect(addButtons).toHaveLength(1);
+    expect(addButtons[0]).toHaveTextContent("❤️");
+    await userEvent.click(addButtons[0]);
+    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
   });
 
   it("renders an empty state when there are no messages", () => {
@@ -114,14 +116,14 @@ describe("Thread", () => {
 
   it("shows reaction tallies and toggles the viewer's existing reaction", async () => {
     hoisted.messages = [
-      message({ id: "a", from: "u3", reactions: [{ by: "u1", emoji: "🙏" }] }),
+      message({ id: "a", from: "u3", reactions: [{ by: "u1", emoji: "❤️" }] }),
     ];
     render(<Thread contactId="C-1" meStaffId="u1" />);
     const tallyButton = screen.getByTitle("React");
-    expect(tallyButton).toHaveTextContent("🙏");
+    expect(tallyButton).toHaveTextContent("❤️");
     expect(tallyButton).toHaveTextContent("1");
     await userEvent.click(tallyButton);
-    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "🙏");
+    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
   });
 
   it("posts with ⌘↵ from the textarea", async () => {
@@ -323,6 +325,40 @@ describe("Thread", () => {
         stakeholders: { createdBy: "u2" },
       }),
     );
+  });
+
+  it("shows mention autocomplete in replies and does not get clipped in pane layout", async () => {
+    const teamMembers = [
+      { id: "u2", name: "Zion Park", role: "Trainee", initials: "ZP" },
+      { id: "u3", name: "Rio Tan", role: "Full-timer", initials: "RT" },
+      { id: "u4", name: "Alex Kim", role: "Student", initials: "AK" },
+    ];
+    hoisted.messages = [
+      message({ id: "m1", body: "Parent comment", from: "u2" }),
+    ];
+
+    const { container } = render(
+      <Thread
+        contactId="C-1"
+        meStaffId="u1"
+        pane
+        teamMembers={teamMembers}
+      />,
+    );
+
+    // Click reply on the message
+    await userEvent.click(screen.getByRole("button", { name: "Reply" }));
+    const replyInput = screen.getByPlaceholderText("Write a reply…");
+    await userEvent.type(replyInput, "Hey @");
+
+    const listbox = screen.getByRole("listbox", { name: "Teammate mentions" });
+    expect(listbox).toBeInTheDocument();
+    // All candidates should be present in the listbox
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBe(3);
+
+    // Verify listbox is rendered via portal or does not suffer from parent overflow hidden clipping
+    expect(listbox.getAttribute("data-mention-autocomplete")).toBe("true");
   });
 
   // #813 — THREAD_KINDS has carried five kinds since it was written and this

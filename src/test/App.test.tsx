@@ -228,6 +228,19 @@ describe('App Component', () => {
     });
   });
 
+  it('does not render the legacy ReleaseSheet with Carry on button', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /carry on/i })).not.toBeInTheDocument();
+  });
+
+
   it('throws error when useLayout is used outside LayoutProvider', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const TestComponent = () => {

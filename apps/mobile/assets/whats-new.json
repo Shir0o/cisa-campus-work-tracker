@@ -1,0 +1,72 @@
+{
+  "latestReleaseId": "2026-09-03-v1.4.0",
+  "releases": [
+    {
+      "id": "2026-09-03-v1.4.0",
+      "version": "1.4.0",
+      "title": "September Platform & Mobile Updates",
+      "date": "2026-09-03",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "overview": "Welcome to the latest version of CISA Campus Work Tracker! This update introduces custom release announcements, enhanced contact ownership tools, and expanded mobile navigation.",
+      "items": [
+        {
+          "text": "Fast keyboard shortcuts and global search with ⌘K palette",
+          "platforms": [
+            "web"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Interactive QR Bible study reader and editor",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Filter News Feed by team and teammate",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Two-phase Test Account Purge tool in Administrative Settings",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Touch targets and action layout optimizations across all screens",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Simplified prayer fold and history tracking",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Contact owner transfer when owner is unassigned and you are the creator",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        }
+      ]
+    }
+  ]
+}
