@@ -284,8 +284,13 @@ ${cleanMsg}
 *Created automatically from CISA Campus Work Tracker user feedback.*`;
 
           if (screenshot) {
-            const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || `${req.protocol}://${req.get('host')}`;
-            const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+            // APP_URL is operator-set on the backend deployment and has historically carried a
+            // trailing slash. A `//` after the host does not match this server's own
+            // /api/feedback/:id/screenshot route (nor the Cloudflare Pages /api/* function), so it
+            // renders as a broken image in a permanently-baked GitHub issue body. trim() before
+            // stripping so a pasted-in newline or space cannot defeat the strip.
+            const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || "https://cisa-campus-work-tracker.pages.dev";
+            const baseUrl = rawBaseUrl.trim().replace(/\/+$/, '');
             const imageUrl = `${baseUrl}/api/feedback/${docRef.id}/screenshot`;
             body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
           }
