@@ -81,12 +81,16 @@ _Avoid_: Edit user profile, rename user
 The defined cohort of people expected to attend a specific gathering or recurring series (`Event.roster`). Defaults to empty rather than defaulting to the entire contact database. Only roster members are tracked under "We missed" if absent; walk-ins can be marked present, integrated into the roster going forward (without retroactive absence penalties), or created on the spot by name. Roster management is restricted to Full-timers (`isAdmin`).
 _Avoid_: Member pool, invite list, attendance group
 
+**Entry point**:
+The durable slug a Bible study QR encodes — `/s/cisa-wednesday`. It outlives every Study that passes through it: it names a standing invitation rather than a term's content, and resolves to whichever Study is currently active and that Study's newest published Meeting. Displayed on a leader's phone at the gathering, never printed, so it is the one URL that must never change. A week taught in two rooms is two Entry points, not one Meeting split in half.
+_Avoid_: Short link, permalink, study URL, QR link
+
 **Study**:
-A Bible study series that runs over a term — the named arc ("Romans, Fall 2026") that a set of Meetings belongs to. Distinct from the "Bible study" option a student picks under "What are you drawn to?" at sign-up, which is an interest, not this.
+A Bible study series that runs over a term — the named arc ("Romans, Fall 2026") that a set of Meetings belongs to. Reached through an **Entry point**, which holds exactly one active Study at a time; ending a term and starting the next is a change of which Study is active, never a change of URL. Distinct from the "Bible study" option a student picks under "What are you drawn to?" at sign-up, which is an interest, not this.
 _Avoid_: Course, curriculum, series, Bible study (bare)
 
 **Meeting**:
-One week's Bible study document — the outline, readings and prompts for a single gathering, and the thing a single QR code opens. A Meeting is what a student reads on their phone; it is not the gathering's attendance record. When a Study splits its room into two, that week is two Meetings sharing an opening and a closing.
+One week's Bible study document — the outline, readings and prompts for a single gathering. A Meeting is what a student reads on their phone; it is not the gathering's attendance record. No QR points at a Meeting: a scan reaches an **Entry point**, which resolves to the newest published Meeting of its active Study. When a Study splits its room into two, that week is two Entry points, each with its own Study — never one Meeting divided.
 _Avoid_: Session, lesson, week, class
 
 **Section**:
