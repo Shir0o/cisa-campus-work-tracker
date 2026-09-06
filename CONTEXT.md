@@ -158,3 +158,15 @@ _Avoid_: Read/done, scanned, dismissed, cleared, archived
 An in-app modal presented to users upon launching an updated web PWA or mobile build, highlighting user-facing changes and improvements for that release. Backed by markdown manifests in `content/whats-new/` compiled into static manifests, tracking the latest seen release ID locally on each device, and always re-accessible via Settings.
 _Avoid_: Release popup, changelog blast, splash alert
 
+
+**Attention Feed**:
+The "What's new" worklist at the top of My Day (desktop and mobile) — every person the day has touched, stacked per contact, partitioned into **On you** and **Around the team**, grouped new-people-first. Its page shape (side-by-side, stacked, or a single line) is a pure function of how much there is to show, never of what has been expanded (ADR 0011). Built in `src/lib/attention.ts`; rendered by `AttentionFeed`.
+_Avoid_: News feed, inbox, notification list
+
+**On you**:
+The Attention Feed stack of things addressed to you or on people you carry — questions and follow-up asks, @mentions, assigned to-dos, and your own contacts. Honestly empty on a quiet day: the empty card still renders as a labelled region, says "Nothing's waiting on you.", and on desktop split days hosts On the horizon and Your prayers beneath it.
+_Avoid_: My items, assigned to me
+
+**Around the team**:
+The Attention Feed stack of everything else the team has been doing on people you aren't carrying. Being long is normal: it is never truncated, capped, or internally scrolled to match another column's height.
+_Avoid_: Team activity feed, other people's news

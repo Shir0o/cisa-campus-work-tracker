@@ -572,12 +572,67 @@ export function partitionAttentionStacks(
   return { onYou, aroundTeam };
 }
 
+// ── The shape of the feed (#823) ────────────────────────────────────────────
+// "On you" is usually empty and "Around the team" is usually long, so a fixed
+// side-by-side pair of equal columns leaves a blank rectangle beneath a
+// one-line "On you". The feed picks one of three shapes instead, from how much
+// there is to show — never from what the reader has expanded, so clicking
+// "show them" never reflows the page mid-read. See docs/adr/0011.
+
+/** Total stacks at or above which the feed splits into two columns. A starting
+ *  value, not a finding: below it the whole feed is roughly a screen stacked. */
+export const ATTENTION_LAYOUT_THRESHOLD = 5;
+
+export type AttentionLayoutMode = "strip" | "stacked" | "split";
+
+/**
+ * The feed's shape, a pure function of the two partitioned stack arrays (or
+ * their lengths) and nothing else — no DOM, no measurement, so server and
+ * client cannot disagree. Evaluated in order:
+ *
+ * - team empty  → "stacked": "On you" full width, alone.
+ * - total >= ATTENTION_LAYOUT_THRESHOLD → "split": "On you" (plus the borrowed
+ *   personal column) beside "Around the team". Checked before the empty-"On
+ *   you" case, so the day this rule exists for — nothing on you, a long team
+ *   column — splits instead of stripping.
+ * - total < threshold, "On you" empty → "strip": a single full-width line
+ *   above a full-width team section.
+ * - total < threshold, "On you" non-empty → "stacked": both sections full width.
+ *
+ * Counts are of ALL stacks, not the visible ones: the collapsed limit caps
+ * what renders, the shape describes how much there is.
+ */
+export function attentionLayout(
+  onYou: readonly unknown[] | number,
+  aroundTeam: readonly unknown[] | number,
+): AttentionLayoutMode {
+  const onYouCount = typeof onYou === "number" ? onYou : onYou.length;
+  const teamCount = typeof aroundTeam === "number" ? aroundTeam : aroundTeam.length;
+  if (teamCount === 0) return "stacked";
+  if (onYouCount + teamCount >= ATTENTION_LAYOUT_THRESHOLD) return "split";
+  return onYouCount === 0 ? "strip" : "stacked";
+}
+
 
 // ── Filtering the feed (#727) ───────────────────────────────────────────────
 // The filter cuts on the ACTOR — the trainee who added the contact or logged
 // the conversation — never on the contact. It is the only axis on which a team
 // means anything, and it is what makes "filter the news" and "group people into
 // teams" one feature rather than two.
+
+/**
+ * The threads this role's feed may show: team-scope Discussion is
+ * Full-timer-only (#727), hidden before the security rules see it. The feed
+ * and My Day both derive the feed's shape from these threads (#823) — they
+ * must cut on exactly this predicate, or the two can disagree about whether
+ * the personal column is lent and render it twice or not at all.
+ */
+export function feedVisibleThreads(
+  threads: ThreadMessageWithContact[],
+  role?: string,
+): ThreadMessageWithContact[] {
+  return threads.filter((m) => m.scope !== "team" || role === "admin");
+}
 
 export interface AttentionFilter {
   /** A team id from `lib/teams`, or null/absent for everyone. */

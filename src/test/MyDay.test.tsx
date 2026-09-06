@@ -2,6 +2,7 @@ import "./useMediaQuery.mock";
 import "../lib/useMediaQuery";
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import MyDay from '../views/MyDay';
@@ -138,6 +139,15 @@ const prayerDoc = (id: string, data: any): DocLike => ({
 const eventDoc = (id: string, data: any): DocLike => ({
   id,
   ref: { path: `events/${id}` },
+  data: () => data,
+});
+const interactionDoc = (
+  id: string,
+  contactId: string,
+  data: { userId: string; content: string; createdAt: string; dateTime: string; type: string; title: string },
+): DocLike => ({
+  id,
+  ref: { path: `contacts/${contactId}/interactions/${id}` },
   data: () => data,
 });
 
@@ -970,5 +980,62 @@ describe('MyDay', () => {
       // MyDayMobile root element is present
       expect(document.querySelector('.md-mobile')).toBeInTheDocument();
     });
+  });
+
+  // ── The Attention Feed's shape (#823) ────────────────────────────────────
+  // A team touch on somebody else's contact lands in "Around the team", so a
+  // quiet "On you" beside a busy team column is the reported day: the bento's
+  // personal column travels up beneath "On you" and renders exactly once.
+  const teamTouches = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      interactionDoc(`i-team-${i}`, `c-team-${i}`, {
+        userId: 'u2',
+        content: `Chatted after class ${i}`,
+        createdAt: new Date().toISOString(),
+        dateTime: new Date().toISOString(),
+        type: 'meetup',
+        title: 'Chatted after class',
+      }),
+    );
+
+  it('lends the personal column to the feed on a split day, exactly once', async () => {
+    // Interaction items reach only staff views — read as a Full-timer's My Day.
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(5) }));
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
+
+    expect(screen.getAllByText('On the horizon')).toHaveLength(1);
+    expect(screen.getAllByText('Your prayers')).toHaveLength(1);
+    const onYou = screen.getByRole('region', { name: 'On you' });
+    expect(onYou.parentElement!.textContent).toContain('On the horizon');
+    expect(onYou.parentElement!.textContent).toContain('Your prayers');
+
+    // Your sheep and Your week pair up in the freed space.
+    const sheep = screen.getByText('Your sheep').closest('section')!;
+    const week = screen.getByText('Your week').closest('section')!;
+    expect(sheep.parentElement).not.toBe(week.parentElement);
+  });
+
+  it('keeps the personal column in the bento when the feed does not split', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
+    render(<MyDay />);
+    await waitFor(() =>
+      expect(screen.getByRole('region', { name: 'Around the team' })).toBeInTheDocument(),
+    );
+
+    expect(screen.getAllByText('On the horizon')).toHaveLength(1);
+    const onYou = screen.getByRole('region', { name: 'On you' });
+    expect(onYou.parentElement!.textContent).not.toContain('On the horizon');
+    const sheep = screen.getByText('Your sheep').closest('section')!;
+    const week = screen.getByText('Your week').closest('section')!;
+    expect(sheep.parentElement).toBe(week.parentElement);
   });
 });

@@ -21,10 +21,12 @@ import type { Contact, Interaction, Notification } from "../../types";
 import { Avatar } from "./primitives";
 import {
   buildAttentionItems,
+  attentionLayout,
   attentionStacksFor,
   worklistGroupsFor,
   partitionAttentionStacks,
   attentionPhrase,
+  feedVisibleThreads,
   filterAttentionStacks,
   actorsInStacks,
   isRestingFilter,
@@ -558,6 +560,7 @@ export default function AttentionFeed({
   onOpenContact,
   onToast,
   mobile,
+  personalSlot,
   className,
 }: {
   contacts?: Contact[];
@@ -582,6 +585,10 @@ export default function AttentionFeed({
   ) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
+  /** The host's own column (On the horizon + Your prayers), rendered beneath
+   *  "On you" in split mode only (#823). The feed renders a slot and never
+   *  knows what the host lent it. */
+  personalSlot?: React.ReactNode;
   className?: string;
 }) {
   const { user, effectiveUserId, role } = useAuth();
@@ -646,7 +653,7 @@ export default function AttentionFeed({
   // Team-scope Discussion is Full-timer-only; hide it from any other role even
   // before the security rules filter it out server-side.
   const threads = useMemo(
-    () => (propsThreads || liveThreads).filter((m) => m.scope !== "team" || role === "admin"),
+    () => feedVisibleThreads(propsThreads || liveThreads, role),
     [propsThreads, liveThreads, role],
   );
 
@@ -824,16 +831,22 @@ export default function AttentionFeed({
     setPickedWho(null);
   };
 
-  // If mobile or the team column is empty (e.g. trainee view where all items are
-  // onYou), render stacked
-  const isSingleColumn = mobile || !hasTeamColumn;
+  // The shape (#823) — a pure function of the unfiltered partition, never of
+  // what the reader has expanded, so "show them" never reflows the page.
+  // Split is the only two-column shape, and the borrow is desktop-only: mobile
+  // already places On the horizon beneath the feed (#841). Every full-width
+  // shape lays its cards out multi-up, so the extra width buys density
+  // instead of whitespace.
+  const layout = attentionLayout(allSides.onYou, allSides.aroundTeam);
+  const split = layout === "split" && !mobile;
+  const multiUp = !mobile && layout !== "split";
 
   const renderCards = (group: { bucket: WorklistBucket; stacks: AttentionStack[] }, showReach: boolean) => (
     <div key={group.bucket} className="flex flex-col gap-2.5">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/70 px-1">
         {t(GROUP_LABEL[group.bucket])}
       </div>
-      <div className="flex flex-col gap-3">
+      <div className={multiUp ? "grid items-start gap-3 sm:grid-cols-2" : "flex flex-col gap-3"}>
         {group.stacks.map((stack) => (
           <WorklistCard
             key={stack.id}
@@ -852,6 +865,128 @@ export default function AttentionFeed({
         ))}
       </div>
     </div>
+  );
+
+  // ── The two sections — the container is what the shape changes (#823). ──
+  const onYouSection = (
+    <section
+      aria-label={t("whatsNew.on_you")}
+      className="bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs"
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
+        <div className="flex items-baseline gap-2.5 flex-wrap">
+          <h3 className="font-serif text-lg text-on-surface font-semibold m-0">
+            {t("whatsNew.on_you")}
+          </h3>
+          <span className="text-xs text-on-surface-variant">
+            {onYou.length === 0
+              ? t("whatsNew.nothing_waiting")
+              : t(onYou.length === 1 ? "whatsNew.because_you_carry_one" : "whatsNew.because_you_carry").replace(
+                  "{n}",
+                  String(onYou.length),
+                )}
+          </span>
+          {onYouOpen > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+              {t("whatsNew.to_work_through").replace("{n}", String(onYouOpen))}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {onYou.length === 0 ? (
+        <p className="text-xs text-on-surface-variant italic py-2">
+          {t("whatsNew.nothings_waiting_on_you")}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-5">{onYouGroups.map((group) => renderCards(group, false))}</div>
+      )}
+
+      {hiddenOnYouCount > 0 && !showAllOnYou && (
+        <button
+          type="button"
+          onClick={() => setShowAllOnYou(true)}
+          className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
+        >
+          {t(
+            hiddenOnYouCount === 1 ? "whatsNew.show_more_person" : "whatsNew.show_more_people",
+          ).replace("{n}", String(hiddenOnYouCount))}
+        </button>
+      )}
+
+      {showAllOnYou && onYou.length > COLLAPSED_LIMIT && (
+        <button
+          type="button"
+          onClick={() => setShowAllOnYou(false)}
+          className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
+        >
+          {t("whatsNew.show_less")}
+        </button>
+      )}
+    </section>
+  );
+
+  const teamSection = (
+    <section
+      aria-label={t("whatsNew.around_the_team")}
+      className={cn(
+        "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
+        split && "lg:col-span-6",
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
+        <div className="flex items-baseline gap-2.5 flex-wrap">
+          <h3 className="font-serif text-lg text-on-surface font-semibold m-0">
+            {t("whatsNew.around_the_team")}
+          </h3>
+          {aroundTeamOpen > 0 && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
+              {t("whatsNew.to_work_through").replace("{n}", String(aroundTeamOpen))}
+            </span>
+          )}
+          <span className="text-xs text-on-surface-variant">
+            {t("whatsNew.around_the_team_sub")}
+          </span>
+        </div>
+      </div>
+
+      {aroundTeam.length === 0 ? (
+        <p className="text-xs text-on-surface-variant italic py-2">
+          {t("whatsNew.no_team_touches")}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-5">{aroundTeamGroups.map((group) => renderCards(group, true))}</div>
+      )}
+
+      {hiddenTeamCount > 0 && !showAllTeam && (
+        <div className="mt-2 pt-3 border-t border-dashed border-outline-variant flex items-center justify-between gap-3">
+          <span className="text-xs text-on-surface-variant">
+            {t(
+              hiddenTeamCount === 1
+                ? "whatsNew.older_update_across_team"
+                : "whatsNew.older_updates_across_team",
+            ).replace("{n}", String(hiddenTeamCount))}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAllTeam(true)}
+            className="px-3 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
+          >
+            {t("whatsNew.show_them")}
+          </button>
+        </div>
+      )}
+
+      {showAllTeam && aroundTeam.length > COLLAPSED_LIMIT && (
+        <button
+          type="button"
+          onClick={() => setShowAllTeam(false)}
+          className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
+        >
+          {t("whatsNew.show_less")}
+        </button>
+      )}
+    </section>
   );
 
   return (
@@ -1027,137 +1162,21 @@ export default function AttentionFeed({
             {newOnly && resting ? t("whatsNew.show_all") : t("whatsNew.show_everyone")}
           </button>
         </div>
+      ) : split ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Split (#823): the borrowed personal column travels beneath "On
+              you" — the feed renders a slot and never knows what the host
+              lent it. */}
+          <div className="flex flex-col gap-6 min-w-0 lg:col-span-6">
+            {onYouSection}
+            {personalSlot}
+          </div>
+          {hasTeamColumn && teamSection}
+        </div>
       ) : (
-        <div
-          className={cn(
-            isSingleColumn
-              ? "flex flex-col gap-6"
-              : "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start",
-          )}
-        >
-          {/* ── Left Column: "On you" ── */}
-          <section
-            aria-label={t("whatsNew.on_you")}
-            className={cn(
-              "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
-              !isSingleColumn && "lg:col-span-6",
-            )}
-          >
-            <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
-              <div className="flex items-baseline gap-2.5 flex-wrap">
-                <h3 className="font-serif text-lg text-on-surface font-semibold m-0">
-                  {t("whatsNew.on_you")}
-                </h3>
-                <span className="text-xs text-on-surface-variant">
-                  {onYou.length === 0
-                    ? t("whatsNew.nothing_waiting")
-                    : t(onYou.length === 1 ? "whatsNew.because_you_carry_one" : "whatsNew.because_you_carry").replace(
-                        "{n}",
-                        String(onYou.length),
-                      )}
-                </span>
-                {onYouOpen > 0 && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
-                    {t("whatsNew.to_work_through").replace("{n}", String(onYouOpen))}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {onYou.length === 0 ? (
-              <p className="text-xs text-on-surface-variant italic py-2">
-                {t("whatsNew.all_clear_here")}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-5">{onYouGroups.map((group) => renderCards(group, false))}</div>
-            )}
-
-            {hiddenOnYouCount > 0 && !showAllOnYou && (
-              <button
-                type="button"
-                onClick={() => setShowAllOnYou(true)}
-                className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
-              >
-                {t(
-                  hiddenOnYouCount === 1 ? "whatsNew.show_more_person" : "whatsNew.show_more_people",
-                ).replace("{n}", String(hiddenOnYouCount))}
-              </button>
-            )}
-
-            {showAllOnYou && onYou.length > COLLAPSED_LIMIT && (
-              <button
-                type="button"
-                onClick={() => setShowAllOnYou(false)}
-                className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
-              >
-                {t("whatsNew.show_less")}
-              </button>
-            )}
-          </section>
-
-          {/* ── Right Column / Stacked Section: "Around the team" ── */}
-          {hasTeamColumn && (
-            <section
-              aria-label={t("whatsNew.around_the_team")}
-              className={cn(
-                "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
-                !isSingleColumn && "lg:col-span-6",
-              )}
-            >
-              <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
-                <div className="flex items-baseline gap-2.5 flex-wrap">
-                  <h3 className="font-serif text-lg text-on-surface font-semibold m-0">
-                    {t("whatsNew.around_the_team")}
-                  </h3>
-                  {aroundTeamOpen > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-accent">
-                      {t("whatsNew.to_work_through").replace("{n}", String(aroundTeamOpen))}
-                    </span>
-                  )}
-                  <span className="text-xs text-on-surface-variant">
-                    {t("whatsNew.around_the_team_sub")}
-                  </span>
-                </div>
-              </div>
-
-              {aroundTeam.length === 0 ? (
-                <p className="text-xs text-on-surface-variant italic py-2">
-                  {t("whatsNew.no_team_touches")}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-5">{aroundTeamGroups.map((group) => renderCards(group, true))}</div>
-              )}
-
-              {hiddenTeamCount > 0 && !showAllTeam && (
-                <div className="mt-2 pt-3 border-t border-dashed border-outline-variant flex items-center justify-between gap-3">
-                  <span className="text-xs text-on-surface-variant">
-                    {t(
-                      hiddenTeamCount === 1
-                        ? "whatsNew.older_update_across_team"
-                        : "whatsNew.older_updates_across_team",
-                    ).replace("{n}", String(hiddenTeamCount))}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAllTeam(true)}
-                    className="px-3 py-1 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer"
-                  >
-                    {t("whatsNew.show_them")}
-                  </button>
-                </div>
-              )}
-
-              {showAllTeam && aroundTeam.length > COLLAPSED_LIMIT && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTeam(false)}
-                  className="mt-1 py-1.5 text-xs font-medium text-accent hover:underline text-center cursor-pointer"
-                >
-                  {t("whatsNew.show_less")}
-                </button>
-              )}
-            </section>
-          )}
+        <div className="flex flex-col gap-6">
+          {onYouSection}
+          {hasTeamColumn && teamSection}
         </div>
       )}
 
