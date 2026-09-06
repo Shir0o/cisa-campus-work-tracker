@@ -1063,11 +1063,14 @@ export default function AttentionFeed({
             )}
           </section>
 
-          {/* ── Right Column: "Around the team" ── */}
-          {!isSingleColumn && (
+          {/* ── Right Column / Stacked Section: "Around the team" ── */}
+          {hasTeamColumn && (
             <section
               aria-label={t("whatsNew.around_the_team")}
-              className="bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs lg:col-span-6"
+              className={cn(
+                "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
+                !isSingleColumn && "lg:col-span-6",
+              )}
             >
               <div className="flex items-baseline justify-between gap-3 flex-wrap border-b border-outline-variant/40 pb-3">
                 <div className="flex items-baseline gap-2.5 flex-wrap">
