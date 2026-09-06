@@ -514,6 +514,8 @@ describe('NavRail (#664)', () => {
     const signupLink = screen.getByRole('link', { name: /Sign-up form/i });
     // Inspect the wrapper's class list. The fix replaces the prior
     // `py-3` (expanded) with `pb-3` only — no top padding at all.
+    // In expanded mode, `-mt-2.5` cancels the preceding group's `pb-3` (12px)
+    // so the spacing to the Sign-up item matches standard item spacing (2px / space-y-0.5).
     const wrapper = signupLink.closest('ul')!.parentElement!;
     const classes = wrapper.className.split(/\s+/);
     expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('py-3');
@@ -521,6 +523,7 @@ describe('NavRail (#664)', () => {
     expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('py-2');
     expect(classes, `Sign-up block should not carry any top-padding utility`).not.toContain('pt-2');
     expect(classes).toContain('pb-6');
+    expect(classes).toContain('-mt-2.5');
   });
 
   it('draws the hairline divider above the Sign-up icon when the rail is collapsed (#747)', () => {

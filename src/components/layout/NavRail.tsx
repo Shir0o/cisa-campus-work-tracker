@@ -240,11 +240,12 @@ export default function NavRail(_props: NavRailProps = {}) {
           </div>
         )}
 
-        {/* No top padding: this block has no group label, so any top padding
-            reads as an orphaned gap below the Elsewhere group (#747). The
-            collapsed-mode divider above the icon provides its own separation.
+        {/* Spacing above Sign-up: this block has no group label.
+            In expanded mode, -mt-2.5 cancels the preceding group's pb-3 (12px)
+            leaving 2px (matching intra-group space-y-0.5 item spacing).
+            In collapsed mode, the hairline divider above the icon provides separation.
             pb-6 ensures comfortable breathing room at the bottom of the slab (#794). */}
-        <div className="pb-6">
+        <div className={cn('pb-6', !collapsed && '-mt-2.5')}>
           {collapsed && (
             <div
               aria-hidden="true"
