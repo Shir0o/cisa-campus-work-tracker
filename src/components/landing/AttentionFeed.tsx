@@ -6,6 +6,8 @@ import {
   MessageSquare,
   HelpCircle,
   Heart,
+  Mail,
+  Phone,
   Bell,
   Check,
   ClipboardList,
@@ -254,6 +256,7 @@ function WorklistCard({
   onComplete,
   onToast,
   mobile,
+  showReach,
 }: {
   stack: AttentionStack;
   contact?: Contact;
@@ -265,6 +268,7 @@ function WorklistCard({
   onComplete: (stack: AttentionStack, verb: WorklistVerb) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
+  showReach?: boolean;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -415,6 +419,33 @@ function WorklistCard({
                     <MessageSquare className="w-3.5 h-3.5" />
                     {wantsAReply(stack) ? t("whatsNew.write_back") : t("whatsNew.comment")}
                   </button>
+                )}
+                {showReach && contact && contact.phone && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`tel:${contact.phone}`);
+                    }}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+                      mobile ? "min-h-11" : "py-1.5",
+                    )}
+                  >
+                    <Phone className="w-3.5 h-3.5" /> {t("whatsNew.reach_call")}
+                  </button>
+                )}
+                {showReach && contact && contact.email && (
+                  <a
+                    href={`mailto:${contact.email}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+                      mobile ? "min-h-11" : "py-1.5",
+                    )}
+                  >
+                    <Mail className="w-3.5 h-3.5" /> {t("whatsNew.reach_email")}
+                  </a>
                 )}
               </div>
 
@@ -797,7 +828,7 @@ export default function AttentionFeed({
   // onYou), render stacked
   const isSingleColumn = mobile || !hasTeamColumn;
 
-  const renderCards = (group: { bucket: WorklistBucket; stacks: AttentionStack[] }) => (
+  const renderCards = (group: { bucket: WorklistBucket; stacks: AttentionStack[] }, showReach: boolean) => (
     <div key={group.bucket} className="flex flex-col gap-2.5">
       <div className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/70 px-1">
         {t(GROUP_LABEL[group.bucket])}
@@ -816,6 +847,7 @@ export default function AttentionFeed({
             onComplete={handleComplete}
             onToast={onToast}
             mobile={mobile}
+            showReach={showReach}
           />
         ))}
       </div>
@@ -1037,7 +1069,7 @@ export default function AttentionFeed({
                 {t("whatsNew.all_clear_here")}
               </p>
             ) : (
-              <div className="flex flex-col gap-5">{onYouGroups.map(renderCards)}</div>
+              <div className="flex flex-col gap-5">{onYouGroups.map((group) => renderCards(group, false))}</div>
             )}
 
             {hiddenOnYouCount > 0 && !showAllOnYou && (
@@ -1093,7 +1125,7 @@ export default function AttentionFeed({
                   {t("whatsNew.no_team_touches")}
                 </p>
               ) : (
-                <div className="flex flex-col gap-5">{aroundTeamGroups.map(renderCards)}</div>
+                <div className="flex flex-col gap-5">{aroundTeamGroups.map((group) => renderCards(group, true))}</div>
               )}
 
               {hiddenTeamCount > 0 && !showAllTeam && (

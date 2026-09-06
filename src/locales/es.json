@@ -1681,6 +1681,8 @@
     "opened_not_finished": "abierto, sin terminar",
     "open_days": "Abierto hace {n} días",
     "n_more": "{n} más",
+    "reach_call": "Llamar",
+    "reach_email": "Correo",
     "all_n": "Los {n}",
     "hide": "Ocultar",
     "a_contact": "Contacto",
