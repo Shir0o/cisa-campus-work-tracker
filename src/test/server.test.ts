@@ -337,6 +337,54 @@ describe("POST /api/feedback", () => {
     expect(bodyStr).not.toContain("https://app.example.com//api/feedback/");
   });
 
+  it("falls back to the canonical product URL for the screenshot link when APP_URL and VITE_APP_URL are both unset", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("VITE_APP_URL", "");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/45", number: 45 }), { status: 201 })
+    );
+
+    const res = await request(app).post("/api/feedback").send({
+      message: "Bug with screenshot and no APP_URL",
+      kind: "bug",
+      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    });
+    expect(res.status).toBe(200);
+
+    const [_, init] = fetchMock.mock.calls[0];
+    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
+    expect(bodyStr).toContain("![Feedback Screenshot](https://cisa-campus-work-tracker.pages.dev/api/feedback/");
+    expect(bodyStr).toContain("/screenshot)");
+    // Never the request host, and never the retired misspelled domain (ADR 0002).
+    expect(bodyStr).not.toContain("127.0.0.1");
+    expect(bodyStr).not.toContain("localhost");
+    expect(bodyStr).not.toContain("traker");
+  });
+
+  it("prefers VITE_APP_URL over the canonical fallback when APP_URL is unset", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    vi.stubEnv("APP_URL", "");
+    vi.stubEnv("VITE_APP_URL", "https://vite.example.com/");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/46", number: 46 }), { status: 201 })
+    );
+
+    const res = await request(app).post("/api/feedback").send({
+      message: "Bug with screenshot and only VITE_APP_URL",
+      kind: "bug",
+      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    });
+    expect(res.status).toBe(200);
+
+    const [_, init] = fetchMock.mock.calls[0];
+    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
+    expect(bodyStr).toContain("![Feedback Screenshot](https://vite.example.com/api/feedback/");
+    expect(bodyStr).not.toContain("https://vite.example.com//api/feedback/");
+  });
+
   it("uses the authenticated Firebase user when an Authorization header is present", async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "uid-1", email: "sarah@example.com", name: "Sarah" });
     const res = await request(app)

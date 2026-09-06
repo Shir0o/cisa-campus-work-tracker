@@ -284,7 +284,7 @@ ${cleanMsg}
 *Created automatically from CISA Campus Work Tracker user feedback.*`;
 
           if (screenshot) {
-            const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || `${req.protocol}://${req.get('host')}`;
+            const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || "https://cisa-campus-work-tracker.pages.dev";
             const baseUrl = rawBaseUrl.replace(/\/+$/, '');
             const imageUrl = `${baseUrl}/api/feedback/${docRef.id}/screenshot`;
             body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
