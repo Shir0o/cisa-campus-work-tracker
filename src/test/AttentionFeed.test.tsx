@@ -405,3 +405,142 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
     expect(screen.getByText("Sam Wilson")).toBeInTheDocument();
   });
 });
+
+// ── The shape of the feed (#823) ────────────────────────────────────────────
+// "On you" is usually empty and "Around the team" usually long, so the feed
+// picks its shape from how much there is to show instead of always pairing two
+// equal-width columns. The rule itself is attentionLayout's; these tests pin
+// what each shape means on the page, by role and name.
+
+describe("AttentionFeed shape (#823)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+    __resetInboxState();
+    vi.clearAllMocks();
+  });
+
+  const contact = (over: Partial<Contact> = {}): Contact =>
+    ({
+      id: "c1",
+      name: "Alex Johnson",
+      createdBy: "u3",
+      createdAt: new Date().toISOString(),
+      stage: "Freshman Contact",
+      owner: "u3",
+      ...over,
+    }) as Contact;
+
+  // n teammates doing things on people the reader isn't carrying — the
+  // "Around the team" side of a typical day.
+  const teamDay = (n: number) => {
+    const contacts: Contact[] = [];
+    const interactions: Interaction[] = [];
+    for (let i = 0; i < n; i++) {
+      const c = contact({ id: `c_team_${i}`, name: `Teammate person ${i}`, createdBy: "u2", owner: "u2" });
+      contacts.push(c);
+      interactions.push({
+        id: `i_team_${i}`,
+        contactId: c.id,
+        userId: "u2",
+        content: `Chatted after class ${i}`,
+        createdAt: new Date().toISOString(),
+        dateTime: new Date().toISOString(),
+        type: "meetup",
+        title: "Chatted after class",
+      } as unknown as Interaction);
+    }
+    return { contacts, interactions };
+  };
+
+  // A question addressed to the reader — the one thing that is always "On you".
+  const question: ThreadMessageWithContact = {
+    id: "t1",
+    contactId: "c1",
+    from: "u3",
+    fromName: "Zion",
+    kind: "question",
+    body: "How should we follow up with Alex?",
+    at: new Date().toISOString(),
+    interactionId: null,
+    reactions: [],
+  };
+
+  const SLOT = <div>Borrowed personal column</div>;
+
+  const renderFeed = (props: Partial<React.ComponentProps<typeof AttentionFeed>>) =>
+    render(
+      <AttentionFeed
+        threads={[]}
+        staffNameMap={{ u2: "Zion", u3: "Zion" }}
+        personalSlot={SLOT}
+        {...props}
+      />,
+    );
+
+  it("splits 'On you' beside 'Around the team' on a typical day, with the borrowed column beneath", () => {
+    const { contacts, interactions } = teamDay(5);
+    renderFeed({ contacts, interactions });
+
+    const onYou = screen.getByRole("region", { name: "On you" });
+    const team = screen.getByRole("region", { name: "Around the team" });
+    // Two columns: the sections no longer share a container.
+    expect(onYou.parentElement).not.toBe(team.parentElement);
+    // The borrowed personal column renders beneath "On you", and only here.
+    expect(onYou.parentElement).toContainElement(screen.getByText("Borrowed personal column"));
+    // The empty side says so plainly.
+    expect(screen.getByText("Nothing's waiting on you.")).toBeInTheDocument();
+  });
+
+  it("stacks full-width siblings on a light day, and never borrows the column", () => {
+    const day = teamDay(1);
+    renderFeed({ contacts: [contact(), ...day.contacts], interactions: day.interactions, threads: [question] });
+
+    const onYou = screen.getByRole("region", { name: "On you" });
+    const team = screen.getByRole("region", { name: "Around the team" });
+    expect(onYou.parentElement).toBe(team.parentElement);
+    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
+  });
+
+  it("strips to a single line when 'On you' is empty and the day is quiet", () => {
+    const { contacts, interactions } = teamDay(2);
+    renderFeed({ contacts, interactions });
+
+    const onYou = screen.getByRole("region", { name: "On you" });
+    const team = screen.getByRole("region", { name: "Around the team" });
+    expect(onYou.parentElement).toBe(team.parentElement);
+    expect(screen.getByText("Nothing's waiting on you.")).toBeInTheDocument();
+    expect(screen.queryByText("All clear here.")).not.toBeInTheDocument();
+    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
+  });
+
+  it("keeps 'On you' full width alone when the team has nothing", () => {
+    renderFeed({ contacts: [contact()], interactions: [], threads: [question] });
+
+    expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Around the team" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
+  });
+
+  it("keeps mobile single-column — the borrow is desktop-only", () => {
+    const { contacts, interactions } = teamDay(5);
+    renderFeed({ contacts, interactions, mobile: true });
+
+    const onYou = screen.getByRole("region", { name: "On you" });
+    const team = screen.getByRole("region", { name: "Around the team" });
+    expect(onYou.parentElement).toBe(team.parentElement);
+    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
+  });
+
+  it("holds the shape while 'show them' expands the team column", () => {
+    const { contacts, interactions } = teamDay(6);
+    renderFeed({ contacts, interactions });
+
+    fireEvent.click(screen.getByRole("button", { name: "Show them" }));
+
+    const onYou = screen.getByRole("region", { name: "On you" });
+    const team = screen.getByRole("region", { name: "Around the team" });
+    expect(onYou.parentElement).not.toBe(team.parentElement);
+    expect(screen.getByText("Borrowed personal column")).toBeInTheDocument();
+  });
+});

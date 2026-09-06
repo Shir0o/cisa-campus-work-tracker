@@ -31,7 +31,7 @@ import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
 import { useLayout } from "../App";
-import { Contact, PrayerRecord, Event, Stage } from "../types";
+import { Contact, PrayerRecord, Event, Stage, Interaction } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
@@ -70,7 +70,7 @@ import {
 } from "../lib/personalPrayers";
 import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
-import { subscribeAllThreads } from "../lib/threads";
+import { subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
 import { useDayGoal, goalNewToday } from "../lib/goal";
 import {
   parseMs,
@@ -89,6 +89,13 @@ import {
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
 import AttentionFeed from "../components/landing/AttentionFeed";
+import {
+  buildAttentionItems,
+  attentionStacksFor,
+  partitionAttentionStacks,
+  attentionLayout,
+  feedVisibleThreads,
+} from "../lib/attention";
 import { subscribeInboxState } from "../lib/inboxState";
 import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
@@ -480,6 +487,8 @@ export default function MyDay() {
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [tasks, setTasks] = useState<MyTask[]>([]);
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
   const [personalPrayers, setPersonalPrayers] = useState<PersonalPrayer[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [desktopMessagingApp, setDesktopMessagingApp] = useState<DesktopMessagingApp | undefined>();
@@ -595,6 +604,15 @@ export default function MyDay() {
       query(collectionGroup(db, "interactions"), orderBy("createdAt", "desc"), limit(500)),
       (snap) => {
         interactionTouches = ingest(snap as never, "content");
+        // The raw interactions also feed the Attention Feed's shape decision,
+        // so the page and the feed partition the same data (#823).
+        setInteractions(
+          snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as Record<string, unknown>),
+            contactId: d.ref.path.split("/")[1],
+          })) as Interaction[],
+        );
         publish();
       },
       (e) => onLoadError(e, "interactions (collectionGroup)"),
@@ -611,6 +629,7 @@ export default function MyDay() {
           ms: parseMs(m.at) ?? NaN,
           note: m.body.trim(),
         }));
+      setThreads(messages); // raw, for the feed's shape decision (#823)
       publish();
     });
 
@@ -671,6 +690,27 @@ export default function MyDay() {
     () => (prefContactIds != null ? new Set(prefContactIds) : myCreatedIds),
     [prefContactIds, myCreatedIds],
   );
+  // The Attention Feed's shape (#823): the feed and this page both call
+  // attentionLayout over the same partitioned stacks, so neither can render
+  // the personal column twice or not at all. The inputs mirror exactly what
+  // the feed on this page renders — tasks and notifications are not part of
+  // My Day's feed.
+  const feedSides = useMemo(() => {
+    const items = buildAttentionItems({
+      role,
+      uid: uid || "",
+      contacts,
+      interactions,
+      threads: feedVisibleThreads(threads, role),
+      personalContactIds,
+    });
+    const stacks = attentionStacksFor(items, uid || "");
+    return partitionAttentionStacks(stacks, contacts, uid || "", role, personalContactIds);
+  }, [role, uid, contacts, interactions, threads, personalContactIds]);
+  const feedLayout = attentionLayout(feedSides.onYou, feedSides.aroundTeam);
+  // Only a rendered feed can host the lent column; without a uid there is no
+  // feed, so nothing may be lent.
+  const personalColumnLent = Boolean(uid) && feedLayout === "split";
 
   // The picker shows checked (personal) contacts first, then the rest; both
   // groups alphabetical (#400).
@@ -864,159 +904,9 @@ export default function MyDay() {
     );
   }
 
-  return (
-    <PageContainer variant="wide">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-      >
-        {/* ── Greeting + the state of your own day, in prose ── */}
-        <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
-          <div className="flex-1">
-            <p className="text-sm text-on-surface-variant">
-              {format(new Date(), 'EEEE, MMMM d')} · {t('myDay.your_day')}
-            </p>
-            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">
-              {getGreeting()}, {firstName}.
-            </h1>
-            <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
-              {t('myDay.working_closely')
-                .replace('{contacts}', `${myLeaders.length} ${myLeaders.length === 1 ? t('myDay.contact') : t('myDay.contacts')}`)
-                .replace('{isAre}', leftToDo === 1 ? t('myDay.is') : t('myDay.are'))
-                .replace('{tasks}', String(leftToDo))
-                .replace('{thingThings}', leftToDo === 1 ? t('myDay.thing') : t('myDay.things'))
-                .replace('{isAre2}', leftToDo === 1 ? t('myDay.is') : t('myDay.are'))}
-              {staleLeader && (
-                <>{" "}{t('myDay.its_been_since')
-                  .replace('{weeks}', `${Math.max(1, Math.round(staleLeader.days / 7))} ${Math.max(1, Math.round(staleLeader.days / 7)) === 1 ? t('myDay.week') : t('myDay.weeks')}`)
-                  .replace('{name}', staleLeader.contact.name.split(" ")[0])}</>
-              )}{" "}
-              {t('myDay.and_prayers_to_hold')
-                .replace('{prayers}', String(prayersCount))
-                .replace('{unit}', prayersCount === 1 ? t('myDay.prayer') : t('myDay.prayers'))}
-            </p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => navigate("/prayer")}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
-            >
-              <HeartHandshake className="w-4 h-4" /> {t('myDay.pray_together')}
-            </button>
-            <button
-              onClick={() => navigate("/coordination")}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
-            >
-              <ClipboardList className="w-4 h-4" /> {t('myDay.the_teams_board')}
-            </button>
-          </div>
-        </header>
-
-        {/* ── Questions for the team — person-less trainee questions (#545) ── */}
-        {uid && <AskStack className="mt-8" />}
-
-        {/* ── Needs your attention — the unified attention feed ── */}
-        {uid && (
-          <AttentionFeed
-            contacts={contacts}
-            personalContactIds={personalContactIds}
-            onOpenContact={openContact}
-            className="mt-8"
-          />
-        )}
-
-        {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
-          {/* Next up — a solid accent card. The ink MUST be `accent-on`, not a
-              literal white: `--accent-strong` is near-black in light and near-WHITE
-              in dark, so hardcoded white text disappears entirely in dark mode.
-              This card was the one place that still did it. docs/design/DRIFT.md #9. */}
-          <div className="lg:col-span-6 rounded-3xl p-6 text-accent-on bg-accent-strong flex flex-col justify-between shadow-xs md-next">
-            {thisWeek.length > 0 ? (() => {
-              const lead = thisWeek[0];
-              const d = new Date(lead.date);
-              const facts = [lead.type, lead.time, lead.location].filter(Boolean) as string[];
-              return (
-                <>
-                  <div>
-                    <div className="text-xs font-medium text-accent-on/75 flex items-center gap-2">
-                      <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
-                      {lead.synced && (
-                        <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2.5 mt-2">
-                      <h3 className="text-2xl font-semibold text-accent-on truncate">{lead.title || lead.name}</h3>
-                    </div>
-                    <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5 max-w-2xl">
-                      {t('myDay.good_chance')}
-                    </p>
-                  </div>
-                  {facts.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {facts.map((f) => (
-                        <span
-                          key={f}
-                          className="text-xs text-accent-on/85 bg-accent-on/15 border border-accent-on/20 rounded-full px-3 py-1"
-                        >
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </>
-              );
-            })() : (
-              <div>
-                <div className="text-xs font-medium text-accent-on/75">{t('myDay.this_week')}</div>
-                <h3 className="text-2xl font-semibold text-accent-on mt-2">{t('myDay.all_clear_this_week')}</h3>
-                <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5">
-                  {t('myDay.no_gatherings_scheduled')}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Figures card */}
-          <div className="lg:col-span-6 bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col justify-between gap-4">
-            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-4">
-              <Figure n={myLeaders.length} label={t('myDay.contacts_in_care')} />
-              <Figure n={prayersCount} label={t('myDay.prayers_to_hold')} />
-              <Figure n={leftToDo} label={t('myDay.tasks_to_hold')} />
-              <Figure n={thisWeek.length} label={t('myDay.gatherings_this_week')} />
-              {role === 'admin' && goal.on && newPeopleToday > 0 && (
-                <Figure
-                  n={newPeopleToday}
-                  label={t('myDay.new_people_today_across_team', 'new people today, across the team')}
-                />
-              )}
-            </div>
-            <span className="text-xs text-on-surface-variant/80 italic mt-2">
-              {t('myDay.numbers_notice')}
-            </span>
-          </div>
-        </div>
-
-        <FirstRunCard
-          role={role}
-          userId={uid}
-          context={{
-            contactsCount: contacts.length,
-            interactionsCount: touches.length,
-            prayersCount: personalPrayers.length + prayers.length,
-            todosCreatedCount: tasks.filter((t) => t.createdById === uid).length,
-            todosCompletedCount: tasks.filter((t) => t.status === "completed").length,
-            docsCount: 1,
-            messagesCount: 1,
-            feedbackCount: 0,
-          }}
-          className="mt-8"
-        />
-
-        {/* ── Two-Column Bento Grid: Left (Horizon + Prayers) & Right (Your Sheep + Week) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
-          {/* ── Left Column: On the horizon + Your prayers ── */}
+  // ── Bento sections, hoisted so the left column can be lent to the feed on
+  //     split days (#823) and render exactly once.
+  const personalColumn = (
           <div className="flex flex-col gap-10 min-w-0">
             {/* On the horizon */}
             <section>
@@ -1167,10 +1057,9 @@ export default function MyDay() {
               </div>
             </section>
           </div>
+  );
 
-          {/* ── Right Column: Your sheep + Your week ── */}
-          <div className="flex flex-col gap-10 min-w-0">
-            {/* ── The leaders you're caring for (Your sheep) ── */}
+  const sheepSection = (
             <section>
               <SectionHead
                 title={t('myDay.your_sheep')}
@@ -1206,8 +1095,9 @@ export default function MyDay() {
                 </p>
               )}
             </section>
+  );
 
-            {/* ── Your week ── */}
+  const weekSection = (
             <section>
               <SectionHead
                 title={t('myDay.your_week')}
@@ -1257,7 +1147,178 @@ export default function MyDay() {
               )}
               {awaySentence && <p className="md-week-away">{awaySentence}</p>}
             </section>
+  );
+  return (
+    <PageContainer variant="wide">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+      >
+        {/* ── Greeting + the state of your own day, in prose ── */}
+        <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+          <div className="flex-1">
+            <p className="text-sm text-on-surface-variant">
+              {format(new Date(), 'EEEE, MMMM d')} · {t('myDay.your_day')}
+            </p>
+            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">
+              {getGreeting()}, {firstName}.
+            </h1>
+            <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
+              {t('myDay.working_closely')
+                .replace('{contacts}', `${myLeaders.length} ${myLeaders.length === 1 ? t('myDay.contact') : t('myDay.contacts')}`)
+                .replace('{isAre}', leftToDo === 1 ? t('myDay.is') : t('myDay.are'))
+                .replace('{tasks}', String(leftToDo))
+                .replace('{thingThings}', leftToDo === 1 ? t('myDay.thing') : t('myDay.things'))
+                .replace('{isAre2}', leftToDo === 1 ? t('myDay.is') : t('myDay.are'))}
+              {staleLeader && (
+                <>{" "}{t('myDay.its_been_since')
+                  .replace('{weeks}', `${Math.max(1, Math.round(staleLeader.days / 7))} ${Math.max(1, Math.round(staleLeader.days / 7)) === 1 ? t('myDay.week') : t('myDay.weeks')}`)
+                  .replace('{name}', staleLeader.contact.name.split(" ")[0])}</>
+              )}{" "}
+              {t('myDay.and_prayers_to_hold')
+                .replace('{prayers}', String(prayersCount))
+                .replace('{unit}', prayersCount === 1 ? t('myDay.prayer') : t('myDay.prayers'))}
+            </p>
           </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => navigate("/prayer")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
+            >
+              <HeartHandshake className="w-4 h-4" /> {t('myDay.pray_together')}
+            </button>
+            <button
+              onClick={() => navigate("/coordination")}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <ClipboardList className="w-4 h-4" /> {t('myDay.the_teams_board')}
+            </button>
+          </div>
+        </header>
+
+        {/* ── Questions for the team — person-less trainee questions (#545) ── */}
+        {uid && <AskStack className="mt-8" />}
+
+        {/* ── Needs your attention — the unified attention feed ── */}
+        {uid && (
+          <AttentionFeed
+            contacts={contacts}
+            interactions={interactions}
+            threads={threads}
+            personalContactIds={personalContactIds}
+            onOpenContact={openContact}
+            personalSlot={personalColumnLent ? personalColumn : undefined}
+            className="mt-8"
+          />
+        )}
+
+        {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+          {/* Next up — a solid accent card. The ink MUST be `accent-on`, not a
+              literal white: `--accent-strong` is near-black in light and near-WHITE
+              in dark, so hardcoded white text disappears entirely in dark mode.
+              This card was the one place that still did it. docs/design/DRIFT.md #9. */}
+          <div className="lg:col-span-6 rounded-3xl p-6 text-accent-on bg-accent-strong flex flex-col justify-between shadow-xs md-next">
+            {thisWeek.length > 0 ? (() => {
+              const lead = thisWeek[0];
+              const d = new Date(lead.date);
+              const facts = [lead.type, lead.time, lead.location].filter(Boolean) as string[];
+              return (
+                <>
+                  <div>
+                    <div className="text-xs font-medium text-accent-on/75 flex items-center gap-2">
+                      <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
+                      {lead.synced && (
+                        <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2.5 mt-2">
+                      <h3 className="text-2xl font-semibold text-accent-on truncate">{lead.title || lead.name}</h3>
+                    </div>
+                    <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5 max-w-2xl">
+                      {t('myDay.good_chance')}
+                    </p>
+                  </div>
+                  {facts.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {facts.map((f) => (
+                        <span
+                          key={f}
+                          className="text-xs text-accent-on/85 bg-accent-on/15 border border-accent-on/20 rounded-full px-3 py-1"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })() : (
+              <div>
+                <div className="text-xs font-medium text-accent-on/75">{t('myDay.this_week')}</div>
+                <h3 className="text-2xl font-semibold text-accent-on mt-2">{t('myDay.all_clear_this_week')}</h3>
+                <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5">
+                  {t('myDay.no_gatherings_scheduled')}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Figures card */}
+          <div className="lg:col-span-6 bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col justify-between gap-4">
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-4">
+              <Figure n={myLeaders.length} label={t('myDay.contacts_in_care')} />
+              <Figure n={prayersCount} label={t('myDay.prayers_to_hold')} />
+              <Figure n={leftToDo} label={t('myDay.tasks_to_hold')} />
+              <Figure n={thisWeek.length} label={t('myDay.gatherings_this_week')} />
+              {role === 'admin' && goal.on && newPeopleToday > 0 && (
+                <Figure
+                  n={newPeopleToday}
+                  label={t('myDay.new_people_today_across_team', 'new people today, across the team')}
+                />
+              )}
+            </div>
+            <span className="text-xs text-on-surface-variant/80 italic mt-2">
+              {t('myDay.numbers_notice')}
+            </span>
+          </div>
+        </div>
+
+        <FirstRunCard
+          role={role}
+          userId={uid}
+          context={{
+            contactsCount: contacts.length,
+            interactionsCount: touches.length,
+            prayersCount: personalPrayers.length + prayers.length,
+            todosCreatedCount: tasks.filter((t) => t.createdById === uid).length,
+            todosCompletedCount: tasks.filter((t) => t.status === "completed").length,
+            docsCount: 1,
+            messagesCount: 1,
+            feedbackCount: 0,
+          }}
+          className="mt-8"
+        />
+
+        {/* ── Bento: Your sheep + Your week. On split days the personal
+            column (On the horizon + Your prayers) travels up beside the feed
+            (#823), and Your sheep and Your week pair up alone. ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
+          {!personalColumnLent && personalColumn}
+          {/* One column on ordinary days; two side-by-side cells when the
+              personal column has been lent (#823). */}
+          {personalColumnLent ? (
+            <>
+              <div className="flex flex-col gap-10 min-w-0">{sheepSection}</div>
+              <div className="flex flex-col gap-10 min-w-0">{weekSection}</div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-10 min-w-0">
+              {sheepSection}
+              {weekSection}
+            </div>
+          )}
         </div>
 
         {/* ── Your-contacts picker ── */}

@@ -3,6 +3,8 @@ import {
   buildAttentionItems,
   attentionStacksFor,
   partitionAttentionStacks,
+  attentionLayout,
+  ATTENTION_LAYOUT_THRESHOLD,
   attentionPhrase,
   isTiedTo,
   type AttentionItem,
@@ -145,6 +147,46 @@ describe("partitionAttentionStacks (#595)", () => {
     // Even though c_team is not owned by u1, being mentioned routes it to onYou!
     expect(onYou.some((s) => s.contactId === "c_team")).toBe(true);
     expect(aroundTeam.some((s) => s.contactId === "c_team")).toBe(false);
+  });
+});
+
+// ── #823: the shape of the Attention Feed ───────────────────────────────────
+// The shape is a pure function of how much there is to show — never of what
+// has been expanded — so every branch is testable without a DOM.
+
+describe("attentionLayout (#823)", () => {
+  it("keeps 'On you' full width alone when the team has nothing", () => {
+    expect(attentionLayout(0, 0)).toBe("stacked");
+    expect(attentionLayout(3, 0)).toBe("stacked");
+  });
+
+  it("splits beside 'Around the team' at the threshold and above", () => {
+    expect(attentionLayout(0, ATTENTION_LAYOUT_THRESHOLD)).toBe("split");
+    expect(attentionLayout(2, 3)).toBe("split");
+    expect(attentionLayout(4, 9)).toBe("split");
+  });
+
+  it("collapses to a strip one below the threshold when 'On you' is empty", () => {
+    expect(attentionLayout(0, ATTENTION_LAYOUT_THRESHOLD - 1)).toBe("strip");
+    expect(attentionLayout(0, 1)).toBe("strip");
+  });
+
+  it("stacks full width below the threshold when 'On you' has work", () => {
+    expect(attentionLayout(1, 1)).toBe("stacked");
+    expect(attentionLayout(2, 2)).toBe("stacked");
+  });
+
+  // The day this issue reports: nothing waiting on you, plenty around the
+  // team. The count is checked first, so this day splits — it must never
+  // strip the reader's own column away.
+  it("splits the reported day — empty 'On you', long team column", () => {
+    expect(attentionLayout(0, 12)).toBe("split");
+  });
+
+  it("reads stacks as well as lengths, and counts what there is", () => {
+    const team = Array.from({ length: ATTENTION_LAYOUT_THRESHOLD }, (_, i) => ({ id: `s${i}` }));
+    expect(attentionLayout([], team)).toBe("split");
+    expect(attentionLayout([], team.slice(0, 3))).toBe("strip");
   });
 });
 
