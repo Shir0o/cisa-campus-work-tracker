@@ -22,7 +22,6 @@ function mapMeeting(d: { id: string; data: () => Record<string, any> }): Meeting
     title: data.title || '',
     sections: data.sections || [],
     published: !!data.published,
-    siblingId: data.siblingId,
     md: data.md,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,

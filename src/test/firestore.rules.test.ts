@@ -2473,5 +2473,20 @@ describeRules('Firestore Security Rules', () => {
       const unauthDb = getFirestore();
       await assertFails(getDoc(doc(unauthDb, 'board_docs', 'doc-team-pastoral')));
     });
+
+    it('BS7: a Meeting document carrying the removed siblingId field is still valid (issue #858)', async () => {
+      await seedMeetingUsers();
+      const adminDb = getFirestore({ uid: 'admin1' });
+      // siblingId was removed from validation; legacy documents that carry it
+      // must remain readable and writable.
+      await assertSucceeds(setDoc(doc(adminDb, 'bible_study_meetings', 'romans-legacy'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Legacy field document',
+        published: true,
+        siblingId: 'romans-wk2',
+      }));
+      await assertSucceeds(getDoc(doc(adminDb, 'bible_study_meetings', 'romans-legacy')));
+    });
   });
 });

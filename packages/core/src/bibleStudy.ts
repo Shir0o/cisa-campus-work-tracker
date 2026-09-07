@@ -20,7 +20,6 @@ export type Meeting = {
   title: string;
   sections: Section[];
   published: boolean;
-  siblingId?: string;
   md?: string;
   createdAt?: unknown;
   updatedAt?: unknown;

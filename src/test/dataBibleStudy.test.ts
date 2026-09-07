@@ -7,7 +7,7 @@ import {
   setMeetingPublished,
   deleteMeeting,
 } from '../lib/data/bibleStudy';
-import type { Section } from '../lib/bibleStudy';
+import type { Section, Meeting } from '../lib/bibleStudy';
 
 vi.mock('../lib/firebase', () => ({ db: {} }));
 
@@ -62,9 +62,10 @@ describe('bibleStudy data service', () => {
         title: 'Peace',
         sections: [],
         published: true,
+        // Legacy documents may still carry the removed field (issue #858).
+        siblingId: 'romans-wk2',
       }),
     });
-
     const cb = vi.fn();
     const unsub = subscribePublishedStudyMeetings(fakeDb, 'romans', cb);
 
@@ -76,7 +77,11 @@ describe('bibleStudy data service', () => {
         published: true,
       }),
     ]);
-    expect(typeof unsub).toBe('function');
+    // A legacy document that still carries the removed siblingId field maps
+    // cleanly — the field is dropped, not rejected (issue #858).
+    const mapped = cb.mock.calls[0]?.[0] as Meeting[] | undefined;
+    expect(mapped).toHaveLength(1);
+    expect('siblingId' in mapped![0]).toBe(false);
   });
 
   it('subscribeStudyMeetings passes full list to callback', () => {

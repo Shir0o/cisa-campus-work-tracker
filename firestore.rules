@@ -859,8 +859,7 @@ service cloud.firestore {
                data.date is string && data.date.size() <= 64 &&
                data.title is string && data.title.size() <= 200 &&
                data.published is bool &&
-               (!('md' in data) || (data.md is string && data.md.size() <= 100000)) &&
-               (!('siblingId' in data) || (data.siblingId is string && data.siblingId.size() <= 128));
+               (!('md' in data) || (data.md is string && data.md.size() <= 100000));
       }
 
       // Public unauthenticated read of published meetings. Drafts readable only by staff (admins).
