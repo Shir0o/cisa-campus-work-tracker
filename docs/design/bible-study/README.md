@@ -5,14 +5,14 @@ public URL a student reaches by scanning a QR code.
 
 Canvas: https://claude.ai/code/artifact/ba2465c0-a117-42d7-88e4-6b94b876ff07
 
-Glossary terms (Study, Meeting, Section, Passage, Prompt, Blank) live in
-`CONTEXT.md`.
+Glossary terms (Entry point, Study, Meeting, Section, Passage, Prompt, Blank)
+live in `CONTEXT.md`.
 
 ## Settled
 
 | | |
 |---|---|
-| Entry | One QR per Meeting; `/s/:studyId` redirects to newest. A stale scan shows the date, no redirect. |
+| Entry | One durable QR per **Entry point** (`/s/:slug`), shown on a leader's phone, never printed. Resolves slug → active Study → newest published Meeting. Reversed the earlier "one QR per Meeting" — see ADR 0011. |
 | Public surface | Read-only. Nothing anonymous is ever written. |
 | Structure | Author-defined Sections, one per screen; outline points, Passage, Prompt — all optional, order as written. |
 | Motion | Scroll-parallax, click to advance, fullscreen. A long Section scrolls in place. |
@@ -21,9 +21,9 @@ Glossary terms (Study, Meeting, Section, Passage, Prompt, Blank) live in
 | Navigation | Auto-hiding edge scrubber, Sections only, labelled from headings. |
 | Theme | Light and dark, following the phone. |
 | Content | Own collection. Markdown + two conventions (blockquote = Passage, marked line = Prompt), parsed at publish. Reuses the TipTap editor and `ReadOnlyDoc`. |
-| Splits | Two Meetings, two QRs, shared opening and closing. Neither shows the other's Passage. |
+| Splits | Two **Entry points**, each with its own Study, populated by duplicate-week. Opening and closing are duplicated, not shared. `siblingId` removed — see ADR 0011. |
 | Reader surfaces | Public web (phone), plus the native app and installed PWA for signed-in users. No desktop reader. |
-| Desktop | Admin editing only. |
+| Desktop | Admin editing only — but the Meetings index and present mode must also work on a phone, since the QR is displayed from one. Reversed — see ADR 0011. |
 
 Governing principle from the last round: **the author decides, the page obeys.**
 Sections sit exactly where they are written; the index is labelled from the

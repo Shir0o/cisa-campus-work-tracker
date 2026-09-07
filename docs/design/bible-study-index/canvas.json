@@ -1,0 +1,33 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",        "x": 0,    "y": 0,    "w": 1440, "h": 900, "title": "Weeks index — desktop" },
+    { "file": "IndexPhone.dc.html",  "x": 1540, "y": 0,    "w": 390,  "h": 844, "title": "Weeks index — phone" },
+    { "file": "Editor.dc.html",      "x": 0,    "y": 1060, "w": 1440, "h": 900, "title": "Week editor — desktop" },
+    { "file": "UnsavedGuard.dc.html","x": 1540, "y": 1060, "w": 560,  "h": 360, "title": "Leaving an unsaved week" },
+    { "file": "Present.dc.html",     "x": 0,    "y": 2120, "w": 390,  "h": 844, "title": "Present mode — the code you hold up" },
+    { "file": "EmptyStates.dc.html", "x": 490,  "y": 2120, "w": 1322, "h": 1060, "title": "What a scan finds when there is no week" }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0, "y": -430, "w": 1930,
+      "text": "Issue #822 — \"bible study needs a index and not just replace the same one every week\".\n\nThe fix is not a list. The reason a week felt overwritten is that nothing in the product held a Study, and nothing held the URL a QR points at, so the newest published Meeting was the only reachable thing. These six frames add the two records and the three surfaces that make them legible: an Entry point that owns a permanent code, a Study that is swapped behind it each term, and a week index a Full-timer actually works from.\n\nStatic mockups. Every colour, radius, font and control height is lifted from the app — Lexend and Plus Jakarta Sans, the Ink palette, 24px cards, 14px panels, 44px rows, the 232px rail. Copy is drafted, not final; the Romans weeks are realistic sample content."
+    },
+    {
+      "id": "note-index",
+      "x": -460, "y": 0, "w": 400,
+      "text": "THE INDEX — /bible-study\n\nThe left column answers \"what have we got\", the right column answers \"what will a student see\", and those are different questions. Keeping them apart is the whole design: week 6 sits at the top as a draft while week 5 carries the Live now mark, so the gap between what you are writing and what is reachable is visible without reading a single date.\n\nThe row menu is open on week 4 on purpose. Delete is present but disabled, with the reason written underneath rather than hidden in a tooltip — a published week may already be on someone's screen, so unpublish is a deliberate first step. Duplicate is here because it is also how a split week gets made: a second Entry point, populated from this menu.\n\nThe phone version exists because the QR is shown from a phone. It is not a courtesy layout — it is where Show QR actually gets pressed, standing in a room.\n\nOpen question for you: the segmented All / Published / Drafts filter earns its place at 12 weeks and looks like clutter at 4. Worth cutting for v1?"
+    },
+    {
+      "id": "note-editor",
+      "x": -460, "y": 1060, "w": 400,
+      "text": "THE EDITOR — /bible-study/:meetingId\n\nThree changes from the shipped design.\n\nThe week list is gone from here — it moved to the index, which is what the issue asked for. What replaces it in the header is a back link, so the editor is now a place you enter and leave rather than a screen that silently swaps documents underneath you.\n\nThe QR panel is gone from the third pane. It said \"QR Code Link\" beside a dated URL, which taught the wrong model: the code does not belong to the week. What sits there instead states the relationship in one sentence and hands off to present mode.\n\nSplit into two is removed from the header. Splits are two Entry points now, made from the index's duplicate action.\n\nThe unsaved chip and the guard beside it are the reason the index is safe to ship: without them, the list you asked for becomes a way to lose a week's writing in one click. Three buttons, not two — cancelling and discarding are different intentions and should never share a control."
+    },
+    {
+      "id": "note-room",
+      "x": -460, "y": 2120, "w": 400,
+      "text": "THE ROOM, AND THE STUDENT\n\nPresent mode is white, not dark. Every other reader surface follows the phone's theme; this one does not, because a dark ground behind a QR code hurts scan reliability and this screen has exactly one job. Everything else on it is deliberately small — the code is the interface.\n\nThe three states to its right are the ones the entry-point model creates, and they must read differently or the indirection becomes a liability.\n\nFalls back is the one that matters. It shows real content, which is right — a student who scans on Tuesday should get something to read. But the date is stated at the top rather than implied, because \"here is a study\" and \"here is last week's study\" must never look identical.\n\nNothing yet and Between terms are quiet on purpose. There is no action a student can take on either, so neither offers one; the second says the code is worth keeping, because it is — that is the point of a durable Entry point.\n\nNo fake status bars anywhere: the real one draws on top."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

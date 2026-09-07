@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --border:#E4E4E7; --border-soft:#F0F0F2; --gs-outline:#A1A1AA;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --rail:#0A0A0B; --rail-on:#FFFFFF; --rail-on-dim:rgba(255,255,255,0.62);
+      --rail-selected:#FFFFFF; --rail-on-selected:#0A0A0B;
+      --rail-line:rgba(255,255,255,0.10);
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-sage:oklch(0.55 0.15 145);  --t-sage-soft:oklch(0.55 0.15 145 / 0.14);
+      --t-clay:oklch(0.55 0.15 42);   --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+      --t-rose:oklch(0.55 0.15 18);   --t-rose-soft:oklch(0.55 0.15 18 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--text-dim);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    svg{display:block}
+    .dsp{font-family:"Plus Jakarta Sans",sans-serif}
+    .scrim{width:560px;height:360px;display:flex;align-items:center;justify-content:center;
+      background:rgba(10,10,11,0.38);padding:24px}
+    .dlg{width:100%;background:var(--bg);border-radius:24px;padding:24px;
+      box-shadow:0 20px 56px rgba(10,10,11,0.28);display:flex;flex-direction:column;gap:10px}
+    .dt{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.02em;margin:0}
+    .db{margin:0;font-size:14px;line-height:1.6;color:var(--text-dim)}
+    .acts{display:flex;align-items:center;gap:8px;margin-top:12px}
+    .b{display:inline-flex;align-items:center;justify-content:center;height:42px;padding:0 16px;
+      border-radius:999px;font-size:13.5px;font-weight:500;border:1px solid var(--border);color:var(--text)}
+    .b.warn{border-color:transparent;background:var(--t-rose-soft);color:var(--t-rose);font-weight:600}
+    .b.pri{margin-left:auto;border:0;background:var(--primary);color:var(--on-primary);font-weight:600;padding:0 20px}
+  </style>
+</helmet>
+
+<div class="scrim">
+  <div class="dlg">
+    <h2 class="dt">You haven&#39;t saved week 6</h2>
+    <p class="db">Opening week 5 will lose what you&#39;ve written here.</p>
+    <div class="acts">
+      <span class="b">Stay here</span>
+      <span class="b warn">Discard and open</span>
+      <span class="b pri">Save, then open</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --panel:#F4F4F5; --panel-2:#EAEAEC;
+      --text:#0A0A0B; --text-dim:#52525B; --text-mute:#A1A1AA;
+      --border:#E4E4E7; --border-soft:#F0F0F2; --gs-outline:#A1A1AA;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent-soft:rgba(10,10,11,0.06); --accent-line:rgba(10,10,11,0.18);
+      --rail:#0A0A0B; --rail-on:#FFFFFF; --rail-on-dim:rgba(255,255,255,0.62);
+      --rail-selected:#FFFFFF; --rail-on-selected:#0A0A0B;
+      --rail-line:rgba(255,255,255,0.10);
+      --t-slate:oklch(0.55 0.15 258); --t-slate-soft:oklch(0.55 0.15 258 / 0.14);
+      --t-sage:oklch(0.55 0.15 145);  --t-sage-soft:oklch(0.55 0.15 145 / 0.14);
+      --t-clay:oklch(0.55 0.15 42);   --t-clay-soft:oklch(0.55 0.15 42 / 0.14);
+      --t-rose:oklch(0.55 0.15 18);   --t-rose-soft:oklch(0.55 0.15 18 / 0.14);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--text-dim);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    svg{display:block}
+    .dsp{font-family:"Plus Jakarta Sans",sans-serif}
+    .app{width:390px;height:844px;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+    .top{flex:none;height:52px;display:flex;align-items:center;gap:10px;padding:0 16px}
+    .top-t{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.02em}
+    .top-me{margin-left:auto;width:32px;height:32px;border-radius:999px;background:var(--accent-soft);
+      color:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+    .body{flex:1;min-height:0;overflow:hidden;padding:4px 16px 8px;display:flex;flex-direction:column;gap:14px}
+
+    .sh{display:flex;align-items:flex-start;gap:10px}
+    .sh-t{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:22px;letter-spacing:-0.02em;
+      line-height:1.15;margin:0}
+    .sh-m{font-size:12px;color:var(--text-mute);margin-top:3px}
+    .state{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+      font-size:11px;font-weight:600;background:var(--t-clay-soft);color:var(--t-clay);flex:none}
+    .state.pub{background:var(--t-sage-soft);color:var(--t-sage)}
+
+    .ep{background:var(--panel);border:1px solid var(--border-soft);border-radius:24px;padding:14px;
+      display:flex;flex-direction:column;gap:12px}
+    .eprow{display:flex;align-items:center;gap:12px}
+    .epq{flex:none;padding:5px;background:var(--bg);border:1px solid var(--border-soft);border-radius:12px}
+    .epname{font-size:14px;font-weight:600;letter-spacing:-0.01em}
+    .epslug{font-size:11.5px;color:var(--text-dim);line-height:1.4;margin-top:2px}
+    .btn-p{display:flex;align-items:center;justify-content:center;gap:8px;height:48px;border-radius:999px;
+      border:0;background:var(--primary);color:var(--on-primary);font-size:14px;font-weight:600;width:100%}
+    .hint{font-size:11.5px;color:var(--text-mute);line-height:1.45}
+
+    .lab{display:flex;align-items:center;gap:8px;padding:0 4px}
+    .lab-t{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-mute)}
+    .lab-a{margin-left:auto;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;
+      border-radius:999px;border:1px solid var(--border);font-size:12px;font-weight:500;color:var(--text)}
+
+    .rows{display:flex;flex-direction:column;gap:8px}
+    .wrow{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 13px;border-radius:18px;
+      background:var(--bg);border:1px solid var(--border-soft)}
+    .wrow.live{border-color:transparent;box-shadow:inset 0 0 0 1px oklch(0.55 0.15 145 / 0.34), inset 3px 0 0 var(--t-sage)}
+    .wnum{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:10px;color:var(--text-mute);
+      flex:none;width:18px}
+    .wmain{flex:1;min-width:0}
+    .wt{font-size:14px;font-weight:600;letter-spacing:-0.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .wm{font-size:11.5px;color:var(--text-mute);margin-top:1px}
+    .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10.5px;
+      font-weight:600;flex:none}
+    .chip.live{background:var(--t-sage-soft);color:var(--t-sage)}
+    .chip.live i{width:5px;height:5px;border-radius:3px;background:var(--t-sage);display:block}
+    .chip.draft{background:var(--t-clay-soft);color:var(--t-clay)}
+    .fade{height:26px;flex:none;margin-top:-26px;
+      background:linear-gradient(to bottom, rgba(255,255,255,0), var(--bg))}
+
+    .tabs{flex:none;display:flex;gap:4px;padding:7px 9px 9px;border-top:1px solid var(--border);background:var(--bg)}
+    .tab{flex:1;min-height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
+      gap:6px;font-size:12px;color:var(--text-dim)}
+    .tab.on{background:var(--accent-soft);color:var(--text);font-weight:600}
+    .dot{width:6px;height:6px;border-radius:3px;background:var(--t-slate)}
+  </style>
+</helmet>
+
+<div class="app">
+  <div class="top">
+    <div class="top-t">Bible study</div>
+    <div class="top-me">TW</div>
+  </div>
+
+  <div class="body">
+    <div class="sh">
+      <div>
+        <h1 class="sh-t">Romans &middot; Fall 2026</h1>
+        <div class="sh-m">Wednesday Bible Study &middot; 6 weeks</div>
+      </div>
+      <span class="state pub">Active</span>
+    </div>
+
+    <div class="ep">
+      <div class="eprow">
+        <div class="epq"><svg width="56" height="56" viewBox="0 0 21 21" shape-rendering="crispEdges" role="img" aria-label="QR code placeholder" style="border-radius:0"><rect width="21" height="21" fill="#FFFFFF"/><g fill="#0A0A0B"><rect x="0" y="0" width="7" height="1"/><rect x="8" y="0" width="2" height="1"/><rect x="14" y="0" width="7" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="9" y="1" width="2" height="1"/><rect x="12" y="1" width="1" height="1"/><rect x="14" y="1" width="1" height="1"/><rect x="20" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="12" y="2" width="1" height="1"/><rect x="14" y="2" width="1" height="1"/><rect x="16" y="2" width="3" height="1"/><rect x="20" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="3" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="12" y="3" width="1" height="1"/><rect x="14" y="3" width="1" height="1"/><rect x="16" y="3" width="3" height="1"/><rect x="20" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="8" y="4" width="4" height="1"/><rect x="14" y="4" width="1" height="1"/><rect x="16" y="4" width="3" height="1"/><rect x="20" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="8" y="5" width="3" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="14" y="5" width="1" height="1"/><rect x="20" y="5" width="1" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="7" height="1"/><rect x="11" y="7" width="2" height="1"/><rect x="0" y="8" width="1" height="1"/><rect x="2" y="8" width="2" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="14" y="8" width="1" height="1"/><rect x="16" y="8" width="2" height="1"/><rect x="19" y="8" width="2" height="1"/><rect x="0" y="9" width="2" height="1"/><rect x="4" y="9" width="1" height="1"/><rect x="7" y="9" width="2" height="1"/><rect x="10" y="9" width="2" height="1"/><rect x="15" y="9" width="2" height="1"/><rect x="19" y="9" width="2" height="1"/><rect x="0" y="10" width="2" height="1"/><rect x="3" y="10" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="11" y="10" width="1" height="1"/><rect x="16" y="10" width="2" height="1"/><rect x="19" y="10" width="2" height="1"/><rect x="1" y="11" width="4" height="1"/><rect x="8" y="11" width="1" height="1"/><rect x="10" y="11" width="1" height="1"/><rect x="12" y="11" width="1" height="1"/><rect x="14" y="11" width="1" height="1"/><rect x="17" y="11" width="1" height="1"/><rect x="19" y="11" width="1" height="1"/><rect x="0" y="12" width="1" height="1"/><rect x="3" y="12" width="1" height="1"/><rect x="5" y="12" width="5" height="1"/><rect x="12" y="12" width="3" height="1"/><rect x="18" y="12" width="1" height="1"/><rect x="8" y="13" width="1" height="1"/><rect x="12" y="13" width="1" height="1"/><rect x="17" y="13" width="2" height="1"/><rect x="0" y="14" width="7" height="1"/><rect x="8" y="14" width="1" height="1"/><rect x="13" y="14" width="2" height="1"/><rect x="17" y="14" width="1" height="1"/><rect x="19" y="14" width="2" height="1"/><rect x="0" y="15" width="1" height="1"/><rect x="6" y="15" width="1" height="1"/><rect x="10" y="15" width="1" height="1"/><rect x="12" y="15" width="3" height="1"/><rect x="17" y="15" width="1" height="1"/><rect x="20" y="15" width="1" height="1"/><rect x="0" y="16" width="1" height="1"/><rect x="2" y="16" width="3" height="1"/><rect x="6" y="16" width="1" height="1"/><rect x="9" y="16" width="2" height="1"/><rect x="12" y="16" width="5" height="1"/><rect x="20" y="16" width="1" height="1"/><rect x="0" y="17" width="1" height="1"/><rect x="2" y="17" width="3" height="1"/><rect x="6" y="17" width="1" height="1"/><rect x="8" y="17" width="2" height="1"/><rect x="12" y="17" width="1" height="1"/><rect x="15" y="17" width="6" height="1"/><rect x="0" y="18" width="1" height="1"/><rect x="2" y="18" width="3" height="1"/><rect x="6" y="18" width="1" height="1"/><rect x="10" y="18" width="4" height="1"/><rect x="15" y="18" width="2" height="1"/><rect x="18" y="18" width="1" height="1"/><rect x="20" y="18" width="1" height="1"/><rect x="0" y="19" width="1" height="1"/><rect x="6" y="19" width="1" height="1"/><rect x="12" y="19" width="8" height="1"/><rect x="0" y="20" width="7" height="1"/><rect x="8" y="20" width="4" height="1"/><rect x="13" y="20" width="1" height="1"/><rect x="17" y="20" width="1" height="1"/><rect x="19" y="20" width="2" height="1"/></g></svg></div>
+        <div>
+          <div class="epname">One code, every week</div>
+          <div class="epslug">Opens week 5 &mdash; Alive to God</div>
+        </div>
+      </div>
+      <button class="btn-p"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg>Show QR</button>
+    </div>
+
+    <div class="lab">
+      <span class="lab-t">Weeks</span>
+      <span class="lab-a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New week</span>
+    </div>
+
+    <div class="rows"><div class="wrow"><span class="wnum">06</span><div class="wmain"><div class="wt">Nothing between us</div><div class="wm">Wed, Oct 21 &middot; 4 sections</div></div><span class="chip draft">Draft</span></div><div class="wrow live"><span class="wnum">05</span><div class="wmain"><div class="wt">Alive to God</div><div class="wm">Wed, Oct 14 &middot; 4 sections</div></div><span class="chip live"><i></i>Live</span></div><div class="wrow"><span class="wnum">04</span><div class="wmain"><div class="wt">Peace that holds</div><div class="wm">Wed, Oct 7 &middot; 4 sections</div></div></div><div class="wrow"><span class="wnum">03</span><div class="wmain"><div class="wt">The gift that is not wages</div><div class="wm">Wed, Sep 30 &middot; 5 sections</div></div></div><div class="wrow"><span class="wnum">02</span><div class="wmain"><div class="wt">No one is exempt</div><div class="wm">Wed, Sep 23 &middot; 3 sections</div></div></div><div class="wrow"><span class="wnum">01</span><div class="wmain"><div class="wt">Not ashamed of it</div><div class="wm">Wed, Sep 16 &middot; 4 sections</div></div></div></div>
+    <div class="fade"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab">Today</div>
+    <div class="tab on">Study</div>
+    <div class="tab">Prayer</div>
+    <div class="tab">Messages<span class="dot"></span></div>
+    <div class="tab">You</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
