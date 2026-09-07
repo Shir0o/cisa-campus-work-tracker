@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { db } from '../lib/firebase';
 import {
   parseMeeting,
   type Meeting,
   type Section,
+  type EntryPoint,
 } from '../lib/bibleStudy';
 import {
   saveMeeting,
   setMeetingPublished,
   subscribeStudyMeetings,
+  subscribeEntryPoints,
 } from '../lib/data/bibleStudy';
+import { entryPointUrl } from '../lib/publicUrl';
 import { format } from 'date-fns';
 
 export default function BibleStudyEditor() {
@@ -46,6 +50,12 @@ Activity: In pairs, two minutes each. Name one thing you are enduring, and one t
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // The entry point pointing at this study — its URL is where a published
+  // week goes, and present mode is how the room sees it.
+  const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
+  useEffect(() => subscribeEntryPoints(db, setEntryPoints), []);
+  const entryPoint = entryPoints.find((ep) => ep.activeStudyId === studyId);
 
   // Subscribe to study meetings
   useEffect(() => {
@@ -123,7 +133,7 @@ Activity: In pairs, two minutes each. Name one thing you are enduring, and one t
     }, 0);
   };
 
-  const qrUrl = `https://cisa.app/s/${studyId}/${date}`;
+
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full p-4 lg:p-6 overflow-hidden bg-background">
@@ -356,37 +366,24 @@ Activity: In pairs, two minutes each. Name one thing you are enduring, and one t
             <span className="h-px bg-outline-variant flex-1" />
           </div>
 
-          {/* QR Code container */}
+          {/* Present handoff — the old decorative SVG encoded nothing; the
+              real code lives in present mode, generated from local state at
+              the entry point's durable URL. */}
           <div className="bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3">
-            <svg width="42" height="42" viewBox="0 0 21 21" shapeRendering="crispEdges" aria-hidden="true">
-              <rect width="21" height="21" fill="#FFFFFF" />
-              <g fill="#0A0A0B">
-                <path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0z" />
-              </g>
-              <g fill="#FFFFFF">
-                <path d="M1 1h5v5H1zM15 1h5v5h-5zM1 15h5v5H1z" />
-              </g>
-              <g fill="#0A0A0B">
-                <path d="M2 2h3v3H2zM16 2h3v3h-3zM2 16h3v3H2z" />
-                <path d="M9 0h1v2H9zM11 1h1v1h-1zM9 3h2v1H9zM12 3h1v2h-1zM8 5h2v1H8zM10 6h2v1h-2z" />
-                <path d="M0 9h2v1H0zM3 9h1v1H3zM5 9h2v1H5zM1 11h1v1H1zM3 11h2v1H3zM6 11h1v1H6zM0 12h1v1H0zM2 12h1v1H2zM4 12h1v1H4z" />
-                <path d="M9 9h2v2H9zM12 9h1v1h-1zM14 9h2v1h-2zM17 9h1v1h-1zM19 10h2v1h-2zM9 12h1v1H9zM11 12h2v1h-2zM14 12h1v1h-1zM16 12h2v1h-2zM19 12h1v1h-1z" />
-                <path d="M9 14h1v2H9zM11 14h2v1h-2zM14 14h1v1h-1zM16 15h2v1h-2zM19 14h1v2h-1zM9 17h2v1H9zM12 17h1v1h-1zM14 17h2v1h-2zM17 18h2v1h-2zM9 19h1v2H9zM11 19h2v1h-2zM14 19h1v2h-1zM16 20h3v1h-3zM19 19h1v1h-1z" />
-                <path d="M12 6h1v1h-1zM14 5h1v1h-1zM17 6h2v1h-2z" />
-              </g>
-            </svg>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-on-surface">QR Code Link</div>
-              <div className="text-[11px] text-on-surface-variant truncate font-mono">{qrUrl}</div>
+              <div className="text-xs font-semibold text-on-surface">Present mode</div>
+              <div className="text-[11px] text-on-surface-variant truncate font-mono">
+                {entryPoint ? entryPointUrl(entryPoint.slug) : 'No entry point points at this study yet'}
+              </div>
             </div>
-            <a
-              href={`/s/${encodeURIComponent(studyId)}/${encodeURIComponent(date)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80"
-            >
-              Open
-            </a>
+            {entryPoint && (
+              <Link
+                to={`/bible-study/present?ep=${entryPoint.slug}`}
+                className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
+              >
+                Show QR
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -78,6 +78,23 @@ export function subscribePublishedStudyMeetings(
   );
 }
 
+/**
+ * Subscribes to every Entry point. v1 seeds exactly one; a split week makes
+ * a second.
+ */
+export function subscribeEntryPoints(
+  db: Firestore,
+  cb: (entryPoints: EntryPoint[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  const q = query(collection(db, 'bible_study_entry_points'));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map(mapEntryPoint)),
+    (e) => (onError ? onError(e) : console.error('entry points sub error', e)),
+  );
+}
+
 export function subscribeStudyMeetings(
   db: Firestore,
   studyId: string,

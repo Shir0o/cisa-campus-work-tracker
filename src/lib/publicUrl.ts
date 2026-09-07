@@ -9,3 +9,6 @@ const configured = import.meta.env.VITE_PUBLIC_APP_URL;
 
 export const PUBLIC_APP_URL =
   typeof configured === 'string' && configured ? configured.replace(/\/+$/, '') : 'https://cisa-campus-work-tracker.pages.dev';
+
+/** The durable URL a QR encodes — the Entry point's standing invitation. */
+export const entryPointUrl = (slug: string) => `${PUBLIC_APP_URL}/s/${slug}`;

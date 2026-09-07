@@ -69,6 +69,7 @@ const Questions = lazyWithRetry(() => import("./views/Questions"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
+const BibleStudyPresent = lazyWithRetry(() => import("./views/BibleStudyPresent"));
 const BibleStudyEditor = lazyWithRetry(() => import("./views/BibleStudyEditor"));
 
 
@@ -737,6 +738,21 @@ export default function App() {
                             <BibleStudyEditor />
                           </React.Suspense>
                         </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Present mode — full-screen, any signed-in user: the person
+                    holding the phone is often not a Full-timer. */}
+                <Route
+                  path="/bible-study/present"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <React.Suspense fallback={null}>
+                          <BibleStudyPresent />
+                        </React.Suspense>
                       </RoleGuard>
                     </ProtectedRoute>
                   }

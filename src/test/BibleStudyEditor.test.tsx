@@ -7,6 +7,7 @@ import * as auth from '../components/AuthProvider';
 
 vi.mock('../lib/data/bibleStudy', () => ({
   subscribeStudyMeetings: vi.fn(),
+  subscribeEntryPoints: vi.fn(),
   saveMeeting: vi.fn().mockResolvedValue('meeting-123'),
   setMeetingPublished: vi.fn().mockResolvedValue(undefined),
 }));
@@ -48,7 +49,7 @@ describe('BibleStudyEditor view', () => {
 
     expect(await screen.findByText('Initial Meeting')).toBeInTheDocument();
     expect(screen.getByText('Live Preview')).toBeInTheDocument();
-    expect(screen.getByText('QR Code Link')).toBeInTheDocument();
+    expect(screen.getByText('Present mode')).toBeInTheDocument();
 
     // Click section in the left gutter
     const secButtons = screen.getAllByText('Section 2');
