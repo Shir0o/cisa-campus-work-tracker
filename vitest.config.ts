@@ -28,6 +28,13 @@ export default defineConfig({
         'src/lib/yjsRtdbProvider.ts',
         'src/constants.ts',
         'src/lib/calendar/types.ts',
+        // The parity test imports the @cisa/core parser directly to assert
+        // the two mirrors parse identically; the core package is excluded
+        // from the web app's coverage set (its own suite covers it, and it
+        // would otherwise drag the global thresholds down — it ships with
+        // the mobile app, not this one).
+        'packages/**',
+        '**/packages/**',
       ],
       // Re-baselined & ratcheted thresholds after extending coverage in the
       // firebase lib (env-dependent init paths), TodoRow subtasks, the
