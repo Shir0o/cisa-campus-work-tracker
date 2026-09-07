@@ -4,10 +4,13 @@ import { useAuth } from '../components/AuthProvider';
 import { db } from '../lib/firebase';
 import {
   parseMeeting,
+  isMeetingDirty,
   type Meeting,
+  type MeetingForm,
   type Section,
   type EntryPoint,
 } from '../lib/bibleStudy';
+import { useUnsavedGuard } from '../lib/navGuard';
 import {
   saveMeeting,
   setMeetingPublished,
@@ -31,6 +34,7 @@ export default function BibleStudyEditor() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [markdown, setMarkdown] = useState('');
   const [published, setPublished] = useState(false);
+  const [saved, setSaved] = useState<MeetingForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
 
@@ -46,6 +50,7 @@ export default function BibleStudyEditor() {
     initializedFor.current = '';
     setMeeting(null);
     setLoaded(false);
+    setSaved(null);
     return subscribeMeeting(db, meetingId, (m) => {
       setMeeting(m);
       setLoaded(true);
@@ -55,6 +60,7 @@ export default function BibleStudyEditor() {
         setDate(m.date);
         setPublished(m.published);
         setMarkdown(m.md ?? '');
+        setSaved({ title: m.title, date: m.date, markdown: m.md ?? '', published: m.published });
         setActiveSectionIndex(0);
       }
     });
@@ -63,6 +69,8 @@ export default function BibleStudyEditor() {
   const sections: Section[] = parseMeeting(markdown);
   const activeSection = sections[activeSectionIndex] || sections[0];
 
+  // Save resolves only once the snapshot is accepted, so a failed save keeps
+  // the editor dirty (and the guard up).
   const handleSave = async (publishStatus = published) => {
     if (!meeting) return;
     setSaving(true);
@@ -81,12 +89,17 @@ export default function BibleStudyEditor() {
         user?.uid,
       );
       setPublished(publishStatus);
+      setSaved({ title, date, markdown, published: publishStatus });
     } catch (e) {
       console.error('Failed to save meeting', e);
+      throw e;
     } finally {
       setSaving(false);
     }
   };
+
+  const dirty = !!saved && isMeetingDirty({ title, date, markdown, published }, saved);
+  const guard = useUnsavedGuard({ when: dirty, onSave: () => handleSave(published) });
 
   const handleTogglePublish = async () => {
     const nextState = !published;
@@ -143,6 +156,11 @@ export default function BibleStudyEditor() {
             <span className="truncate">Study: {meeting.studyId}</span>
             <span aria-hidden="true">·</span>
             <span className="shrink-0">{published ? 'Published' : 'Draft'}</span>
+            {dirty && (
+              <span className="shrink-0 px-2 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold text-on-surface-variant">
+                Unsaved changes
+              </span>
+            )}
           </div>
           <input
             type="text"
@@ -388,6 +406,48 @@ export default function BibleStudyEditor() {
           </div>
         </div>
       </div>
+
+      {/* Unsaved-changes guard — cancelling and discarding are different
+          intentions and never share a control (UnsavedGuard artboard). */}
+      {guard.pending && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Unsaved changes"
+        >
+          <div className="bg-surface border border-outline-variant rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <h2 className="font-serif text-xl font-bold text-on-surface mb-1">
+              You haven't saved {title || 'this week'}
+            </h2>
+            <p className="text-sm text-on-surface-variant mb-5">
+              {guard.pending.kind === 'push'
+                ? `Opening ${guard.pending.label} will lose what you've written here.`
+                : 'Leaving this page will lose what you have written here.'}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => guard.decide('stay')}
+                className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+              >
+                Stay here
+              </button>
+              <button
+                onClick={() => guard.decide('discard')}
+                className="px-4 py-2 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
+              >
+                Discard and open
+              </button>
+              <button
+                onClick={() => guard.decide('save')}
+                className="px-4 py-2 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
+              >
+                Save, then open
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

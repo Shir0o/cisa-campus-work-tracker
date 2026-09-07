@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BibleStudyEditor from '../views/BibleStudyEditor';
 import * as bibleData from '../lib/data/bibleStudy';
@@ -35,13 +35,16 @@ describe('BibleStudyEditor view', () => {
   };
 
   function renderAt(path = '/bible-study/meeting-1') {
+    // The unsaved-changes guard operates on the real history, so these tests
+    // run against BrowserRouter rather than MemoryRouter.
+    window.history.replaceState(null, '', path);
     return render(
-      <MemoryRouter initialEntries={[path]}>
+      <BrowserRouter>
         <Routes>
           <Route path="/bible-study/:meetingId" element={<BibleStudyEditor />} />
           <Route path="/bible-study" element={<div>Weeks index</div>} />
         </Routes>
-      </MemoryRouter>,
+      </BrowserRouter>,
     );
   }
 
@@ -144,5 +147,79 @@ describe('BibleStudyEditor view', () => {
 
     expect(await screen.findByText("This week doesn't exist.")).toBeInTheDocument();
     expect(screen.getByText('All weeks')).toBeInTheDocument();
+  });
+
+  it('shows that it has unsaved changes without requiring a leave attempt', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+  });
+
+  it('does not prompt when leaving with no unsaved changes', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+
+    fireEvent.click(screen.getByText('All weeks'));
+
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Weeks index')).toBeInTheDocument();
+  });
+
+  it('asks before leaving with unsaved changes; staying keeps the changes intact', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+
+    fireEvent.click(screen.getByText('All weeks'));
+    expect(await screen.findByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Stay here/i }));
+
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('Edited title')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/bible-study/meeting-1');
+    expect(bibleData.saveMeeting).not.toHaveBeenCalled();
+  });
+
+  it('discarding leaves without saving', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+
+    fireEvent.click(screen.getByText('All weeks'));
+    fireEvent.click(await screen.findByRole('button', { name: /Discard and open/i }));
+
+    expect(await screen.findByText('Weeks index')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/bible-study');
+    expect(bibleData.saveMeeting).not.toHaveBeenCalled();
+  });
+
+  it('saving and leaving actually saves before navigating', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+
+    fireEvent.click(screen.getByText('All weeks'));
+    fireEvent.click(await screen.findByRole('button', { name: /Save, then open/i }));
+
+    await waitFor(() => expect(bibleData.saveMeeting).toHaveBeenCalled());
+    expect(await screen.findByText('Weeks index')).toBeInTheDocument();
   });
 });

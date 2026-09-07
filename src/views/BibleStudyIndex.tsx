@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
+  MEETING_SKELETON_MD,
   nextMeetingDate,
   resolveScan,
   type EntryPoint,
@@ -72,7 +73,14 @@ export default function BibleStudyIndex() {
     const date = nextMeetingDate(meetings, today);
     const id = await saveMeeting(
       db,
-      { studyId: study.id, date, title: '', sections: [], published: false, md: '' },
+      {
+        studyId: study.id,
+        date,
+        title: '',
+        sections: [],
+        published: false,
+        md: MEETING_SKELETON_MD,
+      },
       user.uid,
     );
     navigate(`/bible-study/${id}`);

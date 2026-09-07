@@ -175,10 +175,16 @@ describe('BibleStudyIndex view', () => {
           studyId: 'romans-fall26',
           date: '2026-10-28',
           published: false,
+          // A new week starts from the skeleton, never a copy of the
+          // previous week's text.
+          md: expect.stringContaining('## '),
         }),
         mockUser.uid,
       );
     });
+    const savedMd = vi.mocked(bibleData.saveMeeting).mock.calls[0][1].md as string;
+    expect(savedMd).toMatch(/^(Question|Discuss|Activity): /m);
+    expect(savedMd).not.toContain('Nothing between us');
 
     expect(await screen.findByText('Editor opened')).toBeInTheDocument();
   });

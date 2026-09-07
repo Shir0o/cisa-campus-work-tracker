@@ -292,6 +292,43 @@ export function nextMeetingDate(meetings: Meeting[], today: string): string {
   return base.toISOString().slice(0, 10);
 }
 
+/**
+ * A new week starts from a small skeleton that teaches the three conventions
+ * — Section heading, blockquote Passage, marked Prompt line — visibly as
+ * placeholders. Never a silent copy of the previous week's text, which risks
+ * publishing last week's content under this week's date.
+ */
+export const MEETING_SKELETON_MD = `## This week's title
+
+- First point — hide a word by wrapping it in double brackets: a [[blank]]
+
+> The passage goes here, a verse at a time.
+> Reference · Version
+
+Discuss: The prompt the room answers out loud.
+`;
+
+export type MeetingForm = {
+  title: string;
+  date: string;
+  markdown: string;
+  published: boolean;
+};
+
+/**
+ * Whether the editor's form has drifted from the Meeting it was loaded from
+ * (or last saved as). This is what the unsaved-changes guard and the
+ * editor's own "Unsaved changes" chip are driven by.
+ */
+export function isMeetingDirty(form: MeetingForm, saved: MeetingForm): boolean {
+  return (
+    form.title !== saved.title ||
+    form.date !== saved.date ||
+    form.markdown !== saved.markdown ||
+    form.published !== saved.published
+  );
+}
+
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {
   switch (action.type) {
     case 'advance': {

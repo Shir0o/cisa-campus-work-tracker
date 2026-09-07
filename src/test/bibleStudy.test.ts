@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveScan,
   nextMeetingDate,
+  isMeetingDirty,
+  MEETING_SKELETON_MD,
   type Meeting,
   type Study,
   type EntryPoint,
@@ -153,5 +155,33 @@ describe('nextMeetingDate', () => {
     expect(nextMeetingDate([], '2026-10-13')).toBe('2026-10-14'); // Tuesday
     expect(nextMeetingDate([], '2026-10-14')).toBe('2026-10-21'); // Wednesday itself
     expect(nextMeetingDate([], '2026-10-17')).toBe('2026-10-21'); // Saturday
+  });
+});
+
+describe('MEETING_SKELETON_MD', () => {
+  it('teaches the three conventions as placeholders', () => {
+    expect(MEETING_SKELETON_MD).toMatch(/^## /m); // Section heading
+    expect(MEETING_SKELETON_MD).toMatch(/^> /m); // Passage
+    expect(MEETING_SKELETON_MD).toMatch(/^(Question|Discuss|Activity): /m); // Prompt
+    expect(MEETING_SKELETON_MD).toContain('[[blank]]');
+  });
+
+  it('is never seeded from a previous week', () => {
+    expect(MEETING_SKELETON_MD).not.toContain('Peace that holds');
+  });
+});
+
+describe('isMeetingDirty', () => {
+  const saved = { title: 'Alive to God', date: '2026-10-14', markdown: '## Alive to God', published: true };
+
+  it('is clean when the form matches what was saved', () => {
+    expect(isMeetingDirty(saved, saved)).toBe(false);
+  });
+
+  it('is dirty when any field has drifted', () => {
+    expect(isMeetingDirty({ ...saved, title: 'Alive to God —' }, saved)).toBe(true);
+    expect(isMeetingDirty({ ...saved, date: '2026-10-21' }, saved)).toBe(true);
+    expect(isMeetingDirty({ ...saved, markdown: '## Rewritten' }, saved)).toBe(true);
+    expect(isMeetingDirty({ ...saved, published: false }, saved)).toBe(true);
   });
 });
