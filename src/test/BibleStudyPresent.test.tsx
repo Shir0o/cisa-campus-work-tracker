@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BibleStudyPresent from '../views/BibleStudyPresent';
 import * as bibleData from '../lib/data/bibleStudy';
@@ -129,5 +129,22 @@ describe('BibleStudyPresent', () => {
 
     expect(await screen.findByText(/cisa-campus-work-tracker.pages.dev\/s\/cisa-wednesday/)).toBeInTheDocument();
     expect(screen.queryByText('Alive to God')).not.toBeInTheDocument();
+  });
+
+  it('leaves back to the weeks index, not the home page', async () => {
+    mockChain([MEETING]);
+
+    render(
+      <MemoryRouter initialEntries={['/bible-study/present']}>
+        <Routes>
+          <Route path="/" element={<div>Home</div>} />
+          <Route path="/bible-study" element={<div>Weeks index</div>} />
+          <Route path="/bible-study/present" element={<BibleStudyPresent />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
+    expect(screen.getByText('Weeks index')).toBeInTheDocument();
   });
 });
