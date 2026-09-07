@@ -238,8 +238,10 @@ describe('ftInboxRows', () => {
     expect(row.replyKind).toBe('encouragement');
   });
 
-  it('changes the line once the contact has been reviewed', () => {
-    const [row] = ftInboxRows([inboxItem({ reviewed: true })], ctx);
+  // #813 dropped `InboxItem.reviewed` (nothing ever wrote it) in favour of the
+  // reader's own, per-person read state — so that is what flips this line now.
+  it('changes the line once you have looked at the contact', () => {
+    const [row] = ftInboxRows([inboxItem()], { ...ctx, isRead: () => true });
     expect(row.sub).toBe("You've had a look");
   });
 
