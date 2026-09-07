@@ -182,3 +182,7 @@ _Avoid_: My items, assigned to me
 **Around the team**:
 The Attention Feed stack of everything else the team has been doing on people you aren't carrying. Being long is normal: it is never truncated, capped, or internally scrolled to match another column's height.
 _Avoid_: Team activity feed, other people's news
+
+**Lion Mark**:
+The product's single brand artwork — a cream striped lion on a purple (#5c5595) rounded square. `public/logo.svg` is the vector source of truth; the mobile app icon is its raster twin. Every icon surface (browser tab, PWA install icon, notifications, nav rail) renders this mark.
+_Avoid_: App icon, logo, favicon as names for the artwork itself
