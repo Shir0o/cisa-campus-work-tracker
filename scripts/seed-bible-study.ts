@@ -17,13 +17,13 @@
  * rather than adopted (issue #859).
  */
 
-import admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { readFileSync } from 'node:fs';
 
 const cfg = JSON.parse(readFileSync('firebase-applet-config.json', 'utf8'));
-admin.initializeApp({ projectId: cfg.projectId });
-const db = getFirestore(admin.app(), cfg.firestoreDatabaseId);
+initializeApp({ projectId: cfg.projectId });
+const db = getFirestore(getApp(), cfg.firestoreDatabaseId);
 
 const STUDY_ID = 'romans-fall26';
 const ENTRY_POINT_SLUG = 'cisa-wednesday';
@@ -45,8 +45,8 @@ async function seed() {
       {
         title: 'Romans',
         term: 'Fall 2026',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
@@ -60,8 +60,8 @@ async function seed() {
         slug: ENTRY_POINT_SLUG,
         name: 'Wednesday Bible Study',
         activeStudyId: STUDY_ID,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
