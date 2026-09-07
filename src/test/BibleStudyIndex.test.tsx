@@ -44,10 +44,10 @@ describe('BibleStudyIndex view', () => {
       date: '2026-10-21',
       published: false,
       sections: [
-        { id: 's1', title: 'A', points: [] },
-        { id: 's2', title: 'B', points: [] },
-        { id: 's3', title: 'C', points: [] },
-        { id: 's4', title: 'D', points: [] },
+        { id: 's1', title: 'A', content: [], points: [] },
+        { id: 's2', title: 'B', content: [], points: [] },
+        { id: 's3', title: 'C', content: [], points: [] },
+        { id: 's4', title: 'D', content: [], points: [] },
       ],
     },
     {
@@ -57,10 +57,10 @@ describe('BibleStudyIndex view', () => {
       date: '2026-10-14',
       published: true,
       sections: [
-        { id: 's1', title: 'A', points: [] },
-        { id: 's2', title: 'B', points: [] },
-        { id: 's3', title: 'C', points: [] },
-        { id: 's4', title: 'D', points: [] },
+        { id: 's1', title: 'A', content: [], points: [] },
+        { id: 's2', title: 'B', content: [], points: [] },
+        { id: 's3', title: 'C', content: [], points: [] },
+        { id: 's4', title: 'D', content: [], points: [] },
       ],
     },
     {
@@ -69,7 +69,7 @@ describe('BibleStudyIndex view', () => {
       title: 'Peace that holds',
       date: '2026-10-07',
       published: true,
-      sections: [{ id: 's1', title: 'A', points: [] }],
+      sections: [{ id: 's1', title: 'A', content: [], points: [] }],
     },
   ];
 

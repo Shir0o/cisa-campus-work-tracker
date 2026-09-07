@@ -9,9 +9,8 @@ import {
   type EntryPoint,
   type ScanResolution,
   type Section,
-  type Blank,
-  type Text,
 } from '../lib/bibleStudy';
+import SectionBody from '../components/bibleStudy/SectionBody';
 import {
   subscribePublishedStudyMeetings,
   subscribeEntryPoint,
@@ -217,37 +216,9 @@ export default function PublicStudyReader() {
     );
   }
 
+
   const washA = -(state.sectionIndex * 46);
   const washB = state.sectionIndex * 34;
-
-  const renderPartWithBlank = (part: Blank | Text, key: string) => {
-    if (!('word' in part)) {
-      return <span>{part.before}</span>;
-    }
-    const isOpen = !!state.openBlanks[key];
-    return (
-      <span>
-        {part.before}
-        <span
-          className={`inline-block border-b-2 cursor-pointer transition-all duration-200 mx-1 ${
-            isOpen
-              ? 'border-transparent bg-[var(--t-sage-soft)] text-on-surface px-1.5 rounded-md font-medium'
-              : 'min-w-[64px] border-[var(--accent-line)]'
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            dispatch({ type: 'revealBlank', key });
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label={isOpen ? part.word : 'Blank, tap to reveal'}
-        >
-          {isOpen ? part.word : ''}
-        </span>
-        {part.after}
-      </span>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-black/95 sm:bg-background flex items-center justify-center p-0 sm:p-4 selection:bg-[var(--t-sage-soft)]">
@@ -357,59 +328,13 @@ export default function PublicStudyReader() {
                 {currentSection.title}
               </h2>
 
-              {currentSection.points.length > 0 && (
-                <div className="flex flex-col gap-3 py-1">
-                  {currentSection.points.map((pt, pIdx) => (
-                    <div key={pIdx} className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
-                      {renderPartWithBlank(pt, `${state.sectionIndex}:p${pIdx}`)}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <SectionBody
+                section={currentSection}
+                sectionIndex={state.sectionIndex}
+                openBlanks={state.openBlanks}
+                onRevealBlank={(key) => dispatch({ type: 'revealBlank', key })}
+              />
 
-              {currentSection.passage && (
-                <figure className="m-0 pt-4 border-t border-outline-variant">
-                  <p className="m-0 text-[18px] sm:text-[19px] leading-[1.62] text-on-surface">
-                    {renderPartWithBlank(currentSection.passage, `${state.sectionIndex}:pg`)}
-                  </p>
-                  {currentSection.ref && (
-                    <figcaption className="mt-3 text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70">
-                      {currentSection.ref}
-                    </figcaption>
-                  )}
-                </figure>
-              )}
-
-              {currentSection.prompt && (
-                <div
-                  className={`bg-surface border border-outline-variant rounded-2xl p-4 sm:p-5 flex flex-col gap-2 ${
-                    currentSection.prompt.kind === 'discuss'
-                      ? 'border-l-4 border-l-[var(--t-sage)]'
-                      : currentSection.prompt.kind === 'activity'
-                      ? 'border-l-4 border-l-[var(--t-clay)]'
-                      : 'border-l-4 border-l-[var(--t-slate)]'
-                  }`}
-                >
-                  <div
-                    className={`text-[11px] font-bold tracking-widest uppercase ${
-                      currentSection.prompt.kind === 'discuss'
-                        ? 'text-[var(--t-sage)]'
-                        : currentSection.prompt.kind === 'activity'
-                        ? 'text-[var(--t-clay)]'
-                        : 'text-[var(--t-slate)]'
-                    }`}
-                  >
-                    {currentSection.prompt.kind === 'discuss'
-                      ? 'Discuss'
-                      : currentSection.prompt.kind === 'activity'
-                      ? 'Activity'
-                      : 'Question'}
-                  </div>
-                  <p className="m-0 text-[15px] sm:text-[16px] leading-relaxed text-on-surface">
-                    {currentSection.prompt.text}
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </div>
