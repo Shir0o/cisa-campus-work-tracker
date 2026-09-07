@@ -147,7 +147,7 @@ export default function BibleStudyPresent() {
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center p-6 relative">
       <Link
-        to="/"
+        to="/bible-study"
         className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
         aria-label="Leave present mode"
       >

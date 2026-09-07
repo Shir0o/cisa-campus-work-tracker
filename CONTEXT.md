@@ -121,6 +121,14 @@ _Avoid_: Series, recurring event, schedule, repeat
 The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so the record says explicitly that a person marked it and when.
 _Avoid_: Marked, complete, closed
 
+**Present mode**:
+The full-screen display of an Entry point's QR code, held up in the room for students to scan — white ground, screen kept awake. Showing the code is not an admin action: whoever holds the phone is often not a Full-timer. Entered from the Weeks index or a week's editor via "Show QR"; leaving returns to the Weeks index, never the home page.
+_Avoid_: QR page, QR screen, projector view
+
+**Weeks index**:
+The Full-timer page at `/bible-study` where a term's Meetings are listed and edited, and where Present mode is opened from. When someone says "the bible study page", they mean this.
+_Avoid_: Bible study (bare), study list
+
 **Full-timers (contact tab)**:
 The Full-timers-only thread on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. The tab is named for its audience on purpose: it sits beside **Conversation**, which is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
 _Avoid_: Discussion, Private, Comments, internal thread, chat
