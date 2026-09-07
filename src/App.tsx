@@ -71,6 +71,7 @@ const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinati
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
 const BibleStudyPresent = lazyWithRetry(() => import("./views/BibleStudyPresent"));
 const BibleStudyEditor = lazyWithRetry(() => import("./views/BibleStudyEditor"));
+const BibleStudyIndex = lazyWithRetry(() => import("./views/BibleStudyIndex"));
 
 
 interface LayoutContextType {
@@ -735,7 +736,7 @@ export default function App() {
                               </div>
                             }
                           >
-                            <BibleStudyEditor />
+                            <BibleStudyIndex />
                           </React.Suspense>
                         </DashboardLayout>
                       </RoleGuard>
@@ -753,6 +754,28 @@ export default function App() {
                         <React.Suspense fallback={null}>
                           <BibleStudyPresent />
                         </React.Suspense>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/bible-study/:meetingId"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <React.Suspense
+                            fallback={
+                              <div className="p-8 space-y-6">
+                                <Skeleton className="h-10 w-64" />
+                                <Skeleton className="h-96 w-full rounded-3xl" />
+                              </div>
+                            }
+                          >
+                            <BibleStudyEditor />
+                          </React.Suspense>
+                        </DashboardLayout>
                       </RoleGuard>
                     </ProtectedRoute>
                   }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveScan,
+  nextMeetingDate,
   type Meeting,
   type Study,
   type EntryPoint,
@@ -135,5 +136,22 @@ describe('resolveScan', () => {
     expect(resolveScan(null, null, [], '2026-10-14', '2026-10-07')).toEqual({
       kind: 'no-active-study',
     });
+  });
+});
+
+describe('nextMeetingDate', () => {
+  it('continues the series a week after the newest existing Meeting', () => {
+    const meetings = [
+      meeting({ date: '2026-10-14' }),
+      meeting({ date: '2026-10-07' }),
+    ];
+
+    expect(nextMeetingDate(meetings, '2026-10-13')).toBe('2026-10-21');
+  });
+
+  it('starts a new study on the next Wednesday strictly after today', () => {
+    expect(nextMeetingDate([], '2026-10-13')).toBe('2026-10-14'); // Tuesday
+    expect(nextMeetingDate([], '2026-10-14')).toBe('2026-10-21'); // Wednesday itself
+    expect(nextMeetingDate([], '2026-10-17')).toBe('2026-10-21'); // Saturday
   });
 });

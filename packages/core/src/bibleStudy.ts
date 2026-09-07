@@ -279,6 +279,19 @@ export function resolveScan(
   };
 }
 
+/**
+ * The date a brand-new week gets: a week after the newest existing Meeting
+ * (so a repeated "New week" never collides with an earlier draft), or — for
+ * a study with no weeks yet — the next Wednesday strictly after today.
+ */
+export function nextMeetingDate(meetings: Meeting[], today: string): string {
+  const newest = meetings.map((m) => m.date).sort((a, b) => b.localeCompare(a))[0];
+  const base = new Date(`${(newest ?? today)}T00:00:00Z`);
+  const shift = newest ? 7 : (3 - base.getUTCDay() + 7) % 7 || 7; // 3 = Wednesday
+  base.setUTCDate(base.getUTCDate() + shift);
+  return base.toISOString().slice(0, 10);
+}
+
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {
   switch (action.type) {
     case 'advance': {
