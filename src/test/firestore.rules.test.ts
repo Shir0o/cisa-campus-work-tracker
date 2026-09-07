@@ -1596,10 +1596,26 @@ describeRules('Firestore Security Rules', () => {
         }),
       );
 
-      // Member cannot add or remove someone else from acknowledged
+      // Member cannot add or remove someone else from acknowledged — including
+      // a swap (adding self while dropping theirs) or a bare drop of theirs
       await assertFails(
         updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
           acknowledged: ['student2'],
+        }),
+      );
+
+      // Member can still drop their OWN entry while others' stay
+      await seedMsg('room1', 'm2', 'ft1', { acknowledged: ['ft1', 'student1', 'student2'] });
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m2'), {
+          acknowledged: ['ft1', 'student2'],
+        }),
+      );
+
+      // Member cannot drop someone else's entry, even keeping their own
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m2'), {
+          acknowledged: ['ft1', 'student1'],
         }),
       );
     });
@@ -1825,7 +1841,7 @@ describeRules('Firestore Security Rules', () => {
 
       await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'askDelB1a')));
       // The question itself is still in place — only the reply was removed.
-      await assertSucceeds(getDoc(doc(getFirestore({ uid: 't1' }), 'asks', 'askDelB1')));
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'askDelB1')));
     });
   });
 

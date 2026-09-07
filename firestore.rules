@@ -817,7 +817,10 @@ service cloud.firestore {
         function isOwnEntryUpdate(fieldName) {
           let before = resource.data.get(fieldName, []);
           let after = request.resource.data.get(fieldName, []);
-          return after.toSet().difference(before.toSet()).hasOnly([request.auth.uid]) ||
+          // Every uid added AND every uid removed must be the caller's own:
+          // with `||`, an empty difference passes vacuously, letting a member
+          // swap someone else's entry for their own or drop it outright (#743).
+          return after.toSet().difference(before.toSet()).hasOnly([request.auth.uid]) &&
                  before.toSet().difference(after.toSet()).hasOnly([request.auth.uid]);
         }
 
