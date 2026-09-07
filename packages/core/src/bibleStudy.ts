@@ -197,13 +197,17 @@ export function parseMeeting(md: string): Section[] {
       passagePart = parseBlankOrText(passageText);
     }
 
+    // Firestore rejects `undefined` field values, and these sections are
+    // written verbatim by saveMeeting — optional keys must be omitted, not
+    // present with an undefined value, when the markdown has no passage or
+    // prompt.
     sections.push({
       id: sectionId,
       title: raw.title,
-      ref: passageRef,
       points,
-      passage: passagePart,
-      prompt,
+      ...(passageRef !== undefined && { ref: passageRef }),
+      ...(passagePart !== undefined && { passage: passagePart }),
+      ...(prompt !== undefined && { prompt }),
     });
   }
 

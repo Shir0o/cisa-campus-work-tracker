@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolveScan,
+  parseMeeting,
   nextMeetingDate,
   isMeetingDirty,
   slugFor,
@@ -142,6 +143,34 @@ describe('resolveScan', () => {
     expect(resolveScan(null, null, [], '2026-10-14', '2026-10-07')).toEqual({
       kind: 'no-active-study',
     });
+  });
+});
+
+describe('parseMeeting', () => {
+  // Firestore rejects `undefined` field values: parseMeeting output feeds
+  // saveMeeting → setDoc, so absent optional fields must be omitted, not
+  // present with undefined (the "Failed to save meeting" setDoc bug).
+  it('omits absent optional fields instead of writing undefined (Firestore-safe)', () => {
+    const md = [
+      '## Plain section',
+      '- a point',
+      '',
+      '## Full section',
+      '> The passage text',
+      '> Romans 5:1 · WEB',
+      '- a [[blank]] point',
+      'Question: What does this mean?',
+    ].join('\n');
+    const sections = parseMeeting(md);
+    expect(sections).toHaveLength(2);
+    for (const s of sections) {
+      expect('ref' in s && s.ref === undefined).toBe(false);
+      expect('passage' in s && s.passage === undefined).toBe(false);
+      expect('prompt' in s && s.prompt === undefined).toBe(false);
+    }
+    expect(sections[0]).not.toHaveProperty('passage');
+    expect(sections[1]).toHaveProperty('passage');
+    expect(sections[1]).toHaveProperty('prompt');
   });
 });
 
