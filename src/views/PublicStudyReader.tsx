@@ -3,38 +3,103 @@ import { useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
   readerReducer,
-  currentMeeting,
+  resolveScan,
   type Meeting,
+  type Study,
+  type EntryPoint,
+  type ScanResolution,
   type Section,
   type Blank,
   type Text,
 } from '../lib/bibleStudy';
-import { subscribePublishedStudyMeetings } from '../lib/data/bibleStudy';
+import {
+  subscribePublishedStudyMeetings,
+  subscribeEntryPoint,
+  subscribeStudy,
+} from '../lib/data/bibleStudy';
 import { format, parseISO } from 'date-fns';
 
 export default function PublicStudyReader() {
-  const { studyId = '', date: permalinkDate } = useParams<{ studyId: string; date?: string }>();
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const params = useParams<{ slug?: string; studyId?: string; date?: string }>();
+  const slug = params.slug ?? '';
+  const permalinkStudyId = params.studyId ?? '';
+  const permalinkDate = params.date || undefined;
+  const isPermalink = !!permalinkStudyId;
 
-  // Subscribe to published meetings
+  const [entryPoint, setEntryPoint] = useState<EntryPoint | null>(null);
+  const [entryPointLoaded, setEntryPointLoaded] = useState(false);
+  const [study, setStudy] = useState<Study | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [meetingsLoaded, setMeetingsLoaded] = useState(false);
+
+  // Two ways in: a scan resolves through the Entry point's active Study; a
+  // staff permalink addresses one week by Study and date directly. Either
+  // way the chain ends at the newest published Meeting of a Study.
   useEffect(() => {
+    if (isPermalink) {
+      setEntryPoint(null);
+      setEntryPointLoaded(true);
+      return;
+    }
+    setEntryPoint(null);
+    setEntryPointLoaded(false);
+    return subscribeEntryPoint(db, slug, (ep) => {
+      setEntryPoint(ep);
+      setEntryPointLoaded(true);
+    }, () => {
+      // A snapshot error must not spin forever: resolve as nothing behind
+      // this code, which is what the reader would show anyway.
+      setEntryPoint(null);
+      setEntryPointLoaded(true);
+    });
+  }, [isPermalink, slug]);
+
+  const studyId = isPermalink ? permalinkStudyId : entryPoint?.activeStudyId ?? null;
+
+  useEffect(() => {
+    setStudy(null);
+    setMeetings([]);
+    setMeetingsLoaded(false);
     if (!studyId) return;
-    const unsub = subscribePublishedStudyMeetings(
-      db,
-      studyId,
-      (fetched) => {
-        setMeetings(fetched);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return () => unsub();
+    const unsubStudy = subscribeStudy(db, studyId, setStudy, () => {
+      setStudy(null);
+      setMeetingsLoaded(true);
+    });
+    const unsubMeetings = subscribePublishedStudyMeetings(db, studyId, (m) => {
+      setMeetings(m);
+      setMeetingsLoaded(true);
+    }, () => {
+      setMeetings([]);
+      setMeetingsLoaded(true);
+    });
+    return () => {
+      unsubStudy();
+      unsubMeetings();
+    };
   }, [studyId]);
 
-  const resolution = currentMeeting(meetings, new Date().toISOString().slice(0, 10), permalinkDate);
-  const meeting = resolution?.meeting;
-  const isStale = resolution?.isStale ?? false;
+  // A permalink is public but unlisted (ADR 0011): the Firestore rule already
+  // serves any published Meeting to anyone, so a UI gate would present an
+  // open door as protected. noindex keeps it out of search engines.
+  useEffect(() => {
+    if (!isPermalink) return;
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex';
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, [isPermalink]);
+
+  const loading = !entryPointLoaded || (!!studyId && !meetingsLoaded);
+  const resolution: ScanResolution = resolveScan(
+    entryPoint,
+    study,
+    meetings,
+    new Date().toISOString().slice(0, 10),
+    permalinkDate,
+  );
+  const meeting = resolution.kind === 'meeting' ? resolution.meeting : null;
+  const isStale = resolution.kind === 'meeting' ? resolution.isFallback : false;
   const sections = meeting?.sections ?? [];
 
   const [state, dispatch] = useReducer(readerReducer, {
@@ -99,12 +164,54 @@ export default function PublicStudyReader() {
     );
   }
 
-  if (!meeting || sections.length === 0) {
+  // Between terms — the Entry point has no active Study (or does not exist).
+  // Distinct from "nothing published": the reason differs and so does the
+  // message the reader should walk away with.
+  if (resolution.kind === 'no-active-study') {
+    if (isPermalink) {
+      // A staff permalink naming a Study that does not exist — handled
+      // rather than rendering an empty page.
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-on-surface text-center">
+          <h1 className="font-serif text-2xl mb-2 font-medium">Week not found</h1>
+          <p className="text-on-surface-variant text-sm max-w-sm">
+            This link doesn't point at a published week.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-on-surface text-center">
-        <h1 className="font-serif text-2xl mb-2 font-medium">No Study Available</h1>
+        <p className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant mb-3">
+          Between terms
+        </p>
+        <h1 className="font-serif text-2xl mb-2 font-medium">Nothing running right now</h1>
         <p className="text-on-surface-variant text-sm max-w-sm">
-          There are no published meetings for this study yet. Please check back later.
+          {entryPoint?.name
+            ? `${entryPoint.name} picks up again when the next study starts. `
+            : 'The study picks up again when the next one starts. '}
+          Keep this code — it will be the same one.
+        </p>
+      </div>
+    );
+  }
+
+  // Nothing ever published — a brand-new study, or a code shown before the
+  // first week went up. Not the between-terms screen: there is a Study
+  // behind this code, it just has nothing to show yet. No action is offered,
+  // because there is none a student can take.
+  if (resolution.kind === 'never-published') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-on-surface text-center">
+        <p className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant mb-3">
+          Nothing yet
+        </p>
+        <h1 className="font-serif text-2xl mb-2 font-medium">
+          The study has never published a week
+        </h1>
+        <p className="text-on-surface-variant text-sm max-w-sm">
+          A brand-new study, or a code shown before the first week went up. There is nothing to
+          fall back to.
         </p>
       </div>
     );
@@ -166,7 +273,7 @@ export default function PublicStudyReader() {
           }}
         />
 
-        {/* Stale scan date header */}
+        {/* Dated treatment — falling back is right; falling back silently is not */}
         {isStale && (
           <div className="relative shrink-0 px-6 py-2.5 bg-surface border-b border-outline-variant text-xs text-on-surface-variant flex items-center gap-2 z-10">
             <svg
@@ -181,7 +288,12 @@ export default function PublicStudyReader() {
               <rect width="18" height="18" x="3" y="4" rx="2" />
               <path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
-            <span>{formattedDate}</span>
+            <span>
+              {isPermalink && permalinkDate && meetings.some((m) => m.date === permalinkDate)
+                ? 'Week of '
+                : 'Most recent · '}
+              {formattedDate}
+            </span>
           </div>
         )}
 

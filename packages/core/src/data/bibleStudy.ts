@@ -1,3 +1,4 @@
+// @cisa/core mirror of the web app's src/lib/data/bibleStudy.ts — keep in step.
 import {
   collection,
   doc,
@@ -11,7 +12,7 @@ import {
   where,
   type Firestore,
 } from 'firebase/firestore';
-import type { Meeting } from '../bibleStudy';
+import type { Meeting, Study, EntryPoint } from '../bibleStudy';
 
 function mapMeeting(d: { id: string; data: () => Record<string, any> }): Meeting {
   const data = d.data();
@@ -22,11 +23,40 @@ function mapMeeting(d: { id: string; data: () => Record<string, any> }): Meeting
     title: data.title || '',
     sections: data.sections || [],
     published: !!data.published,
-    siblingId: data.siblingId,
     md: data.md,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
     createdBy: data.createdBy,
+  };
+}
+
+
+function str(v: unknown, fallback = ''): string {
+  return typeof v === 'string' ? v : fallback;
+}
+
+function mapStudy(d: { id: string; data: () => Record<string, unknown> }): Study {
+  const data = d.data();
+  return {
+    id: d.id,
+    title: str(data.title),
+    term: str(data.term),
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    createdBy: str(data.createdBy) || undefined,
+  };
+}
+
+function mapEntryPoint(d: { id: string; data: () => Record<string, unknown> }): EntryPoint {
+  const data = d.data();
+  return {
+    id: d.id,
+    slug: str(data.slug, d.id),
+    name: str(data.name),
+    activeStudyId: typeof data.activeStudyId === 'string' ? data.activeStudyId : null,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
+    createdBy: str(data.createdBy) || undefined,
   };
 }
 
@@ -74,6 +104,24 @@ export function subscribeStudyMeetings(
     (e) => (onError ? onError(e) : console.error('study meetings sub error', e)),
   );
 }
+
+/**
+ * Subscribes to every Entry point. v1 seeds exactly one; a split week makes
+ * a second.
+ */
+export function subscribeEntryPoints(
+  db: Firestore,
+  cb: (entryPoints: EntryPoint[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  const q = query(collection(db, 'bible_study_entry_points'));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map(mapEntryPoint)),
+    (e) => (onError ? onError(e) : console.error('entry points sub error', e)),
+  );
+}
+
 
 /**
  * Subscribes to a single meeting by id.
@@ -136,4 +184,38 @@ export async function setMeetingPublished(
  */
 export async function deleteMeeting(db: Firestore, meetingId: string): Promise<void> {
   await deleteDoc(doc(db, 'bible_study_meetings', meetingId));
+}
+
+
+/**
+ * Subscribes to a Study by id (publicly readable).
+ */
+export function subscribeStudy(
+  db: Firestore,
+  studyId: string,
+  cb: (study: Study | null) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    doc(db, 'bible_study_studies', studyId),
+    (snap) => cb(snap.exists() ? mapStudy(snap) : null),
+    (e) => (onError ? onError(e) : console.error('study sub error', e)),
+  );
+}
+
+/**
+ * Subscribes to an Entry point by slug — the slug is the document id, so the
+ * durable URL is a stable lookup.
+ */
+export function subscribeEntryPoint(
+  db: Firestore,
+  slug: string,
+  cb: (entryPoint: EntryPoint | null) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    doc(db, 'bible_study_entry_points', slug),
+    (snap) => cb(snap.exists() ? mapEntryPoint(snap) : null),
+    (e) => (onError ? onError(e) : console.error('entry point sub error', e)),
+  );
 }

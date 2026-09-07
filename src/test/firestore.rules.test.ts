@@ -2473,5 +2473,98 @@ describeRules('Firestore Security Rules', () => {
       const unauthDb = getFirestore();
       await assertFails(getDoc(doc(unauthDb, 'board_docs', 'doc-team-pastoral')));
     });
+
+    it('BS7: a Meeting document carrying the removed siblingId field is still valid (issue #858)', async () => {
+      await seedMeetingUsers();
+      const adminDb = getFirestore({ uid: 'admin1' });
+      // siblingId was removed from validation; legacy documents that carry it
+      // must remain readable and writable.
+      await assertSucceeds(setDoc(doc(adminDb, 'bible_study_meetings', 'romans-legacy'), {
+        studyId: 'romans',
+        date: '2026-09-10',
+        title: 'Legacy field document',
+        published: true,
+        siblingId: 'romans-wk2',
+      }));
+      await assertSucceeds(getDoc(doc(adminDb, 'bible_study_meetings', 'romans-legacy')));
+    });
+
+    it('BS8: a published Meeting cannot be hard-deleted; an unpublished one can (issue #859)', async () => {
+      await seedMeetingUsers();
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'bible_study_meetings', 'romans-pub'), {
+          studyId: 'romans', date: '2026-09-10', title: 'Published', published: true,
+        });
+        await setDoc(doc(db, 'bible_study_meetings', 'romans-draft'), {
+          studyId: 'romans', date: '2026-09-17', title: 'Draft', published: false,
+        });
+      });
+
+      // Published: unpublish first — two deliberate acts, enforced here.
+      await assertFails(deleteDoc(doc(adminDb, 'bible_study_meetings', 'romans-pub')));
+      await assertSucceeds(deleteDoc(doc(adminDb, 'bible_study_meetings', 'romans-draft')));
+    });
+
+    it('EP1: a Study and an Entry point are publicly readable (issue #859)', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'bible_study_studies', 'romans-fall26'), {
+          title: 'Romans', term: 'Fall 2026',
+        });
+        await setDoc(doc(db, 'bible_study_entry_points', 'cisa-wednesday'), {
+          slug: 'cisa-wednesday', name: 'Wednesday Bible Study', activeStudyId: 'romans-fall26',
+        });
+      });
+
+      const unauthDb = getFirestore();
+      await assertSucceeds(getDoc(doc(unauthDb, 'bible_study_studies', 'romans-fall26')));
+      await assertSucceeds(getDoc(doc(unauthDb, 'bible_study_entry_points', 'cisa-wednesday')));
+    });
+
+    it('EP2: anonymous and non-Full-timer writes to Studies and Entry points are denied (issue #859)', async () => {
+      const unauthDb = getFirestore();
+      await assertFails(setDoc(doc(unauthDb, 'bible_study_studies', 'evil-study'), {
+        title: 'Evil', term: 'Now',
+      }));
+      await assertFails(setDoc(doc(unauthDb, 'bible_study_entry_points', 'evil'), {
+        slug: 'evil', name: 'Evil', activeStudyId: null,
+      }));
+
+      await seedMeetingUsers();
+      const traineeDb = getFirestore({ uid: 'trainee1' });
+      await assertFails(setDoc(doc(traineeDb, 'bible_study_entry_points', 'evil'), {
+        slug: 'evil', name: 'Evil', activeStudyId: null,
+      }));
+    });
+
+    it('EP3: a Full-timer can create and update Studies and Entry points (issue #859)', async () => {
+      await seedMeetingUsers();
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(adminDb, 'bible_study_studies', 'romans-fall26'), {
+        title: 'Romans', term: 'Fall 2026',
+      }));
+      await assertSucceeds(setDoc(doc(adminDb, 'bible_study_entry_points', 'cisa-wednesday'), {
+        slug: 'cisa-wednesday', name: 'Wednesday Bible Study', activeStudyId: 'romans-fall26',
+      }));
+      // Starting the next term is a change of which Study is active — the
+      // slug never changes.
+      await assertSucceeds(updateDoc(doc(adminDb, 'bible_study_entry_points', 'cisa-wednesday'), {
+        activeStudyId: 'john-spring27',
+      }));
+      // An Entry point with no active Study (between terms) is valid too.
+      await assertSucceeds(updateDoc(doc(adminDb, 'bible_study_entry_points', 'cisa-wednesday'), {
+        activeStudyId: null,
+      }));
+    });
+
+    it('EP4: the Entry point slug must match its document id (issue #859)', async () => {
+      await seedMeetingUsers();
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(adminDb, 'bible_study_entry_points', 'not-the-slug'), {
+        slug: 'different', name: 'Mismatched', activeStudyId: null,
+      }));
+    });
   });
 });

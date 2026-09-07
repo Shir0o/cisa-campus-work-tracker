@@ -69,7 +69,9 @@ const Questions = lazyWithRetry(() => import("./views/Questions"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
+const BibleStudyPresent = lazyWithRetry(() => import("./views/BibleStudyPresent"));
 const BibleStudyEditor = lazyWithRetry(() => import("./views/BibleStudyEditor"));
+const BibleStudyIndex = lazyWithRetry(() => import("./views/BibleStudyIndex"));
 
 
 interface LayoutContextType {
@@ -677,15 +679,16 @@ export default function App() {
                 />
 
                 <Route
-                  path="/s/:studyId"
+                  path="/s/:slug"
                   element={
                     <React.Suspense fallback={null}>
                       <PublicStudyReader />
                     </React.Suspense>
                   }
                 />
+                {/* Staff permalink — public but unlisted, noindex, linked from nowhere */}
                 <Route
-                  path="/s/:studyId/:date"
+                  path="/study/:studyId/:date"
                   element={
                     <React.Suspense fallback={null}>
                       <PublicStudyReader />
@@ -721,6 +724,43 @@ export default function App() {
 
                 <Route
                   path="/bible-study"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <React.Suspense
+                            fallback={
+                              <div className="p-8 space-y-6">
+                                <Skeleton className="h-10 w-64" />
+                                <Skeleton className="h-96 w-full rounded-3xl" />
+                              </div>
+                            }
+                          >
+                            <BibleStudyIndex />
+                          </React.Suspense>
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Present mode — full-screen, any signed-in user: the person
+                    holding the phone is often not a Full-timer. */}
+                <Route
+                  path="/bible-study/present"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <React.Suspense fallback={null}>
+                          <BibleStudyPresent />
+                        </React.Suspense>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/bible-study/:meetingId"
                   element={
                     <ProtectedRoute>
                       <RoleGuard minRole="admin">

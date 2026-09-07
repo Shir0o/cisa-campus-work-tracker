@@ -1,3 +1,4 @@
+// @cisa/core mirror of the web app's src/lib/bibleStudy.ts — keep in step.
 export type PromptKind = "question" | "discuss" | "activity";
 
 export type Blank = { before: string; word: string; after: string };
@@ -20,8 +21,26 @@ export type Meeting = {
   title: string;
   sections: Section[];
   published: boolean;
-  siblingId?: string;
   md?: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  createdBy?: string;
+};
+
+export type Study = {
+  id: string;
+  title: string;
+  term: string; // e.g. "Fall 2026"
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  createdBy?: string;
+};
+
+export type EntryPoint = {
+  id: string; // the slug — it names the standing invitation and never changes
+  slug: string;
+  name: string;
+  activeStudyId: string | null; // exactly one Study is active at a time; null between terms
   createdAt?: unknown;
   updatedAt?: unknown;
   createdBy?: string;
@@ -191,32 +210,131 @@ export function parseMeeting(md: string): Section[] {
   return sections;
 }
 
-export function currentMeeting(
+/**
+ * The result of resolving a scan (or a staff permalink) through the chain
+ * Entry point -> active Study -> newest published Meeting. The three kinds
+ * are the three honest answers a student can be given; `isFallback` is true
+ * when the returned Meeting is not the current week's, and `fallbackDate`
+ * must be stated rather than implied.
+ */
+export type ScanResolution =
+  | { kind: "meeting"; meeting: Meeting; isFallback: boolean; fallbackDate?: string }
+  | { kind: "never-published" }
+  | { kind: "no-active-study" };
+
+/**
+ * A Meeting is the current week's from the Monday of its date's week. A
+ * Wednesday-dated Meeting stays current through Sunday and becomes "an older
+ * week" the moment the next week starts — which is exactly when silently
+ * showing it would begin to lie.
+ */
+function weekStart(today: string): string {
+  const d = new Date(`${today}T00:00:00Z`);
+  const shift = (d.getUTCDay() + 6) % 7; // Monday-start week
+  d.setUTCDate(d.getUTCDate() - shift);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Resolves an Entry point (or, for a dated permalink, a Study directly) to
+ * what the reader should show. Pure — every outcome is testable with plain
+ * data and no mocks.
+ */
+export function resolveScan(
+  entryPoint: EntryPoint | null,
+  study: Study | null,
   meetings: Meeting[],
-  todayDate: string,
+  today: string,
   permalinkDate?: string,
-): { meeting: Meeting; isStale: boolean } | null {
-  const published = meetings
-    .filter((m) => m.published)
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  if (published.length === 0) return null;
-
-  const newest = published[0];
-
+): ScanResolution {
   if (permalinkDate) {
+    // A permalink addresses one week by Study and date; the Entry point plays
+    // no part in the chain.
+    if (!study) return { kind: "no-active-study" };
+    const published = meetings.filter((m) => m.published).sort((a, b) => b.date.localeCompare(a.date));
+    if (published.length === 0) return { kind: "never-published" };
+    const boundary = weekStart(today);
     const match = published.find((m) => m.date === permalinkDate);
-    if (!match) return null;
-    return {
-      meeting: match,
-      isStale: match.id !== newest.id,
-    };
+    if (match) {
+      const isFallback = match.date < boundary;
+      return { kind: "meeting", meeting: match, isFallback, fallbackDate: isFallback ? match.date : undefined };
+    }
+    // The named week does not exist: show the newest week and say so with its
+    // date rather than rendering an empty page.
+    const newest = published[0];
+    return { kind: "meeting", meeting: newest, isFallback: true, fallbackDate: newest.date };
   }
 
+  if (!entryPoint || !study) return { kind: "no-active-study" };
+
+  const published = meetings.filter((m) => m.published).sort((a, b) => b.date.localeCompare(a.date));
+  if (published.length === 0) return { kind: "never-published" };
+
+  const newest = published[0];
+  const isFallback = newest.date < weekStart(today);
   return {
+    kind: "meeting",
     meeting: newest,
-    isStale: false,
+    isFallback,
+    fallbackDate: isFallback ? newest.date : undefined,
   };
+}
+
+/**
+ * The date a brand-new week gets: the first free date a week after the
+ * newest existing Meeting, or — for a study with no weeks yet — the next
+ * Wednesday strictly after today. Dates already taken by a Meeting are
+ * skipped, so a rapid second click never lands on an existing week.
+ */
+export function nextMeetingDate(meetings: Meeting[], today: string): string {
+  const dates = new Set(meetings.map((m) => m.date));
+  const newest = meetings.map((m) => m.date).sort((a, b) => b.localeCompare(a))[0];
+  const base = new Date(`${(newest ?? today)}T00:00:00Z`);
+  let shift = newest ? 7 : (3 - base.getUTCDay() + 7) % 7 || 7; // 3 = Wednesday
+  let candidate: string;
+  do {
+    base.setUTCDate(base.getUTCDate() + shift);
+    candidate = base.toISOString().slice(0, 10);
+    shift = 7; // after the first hop, always a full week
+  } while (dates.has(candidate));
+  return candidate;
+}
+
+/**
+ * A new week starts from a small skeleton that teaches the three conventions
+ * — Section heading, blockquote Passage, marked Prompt line — visibly as
+ * placeholders. Never a silent copy of the previous week's text, which risks
+ * publishing last week's content under this week's date.
+ */
+export const MEETING_SKELETON_MD = `## This week's title
+
+- First point — hide a word by wrapping it in double brackets: a [[blank]]
+
+> The passage goes here, a verse at a time.
+> Reference · Version
+
+Discuss: The prompt the room answers out loud.
+`;
+
+export type MeetingForm = {
+  title: string;
+  date: string;
+  markdown: string;
+  published: boolean;
+};
+
+/**
+ * Whether the editor's form has drifted from the Meeting it was loaded from
+ * (or last saved as). This is what the unsaved-changes guard and the
+ * editor's own "Unsaved changes" chip are driven by.
+ */
+export function isMeetingDirty(form: MeetingForm, saved: MeetingForm): boolean {
+  return (
+    form.title !== saved.title ||
+    form.date !== saved.date ||
+    form.markdown !== saved.markdown ||
+    form.published !== saved.published
+  );
 }
 
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {

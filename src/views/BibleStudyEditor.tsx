@@ -1,106 +1,108 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { db } from '../lib/firebase';
 import {
   parseMeeting,
+  isMeetingDirty,
   type Meeting,
+  type MeetingForm,
   type Section,
+  type EntryPoint,
 } from '../lib/bibleStudy';
+import { useUnsavedGuard } from '../lib/navGuard';
 import {
   saveMeeting,
   setMeetingPublished,
-  subscribeStudyMeetings,
+  subscribeMeeting,
+  subscribeEntryPoints,
 } from '../lib/data/bibleStudy';
+import { entryPointUrl } from '../lib/publicUrl';
 import { format } from 'date-fns';
 
 export default function BibleStudyEditor() {
-  const { user, isAdmin } = useAuth();
-  const [studyId, setStudyId] = useState('romans-fall26');
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
+  const { meetingId = '' } = useParams<{ meetingId: string }>();
+  const { user } = useAuth();
+  const [meeting, setMeeting] = useState<Meeting | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
-  const [title, setTitle] = useState('Peace that holds');
+  // The form is the editable copy; it initializes once per meeting from the
+  // first snapshot, so live updates never clobber what is being written.
+  const initializedFor = useRef<string>('');
+  const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [markdown, setMarkdown] = useState(`## Where peace starts
-- Peace with God is a [[standing]], not a mood.
-- The access we have was [[given]], never earned.
-- What we stand in now is what we will stand in at the end.
-
-> Being therefore justified by faith, we have peace with God through our Lord Jesus Christ; through whom we also have our access by faith into this grace in which we stand.
-> Romans 5:1–2 · WEB
-
-Discuss: Where do you catch yourself treating peace with God as a feeling that comes and goes?
-
-## What suffering is doing
-- Suffering is not the opposite of hope — it is the [[road]] to it.
-- Character is not given. It is [[produced]].
-
-> We also rejoice in our sufferings, knowing that suffering produces perseverance; and perseverance, proven character; and proven character, [[hope]].
-> Romans 5:3–4 · WEB
-
-Activity: In pairs, two minutes each. Name one thing you are enduring, and one thing it has already produced in you.
-`);
+  const [markdown, setMarkdown] = useState('');
   const [published, setPublished] = useState(false);
+  const [saved, setSaved] = useState<MeetingForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Subscribe to study meetings
+  // The entry point pointing at this study — its URL is where a published
+  // week goes, and present mode is how the room sees it.
+  const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
+  useEffect(() => subscribeEntryPoints(db, setEntryPoints), []);
+  const entryPoint = entryPoints.find((ep) => ep.activeStudyId === meeting?.studyId);
+
   useEffect(() => {
-    if (!studyId) return;
-    const unsub = subscribeStudyMeetings(db, studyId, (fetched) => {
-      setMeetings(fetched);
-      if (fetched.length > 0 && !selectedMeetingId) {
-        const first = fetched[0];
-        setSelectedMeetingId(first.id);
-        setTitle(first.title);
-        setDate(first.date);
-        setPublished(first.published);
-        if (first.md) setMarkdown(first.md);
+    initializedFor.current = '';
+    setMeeting(null);
+    setLoaded(false);
+    return subscribeMeeting(db, meetingId, (m) => {
+      setMeeting(m);
+      setLoaded(true);
+      if (m && initializedFor.current !== meetingId) {
+        initializedFor.current = meetingId;
+        setTitle(m.title);
+        setDate(m.date);
+        setPublished(m.published);
+        setMarkdown(m.md ?? '');
+        setSaved({ title: m.title, date: m.date, markdown: m.md ?? '', published: m.published });
+        setActiveSectionIndex(0);
       }
+    }, () => {
+      // A snapshot error must land on the not-found state, not spin forever.
+      setMeeting(null);
+      setLoaded(true);
     });
-    return () => unsub();
-  }, [studyId]);
+  }, [meetingId]);
 
   const sections: Section[] = parseMeeting(markdown);
   const activeSection = sections[activeSectionIndex] || sections[0];
 
-  const handleSelectMeeting = (m: Meeting) => {
-    setSelectedMeetingId(m.id);
-    setTitle(m.title);
-    setDate(m.date);
-    setPublished(m.published);
-    if (m.md) setMarkdown(m.md);
-    setActiveSectionIndex(0);
-  };
-
+  // Save resolves only once the snapshot is accepted, so a failed save keeps
+  // the editor dirty (and the guard up).
   const handleSave = async (publishStatus = published) => {
+    if (!meeting) return;
     setSaving(true);
     try {
-      const parsedSections = parseMeeting(markdown);
-      const meetingId = await saveMeeting(
+      await saveMeeting(
         db,
         {
-          id: selectedMeetingId || undefined,
-          studyId,
+          id: meeting.id,
+          studyId: meeting.studyId,
           date,
           title,
-          sections: parsedSections,
+          sections: parseMeeting(markdown),
           published: publishStatus,
           md: markdown,
         },
         user?.uid,
       );
-      setSelectedMeetingId(meetingId);
       setPublished(publishStatus);
+      setSaved({ title, date, markdown, published: publishStatus });
     } catch (e) {
       console.error('Failed to save meeting', e);
+      throw e;
     } finally {
       setSaving(false);
     }
   };
+
+  const dirty = !!saved && isMeetingDirty({ title, date, markdown, published }, saved);
+  const guard = useUnsavedGuard({ when: dirty, onSave: () => handleSave(published) });
 
   const handleTogglePublish = async () => {
     const nextState = !published;
@@ -123,15 +125,45 @@ Activity: In pairs, two minutes each. Name one thing you are enduring, and one t
     }, 0);
   };
 
-  const qrUrl = `https://cisa.app/s/${studyId}/${date}`;
+
+
+  if (!loaded) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <div className="animate-pulse text-sm text-on-surface-variant">Loading week…</div>
+      </div>
+    );
+  }
+
+  if (!meeting) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 bg-background text-center p-6">
+        <p className="text-sm text-on-surface-variant">This week doesn't exist.</p>
+        <Link to="/bible-study" className="text-xs font-semibold text-primary hover:underline">
+          All weeks
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full p-4 lg:p-6 overflow-hidden bg-background">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap pb-4 shrink-0 border-b border-outline-variant">
-        <div>
-          <div className="text-xs text-on-surface-variant font-medium">
-            Study: {studyId} · {published ? 'Published' : 'Draft'}
+        <div className="min-w-0">
+          <div className="text-xs text-on-surface-variant font-medium flex items-center gap-1.5">
+            <Link to="/bible-study" className="font-semibold text-primary hover:underline shrink-0">
+              All weeks
+            </Link>
+            <span aria-hidden="true">·</span>
+            <span className="truncate">Study: {meeting.studyId}</span>
+            <span aria-hidden="true">·</span>
+            <span className="shrink-0">{published ? 'Published' : 'Draft'}</span>
+            {dirty && (
+              <span className="shrink-0 px-2 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold text-on-surface-variant">
+                Unsaved changes
+              </span>
+            )}
           </div>
           <input
             type="text"
@@ -356,40 +388,69 @@ Activity: In pairs, two minutes each. Name one thing you are enduring, and one t
             <span className="h-px bg-outline-variant flex-1" />
           </div>
 
-          {/* QR Code container */}
+          {/* Present handoff — the old decorative SVG encoded nothing; the
+              real code lives in present mode, generated from local state at
+              the entry point's durable URL. */}
           <div className="bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3">
-            <svg width="42" height="42" viewBox="0 0 21 21" shapeRendering="crispEdges" aria-hidden="true">
-              <rect width="21" height="21" fill="#FFFFFF" />
-              <g fill="#0A0A0B">
-                <path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0z" />
-              </g>
-              <g fill="#FFFFFF">
-                <path d="M1 1h5v5H1zM15 1h5v5h-5zM1 15h5v5H1z" />
-              </g>
-              <g fill="#0A0A0B">
-                <path d="M2 2h3v3H2zM16 2h3v3h-3zM2 16h3v3H2z" />
-                <path d="M9 0h1v2H9zM11 1h1v1h-1zM9 3h2v1H9zM12 3h1v2h-1zM8 5h2v1H8zM10 6h2v1h-2z" />
-                <path d="M0 9h2v1H0zM3 9h1v1H3zM5 9h2v1H5zM1 11h1v1H1zM3 11h2v1H3zM6 11h1v1H6zM0 12h1v1H0zM2 12h1v1H2zM4 12h1v1H4z" />
-                <path d="M9 9h2v2H9zM12 9h1v1h-1zM14 9h2v1h-2zM17 9h1v1h-1zM19 10h2v1h-2zM9 12h1v1H9zM11 12h2v1h-2zM14 12h1v1h-1zM16 12h2v1h-2zM19 12h1v1h-1z" />
-                <path d="M9 14h1v2H9zM11 14h2v1h-2zM14 14h1v1h-1zM16 15h2v1h-2zM19 14h1v2h-1zM9 17h2v1H9zM12 17h1v1h-1zM14 17h2v1h-2zM17 18h2v1h-2zM9 19h1v2H9zM11 19h2v1h-2zM14 19h1v2h-1zM16 20h3v1h-3zM19 19h1v1h-1z" />
-                <path d="M12 6h1v1h-1zM14 5h1v1h-1zM17 6h2v1h-2z" />
-              </g>
-            </svg>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-on-surface">QR Code Link</div>
-              <div className="text-[11px] text-on-surface-variant truncate font-mono">{qrUrl}</div>
+              <div className="text-xs font-semibold text-on-surface">Present mode</div>
+              <div className="text-[11px] text-on-surface-variant truncate font-mono">
+                {entryPoint ? entryPointUrl(entryPoint.slug) : 'No entry point points at this study yet'}
+              </div>
             </div>
-            <a
-              href={`/s/${encodeURIComponent(studyId)}/${encodeURIComponent(date)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80"
-            >
-              Open
-            </a>
+            {entryPoint && (
+              <Link
+                to={`/bible-study/present?ep=${entryPoint.slug}`}
+                className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
+              >
+                Show QR
+              </Link>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Unsaved-changes guard — cancelling and discarding are different
+          intentions and never share a control (UnsavedGuard artboard). */}
+      {guard.pending && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Unsaved changes"
+        >
+          <div className="bg-surface border border-outline-variant rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <h2 className="font-serif text-xl font-bold text-on-surface mb-1">
+              You haven't saved {title || 'this week'}
+            </h2>
+            <p className="text-sm text-on-surface-variant mb-5">
+              {guard.pending.kind === 'push'
+                ? `Opening ${guard.pending.label} will lose what you've written here.`
+                : 'Leaving this page will lose what you have written here.'}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => guard.decide('stay')}
+                className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+              >
+                Stay here
+              </button>
+              <button
+                onClick={() => guard.decide('discard')}
+                className="px-4 py-2 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
+              >
+                Discard and open
+              </button>
+              <button
+                onClick={() => guard.decide('save')}
+                className="px-4 py-2 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
+              >
+                Save, then open
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
