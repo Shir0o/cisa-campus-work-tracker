@@ -684,6 +684,15 @@ export default function App() {
                     </React.Suspense>
                   }
                 />
+                {/* Staff permalink — public but unlisted, noindex, linked from nowhere */}
+                <Route
+                  path="/study/:studyId/:date"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <PublicStudyReader />
+                    </React.Suspense>
+                  }
+                />
 
                 <Route
                   path="/"

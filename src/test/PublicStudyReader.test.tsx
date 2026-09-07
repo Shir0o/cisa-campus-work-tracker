@@ -110,14 +110,6 @@ describe('PublicStudyReader (above the seam)', () => {
     expect(await screen.findByText('Nothing running right now')).toBeInTheDocument();
   });
 
-  it('renders the never-published state when the study has no published Meeting', async () => {
-    mockChain([{ ...sampleMeeting, published: false }]);
-
-    renderAt('/s/cisa-wednesday');
-
-    expect(await screen.findByText('No Study Available')).toBeInTheDocument();
-  });
-
   it('tapping a Blank reveals its hidden word', async () => {
     mockChain([sampleMeeting]);
 
@@ -164,5 +156,94 @@ describe('PublicStudyReader (above the seam)', () => {
     const indexRows = screen.getAllByText('What suffering is doing');
     fireEvent.click(indexRows[0]);
     expect(await screen.findByText('What suffering is doing')).toBeInTheDocument();
+  });
+
+  it('states the date plainly at the top when the newest published week is an older week', async () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    mockChain([{ ...sampleMeeting, date: twoWeeksAgo }]);
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByText(/Peace that holds/)).toBeInTheDocument();
+    expect(screen.getByText(/Most recent ·/)).toBeInTheDocument();
+  });
+
+  it('renders never-published as its own state with no action offered', async () => {
+    mockChain([]);
+
+    renderAt('/s/cisa-wednesday');
+
+    expect(await screen.findByText('The study has never published a week')).toBeInTheDocument();
+    expect(screen.queryByText('Nothing running right now')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('resolves a staff permalink to one week by Study and date', async () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    mockChain([{ ...sampleMeeting, id: 'm-newest' }, { ...sampleMeeting, id: 'm-older', date: twoWeeksAgo, title: 'Older Week' }]);
+
+    render(
+      <MemoryRouter initialEntries={['/study/romans-fall26/' + twoWeeksAgo]}>
+        <Routes>
+          <Route path="/study/:studyId/:date" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Older Week/)).toBeInTheDocument();
+    expect(screen.getByText(/Week of/)).toBeInTheDocument();
+  });
+
+  it('shows the newest week with its date when a permalink names a week that does not exist', async () => {
+    mockChain([sampleMeeting]);
+
+    render(
+      <MemoryRouter initialEntries={['/study/romans-fall26/2001-01-01']}>
+        <Routes>
+          <Route path="/study/:studyId/:date" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Peace that holds/)).toBeInTheDocument();
+    expect(screen.getByText(/Most recent ·/)).toBeInTheDocument();
+  });
+
+  it('handles a permalink for a Study that does not exist instead of rendering an empty page', async () => {
+    mockChain([], null, null);
+
+    render(
+      <MemoryRouter initialEntries={['/study/missing-study/2001-01-01']}>
+        <Routes>
+          <Route path="/study/:studyId/:date" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Week not found')).toBeInTheDocument();
+  });
+
+  it('carries noindex on the permalink route and not on the scan route', async () => {
+    mockChain([sampleMeeting]);
+
+    const scan = renderAt('/s/cisa-wednesday');
+    await scan.findByText('Where peace starts');
+    expect(document.querySelector('meta[name="robots"]')).toBeNull();
+    scan.unmount();
+
+    const permalink = render(
+      <MemoryRouter initialEntries={['/study/romans-fall26/' + today]}>
+        <Routes>
+          <Route path="/study/:studyId/:date" element={<PublicStudyReader />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await permalink.findByText('Where peace starts');
+    const robots = document.querySelector('meta[name="robots"]');
+    expect(robots).not.toBeNull();
+    expect(robots?.getAttribute('content')).toBe('noindex');
+    permalink.unmount();
+    expect(document.querySelector('meta[name="robots"]')).toBeNull();
   });
 });
