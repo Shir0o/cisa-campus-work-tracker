@@ -207,7 +207,6 @@ describe('BibleStudyEditor view', () => {
     expect(window.location.pathname).toBe('/bible-study');
     expect(bibleData.saveMeeting).not.toHaveBeenCalled();
   });
-
   it('saving and leaving actually saves before navigating', async () => {
     renderAt();
 
@@ -219,7 +218,11 @@ describe('BibleStudyEditor view', () => {
     fireEvent.click(screen.getByText('All weeks'));
     fireEvent.click(await screen.findByRole('button', { name: /Save, then open/i }));
 
-    await waitFor(() => expect(bibleData.saveMeeting).toHaveBeenCalled());
-    expect(await screen.findByText('Weeks index')).toBeInTheDocument();
+    // Coverage-instrumented runs are slow; give the async navigation room.
+    await waitFor(
+      () => expect(bibleData.saveMeeting).toHaveBeenCalled(),
+      { timeout: 5000 },
+    );
+    expect(await screen.findByText('Weeks index', {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });

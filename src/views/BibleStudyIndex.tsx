@@ -10,12 +10,15 @@ import {
   type Study,
 } from '../lib/bibleStudy';
 import {
+  deleteMeeting,
   saveMeeting,
+  setMeetingPublished,
   subscribeEntryPoints,
   subscribeStudy,
   subscribeStudyMeetings,
 } from '../lib/data/bibleStudy';
 import { useAuth } from '../components/AuthProvider';
+import { staffPermalinkUrl } from '../lib/publicUrl';
 import { format, parseISO } from 'date-fns';
 
 /**
@@ -50,9 +53,15 @@ export default function BibleStudyIndex() {
     setMeetings([]);
     setMeetingsLoaded(false);
     if (!studyId) return;
-    const unsubStudy = subscribeStudy(db, studyId, setStudy);
+    const unsubStudy = subscribeStudy(db, studyId, setStudy, () => {
+      setStudy(null);
+      setMeetingsLoaded(true);
+    });
     const unsubMeetings = subscribeStudyMeetings(db, studyId, (m) => {
       setMeetings(m);
+      setMeetingsLoaded(true);
+    }, () => {
+      setMeetings([]);
       setMeetingsLoaded(true);
     });
     return () => {
@@ -71,19 +80,61 @@ export default function BibleStudyIndex() {
   const handleNewWeek = async () => {
     if (!study || !user) return;
     const date = nextMeetingDate(meetings, today);
-    const id = await saveMeeting(
-      db,
-      {
-        studyId: study.id,
-        date,
-        title: '',
-        sections: [],
-        published: false,
-        md: MEETING_SKELETON_MD,
-      },
-      user.uid,
-    );
+    const draft: Meeting = {
+      id: `${study.id}-${date}`,
+      studyId: study.id,
+      date,
+      title: '',
+      sections: [],
+      published: false,
+      md: MEETING_SKELETON_MD,
+    };
+    const id = await saveMeeting(db, draft, user.uid);
+    // Optimistic: closes the stale-subscription window a rapid second click
+    // would otherwise collide through.
+    setMeetings((cur) => (cur.some((m) => m.id === draft.id) ? cur : [draft, ...cur]));
     navigate(`/bible-study/${id}`);
+  };
+
+  // ── Row actions (issue #864) ──────────────────────────────────────────
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<Meeting | null>(null);
+
+  const handleDuplicate = async (m: Meeting) => {
+    if (!user) return;
+    const date = nextMeetingDate(meetings, today);
+    const copy: Meeting = {
+      id: `${m.studyId}-${date}`,
+      studyId: m.studyId,
+      date,
+      title: m.title,
+      sections: m.sections,
+      published: false,
+      md: m.md ?? '',
+    };
+    await saveMeeting(db, copy, user.uid);
+    setMeetings((cur) => (cur.some((x) => x.id === copy.id) ? cur : [copy, ...cur]));
+    setMenuFor(null);
+  };
+
+  const handleCopyStaffLink = (m: Meeting) => {
+    void navigator.clipboard?.writeText(staffPermalinkUrl(m.studyId, m.date));
+    setCopiedId(m.id);
+    setTimeout(() => setCopiedId((cur) => (cur === m.id ? null : cur)), 1500);
+    setMenuFor(null);
+  };
+
+  const handleUnpublish = async (m: Meeting) => {
+    await setMeetingPublished(db, m.id, false);
+    setMenuFor(null);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!deleteCandidate) return;
+    await deleteMeeting(db, deleteCandidate.id);
+    setDeleteCandidate(null);
+    setMenuFor(null);
   };
 
   const formatDay = (date: string) => {
@@ -119,35 +170,106 @@ export default function BibleStudyIndex() {
               </div>
             )}
             {meetings.map((m, i) => (
-              <button
-                key={m.id}
-                onClick={() => navigate(`/bible-study/${m.id}`)}
-                className="w-full text-left flex items-center gap-3 px-3 lg:px-4 py-2.5 min-h-[44px] hover:bg-surface-variant/50 transition-colors"
-              >
-                <span className="font-serif font-bold text-[10px] w-5 shrink-0 opacity-50 tabular-nums">
-                  {String(meetings.length - i).padStart(2, '0')}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-on-surface truncate">
-                    {m.title || 'Untitled week'}
+              <div key={m.id} className="flex items-center gap-1 pr-1.5">
+                <button
+                  onClick={() => navigate(`/bible-study/${m.id}`)}
+                  className="flex-1 min-w-0 text-left flex items-center gap-3 px-3 lg:px-4 py-2.5 min-h-[44px] hover:bg-surface-variant/50 transition-colors"
+                >
+                  <span className="font-serif font-bold text-[10px] w-5 shrink-0 opacity-50 tabular-nums">
+                    {String(meetings.length - i).padStart(2, '0')}
                   </span>
-                  <span className="block text-[11px] text-on-surface-variant truncate">
-                    {formatDay(m.date)} · {m.sections.length}{' '}
-                    {m.sections.length === 1 ? 'section' : 'sections'} ·{' '}
-                    {m.published ? 'published' : 'not published'}
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-on-surface truncate">
+                      {m.title || 'Untitled week'}
+                    </span>
+                    <span className="block text-[11px] text-on-surface-variant truncate">
+                      {formatDay(m.date)} · {m.sections.length}{' '}
+                      {m.sections.length === 1 ? 'section' : 'sections'} ·{' '}
+                      {m.published ? 'published' : 'not published'}
+                    </span>
                   </span>
-                </span>
-                {m.id === liveMeetingId ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--t-sage-soft)] text-on-surface">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--t-sage)]" />
-                    Live now
-                  </span>
-                ) : !m.published ? (
-                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-variant text-on-surface-variant">
-                    Draft
-                  </span>
-                ) : null}
-              </button>
+                  {m.id === liveMeetingId ? (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--t-sage-soft)] text-on-surface">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--t-sage)]" />
+                      Live now
+                    </span>
+                  ) : !m.published ? (
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-surface-variant text-on-surface-variant">
+                      Draft
+                    </span>
+                  ) : null}
+                </button>
+
+                {/* Row actions — duplicate, copy staff link, unpublish, delete */}
+                <div className="relative shrink-0">
+                  <button
+                    aria-label={`Week actions for ${m.title || 'untitled week'}`}
+                    aria-expanded={menuFor === m.id}
+                    onClick={() => setMenuFor(menuFor === m.id ? null : m.id)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="5" cy="12" r="1.8" />
+                      <circle cx="12" cy="12" r="1.8" />
+                      <circle cx="19" cy="12" r="1.8" />
+                    </svg>
+                  </button>
+                  {menuFor === m.id && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setMenuFor(null)} />
+                      <div
+                        role="menu"
+                        aria-label={`Actions for ${m.title || 'untitled week'}`}
+                        className="absolute right-0 top-9 z-30 w-64 bg-surface border border-outline-variant rounded-2xl shadow-xl p-1.5"
+                      >
+                        <button
+                          role="menuitem"
+                          onClick={() => void handleDuplicate(m)}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                        >
+                          Duplicate into a new week
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={() => handleCopyStaffLink(m)}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                        >
+                          {copiedId === m.id ? 'Copied' : 'Copy staff link'}
+                        </button>
+                        {m.published && (
+                          <button
+                            role="menuitem"
+                            onClick={() => void handleUnpublish(m)}
+                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                          >
+                            Unpublish
+                          </button>
+                        )}
+                        <button
+                          role="menuitem"
+                          disabled={m.published}
+                          onClick={() => {
+                            setDeleteCandidate(m);
+                            setMenuFor(null);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                            m.published
+                              ? 'text-on-surface-variant/50 cursor-not-allowed'
+                              : 'text-error hover:bg-surface-variant'
+                          }`}
+                        >
+                          Delete
+                        </button>
+                        {m.published && (
+                          <p className="px-3 pt-1 pb-1.5 text-[11px] text-on-surface-variant leading-snug">
+                            Unpublish first — a published week may already be on someone's screen.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -233,6 +355,37 @@ export default function BibleStudyIndex() {
           </div>
         </aside>
       </div>
+
+      {/* Delete is two deliberate steps — the menu click is only the first. */}
+      {deleteCandidate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete week"
+        >
+          <div className="bg-surface border border-outline-variant rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <h2 className="font-serif text-xl font-bold text-on-surface mb-1">
+              Delete "{deleteCandidate.title || 'Untitled week'}"?
+            </h2>
+            <p className="text-sm text-on-surface-variant mb-5">This can't be undone.</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setDeleteCandidate(null)}
+                className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+              >
+                Keep it
+              </button>
+              <button
+                onClick={() => void handleDeleteConfirmed()}
+                className="px-4 py-2 rounded-full bg-error text-on-error text-xs font-semibold hover:opacity-90 transition-opacity"
+              >
+                Delete week
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

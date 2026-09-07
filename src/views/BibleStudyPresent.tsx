@@ -41,10 +41,16 @@ export default function BibleStudyPresent() {
       return subscribeEntryPoint(db, epSlug, (ep) => {
         setEntryPoint(ep);
         setEntryPointLoaded(true);
+      }, () => {
+        setEntryPoint(null);
+        setEntryPointLoaded(true);
       });
     }
     return subscribeEntryPoints(db, (list) => {
       setEntryPoint(list[0] ?? null);
+      setEntryPointLoaded(true);
+    }, () => {
+      setEntryPoint(null);
       setEntryPointLoaded(true);
     });
   }, [epSlug]);
@@ -56,9 +62,15 @@ export default function BibleStudyPresent() {
     setMeetings([]);
     setMeetingsLoaded(false);
     if (!studyId) return;
-    const unsubStudy = subscribeStudy(db, studyId, setStudy);
+    const unsubStudy = subscribeStudy(db, studyId, setStudy, () => {
+      setStudy(null);
+      setMeetingsLoaded(true);
+    });
     const unsubMeetings = subscribePublishedStudyMeetings(db, studyId, (m) => {
       setMeetings(m);
+      setMeetingsLoaded(true);
+    }, () => {
+      setMeetings([]);
       setMeetingsLoaded(true);
     });
     return () => {
@@ -130,13 +142,12 @@ export default function BibleStudyPresent() {
       </div>
     );
   }
-
   const url = entryPointUrl(entryPoint.slug);
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center p-6 relative">
       <Link
-        to="/bible-study"
+        to="/"
         className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
         aria-label="Leave present mode"
       >

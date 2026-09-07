@@ -24,4 +24,11 @@ describe('publicUrl', () => {
       'https://cisa-campus-work-tracker-qa.pages.dev/s/cisa-wednesday',
     );
   });
+
+  it('builds the unlisted staff permalink for one week', async () => {
+    const mod = await import('../lib/publicUrl');
+    expect(mod.staffPermalinkUrl('romans-fall26', '2026-10-14')).toBe(
+      'https://cisa-campus-work-tracker.pages.dev/study/romans-fall26/2026-10-14',
+    );
+  });
 });

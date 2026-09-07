@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BibleStudyIndex from '../views/BibleStudyIndex';
@@ -12,6 +12,8 @@ vi.mock('../lib/data/bibleStudy', () => ({
   subscribeStudy: vi.fn(),
   subscribeStudyMeetings: vi.fn(),
   saveMeeting: vi.fn().mockResolvedValue('romans-fall26-2026-10-28'),
+  setMeetingPublished: vi.fn().mockResolvedValue(undefined),
+  deleteMeeting: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -88,9 +90,11 @@ describe('BibleStudyIndex view', () => {
       .map((el) => el.closest('button'))
       .find((el): el is HTMLButtonElement => el !== null);
   }
+  let meetingsCb: ((meetings: Meeting[]) => void) | null = null;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    meetingsCb = null;
     vi.mocked(auth.useAuth).mockReturnValue({
       user: mockUser,
       isAdmin: true,
@@ -104,8 +108,13 @@ describe('BibleStudyIndex view', () => {
       return () => {};
     });
     vi.mocked(bibleData.subscribeStudyMeetings).mockImplementation((_db, _studyId, cb) => {
+      meetingsCb = cb;
       cb(MEETINGS);
       return () => {};
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
     });
   });
 
@@ -168,25 +177,29 @@ describe('BibleStudyIndex view', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /New week/i }));
 
-    await waitFor(() => {
-      expect(bibleData.saveMeeting).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          studyId: 'romans-fall26',
-          date: '2026-10-28',
-          published: false,
-          // A new week starts from the skeleton, never a copy of the
-          // previous week's text.
-          md: expect.stringContaining('## '),
-        }),
-        mockUser.uid,
-      );
-    });
+    await waitFor(
+      () => {
+        expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            studyId: 'romans-fall26',
+            date: '2026-10-28',
+            published: false,
+            // A new week starts from the skeleton, never a copy of the
+            // previous week's text.
+            md: expect.stringContaining('## '),
+          }),
+          mockUser.uid,
+        );
+      },
+      { timeout: 5000 },
+    );
     const savedMd = vi.mocked(bibleData.saveMeeting).mock.calls[0][1].md as string;
     expect(savedMd).toMatch(/^(Question|Discuss|Activity): /m);
     expect(savedMd).not.toContain('Nothing between us');
 
-    expect(await screen.findByText('Editor opened')).toBeInTheDocument();
+    // Coverage-instrumented runs are slow; give the async navigation room.
+    expect(await screen.findByText('Editor opened', {}, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('renders the between-terms panel when no study is active', async () => {
@@ -214,5 +227,114 @@ describe('BibleStudyIndex view', () => {
     fireEvent.click(screen.getByText('Peace that holds'));
 
     expect(await screen.findByText('Editor opened')).toBeInTheDocument();
+  });
+
+  describe('row actions', () => {
+    it('offers duplicate, copy staff link, unpublish and delete for a published week', async () => {
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+      fireEvent.click(screen.getByRole('button', { name: 'Week actions for Alive to God' }));
+
+      const menu = screen.getByRole('menu', { name: 'Actions for Alive to God' });
+      expect(menu).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Duplicate into a new week' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Copy staff link' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Unpublish' })).toBeInTheDocument();
+      // Refused for a published week, with the reason written where it can
+      // be read — not an unexplained disabled control.
+      const del = screen.getByRole('menuitem', { name: 'Delete' });
+      expect(del).toBeDisabled();
+      expect(screen.getByText(/Unpublish first — a published week may already be on someone's screen/)).toBeInTheDocument();
+    });
+
+    it('offers delete without unpublish for a draft week, and deleting removes it from the list', async () => {
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+      fireEvent.click(screen.getByRole('button', { name: 'Week actions for Nothing between us' }));
+
+      expect(screen.queryByRole('menuitem', { name: 'Unpublish' })).not.toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeEnabled();
+
+      // Two deliberate steps: menu click, then confirm.
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+      fireEvent.click(await screen.findByRole('button', { name: /Delete week/i }));
+
+      await waitFor(() => expect(bibleData.deleteMeeting).toHaveBeenCalledWith(expect.anything(), 'm-6'));
+
+      // The subscription delivers the list without the deleted week; the
+      // live mark moves to what a scan now opens.
+      act(() => {
+        meetingsCb?.(MEETINGS.filter((m) => m.id !== 'm-6'));
+      });
+      await waitFor(() => expect(screen.queryByText('Nothing between us')).not.toBeInTheDocument());
+      expect(rowFor('Alive to God')?.textContent).toContain('Live now');
+    });
+
+    it('duplicates a week with its structure, leaving the source untouched', async () => {
+      vi.mocked(bibleData.saveMeeting).mockResolvedValue('romans-fall26-2026-10-28');
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+      fireEvent.click(screen.getByRole('button', { name: 'Week actions for Peace that holds' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate into a new week' }));
+
+      await waitFor(() => {
+        expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            studyId: 'romans-fall26',
+            date: '2026-10-28',
+            title: 'Peace that holds',
+            sections: MEETINGS[2].sections,
+            published: false,
+          }),
+          mockUser.uid,
+        );
+      });
+      // The source was not written to — no unpublish, no delete, one save.
+      expect(bibleData.saveMeeting).toHaveBeenCalledTimes(1);
+      expect(bibleData.setMeetingPublished).not.toHaveBeenCalled();
+      expect(bibleData.deleteMeeting).not.toHaveBeenCalled();
+      expect(rowFor('Peace that holds')).toBeInTheDocument();
+    });
+
+    it('copies the unlisted staff permalink for one week', async () => {
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+      fireEvent.click(screen.getByRole('button', { name: 'Week actions for Alive to God' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy staff link' }));
+
+      await waitFor(() => {
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+          'https://cisa-campus-work-tracker.pages.dev/study/romans-fall26/2026-10-14',
+        );
+      });
+    });
+
+    it('unpublishing is reflected immediately in what a scan opens', async () => {
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+      fireEvent.click(screen.getByRole('button', { name: 'Week actions for Alive to God' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Unpublish' }));
+
+      await waitFor(() =>
+        expect(bibleData.setMeetingPublished).toHaveBeenCalledWith(expect.anything(), 'm-5', false),
+      );
+
+      // The subscription delivers the change; the scan panel falls back to
+      // the previous published week and the live mark moves with it.
+      act(() => {
+        meetingsCb?.(MEETINGS.map((m) => (m.id === 'm-5' ? { ...m, published: false } : m)));
+      });
+      await waitFor(() => {
+        const panel = screen.getByText('What a scan opens right now').parentElement;
+        expect(panel?.textContent).toContain('Peace that holds');
+        expect(panel?.textContent).not.toContain('Alive to God');
+      });
+    });
   });
 });

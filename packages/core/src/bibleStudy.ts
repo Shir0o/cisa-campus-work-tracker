@@ -1,3 +1,4 @@
+// @cisa/core mirror of the web app's src/lib/bibleStudy.ts — keep in step.
 export type PromptKind = "question" | "discuss" | "activity";
 
 export type Blank = { before: string; word: string; after: string };
@@ -280,16 +281,23 @@ export function resolveScan(
 }
 
 /**
- * The date a brand-new week gets: a week after the newest existing Meeting
- * (so a repeated "New week" never collides with an earlier draft), or — for
- * a study with no weeks yet — the next Wednesday strictly after today.
+ * The date a brand-new week gets: the first free date a week after the
+ * newest existing Meeting, or — for a study with no weeks yet — the next
+ * Wednesday strictly after today. Dates already taken by a Meeting are
+ * skipped, so a rapid second click never lands on an existing week.
  */
 export function nextMeetingDate(meetings: Meeting[], today: string): string {
+  const dates = new Set(meetings.map((m) => m.date));
   const newest = meetings.map((m) => m.date).sort((a, b) => b.localeCompare(a))[0];
   const base = new Date(`${(newest ?? today)}T00:00:00Z`);
-  const shift = newest ? 7 : (3 - base.getUTCDay() + 7) % 7 || 7; // 3 = Wednesday
-  base.setUTCDate(base.getUTCDate() + shift);
-  return base.toISOString().slice(0, 10);
+  let shift = newest ? 7 : (3 - base.getUTCDay() + 7) % 7 || 7; // 3 = Wednesday
+  let candidate: string;
+  do {
+    base.setUTCDate(base.getUTCDate() + shift);
+    candidate = base.toISOString().slice(0, 10);
+    shift = 7; // after the first hop, always a full week
+  } while (dates.has(candidate));
+  return candidate;
 }
 
 /**

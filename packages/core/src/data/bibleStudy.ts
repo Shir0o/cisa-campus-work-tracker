@@ -1,3 +1,4 @@
+// @cisa/core mirror of the web app's src/lib/data/bibleStudy.ts — keep in step.
 import {
   collection,
   doc,
@@ -11,7 +12,7 @@ import {
   where,
   type Firestore,
 } from 'firebase/firestore';
-import type { Meeting, Study, EntryPoint } from "../bibleStudy";
+import type { Meeting, Study, EntryPoint } from '../bibleStudy';
 
 function mapMeeting(d: { id: string; data: () => Record<string, any> }): Meeting {
   const data = d.data();
@@ -30,8 +31,8 @@ function mapMeeting(d: { id: string; data: () => Record<string, any> }): Meeting
 }
 
 
-function str(v: unknown, fallback = ""): string {
-  return typeof v === "string" ? v : fallback;
+function str(v: unknown, fallback = ''): string {
+  return typeof v === 'string' ? v : fallback;
 }
 
 function mapStudy(d: { id: string; data: () => Record<string, unknown> }): Study {
@@ -52,12 +53,13 @@ function mapEntryPoint(d: { id: string; data: () => Record<string, unknown> }): 
     id: d.id,
     slug: str(data.slug, d.id),
     name: str(data.name),
-    activeStudyId: typeof data.activeStudyId === "string" ? data.activeStudyId : null,
+    activeStudyId: typeof data.activeStudyId === 'string' ? data.activeStudyId : null,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
     createdBy: str(data.createdBy) || undefined,
   };
 }
+
 /**
  * Subscribes to published meetings for a study (used by public readers).
  */
@@ -112,11 +114,11 @@ export function subscribeEntryPoints(
   cb: (entryPoints: EntryPoint[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  const q = query(collection(db, "bible_study_entry_points"));
+  const q = query(collection(db, 'bible_study_entry_points'));
   return onSnapshot(
     q,
     (snap) => cb(snap.docs.map(mapEntryPoint)),
-    (e) => (onError ? onError(e) : console.error("entry points sub error", e)),
+    (e) => (onError ? onError(e) : console.error('entry points sub error', e)),
   );
 }
 
@@ -195,9 +197,9 @@ export function subscribeStudy(
   onError?: (e: unknown) => void,
 ): () => void {
   return onSnapshot(
-    doc(db, "bible_study_studies", studyId),
+    doc(db, 'bible_study_studies', studyId),
     (snap) => cb(snap.exists() ? mapStudy(snap) : null),
-    (e) => (onError ? onError(e) : console.error("study sub error", e)),
+    (e) => (onError ? onError(e) : console.error('study sub error', e)),
   );
 }
 
@@ -212,8 +214,8 @@ export function subscribeEntryPoint(
   onError?: (e: unknown) => void,
 ): () => void {
   return onSnapshot(
-    doc(db, "bible_study_entry_points", slug),
+    doc(db, 'bible_study_entry_points', slug),
     (snap) => cb(snap.exists() ? mapEntryPoint(snap) : null),
-    (e) => (onError ? onError(e) : console.error("entry point sub error", e)),
+    (e) => (onError ? onError(e) : console.error('entry point sub error', e)),
   );
 }

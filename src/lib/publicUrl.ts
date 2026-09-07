@@ -12,3 +12,7 @@ export const PUBLIC_APP_URL =
 
 /** The durable URL a QR encodes — the Entry point's standing invitation. */
 export const entryPointUrl = (slug: string) => `${PUBLIC_APP_URL}/s/${slug}`;
+
+/** The unlisted per-week permalink a Full-timer texts to a student who missed it. */
+export const staffPermalinkUrl = (studyId: string, date: string) =>
+  `${PUBLIC_APP_URL}/study/${studyId}/${date}`;

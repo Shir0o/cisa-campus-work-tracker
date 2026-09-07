@@ -1,3 +1,6 @@
+// Bible study data (#822) — the web app has no dependency on @cisa/core
+// (mobile-only package), so this mirrors packages/core/src/data/bibleStudy.ts
+// for the web side; keep the two in step.
 import {
   collection,
   doc,

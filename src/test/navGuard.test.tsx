@@ -139,14 +139,28 @@ describe('useUnsavedGuard', () => {
     expect(screen.queryByTestId('guard')).not.toBeInTheDocument();
   });
 
-  it('registers beforeunload handling only while dirty', () => {
+  it('prompts the browser before an unload while dirty, and not when clean', () => {
     const { rerender } = renderHook(({ dirty }) => useUnsavedGuard({ when: dirty }), {
       initialProps: { dirty: false },
     });
 
+    const fireBeforeUnload = () => {
+      const event = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(event);
+      return event;
+    };
+
+    // Clean: the browser may close without asking.
+    expect(fireBeforeUnload().defaultPrevented).toBe(false);
+
+    // Dirty: the guard cancels the unload, which is how the browser knows
+    // to show its native dialog.
     rerender({ dirty: true });
+    expect(fireBeforeUnload().defaultPrevented).toBe(true);
+
+    // Clean again: the handler tracks the flag.
     rerender({ dirty: false });
-    // No throw and no state leak — the listeners track the flag.
-    expect(true).toBe(true);
+    expect(fireBeforeUnload().defaultPrevented).toBe(false);
   });
+
 });

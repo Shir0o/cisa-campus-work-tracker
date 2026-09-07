@@ -46,6 +46,11 @@ export default function PublicStudyReader() {
     return subscribeEntryPoint(db, slug, (ep) => {
       setEntryPoint(ep);
       setEntryPointLoaded(true);
+    }, () => {
+      // A snapshot error must not spin forever: resolve as nothing behind
+      // this code, which is what the reader would show anyway.
+      setEntryPoint(null);
+      setEntryPointLoaded(true);
     });
   }, [isPermalink, slug]);
 
@@ -56,9 +61,15 @@ export default function PublicStudyReader() {
     setMeetings([]);
     setMeetingsLoaded(false);
     if (!studyId) return;
-    const unsubStudy = subscribeStudy(db, studyId, setStudy);
+    const unsubStudy = subscribeStudy(db, studyId, setStudy, () => {
+      setStudy(null);
+      setMeetingsLoaded(true);
+    });
     const unsubMeetings = subscribePublishedStudyMeetings(db, studyId, (m) => {
       setMeetings(m);
+      setMeetingsLoaded(true);
+    }, () => {
+      setMeetings([]);
       setMeetingsLoaded(true);
     });
     return () => {
@@ -169,9 +180,6 @@ export default function PublicStudyReader() {
         </div>
       );
     }
-    // Between terms — the Entry point has no active Study (or does not
-    // exist). Distinct from "nothing published": the reason differs and so
-    // does the message the reader should walk away with.
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-on-surface text-center">
         <p className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant mb-3">

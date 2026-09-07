@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseMeeting,
-  currentMeeting,
+  resolveScan,
   readerReducer,
   type Meeting,
   type ReaderState,
-} from '../src/bibleStudy';
-
+  type Study,
+  type EntryPoint,
+} from "../src/bibleStudy";
 describe('bibleStudy core module', () => {
   describe('parseMeeting', () => {
     it('parses a section with heading, points with blanks, passage, and prompt in ordinary order', () => {
@@ -144,71 +145,88 @@ An ordinary line of text that is not a prompt.`;
     });
   });
 
-  describe('currentMeeting', () => {
+  describe("resolveScan", () => {
+    const STUDY: Study = { id: "romans-fall26", title: "Romans", term: "Fall 2026" };
+    const ENTRY_POINT: EntryPoint = {
+      id: "cisa-wednesday",
+      slug: "cisa-wednesday",
+      name: "Wednesday Bible Study",
+      activeStudyId: "romans-fall26",
+    };
     const meetings: Meeting[] = [
       {
-        id: 'm1',
-        studyId: 'romans',
-        date: '2026-09-01',
-        title: 'Week 1',
+        id: "m1",
+        studyId: "romans",
+        date: "2026-09-01",
+        title: "Week 1",
         sections: [],
         published: true,
       },
       {
-        id: 'm2',
-        studyId: 'romans',
-        date: '2026-09-08',
-        title: 'Week 2',
+        id: "m2",
+        studyId: "romans",
+        date: "2026-09-08",
+        title: "Week 2",
         sections: [],
         published: true,
       },
       {
-        id: 'm3_draft',
-        studyId: 'romans',
-        date: '2026-09-15',
-        title: 'Week 3 Draft',
+        id: "m3_draft",
+        studyId: "romans",
+        date: "2026-09-15",
+        title: "Week 3 Draft",
         sections: [],
         published: false,
       },
     ];
 
-    it('newest published Meeting wins for a bare Study URL', () => {
-      const result = currentMeeting(meetings, '2026-09-10');
-      expect(result?.meeting.id).toBe('m2');
-      expect(result?.isStale).toBe(false);
+    it("newest published Meeting wins for a scan", () => {
+      const result = resolveScan(ENTRY_POINT, STUDY, meetings, "2026-09-10");
+      expect(result).toEqual({ kind: "meeting", meeting: meetings[1], isFallback: false });
     });
 
-    it('a draft is never resolved to, even when it is newest', () => {
-      const result = currentMeeting(meetings, '2026-09-20');
-      expect(result?.meeting.id).toBe('m2');
-      expect(result?.meeting.published).toBe(true);
+    it("a draft is never resolved to, even when it is newest", () => {
+      const result = resolveScan(ENTRY_POINT, STUDY, meetings, "2026-09-20");
+      expect(result.kind).toBe("meeting");
+      if (result.kind === "meeting") {
+        expect(result.meeting.id).toBe("m2");
+        expect(result.meeting.published).toBe(true);
+        expect(result.isFallback).toBe(true);
+        expect(result.fallbackDate).toBe("2026-09-08");
+      }
     });
 
-    it('a dated permalink to the newest Meeting is not stale; to an older one, it is', () => {
-      const newestPermalink = currentMeeting(meetings, '2026-09-10', '2026-09-08');
-      expect(newestPermalink?.meeting.id).toBe('m2');
-      expect(newestPermalink?.isStale).toBe(false);
+    it("a dated permalink to the newest Meeting is current; to an older one, it is dated", () => {
+      const newestPermalink = resolveScan(ENTRY_POINT, STUDY, meetings, "2026-09-10", "2026-09-08");
+      expect(newestPermalink).toEqual({ kind: "meeting", meeting: meetings[1], isFallback: false });
 
-      const olderPermalink = currentMeeting(meetings, '2026-09-10', '2026-09-01');
-      expect(olderPermalink?.meeting.id).toBe('m1');
-      expect(olderPermalink?.isStale).toBe(true);
+      const olderPermalink = resolveScan(ENTRY_POINT, STUDY, meetings, "2026-09-10", "2026-09-01");
+      expect(olderPermalink).toEqual({
+        kind: "meeting",
+        meeting: meetings[0],
+        isFallback: true,
+        fallbackDate: "2026-09-01",
+      });
     });
 
-    it('a Study with no published Meetings resolves to null without crashing', () => {
-      const emptyResult = currentMeeting([], '2026-09-10');
-      expect(emptyResult).toBeNull();
+    it("a Study with no published Meetings resolves to never-published", () => {
+      expect(resolveScan(ENTRY_POINT, STUDY, [], "2026-09-10")).toEqual({
+        kind: "never-published",
+      });
 
       const draftsOnly: Meeting[] = [
         {
-          id: 'd1',
-          studyId: 'romans',
-          date: '2026-09-01',
-          title: 'Draft',
+          id: "d1",
+          studyId: "romans",
+          date: "2026-09-01",
+          title: "Draft",
           sections: [],
           published: false,
         },
       ];
-      expect(currentMeeting(draftsOnly, '2026-09-10')).toBeNull();
+      expect(resolveScan(ENTRY_POINT, STUDY, draftsOnly, "2026-09-10")).toEqual({
+        kind: "never-published",
+      });
     });
   });
 

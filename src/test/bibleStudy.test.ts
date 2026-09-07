@@ -151,6 +151,15 @@ describe('nextMeetingDate', () => {
     expect(nextMeetingDate(meetings, '2026-10-13')).toBe('2026-10-21');
   });
 
+  it('skips dates an existing Meeting already occupies', () => {
+    const meetings = [
+      meeting({ date: '2026-10-14' }),
+      meeting({ date: '2026-10-21' }),
+    ];
+
+    expect(nextMeetingDate(meetings, '2026-10-13')).toBe('2026-10-28');
+  });
+
   it('starts a new study on the next Wednesday strictly after today', () => {
     expect(nextMeetingDate([], '2026-10-13')).toBe('2026-10-14'); // Tuesday
     expect(nextMeetingDate([], '2026-10-14')).toBe('2026-10-21'); // Wednesday itself

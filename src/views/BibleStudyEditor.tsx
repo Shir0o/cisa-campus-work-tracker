@@ -50,7 +50,6 @@ export default function BibleStudyEditor() {
     initializedFor.current = '';
     setMeeting(null);
     setLoaded(false);
-    setSaved(null);
     return subscribeMeeting(db, meetingId, (m) => {
       setMeeting(m);
       setLoaded(true);
@@ -63,6 +62,10 @@ export default function BibleStudyEditor() {
         setSaved({ title: m.title, date: m.date, markdown: m.md ?? '', published: m.published });
         setActiveSectionIndex(0);
       }
+    }, () => {
+      // A snapshot error must land on the not-found state, not spin forever.
+      setMeeting(null);
+      setLoaded(true);
     });
   }, [meetingId]);
 
