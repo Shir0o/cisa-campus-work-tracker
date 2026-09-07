@@ -3,6 +3,10 @@ import {
   parseMeeting,
   resolveScan,
   readerReducer,
+  slugFor,
+  studyIdFor,
+  validateStudySetup,
+  type StudySetupForm,
   type Meeting,
   type ReaderState,
   type Study,
@@ -297,6 +301,57 @@ An ordinary line of text that is not a prompt.`;
       expect(state.navOpen).toBe(true);
       state = readerReducer(state, { type: 'closeIndex' });
       expect(state.navOpen).toBe(false);
+    });
+  });
+
+  describe('starting a study (issue #822)', () => {
+    const VALID: StudySetupForm = {
+      studyTitle: 'Romans',
+      term: 'Fall 2026',
+      entryPointName: 'Wednesday Bible Study',
+      slug: 'cisa-wednesday',
+    };
+
+    it('derives a readable, deterministic Study id from the title and term', () => {
+      expect(studyIdFor('Romans', 'Fall 2026')).toBe('romans-fall-2026');
+      expect(studyIdFor('Romans', 'Fall 2026')).toBe(studyIdFor('  Romans ', 'Fall 2026'));
+      // Punctuation a document id cannot carry is dropped, not encoded.
+      expect(studyIdFor('1 & 2 Peter', 'Spring 2027')).toBe('1-2-peter-spring-2027');
+      expect(studyIdFor('Romans', 'Fall 2026')).toMatch(/^[a-zA-Z0-9_-]+$/);
+    });
+
+    it('offers a slug that follows the entry point name', () => {
+      expect(slugFor('Wednesday Bible Study')).toBe('wednesday-bible-study');
+      expect(slugFor('CISA Wednesday!')).toBe('cisa-wednesday');
+    });
+
+    it('accepts a filled-in form', () => {
+      expect(validateStudySetup(VALID)).toEqual([]);
+    });
+
+    it('names every empty field rather than only the first', () => {
+      const errors = validateStudySetup({ studyTitle: '', term: '', entryPointName: '', slug: '' });
+      expect(errors.map((e) => e.field)).toEqual(['studyTitle', 'term', 'entryPointName', 'slug']);
+    });
+
+    it('rejects a slug that could not live in a document id or a URL', () => {
+      const errors = validateStudySetup({ ...VALID, slug: 'cisa wednesday/2026' });
+      expect(errors).toHaveLength(1);
+      expect(errors[0].field).toBe('slug');
+    });
+
+    it('rejects fields past the limits the rules enforce', () => {
+      const errors = validateStudySetup({
+        ...VALID,
+        studyTitle: 'R'.repeat(201),
+        term: 'F'.repeat(65),
+      });
+      expect(errors.map((e) => e.field).sort()).toEqual(['studyTitle', 'term']);
+    });
+
+    it('rejects a title and term that slugify to nothing', () => {
+      const errors = validateStudySetup({ ...VALID, studyTitle: '???', term: '!!!' });
+      expect(errors.map((e) => e.field)).toContain('studyTitle');
     });
   });
 });

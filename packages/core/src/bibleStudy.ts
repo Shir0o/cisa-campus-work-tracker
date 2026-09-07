@@ -337,6 +337,91 @@ export function isMeetingDirty(form: MeetingForm, saved: MeetingForm): boolean {
   );
 }
 
+/**
+ * The two records that had no way to exist (#822). A Study and an Entry point
+ * were creatable only by `scripts/seed-bible-study.ts`, which needs a
+ * service-account key — so a Full-timer opening /bible-study on a fresh
+ * database saw a disabled "New week" button and a terminal command they had no
+ * way to run. This form is the same two writes, from the app.
+ *
+ * The same shape serves both flows: the first run creates a Study and the
+ * Entry point that points at it; a new term creates a Study and re-points the
+ * Entry point that already exists (ADR 0011 — the slug never changes).
+ */
+export type StudySetupForm = {
+  studyTitle: string;
+  term: string;
+  entryPointName: string;
+  slug: string;
+};
+
+export type StudySetupError = { field: keyof StudySetupForm; message: string };
+
+// Mirrors the size limits in firestore.rules (isValidStudy / isValidEntryPoint)
+// so a Full-timer is told what is wrong here, rather than by an opaque
+// permission-denied after the write leaves.
+const SETUP_LIMITS: Record<keyof StudySetupForm, number> = {
+  studyTitle: 200,
+  term: 64,
+  entryPointName: 200,
+  slug: 64,
+};
+
+/**
+ * The document id a Study gets — derived from its title and term, so "Romans"
+ * and "Fall 2026" become `romans-fall-2026`. It is readable in the staff
+ * permalink, and deterministic, so submitting twice writes the same Study
+ * rather than a second one.
+ */
+export function studyIdFor(title: string, term: string): string {
+  return slugify(`${title} ${term}`).slice(0, 128);
+}
+
+/** The slug offered for a new Entry point, derived from the name it is given. */
+export function slugFor(name: string): string {
+  return slugify(name).slice(0, 64);
+}
+
+/**
+ * What is wrong with the form, as a list — empty means it is safe to write.
+ * Pure: every case is testable with plain data.
+ */
+export function validateStudySetup(form: StudySetupForm): StudySetupError[] {
+  const errors: StudySetupError[] = [];
+
+  const required: [keyof StudySetupForm, string][] = [
+    ['studyTitle', 'Give the study a title.'],
+    ['term', 'Name the term.'],
+    ['entryPointName', 'Name what this code opens.'],
+    ['slug', 'The code needs a slug.'],
+  ];
+  for (const [field, message] of required) {
+    if (!form[field].trim()) errors.push({ field, message });
+  }
+
+  for (const field of Object.keys(SETUP_LIMITS) as (keyof StudySetupForm)[]) {
+    const limit = SETUP_LIMITS[field];
+    if (form[field].trim().length > limit) {
+      errors.push({ field, message: `Keep this to ${limit} characters.` });
+    }
+  }
+
+  // The slug is the Entry point's document id and lives in a URL: letters,
+  // digits, hyphens and underscores only (firestore.rules isValidId).
+  const slug = form.slug.trim();
+  if (slug && !/^[a-zA-Z0-9_-]+$/.test(slug)) {
+    errors.push({ field: 'slug', message: 'Letters, numbers, hyphens and underscores only.' });
+  }
+
+  // A title and term of nothing but punctuation slugify to an empty id, which
+  // no document can carry.
+  if (form.studyTitle.trim() && form.term.trim() && !studyIdFor(form.studyTitle, form.term)) {
+    errors.push({ field: 'studyTitle', message: 'Use some letters or numbers in the title or term.' });
+  }
+
+  return errors;
+}
+
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {
   switch (action.type) {
     case 'advance': {
