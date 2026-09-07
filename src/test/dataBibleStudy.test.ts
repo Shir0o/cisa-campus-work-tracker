@@ -8,7 +8,11 @@ import {
   saveMeeting,
   setMeetingPublished,
   deleteMeeting,
+  createStudy,
+  createEntryPoint,
+  setActiveStudy,
 } from '../lib/data/bibleStudy';
+import { setDoc, updateDoc } from 'firebase/firestore';
 import type { Section, Meeting } from '../lib/bibleStudy';
 
 vi.mock('../lib/firebase', () => ({ db: {} }));
@@ -198,5 +202,62 @@ describe('bibleStudy data service', () => {
   it('setMeetingPublished and deleteMeeting call firestore methods', async () => {
     await setMeetingPublished(fakeDb, 'm1', true);
     await deleteMeeting(fakeDb, 'm1');
+  });
+
+  // ── Starting a study or a term (issue #822) ─────────────────────────────
+  // These writes had no caller: the Study and Entry point could only be made
+  // by a seed script holding a service-account key.
+
+  it('createStudy writes only the keys the rules allow — no id field', async () => {
+    const id = await createStudy(
+      fakeDb,
+      { id: 'romans-fall-2026', title: 'Romans', term: 'Fall 2026' },
+      'u-admin-1',
+    );
+
+    expect(id).toBe('romans-fall-2026');
+    const [ref, data] = vi.mocked(setDoc).mock.calls[0];
+    expect((ref as any).path).toBe('bible_study_studies/romans-fall-2026');
+    // firestore.rules isValidStudy uses hasOnly — an `id` field is rejected.
+    expect(Object.keys(data as object).sort()).toEqual([
+      'createdAt',
+      'createdBy',
+      'term',
+      'title',
+      'updatedAt',
+    ]);
+    expect(data).toMatchObject({ title: 'Romans', term: 'Fall 2026', createdBy: 'u-admin-1' });
+  });
+
+  it('createEntryPoint writes the slug as both the document id and the field', async () => {
+    const slug = await createEntryPoint(
+      fakeDb,
+      { slug: 'cisa-wednesday', name: 'Wednesday Bible Study', activeStudyId: 'romans-fall-2026' },
+      'u-admin-1',
+    );
+
+    expect(slug).toBe('cisa-wednesday');
+    const [ref, data] = vi.mocked(setDoc).mock.calls[0];
+    // Rule EP4: the field and the document id must agree.
+    expect((ref as any).path).toBe('bible_study_entry_points/cisa-wednesday');
+    expect(data).toMatchObject({
+      slug: 'cisa-wednesday',
+      name: 'Wednesday Bible Study',
+      activeStudyId: 'romans-fall-2026',
+    });
+  });
+
+  it('setActiveStudy repoints an existing code, and can park it between terms', async () => {
+    await setActiveStudy(fakeDb, 'cisa-wednesday', 'acts-spring-2027');
+    let [ref, data] = vi.mocked(updateDoc).mock.calls[0];
+    expect((ref as any).path).toBe('bible_study_entry_points/cisa-wednesday');
+    expect(data).toMatchObject({ activeStudyId: 'acts-spring-2027' });
+    // The slug is untouched — that is the whole point of the durable code.
+    expect(Object.keys(data as object)).not.toContain('slug');
+
+    vi.mocked(updateDoc).mockClear();
+    await setActiveStudy(fakeDb, 'cisa-wednesday', null);
+    [, data] = vi.mocked(updateDoc).mock.calls[0];
+    expect(data).toMatchObject({ activeStudyId: null });
   });
 });

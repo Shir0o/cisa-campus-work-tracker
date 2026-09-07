@@ -3,8 +3,14 @@
  * so a scan of `/s/cisa-wednesday` can resolve (issue #859, ADR 0011).
  *
  * Without these records nothing behind the entry point route exists — this
- * script is how ticket #859 is verifiable on its own, and how a Full-timer
- * starts a term without a code change.
+ * script is how ticket #859 is verifiable on its own, and how a fixture
+ * database is put into a known state.
+ *
+ * It is NOT how a Full-timer starts a term: it needs a service-account key and
+ * a terminal, which is why /bible-study sat inert on a fresh database (#822).
+ * That is done in the app now — "Start a study" on the weeks index, and
+ * "Start a new term" on the entry point panel, both writing the same two
+ * records through `createStudy` / `createEntryPoint` / `setActiveStudy`.
  *
  * The security rules (correctly) deny client writes to these collections from
  * anything but a Full-timer account, so this runs with admin privileges:

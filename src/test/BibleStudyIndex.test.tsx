@@ -14,6 +14,9 @@ vi.mock('../lib/data/bibleStudy', () => ({
   saveMeeting: vi.fn().mockResolvedValue('romans-fall26-2026-10-28'),
   setMeetingPublished: vi.fn().mockResolvedValue(undefined),
   deleteMeeting: vi.fn().mockResolvedValue(undefined),
+  createStudy: vi.fn().mockResolvedValue('romans-fall-2026'),
+  createEntryPoint: vi.fn().mockResolvedValue('cisa-wednesday'),
+  setActiveStudy: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -336,5 +339,119 @@ describe('BibleStudyIndex view', () => {
         expect(panel?.textContent).not.toContain('Alive to God');
       });
     });
+  });
+
+  // ── Starting a study (issue #822) ───────────────────────────────────────
+  // The reported state: a fresh database, a disabled "New week" button, and
+  // an instruction to run a seed script that needs a service-account key.
+
+  describe('a database with nothing in it', () => {
+    beforeEach(() => {
+      vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
+        cb([]);
+        return () => {};
+      });
+    });
+
+    it('offers a way to start a study instead of a terminal command', async () => {
+      renderIndex();
+
+      expect(await screen.findByRole('button', { name: 'Start a study' })).toBeInTheDocument();
+      expect(screen.queryByText(/seed:bible-study/)).not.toBeInTheDocument();
+    });
+
+    it('creates the Study first, then the Entry point pointing at it', async () => {
+      renderIndex();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start a study' }));
+      fireEvent.change(screen.getByLabelText('Study title'), { target: { value: 'Romans' } });
+      fireEvent.change(screen.getByLabelText('Term'), { target: { value: 'Fall 2026' } });
+      fireEvent.change(screen.getByLabelText('Entry point name'), {
+        target: { value: 'Wednesday Bible Study' },
+      });
+      // The slug followed the name — the two can never disagree by default.
+      expect(screen.getByLabelText('Code')).toHaveValue('wednesday-bible-study');
+      fireEvent.click(screen.getByRole('button', { name: 'Start the study' }));
+
+      await waitFor(() =>
+        expect(bibleData.createStudy).toHaveBeenCalledWith(
+          expect.anything(),
+          { id: 'romans-fall-2026', title: 'Romans', term: 'Fall 2026' },
+          'u-admin-1',
+        ),
+      );
+      expect(bibleData.createEntryPoint).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          slug: 'wednesday-bible-study',
+          name: 'Wednesday Bible Study',
+          activeStudyId: 'romans-fall-2026',
+        },
+        'u-admin-1',
+      );
+      // A code pointing at a Study that does not exist yet reads as "no study
+      // active" to anyone scanning in between.
+      expect(vi.mocked(bibleData.createStudy).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(bibleData.createEntryPoint).mock.invocationCallOrder[0],
+      );
+    });
+
+    it('says what is wrong instead of writing an unwritable record', async () => {
+      renderIndex();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start a study' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Start the study' }));
+
+      expect(await screen.findByText('Give the study a title.')).toBeInTheDocument();
+      expect(bibleData.createStudy).not.toHaveBeenCalled();
+    });
+
+    it('keeps the writing when the save is refused', async () => {
+      vi.mocked(bibleData.createStudy).mockRejectedValueOnce(new Error('permission-denied'));
+      renderIndex();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Start a study' }));
+      fireEvent.change(screen.getByLabelText('Study title'), { target: { value: 'Romans' } });
+      fireEvent.change(screen.getByLabelText('Term'), { target: { value: 'Fall 2026' } });
+      fireEvent.change(screen.getByLabelText('Entry point name'), {
+        target: { value: 'Wednesday Bible Study' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Start the study' }));
+
+      expect(await screen.findByText(/only a Full-timer can start a study/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Study title')).toHaveValue('Romans');
+    });
+  });
+
+  it('a failed read is not reported as a database that was never set up', async () => {
+    vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, _cb, onError) => {
+      onError?.(new Error('permission-denied'));
+      return () => {};
+    });
+    renderIndex();
+
+    expect(await screen.findByText(/Couldn't load the entry point/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start a study' })).not.toBeInTheDocument();
+  });
+
+  it('a new term repoints the code that is already printed, never replacing it', async () => {
+    renderIndex();
+
+    await screen.findByText('Nothing between us');
+    fireEvent.click(screen.getByRole('button', { name: 'Start a new term' }));
+    fireEvent.change(screen.getByLabelText('Study title'), { target: { value: 'Acts' } });
+    fireEvent.change(screen.getByLabelText('Term'), { target: { value: 'Spring 2027' } });
+    // The slug is not up for editing — it is on the poster.
+    expect(screen.queryByLabelText('Code')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start the term' }));
+
+    await waitFor(() =>
+      expect(bibleData.setActiveStudy).toHaveBeenCalledWith(
+        expect.anything(),
+        'cisa-wednesday',
+        'acts-spring-2027',
+      ),
+    );
+    expect(bibleData.createEntryPoint).not.toHaveBeenCalled();
   });
 });

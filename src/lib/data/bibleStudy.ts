@@ -201,3 +201,66 @@ export function subscribeEntryPoint(
     (e) => (onError ? onError(e) : console.error('entry point sub error', e)),
   );
 }
+
+
+/**
+ * Creates the Study a term's weeks belong to (#822). Written from the client
+ * by a Full-timer — the rules already permit exactly that (firestore.rules
+ * `bible_study_studies`, EP3); nothing in the app used to call it, which is
+ * why starting a study needed a service-account key and a terminal.
+ *
+ * The document carries no `id` field: the rules' `hasOnly` list forbids one,
+ * and the document id is the id. Writing the same title and term twice
+ * derives the same id and rewrites an identical record.
+ */
+export async function createStudy(
+  db: Firestore,
+  study: { id: string; title: string; term: string },
+  userId?: string,
+): Promise<string> {
+  await setDoc(doc(db, 'bible_study_studies', study.id), {
+    title: study.title,
+    term: study.term,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return study.id;
+}
+
+/**
+ * Creates the Entry point a QR encodes. The slug is the document id and must
+ * equal the `slug` field (rules EP4) — it is the durable half of the design,
+ * so this is called once and then never again for that code.
+ */
+export async function createEntryPoint(
+  db: Firestore,
+  entryPoint: { slug: string; name: string; activeStudyId: string | null },
+  userId?: string,
+): Promise<string> {
+  await setDoc(doc(db, 'bible_study_entry_points', entryPoint.slug), {
+    slug: entryPoint.slug,
+    name: entryPoint.name,
+    activeStudyId: entryPoint.activeStudyId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy: userId || null,
+  });
+  return entryPoint.slug;
+}
+
+/**
+ * Points an existing Entry point at a different Study — this is what starting
+ * a new term *is* (ADR 0011). The URL on the poster never changes; `null`
+ * leaves the code between terms.
+ */
+export async function setActiveStudy(
+  db: Firestore,
+  slug: string,
+  studyId: string | null,
+): Promise<void> {
+  await updateDoc(doc(db, 'bible_study_entry_points', slug), {
+    activeStudyId: studyId,
+    updatedAt: serverTimestamp(),
+  });
+}
