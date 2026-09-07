@@ -3,6 +3,8 @@ import {
   subscribePublishedStudyMeetings,
   subscribeStudyMeetings,
   subscribeMeeting,
+  subscribeStudy,
+  subscribeEntryPoint,
   saveMeeting,
   setMeetingPublished,
   deleteMeeting,
@@ -157,6 +159,40 @@ describe('bibleStudy data service', () => {
     });
 
     expect(idWithExisting).toBe('custom-id');
+  });
+
+  it('subscribeStudy maps the study doc or null', () => {
+    mockDocData = { title: 'Romans', term: 'Fall 2026' };
+    const cb = vi.fn();
+    subscribeStudy(fakeDb, 'romans-fall26', cb);
+    expect(cb).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'romans-fall26', title: 'Romans', term: 'Fall 2026' }),
+    );
+
+    mockDocExists = false;
+    const cb2 = vi.fn();
+    subscribeStudy(fakeDb, 'missing', cb2);
+    expect(cb2).toHaveBeenCalledWith(null);
+  });
+
+  it('subscribeEntryPoint maps the entry point doc or null', () => {
+    mockDocData = { slug: 'cisa-wednesday', name: 'Wednesday Bible Study', activeStudyId: 'romans-fall26' };
+    const cb = vi.fn();
+    subscribeEntryPoint(fakeDb, 'cisa-wednesday', cb);
+    expect(cb).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'cisa-wednesday', name: 'Wednesday Bible Study', activeStudyId: 'romans-fall26' }),
+    );
+
+    // An entry point parked between terms carries no active Study.
+    mockDocData = { slug: 'cisa-wednesday', name: 'Wednesday Bible Study' };
+    const cb2 = vi.fn();
+    subscribeEntryPoint(fakeDb, 'cisa-wednesday', cb2);
+    expect(cb2).toHaveBeenCalledWith(expect.objectContaining({ activeStudyId: null }));
+
+    mockDocExists = false;
+    const cb3 = vi.fn();
+    subscribeEntryPoint(fakeDb, 'missing', cb3);
+    expect(cb3).toHaveBeenCalledWith(null);
   });
 
   it('setMeetingPublished and deleteMeeting call firestore methods', async () => {

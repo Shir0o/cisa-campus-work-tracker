@@ -677,15 +677,7 @@ export default function App() {
                 />
 
                 <Route
-                  path="/s/:studyId"
-                  element={
-                    <React.Suspense fallback={null}>
-                      <PublicStudyReader />
-                    </React.Suspense>
-                  }
-                />
-                <Route
-                  path="/s/:studyId/:date"
+                  path="/s/:slug"
                   element={
                     <React.Suspense fallback={null}>
                       <PublicStudyReader />

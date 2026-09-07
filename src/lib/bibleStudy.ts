@@ -26,6 +26,25 @@ export type Meeting = {
   createdBy?: string;
 };
 
+export type Study = {
+  id: string;
+  title: string;
+  term: string; // e.g. "Fall 2026"
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  createdBy?: string;
+};
+
+export type EntryPoint = {
+  id: string; // the slug — it names the standing invitation and never changes
+  slug: string;
+  name: string;
+  activeStudyId: string | null; // exactly one Study is active at a time; null between terms
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  createdBy?: string;
+};
+
 export type ReaderState = {
   sectionIndex: number;
   totalSections: number;
@@ -186,31 +205,73 @@ export function parseMeeting(md: string): Section[] {
   return sections;
 }
 
-export function currentMeeting(
+/**
+ * The result of resolving a scan (or a staff permalink) through the chain
+ * Entry point -> active Study -> newest published Meeting. The three kinds
+ * are the three honest answers a student can be given; `isFallback` is true
+ * when the returned Meeting is not the current week's, and `fallbackDate`
+ * must be stated rather than implied.
+ */
+export type ScanResolution =
+  | { kind: 'meeting'; meeting: Meeting; isFallback: boolean; fallbackDate?: string }
+  | { kind: 'never-published' }
+  | { kind: 'no-active-study' };
+
+/**
+ * A Meeting is the current week's from the Monday of its date's week. A
+ * Wednesday-dated Meeting stays current through Sunday and becomes "an older
+ * week" the moment the next week starts — which is exactly when silently
+ * showing it would begin to lie.
+ */
+function weekStart(today: string): string {
+  const d = new Date(`${today}T00:00:00Z`);
+  const shift = (d.getUTCDay() + 6) % 7; // Monday-start week
+  d.setUTCDate(d.getUTCDate() - shift);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Resolves an Entry point (or, for a dated permalink, a Study directly) to
+ * what the reader should show. Pure — every outcome is testable with plain
+ * data and no mocks.
+ */
+export function resolveScan(
+  entryPoint: EntryPoint | null,
+  study: Study | null,
   meetings: Meeting[],
-  todayDate: string,
+  today: string,
   permalinkDate?: string,
-): { meeting: Meeting; isStale: boolean } | null {
-  const published = meetings
-    .filter((m) => m.published)
-    .sort((a, b) => b.date.localeCompare(a.date));
-
-  if (published.length === 0) return null;
-
-  const newest = published[0];
-
+): ScanResolution {
   if (permalinkDate) {
+    // A permalink addresses one week by Study and date; the Entry point plays
+    // no part in the chain.
+    if (!study) return { kind: 'no-active-study' };
+    const published = meetings.filter((m) => m.published).sort((a, b) => b.date.localeCompare(a.date));
+    if (published.length === 0) return { kind: 'never-published' };
+    const boundary = weekStart(today);
     const match = published.find((m) => m.date === permalinkDate);
-    if (!match) return null;
-    return {
-      meeting: match,
-      isStale: match.id !== newest.id,
-    };
+    if (match) {
+      const isFallback = match.date < boundary;
+      return { kind: 'meeting', meeting: match, isFallback, fallbackDate: isFallback ? match.date : undefined };
+    }
+    // The named week does not exist: show the newest week and say so with its
+    // date rather than rendering an empty page.
+    const newest = published[0];
+    return { kind: 'meeting', meeting: newest, isFallback: true, fallbackDate: newest.date };
   }
 
+  if (!entryPoint || !study) return { kind: 'no-active-study' };
+
+  const published = meetings.filter((m) => m.published).sort((a, b) => b.date.localeCompare(a.date));
+  if (published.length === 0) return { kind: 'never-published' };
+
+  const newest = published[0];
+  const isFallback = newest.date < weekStart(today);
   return {
+    kind: 'meeting',
     meeting: newest,
-    isStale: false,
+    isFallback,
+    fallbackDate: isFallback ? newest.date : undefined,
   };
 }
 

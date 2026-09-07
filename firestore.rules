@@ -869,7 +869,50 @@ service cloud.firestore {
       // Only Full-timers (admin) can create, edit, publish, or delete. Anonymous write is strictly denied.
       allow create: if isValidId(meetingId) && isAdmin() && isValidMeeting(incoming());
       allow update: if isValidId(meetingId) && isAdmin() && isValidMeeting(incoming());
-      allow delete: if isValidId(meetingId) && isAdmin();
+      // A Meeting may be hard-deleted only while unpublished (ADR 0011): a
+      // published one may already be on a student's screen, so pulling it
+      // back is two deliberate acts — unpublish, then delete.
+      allow delete: if isValidId(meetingId) && isAdmin() && existing().get('published', false) != true;
+    }
+
+    // 19a. Bible Study Studies — the named arc ("Romans, Fall 2026") a set of
+    // Meetings belongs to. Publicly readable so an anonymous scan can resolve
+    // its active Study; writable only by Full-timers.
+    match /bible_study_studies/{studyId} {
+      function isValidStudy(data) {
+        return data.keys().hasAll(['title', 'term']) &&
+               data.title is string && data.title.size() <= 200 &&
+               data.term is string && data.term.size() <= 64 &&
+               data.keys().hasOnly(['title', 'term', 'createdAt', 'updatedAt', 'createdBy']);
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if isValidId(studyId) && isAdmin() && isValidStudy(incoming());
+      allow update: if isValidId(studyId) && isAdmin() && isValidStudy(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 19b. Bible Study Entry points — the durable slug a QR encodes
+    // (/s/cisa-wednesday). The slug is the document id and never changes;
+    // starting a new term is a change of activeStudyId. Publicly readable so
+    // an anonymous scan can resolve the chain; writable only by Full-timers.
+    match /bible_study_entry_points/{entryPointId} {
+      function isValidEntryPoint(data) {
+        return data.keys().hasAll(['slug', 'name', 'activeStudyId']) &&
+               data.slug is string && data.slug.size() <= 64 &&
+               data.name is string && data.name.size() <= 200 &&
+               data.slug == entryPointId &&
+               ((data.activeStudyId is string && data.activeStudyId.size() <= 128) ||
+                data.activeStudyId == null) &&
+               data.keys().hasOnly(['slug', 'name', 'activeStudyId', 'createdAt', 'updatedAt', 'createdBy']);
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if isValidId(entryPointId) && isAdmin() && isValidEntryPoint(incoming());
+      allow update: if isValidId(entryPointId) && isAdmin() && isValidEntryPoint(incoming());
+      allow delete: if isAdmin();
     }
 
     // Collection Group helpers

@@ -3,38 +3,68 @@ import { useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
   readerReducer,
-  currentMeeting,
+  resolveScan,
   type Meeting,
+  type Study,
+  type EntryPoint,
+  type ScanResolution,
   type Section,
   type Blank,
   type Text,
 } from '../lib/bibleStudy';
-import { subscribePublishedStudyMeetings } from '../lib/data/bibleStudy';
+import {
+  subscribePublishedStudyMeetings,
+  subscribeEntryPoint,
+  subscribeStudy,
+} from '../lib/data/bibleStudy';
 import { format, parseISO } from 'date-fns';
 
 export default function PublicStudyReader() {
-  const { studyId = '', date: permalinkDate } = useParams<{ studyId: string; date?: string }>();
+  const { slug = '' } = useParams<{ slug: string }>();
+  const [entryPoint, setEntryPoint] = useState<EntryPoint | null>(null);
+  const [entryPointLoaded, setEntryPointLoaded] = useState(false);
+  const [study, setStudy] = useState<Study | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [meetingsLoaded, setMeetingsLoaded] = useState(false);
 
-  // Subscribe to published meetings
+  // The chain is Entry point -> active Study -> newest published Meeting.
+  // Each hop is its own subscription; the active Study drives the next two.
   useEffect(() => {
+    setEntryPoint(null);
+    setEntryPointLoaded(false);
+    return subscribeEntryPoint(db, slug, (ep) => {
+      setEntryPoint(ep);
+      setEntryPointLoaded(true);
+    });
+  }, [slug]);
+
+  const studyId = entryPoint?.activeStudyId ?? null;
+
+  useEffect(() => {
+    setStudy(null);
+    setMeetings([]);
+    setMeetingsLoaded(false);
     if (!studyId) return;
-    const unsub = subscribePublishedStudyMeetings(
-      db,
-      studyId,
-      (fetched) => {
-        setMeetings(fetched);
-        setLoading(false);
-      },
-      () => setLoading(false),
-    );
-    return () => unsub();
+    const unsubStudy = subscribeStudy(db, studyId, setStudy);
+    const unsubMeetings = subscribePublishedStudyMeetings(db, studyId, (m) => {
+      setMeetings(m);
+      setMeetingsLoaded(true);
+    });
+    return () => {
+      unsubStudy();
+      unsubMeetings();
+    };
   }, [studyId]);
 
-  const resolution = currentMeeting(meetings, new Date().toISOString().slice(0, 10), permalinkDate);
-  const meeting = resolution?.meeting;
-  const isStale = resolution?.isStale ?? false;
+  const loading = !entryPointLoaded || (!!studyId && !meetingsLoaded);
+  const resolution: ScanResolution = resolveScan(
+    entryPoint,
+    study,
+    meetings,
+    new Date().toISOString().slice(0, 10),
+  );
+  const meeting = resolution.kind === 'meeting' ? resolution.meeting : null;
+  const isStale = resolution.kind === 'meeting' ? resolution.isFallback : false;
   const sections = meeting?.sections ?? [];
 
   const [state, dispatch] = useReducer(readerReducer, {
@@ -95,6 +125,26 @@ export default function PublicStudyReader() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-on-surface-variant font-sans">
         <div className="animate-pulse tracking-wide text-sm font-medium">Loading Bible Study...</div>
+      </div>
+    );
+  }
+
+  // Between terms — the Entry point has no active Study (or does not exist).
+  // Distinct from "nothing published": the reason differs and so does the
+  // message the reader should walk away with.
+  if (resolution.kind === 'no-active-study') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-on-surface text-center">
+        <p className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant mb-3">
+          Between terms
+        </p>
+        <h1 className="font-serif text-2xl mb-2 font-medium">Nothing running right now</h1>
+        <p className="text-on-surface-variant text-sm max-w-sm">
+          {entryPoint?.name
+            ? `${entryPoint.name} picks up again when the next study starts. `
+            : 'The study picks up again when the next one starts. '}
+          Keep this code — it will be the same one.
+        </p>
       </div>
     );
   }
