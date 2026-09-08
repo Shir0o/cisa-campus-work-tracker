@@ -9,7 +9,7 @@
 // is a READ MODEL mirrored from an IntersectionObserver and consumed only by
 // the progress rail, the counter and the index highlight. jump remains as the
 // action the Section index dispatches, and its effect is a scrollIntoView.
-import React, { useEffect, useReducer, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useReducer, useRef } from 'react';
 import {
   readerReducer,
   type Meeting,
@@ -28,7 +28,10 @@ export type StudyReaderViewProps = {
   staleDateLabel?: string | null;
 };
 
-const pad = (n: number) => String(n + 1).padStart(2, '0');
+// Pads a 1-based Section index for the counter and the index rows: the +1 is
+// the index→ordinal step, so the denominator (a count, not an index) must not
+// go through this helper.
+const padOneBased = (n: number) => String(n + 1).padStart(2, '0');
 
 const ChevronIcon: React.FC = () => (
   <svg
@@ -59,8 +62,10 @@ const Panel: React.FC<{
   onPeekNext: () => void;
   openBlanks: Record<string, boolean>;
   onRevealBlank: (key: string) => void;
-}> = ({ section, index, isLast, meetingTitle, nextTitle, onPeekNext, openBlanks, onRevealBlank }) => (
+  ref?: React.Ref<HTMLElement>;
+}> = ({ section, index, isLast, meetingTitle, nextTitle, onPeekNext, openBlanks, onRevealBlank, ref }) => (
   <section
+    ref={ref}
     data-section-panel={index}
     className="min-h-full snap-start snap-always flex flex-col px-6 pt-4 pb-0"
   >
@@ -127,6 +132,20 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
   // jsdom has no IntersectionObserver and no layout; both are stubbed in the
   // test setup (the matchMedia precedent), and the real browser supplies the
   // truth.
+  //
+  // The callback is an Effect Event (#914): it must compare against the
+  // CURRENT sectionIndex, not the one captured when the observer was built —
+  // the observer is keyed to the Section count, so a closed-over index would
+  // stay at its initial value for the life of the Meeting and scrolling back
+  // to the first Section could never re-register. The subscription lifecycle
+  // stays keyed to the Section count so the observer is not torn down and
+  // rebuilt on every scroll tick.
+  const onPanelVisible = useEffectEvent((idx: number) => {
+    if (idx !== state.sectionIndex) {
+      dispatch({ type: 'jump', index: idx });
+    }
+  });
+
   useEffect(() => {
     const root = scrollRef.current;
     if (!root || typeof IntersectionObserver === 'undefined') return;
@@ -137,8 +156,8 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           const idx = Number((entry.target as HTMLElement).dataset.sectionPanel);
-          if (Number.isInteger(idx) && idx !== state.sectionIndex) {
-            dispatch({ type: 'jump', index: idx });
+          if (Number.isInteger(idx)) {
+            onPanelVisible(idx);
           }
         }
       },
@@ -146,13 +165,11 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
     );
     for (const panel of panels) if (panel) observer.observe(panel);
     return () => observer.disconnect();
-    // state.sectionIndex is intentionally excluded: re-observing on every read
-    // model change would churn the observer far more than it prevents.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections.length]);
 
   const total = sections.length;
-  const counterText = total > 0 ? `${pad(state.sectionIndex)} / ${pad(total)}` : '';
+  const counterText =
+    total > 0 ? `${padOneBased(state.sectionIndex)} / ${String(total).padStart(2, '0')}` : '';
 
   const handleJump = (index: number) => {
     dispatch({ type: 'jump', index });
@@ -194,6 +211,9 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
         {sections.map((section, idx) => (
           <Panel
             key={section.id || idx}
+            ref={(el) => {
+              panelRefs.current[idx] = el;
+            }}
             section={section}
             index={idx}
             isLast={idx === total - 1}
@@ -219,6 +239,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
         {sections.map((_, sIdx) => (
           <div
             key={sIdx}
+            data-filled={sIdx <= state.sectionIndex}
             className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
               sIdx <= state.sectionIndex ? 'bg-on-surface' : 'bg-surface-variant'
             }`}
@@ -260,6 +281,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
             {sections.map((sec, sIdx) => (
               <div
                 key={sec.id || sIdx}
+                data-current={sIdx === state.sectionIndex}
                 className={`flex items-center gap-3.5 min-h-[52px] px-3.5 py-2 rounded-xl cursor-pointer transition-colors ${
                   sIdx === state.sectionIndex
                     ? 'bg-surface-variant text-on-surface font-medium'
@@ -271,7 +293,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
                 }}
               >
                 <div className="font-serif font-bold text-xs text-on-surface-variant w-5 shrink-0">
-                  {pad(sIdx)}
+                  {padOneBased(sIdx)}
                 </div>
                 <div className="min-w-0 flex flex-col">
                   <div className="text-[15px] font-medium text-on-surface truncate">{sec.title}</div>
