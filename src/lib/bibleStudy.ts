@@ -403,6 +403,7 @@ export function sectionOffsets(md: string): number[] {
   }
   return offsets;
 }
+
 /**
  * Which Section the caret sits in: the heading whose offset most recently
  * passed `offset`. A document that opens with prose sits in its untitled
@@ -419,9 +420,6 @@ export function sectionIndexAtOffset(md: string, offset: number): number {
   }
   return index;
 }
-
-
-
 
 export type MeetingForm = {
   title: string;
