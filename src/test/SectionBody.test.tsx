@@ -56,25 +56,44 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(screen.getByText(/alert\(1\)/)).toBeInTheDocument();
   });
 
-  it('renders nested lists as nesting, not flat lines', () => {
+  it('renders a bullet list with visible disc markers', () => {
     const s = section({
-      content: [
-        {
-          kind: 'bullet-list',
-          points: [{ before: 'Main point' }, { before: 'Sub point A' }, { before: 'Sub point B' }],
-        },
-      ],
+      content: [{ kind: 'bullet-list', points: [{ before: 'Main point' }, { before: 'Second point' }] }],
     });
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
-    expect(screen.getByRole('list')).toBeInTheDocument();
+    const list = screen.getByRole('list');
+    expect(list.tagName).toBe('UL');
+    expect(list.className).toContain('list-disc');
+    expect(list.className).toContain('pl-5');
+    expect(list.querySelectorAll('li')).toHaveLength(2);
   });
 
-  it('renders a numbered list block as an ordered list', () => {
+  it('renders a numbered list with visible decimal markers and no re-parsed numbers', () => {
     const s = section({
-      content: [{ kind: 'number-list', points: [{ before: 'First' }, { before: 'Second' }] }],
+      content: [{ kind: 'number-list', points: [{ before: 'First step' }, { before: 'Second step' }] }],
     });
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
-    expect(screen.getByRole('list')).toBeInTheDocument();
+    const list = screen.getByRole('list');
+    expect(list.tagName).toBe('OL');
+    expect(list.className).toContain('list-decimal');
+    expect(list.className).toContain('pl-5');
+    expect(list.querySelectorAll('li')).toHaveLength(2);
+  });
+
+  it('strips a literal "1." prefix a legacy stored section still carries, so the ol marker is the only number', () => {
+    // Sections saved before the strip render from Firestore's stored copy —
+    // the reader never re-parses md — so the renderer owns legacy prefixes.
+    const s = section({
+      content: [{ kind: 'number-list', points: [{ before: '1. First step' }, { before: '2) Second step' }] }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    const list = screen.getByRole('list');
+    expect(list.textContent).toContain('First step');
+    expect(list.textContent).toContain('Second step');
+    // ReactMarkdown would turn "1. …" text into a nested list and double the
+    // numbering — the marker must come from the <ol> alone.
+    expect(document.querySelector('ol ol')).toBeNull();
+    expect(document.querySelector('ul')).toBeNull();
   });
 
   it('renders a Blank as a tap target that reveals its word via the reveal callback', () => {

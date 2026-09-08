@@ -97,7 +97,12 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
   const renderList = (block: Extract<SectionBlock, { kind: 'bullet-list' | 'number-list' }>, label: string) => {
     const Tag = block.kind === 'number-list' ? 'ol' : 'ul';
     return (
-      <Tag className="flex flex-col gap-3 py-1" data-block-kind={block.kind}>
+      <Tag
+        data-block-kind={block.kind}
+        className={`flex flex-col gap-3 py-1 ${
+          block.kind === 'number-list' ? 'list-decimal' : 'list-disc'
+        } pl-5 marker:text-on-surface-variant`}
+      >
         {block.points.map((pt, pIdx) => {
           if (pt && typeof pt === 'object' && 'word' in pt) {
             const key = `${sectionIndex}:${label}${pIdx}`;
@@ -108,9 +113,13 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
             );
           }
           if (pt && typeof pt === 'object') {
+            // Sections saved before the number strip still carry the literal
+            // "1." — the reader renders Firestore's stored copy without
+            // re-parsing md, so the renderer owns legacy prefixes too.
+            const stripped = block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before;
             return (
               <li key={pIdx} className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
-                <InlineMd text={pt.before} />
+                <InlineMd text={stripped} />
               </li>
             );
           }

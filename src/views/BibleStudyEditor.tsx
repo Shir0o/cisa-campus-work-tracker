@@ -288,6 +288,20 @@ export default function BibleStudyEditor() {
             >
               I
             </button>
+            <button
+              onClick={() => insertTextAtCursor('\n1. ', '\n2. \n3. ')}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
+              aria-label="Numbered list"
+            >
+              1.
+            </button>
+            <button
+              onClick={() => insertTextAtCursor('\n- ')}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
+              aria-label="Bullet list"
+            >
+              •
+            </button>
 
             <button
               onClick={() => insertTextAtCursor('\nQuestion: ')}
@@ -358,7 +372,7 @@ export default function BibleStudyEditor() {
               <h3 className="font-serif font-bold text-2xl leading-tight">
                 {activeSection?.title || 'Section Heading'}
               </h3>
-              <div className="[&_p]:m-0 text-xs">
+              <div className="[&_p]:m-0 [&_ol]:list-decimal [&_ul]:list-disc text-xs">
                 {activeSection && (
                   <SectionBody
                     section={activeSection}

@@ -172,6 +172,14 @@ describe('parseMeeting', () => {
     expect(sections[1]).toHaveProperty('passage');
     expect(sections[1]).toHaveProperty('prompt');
   });
+  it('strips the literal "1." prefix from number-list points so the ol marker is the only number', () => {
+    // Bullets already lose their "- "; numbers must match, or the reader
+    // re-parses "1. …" as its own nested list and the numbers double up.
+    const md = '## Steps\n1. First\n2) Second\n3. Third';
+    const s = parseMeeting(md)[0];
+    const block = s.content.find((b) => b.kind === 'number-list') as { points: { before: string }[] };
+    expect(block.points.map((p) => p.before)).toEqual(['First', 'Second', 'Third']);
+  });
 });
 
 describe('nextMeetingDate', () => {
