@@ -17,6 +17,7 @@ import {
   type EntryPoint,
 } from '../lib/bibleStudy';
 import { useCommand } from '../lib/commands';
+import { restoreScrollAfterEdit } from '../lib/editorScroll';
 import {
   saveMeeting,
   setMeetingPublished,
@@ -300,10 +301,19 @@ export default function BibleStudyEditor() {
     const current = el.value;
     const selected = current.substring(start, end);
     const replacement = `${before}${selected}${after}`;
+    // #917: capture the scroll offset before the value changes. A toolbar
+    // click blurs the textarea (mousedown focus shift — suppressed below),
+    // and a value replacement on an unfocused textarea resets its scroll;
+    // the deferred refocus restores the caret but not the scroll. Capturing
+    // here and restoring after the selection is set keeps the author in
+    // place, and scrolls to the caret when the insertion is off screen.
+    const capturedScrollTop = el.scrollTop;
     editMarkdown(start, end, replacement);
     setTimeout(() => {
       el.focus();
       el.setSelectionRange(start + before.length, start + before.length + selected.length);
+      syncCaretSection(el);
+      restoreScrollAfterEdit(el, capturedScrollTop, start + before.length);
     }, 0);
   };
 
@@ -470,12 +480,18 @@ export default function BibleStudyEditor() {
           <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30 flex-wrap">
             <button
               onClick={() => insertTextAtCursor('\n> ', '\n> Reference · Version')}
+              // #917: a toolbar click must not blur the textarea. The
+              // mousedown focus shift is what makes the value replacement
+              // land on an unfocused field and reset its scroll; preventing
+              // the default keeps focus on the textarea through the click.
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
             >
               Passage
             </button>
             <button
               onClick={() => insertTextAtCursor('[[', ']]')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
             >
               Blank
@@ -483,6 +499,7 @@ export default function BibleStudyEditor() {
             <div className="w-px h-4 bg-outline-variant mx-1" />
             <button
               onClick={() => insertTextAtCursor('**', '**')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-bold hover:bg-surface-variant"
               aria-label="Bold"
             >
@@ -490,6 +507,7 @@ export default function BibleStudyEditor() {
             </button>
             <button
               onClick={() => insertTextAtCursor('*', '*')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs italic hover:bg-surface-variant"
               aria-label="Italic"
             >
@@ -497,6 +515,7 @@ export default function BibleStudyEditor() {
             </button>
             <button
               onClick={() => insertTextAtCursor('\n1. ', '\n2. \n3. ')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
               aria-label="Numbered list"
             >
@@ -504,6 +523,7 @@ export default function BibleStudyEditor() {
             </button>
             <button
               onClick={() => insertTextAtCursor('\n- ')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
               aria-label="Bullet list"
             >
@@ -512,18 +532,21 @@ export default function BibleStudyEditor() {
 
             <button
               onClick={() => insertTextAtCursor('\nQuestion: ')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-slate-soft)] text-on-surface"
             >
               Question
             </button>
             <button
               onClick={() => insertTextAtCursor('\nDiscuss: ')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-sage-soft)] text-on-surface"
             >
               Discuss
             </button>
             <button
               onClick={() => insertTextAtCursor('\nActivity: ')}
+              onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-clay-soft)] text-on-surface"
             >
               Activity
