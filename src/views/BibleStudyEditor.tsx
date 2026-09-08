@@ -312,11 +312,6 @@ export default function BibleStudyEditor() {
     syncCaretSection(el);
   };
 
-  // The outline row for the caret's Section, scrolled into view as the caret
-  // moves. Rows are keyed by heading offset; the highlight is a read model
-  // over the same `md` the textarea holds.
-  const outlineRef = useRef<HTMLDivElement>(null);
-
   if (!loaded) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
@@ -405,7 +400,7 @@ export default function BibleStudyEditor() {
           <div className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant px-2 py-1 mb-2">
             Sections ({sections.length})
           </div>
-          <div ref={outlineRef} className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
             {sections.map((sec, idx) => {
               const offset = offsets[idx] ?? 0;
               const isCaretRow = caretSectionIndex === idx;
