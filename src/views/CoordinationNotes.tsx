@@ -105,7 +105,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
-import { peersFromAwareness, type Peer } from '../lib/presence';
+import { peersFromAwareness, colorFor, type Peer } from '../lib/presence';
 import {
   BoardDoc,
   DocGroup,
@@ -193,10 +193,6 @@ const SectionHead = ({ title, sub, action }: { title: string; sub?: string; acti
   </div>
 );
 
-// A stable, pleasant cursor/presence color per user.
-const CURSOR_COLORS = ['#3a5a82', '#5d8071', '#c0823f', '#7d5a86', '#b5503f', '#5c6675'];
-const colorFor = (uid: string) =>
-  CURSOR_COLORS[Array.from(uid).reduce((a, c) => a + c.charCodeAt(0), 0) % CURSOR_COLORS.length];
 
 // tiptap-markdown augments editor.storage with a `markdown` namespace.
 type MarkdownStorage = {

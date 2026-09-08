@@ -35,3 +35,10 @@ export function peersFromAwareness(
   });
   return [...byPerson.values()];
 }
+
+// A stable, pleasant cursor/presence color per user. Shared by The Board's
+// DocEditor and the Meeting editor's awareness state.
+const CURSOR_COLORS = ['#3a5a82', '#5d8071', '#c0823f', '#7d5a86', '#b5503f', '#5c6675'];
+export function colorFor(uid: string): string {
+  return CURSOR_COLORS[Array.from(uid).reduce((a, c) => a + c.charCodeAt(0), 0) % CURSOR_COLORS.length];
+}
