@@ -60,7 +60,9 @@ export default function BibleStudyEditor() {
   // The preview pane's measured size (#916). The phone is CSS-scaled into
   // the pane, so the scale must come from the pane's real box — a fixed
   // constant fits no pane correctly. jsdom has no layout, so the ResizeObserver
-  // is inert in tests; the browser supplies the truth.
+  // is inert in tests; the browser supplies the truth. The effect is keyed to
+  // `loaded` because the pane only exists once the meeting has loaded — a
+  // mount-time effect would find the ref null and never re-run.
   const [paneSize, setPaneSize] = useState<{ width: number; height: number } | null>(null);
   const previewPaneRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function BibleStudyEditor() {
     });
     observer.observe(pane);
     return () => observer.disconnect();
-  }, []);
+  }, [loaded]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -336,9 +338,10 @@ export default function BibleStudyEditor() {
 
   // The phone is CSS-scaled into the pane (#916): the scale comes from the
   // pane's measured size, never a fixed constant. Before the first
-  // ResizeObserver tick (and in jsdom, which has no layout) the legibility
-  // floor applies.
-  const scale = paneSize ? previewScale(paneSize.width, paneSize.height) : 0.5;
+  // ResizeObserver tick (and in jsdom, which has no layout) the pane size is
+  // unknown, so the scale sits at the legibility floor — previewScale(0, 0)
+  // clamps to it.
+  const scale = previewScale(paneSize?.width ?? 0, paneSize?.height ?? 0);
 
   if (!loaded) {
     return (
