@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
@@ -202,6 +203,20 @@ export default function BibleStudyIndex() {
 
   // ── Row actions (issue #864) ──────────────────────────────────────────
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // Where the ⋮ was when the menu opened — the menu portals to document.body,
+  // so it cannot inherit the row's clipping, and it pins to the button.
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
+  const openMenu = (id: string, btn: HTMLElement) => {
+    const r = btn.getBoundingClientRect();
+    // Portal to body escapes the list's clipping, but the viewport still
+    // clips fixed elements: keep the menu on-screen (it is 256 wide and
+    // ~200 tall with the unpublish note).
+    const MENU_W = 256;
+    const top = Math.min(r.bottom + 6, window.innerHeight - 220);
+    const left = Math.max(8, Math.min(r.right - MENU_W, window.innerWidth - MENU_W - 8));
+    setMenuAnchor({ x: left, y: top });
+    setMenuFor((cur) => (cur === id ? null : id));
+  };
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Meeting | null>(null);
 
@@ -309,7 +324,7 @@ export default function BibleStudyIndex() {
                   <button
                     aria-label={`Week actions for ${m.title || 'untitled week'}`}
                     aria-expanded={menuFor === m.id}
-                    onClick={() => setMenuFor(menuFor === m.id ? null : m.id)}
+                    onClick={(e) => openMenu(m.id, e.currentTarget)}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -318,13 +333,15 @@ export default function BibleStudyIndex() {
                       <circle cx="19" cy="12" r="1.8" />
                     </svg>
                   </button>
-                  {menuFor === m.id && (
-                    <>
+                  {menuFor === m.id &&
+                    createPortal(
+                      <>
                       <div className="fixed inset-0 z-20" onClick={() => setMenuFor(null)} />
                       <div
                         role="menu"
                         aria-label={`Actions for ${m.title || 'untitled week'}`}
-                        className="absolute right-0 top-9 z-30 w-64 bg-surface border border-outline-variant rounded-2xl shadow-xl p-1.5"
+                        className="fixed z-30 w-64 bg-surface border border-outline-variant rounded-2xl shadow-xl p-1.5"
+                        style={{ top: menuAnchor.y, left: menuAnchor.x }}
                       >
                         <button
                           role="menuitem"
@@ -370,7 +387,8 @@ export default function BibleStudyIndex() {
                           </p>
                         )}
                       </div>
-                    </>
+                    </>,
+                    document.body
                   )}
                 </div>
               </div>

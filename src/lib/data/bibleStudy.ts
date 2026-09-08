@@ -130,6 +130,24 @@ export function subscribeMeeting(
   );
 }
 
+/**
+ * Firestore rejects nested `undefined` — a parsed Section's optional fields
+ * (passage, ref, prompt) are absent on most sections, and the browser SDK
+ * validates before any wire call, so the whole save fails opaquely. Strip
+ * them; `undefined` and absent mean the same thing in every reader.
+ */
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(stripUndefined) as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (v !== undefined) out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 export async function saveMeeting(
   db: Firestore,
   meeting: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
@@ -141,7 +159,7 @@ export async function saveMeeting(
   await setDoc(
     meetingRef,
     {
-      ...meeting,
+      ...stripUndefined(meeting),
       id: meetingId,
       updatedAt: serverTimestamp(),
       ...(meeting.id ? {} : { createdAt: serverTimestamp(), createdBy: userId || null }),

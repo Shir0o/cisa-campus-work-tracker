@@ -275,6 +275,26 @@ describe('BibleStudyIndex view', () => {
       expect(rowFor('Alive to God')?.textContent).toContain('Live now');
     });
 
+    it('renders the menu through a portal so the list cannot clip it', async () => {
+      // The weeks list container is overflow-hidden (rounded corners). An
+      // absolutely-positioned menu inside it was invisible and unclickable
+      // whenever the row sat near the container's bottom edge — the reported
+      // "dropdown next to the pill is blocked". Portaling to body escapes.
+      renderIndex();
+
+      await screen.findByText('Nothing between us');
+      fireEvent.click(screen.getByRole('button', { name: 'Week actions for Peace that holds' }));
+
+      const menu = screen.getByRole('menu', { name: 'Actions for Peace that holds' });
+      // Not a descendant of the list container the rows live in.
+      const listContainer = screen.getByText('Peace that holds').closest('div.overflow-hidden');
+      expect(listContainer).not.toBeNull();
+      expect(listContainer?.contains(menu)).toBe(false);
+      // And it is fixed-positioned at the ⋮ that opened it, so it stays
+      // pinned regardless of page scroll.
+      expect(menu.className).toContain('fixed');
+    });
+
     it('duplicates a week with its structure, leaving the source untouched', async () => {
       vi.mocked(bibleData.saveMeeting).mockResolvedValue('romans-fall26-2026-10-28');
       renderIndex();
