@@ -1,0 +1,440 @@
+<!-- EXPLORATION, not design-of-record.
+
+     The comparison that settled ADR 0014 §5's replacement (#912, #922): what to
+     do with the space a short Section leaves behind. Four treatments were built
+     at true 390x844 in the app's own tokens and judged live; "card + settle"
+     won, with plain top-align, settle-without-card and card-without-settle
+     rejected. The "Card degrades" toggle is a REJECTED branch, kept deliberately
+     so an implementer can see what was turned down and why — do not read it as
+     something to build.
+
+     Unlike Main.dc.html / Editor.dc.html this board does not track what shipped.
+     It is a record of a decision, dated 2026-09-08. Once #922 and #923 land,
+     Main.dc.html is the board to refresh; this one stays as it is.
+
+     The phone frames use the two-box scale technique that #916 applies to the
+     editor preview: an outer layout box pre-multiplied by the scale, an inner
+     390x844 box transformed from its top-left corner. The shipped preview
+     collapsed that to one box, which is why it has dead space inside its bezel.
+-->
+<title>Section Panel Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+
+<style>
+:root{
+  --ground:#F4F6F3;
+  --surface:#FFFFFF;
+  --surface-2:#EBEEE9;
+  --line:#DDE2DA;
+  --line-soft:#E8ECE5;
+  --ink:#161A16;
+  --ink-dim:#5C6960;
+  --ink-mute:#8A968D;
+  --sage:oklch(0.48 0.13 145);
+  --sage-soft:oklch(0.48 0.13 145 / 0.10);
+  --warn:oklch(0.50 0.14 42);
+  --warn-soft:oklch(0.50 0.14 42 / 0.10);
+  --shadow:0 1px 2px rgba(20,28,22,.05), 0 8px 24px rgba(20,28,22,.06);
+  --shadow-lift:0 2px 6px rgba(20,28,22,.07), 0 24px 60px rgba(20,28,22,.16);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#101310; --surface:#181C18; --surface-2:#212621;
+    --line:#2C332D; --line-soft:#242A25;
+    --ink:#EDF1EC; --ink-dim:#A2AEA5; --ink-mute:#77837A;
+    --sage:oklch(0.80 0.13 145); --sage-soft:oklch(0.80 0.13 145 / 0.16);
+    --warn:oklch(0.80 0.13 42); --warn-soft:oklch(0.80 0.13 42 / 0.15);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.34);
+    --shadow-lift:0 2px 6px rgba(0,0,0,.5), 0 24px 60px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101310; --surface:#181C18; --surface-2:#212621;
+  --line:#2C332D; --line-soft:#242A25;
+  --ink:#EDF1EC; --ink-dim:#A2AEA5; --ink-mute:#77837A;
+  --sage:oklch(0.80 0.13 145); --sage-soft:oklch(0.80 0.13 145 / 0.16);
+  --warn:oklch(0.80 0.13 42); --warn-soft:oklch(0.80 0.13 42 / 0.15);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.34);
+  --shadow-lift:0 2px 6px rgba(0,0,0,.5), 0 24px 60px rgba(0,0,0,.55);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"Lexend", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1200px;margin:0 auto;padding:40px 24px 72px;display:flex;flex-direction:column;gap:26px}
+
+.mast{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--sage)}
+h1{font-family:"Plus Jakarta Sans","Lexend",system-ui,sans-serif;font-weight:800;
+  font-size:clamp(30px,4.2vw,44px);line-height:1.06;letter-spacing:-0.025em;margin:0;text-wrap:balance}
+.dek{margin:0;max-width:64ch;color:var(--ink-dim);font-size:15px}
+.dek b{color:var(--ink);font-weight:600}
+code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.86em;
+  background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--ink-dim)}
+
+.controls{display:flex;flex-wrap:wrap;gap:18px 30px;align-items:flex-end;
+  padding:16px 18px;border:1px solid var(--line);border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow);position:sticky;top:0;z-index:20}
+.ctl{display:flex;flex-direction:column;gap:7px}
+.ctl-l{font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-mute)}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--surface-2)}
+.seg button{font:inherit;font-size:12px;font-weight:500;color:var(--ink-dim);
+  padding:5px 13px;border:0;border-radius:999px;background:transparent;cursor:pointer;
+  transition:background .15s,color .15s}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;
+  box-shadow:0 1px 2px rgba(0,0,0,.09)}
+.seg button:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+
+/* ── stage ── */
+.stage{display:grid;grid-template-columns:auto minmax(280px,1fr);gap:36px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+
+.fit{width:calc(390px * var(--s));height:calc(844px * var(--s));flex:none}
+.ph-wrap{width:390px;height:844px;transform:scale(var(--s));transform-origin:top left}
+
+.ph{width:390px;height:844px;border-radius:32px;overflow:hidden;display:flex;flex-direction:column;
+  font-family:"Lexend",ui-sans-serif,system-ui,sans-serif;
+  background:var(--bg);color:var(--text);border:1px solid var(--edge);box-shadow:var(--shadow-lift)}
+/* Light elevates with SHADOW and a card lighter than its ground; dark
+   elevates with LIGHTNESS and an edge, because shadow is invisible on
+   near-black. Same object, two physics. The app's `--bg`/`--panel` pair is
+   reused, just swapped: ground takes --panel, the card takes --bg. */
+.ph[data-t="light"]{
+  --bg:#F4F4F5; --text:#0A0A0B; --dim:#52525B; --mute:#A1A1AA;
+  --card:#FFFFFF; --well:#F4F4F5; --edge:#E4E4E7; --edge-soft:#ECECEE;
+  --card-edge:transparent;
+  --elev:0 1px 2px rgba(12,14,18,.07), 0 3px 8px rgba(12,14,18,.05),
+         0 14px 32px rgba(12,14,18,.10);
+  --sagec:oklch(0.48 0.15 145); --slatec:oklch(0.48 0.15 258);
+}
+.ph[data-t="dark"]{
+  --bg:#0A0A0B; --text:#FAFAFA; --dim:#9BA1A6; --mute:#6B7176;
+  --card:#151517; --well:#0A0A0B; --edge:#26262A; --edge-soft:#1D1D20;
+  --card-edge:#26262A;
+  --elev:0 1px 2px rgba(0,0,0,.5), 0 14px 34px rgba(0,0,0,.45);
+  --sagec:oklch(0.82 0.14 145); --slatec:oklch(0.82 0.14 258);
+}
+
+.ph-top{flex:none;display:flex;align-items:center;gap:8px;padding:16px 20px 9px;
+  border-bottom:1px solid var(--edge-soft)}
+.ph-tt{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ph-ct{margin-left:auto;flex:none;font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;
+  font-size:12px;letter-spacing:.08em;color:var(--dim);font-variant-numeric:tabular-nums}
+.ph-rail{flex:none;display:flex;gap:5px;padding:9px 22px 18px}
+.ph-rail i{height:3px;flex:1;border-radius:999px;background:var(--edge);transition:background .3s}
+.ph-rail i.on{background:var(--text)}
+
+/* THE DECK — a real scroller. Panels are sized to THIS box (Q7a), not to
+   100dvh, which is why every snap point is now reachable. */
+.deck{flex:1;min-height:0;overflow-y:auto;scroll-snap-type:y proximity;scrollbar-width:none}
+.deck::-webkit-scrollbar{display:none}
+
+.panel{min-height:100%;scroll-snap-align:start;display:flex;flex-direction:column;
+  padding:18px var(--pad) 0}
+.panel-in{display:flex;flex-direction:column;gap:18px}
+.peek{flex:none;padding:20px 0 24px;text-align:center;font-size:14px;color:var(--mute);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peek.end{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px}
+.peek.end i{display:block;height:1px;width:44px;background:var(--edge)}
+
+/* Card + settle. `settles` is set per-panel by script: content fits, so it
+   centres and wears the card. An overflowing panel loses `settles`. */
+.panel .panel-in{
+  background:var(--card);border:1px solid var(--card-edge);border-radius:22px;
+  padding:24px var(--cardpad);
+  box-shadow:var(--elev);
+}
+.panel.settles .panel-in{margin-top:auto}
+.panel.settles .peek{margin-top:auto}
+
+/* Treatment C — the card degrades to plain when it can't fit. */
+body[data-of="degrade"] .panel:not(.settles) .panel-in{
+  background:transparent;border-color:transparent;border-radius:0;
+  padding:0;box-shadow:none;
+}
+
+.s-title{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;
+  font-size:calc(var(--fs) * 1.85);line-height:1.09;letter-spacing:-0.03em;
+  margin:0;color:var(--text);text-wrap:balance}
+.s-prose{margin:0;font-size:var(--fs);line-height:1.55;color:var(--dim)}
+.blank{display:inline-block;min-width:74px;border-bottom:2px solid var(--sagec);
+  color:var(--sagec);font-weight:600;text-align:center;cursor:pointer}
+.blank.hidden{color:transparent}
+.s-pass{margin:0;padding-top:16px;border-top:1px solid var(--edge)}
+.s-pass p{margin:0;font-size:calc(var(--fs) + 2px);line-height:1.62;color:var(--text)}
+.s-pass figcaption{margin-top:12px;font-size:11px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--mute)}
+/* Verse (Q15b) — reference leads, body size, in the flow. */
+.s-verse{margin:0;font-size:var(--fs);line-height:1.55;color:var(--text)}
+.s-verse b{color:var(--sagec);font-weight:700;letter-spacing:.01em}
+.s-prompt{background:var(--well);border:1px solid var(--edge-soft);border-radius:18px;
+  padding:17px 18px;display:flex;flex-direction:column;gap:8px;border-left:4px solid var(--sagec)}
+.s-prompt.q{border-left-color:var(--slatec)}
+.s-prompt .k{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--sagec)}
+.s-prompt.q .k{color:var(--slatec)}
+.s-prompt p{margin:0;font-size:calc(var(--fs) - 1px);line-height:1.5;color:var(--text)}
+
+/* ── side notes ── */
+.notes{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  box-shadow:var(--shadow);padding:18px 20px}
+.card h2{margin:0 0 10px;font-family:"Plus Jakarta Sans",sans-serif;font-size:15px;
+  font-weight:700;letter-spacing:-.01em}
+.card p{margin:0 0 10px;font-size:13px;color:var(--ink-dim);line-height:1.6}
+.card p:last-child{margin-bottom:0}
+.card p b{color:var(--ink);font-weight:600}
+
+.look{display:flex;flex-direction:column;gap:0}
+.look li{list-style:none;display:flex;gap:11px;padding:11px 0;
+  border-bottom:1px solid var(--line-soft);font-size:13px;color:var(--ink-dim);line-height:1.5}
+.look li:last-child{border-bottom:0;padding-bottom:0}
+.look .n{flex:none;width:20px;font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;
+  font-size:11px;color:var(--ink-mute);font-variant-numeric:tabular-nums;padding-top:2px}
+.look b{color:var(--ink);font-weight:600}
+.look ul{margin:0;padding:0}
+
+.flag{border-left:3px solid var(--warn);background:var(--warn-soft);
+  border-radius:0 10px 10px 0;padding:13px 16px;font-size:13px;color:var(--ink-dim);line-height:1.55}
+.flag b{color:var(--ink);font-weight:600}
+
+.settled{display:flex;flex-wrap:wrap;gap:7px}
+.settled span{font-size:11.5px;color:var(--ink-dim);background:var(--surface-2);
+  border-radius:999px;padding:4px 11px}
+.settled span b{color:var(--ink);font-weight:600}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="eyebrow">ADR 0014 §5 · card + settle, chosen</div>
+    <h1>Section Panel Directions</h1>
+    <p class="dek">The phone is a <b>real scrolling deck now</b> — four Sections, proximity snapping, panels sized to the deck rather than to <code>100dvh</code>. The last one deliberately overflows. Scroll it, then flip <b>Overflowing Section</b> to compare the two ways a card can handle content taller than the screen.</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="ctl-l" id="l-of">Overflowing Section</span>
+      <div class="seg" role="group" aria-labelledby="l-of">
+        <button data-set="of" data-v="grow" aria-pressed="true">Card grows</button>
+        <button data-set="of" data-v="degrade" aria-pressed="false">Card degrades</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-l" id="l-fs">Body type</span>
+      <div class="seg" role="group" aria-labelledby="l-fs">
+        <button data-set="fs" data-v="16" aria-pressed="false">16</button>
+        <button data-set="fs" data-v="18" aria-pressed="false">18</button>
+        <button data-set="fs" data-v="20" aria-pressed="true">20</button>
+        <button data-set="fs" data-v="22" aria-pressed="false">22</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-l" id="l-pad">Card inset</span>
+      <div class="seg" role="group" aria-labelledby="l-pad">
+        <button data-set="pad" data-v="roomy" aria-pressed="true">Roomy</button>
+        <button data-set="pad" data-v="tight" aria-pressed="false">Tight</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-l" id="l-theme">Theme</span>
+      <div class="seg" role="group" aria-labelledby="l-theme">
+        <button data-set="theme" data-v="dark" aria-pressed="true">Dark</button>
+        <button data-set="theme" data-v="light" aria-pressed="false">Light</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="fit"><div class="ph-wrap">
+      <div class="ph" data-t="dark">
+        <div class="ph-top">
+          <span class="ph-tt">Peace that holds</span>
+          <span class="ph-ct" id="ct">01 / 04</span>
+        </div>
+        <div class="deck" id="deck"></div>
+        <div class="ph-rail" id="rail"></div>
+      </div>
+    </div></div>
+
+    <div class="notes">
+      <div class="card">
+        <h2>What to look at</h2>
+        <ul class="look">
+          <li><span class="n">01</span><span><b>Panels 1–3 settle.</b> Content fits, so it centres and wears the card — the slack becomes margin around an object instead of a void beneath one.</span></li>
+          <li><span class="n">02</span><span><b>Switch to Light.</b> The card is now lighter than its ground and carries a real three-layer shadow, so it reads as an object in both themes rather than a grey patch on white.</span></li>
+          <li><span class="n">03</span><span><b>Panel 4 overflows, and that is fine</b> — it scrolls. <b>Card grows</b> is settled; the toggle is left in so the rejected branch stays visible.</span></li>
+          <li><span class="n">04</span><span><b>The counter and rail track the scroll.</b> Driven by the IntersectionObserver that is dead in the shipped reader.</span></li>
+        </ul>
+      </div>
+
+      <div class="flag">
+        <b>Light and dark elevate differently.</b> The app's light theme sets <code>--shadow-card: none</code> and fills cards with <code>--panel</code> on a white <code>--bg</code> — so the card came out <i>darker than its ground</i>, which reads as a well rather than an object. Here the pair is swapped: ground takes <code>--panel</code>, the card takes <code>--bg</code>, and light elevates through a three-layer shadow while dark keeps elevating through lightness and an edge. Same tokens, no new colours — but a deliberate departure from the app's flat light-mode card.
+      </div>
+
+      <div class="card">
+        <h2>Settled so far</h2>
+        <div class="settled">
+          <span>Panels sized to the deck, <b>not 100dvh</b></span>
+          <span><b>Card + settle</b></span>
+          <span>Default <b>20px</b>, roomy inset</span>
+          <span>Type control, <b>reader-side</b></span>
+          <span>Overflow: <b>card grows</b></span>
+          <span>Proximity snap, <b>no haptics yet</b></span>
+          <span><b>Verse</b> as its own block</span>
+          <span>Toolbar inserts at <b>end of caret's Section</b></span>
+          <span>Inline reference <b>back-burnered</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SECTIONS = [
+  { t:'Where peace starts', peek:'A peace you did not negotiate', body:`
+    <p class="s-prose">Peace with God is a <span class="blank hidden" tabindex="0" role="button">standing</span>, not a mood.</p>
+    <figure class="s-pass">
+      <p>Therefore, since we have been justified by faith, we have peace with God through our Lord Jesus Christ.</p>
+      <figcaption>Romans 5:1 · ESV</figcaption>
+    </figure>
+    <div class="s-prompt"><span class="k">Discuss</span>
+      <p>Where do you go looking for peace when you don't feel it?</p></div>` },
+
+  { t:'A peace you did not negotiate', peek:'What it cost to say so', body:`
+    <p class="s-prose">You were not at the table. The terms were settled without you and they hold anyway.</p>
+    <p class="s-verse"><b>Rom. 5:6</b> — while we were still weak, at the right time Christ died for the ungodly.</p>
+    <div class="s-prompt q"><span class="k">Question</span>
+      <p>What would you have put on the table, if you had been asked?</p></div>` },
+
+  { t:'What it cost to say so', peek:'The standing, held', body:`
+    <p class="s-prose">Nothing about this was cheap, and the page should not pretend it was.</p>
+    <figure class="s-pass">
+      <p>God shows his love for us in that while we were still sinners, Christ died for us.</p>
+      <figcaption>Romans 5:8 · ESV</figcaption>
+    </figure>
+    <div class="s-prompt"><span class="k">Apply</span>
+      <p>Name one place this week where you will act as though it is already settled.</p></div>` },
+
+  { t:'The standing, held', peek:null, body:`
+    <p class="s-prose">It is not that the feeling arrives and the standing follows. The standing was settled somewhere else, on a day none of us were consulted about, and the feeling comes and goes over the top of it.</p>
+    <p class="s-prose">Which means the question is never whether you feel at peace this morning. It is whether the thing that made peace is still true this morning — and whether you are willing to let that be the load-bearing fact rather than the mood.</p>
+    <figure class="s-pass">
+      <p>More than that, we rejoice in our sufferings, knowing that suffering produces endurance, and endurance produces character, and character produces hope.</p>
+      <figcaption>Romans 5:3–4 · ESV</figcaption>
+    </figure>
+    <p class="s-verse"><b>Rom. 5:5</b> — and hope does not put us to shame.</p>
+    <div class="s-prompt q"><span class="k">Question</span>
+      <p>What has this year produced in you that you did not choose?</p></div>
+    <div class="s-prompt"><span class="k">Discuss</span>
+      <p>Where would you rather have endurance than relief, if you are honest?</p></div>` },
+];
+
+const deck = document.getElementById('deck');
+const rail = document.getElementById('rail');
+const ct = document.getElementById('ct');
+const pad = n => String(n).padStart(2, '0');
+
+deck.innerHTML = SECTIONS.map((s, i) => `
+  <section class="panel" data-i="${i}">
+    <div class="panel-in">
+      <h2 class="s-title">${s.t}</h2>
+      ${s.body}
+    </div>
+    ${s.peek
+      ? `<div class="peek">${s.peek}</div>`
+      : `<div class="peek end"><i></i><span>End of Peace that holds</span></div>`}
+  </section>`).join('');
+
+rail.innerHTML = SECTIONS.map((_, i) => `<i${i === 0 ? ' class="on"' : ''}></i>`).join('');
+
+const root = document.documentElement;
+document.body.dataset.of = 'grow';
+
+function setVar(name, v){ document.querySelectorAll('.ph').forEach(p => p.style.setProperty(name, v)); }
+
+// A panel "settles" only while its content actually fits. Continuous, so it
+// degrades gracefully as type grows — unlike the card toggle, which jumps.
+function measure(){
+  const h = deck.clientHeight;
+  deck.querySelectorAll('.panel').forEach(p => {
+    p.classList.remove('settles');
+    const inner = p.querySelector('.panel-in');
+    const peek = p.querySelector('.peek');
+    const needed = inner.offsetHeight + peek.offsetHeight + 18;
+    if (needed <= h) p.classList.add('settles');
+  });
+}
+
+// Settled: the inset stays roomy through 20 — the default — and tightens at
+// 22, where the card would otherwise tax every line.
+function insetFor(fs){ return Number(fs) >= 22 ? 'tight' : 'roomy'; }
+
+function applyType(v){
+  setVar('--fs', v + 'px');
+  const auto = insetFor(v);
+  applyPad(auto);
+  document.querySelectorAll('[data-set="pad"]').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.v === auto)));
+}
+function applyPad(v){
+  setVar('--cardpad', v === 'tight' ? '14px' : '22px');
+  setVar('--pad', v === 'tight' ? '16px' : '24px');
+  requestAnimationFrame(measure);
+}
+applyType(20);
+
+document.querySelectorAll('.seg button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const { set, v } = btn.dataset;
+    btn.parentElement.querySelectorAll('button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b === btn)));
+    if (set === 'theme') document.querySelectorAll('.ph').forEach(p => p.dataset.t = v);
+    if (set === 'fs') applyType(v);
+    if (set === 'pad') applyPad(v);
+    if (set === 'of') document.body.dataset.of = v;
+  });
+});
+
+// The read model the shipped reader never builds, because its panel refs are
+// never assigned and the observer is therefore never constructed.
+const panels = [...deck.querySelectorAll('.panel')];
+let current = 0;
+const io = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    const i = Number(e.target.dataset.i);
+    if (i === current) continue;
+    current = i;
+    ct.textContent = `${pad(i + 1)} / ${pad(panels.length)}`;
+    rail.querySelectorAll('i').forEach((el, n) => el.classList.toggle('on', n <= i));
+  }
+}, { root: deck, threshold: 0.55 });
+panels.forEach(p => io.observe(p));
+
+deck.addEventListener('click', e => {
+  const b = e.target.closest('.blank');
+  if (b) b.classList.toggle('hidden');
+});
+deck.addEventListener('keydown', e => {
+  const b = e.target.closest('.blank');
+  if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); b.classList.toggle('hidden'); }
+});
+
+const fit = () => {
+  const room = document.querySelector('.stage').clientWidth;
+  const w = room > 860 ? Math.min(430, room * 0.44) : Math.min(390, room);
+  const s = Math.max(0.5, Math.min(0.98, w / 390));
+  root.style.setProperty('--s', s.toFixed(3));
+  requestAnimationFrame(measure);
+};
+fit();
+addEventListener('resize', fit);
+</script>
