@@ -10,6 +10,7 @@ import {
   type Section,
   type EntryPoint,
 } from '../lib/bibleStudy';
+import { useCommand } from '../lib/commands';
 import { useUnsavedGuard } from '../lib/navGuard';
 import {
   saveMeeting,
@@ -103,6 +104,19 @@ export default function BibleStudyEditor() {
   };
 
   const dirty = !!saved && isMeetingDirty({ title, date, markdown, published }, saved);
+  // ⌘S / Ctrl+S ≡ the Save button: never publishes, no-ops when clean. The
+  // command always matches so the browser's own Save-page dialog never fires.
+  useCommand({
+    id: 'biblestudy.save',
+    scope: 'compose',
+    description: 'Save the meeting',
+    shortcut: { key: 's', mod: true },
+    minRole: 'admin',
+    when: (e) => !e.defaultPrevented,
+    handler: () => {
+      if (dirty) void handleSave(published);
+    },
+  });
   const guard = useUnsavedGuard({ when: dirty, onSave: () => handleSave(published) });
 
   const handleTogglePublish = async () => {
@@ -187,7 +201,7 @@ export default function BibleStudyEditor() {
             disabled={saving}
             className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
           >
-            {saving ? 'Saving...' : 'Save draft'}
+            {saving ? 'Saving...' : 'Save'}
           </button>
           <button
             onClick={handleTogglePublish}
