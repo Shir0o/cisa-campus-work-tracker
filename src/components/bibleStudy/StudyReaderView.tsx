@@ -28,7 +28,10 @@ export type StudyReaderViewProps = {
   staleDateLabel?: string | null;
 };
 
-const pad = (n: number) => String(n + 1).padStart(2, '0');
+// Pads a 1-based Section index for the counter and the index rows: the +1 is
+// the index→ordinal step, so the denominator (a count, not an index) must not
+// go through this helper.
+const padOneBased = (n: number) => String(n + 1).padStart(2, '0');
 
 const ChevronIcon: React.FC = () => (
   <svg
@@ -166,7 +169,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
 
   const total = sections.length;
   const counterText =
-    total > 0 ? `${pad(state.sectionIndex)} / ${String(total).padStart(2, '0')}` : '';
+    total > 0 ? `${padOneBased(state.sectionIndex)} / ${String(total).padStart(2, '0')}` : '';
 
   const handleJump = (index: number) => {
     dispatch({ type: 'jump', index });
@@ -236,6 +239,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
         {sections.map((_, sIdx) => (
           <div
             key={sIdx}
+            data-filled={sIdx <= state.sectionIndex}
             className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
               sIdx <= state.sectionIndex ? 'bg-on-surface' : 'bg-surface-variant'
             }`}
@@ -277,6 +281,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
             {sections.map((sec, sIdx) => (
               <div
                 key={sec.id || sIdx}
+                data-current={sIdx === state.sectionIndex}
                 className={`flex items-center gap-3.5 min-h-[52px] px-3.5 py-2 rounded-xl cursor-pointer transition-colors ${
                   sIdx === state.sectionIndex
                     ? 'bg-surface-variant text-on-surface font-medium'
@@ -288,7 +293,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
                 }}
               >
                 <div className="font-serif font-bold text-xs text-on-surface-variant w-5 shrink-0">
-                  {pad(sIdx)}
+                  {padOneBased(sIdx)}
                 </div>
                 <div className="min-w-0 flex flex-col">
                   <div className="text-[15px] font-medium text-on-surface truncate">{sec.title}</div>

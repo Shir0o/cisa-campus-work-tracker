@@ -215,7 +215,7 @@ describe('StudyReaderView (the scrolling deck)', () => {
 
       const rail = screen.getByTestId('progress-rail');
       const steps = () => Array.from(rail.children);
-      const filled = () => steps().filter((s) => s.className.includes('bg-on-surface')).length;
+      const filled = () => steps().filter((s) => s.getAttribute('data-filled') === 'true').length;
 
       expect(filled()).toBe(1);
       io.fire(io.observed[2], true);
@@ -265,9 +265,8 @@ describe('StudyReaderView (the scrolling deck)', () => {
           .getAllByText(title)
           .map((el) => el.closest('div.cursor-pointer')!)
           .find((el) => el.className.includes('cursor-pointer'))!;
-      const highlighted = (el: Element) => el.className.split(' ').includes('bg-surface-variant');
-      expect(highlighted(rowFor('Where peace starts'))).toBe(false);
-      expect(highlighted(rowFor('The end of the week'))).toBe(true);
+      expect(rowFor('Where peace starts').getAttribute('data-current')).toBe('false');
+      expect(rowFor('The end of the week').getAttribute('data-current')).toBe('true');
     });
 
     it('does not rebuild the observer on every scroll tick', () => {
