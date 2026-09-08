@@ -70,7 +70,7 @@ const Panel: React.FC<{
     className="min-h-full snap-start snap-always flex flex-col px-6 pt-4 pb-0"
   >
     <div className="flex flex-col gap-5">
-      <h2 className="font-serif font-bold text-[32px] sm:text-[36px] leading-[1.08] tracking-tight text-on-surface">
+      <h2 className="font-serif font-bold text-[32px] leading-[1.08] tracking-tight text-on-surface">
         {section.title}
       </h2>
       <SectionBody
