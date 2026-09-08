@@ -8,6 +8,9 @@ import {
   appendSection,
   sectionOffsets,
   sectionIndexAtOffset,
+  previewScale,
+  PREVIEW_PHONE_WIDTH,
+  PREVIEW_PHONE_HEIGHT,
   type Meeting,
   type MeetingForm,
   type Section,
@@ -53,6 +56,25 @@ export default function BibleStudyEditor() {
   // now". Before any edit the freshly loaded doc needs no badge at all.
   const [everSaved, setEverSaved] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
+
+  // The preview pane's measured size (#916). The phone is CSS-scaled into
+  // the pane, so the scale must come from the pane's real box — a fixed
+  // constant fits no pane correctly. jsdom has no layout, so the ResizeObserver
+  // is inert in tests; the browser supplies the truth.
+  const [paneSize, setPaneSize] = useState<{ width: number; height: number } | null>(null);
+  const previewPaneRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const pane = previewPaneRef.current;
+    if (!pane || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setPaneSize({ width, height });
+    });
+    observer.observe(pane);
+    return () => observer.disconnect();
+  }, []);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -312,6 +334,12 @@ export default function BibleStudyEditor() {
     syncCaretSection(el);
   };
 
+  // The phone is CSS-scaled into the pane (#916): the scale comes from the
+  // pane's measured size, never a fixed constant. Before the first
+  // ResizeObserver tick (and in jsdom, which has no layout) the legibility
+  // floor applies.
+  const scale = paneSize ? previewScale(paneSize.width, paneSize.height) : 0.5;
+
   if (!loaded) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
@@ -552,8 +580,12 @@ export default function BibleStudyEditor() {
           )}
         </div>
 
-        {/* Right Pane: Live Phone Preview & QR */}
-        <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-4 overflow-y-auto custom-scrollbar gap-4">
+        {/* Right Pane: Live Phone Preview & QR. The pane itself never
+            scrolls (#916): the phone takes the height genuinely available
+            and the Present mode panel sits beneath it as a row — the only
+            scroller in the preview is the reader's own deck, the thing
+            under test. */}
+        <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-4 gap-4 overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-on-surface-variant">Live Preview</div>
             <div className="flex bg-surface-variant rounded-full p-0.5 text-[11px]">
@@ -581,18 +613,47 @@ export default function BibleStudyEditor() {
               dimensions (390×844) and CSS-scaled to fit the pane — the old
               hand-built 320×520 frame with overflow-hidden showed LESS than
               the real phone. It renders the unsaved markdown, follows the
-              caret's Section one-way, and Blanks reveal for real. */}
-          <div className="mx-auto w-[390px] overflow-hidden rounded-[28px] shadow-xl border border-outline-variant" data-testid="preview-frame">
+              caret's Section one-way, and Blanks reveal for real.
+
+              Two boxes, on purpose (#916): a CSS transform is paint-only,
+              so the inner box keeps true phone dimensions and is scaled
+              from its top-left corner, while the OUTER box is pre-scaled —
+              its width and height are the phone's dimensions times the
+              scale. That makes the layout box match the painted size;
+              sizing the outer box to the unscaled phone is exactly the bug
+              that left the dead band inside the bezel, the side slivers,
+              and the frame overflowing a narrow pane. The bezel, border
+              and shadow live on the outer box, the one that matches the
+              picture. */}
+          <div
+            ref={previewPaneRef}
+            className="flex-1 min-h-0 flex items-center justify-center"
+          >
             <div
-              className={previewTheme === 'dark' ? 'bg-[#0A0A0B] text-[#FAFAFA]' : 'bg-white text-[#0A0A0B]'}
-              style={{ height: 844, transform: 'scale(0.86)', transformOrigin: 'top center', width: 390 }}
-              data-theme={previewTheme === 'dark' ? 'dark' : 'light'}
+              data-testid="preview-frame"
+              className="overflow-hidden shadow-xl border border-outline-variant"
+              style={{
+                width: PREVIEW_PHONE_WIDTH * scale,
+                height: PREVIEW_PHONE_HEIGHT * scale,
+                borderRadius: Math.round(28 * scale),
+              }}
             >
-              <StudyReaderView
-                key={caretSectionIndex === -1 ? 'head' : caretSectionIndex}
-                meeting={previewMeeting}
-                staleDateLabel={null}
-              />
+              <div
+                className={previewTheme === 'dark' ? 'bg-[#0A0A0B] text-[#FAFAFA]' : 'bg-white text-[#0A0A0B]'}
+                style={{
+                  width: PREVIEW_PHONE_WIDTH,
+                  height: PREVIEW_PHONE_HEIGHT,
+                  transform: `scale(${scale})`,
+                  transformOrigin: 'top left',
+                }}
+                data-theme={previewTheme === 'dark' ? 'dark' : 'light'}
+              >
+                <StudyReaderView
+                  key={caretSectionIndex === -1 ? 'head' : caretSectionIndex}
+                  meeting={previewMeeting}
+                  staleDateLabel={null}
+                />
+              </div>
             </div>
           </div>
 

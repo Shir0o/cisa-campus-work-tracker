@@ -10,6 +10,7 @@ import {
   appendSection,
   sectionOffsets,
   sectionIndexAtOffset,
+  previewScale,
   type StudySetupForm,
   type Meeting,
   type Study,
@@ -298,6 +299,26 @@ describe('sectionIndexAtOffset (#890 — the caret is inside a Section)', () => 
     // parseMeeting renders prose before the first heading as an untitled
     // Section — the caret maps there, matching what the outline will list.
     expect(sectionIndexAtOffset('Some prose first.\n\n## Alpha', 0)).toBe(0);
+  });
+});
+
+describe('previewScale (#916 — the phone is CSS-scaled into the pane)', () => {
+  it('takes the smaller of the width and height ratios so the phone is always whole', () => {
+    // A pane narrower than the phone: width binds.
+    expect(previewScale(300, 844)).toBeCloseTo(300 / 390, 6);
+    // A pane shorter than the phone: height binds.
+    expect(previewScale(390, 500)).toBeCloseTo(500 / 844, 6);
+    // A pane that fits both ways: the tighter ratio binds.
+    expect(previewScale(300, 1000)).toBeCloseTo(300 / 390, 6);
+  });
+
+  it('never scales below the legibility floor', () => {
+    expect(previewScale(100, 100)).toBe(0.5);
+    expect(previewScale(0, 0)).toBe(0.5);
+  });
+
+  it('never scales above 1 — the phone is never blown up past true size', () => {
+    expect(previewScale(2000, 2000)).toBe(1);
   });
 });
 

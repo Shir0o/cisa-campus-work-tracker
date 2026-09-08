@@ -42,3 +42,13 @@ class MockIntersectionObserver {
 }
 (window as unknown as Record<string, unknown>).IntersectionObserver = MockIntersectionObserver;
 Element.prototype.scrollIntoView = () => {};
+
+// The editor preview measures the pane with a ResizeObserver (#916). jsdom
+// has no layout engine, so it gets the same inert stub treatment as
+// IntersectionObserver above; the real browser supplies the truth.
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+(window as unknown as Record<string, unknown>).ResizeObserver = MockResizeObserver;
