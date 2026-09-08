@@ -385,7 +385,16 @@ Discuss: The prompt the room answers out loud.
  * types the Section's name.
  */
 export function appendSection(md: string): { md: string; caret: number } {
-  const trimmedEnd = md.replace(/[ \t\n\r\f\v]+$/, '');
+  // Trailing-whitespace scan from the end, not a regex: a `[…]+$` replace is
+  // quadratic on a long whitespace run followed by non-whitespace (CodeQL
+  // js/polynomial-redos) — each start position retries the anchored match.
+  let end = md.length;
+  while (end > 0) {
+    const c = md.charCodeAt(end - 1);
+    if (c === 32 || c === 9 || c === 10 || c === 13 || c === 12 || c === 11) end--;
+    else break;
+  }
+  const trimmedEnd = md.slice(0, end);
   const next = trimmedEnd ? `${trimmedEnd}\n\n## ` : '## ';
   return { md: next, caret: next.length };
 }
