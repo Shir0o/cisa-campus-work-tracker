@@ -224,6 +224,26 @@ This paragraph is not a bullet, a blockquote, or a prompt.
       ]);
     });
 
+    it('an indented numbered line nests under an open bullet parent (mixed nesting, reverse direction)', () => {
+      const md = `## Mixed direction
+- Bullet parent
+  1. Numbered sub`;
+      const s = parseMeeting(md)[0];
+      expect(s.content[0].kind).toBe('bullet-list');
+      if (s.content[0].kind !== 'bullet-list') throw new Error('expected bullet-list');
+      expect(s.content[0].points).toEqual([
+        { before: 'Bullet parent', children: [{ before: 'Numbered sub' }] },
+      ]);
+    });
+
+    it('list text is trimmed of trailing whitespace exactly as the legacy parser did', () => {
+      const md = '## Trailing\n- Main point  \n- Second point\t';
+      const s = parseMeeting(md)[0];
+      expect(s.content[0].kind).toBe('bullet-list');
+      if (s.content[0].kind !== 'bullet-list') throw new Error('expected bullet-list');
+      expect(s.content[0].points).toEqual([{ before: 'Main point' }, { before: 'Second point' }]);
+    });
+
     it('flat legacy documents (no indentation) parse exactly as before', () => {
       const md = `## Legacy week
 - Main point

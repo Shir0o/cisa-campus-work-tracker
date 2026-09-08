@@ -286,26 +286,27 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       }
       // A bullet line always continues a list; an indented one nests under
       // its parent by depth (ADR 0013 §Decision 2).
-      listLines.push({ indent: bulletMatch[1].length, text: bulletMatch[2] });
+      listLines.push({ indent: bulletMatch[1].length, text: bulletMatch[2].trim() });
       continue;
     }
 
-    const numberMatch =
-      (listLines && listKind === 'number-list' ? rawLine.match(/^(\s*)(\d+[.)])\s+(.*)$/) : null)
-      ?? line.match(/^(\d+[.)])\s+(.*)$/);
+    const numberContMatch = listLines ? rawLine.match(/^(\s*)(\d+[.)])\s+(.*)$/) : null;
+    const numberMatch = numberContMatch ?? line.match(/^(\d+[.)])\s+(.*)$/);
     if (numberMatch) {
       flushProse();
       if (!listLines) {
         listKind = 'number-list';
         listLines = [];
       }
-      // A list-continuation line carries its indent in group 1; a list-start
-      // line is trimmed, so its indent is 0 (the first line sets the base).
-      const indent = numberMatch.length === 4 ? numberMatch[1].length : 0;
-      listLines.push({ indent, text: numberMatch[numberMatch.length - 1] });
+      // A list-continuation line (3 groups) carries its indent in group 1;
+      // a list-start line (2 groups) is trimmed, so its indent is 0 (the
+      // first line sets the base). An indented numbered line continues an
+      // open bullet list too — mixed bullet/number nesting follows the same
+      // depth rule.
+      const indent = numberContMatch ? numberContMatch[1].length : 0;
+      listLines.push({ indent, text: numberMatch[numberMatch.length - 1].trim() });
       continue;
     }
-
     flushList();
     proseLines = proseLines ?? [];
     proseLines.push(line);

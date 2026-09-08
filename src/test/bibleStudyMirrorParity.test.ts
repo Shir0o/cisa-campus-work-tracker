@@ -78,7 +78,8 @@ Question: What did we just read?`,
 - Main point
   - Sub point A
     - Sub-sub point
-  - Sub point B`,
+  - Sub point B
+  1. Numbered sub under bullet`,
 
   // Inline emphasis stays in the markdown for the renderer.
   `## Emphasis kept

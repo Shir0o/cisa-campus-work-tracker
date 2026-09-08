@@ -118,7 +118,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
         <InlineMd text={block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before} />
       );
       return (
-        <li className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
+        <li key={path} className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
           {inline}
           {pt.children && pt.children.length > 0 && (
             <Tag className={`flex flex-col gap-3 py-1 ${block.kind === 'number-list' ? 'list-decimal' : 'list-disc'} pl-5 marker:text-on-surface-variant`}>
