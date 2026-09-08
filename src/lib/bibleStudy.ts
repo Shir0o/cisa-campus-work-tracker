@@ -385,7 +385,7 @@ Discuss: The prompt the room answers out loud.
  * types the Section's name.
  */
 export function appendSection(md: string): { md: string; caret: number } {
-  const trimmedEnd = md.replace(/\s+$/, '');
+  const trimmedEnd = md.replace(/[ \t\n\r\f\v]+$/, '');
   const next = trimmedEnd ? `${trimmedEnd}\n\n## ` : '## ';
   return { md: next, caret: next.length };
 }
