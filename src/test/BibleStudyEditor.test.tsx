@@ -18,6 +18,62 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+// Tier 1 collab rides on the realtime backend; null rtdb keeps the Tier 0
+// single-user autosave these tests already pin. Collab cases flip this.
+let mockRtdb: unknown = null;
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  get rtdb() {
+    return mockRtdb;
+  },
+}));
+vi.mock('../lib/meetingCollab', () => ({
+  MeetingCollab: class {
+    doc = { on: vi.fn(), off: vi.fn() };
+    text = {
+      toString: () => textValue,
+      get length() {
+        return textValue.length;
+      },
+    };
+    applyLocalEdit = (start: number, end: number, value: string) => {
+      textValue = textValue.substring(0, start) + value + textValue.substring(end);
+    };
+    awareness = {
+      on: vi.fn(),
+      off: vi.fn(),
+      getStates: () =>
+        new Map([[4242, { user: { uid: 'u-peer', name: 'Bob', color: '#3a5a82' } }]]),
+      clientID: 7,
+    };
+    destroy = vi.fn(() => {
+      collabInstance = null;
+    });
+    constructor(_doc: unknown, opts: { storedMd: string; onStatus?: (s: { live: boolean; degraded: boolean }) => void }) {
+      textValue = opts.storedMd;
+      statusSink = opts.onStatus ?? null;
+      // eslint-disable-next-line @typescript-eslint/no-this-alias -- the mock must hand the instance to the test scope
+      collabInstance = this;
+    }
+  },
+}));
+// The collab mock's state lives at module scope: vi.mock factories hoist,
+// so the fake class must reach these through the outer scope, not a describe.
+let collabInstance: {
+  doc: { on: ReturnType<typeof vi.fn>; off: ReturnType<typeof vi.fn> };
+  text: { toString: () => string; length: number };
+  applyLocalEdit: (start: number, end: number, value: string) => void;
+  awareness: {
+    on: ReturnType<typeof vi.fn>;
+    off: ReturnType<typeof vi.fn>;
+    getStates: () => Map<number, { user?: { uid: string; name: string; color: string } }>;
+    clientID: number;
+  };
+  destroy: ReturnType<typeof vi.fn>;
+} | null;
+let textValue: string;
+let statusSink: ((s: { live: boolean; degraded: boolean }) => void) | null;
+
 describe('BibleStudyEditor view', () => {
   const mockUser = { uid: 'u-admin-1' };
 
@@ -298,5 +354,85 @@ describe('BibleStudyEditor view', () => {
     expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument();
     expect(await screen.findByText('Weeks index')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/bible-study');
+  });
+
+  describe('with live collab', () => {
+    beforeEach(() => {
+      mockRtdb = {} as unknown;
+      textValue = '';
+      statusSink = null;
+      // A display name gives the presence chip a person, not an email.
+      vi.mocked(auth.useAuth).mockReturnValue({
+        user: { uid: 'u-admin-1', displayName: 'Ana', email: 'ana@example.com' },
+        isAdmin: true,
+      } as ReturnType<typeof auth.useAuth>);
+    });
+
+    afterEach(() => {
+      mockRtdb = null;
+      collabInstance = null;
+    });
+
+    it('routes body edits through the collaborative Y.Text and shows peer chips', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+      statusSink?.({ live: true, degraded: false });
+      await waitFor(() => expect(collabInstance).not.toBeNull());
+
+      // A peer shows up as a name chip from awareness.
+      expect(await screen.findByTitle('Bob')).toBeInTheDocument();
+
+      // Typing goes through the collab channel, not a bare setState.
+      const area = screen.getByPlaceholderText(/markdown/i);
+      fireEvent.change(area, { target: { value: '## Seed\n- Typed point' } });
+      await waitFor(() => expect(textValue).toBe('## Seed\n- Typed point'));
+    });
+
+    it('keeps autosave projecting the merged document to Firestore', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+      statusSink?.({ live: true, degraded: false });
+      await waitFor(() => expect(collabInstance).not.toBeNull());
+
+      vi.useFakeTimers();
+      fireEvent.change(screen.getByPlaceholderText(/markdown/i), {
+        target: { value: '## Merged\n- both wrote this' },
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+      });
+      expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 'meeting-1', md: '## Merged\n- both wrote this' }),
+        mockUser.uid,
+      );
+      vi.useRealTimers();
+    });
+  });
+
+  // A degraded transport must be invisible to the writer: same autosave, no
+  // error noise (ADR 0012 §4). The hoisted collab mock reports degraded and
+  // never marks live, so the editor must behave exactly like Tier 0.
+  it('degrades to single-user autosave without error noise when collab reports degraded', async () => {
+    mockRtdb = {} as unknown;
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+    statusSink?.({ live: false, degraded: true });
+
+    // Typing still autosaves through the plain Firestore path…
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByPlaceholderText(/markdown/i), {
+      target: { value: 'typed while degraded' },
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+    });
+    expect(screen.queryByText("Couldn't save")).not.toBeInTheDocument();
+    expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 'meeting-1', md: 'typed while degraded' }),
+      mockUser.uid,
+    );
+    mockRtdb = null;
   });
 });

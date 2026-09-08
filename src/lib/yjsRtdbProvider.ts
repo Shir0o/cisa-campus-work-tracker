@@ -55,6 +55,11 @@ function b64ToU8(b64: string): Uint8Array {
 
 export interface RtdbProviderOptions {
   awareness?: Awareness;
+  // Root of the RTDB subtree the doc replicates over. The Board's pages use
+  // `board_docs_rtdb` (the default); the Meeting editor passes
+  // `bible_study_meetings_rtdb` (ADR 0012 §2). Rules grant each subtree the
+  // same signed-in read/write shape.
+  basePath?: string;
   // `degraded` is true when the initial RTDB read failed (e.g. permission denied, or
   // the DB is unreachable). The consumer should fall back to a local/Firestore-only
   // copy instead of waiting on live sync that will never arrive.
@@ -85,11 +90,12 @@ export class RtdbYjsProvider {
     this.awareness = opts.awareness ?? new Awareness(doc);
     this.onSynced = opts.onSynced;
 
-    this.base = ref(database, `board_docs_rtdb/${docId}`);
-    this.updatesRef = ref(database, `board_docs_rtdb/${docId}/updates`);
-    this.awarenessRef = ref(database, `board_docs_rtdb/${docId}/awareness`);
-    this.myAwarenessRef = ref(database, `board_docs_rtdb/${docId}/awareness/${this.awareness.clientID}`);
-    this.seededRef = ref(database, `board_docs_rtdb/${docId}/seeded`);
+    const base = opts.basePath || 'board_docs_rtdb';
+    this.base = ref(database, `${base}/${docId}`);
+    this.updatesRef = ref(database, `${base}/${docId}/updates`);
+    this.awarenessRef = ref(database, `${base}/${docId}/awareness`);
+    this.myAwarenessRef = ref(database, `${base}/${docId}/awareness/${this.awareness.clientID}`);
+    this.seededRef = ref(database, `${base}/${docId}/seeded`);
 
     this.doc.on('update', this.handleDocUpdate);
     this.awareness.on('update', this.handleAwarenessUpdate);

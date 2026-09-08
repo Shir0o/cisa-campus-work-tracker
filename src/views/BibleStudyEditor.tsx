@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
-import { db } from '../lib/firebase';
+import { db, rtdb } from '../lib/firebase';
 import {
   parseMeeting,
   isMeetingDirty,
@@ -19,6 +19,10 @@ import {
 } from '../lib/data/bibleStudy';
 import { entryPointUrl } from '../lib/publicUrl';
 import { format } from 'date-fns';
+import { getUserInitials } from '../lib/utils';
+import * as Y from 'yjs';
+import { MeetingCollab } from '../lib/meetingCollab';
+import { peersFromAwareness, type Peer } from '../lib/presence';
 import SectionBody from '../components/bibleStudy/SectionBody';
 
 export default function BibleStudyEditor() {
@@ -77,6 +81,65 @@ export default function BibleStudyEditor() {
       setLoaded(true);
     });
   }, [meetingId]);
+
+  // ── Live collaboration (Tier 1, ADR 0012 §2/§3/§7) ────────────────────────
+  // When the realtime backend exists, the body markdown is a Y.Text replicated
+  // over `bible_study_meetings_rtdb/{meetingId}`; concurrent edits merge
+  // instead of clobbering, and presence name chips come from awareness.
+  // Null/absent/degraded transport → single-user autosave on the same state,
+  // exactly the Tier 0 behavior, with no error surfaced.
+  const [collab, setCollab] = useState<MeetingCollab | null>(null);
+  const [collabStatus, setCollabStatus] = useState<{ live: boolean; degraded: boolean }>({
+    live: false,
+    degraded: false,
+  });
+  const [peers, setPeers] = useState<Peer[]>([]);
+  const ydocRef = useRef<Y.Doc | null>(null);
+
+  useEffect(() => {
+    if (!meeting || !rtdb || collab) return;
+    const ydoc = new Y.Doc();
+    ydocRef.current = ydoc;
+    const c = new MeetingCollab(ydoc, {
+      meetingId,
+      rtdb,
+      me: {
+        uid: user?.uid || '',
+        name: user?.displayName || user?.email?.split('@')[0] || 'Someone',
+      },
+      storedMd: initializedFor.current === meetingId ? (meeting.md ?? '') : '',
+      onStatus: setCollabStatus,
+    });
+    setCollab(c);
+    // Awareness → name chips, collapsing one person's several tabs to one
+    // entry and leaving self out — the same helper The Board uses.
+    const updatePeers = () =>
+      setPeers(peersFromAwareness(c.awareness.getStates(), c.awareness.clientID, user?.uid || ''));
+    c.awareness.on('change', updatePeers);
+    updatePeers();
+    // Reflect the seeded/synced text into the form's markdown state.
+    const reflectText = () => setMarkdown(c.text.toString());
+    c.doc.on('update', reflectText);
+    reflectText();
+    return () => {
+      c.awareness.off('change', updatePeers);
+      c.doc.off('update', reflectText);
+      c.destroy();
+      ydoc.destroy();
+      ydocRef.current = null;
+      setCollab(null);
+    };
+    // The collab session is per meeting: one per editor mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meetingId, meeting?.id]);
+
+  // The remote peer's edit lands in `markdown` through reflectText; the local
+  // peer's edit goes textarea → Y.Text → the same state. Either way the form
+  // state is the merged document, and autosave projects it as before.
+  const collabRef = useRef<MeetingCollab | null>(null);
+  useEffect(() => {
+    collabRef.current = collab;
+  }, [collab]);
 
   const sections: Section[] = parseMeeting(markdown);
   const activeSection = sections[activeSectionIndex] || sections[0];
@@ -167,6 +230,21 @@ export default function BibleStudyEditor() {
     await handleSave(nextState);
   };
 
+  // One edit path for the body: live collab routes the delta through the
+  // Y.Text (so it replicates and merges), single-user writes state directly.
+  // `selection` keeps the caret where a toolbar insertion expects it.
+  const editMarkdown = (start: number, end: number, value: string) => {
+    const c = collabRef.current;
+    if (c && collabStatus.live) {
+      c.applyLocalEdit(start, end, value);
+      setMarkdown(c.text.toString());
+    } else {
+      const current = formRef.current.markdown;
+      setMarkdown(current.substring(0, start) + value + current.substring(end));
+    }
+    autosave(1200, published);
+  };
+
   const insertTextAtCursor = (before: string, after = '') => {
     const el = textareaRef.current;
     if (!el) return;
@@ -175,15 +253,12 @@ export default function BibleStudyEditor() {
     const current = el.value;
     const selected = current.substring(start, end);
     const replacement = `${before}${selected}${after}`;
-    const nextVal = current.substring(0, start) + replacement + current.substring(end);
-    setMarkdown(nextVal);
+    editMarkdown(start, end, replacement);
     setTimeout(() => {
       el.focus();
       el.setSelectionRange(start + before.length, start + before.length + selected.length);
     }, 0);
   };
-
-
 
   if (!loaded) {
     return (
@@ -376,12 +451,50 @@ export default function BibleStudyEditor() {
             ref={textareaRef}
             value={markdown}
             onChange={(e) => {
-              setMarkdown(e.target.value);
-              autosave(1200, published);
+              const el = e.target;
+              // Derive the replaced range from the textarea's own previous
+              // value: React re-renders with `value` already applied, so
+              // selectionStart/End alone can't recover what was deleted.
+              const prev = markdown;
+              const next = el.value;
+              let start = 0;
+              while (start < prev.length && start < next.length && prev[start] === next[start]) start++;
+              let endPrev = prev.length;
+              let endNext = next.length;
+              while (
+                endPrev > start &&
+                endNext > start &&
+                prev[endPrev - 1] === next[endNext - 1]
+              ) {
+                endPrev--;
+                endNext--;
+              }
+              editMarkdown(start, endPrev, next.substring(start, endNext));
             }}
             className="flex-1 w-full p-4 font-mono text-sm leading-relaxed bg-transparent border-0 outline-none resize-none custom-scrollbar"
             placeholder="Write meeting markdown here..."
           />
+
+          {/* Who else is in the document (ADR 0012 §7) — name chips from
+              awareness, one per person, self excluded. */}
+          {peers.length > 0 && (
+            <div className="flex items-center gap-2 px-3 pb-2 text-[11px] text-on-surface-variant">
+              <span className="shrink-0">Also editing:</span>
+              <div className="flex -space-x-1.5">
+                {peers.slice(0, 4).map((p) => (
+                  <span
+                    key={p.key}
+                    className="w-6 h-6 rounded-full ring-2 ring-surface text-white text-[10px] font-semibold grid place-items-center"
+                    style={{ background: p.color }}
+                    title={p.name}
+                  >
+                    {getUserInitials(p.name)}
+                  </span>
+                ))}
+              </div>
+              {peers.length > 4 && <span>+{peers.length - 4}</span>}
+            </div>
+          )}
         </div>
 
         {/* Right Pane: Live Phone Preview & QR */}

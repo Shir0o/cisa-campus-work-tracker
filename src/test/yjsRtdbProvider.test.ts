@@ -25,7 +25,7 @@ vi.mock('firebase/database', () => ({
   runTransaction: vi.fn(),
 }));
 
-import { get, set } from 'firebase/database';
+import { get, set, ref, push } from 'firebase/database';
 import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
 
 const DOC_ID = 'doc-1';
@@ -163,5 +163,49 @@ describe('RtdbYjsProvider unload handling', () => {
     provider.destroy();
     doc.destroy();
     spy.mockRestore();
+  });
+});
+
+describe('RtdbYjsProvider base path', () => {
+  it('places updates, awareness and the seed flag under a custom base path', async () => {
+    vi.clearAllMocks();
+    vi.mocked(get).mockResolvedValue(emptySnap as never);
+    const doc = new Y.Doc();
+    // The Meeting editor replicates over `bible_study_meetings_rtdb` (ADR 0012
+    // §2); the Board pages path must remain the default for CoordinationNotes.
+    const provider = new RtdbYjsProvider({} as never, 'meeting-1', doc, {
+      basePath: 'bible_study_meetings_rtdb',
+    });
+    await flush();
+
+    const paths = vi.mocked(ref).mock.calls.map(([, p]) => p);
+    expect(paths).toContain('bible_study_meetings_rtdb/meeting-1/updates');
+    expect(paths).toContain('bible_study_meetings_rtdb/meeting-1/awareness');
+    expect(paths).toContain('bible_study_meetings_rtdb/meeting-1/seeded');
+    expect(paths).not.toContain('board_docs_rtdb/meeting-1/updates');
+
+    doc.getArray('md').insert(0, ['hello']);
+    await flush();
+    expect(vi.mocked(push)).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'bible_study_meetings_rtdb/meeting-1/updates' }),
+      expect.any(String),
+    );
+
+    provider.destroy();
+    doc.destroy();
+  });
+
+  it('defaults to the board_docs_rtdb base path', async () => {
+    vi.clearAllMocks();
+    vi.mocked(get).mockResolvedValue(emptySnap as never);
+    const doc = new Y.Doc();
+    const provider = new RtdbYjsProvider({} as never, 'doc-9', doc);
+    await flush();
+
+    const paths = vi.mocked(ref).mock.calls.map(([, p]) => p);
+    expect(paths).toContain('board_docs_rtdb/doc-9/updates');
+
+    provider.destroy();
+    doc.destroy();
   });
 });
