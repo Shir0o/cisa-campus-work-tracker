@@ -1,16 +1,14 @@
-import React, { useEffect, useReducer, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import {
-  readerReducer,
   resolveScan,
   type Meeting,
   type Study,
   type EntryPoint,
   type ScanResolution,
-  type Section,
 } from '../lib/bibleStudy';
-import SectionBody from '../components/bibleStudy/SectionBody';
+import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import {
   subscribePublishedStudyMeetings,
   subscribeEntryPoint,
@@ -99,61 +97,26 @@ export default function PublicStudyReader() {
   );
   const meeting = resolution.kind === 'meeting' ? resolution.meeting : null;
   const isStale = resolution.kind === 'meeting' ? resolution.isFallback : false;
-  const sections = meeting?.sections ?? [];
-
-  const [state, dispatch] = useReducer(readerReducer, {
-    sectionIndex: 0,
-    totalSections: sections.length || 1,
-    openBlanks: {},
-    navOpen: false,
-    unadorned: false,
-  });
-
-  // When sections length changes
-  useEffect(() => {
-    if (sections.length > 0 && state.totalSections !== sections.length) {
-      dispatch({ type: 'setTotalSections', count: sections.length });
-    }
-  }, [sections.length, state.totalSections]);
-
-  const currentSection: Section | undefined = sections[state.sectionIndex];
-  const bodyRef = useRef<HTMLDivElement>(null);
-
-  const total = sections.length || state.totalSections;
-  const pad = (n: number) => String(n + 1).padStart(2, '0');
-  const counterText = total > 0 ? `${pad(state.sectionIndex)} / ${pad(total)}` : '';
-  const isLast = state.sectionIndex >= total - 1;
-
-  const handleAdvance = () => {
-    if (state.navOpen) return;
-    if (isLast) return;
-    dispatch({ type: 'advance' });
-    if (bodyRef.current) bodyRef.current.scrollTop = 0;
-  };
-
-  const handleBack = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (state.sectionIndex > 0) {
-      dispatch({ type: 'back' });
-      if (bodyRef.current) bodyRef.current.scrollTop = 0;
-    }
-  };
-
-  const handleJump = (index: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    dispatch({ type: 'jump', index });
-    if (bodyRef.current) bodyRef.current.scrollTop = 0;
-  };
-
-  const formattedDate = meeting?.date
-    ? (() => {
-        try {
-          return format(parseISO(meeting.date), 'EEEE, MMMM d');
-        } catch {
-          return meeting.date;
-        }
-      })()
-    : '';
+  // The stale-week treatment condenses into a date chip inside the sticky
+  // header (ADR 0011 §3 — falling back is correct; falling back silently is
+  // not), so a reader on any panel can still see the week is old.
+  const staleDateLabel = (() => {
+    if (!meeting || !isStale) return null;
+    const prefix =
+      isPermalink && permalinkDate && meetings.some((m) => m.date === permalinkDate)
+        ? 'Week of '
+        : 'Most recent · ';
+    const formatted = meeting.date
+      ? (() => {
+          try {
+            return format(parseISO(meeting.date), 'EEEE, MMMM d');
+          } catch {
+            return meeting.date;
+          }
+        })()
+      : '';
+    return `${prefix}${formatted}`;
+  })();
 
   if (loading) {
     return (
@@ -216,213 +179,17 @@ export default function PublicStudyReader() {
     );
   }
 
-
-  const washA = -(state.sectionIndex * 46);
-  const washB = state.sectionIndex * 34;
-
+  // The route keeps only what is genuinely its job: resolve the scan and own
+  // the empty states. Everything a student sees — the deck, the chrome, the
+  // Blanks — is the shared StudyReaderView (ADR 0014, one rendering path),
+  // which the editor's preview also renders. The parallax washes retired with
+  // tap-to-advance: they animated on a section index nothing owns anymore.
+  // The phone frame stays (a student's viewport on desktop, full-bleed on
+  // mobile), but it is no longer the scroll container.
   return (
-    <div className="min-h-screen bg-black/95 sm:bg-background flex items-center justify-center p-0 sm:p-4 selection:bg-[var(--t-sage-soft)]">
-      <div
-        className={`w-full max-w-[420px] h-screen sm:h-[844px] sm:max-h-[92vh] sm:rounded-3xl bg-background text-on-surface relative overflow-hidden flex flex-col cursor-pointer transition-all duration-300 shadow-2xl ${
-          state.unadorned ? 'p-0' : ''
-        }`}
-        onClick={handleAdvance}
-      >
-        {/* Parallax washes */}
-        <div
-          className="absolute -top-44 -right-36 w-[460px] h-[460px] rounded-full pointer-events-none transition-transform duration-700 ease-out opacity-80"
-          style={{
-            background: 'radial-gradient(circle, var(--t-slate-soft) 0%, transparent 68%)',
-            transform: `translateY(${washA}px)`,
-          }}
-        />
-        <div
-          className="absolute -bottom-52 -left-44 w-[420px] h-[420px] rounded-full pointer-events-none transition-transform duration-700 ease-out opacity-70"
-          style={{
-            background: 'radial-gradient(circle, var(--t-sage-soft) 0%, transparent 70%)',
-            transform: `translateY(${washB}px)`,
-          }}
-        />
-
-        {/* Dated treatment — falling back is right; falling back silently is not */}
-        {isStale && (
-          <div className="relative shrink-0 px-6 py-2.5 bg-surface border-b border-outline-variant text-xs text-on-surface-variant flex items-center gap-2 z-10">
-            <svg
-              className="w-3.5 h-3.5 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect width="18" height="18" x="3" y="4" rx="2" />
-              <path d="M16 2v4M8 2v4M3 10h18" />
-            </svg>
-            <span>
-              {isPermalink && permalinkDate && meetings.some((m) => m.date === permalinkDate)
-                ? 'Week of '
-                : 'Most recent · '}
-              {formattedDate}
-            </span>
-          </div>
-        )}
-
-        {/* Top bar */}
-        <div
-          className={`relative shrink-0 flex items-center gap-2 px-5 pt-6 pb-2 z-10 transition-opacity duration-300 ${
-            state.unadorned ? 'opacity-30 hover:opacity-100' : ''
-          }`}
-        >
-          <button
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-opacity ${
-              state.sectionIndex === 0 ? 'opacity-25 pointer-events-none' : 'opacity-100'
-            }`}
-            onClick={handleBack}
-            aria-label="Previous section"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-          <div
-            className={`text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80 truncate min-w-0 transition-opacity ${
-              state.unadorned ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            {meeting.title}
-          </div>
-          <div className="ml-auto font-serif font-bold text-xs text-on-surface-variant tracking-wider shrink-0 tabular-nums">
-            {counterText}
-          </div>
-          <button
-            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              dispatch({ type: 'toggleUnadorned' });
-            }}
-            aria-label="Distraction-free mode"
-          >
-            {state.unadorned ? (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6" />
-              </svg>
-            )}
-          </button>
-        </div>
-
-        {/* Section Body */}
-        <div
-          ref={bodyRef}
-          className={`relative flex-1 min-h-0 overflow-y-auto custom-scrollbar flex px-6 py-4 z-10 transition-all duration-300 ${
-            state.unadorned ? 'px-5 py-2' : ''
-          }`}
-        >
-          {currentSection && (
-            <div className="my-auto w-full flex flex-col gap-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 duration-300">
-              <h2 className="font-serif font-bold text-[32px] sm:text-[36px] leading-[1.08] tracking-tight text-on-surface">
-                {currentSection.title}
-              </h2>
-
-              <SectionBody
-                section={currentSection}
-                sectionIndex={state.sectionIndex}
-                openBlanks={state.openBlanks}
-                onRevealBlank={(key) => dispatch({ type: 'revealBlank', key })}
-              />
-
-            </div>
-          )}
-        </div>
-
-        {/* Bottom progress & hints */}
-        <div
-          className={`relative shrink-0 px-6 pb-6 pt-2 flex flex-col gap-3 z-10 transition-opacity duration-300 ${
-            state.unadorned ? 'opacity-30 hover:opacity-100 pb-3' : ''
-          }`}
-        >
-          <div className="flex gap-1.5">
-            {sections.map((_, sIdx) => (
-              <div
-                key={sIdx}
-                className={`h-[3px] flex-1 rounded-full transition-colors duration-300 ${
-                  sIdx <= state.sectionIndex ? 'bg-on-surface' : 'bg-surface-variant'
-                }`}
-              />
-            ))}
-          </div>
-          <div className="flex items-center justify-center gap-2 h-8 text-xs text-on-surface-variant font-medium">
-            {!isLast && (
-              <svg className="w-4 h-4 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M19 12l-7 7-7-7" />
-              </svg>
-            )}
-            <span>{isLast ? `End of ${meeting.title}` : 'Tap anywhere to go on'}</span>
-          </div>
-        </div>
-
-        {/* Auto-hidden edge grip */}
-        {!state.navOpen && (
-          <div
-            className="absolute top-1/2 right-0 -translate-y-1/2 w-8 min-h-[120px] flex flex-col items-end justify-center gap-2 pr-2 z-20 cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              dispatch({ type: 'openIndex' });
-            }}
-            role="button"
-            aria-label="Open section index"
-          >
-            {sections.map((_, sIdx) => (
-              <i
-                key={sIdx}
-                className={`block h-0.5 rounded-full transition-all duration-200 ${
-                  sIdx === state.sectionIndex ? 'w-5 bg-on-surface' : 'w-2.5 bg-outline-variant'
-                }`}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Scrubber overlay */}
-        {state.navOpen && (
-          <div
-            className="absolute inset-0 z-30 p-6 flex flex-col justify-center bg-background/90 backdrop-blur-md animate-in fade-in duration-200"
-            onClick={(e) => {
-              e.stopPropagation();
-              dispatch({ type: 'closeIndex' });
-            }}
-          >
-            <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant px-3 pb-3">
-              {meeting.title} · Index
-            </div>
-            <div className="flex flex-col gap-1 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              {sections.map((sec, sIdx) => (
-                <div
-                  key={sec.id || sIdx}
-                  className={`flex items-center gap-3.5 min-h-[52px] px-3.5 py-2 rounded-xl cursor-pointer transition-colors ${
-                    sIdx === state.sectionIndex
-                      ? 'bg-surface-variant text-on-surface font-medium'
-                      : 'hover:bg-surface-variant/50 text-on-surface-variant'
-                  }`}
-                  onClick={(e) => handleJump(sIdx, e)}
-                >
-                  <div className="font-serif font-bold text-xs text-on-surface-variant w-5 shrink-0">
-                    {pad(sIdx)}
-                  </div>
-                  <div className="min-w-0 flex flex-col">
-                    <div className="text-[15px] font-medium text-on-surface truncate">{sec.title}</div>
-                    {sec.ref && <div className="text-xs text-on-surface-variant/70">{sec.ref}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 px-3 text-xs text-on-surface-variant/60">Tap anywhere to close</div>
-          </div>
-        )}
+    <div className="min-h-screen bg-black/95 sm:bg-background flex items-center justify-center p-0 sm:p-4">
+      <div className="w-full max-w-[420px] h-[100dvh] sm:h-[844px] sm:max-h-[92dvh] sm:rounded-3xl bg-background text-on-surface relative overflow-hidden flex flex-col shadow-2xl">
+        <StudyReaderView meeting={meeting!} staleDateLabel={staleDateLabel} />
       </div>
     </div>
   );
