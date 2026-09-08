@@ -5,10 +5,45 @@
 // are gone. Tests assert what a reader SEES: one panel per Section, a peek of
 // the next Section, the stale-week chip in the sticky header, an index that
 // jumps — never class names or reducer internals.
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import type { Meeting } from '../lib/bibleStudy';
+
+// The reader mirrors the visible panel through an IntersectionObserver
+// (#914). The global jsdom stub in setup.ts is inert, so these tests install
+// a per-test stub that captures the callback and the observed panels — the
+// same seam the shipped observer uses, asserted from the outside (counter,
+// rail, index highlight, scrollIntoView).
+function stubIntersectionObserver() {
+  let callback: IntersectionObserverCallback | null = null;
+  const observed: Element[] = [];
+  class StubObserver {
+    constructor(cb: IntersectionObserverCallback) {
+      callback = cb;
+    }
+    observe(target: Element) {
+      observed.push(target);
+    }
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  }
+  vi.stubGlobal('IntersectionObserver', StubObserver);
+  return {
+    observed,
+    fire: (target: Element, isIntersecting: boolean) => {
+      act(() => {
+        callback?.(
+          [{ target, isIntersecting } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
+      });
+    },
+  };
+}
 
 function meeting(over: Partial<Meeting>): Meeting {
   return {
@@ -151,5 +186,100 @@ describe('StudyReaderView (the scrolling deck)', () => {
 
     expect(screen.getByTestId('reader-end')).toBeInTheDocument();
     expect(screen.getByTestId('progress-rail').children).toHaveLength(0);
+  });
+
+  describe('the scroll drives the counter, the rail and the index (#914)', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('names the Section on screen and decreases when scrolling back up', () => {
+      const io = stubIntersectionObserver();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
+
+      // The observer mirrors the visible panel into the read model.
+      io.fire(io.observed[1], true);
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('02 / 03');
+
+      // Scrolling back up re-registers: the callback reads current state
+      // rather than the Section index captured when the observer was built.
+      io.fire(io.observed[0], true);
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
+    });
+
+    it('fills the progress rail as the reader advances and unfills on the way back', () => {
+      const io = stubIntersectionObserver();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      const rail = screen.getByTestId('progress-rail');
+      const steps = () => Array.from(rail.children);
+      const filled = () => steps().filter((s) => s.className.includes('bg-on-surface')).length;
+
+      expect(filled()).toBe(1);
+      io.fire(io.observed[2], true);
+      expect(filled()).toBe(3);
+      io.fire(io.observed[0], true);
+      expect(filled()).toBe(1);
+    });
+
+    it('tapping a Section index row scrolls the deck to that Section', () => {
+      const io = stubIntersectionObserver();
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      fireEvent.click(screen.getByLabelText('Open section index'));
+      const rows = screen.getAllByText('The end of the week');
+      fireEvent.click(rows[rows.length - 1]);
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.instances[0]).toBe(io.observed[2]);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('tapping the peek scrolls the deck to the following Section', () => {
+      const io = stubIntersectionObserver();
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      fireEvent.click(screen.getByTestId('peek-0'));
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.instances[0]).toBe(io.observed[1]);
+    });
+
+    it('highlights the Section on screen in the index', () => {
+      const io = stubIntersectionObserver();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      // Scroll to the last Section, then open the index: the row for the
+      // Section on screen is the highlighted one.
+      io.fire(io.observed[2], true);
+      fireEvent.click(screen.getByLabelText('Open section index'));
+      const dialog = screen.getByRole('dialog');
+      const rowFor = (title: string) =>
+        within(dialog)
+          .getAllByText(title)
+          .map((el) => el.closest('div.cursor-pointer')!)
+          .find((el) => el.className.includes('cursor-pointer'))!;
+      const highlighted = (el: Element) => el.className.split(' ').includes('bg-surface-variant');
+      expect(highlighted(rowFor('Where peace starts'))).toBe(false);
+      expect(highlighted(rowFor('The end of the week'))).toBe(true);
+    });
+
+    it('does not rebuild the observer on every scroll tick', () => {
+      const io = stubIntersectionObserver();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      // One observe per panel, once — the observer is keyed to the Section
+      // count, not to the read model it mirrors.
+      expect(io.observed).toHaveLength(3);
+      io.fire(io.observed[1], true);
+      io.fire(io.observed[2], true);
+      expect(io.observed).toHaveLength(3);
+    });
   });
 });
