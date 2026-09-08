@@ -62,7 +62,7 @@ const Panel: React.FC<{
 }> = ({ section, index, isLast, meetingTitle, nextTitle, onPeekNext, openBlanks, onRevealBlank }) => (
   <section
     data-section-panel={index}
-    className="min-h-[100dvh] sm:min-h-[844px] snap-start snap-always flex flex-col px-6 pt-4 pb-0"
+    className="min-h-full snap-start snap-always flex flex-col px-6 pt-4 pb-0"
   >
     <div className="flex flex-col gap-5">
       <h2 className="font-serif font-bold text-[32px] sm:text-[36px] leading-[1.08] tracking-tight text-on-surface">
@@ -205,7 +205,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
           />
         ))}
         {sections.length === 0 && (
-          <div data-testid="reader-end" className="min-h-[100dvh] sm:min-h-[844px] flex items-center justify-center text-sm text-on-surface-variant px-6">
+          <div data-testid="reader-end" className="min-h-full flex items-center justify-center text-sm text-on-surface-variant px-6">
             This week has no sections yet.
           </div>
         )}
