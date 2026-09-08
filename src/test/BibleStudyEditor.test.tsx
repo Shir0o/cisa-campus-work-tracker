@@ -298,6 +298,35 @@ describe('BibleStudyEditor view', () => {
     fireEvent.click(darkBtn);
   });
 
+  // #916 — the preview frame's layout box matches its painted size. A CSS
+  // transform is paint-only, so the outer box is pre-scaled (phone × scale)
+  // while the inner box keeps true phone dimensions and scales from its
+  // top-left corner; the bezel, border and shadow live on the outer box, the
+  // one that matches the picture. jsdom has no layout, so the ResizeObserver
+  // is inert and the scale sits at the legibility floor — the inline styles
+  // are the contract, asserted from the rendered DOM.
+  it('sizes the preview frame to the scaled phone, not the unscaled one', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    const frame = screen.getByTestId('preview-frame');
+    // The outer box is pre-scaled: 390×0.5 by 844×0.5 (the floor, since
+    // jsdom never fires the ResizeObserver).
+    expect(frame.style.width).toBe('195px');
+    expect(frame.style.height).toBe('422px');
+    // The bezel, border and shadow hug the box that matches the picture.
+    expect(frame.className).toMatch(/overflow-hidden/);
+    expect(frame.className).toMatch(/border/);
+    expect(frame.className).toMatch(/shadow/);
+
+    // The inner box keeps true phone dimensions, scaled from the top-left.
+    const phone = frame.firstElementChild as HTMLElement;
+    expect(phone.style.width).toBe('390px');
+    expect(phone.style.height).toBe('844px');
+    expect(phone.style.transform).toBe('scale(0.5)');
+    expect(phone.style.transformOrigin).toBe('top left');
+  });
+
   it('shows a handled state for a week that does not exist', async () => {
     vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
       cb(null);

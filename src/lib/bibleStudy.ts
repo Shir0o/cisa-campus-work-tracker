@@ -582,6 +582,25 @@ export function validateStudySetup(form: StudySetupForm): StudySetupError[] {
   return errors;
 }
 
+/**
+ * The editor preview's phone dimensions, in CSS pixels (#916). The preview
+ * renders the reader at true phone size and CSS-scales it into the pane, so
+ * these are the constants the scale is measured against.
+ */
+export const PREVIEW_PHONE_WIDTH = 390;
+export const PREVIEW_PHONE_HEIGHT = 844;
+
+/**
+ * The scale that fits the 390×844 phone into a pane of the given size
+ * (#916). Takes the smaller of the width and height ratios so the phone is
+ * always whole, clamps to a legibility floor, and never blows the phone up
+ * past true size.
+ */
+export function previewScale(paneWidth: number, paneHeight: number): number {
+  const fit = Math.min(paneWidth / PREVIEW_PHONE_WIDTH, paneHeight / PREVIEW_PHONE_HEIGHT);
+  return Math.min(1, Math.max(0.5, fit));
+}
+
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {
   switch (action.type) {
     case 'jump': {
