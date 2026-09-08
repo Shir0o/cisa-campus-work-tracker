@@ -77,8 +77,12 @@ let statusSink: ((s: { live: boolean; degraded: boolean }) => void) | null;
 describe('BibleStudyEditor view', () => {
   const mockUser = { uid: 'u-admin-1' };
 
+  // The editor's md fixture, shared by the #890 outline/append cases.
+  const MEETING_MD = '## Section 1\n- Point 1\n\n## Section 2\n- Point 2';
+
   const MEETING: Meeting = {
     id: 'meeting-1',
+
     studyId: 'romans-fall26',
     title: 'Initial Meeting',
     date: '2026-09-01',
@@ -196,9 +200,16 @@ describe('BibleStudyEditor view', () => {
 
     const activityBtn = screen.getByRole('button', { name: /Activity/i });
     fireEvent.click(activityBtn);
-
     const addSecBtn = screen.getByRole('button', { name: /\+ Add section/i });
     fireEvent.click(addSecBtn);
+    // #890: "+ Add section" appends at the END of the document even when the
+    // textarea has never been focused (the reported bug — insert-at-cursor
+    // wrote to offset 0, the top), and the caret lands after the hashes.
+    const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+    const endMd = area.value;
+    expect(endMd.endsWith('## ')).toBe(true);
+    expect(area.selectionStart).toBe(endMd.length);
+    expect(area.selectionEnd).toBe(endMd.length);
 
     // The list inserters land their starter templates at the cursor.
     const numBtn = screen.getByRole('button', { name: /Numbered list/i });
@@ -212,6 +223,54 @@ describe('BibleStudyEditor view', () => {
     expect(md).toContain('2. ');
     expect(md).toContain('3. ');
     expect(md).toContain('- ');
+  });
+
+  // #890 — the editor becomes a document with an operating index.
+  it('offers no Section button in the toolbar — adding a Section has one home', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    expect(screen.queryByRole('button', { name: /^Section$/i })).toBeNull();
+    // The intra-Section inserters stay.
+    expect(screen.getByRole('button', { name: /Passage/i })).toBeInTheDocument();
+  });
+
+  it('clicking an outline row moves the textarea caret to that heading', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+    const expected = MEETING_MD.indexOf('## Section 2');
+    const secButtons = screen.getAllByText('Section 2');
+    fireEvent.click(secButtons[0]);
+
+    expect(area.selectionStart).toBe(expected);
+    expect(area.selectionEnd).toBe(expected);
+  });
+
+  it('highlights the outline row the caret sits in', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+    // Caret into Section 2's heading offset.
+    fireEvent.select(area, { target: { selectionStart: MEETING_MD.indexOf('## Section 2') } });
+
+    const sec2 = screen.getAllByText('Section 2')[0].closest('button')!;
+    expect(sec2.className).toContain('font-semibold');
+  });
+
+  it('updates the outline live when a `##` splits a Section mid-body', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+    fireEvent.change(area, {
+      target: { value: MEETING_MD + '\n\n## Brand new' },
+    });
+
+    expect(screen.getAllByText('Brand new').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Sections \(3\)/)).toBeInTheDocument();
   });
 
   it('toggles publish state and preview theme', async () => {

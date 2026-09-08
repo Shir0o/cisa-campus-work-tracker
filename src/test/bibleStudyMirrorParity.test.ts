@@ -7,9 +7,19 @@
 // below is the shared contract: every fixture is asserted against BOTH
 // modules' output, and the two outputs must be deep-equal.
 import { describe, it, expect } from 'vitest';
-import { parseMeeting as parseWeb } from '../lib/bibleStudy';
+import {
+  parseMeeting as parseWeb,
+  appendSection as appendWeb,
+  sectionOffsets as offsetsWeb,
+  sectionIndexAtOffset as indexAtWeb,
+} from '../lib/bibleStudy';
 // Direct relative import into the workspace package — resolved for tests only.
-import { parseMeeting as parseCore } from '../../packages/core/src/bibleStudy';
+import {
+  parseMeeting as parseCore,
+  appendSection as appendCore,
+  sectionOffsets as offsetsCore,
+  sectionIndexAtOffset as indexAtCore,
+} from '../../packages/core/src/bibleStudy';
 
 const CORPUS: string[] = [
   // Legacy dialect documents (the pre-0013 grammar, still the common case).
@@ -101,6 +111,24 @@ describe('parser mirror parity (ADR 0013 keep-in-step)', () => {
       const web = parseWeb(md);
       const core = parseCore(md);
       expect(web).toEqual(core);
+    }
+  });
+
+  it('appendSection agrees across the mirrors for every corpus fixture (#890)', () => {
+    for (const md of CORPUS) {
+      expect(appendWeb(md)).toEqual(appendCore(md));
+    }
+  });
+
+  it('sectionOffsets and sectionIndexAtOffset agree across the mirrors (#890)', () => {
+    for (const md of CORPUS) {
+      expect(offsetsWeb(md)).toEqual(offsetsCore(md));
+      // Every boundary offset maps identically: 0, each heading offset, and
+      // the offsets just past the document's end.
+      const probes = [0, ...offsetsWeb(md).map((o) => o + 1), md.length, md.length + 10];
+      for (const at of probes) {
+        expect(indexAtWeb(md, at)).toEqual(indexAtCore(md, at));
+      }
     }
   });
 

@@ -99,7 +99,7 @@ describe('PublicStudyReader (above the seam)', () => {
     renderAt('/s/cisa-wednesday');
 
     expect(await screen.findByText('Where peace starts')).toBeInTheDocument();
-    expect(screen.getByText(/Peace that holds/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Peace that holds/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Plain point with no blanks/i)).toBeInTheDocument();
     expect(screen.getByText('Discuss')).toBeInTheDocument();
   });
@@ -138,35 +138,24 @@ describe('PublicStudyReader (above the seam)', () => {
     expect(screen.getByText('standing')).toBeInTheDocument();
   });
 
-  it('advances sections on tap, goes back with back button, and jumps via section drawer', async () => {
+  it('renders every Section at once and navigates only through the Section index (#890)', async () => {
     mockChain([sampleMeeting]);
 
     renderAt('/s/cisa-wednesday');
 
+    // The structural change from the single-panel deck: one panel per
+    // Section, all in the document at once. Scrolling owns navigation, so
+    // there is no tap-to-advance and no back button to find.
     expect(await screen.findByText('Where peace starts')).toBeInTheDocument();
+    expect(screen.getAllByText('What suffering is doing').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByLabelText('Previous section')).toBeNull();
 
-    // Tap anywhere to advance to section 2
-    fireEvent.click(screen.getByText('Where peace starts'));
-    expect(await screen.findByText('What suffering is doing')).toBeInTheDocument();
-
-    // Tap previous section button
-    const backBtn = screen.getByLabelText('Previous section');
-    fireEvent.click(backBtn);
-    expect(await screen.findByText('Where peace starts')).toBeInTheDocument();
-
-    // Toggle distraction-free unadorned mode
-    const distractionBtn = screen.getByLabelText('Distraction-free mode');
-    fireEvent.click(distractionBtn);
-    fireEvent.click(distractionBtn);
-
-    // Open section index scrubber
-    const openGrip = screen.getByLabelText('Open section index');
-    fireEvent.click(openGrip);
-
-    // Click jump in scrubber
+    // Open the section index and jump.
+    fireEvent.click(screen.getByLabelText('Open section index'));
     const indexRows = screen.getAllByText('What suffering is doing');
-    fireEvent.click(indexRows[0]);
-    expect(await screen.findByText('What suffering is doing')).toBeInTheDocument();
+    fireEvent.click(indexRows[indexRows.length - 1]);
+    // The index closes after a jump.
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('states the date plainly at the top when the newest published week is an older week', async () => {
@@ -175,8 +164,8 @@ describe('PublicStudyReader (above the seam)', () => {
 
     renderAt('/s/cisa-wednesday');
 
-    expect(await screen.findByText(/Peace that holds/)).toBeInTheDocument();
-    expect(screen.getByText(/Most recent ·/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Peace that holds/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(/Most recent ·/);
   });
 
   it('renders never-published as its own state with no action offered', async () => {
@@ -202,8 +191,8 @@ describe('PublicStudyReader (above the seam)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Older Week/)).toBeInTheDocument();
-    expect(screen.getByText(/Week of/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Older Week/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(/Week of/);
   });
 
   it('shows the newest week with its date when a permalink names a week that does not exist', async () => {
@@ -217,8 +206,8 @@ describe('PublicStudyReader (above the seam)', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/Peace that holds/)).toBeInTheDocument();
-    expect(screen.getByText(/Most recent ·/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Peace that holds/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(/Most recent ·/);
   });
 
   it('handles a permalink for a Study that does not exist instead of rendering an empty page', async () => {

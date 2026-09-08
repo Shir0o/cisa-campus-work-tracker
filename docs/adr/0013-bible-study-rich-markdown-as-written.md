@@ -16,6 +16,8 @@ The trigger for revisiting: Full-timers bring existing studies in from the Googl
 
 3. **The rendering engine is the one coordination notes already ship.** ReactMarkdown + remark-gfm with a component map (the `READONLY_MD` precedent, `src/views/CoordinationNotes.tsx:476`), shared by `PublicStudyReader` and the editor's live preview so the preview cannot lie. Without rehype-raw, react-markdown escapes raw HTML by default — that default is the sanitization posture for the public reader. Dialect constructs are extracted before markdown runs; `[[…]]` is reserved: a Blank's contents are plain text, never markdown, and a Blank wins its run — emphasis markers around it are not styled.
 
+   **Amended by [ADR 0014](0014-bible-study-reading-deck-and-editor-document-index.md):** the preview and the reader are now literally one component — `StudyReaderView` renders both the public route (resolved published Meeting) and the editor preview (the author's unsaved markdown) — so "must stay one rendering path" is a structural fact, not a discipline.
+
 4. **Authoring stays manual paste.** Authors paste plain text from Google Docs and apply emphasis with editor toolbar inserters — bold/italic buttons join Section, Passage, Blank, Question, Discuss, Activity. Google Docs headings map to Section headings by author convention. A clipboard-HTML→markdown paste handler was considered and deferred: the formatting is sparse enough that manual application is acceptable, and `turndown` is already in the dependency tree when it is revisited.
 
 5. **The grammar change lands in both mirrors** — `src/lib/bibleStudy.ts` and `packages/core/src/bibleStudy.ts` — and the stored `md` remains the source of truth; `sections` is derived and re-derived under the new grammar.

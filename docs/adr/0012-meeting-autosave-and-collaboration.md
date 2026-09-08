@@ -24,6 +24,8 @@ For concurrency, two leaders editing one Meeting were already last-writer-wins (
 
 3. **The textarea stays; collab is a hand-rolled Y.Text↔textarea binding.** TipTap was rejected: it would rebuild every Section/Prompt/Blank/Passage insert button and force the markdown dialect through a rich-text round-trip, visibly changing the writing UX for no collab gain. Markdown remains the source of truth and the insert helpers keep working on the selection. Desktop-only scope dodges mobile IME edge cases.
 
+   **Amended by [ADR 0014](0014-bible-study-reading-deck-and-editor-document-index.md):** the `Y.Text` binds to the **whole-document textarea** — one `Y.Text` over the entire Meeting `md`, not per-Section. `md` remains one string and the single source of truth; Sections stay derived, so the binding target is the document, and the editor's outline and preview are read models over it. The desktop-only scope is reaffirmed.
+
 4. **Tier 0 fallback, mirroring The Board.** When `rtdb` is null or the provider reports degraded, the editor runs single-user with plain debounced autosave to Firestore. Autosave never depends on RTDB being enabled; collaboration is progressive enhancement on top.
 
 5. **Cadence mirrors Pages: 1200ms** for body markdown, **800ms** for title and date. The debounce is also the rate at which a published week's text changes under students' thumbs — one cadence, no published/unpublished split.

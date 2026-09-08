@@ -25,7 +25,6 @@ export type Section = {
   passage?: Blank | Text;
   prompt?: { kind: PromptKind; text: string };
   ref?: string;
-  long?: boolean;
 };
 
 export type Meeting = {
@@ -61,22 +60,22 @@ export type EntryPoint = {
 };
 
 export type ReaderState = {
+  // A read model, not the navigation owner (#890): the scroll container owns
+  // "which Section am I on" and mirrors the visible panel in here for the
+  // progress rail, the counter and the index highlight. jump is the one
+  // remaining navigation action — the Section index dispatches it.
   sectionIndex: number;
   totalSections: number;
   openBlanks: Record<string, boolean>;
   navOpen: boolean;
-  unadorned: boolean;
 };
 
 export type ReaderAction =
-  | { type: "advance" }
-  | { type: "back" }
   | { type: "jump"; index: number }
   | { type: "setTotalSections"; count: number }
   | { type: "revealBlank"; key: string }
   | { type: "openIndex" }
-  | { type: "closeIndex" }
-  | { type: "toggleUnadorned" };
+  | { type: "closeIndex" };
 
 function parseBlankOrText(str: string): Blank | Text {
   const match = str.match(/^(.*?)\[\[(.*?)\]\](.*)$/s);
@@ -357,6 +356,60 @@ export function nextMeetingDate(meetings: Meeting[], today: string): string {
 }
 
 /**
+ * The editor's one Section mutation (#890): appends a new `## ` heading at the
+ * END of the document, never at the textarea's cursor — a textarea that has
+ * never been focused reports selectionStart 0, which is how a new Section used
+ * to land silently at the top. Returns the new markdown plus the caret offset
+ * the editor should land on: right after the hashes, so the author immediately
+ * types the Section's name.
+ */
+export function appendSection(md: string): { md: string; caret: number } {
+  // Trailing-whitespace scan from the end, not a regex: a `[…]+$` replace is
+  // quadratic on a long whitespace run followed by non-whitespace (CodeQL
+  // js/polynomial-redos) — each start position retries the anchored match.
+  let end = md.length;
+  while (end > 0) {
+    const c = md.charCodeAt(end - 1);
+    if (c === 32 || c === 9 || c === 10 || c === 13 || c === 12 || c === 11) end--;
+    else break;
+  }
+  const trimmedEnd = md.slice(0, end);
+  const next = trimmedEnd ? `${trimmedEnd}\n\n## ` : '## ';
+  return { md: next, caret: next.length };
+}
+
+/**
+ * The character offset of each Section heading — the offsets
+ * `sectionIndexAtOffset` maps back. Empty for a headingless document.
+ */
+export function sectionOffsets(md: string): number[] {
+  const offsets: number[] = [];
+  let at = 0;
+  for (const line of md.split('\n')) {
+    if (parseHeading(line) !== null) offsets.push(at);
+    at += line.length + 1; // +1 restores the '\n' the split consumed
+  }
+  return offsets;
+}
+
+/**
+ * Which Section the caret sits in: the heading whose offset most recently
+ * passed `offset`. A document that opens with prose sits in its untitled
+ * leading Section, which owns offset 0 even though no heading produced it.
+ * Returns -1 only when the document has no headings at all.
+ */
+export function sectionIndexAtOffset(md: string, offset: number): number {
+  const offsets = sectionOffsets(md);
+  if (offsets.length === 0) return -1;
+  let index = 0;
+  for (let i = 0; i < offsets.length; i++) {
+    if (offsets[i] <= offset) index = i;
+    else break;
+  }
+  return index;
+}
+
+/**
  * A new week starts from a small skeleton that teaches the three conventions
  * — Section heading, blockquote Passage, marked Prompt line — visibly as
  * placeholders. Never a silent copy of the previous week's text, which risks
@@ -474,30 +527,21 @@ export function validateStudySetup(form: StudySetupForm): StudySetupError[] {
   if (form.studyTitle.trim() && form.term.trim() && !studyIdFor(form.studyTitle, form.term)) {
     errors.push({ field: 'studyTitle', message: 'Use some letters or numbers in the title or term.' });
   }
-
   return errors;
 }
 
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {
   switch (action.type) {
-    case 'advance': {
-      const nextIndex = Math.min(state.sectionIndex + 1, state.totalSections - 1);
-      return { ...state, sectionIndex: nextIndex };
-    }
-    case 'back': {
-      const prevIndex = Math.max(state.sectionIndex - 1, 0);
-      return { ...state, sectionIndex: prevIndex };
-    }
-    case 'jump': {
+    case "jump": {
       const targetIndex = Math.max(0, Math.min(action.index, state.totalSections - 1));
       return { ...state, sectionIndex: targetIndex, navOpen: false };
     }
-    case 'setTotalSections': {
+    case "setTotalSections": {
       const total = Math.max(1, action.count);
       const targetIndex = Math.min(state.sectionIndex, total - 1);
       return { ...state, totalSections: total, sectionIndex: targetIndex };
     }
-    case 'revealBlank': {
+    case "revealBlank": {
       const current = !!state.openBlanks[action.key];
       return {
         ...state,
@@ -507,12 +551,10 @@ export function readerReducer(state: ReaderState, action: ReaderAction): ReaderS
         },
       };
     }
-    case 'openIndex':
+    case "openIndex":
       return { ...state, navOpen: true };
-    case 'closeIndex':
+    case "closeIndex":
       return { ...state, navOpen: false };
-    case 'toggleUnadorned':
-      return { ...state, unadorned: !state.unadorned };
     default:
       return state;
   }

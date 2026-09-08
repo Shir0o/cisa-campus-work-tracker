@@ -1,10 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { db, rtdb } from '../lib/firebase';
 import {
   parseMeeting,
   isMeetingDirty,
+  appendSection,
+  sectionOffsets,
+  sectionIndexAtOffset,
   type Meeting,
   type MeetingForm,
   type Section,
@@ -23,7 +26,7 @@ import { getUserInitials } from '../lib/utils';
 import * as Y from 'yjs';
 import { MeetingCollab } from '../lib/meetingCollab';
 import { peersFromAwareness, type Peer } from '../lib/presence';
-import SectionBody from '../components/bibleStudy/SectionBody';
+import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 
 export default function BibleStudyEditor() {
   const { meetingId = '' } = useParams<{ meetingId: string }>();
@@ -142,7 +145,27 @@ export default function BibleStudyEditor() {
   }, [collab]);
 
   const sections: Section[] = parseMeeting(markdown);
-  const activeSection = sections[activeSectionIndex] || sections[0];
+  const offsets = sectionOffsets(markdown);
+  // The caret's Section is what the outline highlights and the preview
+  // follows; the preview scroll never moves the caret (one-way tracking).
+  const [caretSectionIndex, setCaretSectionIndex] = useState(0);
+  const syncCaretSection = useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      if (!el) return;
+      setCaretSectionIndex(sectionIndexAtOffset(el.value, el.selectionStart ?? 0));
+    },
+    [],
+  );
+  // The preview Meeting is built from the author's unsaved markdown — the
+  // literal "preview renders what I approve is what the room gets" path.
+  const previewMeeting: Meeting = {
+    id: meetingId || 'preview',
+    studyId: meeting?.studyId ?? '',
+    date,
+    title: title || meeting?.title || '',
+    sections,
+    published: false,
+  };
 
   // The one write path, shared by autosave and ⌘S. Resolves only once the
   // snapshot is accepted; a failure raises saveError for the state line and
@@ -260,6 +283,35 @@ export default function BibleStudyEditor() {
     }, 0);
   };
 
+  // The one Section mutation (#890): appends `\n\n## ` at the END of the
+  // document — never at the cursor, which is offset 0 in a textarea that has
+  // never been focused, the exact bug where the heading landed at the top
+  // while the author watched the bottom — scrolls there, and leaves the caret
+  // after the hashes so the author immediately types the name.
+  const handleAddSection = () => {
+    const el = textareaRef.current;
+    const { md: next, caret } = appendSection(formRef.current.markdown);
+    editMarkdown(0, formRef.current.markdown.length, next);
+    if (el) {
+      setTimeout(() => {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+        syncCaretSection(el);
+        el.scrollTop = el.scrollHeight;
+      }, 0);
+    }
+  };
+
+  // Clicking an outline row navigates — it never mutates: focus the textarea,
+  // set the selection to that heading's offset, and scroll it into view.
+  const handleOutlineClick = (offset: number) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(offset, offset);
+    syncCaretSection(el);
+  };
+
   if (!loaded) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
@@ -349,26 +401,30 @@ export default function BibleStudyEditor() {
             Sections ({sections.length})
           </div>
           <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-            {sections.map((sec, idx) => (
-              <button
-                key={sec.id || idx}
-                onClick={() => setActiveSectionIndex(idx)}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2.5 transition-colors ${
-                  activeSectionIndex === idx
-                    ? 'bg-surface-variant font-semibold text-on-surface'
-                    : 'text-on-surface-variant hover:bg-surface-variant/50'
-                }`}
-              >
-                <span className="font-serif font-bold text-[10px] w-4 opacity-70">
-                  {String(idx + 1).padStart(2, '0')}
-                </span>
-                <span className="truncate flex-1">{sec.title}</span>
-              </button>
-            ))}
+            {sections.map((sec, idx) => {
+              const offset = offsets[idx] ?? 0;
+              const isCaretRow = caretSectionIndex === idx;
+              return (
+                <button
+                  key={`${offset}-${sec.id || idx}`}
+                  onClick={() => handleOutlineClick(offset)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2.5 transition-colors ${
+                    isCaretRow
+                      ? 'bg-surface-variant font-semibold text-on-surface'
+                      : 'text-on-surface-variant hover:bg-surface-variant/50'
+                  }`}
+                >
+                  <span className="font-serif font-bold text-[10px] w-4 opacity-70">
+                    {String(idx + 1).padStart(2, '0')}
+                  </span>
+                  <span className="truncate flex-1">{sec.title}</span>
+                </button>
+              );
+            })}
           </div>
 
           <button
-            onClick={() => insertTextAtCursor('\n\n## New Section\n- ')}
+            onClick={handleAddSection}
             className="mt-2 w-full py-2 rounded-xl border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant flex items-center justify-center gap-1 transition-colors"
           >
             + Add section
@@ -377,14 +433,10 @@ export default function BibleStudyEditor() {
 
         {/* Center Pane: Markdown Editor */}
         <div className="flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
-          {/* Toolbar */}
+          {/* #890: the toolbar holds only what goes INSIDE a Section —
+              the Section itself is created by "+ Add section" in the
+              outline, never from a second place here. */}
           <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30 flex-wrap">
-            <button
-              onClick={() => insertTextAtCursor('\n## ')}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
-            >
-              Section
-            </button>
             <button
               onClick={() => insertTextAtCursor('\n> ', '\n> Reference · Version')}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
@@ -471,6 +523,9 @@ export default function BibleStudyEditor() {
               }
               editMarkdown(start, endPrev, next.substring(start, endNext));
             }}
+            onSelect={(e) => syncCaretSection(e.target as HTMLTextAreaElement)}
+            onKeyUp={(e) => syncCaretSection(e.target as HTMLTextAreaElement)}
+            onClick={(e) => syncCaretSection(e.target as HTMLTextAreaElement)}
             className="flex-1 w-full p-4 font-mono text-sm leading-relaxed bg-transparent border-0 outline-none resize-none custom-scrollbar"
             placeholder="Write meeting markdown here..."
           />
@@ -521,50 +576,24 @@ export default function BibleStudyEditor() {
             </div>
           </div>
 
-          {/* Mini phone frame */}
-          <div
-            className={`w-[320px] h-[520px] rounded-[28px] mx-auto p-5 flex flex-col justify-between overflow-hidden shadow-xl border border-outline-variant ${
-              previewTheme === 'dark' ? 'bg-[#0A0A0B] text-[#FAFAFA]' : 'bg-white text-[#0A0A0B]'
-            }`}
-          >
-            <div className="flex items-center justify-between text-[10px] font-semibold text-neutral-400 tracking-wider uppercase">
-              <span>{title || 'Title'}</span>
-              <span className="tabular-nums">
-                {String(activeSectionIndex + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}
-              </span>
+          {/* The preview IS the reader (#890, ADR 0014): the same
+              StudyReaderView the public route renders, at true phone
+              dimensions (390×844) and CSS-scaled to fit the pane — the old
+              hand-built 320×520 frame with overflow-hidden showed LESS than
+              the real phone. It renders the unsaved markdown, follows the
+              caret's Section one-way, and Blanks reveal for real. */}
+          <div className="mx-auto w-[390px] overflow-hidden rounded-[28px] shadow-xl border border-outline-variant" data-testid="preview-frame">
+            <div
+              className={previewTheme === 'dark' ? 'bg-[#0A0A0B] text-[#FAFAFA]' : 'bg-white text-[#0A0A0B]'}
+              style={{ height: 844, transform: 'scale(0.86)', transformOrigin: 'top center', width: 390 }}
+              data-theme={previewTheme === 'dark' ? 'dark' : 'light'}
+            >
+              <StudyReaderView
+                key={caretSectionIndex === -1 ? 'head' : caretSectionIndex}
+                meeting={previewMeeting}
+                staleDateLabel={null}
+              />
             </div>
-            <div className="flex-1 my-auto flex flex-col justify-center gap-3.5 py-2 overflow-hidden">
-              <h3 className="font-serif font-bold text-2xl leading-tight">
-                {activeSection?.title || 'Section Heading'}
-              </h3>
-              <div className="[&_p]:m-0 [&_ol]:list-decimal [&_ul]:list-disc text-xs">
-                {activeSection && (
-                  <SectionBody
-                    section={activeSection}
-                    sectionIndex={activeSectionIndex}
-                    openBlanks={{}}
-                    onRevealBlank={() => {}}
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-1 pt-1">
-              {sections.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-0.5 flex-1 rounded-full ${
-                    i <= activeSectionIndex ? 'bg-white' : 'bg-neutral-800'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-on-surface-variant justify-center opacity-60">
-            <span className="h-px bg-outline-variant flex-1" />
-            <span>Screen ends here</span>
-            <span className="h-px bg-outline-variant flex-1" />
           </div>
 
           {/* Present handoff — the old decorative SVG encoded nothing; the

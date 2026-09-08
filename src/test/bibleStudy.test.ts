@@ -1,4 +1,3 @@
-import { describe, it, expect } from 'vitest';
 import {
   resolveScan,
   parseMeeting,
@@ -8,6 +7,9 @@ import {
   studyIdFor,
   validateStudySetup,
   MEETING_SKELETON_MD,
+  appendSection,
+  sectionOffsets,
+  sectionIndexAtOffset,
   type StudySetupForm,
   type Meeting,
   type Study,
@@ -233,6 +235,69 @@ describe('isMeetingDirty', () => {
     expect(isMeetingDirty({ ...saved, date: '2026-10-21' }, saved)).toBe(true);
     expect(isMeetingDirty({ ...saved, markdown: '## Rewritten' }, saved)).toBe(true);
     expect(isMeetingDirty({ ...saved, published: false }, saved)).toBe(true);
+  });
+});
+
+
+describe('appendSection (#890 — the editor appends at the end, never at the cursor)', () => {
+  it('appends a new heading at the end of the document, regardless of any cursor', () => {
+    const md = '## First\n- a point\n\n## Second\n- another';
+    const { md: next } = appendSection(md);
+    expect(next).toBe(md + '\n\n## ');
+  });
+
+  it('reports a caret offset inside the new heading, ready to type its title', () => {
+    const md = '## First\n- a point';
+    const { caret } = appendSection(md);
+    const { md: next } = appendSection(md);
+    expect(caret).toBe(next.length);
+  });
+
+  it('never inserts at a given cursor — there is no cursor argument to misuse', () => {
+    const md = '## First\n- a point';
+    const { md: next } = appendSection(md);
+    expect(next.startsWith('## First')).toBe(true);
+    expect(next).toContain('\n\n## ');
+  });
+
+  it('works on an empty document', () => {
+    const { md: next, caret } = appendSection('');
+    expect(next).toBe('## ');
+    expect(caret).toBe(3);
+  });
+});
+
+describe('sectionOffsets (#890 — the outline navigates the document)', () => {
+  it('returns one character offset per heading', () => {
+    const md = '## Alpha\n- point\n\n## Beta\n> text';
+    expect(sectionOffsets(md)).toEqual([0, '## Alpha\n- point\n\n'.length]);
+  });
+
+  it('returns nothing for a headingless document', () => {
+    expect(sectionOffsets('Just prose, no headings.')).toEqual([]);
+    expect(sectionOffsets('')).toEqual([]);
+  });
+
+  it('counts every `#`–`###` heading the parser would start a Section with', () => {
+    const md = '# One\nprose\n\n### Three';
+    expect(sectionOffsets(md)).toEqual([0, 13]);
+  });
+});
+
+describe('sectionIndexAtOffset (#890 — the caret is inside a Section)', () => {
+  const md = '## Alpha\n- point\n\n## Beta\n- more';
+
+  it('maps an offset onto the Section whose heading most recently passed it', () => {
+    expect(sectionIndexAtOffset(md, 0)).toBe(0);
+    expect(sectionIndexAtOffset(md, 1)).toBe(0);
+    expect(sectionIndexAtOffset(md, '## Alpha\n- point\n\n'.length)).toBe(1);
+    expect(sectionIndexAtOffset(md, md.length)).toBe(1);
+  });
+
+  it('lands on the untitled leading Section when offset 0 opens with prose before any heading', () => {
+    // parseMeeting renders prose before the first heading as an untitled
+    // Section — the caret maps there, matching what the outline will list.
+    expect(sectionIndexAtOffset('Some prose first.\n\n## Alpha', 0)).toBe(0);
   });
 });
 

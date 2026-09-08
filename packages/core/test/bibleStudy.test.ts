@@ -354,26 +354,26 @@ Question: What did you hear?
       totalSections: 4,
       openBlanks: {},
       navOpen: false,
-      unadorned: false,
     };
 
-    it('advance clamps at the last Section', () => {
-      let state = { ...initialState, sectionIndex: 2 };
-      state = readerReducer(state, { type: 'advance' });
-      expect(state.sectionIndex).toBe(3);
-      state = readerReducer(state, { type: 'advance' });
-      expect(state.sectionIndex).toBe(3);
+    // #890: the scroll position owns "which Section am I on". advance and
+    // back were deleted with tap-to-advance; jump survives as the action the
+    // Section index dispatches. Their absence is asserted through the
+    // reducer's behavior — an unknown action returns the state unchanged.
+    it('unknown actions return the state unchanged (advance and back are gone)', () => {
+      const state = readerReducer(
+        initialState,
+        { type: 'advance' } as unknown as Parameters<typeof readerReducer>[1],
+      );
+      expect(state).toBe(initialState);
+      const back = readerReducer(
+        initialState,
+        { type: 'back' } as unknown as Parameters<typeof readerReducer>[1],
+      );
+      expect(back).toBe(initialState);
     });
 
-    it('back clamps at the first Section', () => {
-      let state = { ...initialState, sectionIndex: 1 };
-      state = readerReducer(state, { type: 'back' });
-      expect(state.sectionIndex).toBe(0);
-      state = readerReducer(state, { type: 'back' });
-      expect(state.sectionIndex).toBe(0);
-    });
-
-    it('jump moves and closes the index in one action', () => {
+    it('jump closes the index; the editor scrollIntoViews to its Section', () => {
       let state = { ...initialState, navOpen: true, sectionIndex: 0 };
       state = readerReducer(state, { type: 'jump', index: 2 });
       expect(state.sectionIndex).toBe(2);
@@ -395,19 +395,6 @@ Question: What did you hear?
       state = readerReducer(state, { type: 'revealBlank', key: '0:p0' });
       expect(state.openBlanks['0:p0']).toBe(true);
       expect(state.openBlanks['1:p0']).toBeUndefined();
-    });
-
-    it('distraction-free toggles without disturbing position or revealed Blanks', () => {
-      let state = {
-        ...initialState,
-        sectionIndex: 2,
-        openBlanks: { '1:p0': true } as Record<string, boolean>,
-        unadorned: false,
-      };
-      state = readerReducer(state, { type: 'toggleUnadorned' });
-      expect(state.unadorned).toBe(true);
-      expect(state.sectionIndex).toBe(2);
-      expect(state.openBlanks['1:p0']).toBe(true);
     });
 
     it('openIndex and closeIndex toggle navigation index', () => {
