@@ -21,6 +21,7 @@ on:
     branches: [main]
     paths:
       - database.rules.json
+      - src/test/database.rules.test.ts
       - firebase.json
       - .firebaserc
       - .github/workflows/deploy-database-rules.yml
@@ -34,8 +35,36 @@ permissions:
   contents: read
 
 jobs:
+  # Gate the deploy on the emulator-backed rules tests. These run only when the
+  # Realtime Database emulator is up (FIREBASE_DATABASE_EMULATOR_HOST is set by
+  # emulators:exec), so they stay skipped in the normal CI / local `npm test` run.
+  test-rules:
+    name: Rules tests (Database emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      - name: Run rules tests against the Database emulator
+        run: >
+          firebase emulators:exec
+          --only database
+          --project demo-campus-hub
+          "npx vitest run src/test/database.rules.test.ts"
+
   deploy:
     name: Deploy Realtime Database rules
+    needs: test-rules
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # id-token: write is required to mint the GitHub OIDC token that WIF exchanges
