@@ -611,12 +611,19 @@ export default function BibleStudyEditor() {
             </div>
           </div>
 
-          {/* The preview IS the reader (#890, ADR 0014): the same
+          {/* The preview IS the reader (#890, #920, ADR 0014): the same
               StudyReaderView the public route renders, at true phone
               dimensions (390×844) and CSS-scaled to fit the pane — the old
               hand-built 320×520 frame with overflow-hidden showed LESS than
               the real phone. It renders the unsaved markdown, follows the
               caret's Section one-way, and Blanks reveal for real.
+
+              The reader is never remounted on a caret move: it accepts the
+              Section the preview should be showing and scrolls to that
+              panel through the same jump the Section index uses, so its
+              state — scroll position, revealed Blanks — survives edits.
+              Tracking stays strictly one-way: nothing in the reader writes
+              back to the editor's selection.
 
               Two boxes, on purpose (#916): a CSS transform is paint-only,
               so the inner box keeps true phone dimensions and is scaled
@@ -652,9 +659,9 @@ export default function BibleStudyEditor() {
                 data-theme={previewTheme === 'dark' ? 'dark' : 'light'}
               >
                 <StudyReaderView
-                  key={caretSectionIndex === -1 ? 'head' : caretSectionIndex}
                   meeting={previewMeeting}
                   staleDateLabel={null}
+                  followSectionIndex={Math.max(0, caretSectionIndex)}
                 />
               </div>
             </div>
