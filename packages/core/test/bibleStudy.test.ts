@@ -179,7 +179,7 @@ This paragraph is not a bullet, a blockquote, or a prompt.
       expect(prose[0]).toMatchObject({ kind: 'prose', md: 'This paragraph is not a bullet, a blockquote, or a prompt.' });
     });
 
-    it('numbered lists and nested lists survive as list blocks', () => {
+    it('indented sub-points nest under their parent point instead of flattening (ADR 0013 nested lists)', () => {
       const md = `## Ordered and nested
 1. First step
 2. Second step
@@ -189,9 +189,49 @@ This paragraph is not a bullet, a blockquote, or a prompt.
   - Sub point B`;
       const s = parseMeeting(md)[0];
       expect(s.content.map((b) => b.kind)).toEqual(['number-list', 'bullet-list']);
+      // One top-level point with two nested sub-points — not three siblings.
       expect(s.content[0]).toMatchObject({ kind: 'number-list' });
-      expect((s.content[0] as { points: unknown[] }).points).toHaveLength(2);
-      expect((s.content[1] as { points: unknown[] }).points).toHaveLength(3);
+      if (s.content[0].kind !== 'number-list') throw new Error('expected number-list');
+      expect(s.content[0].points).toHaveLength(2);
+      expect(s.content[1].kind).toBe('bullet-list');
+      if (s.content[1].kind !== 'bullet-list') throw new Error('expected bullet-list');
+      expect(s.content[1].points).toEqual([
+        { before: 'Main point', children: [{ before: 'Sub point A' }, { before: 'Sub point B' }] },
+      ]);
+    });
+
+    it('deeper indentation nests further, and mixed bullet/number nesting follows the same depth rule', () => {
+      const md = `## Outline
+1. Roman numeral point
+   - Lettered sub with a [[blank]]
+     1. Deepest numbered level`;
+      const s = parseMeeting(md)[0];
+      expect(s.content).toHaveLength(1);
+      expect(s.content[0].kind).toBe('number-list');
+      if (s.content[0].kind !== 'number-list') throw new Error('expected number-list');
+      expect(s.content[0].points).toEqual([
+        {
+          before: 'Roman numeral point',
+          children: [
+            {
+              before: 'Lettered sub with a ',
+              word: 'blank',
+              after: '',
+              children: [{ before: 'Deepest numbered level' }],
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('flat legacy documents (no indentation) parse exactly as before', () => {
+      const md = `## Legacy week
+- Main point
+- Second point`;
+      const s = parseMeeting(md)[0];
+      expect(s.content[0].kind).toBe('bullet-list');
+      if (s.content[0].kind !== 'bullet-list') throw new Error('expected bullet-list');
+      expect(s.content[0].points).toEqual([{ before: 'Main point' }, { before: 'Second point' }]);
     });
 
     it('inline emphasis and links stay in the markdown for the renderer, not parsed away', () => {

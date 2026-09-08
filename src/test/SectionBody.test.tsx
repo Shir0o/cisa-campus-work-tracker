@@ -96,6 +96,55 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(document.querySelector('ul')).toBeNull();
   });
 
+  it('renders indented sub-points as a nested ul inside the parent li (the reader shows the outline)', () => {
+    const s = section({
+      content: [
+        {
+          kind: 'bullet-list',
+          points: [
+            { before: 'Main point', children: [{ before: 'Sub point A' }, { before: 'Sub point B' }] },
+          ],
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    const nested = document.querySelector('ul ul');
+    expect(nested).not.toBeNull();
+    expect(nested?.querySelectorAll(':scope > li')).toHaveLength(2);
+    expect(nested?.textContent).toContain('Sub point A');
+    expect(nested?.textContent).toContain('Sub point B');
+  });
+
+  it('keeps flat legacy points rendering without a nested list', () => {
+    const s = section({
+      content: [{ kind: 'bullet-list', points: [{ before: 'Main point' }, { before: 'Second point' }] }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    expect(document.querySelector('ul ul')).toBeNull();
+    expect(screen.getByRole('list').querySelectorAll(':scope > li')).toHaveLength(2);
+  });
+
+  it('keys nested Blanks with a deterministic path that extends the legacy scheme', () => {
+    const onRevealBlank = vi.fn();
+    const s = section({
+      content: [
+        {
+          kind: 'bullet-list',
+          points: [
+            { before: 'Top ', word: 'one', after: '', children: [{ before: 'Nested ', word: 'two', after: '' }] },
+          ],
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={1} openBlanks={{}} onRevealBlank={onRevealBlank} />);
+    const buttons = screen.getAllByRole('button', { name: /Blank, tap to reveal/i });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[0]);
+    expect(onRevealBlank).toHaveBeenCalledWith('1:p0');
+    fireEvent.click(buttons[1]);
+    expect(onRevealBlank).toHaveBeenCalledWith('1:p0.0');
+  });
+
   it('renders a Blank as a tap target that reveals its word via the reveal callback', () => {
     const onRevealBlank = vi.fn();
     const s = section({

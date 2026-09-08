@@ -12,7 +12,9 @@ export type Text = { before: string };
  * fields remain the derived summary views over the same constructs.
  */
 export type ProseBlock = { kind: 'prose'; md: string };
-export type ListBlock = { kind: 'bullet-list' | 'number-list'; points: (Blank | Text)[] };
+/** One point of a list block. Indented sub-points nest via `children` (ADR 0013 §Decision 2). */
+export type ListItem = (Blank | Text) & { children?: ListItem[] };
+export type ListBlock = { kind: 'bullet-list' | 'number-list'; points: ListItem[] };
 export type PassageBlock = { kind: 'passage'; passage: Blank | Text; ref?: string };
 export type PromptBlock = { kind: 'prompt'; prompt: { kind: PromptKind; text: string } };
 export type SectionBlock = ProseBlock | ListBlock | PassageBlock | PromptBlock;
@@ -170,18 +172,53 @@ export function parseMeeting(md: string): Section[] {
  * `1.`-style runs are number-list blocks (each point loses its number
  * prefix — the <ol> marker renders it), and any other non-blank run is a
  * prose block carried verbatim as markdown for the renderer. Nothing is
- * dropped.
+ * dropped. Indentation depth relative to the list's first line nests a
+ * point under its parent instead of flattening it into a sibling (ADR 0013
+ * §Decision 2 "nested lists").
  */
+/**
+ * Builds the nested point tree from a list's lines. The first line sets the
+ * list's base indentation; each following line nests under the nearest
+ * shallower point, so deeper indentation becomes a child (ADR 0013
+ * §Decision 2). Dedenting past an ancestor pops back to it; legacy flat
+ * documents (no indentation) produce exactly the flat points array the
+ * pre-nesting grammar produced. `strip` removes the list marker's own
+ * rendering job (bullet `- `/`* ` here; the caller pre-strips numbers).
+ */
+function nestListPoints(
+  lines: { indent: number; text: string }[],
+  listKind: 'bullet-list' | 'number-list',
+): ListItem[] {
+  const strip = (text: string) =>
+    listKind === 'bullet-list' ? text.replace(/^[-*]\s+/, '') : text.replace(/^\d+[.)]\s+/, '');
+  const roots: ListItem[] = [];
+  // Stack of (indent, point) ancestors; roots sit at the bottom as a
+  // virtual -Infinity level.
+  const stack: { indent: number; point: ListItem }[] = [{ indent: -1, point: { before: '' } }];
+  for (const { indent, text } of lines) {
+    const point = parseBlankOrText(strip(text));
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+    const parent = stack[stack.length - 1].point;
+    if (stack.length === 1) {
+      roots.push(point);
+    } else {
+      (parent.children ??= []).push(point);
+    }
+    stack.push({ indent, point });
+  }
+  return roots;
+}
+
 function parseSectionBody(lines: string[]): SectionBlock[] {
   const content: SectionBlock[] = [];
   let quoteLines: string[] | null = null;
-  let listLines: string[] | null = null;
+  let listLines: { indent: number; text: string }[] | null = null;
   let listKind: 'bullet-list' | 'number-list' = 'bullet-list';
   let proseLines: string[] | null = null;
 
   const flushList = () => {
     if (listLines && listLines.length > 0) {
-      content.push({ kind: listKind, points: listLines.map((l) => parseBlankOrText(l.replace(/^[-*]\s+/, ''))) });
+      content.push({ kind: listKind, points: nestListPoints(listLines, listKind) });
     }
     listLines = null;
   };
@@ -240,24 +277,32 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       continue;
     }
 
-    if (/^[-*]\s+/.test(line) || (listLines && /^\s+[-*]\s+/.test(rawLine))) {
+    const bulletMatch = rawLine.match(/^(\s*)[-*]\s+(.*)$/);
+    if (bulletMatch) {
       flushProse();
       if (!listLines) {
         listKind = 'bullet-list';
         listLines = [];
       }
-      listLines.push(rawLine.trim());
+      // A bullet line always continues a list; an indented one nests under
+      // its parent by depth (ADR 0013 §Decision 2).
+      listLines.push({ indent: bulletMatch[1].length, text: bulletMatch[2] });
       continue;
     }
 
-    if (/^\d+[.)]\s+/.test(line) || (listLines && listKind === 'number-list' && /^\s+\d+[.)]\s+/.test(rawLine))) {
+    const numberMatch =
+      (listLines && listKind === 'number-list' ? rawLine.match(/^(\s*)(\d+[.)])\s+(.*)$/) : null)
+      ?? line.match(/^(\d+[.)])\s+(.*)$/);
+    if (numberMatch) {
       flushProse();
       if (!listLines) {
-        flushList();
         listKind = 'number-list';
         listLines = [];
       }
-      listLines.push(line.replace(/^\d+[.)]\s+/, ''));
+      // A list-continuation line carries its indent in group 1; a list-start
+      // line is trimmed, so its indent is 0 (the first line sets the base).
+      const indent = numberMatch.length === 4 ? numberMatch[1].length : 0;
+      listLines.push({ indent, text: numberMatch[numberMatch.length - 1] });
       continue;
     }
 
