@@ -143,6 +143,19 @@ describe('BibleStudyEditor view', () => {
 
     const addSecBtn = screen.getByRole('button', { name: /\+ Add section/i });
     fireEvent.click(addSecBtn);
+
+    // The list inserters land their starter templates at the cursor.
+    const numBtn = screen.getByRole('button', { name: /Numbered list/i });
+    fireEvent.click(numBtn);
+
+    const bulletBtn = screen.getByRole('button', { name: /Bullet list/i });
+    fireEvent.click(bulletBtn);
+
+    const md = (screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement).value;
+    expect(md).toContain('1. ');
+    expect(md).toContain('2. ');
+    expect(md).toContain('3. ');
+    expect(md).toContain('- ');
   });
 
   it('toggles publish state and preview theme', async () => {
