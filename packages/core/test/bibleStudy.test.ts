@@ -7,6 +7,7 @@ import {
   studyIdFor,
   validateStudySetup,
   type StudySetupForm,
+  type Blank,
   type Meeting,
   type ReaderState,
   type Study,
@@ -146,6 +147,119 @@ An ordinary line of text that is not a prompt.`;
       const md = `## Where peace starts\n- Point`;
       const sections = parseMeeting(md);
       expect(sections[0].title).toBe('Where peace starts');
+    });
+    // ── Rich markdown, read as written (ADR 0012) ──
+
+    it('renders content in author order, not points-then-passage-then-prompt (the Section order contract)', () => {
+      const md = `## Mixed flow
+Opening prose paragraph.
+
+- A bullet in the middle
+
+> Thus says the Lord
+> Isaiah 1:1
+
+More prose after the passage.
+
+Question: What did we just read?`;
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual([
+        'prose', 'bullet-list', 'passage', 'prose', 'prompt',
+      ]);
+    });
+
+    it('plain paragraphs survive (the silent drop dies)', () => {
+      const md = `## With prose
+This paragraph is not a bullet, a blockquote, or a prompt.
+
+- Only this bullet survived the old parser.`;
+      const s = parseMeeting(md)[0];
+      const prose = s.content.filter((b) => b.kind === 'prose');
+      expect(prose).toHaveLength(1);
+      expect(prose[0]).toMatchObject({ kind: 'prose', md: 'This paragraph is not a bullet, a blockquote, or a prompt.' });
+    });
+
+    it('numbered lists and nested lists survive as list blocks', () => {
+      const md = `## Ordered and nested
+1. First step
+2. Second step
+
+- Main point
+  - Sub point A
+  - Sub point B`;
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual(['number-list', 'bullet-list']);
+      expect(s.content[0]).toMatchObject({ kind: 'number-list' });
+      expect((s.content[0] as { points: unknown[] }).points).toHaveLength(2);
+      expect((s.content[1] as { points: unknown[] }).points).toHaveLength(3);
+    });
+
+    it('inline emphasis and links stay in the markdown for the renderer, not parsed away', () => {
+      const md = `## Emphasis kept
+This is **bold** and this is *italic* and this is a [link](https://example.com).`;
+      const s = parseMeeting(md)[0];
+      expect(s.content[0]).toMatchObject({ kind: 'prose', md: 'This is **bold** and this is *italic* and this is a [link](https://example.com).' });
+    });
+
+    it('keeps legacy dialect documents parsing to the same constructs (backward compatibility)', () => {
+      const md = `## Legacy week
+- Peace with God is a [[standing]], not a mood.
+- Plain point
+
+> Being therefore justified by faith, we have peace with God.
+> Romans 5:1 · WEB
+
+Discuss: Where does peace catch you out?`;
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual(['bullet-list', 'passage', 'prompt']);
+      const bullets = s.content[0] as { kind: string; points: (Blank | Text)[] };
+      expect(bullets.points[0]).toEqual({ before: 'Peace with God is a ', word: 'standing', after: ', not a mood.' });
+      expect(bullets.points[1]).toEqual({ before: 'Plain point' });
+    });
+
+    it('Blanks win their run: a blank inside prose is extracted, not left for the markdown renderer', () => {
+      const md = `## Blank in prose
+Grace is [[free]], and that changes everything.`;
+      const s = parseMeeting(md)[0];
+      expect(s.content[0]).toMatchObject({ kind: 'prose', md: 'Grace is [[free]], and that changes everything.' });
+      expect(s.content).toHaveLength(1); // one prose block whose md carries the blank marker
+    });
+
+    it('a Blank is recognized mid-markdown but the surrounding emphasis is left to the renderer', () => {
+      const md = `## Blank among emphasis
+Grace is **[[free]] indeed**, and that changes everything.`;
+      const s = parseMeeting(md)[0];
+      expect(s.content[0]).toMatchObject({ kind: 'prose' });
+      expect((s.content[0] as { md: string }).md).toContain('**[[free]] indeed**');
+    });
+
+    it('multiple prompts: the last one wins (legacy behavior kept)', () => {
+      const md = `## Two prompts
+Question: First?
+
+Discuss: Second wins.`;
+      const s = parseMeeting(md)[0];
+      expect(s.content).toHaveLength(2);
+      expect(s.content[0]).toMatchObject({ kind: 'prose', md: 'question: First?' });
+      expect(s.content[1]).toMatchObject({ kind: 'prompt', prompt: { kind: 'discuss', text: 'Second wins.' } });
+    });
+
+    it('a prompt between passages still yields two passage blocks around it (order preserved)', () => {
+      const md = `## Passage sandwich
+> First passage
+> Genesis 1:1
+
+Question: What did you hear?
+
+> Second passage
+> Genesis 2:1`;
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual(['passage', 'prompt', 'passage']);
+    });
+
+    it('section id derivation is unchanged for legacy titles', () => {
+      const md = `## Where peace starts\n- Point`;
+      expect(parseMeeting(md)[0].id).toBe('where-peace-starts');
     });
   });
 

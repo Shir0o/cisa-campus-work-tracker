@@ -4,13 +4,27 @@ export type PromptKind = "question" | "discuss" | "activity";
 export type Blank = { before: string; word: string; after: string };
 export type Text = { before: string };
 
+/**
+ * One block of a Section's ordered content (ADR 0013 — "read as written").
+ * Blocks render in `content` order; the legacy `points`/`passage`/`prompt`
+ * fields remain the derived summary views over the same constructs.
+ */
+export type ProseBlock = { kind: "prose"; md: string };
+export type ListBlock = { kind: "bullet-list" | "number-list"; points: (Blank | Text)[] };
+export type PassageBlock = { kind: "passage"; passage: Blank | Text; ref?: string };
+export type PromptBlock = { kind: "prompt"; prompt: { kind: PromptKind; text: string } };
+export type SectionBlock = ProseBlock | ListBlock | PassageBlock | PromptBlock;
+
 export type Section = {
   id: string;
   title: string;
-  ref?: string;
+  /** The Section's content in the order the author wrote it. */
+  content: SectionBlock[];
+  /** Legacy summary views over `content`, kept for consumers and old documents. */
   points: (Blank | Text)[];
   passage?: Blank | Text;
   prompt?: { kind: PromptKind; text: string };
+  ref?: string;
   long?: boolean;
 };
 
@@ -101,17 +115,16 @@ function parseHeading(line: string): string | null {
 export function parseMeeting(md: string): Section[] {
   if (!md || !md.trim()) return [];
 
-  // Split by markdown headings (e.g. ## Heading or # Heading)
-  const lines = md.split('\n');
+  const lines = md.split("\n");
   const rawSections: { title: string; lines: string[] }[] = [];
-  let currentTitle = '';
+  let currentTitle = "";
   let currentLines: string[] = [];
 
   for (const line of lines) {
     const headingTitle = parseHeading(line);
     if (headingTitle !== null) {
       if (currentTitle || currentLines.length > 0) {
-        rawSections.push({ title: currentTitle || 'Untitled', lines: currentLines });
+        rawSections.push({ title: currentTitle || "Untitled", lines: currentLines });
       }
       currentTitle = headingTitle;
       currentLines = [];
@@ -119,101 +132,139 @@ export function parseMeeting(md: string): Section[] {
       currentLines.push(line);
     }
   }
-
   if (currentTitle || currentLines.length > 0) {
-    rawSections.push({ title: currentTitle || 'Untitled', lines: currentLines });
+    rawSections.push({ title: currentTitle || "Untitled", lines: currentLines });
   }
 
-  const sections: Section[] = [];
-
-  for (let i = 0; i < rawSections.length; i++) {
-    const raw = rawSections[i];
-    const points: (Blank | Text)[] = [];
-    let passageText: string | undefined;
-    let passageRef: string | undefined;
-    let prompt: { kind: PromptKind; text: string } | undefined;
-
-    let inBlockquote = false;
-    let blockquoteLines: string[] = [];
-
-    const flushBlockquote = () => {
-      if (blockquoteLines.length > 0) {
-        // If the last line looks like a citation (e.g. "Romans 5:1–2 · WEB" or starts with book)
-        if (blockquoteLines.length > 1) {
-          const lastLine = blockquoteLines[blockquoteLines.length - 1].trim();
-          passageRef = lastLine;
-          passageText = blockquoteLines.slice(0, -1).join(' ').trim();
-        } else {
-          passageText = blockquoteLines.join(' ').trim();
-        }
-        blockquoteLines = [];
-      }
-      inBlockquote = false;
-    };
-
-    for (const rawLine of raw.lines) {
-      const line = rawLine.trim();
-      if (!line) {
-        if (inBlockquote) {
-          flushBlockquote();
-        }
-        continue;
-      }
-
-      if (line.startsWith('>')) {
-        inBlockquote = true;
-        blockquoteLines.push(line.replace(/^>\s*/, ''));
-        continue;
-      } else if (inBlockquote) {
-        flushBlockquote();
-      }
-
-      // Check prompt
-      const promptMatch = line.match(/^(question|discuss|activity):\s*(.*)$/i);
-      if (promptMatch) {
-        prompt = {
-          kind: promptMatch[1].toLowerCase() as PromptKind,
-          text: promptMatch[2].trim(),
-        };
-        continue;
-      }
-
-      // Check bullet point
-      const bulletMatch = line.match(/^[-*]\s+(.*)$/);
-      if (bulletMatch) {
-        points.push(parseBlankOrText(bulletMatch[1]));
-        continue;
-      }
-    }
-
-    if (inBlockquote) {
-      flushBlockquote();
-    }
-
-    const sectionId = slugify(raw.title) || `sec-${i}`;
-
-    let passagePart: Blank | Text | undefined;
-    if (passageText) {
-      passagePart = parseBlankOrText(passageText);
-    }
+  const sections: Section[] = rawSections.map((raw, i) => {
+    const content = parseSectionBody(raw.lines);
+    // Legacy summary views over the same constructs (kept for consumers).
+    const points = content.flatMap((b) => (b.kind === "bullet-list" ? b.points : []));
+    const firstPassage = content.find((b): b is PassageBlock => b.kind === "passage");
+    const lastPrompt = [...content].reverse().find((b): b is PromptBlock => b.kind === "prompt");
 
     // Firestore rejects `undefined` field values, and these sections are
     // written verbatim by saveMeeting — optional keys must be omitted, not
     // present with an undefined value, when the markdown has no passage or
     // prompt.
-    sections.push({
-      id: sectionId,
+    return {
+      id: slugify(raw.title) || `sec-${i}`,
       title: raw.title,
+      content,
       points,
-      ...(passageRef !== undefined && { ref: passageRef }),
-      ...(passagePart !== undefined && { passage: passagePart }),
-      ...(prompt !== undefined && { prompt }),
-    });
-  }
+      ...(firstPassage?.passage !== undefined && { passage: firstPassage.passage }),
+      ...(firstPassage?.ref !== undefined && { ref: firstPassage.ref }),
+      ...(lastPrompt?.prompt !== undefined && { prompt: lastPrompt.prompt }),
+    };
+  });
 
   return sections;
 }
 
+/**
+ * The Section body grammar (ADR 0013 — read as written): consecutive `>`
+ * lines are one Passage block (last line = citation), `Question:/Discuss:/`
+ * `Activity:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks
+ * (indentation preserved), `1.`-style runs are number-list blocks, and any
+ * other non-blank run is a prose block carried verbatim as markdown for the
+ * renderer. Nothing is dropped.
+ */
+function parseSectionBody(lines: string[]): SectionBlock[] {
+  const content: SectionBlock[] = [];
+  let quoteLines: string[] | null = null;
+  let listLines: string[] | null = null;
+  let listKind: "bullet-list" | "number-list" = "bullet-list";
+  let proseLines: string[] | null = null;
+
+  const flushList = () => {
+    if (listLines && listLines.length > 0) {
+      content.push({ kind: listKind, points: listLines.map((l) => parseBlankOrText(l.replace(/^[-*]\s+/, ""))) });
+    }
+    listLines = null;
+  };
+  const flushProse = () => {
+    if (proseLines && proseLines.length > 0) {
+      content.push({ kind: "prose", md: proseLines.join("\n").trim() });
+    }
+    proseLines = null;
+  };
+  const flushQuote = () => {
+    if (quoteLines && quoteLines.length > 0) {
+      const passageText =
+        quoteLines.length > 1 ? quoteLines.slice(0, -1).join(" ").trim() : quoteLines.join(" ").trim();
+      content.push({
+        kind: "passage",
+        passage: parseBlankOrText(passageText),
+        ...(quoteLines.length > 1 ? { ref: quoteLines[quoteLines.length - 1].trim() } : {}),
+      });
+    }
+    quoteLines = null;
+  };
+  const flushAll = () => {
+    flushList();
+    flushProse();
+    flushQuote();
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushAll();
+      continue;
+    }
+
+    if (line.startsWith(">")) {
+      flushList();
+      flushProse();
+      quoteLines = quoteLines ?? [];
+      quoteLines.push(line.replace(/^>\s?/, ""));
+      continue;
+    }
+    flushQuote();
+
+    const promptMatch = line.match(/^(question|discuss|activity):\s*(.*)$/i);
+    if (promptMatch) {
+      flushList();
+      flushProse();
+      const last = content[content.length - 1];
+      const prompt = { kind: promptMatch[1].toLowerCase() as PromptKind, text: promptMatch[2].trim() };
+      // The last prompt in a Section is the Prompt; an earlier prompt block
+      // dissolves into prose (same rule the legacy summary field followed).
+      if (last && last.kind === "prompt") {
+        content[content.length - 1] = { kind: "prose", md: `${last.prompt.kind}: ${last.prompt.text}` };
+      }
+      content.push({ kind: "prompt", prompt });
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line) || (listLines && /^\s+[-*]\s+/.test(rawLine))) {
+      flushProse();
+      if (!listLines) {
+        listKind = "bullet-list";
+        listLines = [];
+      }
+      listLines.push(rawLine.trim());
+      continue;
+    }
+    if (/^\d+[.)]\s+/.test(line) || (listLines && listKind === "number-list" && /^\s+\d+[.)]\s+/.test(rawLine))) {
+      flushProse();
+      if (!listLines) {
+        flushList();
+        listKind = "number-list";
+        listLines = [];
+      }
+      listLines.push(line);
+      continue;
+    }
+
+    flushList();
+    proseLines = proseLines ?? [];
+    proseLines.push(line);
+  }
+
+  flushAll();
+  return content;
+}
 /**
  * The result of resolving a scan (or a staff permalink) through the chain
  * Entry point -> active Study -> newest published Meeting. The three kinds

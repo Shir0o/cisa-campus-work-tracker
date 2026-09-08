@@ -19,6 +19,7 @@ import {
 } from '../lib/data/bibleStudy';
 import { entryPointUrl } from '../lib/publicUrl';
 import { format } from 'date-fns';
+import SectionBody from '../components/bibleStudy/SectionBody';
 
 export default function BibleStudyEditor() {
   const { meetingId = '' } = useParams<{ meetingId: string }>();
@@ -260,6 +261,21 @@ export default function BibleStudyEditor() {
             </button>
             <div className="w-px h-4 bg-outline-variant mx-1" />
             <button
+              onClick={() => insertTextAtCursor('**', '**')}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-bold hover:bg-surface-variant"
+              aria-label="Bold"
+            >
+              B
+            </button>
+            <button
+              onClick={() => insertTextAtCursor('*', '*')}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs italic hover:bg-surface-variant"
+              aria-label="Italic"
+            >
+              I
+            </button>
+
+            <button
               onClick={() => insertTextAtCursor('\nQuestion: ')}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-slate-soft)] text-on-surface"
             >
@@ -324,50 +340,20 @@ export default function BibleStudyEditor() {
                 {String(activeSectionIndex + 1).padStart(2, '0')} / {String(sections.length).padStart(2, '0')}
               </span>
             </div>
-
             <div className="flex-1 my-auto flex flex-col justify-center gap-3.5 py-2 overflow-hidden">
               <h3 className="font-serif font-bold text-2xl leading-tight">
                 {activeSection?.title || 'Section Heading'}
               </h3>
-              {activeSection?.points && activeSection.points.length > 0 && (
-                <div className="space-y-1.5 text-xs text-neutral-400">
-                  {activeSection.points.map((pt, i) => (
-                    <div key={i}>
-                      {pt.before}
-                      {'word' in pt && (
-                        <span className="inline-block px-1 bg-[oklch(0.82_0.14_145/0.20)] rounded mx-0.5 text-white">
-                          {pt.word}
-                        </span>
-                      )}
-                      {'after' in pt && pt.after}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {activeSection?.passage && (
-                <div className="pt-2 border-t border-neutral-800 text-xs italic">
-                  <p className="m-0 leading-relaxed text-neutral-200">
-                    {activeSection.passage.before}
-                    {'word' in activeSection.passage && (
-                      <span className="underline decoration-dotted">{activeSection.passage.word}</span>
-                    )}
-                    {'after' in activeSection.passage && activeSection.passage.after}
-                  </p>
-                  {activeSection.ref && (
-                    <div className="mt-1 text-[9px] font-semibold tracking-wider uppercase text-neutral-500">
-                      {activeSection.ref}
-                    </div>
-                  )}
-                </div>
-              )}
-              {activeSection?.prompt && (
-                <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs">
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-[oklch(0.82_0.14_145)] mb-1">
-                    {activeSection.prompt.kind}
-                  </div>
-                  <div className="text-neutral-300 leading-snug">{activeSection.prompt.text}</div>
-                </div>
-              )}
+              <div className="[&_p]:m-0 text-xs">
+                {activeSection && (
+                  <SectionBody
+                    section={activeSection}
+                    sectionIndex={activeSectionIndex}
+                    openBlanks={{}}
+                    onRevealBlank={() => {}}
+                  />
+                )}
+              </div>
             </div>
 
             <div className="flex gap-1 pt-1">

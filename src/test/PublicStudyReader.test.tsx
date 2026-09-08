@@ -27,6 +27,16 @@ describe('PublicStudyReader (above the seam)', () => {
       {
         id: 'sec-1',
         title: 'Where peace starts',
+        content: [
+          {
+            kind: 'bullet-list',
+            points: [
+              { before: 'Peace with God is a ', word: 'standing', after: ', not a mood.' },
+              { before: 'A plain point with no blanks' },
+            ],
+          },
+          { kind: 'prompt', prompt: { kind: 'discuss', text: 'Where do you need this peace?' } },
+        ],
         points: [
           { before: 'Peace with God is a ', word: 'standing', after: ', not a mood.' },
           { before: 'A plain point with no blanks' },
@@ -36,6 +46,7 @@ describe('PublicStudyReader (above the seam)', () => {
       {
         id: 'sec-2',
         title: 'What suffering is doing',
+        content: [{ kind: 'bullet-list', points: [{ before: 'Suffering is the road to hope' }] }],
         points: [{ before: 'Suffering is the road to hope' }],
       },
     ],

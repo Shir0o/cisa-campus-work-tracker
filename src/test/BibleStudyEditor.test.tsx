@@ -29,8 +29,8 @@ describe('BibleStudyEditor view', () => {
     published: false,
     md: '## Section 1\n- Point 1\n\n## Section 2\n- Point 2',
     sections: [
-      { id: 'sec-1', title: 'Section 1', points: [{ before: 'Point 1' }] },
-      { id: 'sec-2', title: 'Section 2', points: [{ before: 'Point 2' }] },
+      { id: 'sec-1', title: 'Section 1', content: [], points: [{ before: 'Point 1' }] },
+      { id: 'sec-2', title: 'Section 2', content: [], points: [{ before: 'Point 2' }] },
     ],
   };
 
