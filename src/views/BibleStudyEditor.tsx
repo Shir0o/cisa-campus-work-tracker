@@ -11,7 +11,6 @@ import {
   type EntryPoint,
 } from '../lib/bibleStudy';
 import { useCommand } from '../lib/commands';
-import { useUnsavedGuard } from '../lib/navGuard';
 import {
   saveMeeting,
   setMeetingPublished,
@@ -38,6 +37,14 @@ export default function BibleStudyEditor() {
   const [published, setPublished] = useState(false);
   const [saved, setSaved] = useState<MeetingForm | null>(null);
   const [saving, setSaving] = useState(false);
+  // Honest save state (ADR 0012 §6): Saving… while a write is in flight,
+  // Saved · just now after one lands, Couldn't save when a write fails. A
+  // failed write retries on the next edit — autosave that says "Saved"
+  // during a failed write is precisely the data loss this exists to prevent.
+  const [saveError, setSaveError] = useState(false);
+  // A save has landed this session; the badge may now say "Saved · just
+  // now". Before any edit the freshly loaded doc needs no badge at all.
+  const [everSaved, setEverSaved] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -74,34 +81,71 @@ export default function BibleStudyEditor() {
   const sections: Section[] = parseMeeting(markdown);
   const activeSection = sections[activeSectionIndex] || sections[0];
 
-  // Save resolves only once the snapshot is accepted, so a failed save keeps
-  // the editor dirty (and the guard up).
+  // The one write path, shared by autosave and ⌘S. Resolves only once the
+  // snapshot is accepted; a failure raises saveError for the state line and
+  // leaves `saved` untouched, so the next edit (or reconnect-triggered edit)
+  // retries. Never publishes: publish is a deliberate manual toggle.
+  const pendingWrite = useRef<Promise<void>>(Promise.resolve());
+  // The timer fires from a render that has already happened, so it reads the
+  // form through a ref that every render refreshes — never a stale closure.
+  const formRef = useRef({ title, date, markdown, published });
+  formRef.current = { title, date, markdown, published };
   const handleSave = async (publishStatus = published) => {
     if (!meeting) return;
+    const form = formRef.current;
+    setSaveError(false);
     setSaving(true);
-    try {
+    const run = async () => {
       await saveMeeting(
         db,
         {
           id: meeting.id,
           studyId: meeting.studyId,
-          date,
-          title,
-          sections: parseMeeting(markdown),
+          date: form.date,
+          title: form.title,
+          sections: parseMeeting(form.markdown),
           published: publishStatus,
-          md: markdown,
+          md: form.markdown,
         },
         user?.uid,
       );
       setPublished(publishStatus);
-      setSaved({ title, date, markdown, published: publishStatus });
+      setSaved({ title: form.title, date: form.date, markdown: form.markdown, published: publishStatus });
+      setEverSaved(true);
+    };
+    const write = pendingWrite.current.then(run);
+    // The chain carries on after a failure; the rejection belongs to this
+    // write's caller alone. Otherwise one failed write would poison every
+    // write queued after it and a retry could never land.
+    pendingWrite.current = write.catch(() => {});
+    try {
+      await write;
     } catch (e) {
       console.error('Failed to save meeting', e);
-      throw e;
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
   };
+
+  // Debounced autosave (ADR 0012 §5, mirroring RtdbYjsProvider's Pages
+  // cadence): body ~1.2s, title/date ~0.8s. One debounce serves both — an
+  // edit resets whichever channel fired, so the latest form always wins and
+  // only one write is ever pending (the chain in handleSave serializes).
+  const saveTimer = useRef<number | null>(null);
+  const autosave = (delay: number, publishStatus: boolean) => {
+    clearTimeout(saveTimer.current ?? undefined);
+    saveTimer.current = window.setTimeout(() => {
+      saveTimer.current = null;
+      void handleSave(publishStatus);
+    }, delay);
+  };
+
+  // Leaving the editor cancels the debounce; unmount's own cleanup below
+  // keeps a late fire from writing after the next editor opens.
+  useEffect(() => () => {
+    clearTimeout(saveTimer.current ?? undefined);
+  }, []);
 
   const dirty = !!saved && isMeetingDirty({ title, date, markdown, published }, saved);
   // ⌘S / Ctrl+S ≡ the Save button: never publishes, no-ops when clean. The
@@ -117,7 +161,6 @@ export default function BibleStudyEditor() {
       if (dirty) void handleSave(published);
     },
   });
-  const guard = useUnsavedGuard({ when: dirty, onSave: () => handleSave(published) });
 
   const handleTogglePublish = async () => {
     const nextState = !published;
@@ -174,16 +217,19 @@ export default function BibleStudyEditor() {
             <span className="truncate">Study: {meeting.studyId}</span>
             <span aria-hidden="true">·</span>
             <span className="shrink-0">{published ? 'Published' : 'Draft'}</span>
-            {dirty && (
+            {(everSaved || dirty || saving || saveError) && (
               <span className="shrink-0 px-2 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold text-on-surface-variant">
-                Unsaved changes
+                {saveError ? "Couldn't save" : dirty || saving ? 'Saving…' : 'Saved · just now'}
               </span>
             )}
           </div>
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              autosave(800, published);
+            }}
             className="text-2xl lg:text-3xl font-serif font-bold text-on-surface bg-transparent border-0 outline-none focus:ring-0 p-0"
             placeholder="Meeting title"
           />
@@ -193,7 +239,10 @@ export default function BibleStudyEditor() {
           <input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              setDate(e.target.value);
+              autosave(800, published);
+            }}
             className="px-3 py-1.5 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none"
           />
           <button
@@ -326,7 +375,10 @@ export default function BibleStudyEditor() {
           <textarea
             ref={textareaRef}
             value={markdown}
-            onChange={(e) => setMarkdown(e.target.value)}
+            onChange={(e) => {
+              setMarkdown(e.target.value);
+              autosave(1200, published);
+            }}
             className="flex-1 w-full p-4 font-mono text-sm leading-relaxed bg-transparent border-0 outline-none resize-none custom-scrollbar"
             placeholder="Write meeting markdown here..."
           />
@@ -424,47 +476,6 @@ export default function BibleStudyEditor() {
         </div>
       </div>
 
-      {/* Unsaved-changes guard — cancelling and discarding are different
-          intentions and never share a control (UnsavedGuard artboard). */}
-      {guard.pending && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Unsaved changes"
-        >
-          <div className="bg-surface border border-outline-variant rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
-            <h2 className="font-serif text-xl font-bold text-on-surface mb-1">
-              You haven't saved {title || 'this week'}
-            </h2>
-            <p className="text-sm text-on-surface-variant mb-5">
-              {guard.pending.kind === 'push'
-                ? `Opening ${guard.pending.label} will lose what you've written here.`
-                : 'Leaving this page will lose what you have written here.'}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <button
-                onClick={() => guard.decide('stay')}
-                className="px-4 py-2 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
-              >
-                Stay here
-              </button>
-              <button
-                onClick={() => guard.decide('discard')}
-                className="px-4 py-2 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
-              >
-                Discard and open
-              </button>
-              <button
-                onClick={() => guard.decide('save')}
-                className="px-4 py-2 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
-              >
-                Save, then open
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
