@@ -165,6 +165,37 @@ describe('bibleStudy data service', () => {
     expect(idWithExisting).toBe('custom-id');
   });
 
+  it('saveMeeting strips undefined nested fields before the write', async () => {
+    // Firestore rejects nested `undefined`; a section without a passage or
+    // ref used to fail the whole save opaquely, which is how an edited
+    // Discuss line could look "not changed" in the reader. ADR 0013's parser
+    // omits optional keys itself; this keeps saveMeeting safe against any
+    // caller that hands it a sparse object.
+    const sections: Section[] = [
+      {
+        id: 'welcome',
+        title: 'Welcome',
+        content: [],
+        points: [{ before: 'Point' }],
+        prompt: { kind: 'discuss', text: 'A question' },
+      } as unknown as Section,
+    ];
+    await saveMeeting(fakeDb, {
+      id: 'romans-2026-09-01',
+      studyId: 'romans',
+      date: '2026-09-01',
+      title: 'Week',
+      sections,
+      published: true,
+    });
+
+    const written = vi.mocked(setDoc).mock.calls[0][1] as Record<string, any>;
+    const stored = written.sections[0];
+    expect(stored.prompt).toEqual({ kind: 'discuss', text: 'A question' });
+    expect('passage' in stored).toBe(false);
+    expect('ref' in stored).toBe(false);
+  });
+
   it('subscribeStudy maps the study doc or null', () => {
     mockDocData = { title: 'Romans', term: 'Fall 2026' };
     const cb = vi.fn();
