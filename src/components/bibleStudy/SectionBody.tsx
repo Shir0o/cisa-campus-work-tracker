@@ -9,7 +9,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Section, SectionBlock, Blank } from '../../lib/bibleStudy';
+import type { Section, SectionBlock, Blank, ListItem } from '../../lib/bibleStudy';
 
 type BlankPart = { kind: 'blank'; blank: Blank; n: number };
 type MdPart = { kind: 'md'; text: string };
@@ -94,8 +94,40 @@ export type SectionBodyProps = {
 };
 
 const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBlanks, onRevealBlank }) => {
-  const renderList = (block: Extract<SectionBlock, { kind: 'bullet-list' | 'number-list' }>, label: string) => {
+  // Nested sub-points (ADR 0013 §Decision 2) render a nested <ul>/<ol>
+  // inside the parent <li>, so the reader and the editor preview — one
+  // rendering path — show the author's outline. Blank reveal keys extend
+  // the legacy `${sectionIndex}:p${pIdx}` scheme with the child path
+  // (`p0.1`), keeping flat legacy keys byte-identical and nested keys
+  // deterministic across mixed depths.
+  const renderList = (block: Extract<SectionBlock, { kind: 'bullet-list' | 'number-list' }>): React.ReactNode => {
     const Tag = block.kind === 'number-list' ? 'ol' : 'ul';
+    const renderPoint = (pt: ListItem, path: string): React.ReactNode => {
+      if (!pt || typeof pt !== 'object') return null;
+      const key = `${sectionIndex}:${path}`;
+      const inline = 'word' in pt ? (
+        <BlankSpan
+          part={{ kind: 'blank', blank: { before: pt.before, word: pt.word, after: pt.after }, n: 0 }}
+          isOpen={!!openBlanks[key]}
+          onReveal={() => onRevealBlank(key)}
+        />
+      ) : (
+        // Sections saved before the number strip still carry the literal
+        // "1." — the reader renders Firestore's stored copy without
+        // re-parsing md, so the renderer owns legacy prefixes too.
+        <InlineMd text={block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before} />
+      );
+      return (
+        <li key={path} className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
+          {inline}
+          {pt.children && pt.children.length > 0 && (
+            <Tag className={`flex flex-col gap-3 py-1 ${block.kind === 'number-list' ? 'list-decimal' : 'list-disc'} pl-5 marker:text-on-surface-variant`}>
+              {pt.children.map((child, cIdx) => renderPoint(child, `${path}.${cIdx}`))}
+            </Tag>
+          )}
+        </li>
+      );
+    };
     return (
       <Tag
         data-block-kind={block.kind}
@@ -103,28 +135,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
           block.kind === 'number-list' ? 'list-decimal' : 'list-disc'
         } pl-5 marker:text-on-surface-variant`}
       >
-        {block.points.map((pt, pIdx) => {
-          if (pt && typeof pt === 'object' && 'word' in pt) {
-            const key = `${sectionIndex}:${label}${pIdx}`;
-            return (
-              <li key={pIdx} className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
-                <BlankSpan part={{ kind: 'blank', blank: pt, n: pIdx }} isOpen={!!openBlanks[key]} onReveal={() => onRevealBlank(key)} />
-              </li>
-            );
-          }
-          if (pt && typeof pt === 'object') {
-            // Sections saved before the number strip still carry the literal
-            // "1." — the reader renders Firestore's stored copy without
-            // re-parsing md, so the renderer owns legacy prefixes too.
-            const stripped = block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before;
-            return (
-              <li key={pIdx} className="text-[16px] sm:text-[17px] leading-[1.55] text-on-surface-variant">
-                <InlineMd text={stripped} />
-              </li>
-            );
-          }
-          return null;
-        })}
+        {block.points.map((pt, pIdx) => renderPoint(pt, `p${pIdx}`))}
       </Tag>
     );
   };
@@ -135,7 +146,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
         switch (block.kind) {
           case 'bullet-list':
           case 'number-list':
-            return renderList(block, 'p');
+            return renderList(block);
           case 'passage':
             return (
               <figure key={bIdx} data-block-kind="passage" className="m-0 pt-4 border-t border-outline-variant">

@@ -69,14 +69,17 @@ More prose after the passage.
 
 Question: What did we just read?`,
 
-  // Numbered and nested lists.
+  // Nested lists: indented sub-points nest under their parent (ADR 0013
+  // §Decision 2), mixed bullet/number depth included.
   `## Ordered and nested
 1. First step
 2. Second step
 
 - Main point
   - Sub point A
-  - Sub point B`,
+    - Sub-sub point
+  - Sub point B
+  1. Numbered sub under bullet`,
 
   // Inline emphasis stays in the markdown for the renderer.
   `## Emphasis kept
