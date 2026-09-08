@@ -200,7 +200,8 @@ describe('BibleStudyEditor view', () => {
 
     const activityBtn = screen.getByRole('button', { name: /Activity/i });
     fireEvent.click(activityBtn);
-
+    const addSecBtn = screen.getByRole('button', { name: /\+ Add section/i });
+    fireEvent.click(addSecBtn);
     // #890: "+ Add section" appends at the END of the document even when the
     // textarea has never been focused (the reported bug — insert-at-cursor
     // wrote to offset 0, the top), and the caret lands after the hashes.
