@@ -18,8 +18,10 @@
  *     container, not the viewport. The viewport-sized `100dvh` / `844px`
  *     measurements must not return.
  *   - The empty-Meeting placeholder is sized the same way as a panel.
- *   - Proximity snapping is retained (`snap-proximity`); snapping is not made
- *     mandatory (`snap-mandatory` must not appear).
+ *   - Proximity snapping is retained: the deck keeps `snap-proximity` (ADR
+ *     0014 §1 — proximity, not mandatory, so a Section taller than the deck
+ *     can never be skipped or trapped), and the `snap-mandatory` utility
+ *     must not be introduced on the deck.
  *
  * If a future change re-introduces viewport-sized panels, this test fails
  * before the change merges.
@@ -35,14 +37,17 @@ describe('study-reader panel sizing guardrail (#913)', () => {
 
   it('sizes a Section panel to the scroll container, not the viewport', () => {
     // The panel is the element carrying `data-section-panel`; its className
-    // sits on the following line. It must be `min-h-full` (100% of the deck)
-    // and must not carry viewport sizing.
+    // sits on the same line or the next. It must be `min-h-full` (100% of
+    // the deck) and must not carry viewport sizing.
     const lines = source.split('\n');
     const panelIdx = lines.findIndex((line) => line.includes('data-section-panel'));
     expect(panelIdx, 'panel element should exist').toBeGreaterThanOrEqual(0);
-    const panelClassLine = lines[panelIdx + 1];
-    expect(panelClassLine).toMatch(/min-h-full/);
-    expect(panelClassLine).not.toMatch(/100dvh|844px/);
+    const panelClassLine = lines
+      .slice(panelIdx, panelIdx + 3)
+      .find((line) => line.includes('className'));
+    expect(panelClassLine, 'panel className should exist').toBeDefined();
+    expect(panelClassLine!).toMatch(/min-h-full/);
+    expect(panelClassLine!).not.toMatch(/100dvh|844px/);
   });
 
   it('sizes the empty-Meeting placeholder the same way as a panel', () => {
@@ -57,7 +62,10 @@ describe('study-reader panel sizing guardrail (#913)', () => {
     expect(placeholderLine!).not.toMatch(/100dvh|844px/);
   });
 
-  it('retains proximity snapping and never makes it mandatory', () => {
+  it('retains proximity snapping on the deck and never applies snap-mandatory', () => {
+    // ADR 0014 §1: proximity, not mandatory — mandatory snapping can skip or
+    // trap on a Section taller than the deck. The deck's className is the
+    // contract; the `snap-mandatory` utility must not be applied to it.
     expect(source).toMatch(/snap-proximity/);
     expect(source).not.toMatch(/snap-mandatory/);
   });
