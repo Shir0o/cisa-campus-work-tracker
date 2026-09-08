@@ -44,6 +44,11 @@ collection is not.
 - `InApp.dc.html` — the same Meeting inside the native / PWA shell
 - `Editor.dc.html` — desktop admin editor (document with a navigating outline, real-reader preview)
 - `DirectionA` / `DirectionB` — considered and rejected, kept on page 2
+- `SectionDirections.dc.html` — **exploration, not design-of-record.** The live
+  comparison that chose card + settle over plain top-align (#912, #922), at true
+  390×844 in both themes, with the rejected branches still switchable. Dated
+  2026-09-08; it records a decision rather than tracking what shipped, so it is
+  not refreshed alongside the boards above.
 
 ## Fullscreen — the one ask that cannot be built as stated
 
