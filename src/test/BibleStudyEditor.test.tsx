@@ -261,6 +261,112 @@ describe('BibleStudyEditor view', () => {
     expect(md).toContain('- ');
   });
 
+  // #917 — a toolbar click must not throw the author back to the top. The
+  // mousedown focus shift blurs the textarea, so the value replacement lands
+  // on an unfocused field and the browser resets its scroll; the deferred
+  // refocus restores the caret but not the scroll. The toolbar buttons
+  // preventDefault on mousedown (the standard formatting-toolbar
+  // arrangement) so the field never blurs, and the shared edit path captures
+  // the scroll offset before the value changes and restores it after the
+  // selection is set. jsdom has no layout — it reports a scroll offset of
+  // zero — so these tests pin the wiring (mousedown suppression, capture
+  // before the value change, restore after the selection) and the pure
+  // scroll decision lives in editorScroll.test.ts; the browser verification
+  // is recorded on the issue.
+  describe('toolbar clicks keep the author in place (#917)', () => {
+    it('suppresses the mousedown focus shift on every toolbar button', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      expect(document.activeElement).toBe(area);
+
+      // A real mousedown on a toolbar button must not move focus: the
+      // textarea stays active through the whole click sequence.
+      const passage = screen.getByRole('button', { name: /Passage/i });
+      fireEvent.mouseDown(passage);
+      expect(document.activeElement).toBe(area);
+      fireEvent.mouseUp(passage);
+      fireEvent.click(passage);
+      expect(document.activeElement).toBe(area);
+    });
+
+    it('captures the scroll offset before the value changes and restores it after the selection is set', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(0, 0);
+      area.scrollTop = 1234;
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      // The insertion landed and the caret sits after the marker (the
+      // deferred selection callback runs on the next tick).
+      await waitFor(() => {
+        expect(area.value).toContain('\n> ');
+        expect(area.selectionStart).toBe(3);
+      });
+      // The captured offset was restored — the author stays where they were.
+      expect(area.scrollTop).toBe(1234);
+    });
+
+    it('keeps a selected run selected between wrapping markers', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      const start = MEETING_MD.indexOf('Point 1');
+      area.setSelectionRange(start, start + 'Point 1'.length);
+
+      fireEvent.click(screen.getByRole('button', { name: /Bold/i }));
+
+      await waitFor(() => {
+        expect(area.selectionStart).toBe(start + 2);
+        expect(area.selectionEnd).toBe(start + 2 + 'Point 1'.length);
+      });
+      expect(area.value.substring(area.selectionStart, area.selectionEnd)).toBe('Point 1');
+    });
+
+    it('keeps the outline highlighting the caret\'s Section after an insertion', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      // Caret inside Section 2's body — an insertion there must not move
+      // the outline highlight off the caret's Section.
+      area.setSelectionRange(MEETING_MD.indexOf('Point 2'), MEETING_MD.indexOf('Point 2'));
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      // The caret-section sync runs in the deferred selection callback.
+      await waitFor(() => {
+        const sec2 = screen.getAllByText('Section 2')[0].closest('button')!;
+        expect(sec2.className).toContain('font-semibold');
+      });
+    });
+
+    it('still schedules autosave after a toolbar insertion', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      vi.useFakeTimers();
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await act(async () => { vi.advanceTimersByTime(1200); });
+      expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 'meeting-1' }),
+        mockUser.uid,
+      );
+      vi.useRealTimers();
+    });
+  });
+
   // #890 — the editor becomes a document with an operating index.
   it('offers no Section button in the toolbar — adding a Section has one home', async () => {
     renderAt();
@@ -672,6 +778,30 @@ describe('BibleStudyEditor view', () => {
         mockUser.uid,
       );
       vi.useRealTimers();
+    });
+
+    // #917 — the scroll capture/restore lives on the shared edit path, so a
+    // toolbar click behaves identically with live collab: the insertion
+    // routes through the Y.Text, the textarea keeps focus, and the captured
+    // offset is restored.
+    it('keeps the author in place on a toolbar click with live collab', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+      statusSink?.({ live: true, degraded: false });
+      await waitFor(() => expect(collabInstance).not.toBeNull());
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(0, 0);
+      area.scrollTop = 1234;
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      // The insertion went through the collaborative channel.
+      await waitFor(() => expect(textValue).toContain('\n> '));
+      // The textarea kept focus and the captured offset was restored.
+      expect(document.activeElement).toBe(area);
+      expect(area.scrollTop).toBe(1234);
     });
   });
 
