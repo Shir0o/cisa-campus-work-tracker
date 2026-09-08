@@ -14,13 +14,13 @@ live in `CONTEXT.md`.
 |---|---|
 | Entry | One durable QR per **Entry point** (`/s/:slug`), shown on a leader's phone, never printed. Resolves slug → active Study → newest published Meeting. Reversed the earlier "one QR per Meeting" — see ADR 0011. |
 | Public surface | Read-only. Nothing anonymous is ever written. |
-| Structure | Author-defined Sections, one per screen; outline points, Passage, Prompt — all optional, order as written. |
-| Motion | Scroll-parallax, click to advance, fullscreen. A long Section scrolls in place. |
+| Structure | Author-defined Sections, one per screen; outline points, Passage, Prompt — all optional, order as written. Confirmed by ADR 0014: a scroll-snap panel is still one Section per screen. |
+| Motion | Scrolling deck: Sections stack as scroll-snap panels (proximity), content top-aligned, sized in `dvh`. Scrolling is the navigation — no click-to-advance, no parallax. See ADR 0014. |
 | Prompts | Question / Discuss / Activity. Never answered on the page. |
-| Blanks | Outline points and Passage, tap to reveal, per-Meeting author's choice. |
-| Navigation | Auto-hiding edge scrubber, Sections only, labelled from headings. |
+| Blanks | Outline points and Passage, tap to reveal, per-Meeting author's choice. A Blank's tap is the only tap left — there is no surface tap to compete with. |
+| Navigation | Auto-hiding edge scrubber, Sections only, labelled from headings. Jumping scrolls the deck (`scrollIntoView`); the scrubber never owns position. |
 | Theme | Light and dark, following the phone. |
-| Content | Own collection. Markdown + two conventions (blockquote = Passage, marked line = Prompt), parsed at publish. Reuses the TipTap editor and `ReadOnlyDoc`. |
+| Content | Own collection. One markdown document per Meeting + three conventions (`## ` = Section, blockquote = Passage, `Question:`/`Discuss:`/`Activity:` line = Prompt), parsed live as written — see ADR 0013. |
 | Splits | Two **Entry points**, each with its own Study, populated by duplicate-week. Opening and closing are duplicated, not shared. `siblingId` removed — see ADR 0011. |
 | Reader surfaces | Public web (phone), plus the native app and installed PWA for signed-in users. No desktop reader. |
 | Desktop | Admin editing only — but the Meetings index and present mode must also work on a phone, since the QR is displayed from one. Reversed — see ADR 0011. |
@@ -40,9 +40,9 @@ collection is not.
 
 ## Artboards
 
-- `Main.dc.html` — the public reader, interactive (advance, Blanks, edge index; theme tweak)
+- `Main.dc.html` — the public reader, interactive (scrolling deck, Blanks, edge index; theme tweak)
 - `InApp.dc.html` — the same Meeting inside the native / PWA shell
-- `Editor.dc.html` — desktop admin editor
+- `Editor.dc.html` — desktop admin editor (document with a navigating outline, real-reader preview)
 - `DirectionA` / `DirectionB` — considered and rejected, kept on page 2
 
 ## Fullscreen — the one ask that cannot be built as stated
@@ -52,9 +52,10 @@ video can go fullscreen there. Android Chrome does. Since students scan into
 Safari on a phone, `requestFullscreen` would silently do nothing for a large
 share of them.
 
-The prototype therefore ships a CSS distraction-free mode — chrome dims and
-shrinks, the Section takes the room — following the app's existing
-`body.msgs-fullscreen` pattern (`src/index.css:3684`).
+The CSS distraction-free mode the prototype once shipped as the workaround is
+gone: ADR 0014 deleted it along with the tap-to-advance chrome it existed to
+hide — the reader is a scrolling deck, and there is not enough chrome left to
+be worth a mode that dims it.
 
 True fullscreen has one reliable route on iOS: Add to Home Screen.
 `public/manifest.json` already declares `display: standalone`, so an installed
