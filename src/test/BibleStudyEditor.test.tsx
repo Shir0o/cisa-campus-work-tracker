@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import BibleStudyEditor from '../views/BibleStudyEditor';
 import * as bibleData from '../lib/data/bibleStudy';
 import * as auth from '../components/AuthProvider';
@@ -195,80 +195,108 @@ describe('BibleStudyEditor view', () => {
     expect(screen.getByText('All weeks')).toBeInTheDocument();
   });
 
-  it('shows that it has unsaved changes without requiring a leave attempt', async () => {
+  afterEach(() => {
+    // A failed assertion must not leak fake timers into the next test.
+    vi.useRealTimers();
+  });
+
+  it('shows an honest save state: Saving…, then Saved · just now', async () => {
     renderAt();
-
     await screen.findByDisplayValue('Initial Meeting');
-    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
 
+    // ⌘S exercises the same write path autosave uses; the state line reads
+    // it the same way.
     fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
       target: { value: 'Edited title' },
     });
+    expect(screen.getByText('Saving…')).toBeInTheDocument();
 
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+    await screen.findByText('Saved · just now');
   });
 
-  it('does not prompt when leaving with no unsaved changes', async () => {
+  it('autosaves the body ~1.2s after typing stops, without any Save click', async () => {
     renderAt();
-
     await screen.findByDisplayValue('Initial Meeting');
 
-    fireEvent.click(screen.getByText('All weeks'));
-
-    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument();
-    expect(await screen.findByText('Weeks index')).toBeInTheDocument();
-  });
-
-  it('asks before leaving with unsaved changes; staying keeps the changes intact', async () => {
-    renderAt();
-
-    await screen.findByDisplayValue('Initial Meeting');
-    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
-      target: { value: 'Edited title' },
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByPlaceholderText(/markdown/i), {
+      target: { value: '## Section 1\n- Typed point' },
     });
 
-    fireEvent.click(screen.getByText('All weeks'));
-    expect(await screen.findByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Stay here/i }));
-
-    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument();
-    expect(screen.getByDisplayValue('Edited title')).toBeInTheDocument();
-    expect(window.location.pathname).toBe('/bible-study/meeting-1');
+    // Not yet: the body debounce is ~1.2s. The save chain is async, so the
+    // advances await inside act to let the fired timer's promise settle.
+    await act(async () => { vi.advanceTimersByTime(1100); });
     expect(bibleData.saveMeeting).not.toHaveBeenCalled();
+
+    await act(async () => { vi.advanceTimersByTime(100); });
+    expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        id: 'meeting-1',
+        md: '## Section 1\n- Typed point',
+        // Derived Sections are written with the markdown, and publish is
+        // never flipped by autosave.
+        sections: expect.anything(),
+        published: false,
+      }),
+      mockUser.uid,
+    );
+    vi.useRealTimers();
   });
 
-  it('discarding leaves without saving', async () => {
+  it('autosaves title and date on their own shorter ~0.8s debounce', async () => {
     renderAt();
-
     await screen.findByDisplayValue('Initial Meeting');
+
+    vi.useFakeTimers();
     fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
       target: { value: 'Edited title' },
     });
 
-    fireEvent.click(screen.getByText('All weeks'));
-    fireEvent.click(await screen.findByRole('button', { name: /Discard and open/i }));
+    await act(async () => { vi.advanceTimersByTime(800); });
+    expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 'meeting-1', title: 'Edited title', published: false }),
+      mockUser.uid,
+    );
+    vi.useRealTimers();
+  });
 
+  it('shows "Couldn\'t save" when a write fails, and retries on the next edit', async () => {
+    vi.mocked(bibleData.saveMeeting)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce('meeting-123');
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+    await screen.findByText("Couldn't save");
+
+    // The next edit retries the write.
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title again' },
+    });
+    await screen.findByText('Saved · just now');
+    expect(bibleData.saveMeeting).toHaveBeenCalledTimes(2);
+  });
+
+  it('never prompts about unsaved changes, even mid-debounce', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+    // Navigation before the debounce fires — no prompt, and the pending edit
+    // is flushed rather than dropped.
+    fireEvent.click(screen.getByText('All weeks'));
+    vi.useRealTimers();
+
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).not.toBeInTheDocument();
     expect(await screen.findByText('Weeks index')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/bible-study');
-    expect(bibleData.saveMeeting).not.toHaveBeenCalled();
-  });
-  it('saving and leaving actually saves before navigating', async () => {
-    renderAt();
-
-    await screen.findByDisplayValue('Initial Meeting');
-    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
-      target: { value: 'Edited title' },
-    });
-
-    fireEvent.click(screen.getByText('All weeks'));
-    fireEvent.click(await screen.findByRole('button', { name: /Save, then open/i }));
-
-    // Coverage-instrumented runs are slow; give the async navigation room.
-    await waitFor(
-      () => expect(bibleData.saveMeeting).toHaveBeenCalled(),
-      { timeout: 5000 },
-    );
-    expect(await screen.findByText('Weeks index', {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });
