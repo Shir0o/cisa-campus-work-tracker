@@ -64,6 +64,7 @@ describe('BibleStudyEditor view', () => {
     });
   });
 
+
   it('renders authoring panes, loads the addressed meeting, and allows selecting sections', async () => {
     renderAt();
 
@@ -75,8 +76,8 @@ describe('BibleStudyEditor view', () => {
     const secButtons = screen.getAllByText('Section 2');
     fireEvent.click(secButtons[0]);
 
-    // Save draft — it targets the addressed meeting, never a new document
-    const saveBtn = screen.getByRole('button', { name: /Save draft/i });
+    // Save — it targets the addressed meeting, never a new document
+    const saveBtn = screen.getByRole('button', { name: /^Save$/i });
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -86,6 +87,38 @@ describe('BibleStudyEditor view', () => {
         mockUser.uid,
       );
     });
+  });
+
+  it('saves with ⌘S / Ctrl+S while dirty and never publishes', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+    fireEvent.change(screen.getByPlaceholderText('Meeting title'), {
+      target: { value: 'Edited title' },
+    });
+
+    fireEvent.keyDown(document, { key: 's', metaKey: true });
+
+    await waitFor(() => {
+      expect(bibleData.saveMeeting).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 'meeting-1', title: 'Edited title', published: false }),
+        mockUser.uid,
+      );
+    });
+  });
+
+  it('⌘S with nothing unsaved saves nothing', async () => {
+    renderAt();
+
+    await screen.findByDisplayValue('Initial Meeting');
+    fireEvent.keyDown(document, { key: 's', metaKey: true });
+
+    // Give any wrongly-dispatched save room to fail the test.
+    await vi.waitFor(
+      () => expect(bibleData.saveMeeting).not.toHaveBeenCalled(),
+      { timeout: 50, interval: 10 },
+    );
   });
 
   it('handles toolbar insertions into markdown textarea', async () => {
