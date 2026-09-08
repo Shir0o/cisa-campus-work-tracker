@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import BibleStudyEditor from '../views/BibleStudyEditor';
@@ -106,6 +106,42 @@ describe('BibleStudyEditor view', () => {
         </Routes>
       </BrowserRouter>,
     );
+  }
+
+  // The preview IS the reader (#890, ADR 0014), and the reader mirrors the
+  // visible panel through an IntersectionObserver (#914). The global jsdom
+  // stub in setup.ts is inert, so these tests install the same per-test
+  // stub StudyReaderView.test.tsx uses — the counter is the read model, so
+  // firing the observer is how a test asserts which Section the preview is
+  // actually showing.
+  function stubIntersectionObserver() {
+    let callback: IntersectionObserverCallback | null = null;
+    const observed: Element[] = [];
+    class StubObserver {
+      constructor(cb: IntersectionObserverCallback) {
+        callback = cb;
+      }
+      observe(target: Element) {
+        observed.push(target);
+      }
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', StubObserver);
+    return {
+      observed,
+      fire: (target: Element, isIntersecting: boolean) => {
+        act(() => {
+          callback?.(
+            [{ target, isIntersecting } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          );
+        });
+      },
+    };
   }
 
   beforeEach(() => {
@@ -337,6 +373,147 @@ describe('BibleStudyEditor view', () => {
 
     expect(await screen.findByText("This week doesn't exist.")).toBeInTheDocument();
     expect(screen.getByText('All weeks')).toBeInTheDocument();
+  });
+
+  // #920 — the preview follows the caret's Section instead of restarting.
+  // The reader is keyed on the caret's Section index, so React discards and
+  // rebuilds it on every caret move: a fresh reducer starting at the first
+  // Section, a fresh scroll container at the top, an empty Blank map. These
+  // tests assert the observable state at this seam — the reader's counter
+  // (its read model), a revealed Blank staying revealed, the textarea's
+  // selection, and the preview's rendered content — never render counts.
+  describe('preview follows the caret (#920)', () => {
+    // A Blank in Section 1's first point, so a reveal key is deterministic
+    // and an edit elsewhere in the document leaves the Section intact.
+    const BLANK_MD = '## Section 1\n- Peace with God is a [[standing]], not a mood.\n\n## Section 2\n- Point 2';
+
+    it('scrolls the preview to the caret\'s Section, not to the first one', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      // The preview starts at Section 1 — the counter's read model says so.
+      const header = screen.getByTestId('reader-header');
+      expect(within(header).getByText('01 / 02')).toBeInTheDocument();
+
+      // Move the caret into Section 2. The follow path is the same jump the
+      // Section index uses, so the read model moves with it — no observer
+      // fire needed. A keyed reader would instead be discarded and rebuilt
+      // here, its fresh reducer back at the first Section.
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      fireEvent.select(area, {
+        target: { selectionStart: BLANK_MD.indexOf('## Section 2') },
+      });
+
+      expect(within(screen.getByTestId('reader-header')).getByText('02 / 02')).toBeInTheDocument();
+    });
+
+    it('keeps a revealed Blank revealed after an edit elsewhere in the document', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      // Reveal the Blank in the preview.
+      fireEvent.click(screen.getByRole('button', { name: 'Blank, tap to reveal' }));
+      expect(screen.getByRole('button', { name: 'standing' })).toBeInTheDocument();
+
+      // Move the caret into Section 2 — the keyed reader used to be
+      // discarded and rebuilt here, wiping the reveal — then edit there.
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      fireEvent.select(area, {
+        target: { selectionStart: BLANK_MD.indexOf('## Section 2') },
+      });
+      fireEvent.change(area, {
+        target: { value: BLANK_MD + '\n- typed in Section 2' },
+      });
+
+      expect(screen.getByRole('button', { name: 'standing' })).toBeInTheDocument();
+    });
+
+    it('keeps the preview\'s scroll position across an edit', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      const io = stubIntersectionObserver();
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      // Scroll the preview to Section 2 — the deck's own scroll position.
+      const deck = screen.getByTestId('reader-deck');
+      deck.scrollTop = 120;
+      const panel2 = io.observed.find(
+        (el) => (el as HTMLElement).dataset.sectionPanel === '1',
+      );
+      expect(panel2, 'Section 2 panel should be observed').toBeDefined();
+      io.fire(panel2!, true);
+      expect(within(screen.getByTestId('reader-header')).getByText('02 / 02')).toBeInTheDocument();
+
+      // An edit that moves the caret into another Section must not reset the
+      // preview to the top: the reader is not remounted, so the deck node —
+      // and its scroll position — survives.
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      fireEvent.select(area, {
+        target: { selectionStart: BLANK_MD.indexOf('## Section 2') },
+      });
+      fireEvent.change(area, {
+        target: { value: BLANK_MD + '\n- typed in Section 2' },
+      });
+
+      expect(screen.getByTestId('reader-deck').scrollTop).toBe(120);
+    });
+
+    it('never moves the textarea\'s selection when the preview scrolls', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      const io = stubIntersectionObserver();
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      // The caret sits in Section 1.
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      fireEvent.select(area, { target: { selectionStart: 0 } });
+      expect(area.selectionStart).toBe(0);
+
+      // Scroll the preview to Section 2 — the textarea's selection must not
+      // follow. Tracking is strictly one-way: the reader mirrors the visible
+      // panel into its own read model and never writes back to the editor.
+      const panel2 = io.observed.find(
+        (el) => (el as HTMLElement).dataset.sectionPanel === '1',
+      );
+      expect(panel2, 'Section 2 panel should be observed').toBeDefined();
+      io.fire(panel2!, true);
+      expect(within(screen.getByTestId('reader-header')).getByText('02 / 02')).toBeInTheDocument();
+
+      expect(area.selectionStart).toBe(0);
+      expect(area.selectionEnd).toBe(0);
+    });
+
+    it('still reflects markdown typed but not saved', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      fireEvent.change(area, {
+        target: { value: BLANK_MD + '\n\n## Brand new\n- typed but not saved' },
+      });
+
+      // The preview renders the unsaved Section; nothing was saved.
+      expect(screen.getAllByText('Brand new').length).toBeGreaterThanOrEqual(1);
+      expect(bibleData.saveMeeting).not.toHaveBeenCalled();
+    });
   });
 
   afterEach(() => {

@@ -26,6 +26,15 @@ export type StudyReaderViewProps = {
    * correct; falling back silently is not).
    */
   staleDateLabel?: string | null;
+  /**
+   * The Section the reader should be showing, when something outside the
+   * reader owns the position — the editor's preview follows the author's
+   * caret this way (#920). When it changes, the reader scrolls to that
+   * panel through the same jump the Section index uses; the reader is never
+   * remounted, so its state (scroll position, revealed Blanks) survives.
+   * The public route omits it and the reader owns its own position.
+   */
+  followSectionIndex?: number;
 };
 
 // Pads a 1-based Section index for the counter and the index rows: the +1 is
@@ -109,7 +118,11 @@ const Panel: React.FC<{
   </section>
 );
 
-const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLabel = null }) => {
+const StudyReaderView: React.FC<StudyReaderViewProps> = ({
+  meeting,
+  staleDateLabel = null,
+  followSectionIndex,
+}) => {
   const sections: Section[] = meeting.sections;
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLElement | null)[]>([]);
@@ -177,6 +190,16 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({ meeting, staleDateLab
     // will be re-mirrored by the observer when the panel arrives.
     panelRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // The editor's preview follows the author's caret (#920): when the Section
+  // the preview should show changes, scroll to that panel through the same
+  // jump the Section index uses. The reader is never remounted, so its state
+  // — scroll position, revealed Blanks — survives the caret's moves. The
+  // public route omits the prop and the reader owns its own position.
+  useEffect(() => {
+    if (followSectionIndex === undefined) return;
+    handleJump(followSectionIndex);
+  }, [followSectionIndex]);
 
   return (
     <div className="w-full h-full min-h-0 bg-background text-on-surface relative overflow-hidden flex flex-col">
