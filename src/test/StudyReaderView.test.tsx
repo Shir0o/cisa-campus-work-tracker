@@ -403,5 +403,22 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(screen.getByTestId('peek-0')).toHaveTextContent('What suffering is doing');
       expect(screen.getByTestId('reader-end')).toBeInTheDocument();
     });
+
+    it('dismisses the popover on outside click or Escape', () => {
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      fireEvent.click(screen.getByLabelText('Text size'));
+      expect(screen.getByTestId('text-size-popover')).toBeInTheDocument();
+
+      // Outside click closes it.
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByTestId('text-size-popover')).toBeNull();
+
+      // Reopen, then Escape closes it.
+      fireEvent.click(screen.getByLabelText('Text size'));
+      expect(screen.getByTestId('text-size-popover')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('text-size-popover')).toBeNull();
+    });
   });
 });

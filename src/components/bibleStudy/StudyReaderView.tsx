@@ -227,6 +227,29 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   // built on; the card's inset never changes with it.
   const [typeSize, setTypeSize] = useState<ReaderTypeSize>(readStoredTypeSize);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+
+  // The popover dismisses on outside click or Escape, the codebase's
+  // transient-surface pattern (StagePicker, DatePicker, the reader's own
+  // index dialog) — a student who opens it and taps elsewhere gets it out
+  // of the way.
+  useEffect(() => {
+    if (!typeMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) {
+        setTypeMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTypeMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [typeMenuOpen]);
 
   const chooseTypeSize = (size: ReaderTypeSize) => {
     setTypeSize(size);
@@ -331,7 +354,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           {/* The text-size control (#923): the student sets the type size,
               remembered in that browser's storage. The trigger is a small
               "A" button; the popover offers the agreed range. */}
-          <div className="relative">
+          <div className="relative" ref={typeMenuRef}>
             <button
               type="button"
               aria-label={t('reader.text_size')}
