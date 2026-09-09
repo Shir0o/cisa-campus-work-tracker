@@ -126,7 +126,7 @@ The fact that someone recorded who was at a Gathering — as distinct from a Gat
 _Avoid_: Marked, complete, closed
 
 **Present mode**:
-The full-screen display of an Entry point's QR code, held up in the room for students to scan — white ground, screen kept awake. Showing the code is not an admin action: whoever holds the phone is often not a Full-timer. Entered from the Weeks index or a week's editor via "Show QR"; leaving returns to the Weeks index, never the home page.
+The full-screen display of an Entry point's QR code, held up in the room for students to scan — white ground, screen kept awake. Showing the code is not an admin action: whoever holds the phone is often not a Full-timer. Entered from the Weeks index or a week's editor via "Show QR"; leaving returns to whoever showed the code — the week's editor when Show QR was pressed there, the Weeks index when it was pressed there or the mode was entered directly (a pasted link, a relaunch) — never the home page.
 _Avoid_: QR page, QR screen, projector view
 
 **Weeks index**:

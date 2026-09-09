@@ -788,7 +788,7 @@ export default function BibleStudyEditor() {
             </div>
             {entryPoint && (
               <Link
-                to={`/bible-study/present?ep=${entryPoint.slug}`}
+                to={`/bible-study/present?ep=${entryPoint.slug}&meeting=${meetingId}`}
                 className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
               >
                 Show QR

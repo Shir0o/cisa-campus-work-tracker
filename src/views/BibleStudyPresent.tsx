@@ -27,6 +27,7 @@ type WakeLockSentinelLike = { release: () => Promise<void> };
 export default function BibleStudyPresent() {
   const [searchParams] = useSearchParams();
   const epSlug = searchParams.get('ep');
+  const backMeeting = searchParams.get('meeting');
 
   const [entryPoint, setEntryPoint] = useState<EntryPoint | null>(null);
   const [entryPointLoaded, setEntryPointLoaded] = useState(false);
@@ -144,10 +145,21 @@ export default function BibleStudyPresent() {
   }
   const url = entryPointUrl(entryPoint.slug);
 
+  // Leave returns to whoever showed the code: the week's editor when Show QR
+  // was pressed there, the Weeks index otherwise (direct entry, a pasted
+  // link, a relaunch). The fallback keeps the documented invariant — leaving
+  // never lands on the home page. The target is validated to a plain meeting
+  // id so the query string can never steer an authenticated holder anywhere
+  // else in the app.
+  const backTo =
+    backMeeting && /^[A-Za-z0-9-]+$/.test(backMeeting)
+      ? `/bible-study/${backMeeting}`
+      : '/bible-study';
+
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center p-6 relative">
       <Link
-        to="/bible-study"
+        to={backTo}
         className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
         aria-label="Leave present mode"
       >
