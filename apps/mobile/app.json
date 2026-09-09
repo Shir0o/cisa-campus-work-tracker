@@ -3,7 +3,7 @@
     "name": "CISA Campus Work Tracker",
     "slug": "cisa-campus",
     "scheme": "cisacampus",
-    "version": "0.1.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
