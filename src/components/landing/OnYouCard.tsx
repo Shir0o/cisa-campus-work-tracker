@@ -78,8 +78,6 @@ export default function OnYouCard({
   // Completed HERE, this visit. A card you finish greys in place and clears when
   // you leave — never under your cursor while you are still reading it.
   const [completedHere, setCompletedHere] = useState<Set<string>>(new Set());
-  // Opened HERE, this visit — the same rule as completedHere, on the seen axis.
-  const [openedHere, setOpenedHere] = useState<Set<string>>(new Set());
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   // Seen and completed change under the memos below, not in the props, so the
@@ -292,7 +290,6 @@ export default function OnYouCard({
                     meName={meName}
                     completed={isCompleted(stack)}
                     onOpenContact={handleOpenContact}
-                    onOpened={(s) => setOpenedHere((prev) => (prev.has(s.id) ? prev : new Set(prev).add(s.id)))}
                     onComplete={handleComplete}
                     onToast={onToast}
                     mobile={mobile}
