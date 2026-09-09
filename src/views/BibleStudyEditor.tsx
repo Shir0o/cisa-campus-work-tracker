@@ -586,6 +586,13 @@ export default function BibleStudyEditor() {
             >
               Activity
             </button>
+            <button
+              onClick={() => insertBlockAtSectionEnd('Apply: ', 7)}
+              onMouseDown={(e) => e.preventDefault()}
+              className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-ochre-soft)] text-on-surface"
+            >
+              Apply
+            </button>
           </div>
 
           <textarea

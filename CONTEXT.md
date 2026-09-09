@@ -106,8 +106,8 @@ A proof-text cited mid-thought — scripture where the reference leads and the w
 _Avoid_: Passage, quotation, pull quote
 
 **Prompt**:
-The part of a Section that puts something to the room, in one of three kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
-_Avoid_: Question (bare), exercise, discussion question, application
+The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
+_Avoid_: Question (bare), exercise, discussion question
 
 **Blank**:
 A word hidden in a Section's outline points or Passage that a reader taps to reveal — the fill-in-the-blank device, used to interrupt passive reading. Whether a Meeting uses Blanks at all is the author's choice, per Meeting.

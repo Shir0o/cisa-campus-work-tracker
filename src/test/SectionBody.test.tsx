@@ -188,6 +188,23 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(screen.getByText('Turn to your neighbor')).toBeInTheDocument();
   });
 
+  it('renders an Apply prompt with its own label and the ochre tone (#919)', () => {
+    const s = section({
+      content: [{ kind: 'prompt', prompt: { kind: 'apply', text: 'Name one thing you will do this week.' } }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    // The label is Apply, not the text of the prompt.
+    expect(screen.getByText('Apply')).toBeInTheDocument();
+    expect(screen.getByText('Name one thing you will do this week.')).toBeInTheDocument();
+
+    // The ochre tone from the existing palette — warm against the sage,
+    // clay and slate already in use.
+    const card = screen.getByText('Apply').closest('[data-block-kind="prompt"]')!;
+    expect(card.className).toContain('border-l-[var(--t-ochre)]');
+    expect(screen.getByText('Apply').className).toContain('text-[var(--t-ochre)]');
+  });
+
   it('renders a Passage with no citation as a bare quote (#921)', () => {
     const s = section({
       content: [{ kind: 'passage', passage: { before: 'The words stand alone.' } }],

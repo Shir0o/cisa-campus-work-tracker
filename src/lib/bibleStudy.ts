@@ -1,7 +1,7 @@
 // Bible study (#822) — the web app has no dependency on @cisa/core (mobile-only
 // package), so this mirrors packages/core/src/bibleStudy.ts for the web side;
 // keep the two in step.
-export type PromptKind = 'question' | 'discuss' | 'activity';
+export type PromptKind = 'question' | 'discuss' | 'activity' | 'apply';
 
 export type Blank = { before: string; word: string; after: string };
 export type Text = { before: string };
@@ -171,7 +171,7 @@ export function parseMeeting(md: string): Section[] {
  * The Section body grammar (ADR 0013 — read as written): consecutive `>`
  * lines are one Passage block (last line = citation), `Verse:` lines are
  * Verse blocks (reference leading, text following — #918), `Question:/Discuss:/`
- * `Activity:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks,
+ * `Activity:/Apply:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks,
  * `1.`-style runs are number-list blocks (each point loses its number
  * prefix — the <ol> marker renders it), and any other non-blank run is a
  * prose block carried verbatim as markdown for the renderer. Nothing is
@@ -265,7 +265,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     }
     flushQuote();
 
-    const promptMatch = line.match(/^(question|discuss|activity):\s*(.*)$/i);
+    const promptMatch = line.match(/^(question|discuss|activity|apply):\s*(.*)$/i);
     if (promptMatch) {
       flushList();
       flushProse();
