@@ -39,15 +39,22 @@ function readIndexCss(): string {
 /**
  * Strip comments and pull out each top-level `:root` / `.dark` rule block.
  * The file's `:root` and `.dark` blocks live under `@layer base { ... }`,
- * which we don't need to track — only the selector and the body.
+ * which we don't need to track — only the selector and the body. The light
+ * palette's selector is the list `:root, .light` (#937: a nested Light
+ * preview host must resolve the light values inside a Dark app window), so
+ * `:root` may be followed by a comma as well as an opening brace.
  */
 function extractBlocks(css: string): TokenBlock[] {
   const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const blocks: TokenBlock[] = [];
   for (const selector of ROOT_SELECTORS) {
-    // Match `selector { ... }` — the body may itself contain nested braces
-    // (it doesn't today, but be safe). Track depth.
-    const re = new RegExp(`${escapeForRegex(selector)}\\s*\\{`, 'g');
+    // Match `selector { ... }` or a selector list opening with `selector,`
+    // — the body may itself contain nested braces (it doesn't today, but be
+    // safe). Track depth.
+    const re = new RegExp(
+      `${escapeForRegex(selector)}(?:\\s*\\{|\\s*,)`,
+      'g',
+    );
     let match: RegExpExecArray | null;
     while ((match = re.exec(stripped)) !== null) {
       const open = match.index + match[0].length;

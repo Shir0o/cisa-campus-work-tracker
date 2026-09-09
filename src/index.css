@@ -116,7 +116,8 @@
 }
 
 @layer base {
-  :root {
+  :root,
+  .light {
     /* Ink — neutral near-monochrome shell, data-hue chroma up. Source: the
        design project's Foundations artboard (Main.dc.html). */
     --bg: #FFFFFF;
@@ -391,6 +392,29 @@
     --reader-well: var(--bg);
     --reader-card-edge: var(--border);
     --reader-elev: 0 1px 2px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.45);
+  }
+  /* A Light reader inside a Dark app window (#937): the editor preview
+     themes its phone independently of the app's own theme, so the phone
+     host carries the app's `light` class and a data-theme inside whatever
+     window theme the author is in. This scoped rule repeats the base
+     (light) pair swap so it beats `.dark .reader-card-surface` — equal
+     specificity, later in the file.
+
+     Keyed on the data-theme ATTRIBUTE, not the `light` class: the app's
+     theme provider puts class `light`/`dark` on the document root, so a
+     `.light .reader-card-surface` form would also match every reader card
+     under a LIGHT app window and override a Dark preview host (equal
+     specificity, later in the file) — the card would sink below its
+     ground, the mirror of the #922 defect. The attribute exists only on
+     the preview host, so it is host-local. Same values as the base rule;
+     no new colour tokens. */
+  [data-theme="light"] .reader-card-surface {
+    --reader-ground: var(--panel);
+    --reader-card: var(--bg);
+    --reader-well: var(--panel);
+    --reader-card-edge: transparent;
+    --reader-elev: 0 1px 2px rgba(12, 14, 18, 0.07), 0 3px 8px rgba(12, 14, 18, 0.05),
+      0 14px 32px rgba(12, 14, 18, 0.10);
   }
 
   body {

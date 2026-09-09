@@ -374,12 +374,11 @@ export default function BibleStudyEditor() {
     syncCaretSection(el);
   };
 
-  // The phone is CSS-scaled into the pane (#916): the scale comes from the
-  // pane's measured size, never a fixed constant. Before the first
-  // ResizeObserver tick (and in jsdom, which has no layout) the pane size is
-  // unknown, so the scale sits at the legibility floor — previewScale(0, 0)
-  // clamps to it.
-  const scale = previewScale(paneSize?.width ?? 0, paneSize?.height ?? 0);
+  // The phone fills the pane's width and keeps its ratio (#937); on a short
+  // window it is taller than the pane and the preview column scrolls. In
+  // jsdom (no layout) the pane size stays unknown and the scale sits at the
+  // legibility floor — previewScale(0) clamps to it.
+  const scale = previewScale(paneSize?.width ?? 0);
 
   if (!loaded) {
     return (
@@ -648,12 +647,15 @@ export default function BibleStudyEditor() {
           )}
         </div>
 
-        {/* Right Pane: Live Phone Preview & QR. The pane itself never
-            scrolls (#916): the phone takes the height genuinely available
-            and the Present mode panel sits beneath it as a row — the only
-            scroller in the preview is the reader's own deck, the thing
-            under test. */}
-        <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-4 gap-4 overflow-hidden">
+        {/* Right Pane: Live Phone Preview & QR (#937). The phone fills the
+            pane's width at its own ratio, so on a short window it is taller
+            than the pane and the column scrolls — the caption row stays
+            pinned above a single scroller holding the phone and the Present
+            mode panel, which move together. Amends #916, which kept the
+            phone whole and the pane scroll-free at the cost of a small,
+            letterboxed phone. The reader's own deck stays the only scroller
+            inside the phone, the thing under test. */}
+        <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-4 overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-on-surface-variant">Live Preview</div>
             <div className="flex bg-surface-variant rounded-full p-0.5 text-[11px]">
@@ -678,10 +680,9 @@ export default function BibleStudyEditor() {
 
           {/* The preview IS the reader (#890, #920, ADR 0014): the same
               StudyReaderView the public route renders, at true phone
-              dimensions (390×844) and CSS-scaled to fit the pane — the old
-              hand-built 320×520 frame with overflow-hidden showed LESS than
-              the real phone. It renders the unsaved markdown, follows the
-              caret's Section one-way, and Blanks reveal for real.
+              dimensions (390×844) and CSS-scaled into the pane — it renders
+              the unsaved markdown, follows the caret's Section one-way, and
+              Blanks reveal for real.
 
               The reader is never remounted on a caret move: it accepts the
               Section the preview should be showing and scrolls to that
@@ -699,57 +700,83 @@ export default function BibleStudyEditor() {
               that left the dead band inside the bezel, the side slivers,
               and the frame overflowing a narrow pane. The bezel, border
               and shadow live on the outer box, the one that matches the
-              picture. */}
+              picture.
+
+              The frame themes the phone independently of the app's own
+              theme (#937): the inner box carries the `light`/`dark` class
+              the app's theme provider puts on the document root — so the
+              reader resolves the chosen palette's values — plus a
+              host-local data-theme attribute that the reader-card theme
+              mapping is keyed on. Neither the class nor the attribute
+              collides with the app root's own theme marker, so the phone
+              renders the chosen theme even when the app window is in the
+              other theme.
+
+              The column (not the reader's deck) scrolls when the phone is
+              taller than the pane: the phone and the Present row sit in one
+              scroll region beneath the pinned caption. The two flex spacers
+              centre the phone when it fits and collapse when it overflows,
+              so flex centring never clips the phone's top out of reach. */}
           <div
             ref={previewPaneRef}
-            className="flex-1 min-h-0 flex items-center justify-center"
+            data-testid="preview-scroll"
+            className="mt-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar"
           >
-            <div
-              data-testid="preview-frame"
-              className="overflow-hidden shadow-xl border border-outline-variant"
-              style={{
-                width: PREVIEW_PHONE_WIDTH * scale,
-                height: PREVIEW_PHONE_HEIGHT * scale,
-                borderRadius: Math.round(28 * scale),
-              }}
-            >
-              <div
-                className={previewTheme === 'dark' ? 'bg-[#0A0A0B] text-[#FAFAFA]' : 'bg-white text-[#0A0A0B]'}
-                style={{
-                  width: PREVIEW_PHONE_WIDTH,
-                  height: PREVIEW_PHONE_HEIGHT,
-                  transform: `scale(${scale})`,
-                  transformOrigin: 'top left',
-                }}
-                data-theme={previewTheme === 'dark' ? 'dark' : 'light'}
-              >
-                <StudyReaderView
-                  meeting={previewMeeting}
-                  staleDateLabel={null}
-                  followSectionIndex={Math.max(0, caretSectionIndex)}
-                />
+            <div className="min-h-full flex flex-col">
+              <div className="flex-1 min-h-0" />
+              <div className="flex justify-center shrink-0">
+                <div
+                  data-testid="preview-frame"
+                  className="overflow-hidden shadow-xl border border-outline-variant"
+                  style={{
+                    width: PREVIEW_PHONE_WIDTH * scale,
+                    height: PREVIEW_PHONE_HEIGHT * scale,
+                    borderRadius: Math.round(28 * scale),
+                  }}
+                >
+                  <div
+                    className={
+                      previewTheme === 'dark'
+                        ? 'dark bg-[#0A0A0B] text-[#FAFAFA]'
+                        : 'light bg-white text-[#0A0A0B]'
+                    }
+                    style={{
+                      width: PREVIEW_PHONE_WIDTH,
+                      height: PREVIEW_PHONE_HEIGHT,
+                      transform: `scale(${scale})`,
+                      transformOrigin: 'top left',
+                    }}
+                    data-theme={previewTheme === 'dark' ? 'dark' : 'light'}
+                  >
+                    <StudyReaderView
+                      meeting={previewMeeting}
+                      staleDateLabel={null}
+                      followSectionIndex={Math.max(0, caretSectionIndex)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 min-h-4" />
+              {/* Present handoff — the old decorative SVG encoded nothing;
+                  the real code lives in present mode, generated from local
+                  state at the entry point's durable URL. */}
+              <div className="bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3 shrink-0">
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold text-on-surface">Present mode</div>
+                  <div className="text-[11px] text-on-surface-variant truncate font-mono">
+                    {entryPoint ? entryPointUrl(entryPoint.slug) : 'No entry point points at this study yet'}
+                  </div>
+                </div>
+                {entryPoint && (
+                  <Link
+                    to={`/bible-study/present?ep=${entryPoint.slug}`}
+                    className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
+                  >
+                    Show QR
+                  </Link>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Present handoff — the old decorative SVG encoded nothing; the
-              real code lives in present mode, generated from local state at
-              the entry point's durable URL. */}
-          <div className="bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-on-surface">Present mode</div>
-              <div className="text-[11px] text-on-surface-variant truncate font-mono">
-                {entryPoint ? entryPointUrl(entryPoint.slug) : 'No entry point points at this study yet'}
-              </div>
-            </div>
-            {entryPoint && (
-              <Link
-                to={`/bible-study/present?ep=${entryPoint.slug}`}
-                className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
-              >
-                Show QR
-              </Link>
-            )}
           </div>
         </div>
       </div>
