@@ -91,7 +91,10 @@ const Panel: React.FC<{
   // (offsetHeight/clientHeight are 0), so the panel never settles in tests —
   // the real browser supplies the truth. The effect re-runs on every render
   // so a revealed Blank or a theme change re-measures; the measurement is
-  // idempotent and cheap.
+  // idempotent and cheap. A ResizeObserver on the deck re-measures when the
+  // deck's height changes without a render — phone rotation, window resize,
+  // browser chrome show/hide — so a Section that now fits settles instead of
+  // clinging to the top.
   useLayoutEffect(() => {
     const card = cardRef.current;
     const peek = peekRef.current;
@@ -99,8 +102,15 @@ const Panel: React.FC<{
     if (!card || !peek || !panel) return;
     const deck = panel.parentElement;
     if (!deck) return;
-    const needed = card.offsetHeight + peek.offsetHeight + PANEL_TOP_PAD;
-    setSettles(needed <= deck.clientHeight);
+    const measure = () => {
+      const needed = card.offsetHeight + peek.offsetHeight + PANEL_TOP_PAD;
+      setSettles(needed <= deck.clientHeight);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(deck);
+    return () => observer.disconnect();
   });
 
   return (
