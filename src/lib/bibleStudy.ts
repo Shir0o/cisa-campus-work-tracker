@@ -654,17 +654,22 @@ export const PREVIEW_PHONE_WIDTH = 390;
 export const PREVIEW_PHONE_HEIGHT = 844;
 
 /**
- * The scale that fits the 390×844 phone into the preview pane (#937).
- * The phone fills the pane's WIDTH at its own ratio; the height ratio no
- * longer binds, because a phone taller than the pane scrolls inside the
- * preview column rather than shrinking to stay whole. Amends #916, which
- * took the smaller of the two ratios so the phone was always whole and
- * left it small and letterboxed on short windows. Clamped to a legibility
- * floor and never blown up past true size.
+ * The scale that fits the 390×844 phone into the preview pane (#916, #937).
+ * The phone takes the smaller of the pane's width and height ratios, so it is
+ * ALWAYS whole inside the pane: the preview column never scrolls and the
+ * reader's deck stays the only scroller, which keeps the phone's sticky
+ * chrome (meeting title, section counter, text-size control) permanently in
+ * view and lets the Present card sit pinned beneath the pane instead of
+ * below the fold. #937 had let the height ratio go so the phone could fill
+ * the width at full size and scroll inside the column instead; that is what
+ * pushed the Present card out of reach and let the scaled phone's chrome be
+ * clipped when the column moved. Clamped to a legibility floor (below it the
+ * column may still scroll) and never blown up past true size.
  */
-export function previewScale(paneWidth: number): number {
+export function previewScale(paneWidth: number, paneHeight = 0): number {
   const fillWidth = paneWidth / PREVIEW_PHONE_WIDTH;
-  return Math.min(1, Math.max(0.5, fillWidth));
+  const fit = paneHeight > 0 ? Math.min(fillWidth, paneHeight / PREVIEW_PHONE_HEIGHT) : fillWidth;
+  return Math.min(1, Math.max(0.5, fit));
 }
 
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {

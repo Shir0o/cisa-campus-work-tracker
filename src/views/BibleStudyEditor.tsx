@@ -374,11 +374,13 @@ export default function BibleStudyEditor() {
     syncCaretSection(el);
   };
 
-  // The phone fills the pane's width and keeps its ratio (#937); on a short
-  // window it is taller than the pane and the preview column scrolls. In
-  // jsdom (no layout) the pane size stays unknown and the scale sits at the
-  // legibility floor — previewScale(0) clamps to it.
-  const scale = previewScale(paneSize?.width ?? 0);
+  // The phone fits the pane on BOTH axes and keeps its ratio: on a short
+  // window it shrinks to stay whole rather than scrolling the preview
+  // column, so the reader's sticky chrome stays in view and the Present
+  // card below never falls out of reach. In jsdom (no layout) the pane
+  // size stays unknown and the scale sits at the legibility floor —
+  // previewScale(0, 0) clamps to it.
+  const scale = previewScale(paneSize?.width ?? 0, paneSize?.height ?? 0);
 
   if (!loaded) {
     return (
@@ -503,8 +505,12 @@ export default function BibleStudyEditor() {
         <div className="flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
           {/* #890: the toolbar holds only what goes INSIDE a Section —
               the Section itself is created by "+ Add section" in the
-              outline, never from a second place here. */}
-          <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30 flex-wrap">
+              outline, never from a second place here. Two rows: the
+              block inserters (Passage, Verse, Blank, the lists, the four
+              Prompt kinds) first, and the inline markdown emphasis
+              buttons (B, I) on their own second row. */}
+          <div className="flex flex-col gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30">
+            <div className="flex items-center gap-1.5 flex-wrap">
             <button
               onClick={() => insertBlockAtSectionEnd('> ', 2)}
               // #917: a toolbar click must not blur the textarea. The
@@ -530,23 +536,6 @@ export default function BibleStudyEditor() {
             >
               Blank
             </button>
-            <div className="w-px h-4 bg-outline-variant mx-1" />
-            <button
-              onClick={() => insertTextAtCursor('**', '**')}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-bold hover:bg-surface-variant"
-              aria-label="Bold"
-            >
-              B
-            </button>
-            <button
-              onClick={() => insertTextAtCursor('*', '*')}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs italic hover:bg-surface-variant"
-              aria-label="Italic"
-            >
-              I
-            </button>
             <button
               onClick={() => insertBlockAtSectionEnd('1. \n2. \n3. ', 3)}
               onMouseDown={(e) => e.preventDefault()}
@@ -563,7 +552,6 @@ export default function BibleStudyEditor() {
             >
               •
             </button>
-
             <button
               onClick={() => insertBlockAtSectionEnd('Question: ', 10)}
               onMouseDown={(e) => e.preventDefault()}
@@ -592,6 +580,26 @@ export default function BibleStudyEditor() {
             >
               Apply
             </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => insertTextAtCursor('**', '**')}
+              onMouseDown={(e) => e.preventDefault()}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-bold hover:bg-surface-variant"
+              aria-label="Bold"
+            >
+              B
+            </button>
+            <button
+              onClick={() => insertTextAtCursor('*', '*')}
+              onMouseDown={(e) => e.preventDefault()}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs italic hover:bg-surface-variant"
+              aria-label="Italic"
+            >
+              I
+            </button>
+            </div>
           </div>
 
           <textarea
@@ -647,14 +655,12 @@ export default function BibleStudyEditor() {
           )}
         </div>
 
-        {/* Right Pane: Live Phone Preview & QR (#937). The phone fills the
-            pane's width at its own ratio, so on a short window it is taller
-            than the pane and the column scrolls — the caption row stays
-            pinned above a single scroller holding the phone and the Present
-            mode panel, which move together. Amends #916, which kept the
-            phone whole and the pane scroll-free at the cost of a small,
-            letterboxed phone. The reader's own deck stays the only scroller
-            inside the phone, the thing under test. */}
+        {/* Right Pane: Live Phone Preview & QR. The phone fits the pane on
+            BOTH axes (#916, #937) — it shrinks to stay whole instead of
+            making the preview column scroll — so the reader's sticky chrome
+            (meeting title, section count, text-size control) is never out
+            of sight, and the Present card below the phone is a pinned,
+            separate card that never needs scrolling to reach. */}
         <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-4 overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-on-surface-variant">Live Preview</div>
@@ -700,7 +706,13 @@ export default function BibleStudyEditor() {
               that left the dead band inside the bezel, the side slivers,
               and the frame overflowing a narrow pane. The bezel, border
               and shadow live on the outer box, the one that matches the
-              picture.
+              picture. The outer box clips with `overflow: clip`, not
+              `hidden`: an overflow-hidden box is still programmatically
+              scrollable, and the reader's caret-follow jump (scrollIntoView)
+              scrolls every scrollable ancestor — a scrolled frame slid the
+              whole phone up under its own bezel and sliced the sticky
+              header off at the top. `clip` paints identically but can never
+              be scrolled.
 
               The frame themes the phone independently of the app's own
               theme (#937): the inner box carries the `light`/`dark` class
@@ -712,11 +724,10 @@ export default function BibleStudyEditor() {
               renders the chosen theme even when the app window is in the
               other theme.
 
-              The column (not the reader's deck) scrolls when the phone is
-              taller than the pane: the phone and the Present row sit in one
-              scroll region beneath the pinned caption. The two flex spacers
-              centre the phone when it fits and collapse when it overflows,
-              so flex centring never clips the phone's top out of reach. */}
+              The phone is centred by the two flex spacers; because it never
+              exceeds the pane the column is not a scroller — the reader's
+              deck is the only scroller in the preview, and the Present card
+              sits pinned below the scroller as its own card. */}
           <div
             ref={previewPaneRef}
             data-testid="preview-scroll"
@@ -727,7 +738,7 @@ export default function BibleStudyEditor() {
               <div className="flex justify-center shrink-0">
                 <div
                   data-testid="preview-frame"
-                  className="overflow-hidden shadow-xl border border-outline-variant"
+                  className="overflow-clip shadow-xl border border-outline-variant"
                   style={{
                     width: PREVIEW_PHONE_WIDTH * scale,
                     height: PREVIEW_PHONE_HEIGHT * scale,
@@ -756,27 +767,33 @@ export default function BibleStudyEditor() {
                   </div>
                 </div>
               </div>
-              <div className="flex-1 min-h-4" />
-              {/* Present handoff — the old decorative SVG encoded nothing;
-                  the real code lives in present mode, generated from local
-                  state at the entry point's durable URL. */}
-              <div className="bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3 shrink-0">
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-on-surface">Present mode</div>
-                  <div className="text-[11px] text-on-surface-variant truncate font-mono">
-                    {entryPoint ? entryPointUrl(entryPoint.slug) : 'No entry point points at this study yet'}
-                  </div>
-                </div>
-                {entryPoint && (
-                  <Link
-                    to={`/bible-study/present?ep=${entryPoint.slug}`}
-                    className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
-                  >
-                    Show QR
-                  </Link>
-                )}
+              <div className="flex-1 min-h-0" />
+            </div>
+          </div>
+
+          {/* Present handoff — the old decorative SVG encoded nothing; the
+              real code lives in present mode, generated from local state at
+              the entry point's durable URL. Pinned BELOW the preview
+              scroller as its own card, so Present mode and the URL never
+              require scrolling the phone out of the way. */}
+          <div
+            data-testid="present-card"
+            className="mt-4 bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3 shrink-0"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold text-on-surface">Present mode</div>
+              <div className="text-[11px] text-on-surface-variant truncate font-mono">
+                {entryPoint ? entryPointUrl(entryPoint.slug) : 'No entry point points at this study yet'}
               </div>
             </div>
+            {entryPoint && (
+              <Link
+                to={`/bible-study/present?ep=${entryPoint.slug}`}
+                className="px-3 py-1 bg-surface-variant rounded-full text-xs font-medium text-on-surface hover:opacity-80 whitespace-nowrap"
+              >
+                Show QR
+              </Link>
+            )}
           </div>
         </div>
       </div>

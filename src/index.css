@@ -417,6 +417,84 @@
       0 14px 32px rgba(12, 14, 18, 0.10);
   }
 
+  /* A theme island inside the opposite window theme needs the Tailwind
+     color tokens too, not just the raw palette. `@theme` declares every
+     `--color-*` token once on `:root` as `var(--raw-token)`, and a custom
+     property's var() references resolve at the element where it is
+     DECLARED — the root — so under a Dark window the `--color-on-surface`
+     utilities freeze to the Dark ink and cannot see a Light host below
+     them. That is why the Light preview phone rendered Dark-theme text:
+     white ink on the white card, near-invisible dims on the light ground
+     (#937 fixed the card surfaces; the utility colours were still frozen).
+     Redeclaring the tokens on the data-theme host makes each host resolve
+     them from its OWN raw palette and hand the resolved values down.
+     Keep in step with the `@theme` block above; no new colour values. */
+  [data-theme="light"],
+  [data-theme="dark"] {
+    --color-rail: var(--rail);
+    --color-rail-on: var(--rail-on);
+    --color-rail-on-dim: var(--rail-on-dim);
+    --color-rail-hover: var(--rail-hover);
+    --color-rail-selected: var(--rail-selected);
+    --color-rail-on-selected: var(--rail-on-selected);
+    --color-rail-line: var(--rail-line);
+    --color-primary: var(--primary);
+    --color-on-primary: var(--on-primary);
+    --color-primary-container: var(--primary-container);
+    --color-on-primary-container: var(--on-primary-container);
+    --color-secondary: var(--secondary);
+    --color-on-secondary: var(--on-secondary);
+    --color-secondary-container: var(--secondary-container);
+    --color-on-secondary-container: var(--on-secondary-container);
+    --color-tertiary: var(--tertiary);
+    --color-on-tertiary: var(--on-tertiary);
+    --color-tertiary-container: var(--tertiary-container);
+    --color-on-tertiary-container: var(--on-tertiary-container);
+    --color-error: var(--error);
+    --color-on-error: var(--on-error);
+    --color-error-container: var(--error-container);
+    --color-on-error-container: var(--on-error-container);
+    --color-stage-accent: var(--stage-accent);
+    --color-stage-accent-soft: var(--stage-accent-soft);
+    --color-stage-amber: var(--stage-amber);
+    --color-stage-amber-soft: var(--stage-amber-soft);
+    --color-stage-teal: var(--stage-teal);
+    --color-stage-teal-soft: var(--stage-teal-soft);
+    --color-stage-violet: var(--stage-violet);
+    --color-stage-violet-soft: var(--stage-violet-soft);
+    --color-accent: var(--accent);
+    --color-accent-strong: var(--accent-strong);
+    --color-accent-on: var(--accent-on);
+    --color-accent-soft: var(--accent-soft);
+    --color-accent-line: var(--accent-line);
+    --color-board-indigo: var(--t-indigo);
+    --color-board-teal: var(--t-teal);
+    --color-board-emerald: var(--t-sage);
+    --color-board-amber: var(--t-clay);
+    --color-board-orange: var(--t-ochre);
+    --color-board-crimson: var(--t-rose);
+    --color-board-plum: var(--t-plum);
+    --color-board-ocean: var(--t-slate);
+    --color-board-rose: var(--t-rose);
+    --color-background: var(--background);
+    --color-on-background: var(--on-background);
+    --color-surface: var(--surface);
+    --color-on-surface: var(--on-surface);
+    --color-surface-variant: var(--surface-variant);
+    --color-on-surface-variant: var(--on-surface-variant);
+    --color-outline: var(--outline);
+    --color-outline-variant: var(--outline-variant);
+    --color-surface-container-lowest: var(--surface-container-lowest);
+    --color-surface-container-low: var(--surface-container-low);
+    --color-surface-container: var(--surface-container);
+    --color-surface-container-high: var(--surface-container-high);
+    --color-surface-container-highest: var(--surface-container-highest);
+    --color-success: var(--success);
+    --color-success-container: var(--success-container);
+    --color-warning: var(--warning);
+    --color-warning-container: var(--warning-container);
+  }
+
   body {
     @apply bg-background text-on-background font-sans antialiased transition-colors duration-300;
     font-size: 16px;

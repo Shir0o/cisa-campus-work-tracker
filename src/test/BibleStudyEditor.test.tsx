@@ -698,7 +698,12 @@ describe('BibleStudyEditor view', () => {
     expect(frame.style.width).toBe('195px');
     expect(frame.style.height).toBe('422px');
     // The bezel, border and shadow hug the box that matches the picture.
-    expect(frame.className).toMatch(/overflow-hidden/);
+    // The frame clips with `overflow: clip`, not `hidden`: an overflow-
+    // hidden box is still programmatically scrollable, and the reader's
+    // caret-follow jump scrolled it, sliding the phone up under its bezel
+    // and slicing the sticky header off at the top.
+    expect(frame.className).toMatch(/overflow-clip/);
+    expect(frame.className).not.toMatch(/overflow-hidden/);
     expect(frame.className).toMatch(/border/);
     expect(frame.className).toMatch(/shadow/);
 

@@ -347,7 +347,12 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
             {staleDateLabel}
           </span>
         )}
-        <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80 truncate min-w-0">
+        {/* The Meeting title. It wraps rather than truncates: capping the
+            text at the header's width hides the week's name exactly where
+            the preview exists to show the whole thing. `min-w-0` keeps the
+            flex row able to shrink it so the size control and counter never
+            get pushed out. */}
+        <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80 min-w-0 leading-snug">
           {meeting.title}
         </div>
         <div className="ml-auto flex items-center gap-1 shrink-0">
