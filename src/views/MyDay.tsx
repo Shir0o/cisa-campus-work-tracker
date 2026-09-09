@@ -1173,9 +1173,9 @@ export default function MyDay() {
         {uid && <AskStack className="mt-8" />}
 
         {/* ── On you + the pointer card — My Day is a skim dashboard of your
-            own work (#943). "On you" is a bento card among the others; beside
-            it sits the pointer card, a count of unseen team activity and a
-            door to /around. Full-timers only — a Trainee's grid closes up
+            own work (issue 943). "On you" is a bento card among the others;
+            beside it sits the pointer card, a count of unseen team activity and
+            a door to /around. Full-timers only — a Trainee's grid closes up
             around the On you card. */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8 items-start">
           <div className="lg:col-span-8 min-w-0">
@@ -1290,8 +1290,8 @@ export default function MyDay() {
         />
 
         {/* ── Bento: the personal column, then Your sheep + Your week. The
-            column is never lent anywhere (#943) — the feed is gone, so the
-            bento is the same every day. ── */}
+            column is never lent anywhere (issue 943) — the feed is gone, so
+            the bento is the same every day. ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
           <div className="flex flex-col gap-10 min-w-0">
             {personalColumn}
