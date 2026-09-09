@@ -1713,7 +1713,10 @@
     "nothing_new": "Nada nuevo por ahora",
     "try_all": "Todo lo que ya abriste está en Todos.",
     "show_all": "Mostrar todo",
-    "open_their_page": "Abrir su página"
+    "open_their_page": "Abrir su página",
+    "recent_activity_note": "Actividad reciente del equipo: la misma ventana que siempre cubrió el feed de Mi Día.",
+    "unseen_team_activity": "cosas que aún no viste",
+    "see_around": "Ver"
   },
   "thread": {
     "kind_comment": "Comentario",

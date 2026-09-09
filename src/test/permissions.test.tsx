@@ -116,7 +116,7 @@ describe('canAccessRoute()', () => {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
     manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -276,12 +276,13 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages', '/questions']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages', '/questions', '/around']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
     expect(adminMoreLabels).toEqual([
       'Answered',
+      'Around the team',
       'Bible study',
       'Gatherings',
       'Gospel',
@@ -537,6 +538,37 @@ describe('Questions for the team as its own destination', () => {
   });
 });
 
+// ── Around the team, moved out of the feed (#943) ──────────────────────────
+// The destination is Full-timer-only: the team's activity is pastoral detail,
+// and a Trainee's My Day shows their own work and nothing else.
+
+describe('Around the team as its own destination (#943)', () => {
+  it('is reachable by a Full-timer and refused to a Trainee', () => {
+    expect(canAccessRoute('admin', '/around')).toBe(true);
+    expect(canAccessRoute('manager', '/around')).toBe(false);
+    expect(canAccessRoute('operator', '/around')).toBe(false);
+    expect(canAccessRoute('viewer', '/around')).toBe(false);
+    expect(canAccessRoute(null, '/around')).toBe(false);
+  });
+
+  it('is labelled "Around the team" — the phrase the team already says', () => {
+    const item = NAV_ITEMS.find((i) => i.href === '/around');
+    expect(item).toBeDefined();
+    expect(item!.label).toBe('Around the team');
+    expect(item!.minRole).toBe('admin');
+  });
+
+  it('lands in the More menu for a Full-timer, never in the primary tabs', () => {
+    expect(primaryNavFor('admin').map((i) => i.href)).not.toContain('/around');
+    expect(moreNavFor('admin').map((i) => i.href)).toContain('/around');
+  });
+
+  it('is absent from a Trainee\'s navigation entirely', () => {
+    const trainee = [...primaryNavFor('manager'), ...moreNavFor('manager')].map((i) => i.href);
+    expect(trainee).not.toContain('/around');
+  });
+});
+
 // ── Destination grouping for the rail (issue #662) ───────────────────────────
 // The rail (issue #664) consumes this data: ordered groups of destinations a
 // given role can reach. The groups and within-group order are fixed by the
@@ -548,7 +580,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   // the hrefs inside each. Empty groups are omitted from the output.
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
-      { label: 'Today', hrefs: ['/', '/coordination', '/questions'] },
+      { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },

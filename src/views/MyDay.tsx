@@ -88,14 +88,8 @@ import {
   AddPersonalPrayer,
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
-import AttentionFeed from "../components/landing/AttentionFeed";
-import {
-  buildAttentionItems,
-  attentionStacksFor,
-  partitionAttentionStacks,
-  attentionLayout,
-  feedVisibleThreads,
-} from "../lib/attention";
+import OnYouCard from "../components/landing/OnYouCard";
+import PointerCard from "../components/landing/PointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
 import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
@@ -690,28 +684,6 @@ export default function MyDay() {
     () => (prefContactIds != null ? new Set(prefContactIds) : myCreatedIds),
     [prefContactIds, myCreatedIds],
   );
-  // The Attention Feed's shape (#823): the feed and this page both call
-  // attentionLayout over the same partitioned stacks, so neither can render
-  // the personal column twice or not at all. The inputs mirror exactly what
-  // the feed on this page renders — tasks and notifications are not part of
-  // My Day's feed.
-  const feedSides = useMemo(() => {
-    const items = buildAttentionItems({
-      role,
-      uid: uid || "",
-      contacts,
-      interactions,
-      threads: feedVisibleThreads(threads, role),
-      personalContactIds,
-    });
-    const stacks = attentionStacksFor(items, uid || "");
-    return partitionAttentionStacks(stacks, contacts, uid || "", role, personalContactIds);
-  }, [role, uid, contacts, interactions, threads, personalContactIds]);
-  const feedLayout = attentionLayout(feedSides.onYou, feedSides.aroundTeam);
-  // Only a rendered feed can host the lent column; without a uid there is no
-  // feed, so nothing may be lent.
-  const personalColumnLent = Boolean(uid) && feedLayout === "split";
-
   // The picker shows checked (personal) contacts first, then the rest; both
   // groups alphabetical (#400).
   const pickerContacts = useMemo(() => {
@@ -1200,18 +1172,34 @@ export default function MyDay() {
         {/* ── Questions for the team — person-less trainee questions (#545) ── */}
         {uid && <AskStack className="mt-8" />}
 
-        {/* ── Needs your attention — the unified attention feed ── */}
-        {uid && (
-          <AttentionFeed
-            contacts={contacts}
-            interactions={interactions}
-            threads={threads}
-            personalContactIds={personalContactIds}
-            onOpenContact={openContact}
-            personalSlot={personalColumnLent ? personalColumn : undefined}
-            className="mt-8"
-          />
-        )}
+        {/* ── On you + the pointer card — My Day is a skim dashboard of your
+            own work (#943). "On you" is a bento card among the others; beside
+            it sits the pointer card, a count of unseen team activity and a
+            door to /around. Full-timers only — a Trainee's grid closes up
+            around the On you card. */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8 items-start">
+          <div className="lg:col-span-8 min-w-0">
+            {uid && (
+              <OnYouCard
+                contacts={contacts}
+                interactions={interactions}
+                threads={threads}
+                personalContactIds={personalContactIds}
+                onOpenContact={openContact}
+              />
+            )}
+          </div>
+          {role === "admin" && uid && (
+            <div className="lg:col-span-4 min-w-0">
+              <PointerCard
+                contacts={contacts}
+                interactions={interactions}
+                threads={threads}
+                personalContactIds={personalContactIds}
+              />
+            </div>
+          )}
+        </div>
 
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
@@ -1301,24 +1289,15 @@ export default function MyDay() {
           className="mt-8"
         />
 
-        {/* ── Bento: Your sheep + Your week. On split days the personal
-            column (On the horizon + Your prayers) travels up beside the feed
-            (#823), and Your sheep and Your week pair up alone. ── */}
+        {/* ── Bento: the personal column, then Your sheep + Your week. The
+            column is never lent anywhere (#943) — the feed is gone, so the
+            bento is the same every day. ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
-          {!personalColumnLent && personalColumn}
-          {/* One column on ordinary days; two side-by-side cells when the
-              personal column has been lent (#823). */}
-          {personalColumnLent ? (
-            <>
-              <div className="flex flex-col gap-10 min-w-0">{sheepSection}</div>
-              <div className="flex flex-col gap-10 min-w-0">{weekSection}</div>
-            </>
-          ) : (
-            <div className="flex flex-col gap-10 min-w-0">
-              {sheepSection}
-              {weekSection}
-            </div>
-          )}
+          <div className="flex flex-col gap-10 min-w-0">
+            {personalColumn}
+            {sheepSection}
+            {weekSection}
+          </div>
         </div>
 
         {/* ── Your-contacts picker ── */}

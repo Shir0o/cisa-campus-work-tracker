@@ -66,6 +66,7 @@ const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
 const Messages = lazyWithRetry(() => import("./views/Messages"));
 const Questions = lazyWithRetry(() => import("./views/Questions"));
+const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
@@ -956,6 +957,28 @@ export default function App() {
                           <Questions />
                         </React.Suspense>
                       </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/around"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <React.Suspense
+                            fallback={
+                              <div className="p-8 space-y-6">
+                                <Skeleton className="h-10 w-64" />
+                                <Skeleton className="h-96 w-full rounded-3xl" />
+                              </div>
+                            }
+                          >
+                            <AroundTheTeam />
+                          </React.Suspense>
+                        </DashboardLayout>
+                      </RoleGuard>
                     </ProtectedRoute>
                   }
                 />
