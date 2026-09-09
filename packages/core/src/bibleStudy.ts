@@ -168,7 +168,7 @@ export function parseMeeting(md: string): Section[] {
  * The Section body grammar (ADR 0013 — read as written): consecutive `>`
  * lines are one Passage block (last line = citation), `Verse:` lines are
  * Verse blocks (reference leading, text following — #918), `Question:/Discuss:/`
- * `Activity:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks,
+ * `Activity:/Apply:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks,
  * `1.`-style runs are number-list blocks (each point loses its number
  * prefix — the <ol> marker renders it), and any other non-blank run is a
  * prose block carried verbatim as markdown for the renderer. Nothing is
