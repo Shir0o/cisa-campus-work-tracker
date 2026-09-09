@@ -15,7 +15,7 @@ live in `CONTEXT.md`.
 | Entry | One durable QR per **Entry point** (`/s/:slug`), shown on a leader's phone, never printed. Resolves slug → active Study → newest published Meeting. Reversed the earlier "one QR per Meeting" — see ADR 0011. |
 | Public surface | Read-only. Nothing anonymous is ever written. |
 | Structure | Author-defined Sections, one per screen; outline points, Passage, Prompt — all optional, order as written. Confirmed by ADR 0014: a scroll-snap panel is still one Section per screen. |
-| Motion | Scrolling deck: Sections stack as scroll-snap panels (proximity), content top-aligned, sized in `dvh`. Scrolling is the navigation — no click-to-advance, no parallax. See ADR 0014. |
+| Motion | Scrolling deck: Sections stack as scroll-snap panels (proximity), content on a raised card that settles optically in the panel, sized in `dvh`. Scrolling is the navigation — no click-to-advance, no parallax. See ADR 0014. |
 | Prompts | Question / Discuss / Activity. Never answered on the page. |
 | Blanks | Outline points and Passage, tap to reveal, per-Meeting author's choice. A Blank's tap is the only tap left — there is no surface tap to compete with. |
 | Navigation | Auto-hiding edge scrubber, Sections only, labelled from headings. Jumping scrolls the deck (`scrollIntoView`); the scrubber never owns position. |
