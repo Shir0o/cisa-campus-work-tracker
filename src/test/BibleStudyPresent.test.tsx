@@ -147,4 +147,57 @@ describe('BibleStudyPresent', () => {
     fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
     expect(screen.getByText('Weeks index')).toBeInTheDocument();
   });
+
+  it("launched from a week's editor, leaves back to that week, not the index", async () => {
+    mockChain([MEETING]);
+
+    render(
+      <MemoryRouter initialEntries={['/bible-study/present?meeting=romans-fall-2026-2026-09-16']}>
+        <Routes>
+          <Route path="/" element={<div>Home</div>} />
+          <Route path="/bible-study" element={<div>Weeks index</div>} />
+          <Route path="/bible-study/:meetingId" element={<div>That week's editor</div>} />
+          <Route path="/bible-study/present" element={<BibleStudyPresent />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
+    expect(screen.getByText("That week's editor")).toBeInTheDocument();
+    expect(screen.queryByText('Weeks index')).not.toBeInTheDocument();
+  });
+
+  it('ignores a meeting target that is not a plain meeting id, falling back to the index', async () => {
+    mockChain([MEETING]);
+
+    render(
+      <MemoryRouter initialEntries={['/bible-study/present?meeting=https%3A%2F%2Fexample.com']}>
+        <Routes>
+          <Route path="/" element={<div>Home</div>} />
+          <Route path="/bible-study" element={<div>Weeks index</div>} />
+          <Route path="/bible-study/present" element={<BibleStudyPresent />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
+    expect(screen.getByText('Weeks index')).toBeInTheDocument();
+  });
+
+  it('rejects an underscore in the meeting target — the shape is letters, digits and hyphens only', async () => {
+    mockChain([MEETING]);
+
+    render(
+      <MemoryRouter initialEntries={['/bible-study/present?meeting=a_b']}>
+        <Routes>
+          <Route path="/" element={<div>Home</div>} />
+          <Route path="/bible-study" element={<div>Weeks index</div>} />
+          <Route path="/bible-study/present" element={<BibleStudyPresent />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
+    expect(screen.getByText('Weeks index')).toBeInTheDocument();
+  });
 });
