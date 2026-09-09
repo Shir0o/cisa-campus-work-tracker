@@ -59,7 +59,7 @@ describe('reader card-on-ground guardrail (#922)', () => {
       .slice(cardIdx, cardIdx + 3)
       .find((line) => line.includes('className'));
     expect(cardClassLine, 'card className should exist').toBeDefined();
-    expect(cardClassLine!).toMatch(/rounded-xl/);
+    expect(cardClassLine!).toMatch(/rounded-\[24px\]/);
     expect(cardClassLine!).toMatch(/px-\[22px\]/);
     expect(cardClassLine!).toMatch(/py-6/);
     expect(cardClassLine!).toMatch(/shadow-\[var\(--reader-elev\)\]/);
@@ -100,7 +100,7 @@ describe('reader card-on-ground guardrail (#922)', () => {
     expect(promptClassLine!).toMatch(/bg-\[var\(--reader-well\)\]/);
     // The prompt's radius descends from the card's (24px card → 20px
     // sub-container, ADR 0009) so it reads as an inset.
-    expect(promptClassLine!).toMatch(/rounded-lg/);
+    expect(promptClassLine!).toMatch(/rounded-\[20px\]/);
   });
 
   it('swaps the app pair in light and keeps lightness + edge in dark, with no new colour tokens', () => {

@@ -122,7 +122,7 @@ const Panel: React.FC<{
       <div
         ref={cardRef}
         data-reader-card
-        className={`flex flex-col gap-5 rounded-xl px-[22px] py-6 bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)] ${
+        className={`flex flex-col gap-5 rounded-[24px] px-[22px] py-6 bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)] ${
           settles ? 'mt-auto' : ''
         }`}
       >
