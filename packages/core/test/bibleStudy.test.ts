@@ -362,6 +362,13 @@ Question: What did you hear?
       const { offset } = blockInsertionPoint(md, 5);
       expect(md.slice(0, offset)).toBe('## Alpha\n- point');
     });
+
+    it('lands at the end of the leading untitled Section when prose opens the document', () => {
+      const md = 'Intro prose\n\n## Alpha\n- point';
+      const { offset } = blockInsertionPoint(md, 2);
+      expect(md.slice(0, offset)).toBe('Intro prose');
+      expect(md.slice(offset)).toContain('## Alpha');
+    });
   });
 
   describe("resolveScan", () => {

@@ -382,6 +382,17 @@ describe('blockInsertionPoint (#921 — block inserters land at the end of the c
       '## Alpha\n- point\n\n## \n\n> quote',
     );
   });
+
+  it('lands at the end of the leading untitled Section when prose opens the document', () => {
+    // A document that opens with prose sits in an untitled leading Section
+    // (sectionIndexAtOffset's own contract) — the block belongs at the end
+    // of THAT Section, before the first heading, never at the document end
+    // where it would file under the last Section.
+    const md = 'Intro prose\n\n## Alpha\n- point';
+    const { offset } = blockInsertionPoint(md, 2);
+    expect(md.slice(0, offset)).toBe('Intro prose');
+    expect(md.slice(offset)).toContain('## Alpha');
+  });
 });
 
 describe('previewScale (#916 — the phone is CSS-scaled into the pane)', () => {

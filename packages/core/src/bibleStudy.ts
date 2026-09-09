@@ -473,7 +473,13 @@ export function sectionIndexAtOffset(md: string, offset: number): number {
 export function blockInsertionPoint(md: string, offset: number): { offset: number } {
   const offsets = sectionOffsets(md);
   const index = sectionIndexAtOffset(md, offset);
-  const sectionEnd = index >= 0 ? (offsets[index + 1] ?? md.length) : md.length;
+  // The caret's Section ends where the next heading begins. The leading
+  // untitled Section (prose before the first heading) owns offset 0 but has
+  // no heading of its own, so its end is the FIRST heading's offset, not
+  // `offsets[index + 1]` — which would fall through to the document end and
+  // file the block under the last Section.
+  const sectionEnd =
+    index >= 0 ? (index === 0 && offsets[0] > 0 ? offsets[0] : offsets[index + 1] ?? md.length) : md.length;
   // Blank-line scan from the end, not a regex: a `[…]+$` replace is
   // quadratic on a long whitespace run followed by non-whitespace (CodeQL
   // js/polynomial-redos) — each start position retries the anchored match.

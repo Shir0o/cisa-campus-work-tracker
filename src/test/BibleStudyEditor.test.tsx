@@ -491,6 +491,28 @@ describe('BibleStudyEditor view', () => {
       });
     });
 
+    it('lands at the end of the leading untitled Section when prose opens the document', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: 'Intro prose\n\n## Alpha\n- point', sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      // Caret inside the leading untitled Section (prose before the first
+      // heading) — the block belongs at the end of THAT Section, before the
+      // first heading, never at the document end under the last Section.
+      area.setSelectionRange(2, 2);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        expect(area.value).toBe('Intro prose\n\n> \n\n## Alpha\n- point');
+      });
+    });
+
     it('scrolls to the insertion and leaves the caret ready to type', async () => {
       renderAt();
       await screen.findByDisplayValue('Initial Meeting');
