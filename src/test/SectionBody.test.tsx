@@ -198,6 +198,66 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(screen.queryByRole('figure')?.querySelector('figcaption')).toBeNull();
   });
 
+  it('renders a Verse with its reference leading, at body size, in the flow (#918)', () => {
+    const s = section({
+      content: [
+        { kind: 'prose', md: 'Opening prose.' },
+        { kind: 'verse', ref: 'Rom. 5:6', verse: { before: 'while we were still weak.' } },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    const body = screen.getByTestId('section-body');
+    const order = Array.from(body.children).map((el) => el.getAttribute('data-block-kind'));
+    expect(order).toEqual(['prose', 'verse']);
+
+    // The reference leads and is emphasised; the words follow at body size.
+    const ref = screen.getByText('Rom. 5:6');
+    expect(ref.tagName).toBe('STRONG');
+    expect(screen.getByText('while we were still weak.')).toBeInTheDocument();
+    // In the flow: no figure, no rule above, no trailing citation — the
+    // reference is inline, not a figcaption.
+    expect(screen.queryByRole('figure')).toBeNull();
+  });
+
+  it('renders a Verse visibly distinct from a Passage (#918)', () => {
+    const s = section({
+      content: [
+        { kind: 'passage', passage: { before: 'The words stand alone.' }, ref: 'Genesis 1:1' },
+        { kind: 'verse', ref: 'Rom. 5:6', verse: { before: 'while we were still weak.' } },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    // Passage: figure with a trailing figcaption citation.
+    const figure = screen.getByRole('figure');
+    expect(figure.querySelector('figcaption')?.textContent).toBe('Genesis 1:1');
+    // Verse: no figure — the reference is a leading inline strong.
+    expect(screen.queryAllByRole('figure')).toHaveLength(1);
+    expect(screen.getByText('Rom. 5:6').tagName).toBe('STRONG');
+  });
+
+  it('inline emphasis and Blanks work inside a Verse (#918)', () => {
+    const onRevealBlank = vi.fn();
+    const s = section({
+      content: [
+        {
+          kind: 'verse',
+          ref: 'Rom. 5:6',
+          verse: { before: 'while we were still **weak**, Christ died for the ', word: 'ungodly', after: '.' },
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={onRevealBlank} />);
+
+    // Emphasis renders as formatting, never literal asterisks.
+    expect(screen.queryByText(/\*\*weak\*\*/)).not.toBeInTheDocument();
+    expect(screen.getByText('weak').tagName).toBe('STRONG');
+    // The Blank is a tap target that reveals via the callback.
+    fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
+    expect(onRevealBlank).toHaveBeenCalledWith('0:vs');
+  });
+
   it('keeps the legacy keying invariant: blanks in different blocks get distinct keys', () => {
     const onRevealBlank = vi.fn();
     const s = section({
