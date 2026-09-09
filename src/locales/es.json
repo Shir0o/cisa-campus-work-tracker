@@ -618,6 +618,9 @@
     "edit_archive_reason": "Editar motivo",
     "archive_reason": "Motivo de archivo"
   },
+  "reader": {
+    "text_size": "Tamaño del texto"
+  },
   "ask": {
     "questions_for_team": "Preguntas para el equipo",
     "questions_for_team_sub": "Las preguntas de los aprendices que no van sobre una persona. Responderlas las quita para todos.",

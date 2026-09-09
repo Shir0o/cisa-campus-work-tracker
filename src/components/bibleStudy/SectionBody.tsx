@@ -118,7 +118,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
         <InlineMd text={block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before} />
       );
       return (
-        <li key={path} className="text-[16px] leading-[1.55] text-on-surface-variant">
+        <li key={path} className="text-[length:var(--reader-fs)] leading-[1.55] text-on-surface-variant">
           {inline}
           {pt.children && pt.children.length > 0 && (
             <Tag className={`flex flex-col gap-3 py-1 ${block.kind === 'number-list' ? 'list-decimal' : 'list-disc'} pl-5 marker:text-on-surface-variant`}>
@@ -150,7 +150,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
           case 'passage':
             return (
               <figure key={bIdx} data-block-kind="passage" className="m-0 pt-4 border-t border-outline-variant">
-                <p className="m-0 text-[18px] leading-[1.62] text-on-surface">
+                <p className="m-0 text-[length:calc(var(--reader-fs)+2px)] leading-[1.62] text-on-surface">
                   {block.passage && typeof block.passage === 'object' && 'word' in block.passage ? (
                     <BlankSpan
                       part={{ kind: 'blank', blank: block.passage, n: 0 }}
@@ -175,7 +175,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
             // above, no trailing citation — visibly distinct from a Passage.
             const v = block.verse;
             return (
-              <p key={bIdx} data-block-kind="verse" className="m-0 text-[16px] leading-[1.55] text-on-surface">
+              <p key={bIdx} data-block-kind="verse" className="m-0 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface">
                 <strong className="font-semibold text-[var(--t-sage)]">{block.ref}</strong>
                 {v && (
                   <>
@@ -215,14 +215,14 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 >
                   {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : k === 'apply' ? 'Apply' : 'Question'}
                 </div>
-                <p className="m-0 text-[15px] leading-relaxed text-on-surface">{block.prompt.text}</p>
+                <p className="m-0 text-[length:calc(var(--reader-fs)-1px)] leading-relaxed text-on-surface">{block.prompt.text}</p>
               </div>
             );
           }
           case 'prose': {
             const parts = splitInline(block.md);
             return (
-              <div key={bIdx} data-block-kind="prose" className="flex flex-col gap-2 text-[16px] leading-[1.55] text-on-surface-variant">
+              <div key={bIdx} data-block-kind="prose" className="flex flex-col gap-2 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface-variant">
                 {parts.map((part, pIdx) => {
                   if (part.kind === 'blank') {
                     const key = `${sectionIndex}:b${part.n}`;

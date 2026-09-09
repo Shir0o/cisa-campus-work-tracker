@@ -16,6 +16,7 @@ import {
   type Section,
 } from '../../lib/bibleStudy';
 import SectionBody from './SectionBody';
+import { useLanguage } from '../LanguageProvider';
 
 export type StudyReaderViewProps = {
   meeting: Meeting;
@@ -61,6 +62,39 @@ const ChevronIcon: React.FC = () => (
 // settles. The settle measurement subtracts it so the card's resting offset
 // is the slack between the card's top and the panel's top edge.
 const PANEL_TOP_PAD = 18;
+
+// The reader's type scale (#923): body text sizes in px, the raised default
+// first. The student's choice is remembered in that browser's storage — the
+// person who cannot read the text is the person who can fix it, with no
+// author involvement and nothing stored on the Meeting (ADR 0012, ADR 0013
+// §5). Prompt and title sizes derive from the body size so the page stays
+// in proportion at any setting; the card's internal inset stays constant
+// across sizes (deliberately deferred, #912).
+const READER_TYPE_SIZES = [16, 18, 20, 22] as const;
+export type ReaderTypeSize = (typeof READER_TYPE_SIZES)[number];
+const READER_TYPE_DEFAULT: ReaderTypeSize = 20;
+const READER_TYPE_STORAGE_KEY = 'cisa.reader.type-size.v1';
+
+/**
+ * Reads the stored type size, falling back to the default when the stored
+ * value cannot be read — the Blank-state / dismissed-card precedent: a
+ * corrupt or foreign value must never error the reader, it just renders at
+ * the default.
+ */
+function readStoredTypeSize(): ReaderTypeSize {
+  try {
+    const raw = window.localStorage.getItem(READER_TYPE_STORAGE_KEY);
+    if (raw !== null) {
+      const n = Number(raw);
+      if ((READER_TYPE_SIZES as readonly number[]).includes(n)) {
+        return n as ReaderTypeSize;
+      }
+    }
+  } catch {
+    // Storage unavailable or unreadable — render at the default.
+  }
+  return READER_TYPE_DEFAULT;
+}
 
 /**
  * One scroll-snap panel: the Section's content sits on a raised card and the
@@ -126,7 +160,7 @@ const Panel: React.FC<{
           settles ? 'mt-auto' : ''
         }`}
       >
-        <h2 className="font-serif font-bold text-[32px] leading-[1.08] tracking-tight text-on-surface">
+        <h2 className="font-serif font-bold text-[length:calc(var(--reader-fs)*1.85)] leading-[1.08] tracking-tight text-on-surface">
           {section.title}
         </h2>
         <SectionBody
@@ -174,6 +208,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   staleDateLabel = null,
   followSectionIndex,
 }) => {
+  const { t } = useLanguage();
   const sections: Section[] = meeting.sections;
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLElement | null)[]>([]);
@@ -184,6 +219,46 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     openBlanks: {},
     navOpen: false,
   });
+
+  // The student's type size (#923): read once on mount so a returning
+  // reader applies the stored size on first paint, and written on every
+  // choice so the next visit starts where this one left off. The value
+  // drives the `--reader-fs` custom property the reader's type scale is
+  // built on; the card's inset never changes with it.
+  const [typeSize, setTypeSize] = useState<ReaderTypeSize>(readStoredTypeSize);
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+
+  // The popover dismisses on outside click or Escape, the codebase's
+  // transient-surface pattern (StagePicker, DatePicker, the reader's own
+  // index dialog) — a student who opens it and taps elsewhere gets it out
+  // of the way.
+  useEffect(() => {
+    if (!typeMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) {
+        setTypeMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTypeMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [typeMenuOpen]);
+
+  const chooseTypeSize = (size: ReaderTypeSize) => {
+    setTypeSize(size);
+    try {
+      window.localStorage.setItem(READER_TYPE_STORAGE_KEY, String(size));
+    } catch {
+      // Storage unavailable — the choice applies for this visit only.
+    }
+  };
 
   // When the Meeting's Section count changes, the read model follows.
   useEffect(() => {
@@ -253,8 +328,12 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   }, [followSectionIndex]);
 
   return (
-    <div className="reader-card-surface w-full h-full min-h-0 bg-[var(--reader-ground)] text-on-surface relative overflow-hidden flex flex-col">
-      {/* Sticky chrome — slim: title, counter, and the stale-week date chip. */}
+    <div
+      className="reader-card-surface w-full h-full min-h-0 bg-[var(--reader-ground)] text-on-surface relative overflow-hidden flex flex-col"
+      style={{ '--reader-fs': `${typeSize}px` } as React.CSSProperties}
+    >
+      {/* Sticky chrome — slim: title, counter, the text-size control, and
+          the stale-week date chip. */}
       <div
         data-testid="reader-header"
         className="shrink-0 sticky top-0 z-20 flex items-center gap-2 px-5 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 bg-[var(--reader-ground)]/95 backdrop-blur-sm border-b border-outline-variant"
@@ -271,8 +350,51 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
         <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80 truncate min-w-0">
           {meeting.title}
         </div>
-        <div className="ml-auto font-serif font-bold text-xs text-on-surface-variant tracking-wider shrink-0 tabular-nums">
-          {counterText}
+        <div className="ml-auto flex items-center gap-1 shrink-0">
+          {/* The text-size control (#923): the student sets the type size,
+              remembered in that browser's storage. The trigger is a small
+              "A" button; the popover offers the agreed range. */}
+          <div className="relative" ref={typeMenuRef}>
+            <button
+              type="button"
+              aria-label={t('reader.text_size')}
+              aria-expanded={typeMenuOpen}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-sm font-serif font-bold text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
+              onClick={() => setTypeMenuOpen((open) => !open)}
+            >
+              A
+            </button>
+            {typeMenuOpen && (
+              <div
+                data-testid="text-size-popover"
+                role="group"
+                aria-label={t('reader.text_size')}
+                className="absolute right-0 top-full mt-1 z-30 flex items-center gap-0.5 p-1 rounded-full bg-surface border border-outline-variant shadow-lg"
+              >
+                {READER_TYPE_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    aria-pressed={typeSize === size}
+                    className={`w-7 h-7 rounded-full text-xs font-medium transition-colors ${
+                      typeSize === size
+                        ? 'bg-on-surface text-background'
+                        : 'text-on-surface-variant hover:bg-surface-variant/60'
+                    }`}
+                    onClick={() => {
+                      chooseTypeSize(size);
+                      setTypeMenuOpen(false);
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="font-serif font-bold text-xs text-on-surface-variant tracking-wider tabular-nums">
+            {counterText}
+          </div>
         </div>
       </div>
 

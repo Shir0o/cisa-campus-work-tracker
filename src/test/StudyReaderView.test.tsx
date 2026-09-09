@@ -298,4 +298,127 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(io.observed).toHaveLength(3);
     });
   });
+
+  describe('the text-size control (#923)', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('offers the agreed range from a control in the reader chrome', () => {
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      const trigger = screen.getByLabelText('Text size');
+      // The control lives in the sticky header — the reader's chrome.
+      expect(trigger.closest('[data-testid="reader-header"]')).not.toBeNull();
+
+      fireEvent.click(trigger);
+      const popover = screen.getByTestId('text-size-popover');
+      for (const size of [16, 18, 20, 22]) {
+        expect(within(popover).getByRole('button', { name: String(size) })).toBeInTheDocument();
+      }
+    });
+
+    it('renders body text at the raised default with no stored preference', () => {
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      const root = document.querySelector('.reader-card-surface') as HTMLElement;
+      expect(root.style.getPropertyValue('--reader-fs')).toBe('20px');
+    });
+
+    it('choosing a size records it in browser storage and applies it immediately', () => {
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      fireEvent.click(screen.getByLabelText('Text size'));
+      fireEvent.click(screen.getByRole('button', { name: '22' }));
+
+      expect(localStorage.getItem('cisa.reader.type-size.v1')).toBe('22');
+      const root = document.querySelector('.reader-card-surface') as HTMLElement;
+      expect(root.style.getPropertyValue('--reader-fs')).toBe('22px');
+    });
+
+    it('a reader returning with a stored size applies it on mount', () => {
+      localStorage.setItem('cisa.reader.type-size.v1', '18');
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      const root = document.querySelector('.reader-card-surface') as HTMLElement;
+      expect(root.style.getPropertyValue('--reader-fs')).toBe('18px');
+    });
+
+    it('a stored size that cannot be read falls back to the default without erroring', () => {
+      localStorage.setItem('cisa.reader.type-size.v1', 'banana');
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      const root = document.querySelector('.reader-card-surface') as HTMLElement;
+      expect(root.style.getPropertyValue('--reader-fs')).toBe('20px');
+      expect(screen.getByText('Where peace starts')).toBeInTheDocument();
+    });
+
+    it("one student's choice does not change what any other student sees", () => {
+      localStorage.setItem('cisa.reader.type-size.v1', '22');
+      const first = render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      const firstRoot = document.querySelector('.reader-card-surface') as HTMLElement;
+      expect(firstRoot.style.getPropertyValue('--reader-fs')).toBe('22px');
+      first.unmount();
+
+      localStorage.setItem('cisa.reader.type-size.v1', '16');
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      const secondRoot = document.querySelector('.reader-card-surface') as HTMLElement;
+      expect(secondRoot.style.getPropertyValue('--reader-fs')).toBe('16px');
+    });
+
+    it("renders every Section's blocks at every size in the range", () => {
+      const m = meeting({
+        sections: [
+          {
+            id: 'sec-all',
+            title: 'All blocks',
+            content: [
+              { kind: 'prose', md: 'Prose block.' },
+              { kind: 'bullet-list', points: [{ before: 'A list point' }] },
+              { kind: 'passage', passage: { before: 'The passage words' }, ref: 'Romans 5:1' },
+              { kind: 'verse', ref: 'Rom. 5:6', verse: { before: 'the verse words' } },
+              { kind: 'prompt', prompt: { kind: 'question', text: 'A question prompt' } },
+            ],
+            points: [],
+          },
+        ],
+      });
+
+      for (const size of [16, 18, 20, 22]) {
+        localStorage.setItem('cisa.reader.type-size.v1', String(size));
+        const view = render(<StudyReaderView meeting={m} staleDateLabel={null} />);
+        expect(screen.getByText('Prose block.')).toBeInTheDocument();
+        expect(screen.getByText('A list point')).toBeInTheDocument();
+        expect(screen.getByText('The passage words')).toBeInTheDocument();
+        expect(screen.getByText('the verse words')).toBeInTheDocument();
+        expect(screen.getByText('A question prompt')).toBeInTheDocument();
+        view.unmount();
+      }
+    });
+
+    it('keeps the peek and end-of-Meeting treatments at a non-default size', () => {
+      localStorage.setItem('cisa.reader.type-size.v1', '22');
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      expect(screen.getByTestId('peek-0')).toHaveTextContent('What suffering is doing');
+      expect(screen.getByTestId('reader-end')).toBeInTheDocument();
+    });
+
+    it('dismisses the popover on outside click or Escape', () => {
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      fireEvent.click(screen.getByLabelText('Text size'));
+      expect(screen.getByTestId('text-size-popover')).toBeInTheDocument();
+
+      // Outside click closes it.
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByTestId('text-size-popover')).toBeNull();
+
+      // Reopen, then Escape closes it.
+      fireEvent.click(screen.getByLabelText('Text size'));
+      expect(screen.getByTestId('text-size-popover')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByTestId('text-size-popover')).toBeNull();
+    });
+  });
 });
