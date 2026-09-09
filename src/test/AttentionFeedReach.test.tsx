@@ -3,7 +3,7 @@ import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import AttentionFeed from "../components/landing/AttentionFeed";
 import { __resetUserEntityStateCache } from "../lib/userEntityState";
-import { __resetInboxState } from "../lib/inboxState";
+import { InboxState, __resetInboxState } from "../lib/inboxState";
 import type { Contact } from "../types";
 
 vi.mock("../components/AuthProvider", () => ({
@@ -92,5 +92,54 @@ describe("Around the team reach affordance (#828)", () => {
     expect(within(youCol).getByText("Kofi Mensah")).toBeInTheDocument();
     expect(within(youCol).queryByRole("button", { name: "Call" })).not.toBeInTheDocument();
     expect(within(youCol).queryByRole("link", { name: "Email" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Around the team is an inbox: opening never clears, only the verb does", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+    __resetInboxState();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("keeps a person in the box after you open them from the New view — seen dims, it does not clear", () => {
+    const onOpenContact = vi.fn();
+    renderFeed([contact({})], onOpenContact);
+
+    // The New view narrows to what has not been opened this visit.
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+    expect(within(teamCol()).getByText("Kofi Mensah")).toBeInTheDocument();
+
+    // Opening the person's detail marks them seen — nothing more.
+    fireEvent.click(screen.getByText("Kofi Mensah"));
+    expect(onOpenContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "kofi" }),
+      { tab: undefined },
+    );
+    expect(InboxState.isSeen("u1", "att:contact:kofi")).toBe(true);
+    expect(InboxState.isCompleted("u1", "att:contact:kofi")).toBe(false);
+
+    // The box is an inbox: the person stays in view, still to work through.
+    expect(within(teamCol()).getByText("Kofi Mensah")).toBeInTheDocument();
+    expect(within(teamCol()).getByText("1 to work through")).toBeInTheDocument();
+  });
+
+  it("only the completion verb clears a person — grey in place with an Undo, even under New", () => {
+    renderFeed([contact({})]);
+    fireEvent.click(screen.getByRole("button", { name: "New" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Reviewed/ }));
+    expect(InboxState.isCompleted("u1", "att:contact:kofi")).toBe(true);
+    // Finished this visit: greyed under the cursor, not vanished.
+    expect(within(teamCol()).getByText("Kofi Mensah")).toBeInTheDocument();
+    expect(within(teamCol()).queryByText("1 to work through")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(InboxState.isCompleted("u1", "att:contact:kofi")).toBe(false);
+    expect(within(teamCol()).getByText("1 to work through")).toBeInTheDocument();
   });
 });

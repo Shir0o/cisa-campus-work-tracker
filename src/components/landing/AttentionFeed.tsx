@@ -255,6 +255,7 @@ function WorklistCard({
   meName,
   completed,
   onOpenContact,
+  onOpened,
   onComplete,
   onToast,
   mobile,
@@ -267,6 +268,8 @@ function WorklistCard({
   meName: string;
   completed: boolean;
   onOpenContact?: (contactId: string, initialTab?: "overview" | "thread" | "history") => void;
+  /** The reader opened this card this visit — seen, but not reviewed. */
+  onOpened?: (stack: AttentionStack) => void;
   onComplete: (stack: AttentionStack, verb: WorklistVerb) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
@@ -298,6 +301,7 @@ function WorklistCard({
   const openThem = () => {
     // Seen is set here and only here — opening the person is the whole of it.
     InboxState.markSeen(uid, stack.id);
+    onOpened?.(stack);
     if (stack.contactId && onOpenContact) onOpenContact(stack.contactId);
   };
 
@@ -541,6 +545,7 @@ function WorklistCard({
           onPosted={() => {
             setComposing(false);
             InboxState.markSeen(uid, stack.id);
+            onOpened?.(stack);
             onToast?.(t("whatsNew.posted"));
           }}
         />
@@ -609,6 +614,11 @@ export default function AttentionFeed({
   // Completed HERE, this visit. A card you finish greys in place and clears when
   // you leave — never under your cursor while you are still reading it.
   const [completedHere, setCompletedHere] = useState<Set<string>>(new Set());
+  // Opened HERE, this visit — the same rule as completedHere, on the seen axis.
+  // Opening a person under the New view dims the card in place (dot gone, still
+  // listed); it must not remove them from the box. Only the completion verb
+  // clears a person, and New still narrows to what earlier visits left unopened.
+  const [openedHere, setOpenedHere] = useState<Set<string>>(new Set());
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   // Seen and completed change under the memos below, not in the props, so the
@@ -753,7 +763,9 @@ export default function AttentionFeed({
 
   const narrow = (side: AttentionStack[]) =>
     filterAttentionStacks(side, filter).filter(
-      (s) => stillListed(s) && (!newOnly || !s.seen || completedHere.has(s.id)),
+      (s) =>
+        stillListed(s) &&
+        (!newOnly || !s.seen || completedHere.has(s.id) || openedHere.has(s.id)),
     );
 
   const onYou = narrow(allSides.onYou);
@@ -857,6 +869,7 @@ export default function AttentionFeed({
             meName={meName}
             completed={isCompleted(stack)}
             onOpenContact={handleOpenContact}
+            onOpened={(s) => setOpenedHere((prev) => (prev.has(s.id) ? prev : new Set(prev).add(s.id)))}
             onComplete={handleComplete}
             onToast={onToast}
             mobile={mobile}
