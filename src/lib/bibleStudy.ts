@@ -1,7 +1,7 @@
 // Bible study (#822) — the web app has no dependency on @cisa/core (mobile-only
 // package), so this mirrors packages/core/src/bibleStudy.ts for the web side;
 // keep the two in step.
-export type PromptKind = 'question' | 'discuss' | 'activity';
+export type PromptKind = 'question' | 'discuss' | 'activity' | 'apply';
 
 export type Blank = { before: string; word: string; after: string };
 export type Text = { before: string };
@@ -265,7 +265,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     }
     flushQuote();
 
-    const promptMatch = line.match(/^(question|discuss|activity):\s*(.*)$/i);
+    const promptMatch = line.match(/^(question|discuss|activity|apply):\s*(.*)$/i);
     if (promptMatch) {
       flushList();
       flushProse();

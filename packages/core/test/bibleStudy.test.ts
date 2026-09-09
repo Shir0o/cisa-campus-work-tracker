@@ -125,6 +125,18 @@ An ordinary line of text that is not a prompt.`;
       expect(['question', 'discuss', 'activity']).toContain(sections[0].prompt?.kind);
     });
 
+    it('parses an Apply line into a Prompt of kind apply, case-insensitively (#919)', () => {
+      const s = parseMeeting('## Apply\nApply: Name one thing you will do this week.')[0];
+      expect(s.content[0]).toMatchObject({
+        kind: 'prompt',
+        prompt: { kind: 'apply', text: 'Name one thing you will do this week.' },
+      });
+      expect(s.prompt?.kind).toBe('apply');
+
+      const lower = parseMeeting('## Apply\napply: a lowercase prefix parses the same.')[0];
+      expect(lower.prompt?.kind).toBe('apply');
+    });
+
     it('handles a meeting with no Blanks at all', () => {
       const md = `## Plain Section
 - Plain point 1

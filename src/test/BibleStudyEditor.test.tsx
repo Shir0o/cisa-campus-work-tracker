@@ -582,6 +582,33 @@ describe('BibleStudyEditor view', () => {
     expect(area.selectionStart).toBe(area.value.indexOf('Verse: ') + 'Verse: '.length);
   });
 
+  it('offers Apply alongside Question, Discuss and Activity in the toolbar (#919)', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    // The toolbar offers all four Prompt kinds.
+    expect(screen.getByRole('button', { name: /Question/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Discuss/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Activity/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Apply/i })).toBeInTheDocument();
+
+    const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+    area.focus();
+    area.setSelectionRange(3, 3);
+
+    fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
+
+    await waitFor(() => {
+      // The Apply line lands at the end of the caret's Section, ready to
+      // type the move the room will make — the same "ready to type"
+      // contract the other block inserters have.
+      expect(area.value).toBe(
+        '## Section 1\n- Point 1\n\nApply: \n\n## Section 2\n- Point 2',
+      );
+    });
+    expect(area.selectionStart).toBe(area.value.indexOf('Apply: ') + 'Apply: '.length);
+  });
+
   it('clicking an outline row moves the textarea caret to that heading', async () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');

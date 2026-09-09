@@ -205,15 +205,15 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 key={bIdx}
                 data-block-kind="prompt"
                 className={`bg-surface border border-outline-variant rounded-2xl p-4 sm:p-5 flex flex-col gap-2 ${
-                  k === 'discuss' ? 'border-l-4 border-l-[var(--t-sage)]' : k === 'activity' ? 'border-l-4 border-l-[var(--t-clay)]' : 'border-l-4 border-l-[var(--t-slate)]'
+                  k === 'discuss' ? 'border-l-4 border-l-[var(--t-sage)]' : k === 'activity' ? 'border-l-4 border-l-[var(--t-clay)]' : k === 'apply' ? 'border-l-4 border-l-[var(--t-ochre)]' : 'border-l-4 border-l-[var(--t-slate)]'
                 }`}
               >
                 <div
                   className={`text-[11px] font-bold tracking-widest uppercase ${
-                    k === 'discuss' ? 'text-[var(--t-sage)]' : k === 'activity' ? 'text-[var(--t-clay)]' : 'text-[var(--t-slate)]'
+                    k === 'discuss' ? 'text-[var(--t-sage)]' : k === 'activity' ? 'text-[var(--t-clay)]' : k === 'apply' ? 'text-[var(--t-ochre)]' : 'text-[var(--t-slate)]'
                   }`}
                 >
-                  {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : 'Question'}
+                  {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : k === 'apply' ? 'Apply' : 'Question'}
                 </div>
                 <p className="m-0 text-[15px] leading-relaxed text-on-surface">{block.prompt.text}</p>
               </div>

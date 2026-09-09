@@ -124,6 +124,19 @@ Verse: Rom. 5:5 — and hope does not put us to shame.`,
 Verse: Rom. 5:6 — while we were still [[weak]].
 
 Verse: Rom. 5:5`,
+
+  // Apply prompts (#919): the fourth Prompt kind, alongside Question,
+  // Discuss and Activity — the move a study makes at the end. Case-
+  // insensitive like the other prefixes; an earlier prompt dissolves into
+  // prose under the same last-wins rule.
+  `## Apply prompts
+Question: What did we just read?
+
+Apply: Name one thing you will do this week.
+
+apply: a lowercase prefix parses the same.
+
+Activity: The last prompt wins.`,
 ];
 
 describe('parser mirror parity (ADR 0013 keep-in-step)', () => {

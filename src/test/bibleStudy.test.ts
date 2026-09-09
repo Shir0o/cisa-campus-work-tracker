@@ -258,6 +258,18 @@ describe('parseMeeting', () => {
     expect(verse.ref).toBe('Rom. 5:6');
     expect(verse.verse.before).toBe('while we were still weak.');
   });
+
+  it('parses an Apply line into a Prompt of kind apply, case-insensitively (#919)', () => {
+    const s = parseMeeting('## Apply\nApply: Name one thing you will do this week.')[0];
+    expect(s.content[0]).toMatchObject({
+      kind: 'prompt',
+      prompt: { kind: 'apply', text: 'Name one thing you will do this week.' },
+    });
+    expect(s.prompt?.kind).toBe('apply');
+
+    const lower = parseMeeting('## Apply\napply: a lowercase prefix parses the same.')[0];
+    expect(lower.prompt?.kind).toBe('apply');
+  });
 });
 
 describe('nextMeetingDate', () => {
