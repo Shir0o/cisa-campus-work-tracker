@@ -36,6 +36,11 @@ interface DatePickerProps {
 export default function DatePicker({ label, value, onChange, required }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // The blur delay must not outlive the component: a timer that fires after
+  // unmount updates state on a dead tree (and after test teardown, when the
+  // jsdom environment is gone, it throws "window is not defined").
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => clearTimeout(blurTimer.current), []);
   const selectedDate = value ? parseISO(value) : null;
   const [viewDate, setViewDate] = useState(selectedDate && isValid(selectedDate) ? selectedDate : startOfToday());
   const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
@@ -145,7 +150,9 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
 
   const handleInputBlur = () => {
     // Small timeout to allow click events on calendar to register before blur resets state
-    setTimeout(() => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    blurTimer.current = setTimeout(() => {
+      blurTimer.current = null;
       setIsFocused(false);
     }, 150);
   };
