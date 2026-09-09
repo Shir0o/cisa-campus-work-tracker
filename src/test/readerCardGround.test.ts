@@ -74,6 +74,13 @@ describe('reader card-on-ground guardrail (#922)', () => {
     expect(reader).toMatch(/offsetHeight/);
     expect(reader).toMatch(/clientHeight/);
     expect(reader).toMatch(/PANEL_TOP_PAD/);
+    // The settle math subtracts the constant, so the constant must equal
+    // the panel's top padding class or the threshold silently skews.
+    const padLine = reader.split('\n').find((line) => line.includes('PANEL_TOP_PAD ='));
+    expect(padLine, 'PANEL_TOP_PAD constant should exist').toBeDefined();
+    const value = Number(padLine!.match(/= (\d+)/)?.[1]);
+    expect(Number.isFinite(value)).toBe(true);
+    expect(reader).toMatch(new RegExp(`pt-\\[${value}px\\]`));
   });
 
   it('makes the panel around the card ground, in both themes', () => {
