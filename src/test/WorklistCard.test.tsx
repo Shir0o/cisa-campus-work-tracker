@@ -1,7 +1,15 @@
+// The worklist card, through the On you card seam (#943).
+//
+// The two-section Attention Feed test file is gone with the component it
+// tested. The worklist behaviours it pinned (#813) are still real — seen and
+// completed as two independent axes, the verb that fits the card, the
+// composer, the encouragement summary, the five-row cap — and they now render
+// through the On you bento card. These tests assert them at that seam, by
+// accessible role and name, never by class or grid span.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
-import AttentionFeed from "../components/landing/AttentionFeed";
+import OnYouCard from "../components/landing/OnYouCard";
 import { __resetUserEntityStateCache } from "../lib/userEntityState";
 import { InboxState, __resetInboxState } from "../lib/inboxState";
 import type { Contact, Interaction } from "../types";
@@ -37,11 +45,7 @@ vi.mock("../lib/threads", async (importOriginal) => {
   };
 });
 
-// ── The feed is the worklist (#813) ─────────────────────────────────────────
-// The two axes are the whole point: opening something must never make the
-// count fall, and the completion verb has to fit what the card is about.
-
-describe("AttentionFeed — the feed as a worklist (#813)", () => {
+describe("the worklist card, through On you (#813, #943)", () => {
   const uid = "u1";
 
   beforeEach(() => {
@@ -89,9 +93,9 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
     reactions: [],
   };
 
-  const feed = (props: Partial<React.ComponentProps<typeof AttentionFeed>> = {}) =>
+  const card = (props: Partial<React.ComponentProps<typeof OnYouCard>> = {}) =>
     render(
-      <AttentionFeed
+      <OnYouCard
         contacts={sampleContacts}
         interactions={sampleInteractions}
         threads={[question]}
@@ -100,18 +104,16 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
       />,
     );
 
-  const header = () => screen.getByRole("heading", { name: "What's new" }).parentElement!;
-
   it("counts what is left to work through, not what is unread", () => {
-    feed();
+    card();
     expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
     expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
-    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+    expect(screen.getByText("1 to work through")).toBeInTheDocument();
   });
 
   it("groups new people ahead of everything else", () => {
     render(
-      <AttentionFeed
+      <OnYouCard
         contacts={[contact(), contact({ id: "c2", name: "Bo Chen", owner: "u1" })]}
         interactions={[]}
         threads={[{ ...question, id: "t2", contactId: "c2" }]}
@@ -125,9 +127,9 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
   // The bug this PR exists to fix.
   it("opening the person marks it seen WITHOUT lowering the count", () => {
     const onOpenContact = vi.fn();
-    feed({ onOpenContact });
+    card({ onOpenContact });
 
-    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+    expect(screen.getByText("1 to work through")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Alex Johnson"));
 
@@ -136,12 +138,11 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
     });
     expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true);
     expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(false);
-    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+    expect(screen.getByText("1 to work through")).toBeInTheDocument();
   });
 
-  // The dot is derived inside a memo, so the store changing has to reach it.
   it("clears the accent dot as soon as the person is opened", () => {
-    const { container } = feed({ onOpenContact: vi.fn() });
+    const { container } = card({ onOpenContact: vi.fn() });
     const dots = () => container.querySelectorAll(".bg-accent.rounded-full");
     expect(dots().length).toBe(1);
 
@@ -149,36 +150,25 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
     expect(dots().length).toBe(0);
   });
 
-  it("'Mark all seen' touches the seen axis only", () => {
-    feed();
-    fireEvent.click(screen.getByText("Mark all seen"));
-
-    expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true);
-    expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(false);
-    // Still to work through — nobody claimed to have reviewed anyone.
-    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
-  });
-
   it("greys a completed card in place and offers an Undo, rather than vanishing it", () => {
-    feed();
+    card();
     fireEvent.click(screen.getByRole("button", { name: /Answered/ }));
 
     expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(true);
-    // Still on screen, under the cursor where it was.
     expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
-    expect(within(header()).queryByText("1 to work through")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 to work through")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(InboxState.isCompleted(uid, "att:contact:c1")).toBe(false);
-    expect(within(header()).getByText("1 to work through")).toBeInTheDocument();
+    expect(screen.getByText("1 to work through")).toBeInTheDocument();
   });
 
   it("clears completed work on the next visit", () => {
-    const { unmount } = feed();
+    const { unmount } = card();
     fireEvent.click(screen.getByRole("button", { name: /Answered/ }));
     unmount();
 
-    feed();
+    card();
     expect(screen.queryByText("Alex Johnson")).not.toBeInTheDocument();
   });
 
@@ -209,7 +199,7 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
     for (const [name, threads, verb] of cases) {
       it(name, () => {
         render(
-          <AttentionFeed
+          <OnYouCard
             contacts={[mine]}
             interactions={[]}
             threads={threads}
@@ -222,14 +212,19 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
 
     it("a contact nobody has written about is Reviewed", () => {
       render(
-        <AttentionFeed contacts={sampleContacts} interactions={[]} threads={[]} staffNameMap={{ u3: "Zion" }} />,
+        <OnYouCard
+          contacts={[contact({ owner: "u1" })]}
+          interactions={[]}
+          threads={[]}
+          staffNameMap={{ u3: "Zion" }}
+        />,
       );
       expect(screen.getByRole("button", { name: /Reviewed/ })).toBeInTheDocument();
     });
 
     it("a to-do offers no button — it already owns its own done state", () => {
       render(
-        <AttentionFeed
+        <OnYouCard
           contacts={[]}
           interactions={[]}
           threads={[]}
@@ -243,7 +238,7 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
 
   it("closes the follow-up ask for everyone when 'I followed up' is pressed", () => {
     render(
-      <AttentionFeed
+      <OnYouCard
         contacts={[contact({ createdBy: "u1", owner: "u1" })]}
         interactions={[]}
         threads={[{ ...question, id: "t_nudge", kind: "nudge", body: "Could someone text Alex?" }]}
@@ -262,7 +257,7 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
 
   it("an encouragement is summarised, never a card", () => {
     render(
-      <AttentionFeed
+      <OnYouCard
         contacts={[contact({ owner: "u1" })]}
         interactions={[]}
         threads={[
@@ -276,7 +271,7 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
   });
 
   it("writes back from inside the card, without leaving the list", async () => {
-    feed();
+    card();
     fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
 
     const box = screen.getByRole("textbox");
@@ -288,29 +283,17 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
     expect(contactId).toBe("c1");
     expect(input.kind).toBe("comment");
     expect(input.body).toBe("She said yes to Wednesday.");
-    // You are still in the feed, and the card is now seen.
     expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
     await vi.waitFor(() => expect(InboxState.isSeen(uid, "att:contact:c1")).toBe(true));
   });
 
   it("offers the same three kinds the Conversation tab does", () => {
-    feed();
+    card();
     fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
     const picker = screen.getByRole("group", { name: "What are you writing" });
     expect(within(picker).getByRole("button", { name: "Comment" })).toBeInTheDocument();
     expect(within(picker).getByRole("button", { name: "Question" })).toBeInTheDocument();
     expect(within(picker).getByRole("button", { name: "Ask a follow-up" })).toBeInTheDocument();
-  });
-
-  it("New narrows to what has not been opened; All brings it back", () => {
-    feed();
-    fireEvent.click(screen.getByText("Mark all seen"));
-
-    fireEvent.click(screen.getByRole("button", { name: "New" }));
-    expect(screen.getByText("Nothing new right now")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Show everything" }));
-    expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
   });
 
   it("handles Show more and Show less toggle for > 5 stacks", () => {
@@ -322,7 +305,7 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
       createdAt: new Date().toISOString(),
     })) as Contact[];
 
-    render(<AttentionFeed contacts={manyOwnedContacts} staffNameMap={{ u3: "Zion" }} threads={[]} interactions={[]} />);
+    render(<OnYouCard contacts={manyOwnedContacts} staffNameMap={{ u3: "Zion" }} threads={[]} interactions={[]} />);
 
     expect(screen.getByText("Show 3 more people")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Show 3 more people"));
@@ -333,37 +316,22 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
   });
 
   it("expands to show every item behind a card", () => {
-    feed();
+    card();
     fireEvent.click(screen.getByText("All 3"));
     expect(screen.getAllByText("Met at library for study session").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("How should we follow up with Alex?").length).toBeGreaterThanOrEqual(1);
   });
 
-  // #reviewer-appstore-orphan-fix: when an activity points at a contactId
-  // that isn't in the `contacts` array (e.g. a deleted/missing contact),
-  // clicking the row must NOT call `onOpenContact` with a string id —
-  // passing a string causes the consumer to build `/people/${string}` and
-  // navigate to `/people/undefined`. Resolve to the actual Contact first;
-  // if missing, do nothing.
   it("does not call onOpenContact when the stack's contactId is missing from contacts (orphan reference)", () => {
     const onOpenContact = vi.fn();
-    const orphanInteraction: Interaction = {
-      id: "i_orphan",
-      contactId: "c_orphan",
-      userId: "u2",
-      content: "",
-      createdAt: new Date().toISOString(),
-      dateTime: new Date().toISOString(),
-      type: "gospel",
-      title: "gospel",
-    } as unknown as Interaction;
 
     render(
-      <AttentionFeed
+      <OnYouCard
         contacts={sampleContacts}
-        interactions={[orphanInteraction]}
+        interactions={[]}
         threads={[]}
-        staffNameMap={{ u2: "Caleb" }}
+        tasks={[{ id: "todo_orphan", title: "Ring the hall", status: "pending", assigneeId: "u1", contactId: "c_orphan" }]}
+        staffNameMap={{}}
         onOpenContact={onOpenContact}
       />,
     );
@@ -378,169 +346,5 @@ describe("AttentionFeed — the feed as a worklist (#813)", () => {
         expect((arg as Contact).id).toBe("c_orphan");
       }
     }
-  });
-
-  it("renders Around the team stacked on mobile when there is team activity (#841)", () => {
-    // A contact owned by another teammate (u2) with no direct ask for u1 lands in Around the team
-    const teamContact = contact({ id: "c_team", name: "Sam Wilson", createdBy: "u2", owner: "u2" });
-    const teamInteraction: Interaction = {
-      id: "i_team",
-      contactId: "c_team",
-      userId: "u2",
-      content: "Chatted after class",
-      createdAt: new Date().toISOString(),
-      dateTime: new Date().toISOString(),
-      type: "meetup",
-      title: "Chatted after class",
-    } as unknown as Interaction;
-
-    feed({
-      contacts: [...sampleContacts, teamContact],
-      interactions: [...sampleInteractions, teamInteraction],
-      mobile: true,
-    });
-
-    expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Around the team" })).toBeInTheDocument();
-    expect(screen.getByText("Sam Wilson")).toBeInTheDocument();
-  });
-});
-
-// ── The shape of the feed (#823) ────────────────────────────────────────────
-// "On you" is usually empty and "Around the team" usually long, so the feed
-// picks its shape from how much there is to show instead of always pairing two
-// equal-width columns. The rule itself is attentionLayout's; these tests pin
-// what each shape means on the page, by role and name.
-
-describe("AttentionFeed shape (#823)", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    __resetUserEntityStateCache();
-    __resetInboxState();
-    vi.clearAllMocks();
-  });
-
-  const contact = (over: Partial<Contact> = {}): Contact =>
-    ({
-      id: "c1",
-      name: "Alex Johnson",
-      createdBy: "u3",
-      createdAt: new Date().toISOString(),
-      stage: "Freshman Contact",
-      owner: "u3",
-      ...over,
-    }) as Contact;
-
-  // n teammates doing things on people the reader isn't carrying — the
-  // "Around the team" side of a typical day.
-  const teamDay = (n: number) => {
-    const contacts: Contact[] = [];
-    const interactions: Interaction[] = [];
-    for (let i = 0; i < n; i++) {
-      const c = contact({ id: `c_team_${i}`, name: `Teammate person ${i}`, createdBy: "u2", owner: "u2" });
-      contacts.push(c);
-      interactions.push({
-        id: `i_team_${i}`,
-        contactId: c.id,
-        userId: "u2",
-        content: `Chatted after class ${i}`,
-        createdAt: new Date().toISOString(),
-        dateTime: new Date().toISOString(),
-        type: "meetup",
-        title: "Chatted after class",
-      } as unknown as Interaction);
-    }
-    return { contacts, interactions };
-  };
-
-  // A question addressed to the reader — the one thing that is always "On you".
-  const question: ThreadMessageWithContact = {
-    id: "t1",
-    contactId: "c1",
-    from: "u3",
-    fromName: "Zion",
-    kind: "question",
-    body: "How should we follow up with Alex?",
-    at: new Date().toISOString(),
-    interactionId: null,
-    reactions: [],
-  };
-
-  const SLOT = <div>Borrowed personal column</div>;
-
-  const renderFeed = (props: Partial<React.ComponentProps<typeof AttentionFeed>>) =>
-    render(
-      <AttentionFeed
-        threads={[]}
-        staffNameMap={{ u2: "Zion", u3: "Zion" }}
-        personalSlot={SLOT}
-        {...props}
-      />,
-    );
-
-  it("splits 'On you' beside 'Around the team' on a typical day, with the borrowed column beneath", () => {
-    const { contacts, interactions } = teamDay(5);
-    renderFeed({ contacts, interactions });
-
-    const onYou = screen.getByRole("region", { name: "On you" });
-    const team = screen.getByRole("region", { name: "Around the team" });
-    // Two columns: the sections no longer share a container.
-    expect(onYou.parentElement).not.toBe(team.parentElement);
-    // The borrowed personal column renders beneath "On you", and only here.
-    expect(onYou.parentElement).toContainElement(screen.getByText("Borrowed personal column"));
-    // The empty side says so plainly.
-    expect(screen.getByText("Nothing's waiting on you.")).toBeInTheDocument();
-  });
-
-  it("stacks full-width siblings on a light day, and never borrows the column", () => {
-    const day = teamDay(1);
-    renderFeed({ contacts: [contact(), ...day.contacts], interactions: day.interactions, threads: [question] });
-
-    const onYou = screen.getByRole("region", { name: "On you" });
-    const team = screen.getByRole("region", { name: "Around the team" });
-    expect(onYou.parentElement).toBe(team.parentElement);
-    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
-  });
-
-  it("strips to a single line when 'On you' is empty and the day is quiet", () => {
-    const { contacts, interactions } = teamDay(2);
-    renderFeed({ contacts, interactions });
-
-    const onYou = screen.getByRole("region", { name: "On you" });
-    const team = screen.getByRole("region", { name: "Around the team" });
-    expect(onYou.parentElement).toBe(team.parentElement);
-    expect(screen.getByText("Nothing's waiting on you.")).toBeInTheDocument();
-    expect(screen.queryByText("All clear here.")).not.toBeInTheDocument();
-    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
-  });
-
-  it("keeps 'On you' full width alone when the team has nothing", () => {
-    renderFeed({ contacts: [contact()], interactions: [], threads: [question] });
-
-    expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Around the team" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
-  });
-
-  it("keeps mobile single-column — the borrow is desktop-only", () => {
-    const { contacts, interactions } = teamDay(5);
-    renderFeed({ contacts, interactions, mobile: true });
-
-    const onYou = screen.getByRole("region", { name: "On you" });
-    const team = screen.getByRole("region", { name: "Around the team" });
-    expect(onYou.parentElement).toBe(team.parentElement);
-    expect(screen.queryByText("Borrowed personal column")).not.toBeInTheDocument();
-  });
-
-  it("holds the shape while 'show them' expands the team column", () => {
-    const { contacts, interactions } = teamDay(6);
-    renderFeed({ contacts, interactions });
-
-    fireEvent.click(screen.getByRole("button", { name: "Show them" }));
-
-    const onYou = screen.getByRole("region", { name: "On you" });
-    const team = screen.getByRole("region", { name: "Around the team" });
-    expect(onYou.parentElement).not.toBe(team.parentElement);
-    expect(screen.getByText("Borrowed personal column")).toBeInTheDocument();
   });
 });

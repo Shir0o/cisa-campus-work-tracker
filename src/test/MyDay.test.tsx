@@ -982,10 +982,10 @@ describe('MyDay', () => {
     });
   });
 
-  // ── The Attention Feed's shape (#823) ────────────────────────────────────
-  // A team touch on somebody else's contact lands in "Around the team", so a
-  // quiet "On you" beside a busy team column is the reported day: the bento's
-  // personal column travels up beneath "On you" and renders exactly once.
+  // ── The demolition guard (#943) ───────────────────────────────────────────
+  // The shape rule and the borrowed personal column are gone. On the horizon
+  // and Your prayers render exactly once, in the bento, on every day and every
+  // count — the assertion that the borrow is really gone.
   const teamTouches = (n: number) =>
     Array.from({ length: n }, (_, i) =>
       interactionDoc(`i-team-${i}`, `c-team-${i}`, {
@@ -998,8 +998,7 @@ describe('MyDay', () => {
       }),
     );
 
-  it('lends the personal column to the feed on a split day, exactly once', async () => {
-    // Interaction items reach only staff views — read as a Full-timer's My Day.
+  it('renders On the horizon and Your prayers exactly once, in the bento, on a busy team day', async () => {
     (useAuth as unknown as Mock).mockReturnValue({
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
@@ -1010,32 +1009,87 @@ describe('MyDay', () => {
 
     expect(screen.getAllByText('On the horizon')).toHaveLength(1);
     expect(screen.getAllByText('Your prayers')).toHaveLength(1);
+    // The personal column stays in the bento — nothing is lent to the feed.
     const onYou = screen.getByRole('region', { name: 'On you' });
-    expect(onYou.parentElement!.textContent).toContain('On the horizon');
-    expect(onYou.parentElement!.textContent).toContain('Your prayers');
-
-    // Your sheep and Your week pair up in the freed space.
+    expect(onYou.parentElement!.textContent).not.toContain('On the horizon');
+    expect(onYou.parentElement!.textContent).not.toContain('Your prayers');
+    // Your sheep and Your week stay paired in the same column.
     const sheep = screen.getByText('Your sheep').closest('section')!;
     const week = screen.getByText('Your week').closest('section')!;
-    expect(sheep.parentElement).not.toBe(week.parentElement);
+    expect(sheep.parentElement).toBe(week.parentElement);
   });
 
-  it('keeps the personal column in the bento when the feed does not split', async () => {
+  it('renders On the horizon and Your prayers exactly once, in the bento, on a quiet day', async () => {
     (useAuth as unknown as Mock).mockReturnValue({
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'admin',
     });
     vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
     render(<MyDay />);
-    await waitFor(() =>
-      expect(screen.getByRole('region', { name: 'Around the team' })).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
     expect(screen.getAllByText('On the horizon')).toHaveLength(1);
+    expect(screen.getAllByText('Your prayers')).toHaveLength(1);
     const onYou = screen.getByRole('region', { name: 'On you' });
     expect(onYou.parentElement!.textContent).not.toContain('On the horizon');
     const sheep = screen.getByText('Your sheep').closest('section')!;
     const week = screen.getByText('Your week').closest('section')!;
     expect(sheep.parentElement).toBe(week.parentElement);
+  });
+
+  // ── My Day is a skim dashboard of your own work (#943) ────────────────────
+  // A Full-timer sees the On you card and the pointer card with its count; a
+  // Trainee sees the On you card and no pointer. Neither sees an "Around the
+  // team" region on My Day — the team column is gone from the page.
+  it('shows a Full-timer the On you card and the pointer card with its count', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
+
+    // The pointer card is a link to /around whose accessible name carries the
+    // unseen count.
+    const pointer = screen.getByRole('link', { name: /Around the team/ });
+    expect(pointer).toHaveAttribute('href', '/around');
+    expect(pointer.textContent).toContain('2');
+    // No "Around the team" region on My Day — the team column is gone.
+    expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
+  });
+
+  it('shows a Trainee the On you card and no pointer card', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'manager',
+    });
+    // A question from a full-timer on a contact the trainee owns lands in
+    // "On you" — the trainee's own work, with no team column beside it.
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-mine', { name: 'Mara', createdBy: 'u-test', owner: 'u-test' })],
+        threads: [
+          {
+            id: 't1',
+            ref: { path: 'contacts/c-mine/threads/t1' },
+            data: () => ({
+              from: 'ft1',
+              fromName: 'Mei',
+              kind: 'question',
+              body: 'How is Mara?',
+              at: new Date().toISOString(),
+              interactionId: null,
+              scope: null,
+            }),
+          },
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
+
+    expect(screen.queryByRole('link', { name: /Around the team/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
   });
 });

@@ -1713,7 +1713,10 @@
     "nothing_new": "Nothing new right now",
     "try_all": "Everything you have opened is under All.",
     "show_all": "Show everything",
-    "open_their_page": "Open their page"
+    "open_their_page": "Open their page",
+    "recent_activity_note": "Recent team activity — the same window My Day’s feed always covered.",
+    "unseen_team_activity": "things you haven’t looked at",
+    "see_around": "See around"
   },
   "thread": {
     "kind_comment": "Comment",

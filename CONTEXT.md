@@ -176,15 +176,15 @@ _Avoid_: Release popup, changelog blast, splash alert
 
 
 **Attention Feed**:
-The "What's new" worklist at the top of My Day (desktop and mobile) — every person the day has touched, stacked per contact, partitioned into **On you** and **Around the team**, grouped new-people-first. Its page shape (side-by-side, stacked, or a single line) is a pure function of how much there is to show, never of what has been expanded (ADR 0011). Built in `src/lib/attention.ts`; rendered by `AttentionFeed`.
+The retired name for the two-part worklist that used to head My Day. It is dissolved (#943): **On you** is now a My Day card, and **Around the team** is a Full-timer destination at `/around`. "Attention" remains the right name for what the library computes (`src/lib/attention.ts`), and the library keeps its module name and its `attention*` exports.
 _Avoid_: News feed, inbox, notification list
 
 **On you**:
-The Attention Feed stack of things addressed to you or on people you carry — questions and follow-up asks, @mentions, assigned to-dos, and your own contacts. Honestly empty on a quiet day: the empty card still renders as a labelled region, says "Nothing's waiting on you.", and on desktop split days hosts On the horizon and Your prayers beneath it.
+The My Day card of things addressed to you or on people you carry — questions and follow-up asks, @mentions, assigned to-dos, and your own contacts. It sits in the bento like Your sheep and Your week, keeps a five-row cap with "show more", and honestly empty on a quiet day: the empty card still renders as a labelled region and says "Nothing's waiting on you." (#943).
 _Avoid_: My items, assigned to me
 
 **Around the team**:
-The Attention Feed stack of everything else the team has been doing on people you aren't carrying. Being long is normal: it is never truncated, capped, or internally scrolled to match another column's height.
+The Full-timer destination at `/around` for everything else the team has been doing on people you aren't carrying. It keeps the team and teammate filters, the new-only filter, per-stack seen and completed state, and the reach affordance, and pages by day. My Day keeps a pointer card — a count of unseen team activity and a door — so the doing happens in exactly one place, with one read model. Being long is normal: it is never truncated, capped, or internally scrolled.
 _Avoid_: Team activity feed, other people's news
 
 **Lion Mark**:

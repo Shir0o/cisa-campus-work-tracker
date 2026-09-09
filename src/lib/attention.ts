@@ -572,45 +572,23 @@ export function partitionAttentionStacks(
   return { onYou, aroundTeam };
 }
 
-// ── The shape of the feed (#823) ────────────────────────────────────────────
-// "On you" is usually empty and "Around the team" is usually long, so a fixed
-// side-by-side pair of equal columns leaves a blank rectangle beneath a
-// one-line "On you". The feed picks one of three shapes instead, from how much
-// there is to show — never from what the reader has expanded, so clicking
-// "show them" never reflows the page mid-read. See docs/adr/0011.
-
-/** Total stacks at or above which the feed splits into two columns. A starting
- *  value, not a finding: below it the whole feed is roughly a screen stacked. */
-export const ATTENTION_LAYOUT_THRESHOLD = 5;
-
-export type AttentionLayoutMode = "strip" | "stacked" | "split";
+// ── The pointer card's number (#943) ────────────────────────────────────────
+// "Around the team" is its own destination now; My Day keeps a pointer card
+// that counts the team activity the reader has not looked at. The count is a
+// pure function of the partitioned team stacks and a seen-predicate — the
+// existing per-stack seen set already answers the question, so no new
+// persisted state is introduced and the number can never disagree with the
+// dots on the page.
 
 /**
- * The feed's shape, a pure function of the two partitioned stack arrays (or
- * their lengths) and nothing else — no DOM, no measurement, so server and
- * client cannot disagree. Evaluated in order:
- *
- * - team empty  → "stacked": "On you" full width, alone.
- * - total >= ATTENTION_LAYOUT_THRESHOLD → "split": "On you" (plus the borrowed
- *   personal column) beside "Around the team". Checked before the empty-"On
- *   you" case, so the day this rule exists for — nothing on you, a long team
- *   column — splits instead of stripping.
- * - total < threshold, "On you" empty → "strip": a single full-width line
- *   above a full-width team section.
- * - total < threshold, "On you" non-empty → "stacked": both sections full width.
- *
- * Counts are of ALL stacks, not the visible ones: the collapsed limit caps
- * what renders, the shape describes how much there is.
+ * How many of the team stacks the reader has not seen. The predicate is
+ * injected so the function stays pure and testable without a DOM or a store.
  */
-export function attentionLayout(
-  onYou: readonly unknown[] | number,
-  aroundTeam: readonly unknown[] | number,
-): AttentionLayoutMode {
-  const onYouCount = typeof onYou === "number" ? onYou : onYou.length;
-  const teamCount = typeof aroundTeam === "number" ? aroundTeam : aroundTeam.length;
-  if (teamCount === 0) return "stacked";
-  if (onYouCount + teamCount >= ATTENTION_LAYOUT_THRESHOLD) return "split";
-  return onYouCount === 0 ? "strip" : "stacked";
+export function unseenTeamCount(
+  aroundTeam: readonly AttentionStack[],
+  isSeen: (stack: AttentionStack) => boolean,
+): number {
+  return aroundTeam.filter((s) => !isSeen(s)).length;
 }
 
 

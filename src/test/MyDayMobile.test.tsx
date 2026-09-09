@@ -25,6 +25,19 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+// OnYouCard subscribes to live threads; deliver a question from a full-timer
+// on a contact the reader owns so the On you card renders in these tests.
+const threadsMock = vi.hoisted(() => ({
+  subscribeAllThreads: vi.fn<(cb: (m: unknown[]) => void) => () => void>(() => () => {}),
+}));
+vi.mock('../lib/threads', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    subscribeAllThreads: (cb: (m: unknown[]) => void) => threadsMock.subscribeAllThreads(cb),
+  };
+});
+
 // AskStack (rendered in the FT mobile shell) subscribes to person-less
 // questions; keep it inert in these layout-focused tests. Per-test overrides
 // use the hoisted `asksMock` so the component and the test see the same fn.
@@ -470,18 +483,79 @@ describe('MyDayMobile', () => {
     expect(onAddPersonalPrayer).toHaveBeenCalledWith('New test prayer', null);
   });
 
-  it('renders AttentionFeed when uid is provided', () => {
-    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+  it('renders On you card and pointer card for a Full-timer, with the count in the link', () => {
+    (useAuth as any).mockReturnValue({
+      user: { displayName: 'John Doe', uid: 'u1' },
+      role: 'admin',
+    });
+    threadsMock.subscribeAllThreads.mockImplementation((cb: (m: unknown[]) => void) => {
+      cb([
+        {
+          id: 't1',
+          contactId: 'c1',
+          from: 'ft1',
+          fromName: 'Mei',
+          kind: 'question',
+          body: 'How is Mara?',
+          at: new Date().toISOString(),
+          interactionId: null,
+          scope: null,
+        },
+      ]);
+      return () => {};
+    });
 
     render(
       <MyDayMobile
-        contacts={[]}
+        contacts={[{ id: 'c1', name: 'Mara', createdBy: 'u1', owner: 'u1' } as any]}
         events={[]}
         prayers={[]}
         stages={[]}
         uid="u1"
       />
     );
+
+    expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument();
+    const pointer = screen.getByRole('link', { name: /Around the team/ });
+    expect(pointer).toHaveAttribute('href', '/around');
+    // No inline team section on mobile — the pointer card is the only door.
+    expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
+  });
+
+  it('renders the On you card and no pointer card for a Trainee', () => {
+    (useAuth as any).mockReturnValue({
+      user: { displayName: 'John Doe', uid: 'u1' },
+      role: 'manager',
+    });
+    threadsMock.subscribeAllThreads.mockImplementation((cb: (m: unknown[]) => void) => {
+      cb([
+        {
+          id: 't1',
+          contactId: 'c1',
+          from: 'ft1',
+          fromName: 'Mei',
+          kind: 'question',
+          body: 'How is Mara?',
+          at: new Date().toISOString(),
+          interactionId: null,
+          scope: null,
+        },
+      ]);
+      return () => {};
+    });
+
+    render(
+      <MyDayMobile
+        contacts={[{ id: 'c1', name: 'Mara', createdBy: 'u1', owner: 'u1' } as any]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        uid="u1"
+      />
+    );
+
+    expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Around the team/ })).not.toBeInTheDocument();
   });
 
   it('derives week/prayers from props when curated lists are absent', () => {

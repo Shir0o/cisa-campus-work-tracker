@@ -3,11 +3,11 @@ import {
   buildAttentionItems,
   attentionStacksFor,
   partitionAttentionStacks,
-  attentionLayout,
-  ATTENTION_LAYOUT_THRESHOLD,
+  unseenTeamCount,
   attentionPhrase,
   isTiedTo,
   type AttentionItem,
+  type AttentionStack,
 } from "../lib/attention";
 import { UserEntityState, __resetUserEntityStateCache } from "../lib/userEntityState";
 import type { Contact, Interaction } from "../types";
@@ -150,43 +150,41 @@ describe("partitionAttentionStacks (#595)", () => {
   });
 });
 
-// ── #823: the shape of the Attention Feed ───────────────────────────────────
-// The shape is a pure function of how much there is to show — never of what
-// has been expanded — so every branch is testable without a DOM.
+// ── #943: the pointer card's number ─────────────────────────────────────────
+// The unseen count is a pure function of the partitioned team stacks and a
+// seen-predicate — no new persisted state, so the number on the card can never
+// disagree with the dots on the page.
 
-describe("attentionLayout (#823)", () => {
-  it("keeps 'On you' full width alone when the team has nothing", () => {
-    expect(attentionLayout(0, 0)).toBe("stacked");
-    expect(attentionLayout(3, 0)).toBe("stacked");
+describe("unseenTeamCount (#943)", () => {
+  const stack = (id: string, seen: boolean): AttentionStack =>
+    ({
+      id,
+      contactId: id,
+      targetId: null,
+      items: [],
+      at: new Date().toISOString(),
+      bucket: "today",
+      by: [],
+      kinds: ["contact"],
+      seen,
+    }) as AttentionStack;
+
+  const isSeen = (s: AttentionStack) => s.seen;
+
+  it("counts none when every team stack has been seen", () => {
+    expect(unseenTeamCount([stack("a", true), stack("b", true)], isSeen)).toBe(0);
   });
 
-  it("splits beside 'Around the team' at the threshold and above", () => {
-    expect(attentionLayout(0, ATTENTION_LAYOUT_THRESHOLD)).toBe("split");
-    expect(attentionLayout(2, 3)).toBe("split");
-    expect(attentionLayout(4, 9)).toBe("split");
+  it("counts some when only part of the team has been seen", () => {
+    expect(unseenTeamCount([stack("a", true), stack("b", false), stack("c", false)], isSeen)).toBe(2);
   });
 
-  it("collapses to a strip one below the threshold when 'On you' is empty", () => {
-    expect(attentionLayout(0, ATTENTION_LAYOUT_THRESHOLD - 1)).toBe("strip");
-    expect(attentionLayout(0, 1)).toBe("strip");
+  it("counts all when nothing has been seen", () => {
+    expect(unseenTeamCount([stack("a", false), stack("b", false)], isSeen)).toBe(2);
   });
 
-  it("stacks full width below the threshold when 'On you' has work", () => {
-    expect(attentionLayout(1, 1)).toBe("stacked");
-    expect(attentionLayout(2, 2)).toBe("stacked");
-  });
-
-  // The day this issue reports: nothing waiting on you, plenty around the
-  // team. The count is checked first, so this day splits — it must never
-  // strip the reader's own column away.
-  it("splits the reported day — empty 'On you', long team column", () => {
-    expect(attentionLayout(0, 12)).toBe("split");
-  });
-
-  it("reads stacks as well as lengths, and counts what there is", () => {
-    const team = Array.from({ length: ATTENTION_LAYOUT_THRESHOLD }, (_, i) => ({ id: `s${i}` }));
-    expect(attentionLayout([], team)).toBe("split");
-    expect(attentionLayout([], team.slice(0, 3))).toBe("strip");
+  it("counts zero on an empty team stack", () => {
+    expect(unseenTeamCount([], isSeen)).toBe(0);
   });
 });
 

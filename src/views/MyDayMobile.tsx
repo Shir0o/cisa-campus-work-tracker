@@ -22,7 +22,8 @@ import {
 import { cn } from '../lib/utils';
 import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/primitives';
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
-import AttentionFeed from '../components/landing/AttentionFeed';
+import OnYouCard from '../components/landing/OnYouCard';
+import PointerCard from '../components/landing/PointerCard';
 import AskStack from '../components/landing/AskStack';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { Translate } from '../components/Translate';
@@ -145,7 +146,7 @@ export default function MyDayMobile({
   onOpenPrayer = () => {},
   onOpenCalendar = () => {},
 }: MyDayMobileProps) {
-  const { user, effectiveUserId, effectiveUserName } = useAuth();
+  const { user, effectiveUserId, effectiveUserName, role } = useAuth();
   const { t } = useLanguage();
   const uid = propUid || effectiveUserId || user?.uid;
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || t('myDay.friend');
@@ -291,15 +292,23 @@ export default function MyDayMobile({
         </div>
       )}
 
-      {/* ── Needs your attention — unified attention feed ── */}
+      {/* ── On you + the pointer card (#943). Mobile gets the same two cards
+          as desktop and loses the inline team section; the bottom nav bar is
+          unchanged, and the pointer card is the only door to /around. ── */}
       {uid && (
-        <div className="px-5 mt-2">
-          <AttentionFeed
+        <div className="px-5 mt-2 flex flex-col gap-3">
+          <OnYouCard
             contacts={contacts}
             personalContactIds={personalContactIds}
             onOpenContact={onOpenContact}
             mobile={true}
           />
+          {role === 'admin' && (
+            <PointerCard
+              contacts={contacts}
+              personalContactIds={personalContactIds}
+            />
+          )}
         </div>
       )}
 
