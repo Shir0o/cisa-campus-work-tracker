@@ -618,6 +618,9 @@
     "edit_archive_reason": "Edit Reason",
     "archive_reason": "Archive reason"
   },
+  "reader": {
+    "text_size": "Text size"
+  },
   "ask": {
     "questions_for_team": "Questions for the team",
     "questions_for_team_sub": "Trainees' questions that aren't about one person. Answering clears them for everyone.",
