@@ -169,6 +169,35 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 )}
               </figure>
             );
+          case 'verse': {
+            // A proof-text in the flow (#918): the reference leads, at body
+            // size, emphasised in sage; the words follow. No figure, no rule
+            // above, no trailing citation — visibly distinct from a Passage.
+            const v = block.verse;
+            return (
+              <p key={bIdx} data-block-kind="verse" className="m-0 text-[16px] leading-[1.55] text-on-surface">
+                <strong className="font-semibold text-[var(--t-sage)]">{block.ref}</strong>
+                {v && (
+                  <>
+                    {' '}
+                    {typeof v === 'object' && 'word' in v ? (
+                      <>
+                        {v.before && <InlineMd text={v.before} />}
+                        <BlankSpan
+                          part={{ kind: 'blank', blank: v, n: 0 }}
+                          isOpen={!!openBlanks[`${sectionIndex}:vs`]}
+                          onReveal={() => onRevealBlank(`${sectionIndex}:vs`)}
+                        />
+                        {v.after && <InlineMd text={v.after} />}
+                      </>
+                    ) : (
+                      <InlineMd text={v.before} />
+                    )}
+                  </>
+                )}
+              </p>
+            );
+          }
           case 'prompt': {
             const k = block.prompt.kind;
             return (

@@ -518,6 +518,13 @@ export default function BibleStudyEditor() {
               Passage
             </button>
             <button
+              onClick={() => insertBlockAtSectionEnd('Verse: ', 7)}
+              onMouseDown={(e) => e.preventDefault()}
+              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
+            >
+              Verse
+            </button>
+            <button
               onClick={() => insertTextAtCursor('[[', ']]')}
               onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"

@@ -197,6 +197,67 @@ describe('parseMeeting', () => {
     expect(passage.ref).toBeUndefined();
     expect(s.ref).toBeUndefined();
   });
+
+  it('parses a Verse line into a Verse block with its reference and text separated (#918)', () => {
+    const s = parseMeeting(
+      '## Proof text\nVerse: Rom. 5:6 — while we were still weak, at the right time Christ died for the ungodly.',
+    )[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as {
+      ref: string;
+      verse: { before: string };
+    };
+    expect(verse.ref).toBe('Rom. 5:6');
+    expect(verse.verse.before).toBe(
+      'while we were still weak, at the right time Christ died for the ungodly.',
+    );
+  });
+
+  it('a line that merely looks like a scripture reference is not reclassified as a Verse (#918)', () => {
+    // Shape detection is explicitly rejected: only the Verse prefix makes a
+    // Verse, so a leading-reference line stays prose.
+    const s = parseMeeting(
+      '## Not a verse\nRom. 5:6 — while we were still weak, at the right time Christ died for the ungodly.',
+    )[0];
+    expect(s.content.some((b) => b.kind === 'verse')).toBe(false);
+    expect(s.content[0]).toMatchObject({ kind: 'prose' });
+  });
+
+  it('a Verse prefix inside a Section body does not disturb the surrounding blocks (#918)', () => {
+    const s = parseMeeting(
+      '## Flow\nOpening prose.\n\nVerse: Rom. 5:6 — while we were still weak.\n\nQuestion: What does this mean?',
+    )[0];
+    expect(s.content.map((b) => b.kind)).toEqual(['prose', 'verse', 'prompt']);
+  });
+
+  it('Blanks work inside a Verse (#918)', () => {
+    const s = parseMeeting('## Proof\nVerse: Rom. 5:6 — while we were still [[weak]].')[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as {
+      verse: { before: string; word: string; after: string };
+    };
+    expect(verse.verse).toEqual({ before: 'while we were still ', word: 'weak', after: '.' });
+  });
+
+  it('the Verse prefix is case-insensitive like the Prompt prefixes (#918)', () => {
+    const s = parseMeeting('## Proof\nverse: Rom. 5:6 — while we were still weak.')[0];
+    expect(s.content[0].kind).toBe('verse');
+  });
+
+  it('a Verse line with no text carries just the reference (#918)', () => {
+    const s = parseMeeting('## Proof\nVerse: Rom. 5:6')[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as { ref: string; verse?: unknown };
+    expect(verse.ref).toBe('Rom. 5:6');
+    expect(verse.verse).toBeUndefined();
+  });
+
+  it('splits the reference from the text on the em dash whatever the spacing (#918)', () => {
+    const s = parseMeeting('## Proof\nVerse: Rom. 5:6—while we were still weak.')[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as {
+      ref: string;
+      verse: { before: string };
+    };
+    expect(verse.ref).toBe('Rom. 5:6');
+    expect(verse.verse.before).toBe('while we were still weak.');
+  });
 });
 
 describe('nextMeetingDate', () => {

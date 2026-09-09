@@ -108,6 +108,22 @@ Question: What did you hear?
 
 > Second passage
 > Genesis 2:1`,
+
+  // Verses (#918): the reference leads, the words follow at body size, in
+  // the flow — a distinct block from a Passage. A leading-reference line
+  // without the prefix stays prose (shape detection is rejected).
+  `## Proof texts
+Verse: Rom. 5:6 — while we were still weak, at the right time Christ died for the ungodly.
+
+Rom. 5:8 — God shows his love for us in that while we were still sinners, Christ died for us.
+
+Verse: Rom. 5:5 — and hope does not put us to shame.`,
+
+  // A Verse with a Blank, and a Verse with no text after the reference.
+  `## Verse blanks
+Verse: Rom. 5:6 — while we were still [[weak]].
+
+Verse: Rom. 5:5`,
 ];
 
 describe('parser mirror parity (ADR 0013 keep-in-step)', () => {
@@ -157,6 +173,7 @@ describe('parser mirror parity (ADR 0013 keep-in-step)', () => {
     expect(kinds.has('bullet-list')).toBe(true);
     expect(kinds.has('number-list')).toBe(true);
     expect(kinds.has('passage')).toBe(true);
+    expect(kinds.has('verse')).toBe(true);
     expect(kinds.has('prompt')).toBe(true);
   });
 });

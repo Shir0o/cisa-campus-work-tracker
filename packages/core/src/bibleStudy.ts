@@ -14,8 +14,10 @@ export type ProseBlock = { kind: "prose"; md: string };
 export type ListItem = (Blank | Text) & { children?: ListItem[] };
 export type ListBlock = { kind: "bullet-list" | "number-list"; points: ListItem[] };
 export type PassageBlock = { kind: "passage"; passage: Blank | Text; ref?: string };
+/** A proof-text in the flow: the reference leads, the words follow at body size (#918). */
+export type VerseBlock = { kind: "verse"; ref: string; verse?: Blank | Text };
 export type PromptBlock = { kind: "prompt"; prompt: { kind: PromptKind; text: string } };
-export type SectionBlock = ProseBlock | ListBlock | PassageBlock | PromptBlock;
+export type SectionBlock = ProseBlock | ListBlock | PassageBlock | VerseBlock | PromptBlock;
 
 export type Section = {
   id: string;
@@ -164,7 +166,8 @@ export function parseMeeting(md: string): Section[] {
 
 /**
  * The Section body grammar (ADR 0013 — read as written): consecutive `>`
- * lines are one Passage block (last line = citation), `Question:/Discuss:/`
+ * lines are one Passage block (last line = citation), `Verse:` lines are
+ * Verse blocks (reference leading, text following — #918), `Question:/Discuss:/`
  * `Activity:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks,
  * `1.`-style runs are number-list blocks (each point loses its number
  * prefix — the <ol> marker renders it), and any other non-blank run is a
@@ -271,6 +274,27 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
         content[content.length - 1] = { kind: "prose", md: `${last.prompt.kind}: ${last.prompt.text}` };
       }
       content.push({ kind: "prompt", prompt });
+      continue;
+    }
+
+    // A Verse line (#918): `Verse: <reference> — <text>`. The prefix is the
+    // one unambiguous marker — shape detection of a reference is explicitly
+    // rejected, so a leading-reference line stays prose. The reference leads
+    // and the words follow at body size; a line with no ` — ` carries just
+    // the reference.
+    const verseMatch = line.match(/^verse:\s*(.*)$/i);
+    if (verseMatch) {
+      flushList();
+      flushProse();
+      const rest = verseMatch[1].trim();
+      const sep = rest.search(/—/);
+      const ref = (sep === -1 ? rest : rest.slice(0, sep)).trim();
+      const text = sep === -1 ? "" : rest.slice(sep + 1).trim();
+      content.push({
+        kind: "verse",
+        ref,
+        ...(text ? { verse: parseBlankOrText(text) } : {}),
+      });
       continue;
     }
 

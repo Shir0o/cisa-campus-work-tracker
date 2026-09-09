@@ -98,8 +98,12 @@ One movement of a Meeting: some outline points, a Passage, and a Prompt. Section
 _Avoid_: Slide, step, chapter, block
 
 **Passage**:
-The portion of scripture a Section is built around, shown in full on the page rather than cited for the reader to look up elsewhere.
-_Avoid_: Verse, reading, scripture reference, excerpt
+The portion of scripture a Section is built around, shown in full on the page rather than cited for the reader to look up elsewhere. The words are set large and foregrounded; the citation is subordinate and trailing underneath. Distinct from **Verse**, which is a proof-text in the flow with the reference leading.
+_Avoid_: reading, scripture reference, excerpt
+
+**Verse**:
+A proof-text cited mid-thought — scripture where the reference leads and the words follow at body size, sitting in the flow of the Section rather than pulling out of it. Written with the `Verse:` prefix, reference and text separated by an em dash; the prefix is the one marker, never shape detection of a reference. Distinct from **Passage**, which sets the words large with the citation trailing.
+_Avoid_: Passage, quotation, pull quote
 
 **Prompt**:
 The part of a Section that puts something to the room, in one of three kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
