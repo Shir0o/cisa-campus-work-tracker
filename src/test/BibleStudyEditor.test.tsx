@@ -664,12 +664,21 @@ describe('BibleStudyEditor view', () => {
       );
     });
 
-    // Toggle theme
+    // Toggle theme (#937): the host carries the app's own `light`/`dark`
+    // class plus the theme attribute, so the reader inside it resolves the
+    // chosen palette even when the app window is in the other theme.
+    const frame = screen.getByTestId('preview-frame');
+    const phone = frame.firstElementChild as HTMLElement;
+
     const lightBtn = screen.getByRole('button', { name: /Light/i });
     fireEvent.click(lightBtn);
+    expect(phone.dataset.theme).toBe('light');
+    expect(phone.className).toMatch(/(^|\s)light(\s|$)/);
 
     const darkBtn = screen.getByRole('button', { name: /Dark/i });
     fireEvent.click(darkBtn);
+    expect(phone.dataset.theme).toBe('dark');
+    expect(phone.className).toMatch(/(^|\s)dark(\s|$)/);
   });
 
   // #916 — the preview frame's layout box matches its painted size. A CSS
@@ -772,6 +781,27 @@ describe('BibleStudyEditor view', () => {
       });
 
       expect(screen.getByRole('button', { name: 'standing' })).toBeInTheDocument();
+    });
+
+    it('keeps a revealed Blank revealed across a theme change', async () => {
+      // #937 — toggling the preview's theme must not remount the reader: the
+      // host's class and data-theme swap, the reader instance stays, so its
+      // reducer state (revealed Blanks, scroll position) survives. A reader
+      // keyed on the preview theme would discard and rebuild here.
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Blank, tap to reveal' }));
+      expect(screen.getByRole('button', { name: 'standing' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Light/i }));
+
+      expect(screen.getByRole('button', { name: 'standing' })).toBeInTheDocument();
+      expect(within(screen.getByTestId('reader-header')).getByText('01 / 02')).toBeInTheDocument();
     });
 
     it('keeps the preview\'s scroll position across an edit', async () => {

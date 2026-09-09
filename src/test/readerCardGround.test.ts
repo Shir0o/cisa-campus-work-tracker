@@ -127,4 +127,38 @@ describe('reader card-on-ground guardrail (#922)', () => {
     // shadow is scoped to the reader, not the app-wide token.
     expect(css).toMatch(/--shadow-card: none/);
   });
+
+  it('reaches the light reader-card mapping inside a light scope, after the dark rule (#937)', () => {
+    // #937 — the preview themes the frame independently of the app window:
+    // the phone host carries the app's `light`/`dark` class inside whatever
+    // theme the app window is in, so a Light island inside a Dark window
+    // needs a scoped light mapping that beats `.dark .reader-card-surface`
+    // (equal specificity, so it must come after the dark rule). The state
+    // before #937 — an attribute and inline colours only — matched no
+    // selector and rendered the Light preview in the app's own theme.
+    const darkStart = css.indexOf('.dark .reader-card-surface');
+    const lightScopedStart = css.indexOf('[data-theme="light"] .reader-card-surface');
+    expect(darkStart, 'dark reader surface block should exist').toBeGreaterThanOrEqual(0);
+    expect(lightScopedStart, 'scoped light reader surface block should exist').toBeGreaterThan(darkStart);
+    const lightScopedBlock = css.slice(lightScopedStart, css.indexOf('}', lightScopedStart) + 1);
+    expect(lightScopedBlock).toMatch(/--reader-ground: var\(--panel\)/);
+    expect(lightScopedBlock).toMatch(/--reader-card: var\(--bg\)/);
+    expect(lightScopedBlock).toMatch(/--reader-card-edge: transparent/);
+    expect(lightScopedBlock).not.toMatch(/--color-/);
+    // The mirror must be keyed on the host-local data-theme attribute, not
+    // the `light` class: the app's theme provider puts class `light`/`dark`
+    // on the document root, so a `.light .reader-card-surface` form would
+    // also match under a LIGHT app window and override a Dark preview host
+    // (equal specificity, later in the file).
+    expect(css).not.toMatch(/^ {2}\.light \.reader-card-surface,/m);
+  });
+
+  it('lets a nested light host take the light palette inside a dark app (#937)', () => {
+    // The light palette lives on `:root`, which a nested host can never
+    // match — the preview's Light host is a subtree of a Dark `<html>`.
+    // The block's selector also names `.light`, so the host (and the app's
+    // own `<html class="light">`) both resolve the light values; no palette
+    // values are duplicated anywhere.
+    expect(css).toMatch(/:root,\n\s*\.light \{/);
+  });
 });
