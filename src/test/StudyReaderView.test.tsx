@@ -137,6 +137,23 @@ describe('StudyReaderView (the scrolling deck)', () => {
     expect(screen.queryByLabelText('Previous section')).toBeNull();
   });
 
+  it('sits the Section content on a card and keeps the peek outside it (#922)', () => {
+    render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+    // The card is the element carrying data-reader-card; the Section's
+    // title and body live inside it.
+    const card = document.querySelector('[data-reader-card]')!;
+    expect(card).not.toBeNull();
+    expect(card.querySelector('h2')).toHaveTextContent('Where peace starts');
+    expect(card.querySelector('[data-testid="section-body"]')).not.toBeNull();
+
+    // The peek is a sibling of the card, not a child — it sits outside the
+    // card at the bottom of the panel.
+    const peek = screen.getByTestId('peek-0');
+    expect(peek.closest('[data-reader-card]')).toBeNull();
+    expect(peek.parentElement!.parentElement).toBe(card.parentElement);
+  });
+
   it('tapping a Blank reveals its word without any page-level tap-to-advance competing', () => {
     render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 

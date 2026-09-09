@@ -204,7 +204,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
               <div
                 key={bIdx}
                 data-block-kind="prompt"
-                className={`bg-surface border border-outline-variant rounded-2xl p-4 sm:p-5 flex flex-col gap-2 ${
+                className={`bg-[var(--reader-well)] border border-outline-variant rounded-[20px] p-4 sm:p-5 flex flex-col gap-2 ${
                   k === 'discuss' ? 'border-l-4 border-l-[var(--t-sage)]' : k === 'activity' ? 'border-l-4 border-l-[var(--t-clay)]' : k === 'apply' ? 'border-l-4 border-l-[var(--t-ochre)]' : 'border-l-4 border-l-[var(--t-slate)]'
                 }`}
               >

@@ -9,7 +9,7 @@
 // is a READ MODEL mirrored from an IntersectionObserver and consumed only by
 // the progress rail, the counter and the index highlight. jump remains as the
 // action the Section index dispatches, and its effect is a scrollIntoView.
-import React, { useEffect, useEffectEvent, useReducer, useRef } from 'react';
+import React, { useEffect, useEffectEvent, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import {
   readerReducer,
   type Meeting,
@@ -57,10 +57,20 @@ const ChevronIcon: React.FC = () => (
   </svg>
 );
 
+// The panel's top padding, in px — the air above the card while a Section
+// settles. The settle measurement subtracts it so the card's resting offset
+// is the slack between the card's top and the panel's top edge.
+const PANEL_TOP_PAD = 18;
+
 /**
- * One scroll-snap panel: content top-aligns (one landing spot on every panel;
- * the old `my-auto` centring is gone) and the trailing space carries the peek —
- * the next Section's title, dimmed, doubling as the "more below" affordance.
+ * One scroll-snap panel: the Section's content sits on a raised card and the
+ * panel around it becomes ground (#922). While the card and the peek fit the
+ * deck, the panel settles — the card's top margin takes the slack, so the
+ * content sits optically in the panel, framed above by air and below by the
+ * peek, which stays OUTSIDE the card at the bottom of the panel. The settle
+ * margin is `mt-auto`: as content grows the offset shrinks continuously to
+ * zero, so nothing jumps at the threshold. A Section that overflows keeps
+ * its card, which grows and closes below its last block.
  */
 const Panel: React.FC<{
   section: Section;
@@ -72,51 +82,92 @@ const Panel: React.FC<{
   openBlanks: Record<string, boolean>;
   onRevealBlank: (key: string) => void;
   ref?: React.Ref<HTMLElement>;
-}> = ({ section, index, isLast, meetingTitle, nextTitle, onPeekNext, openBlanks, onRevealBlank, ref }) => (
-  <section
-    ref={ref}
-    data-section-panel={index}
-    className="min-h-full snap-start snap-always flex flex-col px-6 pt-4 pb-0"
-  >
-    <div className="flex flex-col gap-5">
-      <h2 className="font-serif font-bold text-[32px] leading-[1.08] tracking-tight text-on-surface">
-        {section.title}
-      </h2>
-      <SectionBody
-        section={section}
-        sectionIndex={index}
-        openBlanks={openBlanks}
-        onRevealBlank={onRevealBlank}
-      />
-    </div>
-    {/* The trailing space that used to be dead vertical centring is the
-        peek: the next Section's title, dimmed — the "more below" affordance
-        and a preview of what is coming. The last panel ends the Meeting. */}
-    <div className="flex-1 min-h-[96px] flex items-end justify-center pb-6">
-      {isLast ? (
-        <div
-          data-testid="reader-end"
-          className="flex flex-col items-center gap-2 text-xs text-on-surface-variant font-medium py-4"
-        >
-          <span className="h-px w-12 bg-outline-variant" />
-          <span>End of {meetingTitle}</span>
-        </div>
-      ) : (
-        <button
-          type="button"
-          data-testid={`peek-${index}`}
-          className="text-sm text-on-surface-variant/60 py-4 truncate max-w-full"
-          onClick={(e) => {
-            e.stopPropagation();
-            onPeekNext();
-          }}
-        >
-          {nextTitle}
-        </button>
-      )}
-    </div>
-  </section>
-);
+}> = ({ section, index, isLast, meetingTitle, nextTitle, onPeekNext, openBlanks, onRevealBlank, ref }) => {
+  const [settles, setSettles] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const peekRef = useRef<HTMLDivElement>(null);
+
+  // Measure whether the card and the peek fit the deck. jsdom has no layout
+  // (offsetHeight/clientHeight are 0), so the panel never settles in tests —
+  // the real browser supplies the truth. The effect re-runs on every render
+  // so a revealed Blank or a theme change re-measures; the measurement is
+  // idempotent and cheap. A ResizeObserver on the deck re-measures when the
+  // deck's height changes without a render — phone rotation, window resize,
+  // browser chrome show/hide — so a Section that now fits settles instead of
+  // clinging to the top.
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    const peek = peekRef.current;
+    const panel = card?.parentElement;
+    if (!card || !peek || !panel) return;
+    const deck = panel.parentElement;
+    if (!deck) return;
+    const measure = () => {
+      const needed = card.offsetHeight + peek.offsetHeight + PANEL_TOP_PAD;
+      setSettles(needed <= deck.clientHeight);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(deck);
+    return () => observer.disconnect();
+  });
+
+  return (
+    <section
+      ref={ref}
+      data-section-panel={index}
+      className="min-h-full snap-start snap-always flex flex-col px-6 pt-[18px] pb-0"
+    >
+      <div
+        ref={cardRef}
+        data-reader-card
+        className={`flex flex-col gap-5 rounded-[24px] px-[22px] py-6 bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)] ${
+          settles ? 'mt-auto' : ''
+        }`}
+      >
+        <h2 className="font-serif font-bold text-[32px] leading-[1.08] tracking-tight text-on-surface">
+          {section.title}
+        </h2>
+        <SectionBody
+          section={section}
+          sectionIndex={index}
+          openBlanks={openBlanks}
+          onRevealBlank={onRevealBlank}
+        />
+      </div>
+      {/* The peek stays OUTSIDE the card, at the bottom of the panel: the
+          next Section's title, dimmed — the "more below" affordance and a
+          preview of what is coming. The last panel ends the Meeting. */}
+      <div
+        ref={peekRef}
+        className={`flex items-end justify-center pb-6 ${settles ? 'mt-auto' : 'mt-6'}`}
+      >
+        {isLast ? (
+          <div
+            data-testid="reader-end"
+            className="flex flex-col items-center gap-2 text-xs text-on-surface-variant font-medium py-4"
+          >
+            <span className="h-px w-12 bg-outline-variant" />
+            <span>End of {meetingTitle}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            data-testid={`peek-${index}`}
+            className="text-sm text-on-surface-variant/60 py-4 truncate max-w-full"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPeekNext();
+            }}
+          >
+            {nextTitle}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+};
 
 const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   meeting,
@@ -202,11 +253,11 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   }, [followSectionIndex]);
 
   return (
-    <div className="w-full h-full min-h-0 bg-background text-on-surface relative overflow-hidden flex flex-col">
+    <div className="reader-card-surface w-full h-full min-h-0 bg-[var(--reader-ground)] text-on-surface relative overflow-hidden flex flex-col">
       {/* Sticky chrome — slim: title, counter, and the stale-week date chip. */}
       <div
         data-testid="reader-header"
-        className="shrink-0 sticky top-0 z-20 flex items-center gap-2 px-5 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 bg-background/95 backdrop-blur-sm border-b border-outline-variant"
+        className="shrink-0 sticky top-0 z-20 flex items-center gap-2 px-5 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 bg-[var(--reader-ground)]/95 backdrop-blur-sm border-b border-outline-variant"
       >
         {staleDateLabel && (
           <span
@@ -257,7 +308,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
       {/* Sticky progress rail. */}
       <div
         data-testid="progress-rail"
-        className="shrink-0 sticky bottom-0 z-20 flex gap-1.5 px-6 pt-2 pb-[calc(env(safe-area-inset-bottom)+10px)] bg-background/95"
+        className="shrink-0 sticky bottom-0 z-20 flex gap-1.5 px-6 pt-2 pb-[calc(env(safe-area-inset-bottom)+10px)] bg-[var(--reader-ground)]/95"
       >
         {sections.map((_, sIdx) => (
           <div
