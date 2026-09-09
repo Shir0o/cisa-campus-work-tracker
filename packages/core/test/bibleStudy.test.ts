@@ -6,6 +6,10 @@ import {
   slugFor,
   studyIdFor,
   validateStudySetup,
+  appendSection,
+  sectionOffsets,
+  sectionIndexAtOffset,
+  blockInsertionPoint,
   type StudySetupForm,
   type Blank,
   type Meeting,
@@ -320,6 +324,50 @@ Question: What did you hear?
     it('section id derivation is unchanged for legacy titles', () => {
       const md = `## Where peace starts\n- Point`;
       expect(parseMeeting(md)[0].id).toBe('where-peace-starts');
+    });
+  });
+
+  describe('blockInsertionPoint (#921 — block inserters land at the end of the caret\'s Section)', () => {
+    it('appends to the end of the caret\'s Section, not the document, when the caret is in an early Section', () => {
+      const md = '## Alpha\n- point\n\n## Beta\n- more';
+      const { offset } = blockInsertionPoint(md, 3);
+      expect(md.slice(0, offset)).toBe('## Alpha\n- point');
+      expect(md.slice(offset)).toContain('## Beta');
+    });
+
+    it('falls back to the end of the document when the caret is in no Section', () => {
+      const md = 'Just prose, no headings.';
+      const { offset } = blockInsertionPoint(md, 2);
+      expect(offset).toBe(md.length);
+    });
+
+    it('separates the insertion from the preceding content by exactly one blank line', () => {
+      const md = '## Alpha\n- point\n\n## Beta\n- more';
+      const { offset } = blockInsertionPoint(md, 3);
+      expect(md.slice(0, offset) + '\n\n> quote' + md.slice(offset)).toBe(
+        '## Alpha\n- point\n\n> quote\n\n## Beta\n- more',
+      );
+    });
+
+    it('normalises a document that ends without a trailing blank line', () => {
+      const md = '## Alpha\n- point';
+      const { offset } = blockInsertionPoint(md, 3);
+      expect(md.slice(0, offset) + '\n\n> quote' + md.slice(offset)).toBe(
+        '## Alpha\n- point\n\n> quote',
+      );
+    });
+
+    it('never splits the line the caret is in', () => {
+      const md = '## Alpha\n- point\n\n## Beta\n- more';
+      const { offset } = blockInsertionPoint(md, 5);
+      expect(md.slice(0, offset)).toBe('## Alpha\n- point');
+    });
+
+    it('lands at the end of the leading untitled Section when prose opens the document', () => {
+      const md = 'Intro prose\n\n## Alpha\n- point';
+      const { offset } = blockInsertionPoint(md, 2);
+      expect(md.slice(0, offset)).toBe('Intro prose');
+      expect(md.slice(offset)).toContain('## Alpha');
     });
   });
 

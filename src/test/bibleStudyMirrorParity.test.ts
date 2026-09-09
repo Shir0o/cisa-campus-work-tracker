@@ -12,6 +12,7 @@ import {
   appendSection as appendWeb,
   sectionOffsets as offsetsWeb,
   sectionIndexAtOffset as indexAtWeb,
+  blockInsertionPoint as insertionPointWeb,
 } from '../lib/bibleStudy';
 // Direct relative import into the workspace package — resolved for tests only.
 import {
@@ -19,6 +20,7 @@ import {
   appendSection as appendCore,
   sectionOffsets as offsetsCore,
   sectionIndexAtOffset as indexAtCore,
+  blockInsertionPoint as insertionPointCore,
 } from '../../packages/core/src/bibleStudy';
 
 const CORPUS: string[] = [
@@ -131,6 +133,17 @@ describe('parser mirror parity (ADR 0013 keep-in-step)', () => {
       const probes = [0, ...offsetsWeb(md).map((o) => o + 1), md.length, md.length + 10];
       for (const at of probes) {
         expect(indexAtWeb(md, at)).toEqual(indexAtCore(md, at));
+      }
+    }
+  });
+
+  it('blockInsertionPoint agrees across the mirrors for every corpus fixture (#921)', () => {
+    for (const md of CORPUS) {
+      // Probe the same offsets the editor can hand it: the caret's own
+      // position, each Section boundary, and the document's end.
+      const probes = [0, ...offsetsWeb(md).map((o) => o + 1), md.length];
+      for (const at of probes) {
+        expect(insertionPointWeb(md, at)).toEqual(insertionPointCore(md, at));
       }
     }
   });
