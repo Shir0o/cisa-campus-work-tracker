@@ -188,6 +188,16 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(screen.getByText('Turn to your neighbor')).toBeInTheDocument();
   });
 
+  it('renders a Passage with no citation as a bare quote (#921)', () => {
+    const s = section({
+      content: [{ kind: 'passage', passage: { before: 'The words stand alone.' } }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    expect(screen.getByText('The words stand alone.')).toBeInTheDocument();
+    // No citation line — the figcaption is absent, not empty.
+    expect(screen.queryByRole('figure')?.querySelector('figcaption')).toBeNull();
+  });
+
   it('keeps the legacy keying invariant: blanks in different blocks get distinct keys', () => {
     const onRevealBlank = vi.fn();
     const s = section({

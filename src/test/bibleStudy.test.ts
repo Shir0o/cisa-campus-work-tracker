@@ -10,6 +10,7 @@ import {
   appendSection,
   sectionOffsets,
   sectionIndexAtOffset,
+  blockInsertionPoint,
   previewScale,
   type StudySetupForm,
   type Meeting,
@@ -183,6 +184,19 @@ describe('parseMeeting', () => {
     const block = s.content.find((b) => b.kind === 'number-list') as { points: { before: string }[] };
     expect(block.points.map((p) => p.before)).toEqual(['First', 'Second', 'Third']);
   });
+
+  it('parses a single-line blockquote as a Passage with no citation (#921)', () => {
+    // The Passage button inserts a bare quote; the parser must treat it as
+    // a Passage without a reference, not invent one.
+    const s = parseMeeting('## Alpha\n> The words stand alone.')[0];
+    const passage = s.content.find((b) => b.kind === 'passage') as {
+      passage: { before: string };
+      ref?: string;
+    };
+    expect(passage.passage.before).toBe('The words stand alone.');
+    expect(passage.ref).toBeUndefined();
+    expect(s.ref).toBeUndefined();
+  });
 });
 
 describe('nextMeetingDate', () => {
@@ -299,6 +313,74 @@ describe('sectionIndexAtOffset (#890 — the caret is inside a Section)', () => 
     // parseMeeting renders prose before the first heading as an untitled
     // Section — the caret maps there, matching what the outline will list.
     expect(sectionIndexAtOffset('Some prose first.\n\n## Alpha', 0)).toBe(0);
+  });
+});
+
+describe('blockInsertionPoint (#921 — block inserters land at the end of the caret\'s Section)', () => {
+  it('appends to the end of the caret\'s Section, not the document, when the caret is in an early Section', () => {
+    const md = '## Alpha\n- point\n\n## Beta\n- more';
+    // Caret inside Alpha's body — the insertion belongs at the end of Alpha,
+    // before Beta's heading, never at the end of the document.
+    const { offset } = blockInsertionPoint(md, 3);
+    expect(md.slice(0, offset)).toBe('## Alpha\n- point');
+    expect(md.slice(offset)).toContain('## Beta');
+  });
+
+  it('falls back to the end of the document when the caret is in no Section', () => {
+    const md = 'Just prose, no headings.';
+    const { offset } = blockInsertionPoint(md, 2);
+    expect(offset).toBe(md.length);
+  });
+
+  it('separates the insertion from the preceding content by exactly one blank line', () => {
+    const md = '## Alpha\n- point\n\n## Beta\n- more';
+    const { offset } = blockInsertionPoint(md, 3);
+    // The editor composes `prefix + '\n\n' + block + remainder`; the prefix
+    // ends at the trimmed Section end, so exactly one blank line separates
+    // the block from what came before.
+    expect(md.slice(0, offset).endsWith('\n\n')).toBe(false);
+    expect(md.slice(0, offset) + '\n\n> quote' + md.slice(offset)).toBe(
+      '## Alpha\n- point\n\n> quote\n\n## Beta\n- more',
+    );
+  });
+
+  it('normalises a document that ends without a trailing blank line', () => {
+    const md = '## Alpha\n- point';
+    const { offset } = blockInsertionPoint(md, 3);
+    expect(md.slice(0, offset) + '\n\n> quote' + md.slice(offset)).toBe(
+      '## Alpha\n- point\n\n> quote',
+    );
+  });
+
+  it('normalises a document that ends with a run of blank lines', () => {
+    const md = '## Alpha\n- point\n\n\n\n';
+    const { offset } = blockInsertionPoint(md, 3);
+    // The block lands at the trimmed end of the Section's content with
+    // exactly one blank line before it; the document's own termination is
+    // preserved after it, not destroyed.
+    expect(md.slice(0, offset) + '\n\n> quote' + md.slice(offset)).toBe(
+      '## Alpha\n- point\n\n> quote\n\n\n\n',
+    );
+  });
+
+  it('never splits the line the caret is in', () => {
+    const md = '## Alpha\n- point\n\n## Beta\n- more';
+    // Caret mid-line inside Alpha — the insertion point is the Section's end,
+    // not the caret, so the caret's line is untouched.
+    const { offset } = blockInsertionPoint(md, 5);
+    expect(md.slice(0, offset)).toBe('## Alpha\n- point');
+  });
+
+  it('keeps an empty `## ` heading intact — the state right after "+ Add section"', () => {
+    // The caret sits after the hashes of a brand-new Section; the insertion
+    // must not trim the heading's trailing space, or the heading would be
+    // destroyed by the block landing after it.
+    const md = '## Alpha\n- point\n\n## ';
+    const { offset } = blockInsertionPoint(md, md.length);
+    expect(md.slice(0, offset)).toBe('## Alpha\n- point\n\n## ');
+    expect(md.slice(0, offset) + '\n\n> quote' + md.slice(offset)).toBe(
+      '## Alpha\n- point\n\n## \n\n> quote',
+    );
   });
 });
 

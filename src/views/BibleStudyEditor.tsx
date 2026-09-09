@@ -8,6 +8,7 @@ import {
   appendSection,
   sectionOffsets,
   sectionIndexAtOffset,
+  blockInsertionPoint,
   previewScale,
   PREVIEW_PHONE_WIDTH,
   PREVIEW_PHONE_HEIGHT,
@@ -317,6 +318,33 @@ export default function BibleStudyEditor() {
     }, 0);
   };
 
+  // Block inserters (#921): a Prompt, a Passage and a Verse all live INSIDE
+  // a Section, so the block lands at the END of the caret's Section — never
+  // at the caret, which would split the line the author is mid-way through —
+  // separated from what came before by exactly one blank line whatever the
+  // document was terminated with. With the caret in no Section, the block
+  // falls back to the end of the document. The editor scrolls to the
+  // insertion and leaves the caret ready to type, as "+ Add section" does.
+  const insertBlockAtSectionEnd = (block: string, caretInBlock: number) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const current = formRef.current.markdown;
+    const { offset } = blockInsertionPoint(current, el.selectionStart ?? 0);
+    const next = `${current.slice(0, offset)}\n\n${block}${current.slice(offset)}`;
+    const caret = offset + 2 + caretInBlock;
+    // #917: capture the scroll offset before the value changes — a toolbar
+    // click blurs the textarea (mousedown focus shift — suppressed below),
+    // and a value replacement on an unfocused textarea resets its scroll.
+    const capturedScrollTop = el.scrollTop;
+    editMarkdown(0, current.length, next);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(caret, caret);
+      syncCaretSection(el);
+      restoreScrollAfterEdit(el, capturedScrollTop, caret);
+    }, 0);
+  };
+
   // The one Section mutation (#890): appends `\n\n## ` at the END of the
   // document — never at the cursor, which is offset 0 in a textarea that has
   // never been focused, the exact bug where the heading landed at the top
@@ -479,7 +507,7 @@ export default function BibleStudyEditor() {
               outline, never from a second place here. */}
           <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30 flex-wrap">
             <button
-              onClick={() => insertTextAtCursor('\n> ', '\n> Reference · Version')}
+              onClick={() => insertBlockAtSectionEnd('> ', 2)}
               // #917: a toolbar click must not blur the textarea. The
               // mousedown focus shift is what makes the value replacement
               // land on an unfocused field and reset its scroll; preventing
@@ -514,7 +542,7 @@ export default function BibleStudyEditor() {
               I
             </button>
             <button
-              onClick={() => insertTextAtCursor('\n1. ', '\n2. \n3. ')}
+              onClick={() => insertBlockAtSectionEnd('1. \n2. \n3. ', 3)}
               onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
               aria-label="Numbered list"
@@ -522,7 +550,7 @@ export default function BibleStudyEditor() {
               1.
             </button>
             <button
-              onClick={() => insertTextAtCursor('\n- ')}
+              onClick={() => insertBlockAtSectionEnd('- ', 2)}
               onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
               aria-label="Bullet list"
@@ -531,21 +559,21 @@ export default function BibleStudyEditor() {
             </button>
 
             <button
-              onClick={() => insertTextAtCursor('\nQuestion: ')}
+              onClick={() => insertBlockAtSectionEnd('Question: ', 10)}
               onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-slate-soft)] text-on-surface"
             >
               Question
             </button>
             <button
-              onClick={() => insertTextAtCursor('\nDiscuss: ')}
+              onClick={() => insertBlockAtSectionEnd('Discuss: ', 9)}
               onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-sage-soft)] text-on-surface"
             >
               Discuss
             </button>
             <button
-              onClick={() => insertTextAtCursor('\nActivity: ')}
+              onClick={() => insertBlockAtSectionEnd('Activity: ', 10)}
               onMouseDown={(e) => e.preventDefault()}
               className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-clay-soft)] text-on-surface"
             >

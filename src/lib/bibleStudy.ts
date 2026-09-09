@@ -476,6 +476,39 @@ export function sectionIndexAtOffset(md: string, offset: number): number {
   return index;
 }
 
+/**
+ * Where a block insertion belongs (#921): the end of the caret's Section —
+ * a Prompt, a Passage and a Verse all live INSIDE a Section, so appending
+ * to the document end would file them under the last Section while the
+ * author writes the second (the same class of silent misplacement ADR 0014
+ * §9 fixed for Sections one level up). The caret's Section ends where the
+ * next heading begins, or at the end of the document for the last one; with
+ * the caret in no Section (a headingless document), the insertion falls back
+ * to the end of the document. The returned offset is the end of the
+ * Section's content with trailing blank lines trimmed, so the caller
+ * appends `\n\n` + the block and gets exactly one blank line of separation
+ * whatever the document was terminated with. Never the caret itself, so an
+ * insertion can never split the line the author is mid-way through.
+ */
+export function blockInsertionPoint(md: string, offset: number): { offset: number } {
+  const offsets = sectionOffsets(md);
+  const index = sectionIndexAtOffset(md, offset);
+  const sectionEnd = index >= 0 ? (offsets[index + 1] ?? md.length) : md.length;
+  // Blank-line scan from the end, not a regex: a `[…]+$` replace is
+  // quadratic on a long whitespace run followed by non-whitespace (CodeQL
+  // js/polynomial-redos) — each start position retries the anchored match.
+  // Only blank lines are trimmed, never spaces on the last content line:
+  // a Section whose content is an empty `## ` heading must keep its space,
+  // or the heading would be destroyed by the insertion.
+  let end = sectionEnd;
+  while (end > 0) {
+    const c = md.charCodeAt(end - 1);
+    if (c === 10 || c === 13) end--;
+    else break;
+  }
+  return { offset: end };
+}
+
 export type MeetingForm = {
   title: string;
   date: string;

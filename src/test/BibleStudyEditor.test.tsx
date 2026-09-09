@@ -247,7 +247,8 @@ describe('BibleStudyEditor view', () => {
     expect(area.selectionStart).toBe(endMd.length);
     expect(area.selectionEnd).toBe(endMd.length);
 
-    // The list inserters land their starter templates at the cursor.
+    // The list inserters land their starter templates at the end of the
+    // caret's Section (#921), never at the cursor.
     const numBtn = screen.getByRole('button', { name: /Numbered list/i });
     fireEvent.click(numBtn);
 
@@ -303,11 +304,14 @@ describe('BibleStudyEditor view', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
 
-      // The insertion landed and the caret sits after the marker (the
-      // deferred selection callback runs on the next tick).
+      // The insertion landed at the end of the caret's Section (#921) and
+      // the caret sits after the blockquote marker (the deferred selection
+      // callback runs on the next tick). Section 1's content ends at offset
+      // 22 (its trailing blank line trimmed), so the caret lands at
+      // 22 + '\n\n' + '> ' = 26.
       await waitFor(() => {
-        expect(area.value).toContain('\n> ');
-        expect(area.selectionStart).toBe(3);
+        expect(area.value).toContain('\n\n> ');
+        expect(area.selectionStart).toBe(26);
       });
       // The captured offset was restored — the author stays where they were.
       expect(area.scrollTop).toBe(1234);
@@ -364,6 +368,164 @@ describe('BibleStudyEditor view', () => {
         mockUser.uid,
       );
       vi.useRealTimers();
+    });
+  });
+
+  // #921 — block inserters land at the end of the caret's Section, never at
+  // the caret. A Prompt, a Passage and a Verse all live INSIDE a Section, so
+  // appending to the document end would file them under the last Section
+  // while the author writes the second; the end of the caret's Section
+  // delivers the request without that silent misplacement. Inline inserters
+  // — bold, italic, Blank — are unchanged and keep wrapping at the caret.
+  describe('block inserters land in the caret\'s Section (#921)', () => {
+    it('Passage inserts a bare quote with no reference line', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(0, 0);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        expect(area.value).toContain('\n\n> ');
+      });
+      // No placeholder reference the author would have to delete.
+      expect(area.value).not.toContain('Reference');
+    });
+
+    it('appends to the end of the caret\'s Section, not the document, when the caret is in an early Section', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      // Caret inside Section 1's body.
+      area.setSelectionRange(3, 3);
+
+      fireEvent.click(screen.getByRole('button', { name: /Discuss/i }));
+
+      await waitFor(() => {
+        // The Discuss line lands at the end of Section 1, before Section 2's
+        // heading — never at the end of the document.
+        expect(area.value).toBe(
+          '## Section 1\n- Point 1\n\nDiscuss: \n\n## Section 2\n- Point 2',
+        );
+      });
+    });
+
+    it('separates the inserted block from the preceding content by exactly one blank line', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(3, 3);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        expect(area.value).toBe(
+          '## Section 1\n- Point 1\n\n> \n\n## Section 2\n- Point 2',
+        );
+      });
+    });
+
+    it('normalises the separation when the document ends without a trailing blank line', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: '## Section 1\n- Point 1', sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(3, 3);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        expect(area.value).toBe('## Section 1\n- Point 1\n\n> ');
+      });
+    });
+
+    it('never splits the line the caret is in', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      // Caret mid-line inside Section 1's point.
+      const mid = MEETING_MD.indexOf('Point 1') + 3;
+      area.setSelectionRange(mid, mid);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        // The caret's line is untouched — the block lands at the Section's
+        // end, not at the caret.
+        expect(area.value).toBe(
+          '## Section 1\n- Point 1\n\n> \n\n## Section 2\n- Point 2',
+        );
+      });
+    });
+
+    it('falls back to the end of the document when the caret is in no Section', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: 'Just prose, no headings.', sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(2, 2);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        expect(area.value).toBe('Just prose, no headings.\n\n> ');
+      });
+    });
+
+    it('scrolls to the insertion and leaves the caret ready to type', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      area.setSelectionRange(3, 3);
+
+      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+
+      await waitFor(() => {
+        // The caret lands right after the blockquote marker, ready to type
+        // the quote — the same "ready to type" contract "+ Add section" has.
+        expect(area.selectionStart).toBe(26);
+        expect(area.selectionEnd).toBe(26);
+      });
+      expect(document.activeElement).toBe(area);
+    });
+
+    it('keeps inline inserters wrapping at the caret', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      const start = MEETING_MD.indexOf('Point 1');
+      area.setSelectionRange(start, start + 'Point 1'.length);
+
+      fireEvent.click(screen.getByRole('button', { name: /Bold/i }));
+
+      await waitFor(() => {
+        expect(area.selectionStart).toBe(start + 2);
+        expect(area.selectionEnd).toBe(start + 2 + 'Point 1'.length);
+      });
+      expect(area.value.substring(area.selectionStart, area.selectionEnd)).toBe('Point 1');
     });
   });
 
@@ -797,8 +959,9 @@ describe('BibleStudyEditor view', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
 
-      // The insertion went through the collaborative channel.
-      await waitFor(() => expect(textValue).toContain('\n> '));
+      // The insertion went through the collaborative channel, landing at the
+      // end of the caret's Section (#921).
+      await waitFor(() => expect(textValue).toContain('\n\n> '));
       // The textarea kept focus and the captured offset was restored.
       expect(document.activeElement).toBe(area);
       expect(area.scrollTop).toBe(1234);
