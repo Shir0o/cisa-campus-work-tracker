@@ -161,4 +161,24 @@ describe('reader card-on-ground guardrail (#922)', () => {
     // values are duplicated anywhere.
     expect(css).toMatch(/:root,\n\s*\.light \{/);
   });
+
+  it('rebinds the utility colour tokens on each data-theme host, after the reader mapping', () => {
+    // `@theme` declares every `--color-*` token once on `:root` as
+    // `var(--raw-token)`, and a custom property's var() references resolve
+    // at the element where it is DECLARED — the root — so a Light island
+    // inside a Dark window inherited the root-frozen DARK ink: the Light
+    // preview rendered white text on the white card. The bridge redeclares
+    // the tokens on the attribute-keyed host so utilities resolve from the
+    // host's own palette. It must come after the scoped reader mapping so
+    // the reader tokens are set first, and it must never drift back into
+    // the @theme block above.
+    const readerSurfaceLightEnd = css.indexOf('}', css.indexOf('[data-theme="light"] .reader-card-surface')) + 1;
+    const bridgeStart = css.indexOf('[data-theme="light"],');
+    expect(bridgeStart, 'data-theme colour bridge should exist').toBeGreaterThan(readerSurfaceLightEnd);
+    const bridgeBlock = css.slice(bridgeStart, css.indexOf('}', bridgeStart) + 1);
+    expect(bridgeBlock).toMatch(/--color-on-surface: var\(--on-surface\)/);
+    expect(bridgeBlock).toMatch(/--color-on-surface-variant: var\(--on-surface-variant\)/);
+    expect(bridgeBlock).toMatch(/--color-background: var\(--background\)/);
+    expect(bridgeBlock).toMatch(/--color-outline-variant: var\(--outline-variant\)/);
+  });
 });

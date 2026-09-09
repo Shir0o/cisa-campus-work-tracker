@@ -18,15 +18,46 @@
  *     `overflow-hidden` and no `overflow-y-auto` / `overflow-y-scroll`.
  *   - The fixed `scale(0.86)` constant is gone — the scale is measured from
  *     the pane, so a hard-coded scale must not return.
+ *   - The Present card is a pinned SIBLING of the preview scroller, never a
+ *     child of it: it must not be reachable only by scrolling the phone.
+ *   - The phone frame clips with `overflow: clip`, not `overflow: hidden` —
+ *     an overflow-hidden frame is programmatically scrollable, and the
+ *     reader's caret-follow jump scrolled it, sliding the phone up under
+ *     its bezel and slicing the sticky header (title / count / type size)
+ *     off at the top.
+ *   - The scale is fed BOTH pane dimensions, so the phone shrinks to stay
+ *     whole instead of overflowing the pane into a scrolling column.
  *
- * If a future change re-introduces pane scrolling or a fixed scale, this
- * test fails before the change merges.
+ * If a future change re-introduces pane scrolling, a fixed scale, a Present
+ * card inside the scroller, a hidden (scrollable) frame, or width-only
+ * scaling, this test fails before the change merges.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const EDITOR_PATH = join(process.cwd(), 'src/views/BibleStudyEditor.tsx');
+
+/** Index just past the JSX element that opens with `data-testid` marker. */
+function closeIndexAfter(source: string, openMarker: string): number {
+  const open = source.indexOf(openMarker);
+  expect(open, `${openMarker} should exist`).toBeGreaterThanOrEqual(0);
+  let depth = 0;
+  let i = source.indexOf('>', open);
+  for (; i < source.length; ) {
+    const lt = source.indexOf('<', i);
+    if (lt === -1) break;
+    const rest = source.slice(lt, lt + 8);
+    const tagEnd = source.indexOf('>', lt);
+    if (tagEnd === -1) break;
+    const selfClosing = source[tagEnd - 1] === '/';
+    if (rest.startsWith('<div') && !selfClosing) depth += 1;
+    else if (rest.startsWith('</div')) depth -= 1;
+    i = tagEnd + 1;
+    if (depth === 0) return i;
+  }
+  return -1;
+}
 
 describe('editor preview pane guardrail (#916)', () => {
   const source = readFileSync(EDITOR_PATH, 'utf8');
@@ -51,5 +82,32 @@ describe('editor preview pane guardrail (#916)', () => {
   it('measures the scale from the pane — the fixed 0.86 constant must not return', () => {
     expect(source).not.toMatch(/scale\(0\.86\)/);
     expect(source).toMatch(/ResizeObserver/);
+  });
+
+  it('feeds both pane dimensions into the scale, so the phone stays whole', () => {
+    expect(source).toMatch(/previewScale\(paneSize\?\.width \?\? 0, paneSize\?\.height \?\? 0\)/);
+  });
+
+  it('keeps the Present card OUTSIDE the preview scroller as a pinned sibling', () => {
+    const scrollerClose = closeIndexAfter(source, 'data-testid="preview-scroll"');
+    expect(scrollerClose, 'preview scroller should close').toBeGreaterThan(0);
+    const present = source.indexOf('data-testid="present-card"');
+    expect(present, 'Present card should exist').toBeGreaterThan(0);
+    expect(present, 'Present card must not be nested inside the preview scroller').toBeGreaterThan(scrollerClose);
+    // The Present card itself must not scroll: it carries no overflow-y.
+    const lines = source.split('\n');
+    const presentIdx = lines.findIndex((line) => line.includes('data-testid="present-card"'));
+    const presentCardLine = lines.slice(presentIdx, presentIdx + 3).find((line) => line.includes('className'));
+    expect(presentCardLine).toMatch(/mt-4/);
+  });
+
+  it('clips the phone frame with overflow: clip, never overflow: hidden', () => {
+    const lines = source.split('\n');
+    const frameIdx = lines.findIndex((line) => line.includes('data-testid="preview-frame"'));
+    expect(frameIdx, 'preview frame should exist').toBeGreaterThanOrEqual(0);
+    const frameClassLine = lines.slice(frameIdx, frameIdx + 3).find((line) => line.includes('className'));
+    expect(frameClassLine, 'preview frame className should exist').toBeDefined();
+    expect(frameClassLine!).toMatch(/overflow-clip/);
+    expect(frameClassLine!).not.toMatch(/overflow-hidden/);
   });
 });

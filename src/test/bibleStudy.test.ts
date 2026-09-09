@@ -468,24 +468,30 @@ describe('blockInsertionPoint (#921 — block inserters land at the end of the c
   });
 });
 
-describe('previewScale (#937 — the phone fills the pane\'s width at its ratio)', () => {
-  it('fills the pane width at the phone\'s ratio; the height no longer binds', () => {
+describe('previewScale (#916/#937 — the phone fits the pane on BOTH axes)', () => {
+  it('takes the smaller of the pane width and height ratios, so the phone is always whole', () => {
     // A pane narrower than the phone: width binds.
+    expect(previewScale(300, 2000)).toBeCloseTo(300 / 390, 6);
+    // A pane shorter than the phone: HEIGHT binds now — the phone shrinks
+    // to stay whole instead of scrolling the preview column, which is what
+    // pushed the Present card below the fold and clipped the reader chrome.
+    expect(previewScale(2000, 500)).toBeCloseTo(500 / 844, 6);
+    // A pane that fits the whole phone at true size renders it true size.
+    expect(previewScale(390, 844)).toBe(1);
+  });
+
+  it('keeps width-only behaviour when no height is known (legacy callers)', () => {
     expect(previewScale(300)).toBeCloseTo(300 / 390, 6);
-    // A pane shorter than the phone no longer shrinks the phone — a phone
-    // taller than the pane scrolls inside the preview column instead.
     expect(previewScale(390)).toBe(1);
-    // A wider pane still caps at true size.
-    expect(previewScale(1000)).toBe(1);
   });
 
   it('never scales below the legibility floor', () => {
-    expect(previewScale(100)).toBe(0.5);
-    expect(previewScale(0)).toBe(0.5);
+    expect(previewScale(100, 100)).toBe(0.5);
+    expect(previewScale(0, 0)).toBe(0.5);
   });
 
   it('never scales above 1 — the phone is never blown up past true size', () => {
-    expect(previewScale(2000)).toBe(1);
+    expect(previewScale(2000, 4000)).toBe(1);
   });
 });
 
