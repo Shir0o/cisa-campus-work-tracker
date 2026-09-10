@@ -100,5 +100,21 @@ describe('traineeWaitingItems', () => {
     const ids = items.map((i) => i.id);
     expect(ids).toEqual(['thread:n1']);
   });
+
+  it('does NOT surface team-scoped (Full-timers tab) nudges/questions — IAM leak', () => {
+    // Messages written in the Full-timers tab have scope:"team" and are
+    // admin-only. They must never appear in a trainee's "what's waiting on you"
+    // list even when they come from a full-timer and are nudge/question kind.
+    const items = traineeWaitingItems(TRAINEE, [
+      msg({ id: 'team-nudge', from: FT, kind: 'nudge', scope: 'team' }),
+      msg({ id: 'team-question', from: FT, kind: 'question', scope: 'team' }),
+      // A non-scoped nudge from the same FT is still visible.
+      msg({ id: 'normal-nudge', from: FT, kind: 'nudge', scope: null }),
+    ]);
+    const ids = items.map((i) => i.id);
+    expect(ids).not.toContain('thread:team-nudge');
+    expect(ids).not.toContain('thread:team-question');
+    expect(ids).toContain('thread:normal-nudge');
+  });
 });
 

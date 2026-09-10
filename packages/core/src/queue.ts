@@ -234,6 +234,7 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
         (m) =>
           m.from &&
           fts.has(m.from) &&
+          m.scope !== "team" &&
           MSG_KINDS.includes(m.kind) &&
           !input.isRead("thread:" + m.id),
       )

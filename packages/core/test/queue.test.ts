@@ -144,6 +144,29 @@ describe('buildQueue — card kinds', () => {
     expect(q[0].contact?.id).toBe('c1');
   });
 
+  it('does NOT make a msg card for a team-scoped (Full-timers tab) message from full-timer — IAM leak', () => {
+    // A full-timer's comment in the Full-timers tab has scope:"team" and must
+    // never become a card on a trainee's home screen — it is staff-only content.
+    const q = buildQueue(
+      input({
+        contacts: [contact()],
+        threads: [
+          message({ id: 'admin-comment', scope: 'team', kind: 'comment' }),
+          message({ id: 'admin-question', scope: 'team', kind: 'question' }),
+          message({ id: 'admin-nudge', scope: 'team', kind: 'nudge' }),
+          // Non-scoped message still shows up normally.
+          message({ id: 'normal-question', scope: undefined, kind: 'question' }),
+        ],
+      }),
+    );
+
+    const ids = q.map((c) => c.id);
+    expect(ids).not.toContain('ftmsg:admin-comment');
+    expect(ids).not.toContain('ftmsg:admin-question');
+    expect(ids).not.toContain('ftmsg:admin-nudge');
+    expect(ids).toContain('ftmsg:normal-question');
+  });
+
   it('makes a follow card for a to-do with a person on it and no imminent due date', () => {
     const q = buildQueue(
       input({
