@@ -19,6 +19,14 @@ import { useAuth } from '../components/AuthProvider';
 
 type WakeLockSentinelLike = { release: () => Promise<void> };
 
+// Present mode is a white screen whatever the app's theme is doing — a dark
+// ground behind a QR hurts scan reliability (ADR 0011) — so its two corner
+// controls cannot resolve through the theme tokens. They are deliberately
+// identical: the back arrow at top-left and the edit pencil at top-right
+// mirror each other, and both must stay quieter than the code.
+const QUIET_CORNER_BUTTON =
+  'absolute top-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors'; // colour-token-ignore: fixed white ground, independent of theme, for QR scan reliability
+
 /**
  * Present mode — the code you hold up in the room (ADR 0011, `Present`
  * artboard). Full-screen, white ground regardless of theme, the screen kept
@@ -168,7 +176,7 @@ export default function BibleStudyPresent() {
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center p-6 relative">
       <Link
         to={backTo}
-        className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+        className={`${QUIET_CORNER_BUTTON} left-4`}
         aria-label="Leave present mode"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -184,7 +192,7 @@ export default function BibleStudyPresent() {
       {isAdmin && currentWeek && (
         <Link
           to={`/bible-study/${currentWeek.id}`}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+          className={`${QUIET_CORNER_BUTTON} right-4`}
           aria-label="Edit this week"
           title="Edit this week"
         >

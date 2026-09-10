@@ -26,6 +26,12 @@ import { useV2Theme } from '../../theme/v2';
  * unreachable one in front of a room is the failure ADR 0011 §5 calls out.
  */
 const PUBLIC_APP_URL = 'https://cisa-campus-work-tracker.pages.dev';
+
+// The code's own palette, fixed rather than themed — see the modal below.
+const QR_GROUND = '#FFFFFF'; // colour-token-ignore: fixed white ground for QR scan reliability, never themed
+const QR_INK = '#0A0A0B'; // colour-token-ignore: maximum-contrast code ink against the fixed white ground
+const QR_CAPTION = '#6B6B6B'; // colour-token-ignore: quiet caption on the fixed white ground
+const QR_URL = '#9B9B9B'; // colour-token-ignore: quietest line on the fixed white ground
 const entryPointUrl = (slug: string) => `${PUBLIC_APP_URL}/s/${slug}`;
 
 /**
@@ -34,6 +40,12 @@ const entryPointUrl = (slug: string) => `${PUBLIC_APP_URL}/s/${slug}`;
  * no tab bar and reaches everything through its drawer. Two skins, one
  * behaviour — the resolution, the copy and the code are written once.
  */
+const QR_CARD = {
+  backgroundColor: QR_GROUND,
+  padding: 24,
+  alignItems: 'center' as const,
+};
+
 export function ThisWeeksStudyRow({
   isFirst = false,
   variant = 'list',
@@ -136,20 +148,29 @@ export function ThisWeeksStudyRow({
       ))}
 
       {/* White ground regardless of the app's theme, like web's Present mode:
-          a dark ground behind a code hurts scan reliability (ADR 0011). */}
+          a dark ground behind a code hurts scan reliability (ADR 0011). The
+          card below therefore cannot resolve through the theme tokens — its
+          values are fixed, which is the whole point, so each carries the
+          guard's marker rather than being quietly tokenised into something
+          that goes dark on a dark phone. */}
       <Modal visible={!!qrFor} animationType="fade" transparent onRequestClose={() => setQrFor(null)}>
         <Pressable
           onPress={() => setQrFor(null)}
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 24 }}
         >
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: radius.tile, padding: 24, alignItems: 'center' }}>
+          <View style={[QR_CARD, { borderRadius: radius.tile }]}>
             {qrFor && (
-              <QRCode value={entryPointUrl(qrFor.slug)} size={248} color="#0A0A0B" backgroundColor="#FFFFFF" />
+              <QRCode
+                value={entryPointUrl(qrFor.slug)}
+                size={248}
+                color={QR_INK}
+                backgroundColor={QR_GROUND}
+              />
             )}
-            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: '#6B6B6B', marginTop: 16 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: QR_CAPTION, marginTop: 16 }}>
               {qrFor?.name}
             </Text>
-            <Text style={{ fontFamily: font.medium, fontSize: fs(11), color: '#9B9B9B', marginTop: 4 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(11), color: QR_URL, marginTop: 4 }}>
               {qrFor ? entryPointUrl(qrFor.slug) : ''}
             </Text>
           </View>

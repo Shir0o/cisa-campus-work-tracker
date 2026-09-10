@@ -529,7 +529,7 @@ export default function BibleStudyEditor() {
               the Section itself is created by "+ Add section" in the
               outline, never from a second place here.
 
-              #946: two labelled columns rather than two anonymous rows.
+              Issue 946: two labelled columns rather than two anonymous rows.
               Insert holds the blocks that build the week's structure;
               Prompts holds the four kinds a Section puts to the room, which
               are the buttons a leader actually reaches for and were

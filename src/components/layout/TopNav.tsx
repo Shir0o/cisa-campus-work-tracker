@@ -474,7 +474,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
 
             {/* navItemsForRole, not a bare canAccessRoute filter: the list now
                 holds two items sharing the label "Bible study" and the role
-                picks which one is meant, which only that helper knows (#946). */}
+                picks which one is meant, which only that helper knows (issue 946). */}
             {navItemsForRole(role as AppRole).map((item) => {
               const href = item.href;
               const label = href === '/' ? homeLabel : item.label;
