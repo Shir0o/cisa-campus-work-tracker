@@ -586,26 +586,26 @@ describe('BibleStudyEditor view', () => {
     expect(screen.getByRole('menuitem', { name: /Passage/i })).toBeInTheDocument();
   });
 
-  it('offers Verse alongside Passage in the toolbar (#918)', async () => {
+  it('inserts Verse at the cursor (#946)', async () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');
 
     const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
     area.focus();
-    area.setSelectionRange(3, 3);
+    // Caret at index 14, right after "- Point 1" inside Section 1
+    const pos = area.value.indexOf('- Point 1') + '- Point 1'.length;
+    area.setSelectionRange(pos, pos);
 
     openMenu('Insert');
     fireEvent.click(screen.getByRole('menuitem', { name: /Verse/i }));
 
     await waitFor(() => {
-      // The Verse line lands at the end of the caret's Section, ready to
-      // type the reference — the same "ready to type" contract the other
-      // block inserters have.
+      // Verse is inserted at the cursor, not at the end of the Section.
       expect(area.value).toBe(
-        '## Section 1\n- Point 1\n\nVerse: \n\n## Section 2\n- Point 2',
+        '## Section 1\n- Point 1Verse: \n\n## Section 2\n- Point 2',
       );
     });
-    expect(area.selectionStart).toBe(area.value.indexOf('Verse: ') + 'Verse: '.length);
+    expect(area.selectionStart).toBe(pos + 'Verse: '.length);
   });
 
   it('offers Apply alongside Question, Discuss and Activity in the toolbar (#919)', async () => {
