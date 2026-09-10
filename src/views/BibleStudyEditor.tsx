@@ -33,6 +33,7 @@ import * as Y from 'yjs';
 import { MeetingCollab } from '../lib/meetingCollab';
 import { peersFromAwareness, type Peer } from '../lib/presence';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
+import ToolbarMenu from '../components/ui/ToolbarMenu';
 
 export default function BibleStudyEditor() {
   const { meetingId = '' } = useParams<{ meetingId: string }>();
@@ -531,120 +532,87 @@ export default function BibleStudyEditor() {
               the Section itself is created by "+ Add section" in the
               outline, never from a second place here.
 
-              Issue 946: two labelled columns rather than two anonymous rows.
-              Insert holds the blocks that build the week's structure;
-              Prompts holds the four kinds a Section puts to the room, which
-              are the buttons a leader actually reaches for and were
-              previously lost at the end of a nine-button wrap. B and I are
-              inline emphasis and belong to neither group, so they sit beside
-              the Insert label at a lower visual weight — near the cursor's
-              work without pretending to be inserters. Each column wraps
-              internally, so this is taller than the old two rows; that cost
-              is paid out of the textarea. */}
-          <div className="grid grid-cols-2 gap-3 p-2.5 border-b border-outline-variant bg-surface-variant/30">
-            <div className="flex flex-col gap-1.5 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold tracking-wider uppercase text-on-surface-variant">
-                  Insert
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => insertTextAtCursor('**', '**')}
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] font-bold hover:bg-surface-variant"
-                    aria-label={t('study.bold')}
-                  >
-                    B
-                  </button>
-                  <button
-                    onClick={() => insertTextAtCursor('*', '*')}
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] italic hover:bg-surface-variant"
-                    aria-label={t('study.italic')}
-                  >
-                    I
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => insertBlockAtSectionEnd('> ', 2)}
-                  // #917: a toolbar click must not blur the textarea. The
-                  // mousedown focus shift is what makes the value replacement
-                  // land on an unfocused field and reset its scroll; preventing
-                  // the default keeps focus on the textarea through the click.
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
-                >
-                  Passage
-                </button>
-                <button
-                  onClick={() => insertBlockAtSectionEnd('Verse: ', 7)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
-                >
-                  Verse
-                </button>
-                <button
-                  onClick={() => insertTextAtCursor('[[', ']]')}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
-                >
-                  Blank
-                </button>
-                <button
-                  onClick={() => insertBlockAtSectionEnd('1. \n2. \n3. ', 3)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
-                  aria-label={t('study.numbered_list')}
-                >
-                  1.
-                </button>
-                <button
-                  onClick={() => insertBlockAtSectionEnd('- ', 2)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
-                  aria-label={t('study.bullet_list')}
-                >
-                  •
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5 min-w-0 border-l border-outline-variant pl-3">
-              <span className="text-[10px] font-bold tracking-wider uppercase text-on-surface-variant">
-                Prompts
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => insertBlockAtSectionEnd('Question: ', 10)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-slate-soft)] text-on-surface"
-                >
-                  Question
-                </button>
-                <button
-                  onClick={() => insertBlockAtSectionEnd('Discuss: ', 9)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-sage-soft)] text-on-surface"
-                >
-                  Discuss
-                </button>
-                <button
-                  onClick={() => insertBlockAtSectionEnd('Activity: ', 10)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-clay-soft)] text-on-surface"
-                >
-                  Activity
-                </button>
-                <button
-                  onClick={() => insertBlockAtSectionEnd('Apply: ', 7)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-ochre-soft)] text-on-surface"
-                >
-                  Apply
-                </button>
-              </div>
+              The block inserters live in two labelled dropdowns — Insert
+              (the blocks that build the week's structure) and Prompts (the
+              four kinds a Section puts to the room). B and I are inline
+              emphasis and belong to neither group, so they stay visible
+              beside the menus — near the cursor's work without pretending
+              to be inserters. The menus open on click, focus, or a short
+              hover; every button suppresses the mousedown focus shift
+              (#917) so the author's caret and scroll survive the pick. */}
+          <div className="flex items-center gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30">
+            <ToolbarMenu
+              label="Insert"
+              items={[
+                {
+                  id: 'passage',
+                  label: 'Passage',
+                  onSelect: () => insertBlockAtSectionEnd('> ', 2),
+                },
+                {
+                  id: 'verse',
+                  label: 'Verse',
+                  onSelect: () => insertBlockAtSectionEnd('Verse: ', 7),
+                },
+                {
+                  id: 'blank',
+                  label: 'Blank',
+                  onSelect: () => insertTextAtCursor('[[', ']]'),
+                },
+                {
+                  id: 'numbered-list',
+                  label: t('study.numbered_list'),
+                  onSelect: () => insertBlockAtSectionEnd('1. \n2. \n3. ', 3),
+                },
+                {
+                  id: 'bullet-list',
+                  label: t('study.bullet_list'),
+                  onSelect: () => insertBlockAtSectionEnd('- ', 2),
+                },
+              ]}
+            />
+            <ToolbarMenu
+              label="Prompts"
+              items={[
+                {
+                  id: 'question',
+                  label: 'Question',
+                  onSelect: () => insertBlockAtSectionEnd('Question: ', 10),
+                },
+                {
+                  id: 'discuss',
+                  label: 'Discuss',
+                  onSelect: () => insertBlockAtSectionEnd('Discuss: ', 9),
+                },
+                {
+                  id: 'activity',
+                  label: 'Activity',
+                  onSelect: () => insertBlockAtSectionEnd('Activity: ', 10),
+                },
+                {
+                  id: 'apply',
+                  label: 'Apply',
+                  onSelect: () => insertBlockAtSectionEnd('Apply: ', 7),
+                },
+              ]}
+            />
+            <div className="flex items-center gap-1 shrink-0 ml-auto">
+              <button
+                onClick={() => insertTextAtCursor('**', '**')}
+                onMouseDown={(e) => e.preventDefault()}
+                className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] font-bold hover:bg-surface-variant"
+                aria-label={t('study.bold')}
+              >
+                B
+              </button>
+              <button
+                onClick={() => insertTextAtCursor('*', '*')}
+                onMouseDown={(e) => e.preventDefault()}
+                className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] italic hover:bg-surface-variant"
+                aria-label={t('study.italic')}
+              >
+                I
+              </button>
             </div>
           </div>
 
