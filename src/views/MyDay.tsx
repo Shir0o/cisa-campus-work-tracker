@@ -1293,8 +1293,8 @@ export default function MyDay() {
             column is never lent anywhere (issue 943) — the feed is gone, so
             the bento is the same every day. ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
+          {personalColumn}
           <div className="flex flex-col gap-10 min-w-0">
-            {personalColumn}
             {sheepSection}
             {weekSection}
           </div>
