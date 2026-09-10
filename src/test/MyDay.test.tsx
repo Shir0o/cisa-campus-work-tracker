@@ -1037,6 +1037,30 @@ describe('MyDay', () => {
     expect(sheep.parentElement).toBe(week.parentElement);
   });
 
+  it('renders a 2-column bento grid with personal column beside sheep and week', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    vi.mocked(onSnapshot).mockImplementation(byPath({ interactions: teamTouches(2) }));
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
+
+    const horizon = screen.getByText('On the horizon').closest('section')!;
+    const prayers = screen.getByText('Your prayers').closest('section')!;
+    const sheep = screen.getByText('Your sheep').closest('section')!;
+    const week = screen.getByText('Your week').closest('section')!;
+
+    // Horizon and prayers form the personal column (left)
+    expect(horizon.parentElement).toBe(prayers.parentElement);
+    // Sheep and week form the right column
+    expect(sheep.parentElement).toBe(week.parentElement);
+    // The two columns are distinct siblings within the 2-column bento grid
+    expect(horizon.parentElement).not.toBe(sheep.parentElement);
+    expect(horizon.parentElement!.parentElement).toBe(sheep.parentElement!.parentElement);
+    expect(horizon.parentElement!.parentElement).toHaveClass('lg:grid-cols-2');
+  });
+
   // ── My Day is a skim dashboard of your own work (#943) ────────────────────
   // A Full-timer sees the On you card and the pointer card with its count; a
   // Trainee sees the On you card and no pointer. Neither sees an "Around the
