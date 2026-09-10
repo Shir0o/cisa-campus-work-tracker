@@ -12,6 +12,7 @@ import {
   sectionIndexAtOffset,
   blockInsertionPoint,
   previewScale,
+  PREVIEW_PHONE_HEIGHT,
   type StudySetupForm,
   type Meeting,
   type Study,
@@ -468,7 +469,7 @@ describe('blockInsertionPoint (#921 — block inserters land at the end of the c
   });
 });
 
-describe('previewScale (#916/#937 — the phone fits the pane on BOTH axes)', () => {
+describe('previewScale (#916/#937/#939/#946 — the phone fits the pane on BOTH axes)', () => {
   it('takes the smaller of the pane width and height ratios, so the phone is always whole', () => {
     // A pane narrower than the phone: width binds.
     expect(previewScale(300, 2000)).toBeCloseTo(300 / 390, 6);
@@ -485,9 +486,28 @@ describe('previewScale (#916/#937 — the phone fits the pane on BOTH axes)', ()
     expect(previewScale(390)).toBe(1);
   });
 
-  it('never scales below the legibility floor', () => {
-    expect(previewScale(100, 100)).toBe(0.5);
-    expect(previewScale(0, 0)).toBe(0.5);
+  it('has no legibility floor — a tiny pane gets a tiny whole phone, never an overflow (#946)', () => {
+    // The old 0.5 floor guaranteed the one thing the pane must never do: below
+    // it the frame was taller than the pane by construction. Small and whole
+    // beats large and scrolling.
+    expect(previewScale(100, 100)).toBeCloseTo(100 / 844, 6);
+    expect(previewScale(200, 3000)).toBeCloseTo(200 / 390, 6);
+  });
+
+  it('floors fractional pane dimensions so the frame can never overflow by a sub-pixel (#946)', () => {
+    // `contentRect` is fractional. An unfloored height-bound scale renders a
+    // frame of exactly the pane's height, which rounds up and arms the
+    // scrollbar — the "little scroll outside the frame".
+    const scale = previewScale(2000, 703.47);
+    expect(PREVIEW_PHONE_HEIGHT * scale).toBeLessThanOrEqual(703.47);
+    expect(scale).toBeCloseTo(703 / 844, 6);
+  });
+
+  it('treats an unmeasured pane as true size, not zero', () => {
+    // No ResizeObserver yet, or no layout at all (jsdom). Zero would render an
+    // invisible phone; the container clips, so true size is safe.
+    expect(previewScale(0, 0)).toBe(1);
+    expect(previewScale(-1, 500)).toBe(1);
   });
 
   it('never scales above 1 — the phone is never blown up past true size', () => {

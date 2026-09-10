@@ -654,22 +654,49 @@ export const PREVIEW_PHONE_WIDTH = 390;
 export const PREVIEW_PHONE_HEIGHT = 844;
 
 /**
- * The scale that fits the 390×844 phone into the preview pane (#916, #937).
+ * The scale that fits the 390×844 phone into the preview pane (#916, #937, #946).
  * The phone takes the smaller of the pane's width and height ratios, so it is
  * ALWAYS whole inside the pane: the preview column never scrolls and the
  * reader's deck stays the only scroller, which keeps the phone's sticky
  * chrome (meeting title, section counter, text-size control) permanently in
  * view and lets the Present card sit pinned beneath the pane instead of
- * below the fold. #937 had let the height ratio go so the phone could fill
- * the width at full size and scroll inside the column instead; that is what
- * pushed the Present card out of reach and let the scaled phone's chrome be
- * clipped when the column moved. Clamped to a legibility floor (below it the
- * column may still scroll) and never blown up past true size.
+ * below the fold.
+ *
+ * Two reversals live in this function's history, and both are load-bearing:
+ *
+ * #937 let the height ratio go so the phone could fill the width at full size
+ * and scroll inside the column instead. That pushed the Present card out of
+ * reach and clipped the scaled phone's chrome when the column moved, so #939
+ * put the height ratio back. #946 re-opened filling the width and closed it
+ * the same way: a width-filled phone is necessarily taller than the pane, and
+ * every way of absorbing the overflow either scrolls the column (the #939 bug)
+ * or crops the phone into a shape that no longer reads as a phone. Fitting
+ * both axes is the only arrangement with no case to reason about. If you find
+ * yourself tempted to fill the width a third time, read #939 first.
+ *
+ * There is no legibility floor (#946). A floor guarantees an overflow: below
+ * it the frame is taller than the pane by construction, which is a scrollbar
+ * or an amputated phone, and the windows where it binds — a pane under 422px,
+ * so a browser window under roughly 700px tall — are rare enough on an editing
+ * machine that a small-but-whole phone is the better trade. The invariant this
+ * buys is absolute: the phone always fits, so the column never needs to scroll.
+ *
+ * Pane dimensions are floored before the ratio is taken. `contentRect` is
+ * fractional, so a height-bound scale of `paneHeight / 844` renders a frame of
+ * *exactly* the pane's height, which the browser then rounds up — overflowing
+ * by a sub-pixel and arming the scrollbar. Flooring the input keeps the
+ * product safely under. Callers floor the pixel sizes too.
+ *
+ * A non-positive dimension means "not measured yet" — the ResizeObserver has
+ * not fired, or there is no layout at all (jsdom). That resolves to true size
+ * rather than zero, which would render an invisible phone.
  */
 export function previewScale(paneWidth: number, paneHeight = 0): number {
-  const fillWidth = paneWidth / PREVIEW_PHONE_WIDTH;
-  const fit = paneHeight > 0 ? Math.min(fillWidth, paneHeight / PREVIEW_PHONE_HEIGHT) : fillWidth;
-  return Math.min(1, Math.max(0.5, fit));
+  if (paneWidth <= 0) return 1;
+  const fillWidth = Math.floor(paneWidth) / PREVIEW_PHONE_WIDTH;
+  const fit =
+    paneHeight > 0 ? Math.min(fillWidth, Math.floor(paneHeight) / PREVIEW_PHONE_HEIGHT) : fillWidth;
+  return Math.min(1, fit);
 }
 
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {

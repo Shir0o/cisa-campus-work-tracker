@@ -688,15 +688,99 @@ describe('BibleStudyEditor view', () => {
   // one that matches the picture. jsdom has no layout, so the ResizeObserver
   // is inert and the scale sits at the legibility floor — the inline styles
   // are the contract, asserted from the rendered DOM.
+  it('never gives the preview column a scroller — the phone always fits (#946)', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    // previewScale fits both axes on floored pane dimensions, so this box can
+    // never need to scroll. overflow-y-auto armed a scrollbar off a sub-pixel
+    // rounding of an exactly-fitting frame — the "little scroll outside the
+    // frame". Clipping also swallows the pre-measurement frame, which is true
+    // size until the ResizeObserver fires.
+    // clip, not hidden: an overflow-hidden box is still programmatically
+    // scrollable, and the reader's caret-follow scrollIntoView scrolls every
+    // scrollable ancestor — that is the #939 bug one level out.
+    const pane = screen.getByTestId('preview-scroll');
+    expect(pane.className).toMatch(/overflow-clip/);
+    expect(pane.className).not.toMatch(/overflow-hidden|overflow-y-auto/);
+  });
+
+  it('grounds the Present card apart from the preview it sits under (#946)', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    // Sharing bg-surface with the pane made a separate, differently-purposed
+    // card read as the preview's bottom strip.
+    const card = screen.getByTestId('present-card');
+    expect(card.className).toMatch(/bg-surface-variant/);
+    expect(card.className).toMatch(/shrink-0/);
+  });
+
+  it('lets the title take the header\'s width instead of a ~20ch intrinsic cap (#946)', async () => {
+    renderAt();
+    const title = await screen.findByPlaceholderText('Meeting title');
+    expect(title.className).toMatch(/w-full/);
+  });
+
+  it('groups the toolbar into Insert and Prompts, with emphasis beside Insert (#946)', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    expect(screen.getByText('Insert')).toBeInTheDocument();
+    expect(screen.getByText('Prompts')).toBeInTheDocument();
+    // Every button survived the regroup — the columns are a rearrangement,
+    // not a cull.
+    for (const name of ['Passage', 'Verse', 'Blank', 'Question', 'Discuss', 'Activity', 'Apply']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+    for (const name of ['Bold', 'Italic', 'Numbered list', 'Bullet list']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('offers "Open the study" only once an entry point points at this study (#946)', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+    // No entry point in the default fixture: there is no study to open.
+    expect(screen.queryByRole('link', { name: 'Open the study' })).not.toBeInTheDocument();
+  });
+
+  it('closes the fix-during-study loop with a link to This week\'s study (#946)', async () => {
+    vi.mocked(bibleData.subscribeEntryPoints).mockImplementation((_db, cb) => {
+      cb([
+        {
+          id: 'cisa-wednesday',
+          slug: 'cisa-wednesday',
+          name: 'Wednesday Bible Study',
+          activeStudyId: 'romans-fall26',
+        },
+      ]);
+      return () => {};
+    });
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    // The reader, not the raw /s/ URL: the public page has no way back, which
+    // is the half of the loop this exists to close.
+    expect(screen.getByRole('link', { name: 'Open the study' })).toHaveAttribute(
+      'href',
+      '/bible-study/read?ep=cisa-wednesday',
+    );
+  });
+
   it('sizes the preview frame to the scaled phone, not the unscaled one', async () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');
 
     const frame = screen.getByTestId('preview-frame');
-    // The outer box is pre-scaled: 390×0.5 by 844×0.5 (the floor, since
-    // jsdom never fires the ResizeObserver).
-    expect(frame.style.width).toBe('195px');
-    expect(frame.style.height).toBe('422px');
+    // The outer box is pre-scaled. jsdom has no layout, so the ResizeObserver
+    // never fires and the pane measures 0 — which since #946 means "not
+    // measured yet" and resolves to true size rather than the old 0.5
+    // legibility floor. The floor is gone: it guaranteed the one thing the
+    // pane must never do, since below it the frame is taller than the pane by
+    // construction.
+    expect(frame.style.width).toBe('390px');
+    expect(frame.style.height).toBe('844px');
     // The bezel, border and shadow hug the box that matches the picture.
     // The frame clips with `overflow: clip`, not `hidden`: an overflow-
     // hidden box is still programmatically scrollable, and the reader's
@@ -711,7 +795,7 @@ describe('BibleStudyEditor view', () => {
     const phone = frame.firstElementChild as HTMLElement;
     expect(phone.style.width).toBe('390px');
     expect(phone.style.height).toBe('844px');
-    expect(phone.style.transform).toBe('scale(0.5)');
+    expect(phone.style.transform).toBe('scale(1)');
     expect(phone.style.transformOrigin).toBe('top left');
   });
 

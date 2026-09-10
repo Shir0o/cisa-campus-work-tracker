@@ -84,7 +84,7 @@ vi.mock('motion/react', () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/admin/feedback', '/feedback', 'https://shared-calendar-6u6.pages.dev/']);
+const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/admin/feedback', '/feedback', '/bible-study/present', 'https://shared-calendar-6u6.pages.dev/']);
 
 function renderTopNav() {
   return render(
@@ -113,10 +113,13 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
-    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/around', 'https://shared-calendar-6u6.pages.dev/'],
+    // '/bible-study/read' (This week's study) and '/bible-study/present' are
+    // every role's (#946): one week, the current one, and the code anyone in
+    // the room may hold up. Only '/bible-study' — the archive — stays admin.
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', '/bible-study/read', '/bible-study/present'],
+    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', '/bible-study/read', '/bible-study/present'],
+    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/bible-study/read', '/bible-study/present'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/read', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -582,24 +585,24 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     admin: [
       { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },  // admin: the index, never the reader (#946)
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
       { label: 'Today', hrefs: ['/', '/questions'] },
       { label: 'People', hrefs: ['/board', '/directory'] },
-      { label: 'Gatherings', hrefs: ['/messages'] },
+      { label: 'Gatherings', hrefs: ['/bible-study/read', '/messages'] },
     ],
     operator: [
       { label: 'Today', hrefs: ['/', '/coordination'] },
       { label: 'People', hrefs: ['/directory'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/messages'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study/read', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     viewer: [
       { label: 'Today', hrefs: ['/'] },
       { label: 'People', hrefs: ['/outreach'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/messages'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study/read', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
   };
@@ -666,7 +669,12 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     // guards against a new NAV_ITEMS entry being added without being placed
     // in a group.
     const adminHrefs = groupedNavFor('admin').flatMap((g) => g.items.map((it) => it.href));
-    const navHrefs = NAV_ITEMS.map((it) => it.href).filter((h) => h !== '/settings');
+    // '/bible-study/read' is excluded: it is the same nav entry as
+    // '/bible-study' wearing the same label, and a Full-timer means the index
+    // (#946). It is grouped, just never for this role.
+    const navHrefs = NAV_ITEMS.map((it) => it.href).filter(
+      (h) => h !== '/settings' && h !== '/bible-study/read',
+    );
     expect(new Set(adminHrefs)).toEqual(new Set(navHrefs));
   });
 });

@@ -4,6 +4,10 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { QueueScreen } from './QueueScreen';
 import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 
+jest.mock('../../lib/data/bibleStudy', () => ({
+  subscribeEntryPoints: jest.fn(() => () => {}),
+}));
+
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: 'user1', user: null, role: 'trainee' }),
 }));

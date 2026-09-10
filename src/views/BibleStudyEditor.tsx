@@ -405,12 +405,29 @@ export default function BibleStudyEditor() {
     <div className="flex-1 flex flex-col min-w-0 h-full p-4 lg:p-6 overflow-hidden bg-background">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap pb-4 shrink-0 border-b border-outline-variant">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-xs text-on-surface-variant font-medium flex items-center gap-1.5">
             <Link to="/bible-study" className="font-semibold text-primary hover:underline shrink-0">
               All weeks
             </Link>
             <span aria-hidden="true">·</span>
+            {/* #946: always present, not threaded through a return param. It
+                closes the fix-during-study loop from whichever direction you
+                came — the reader's Edit chip, Present mode's pencil, the index,
+                a bookmark — and it targets This week's study rather than the
+                raw `/s/` URL so there is a way back out again. The entry point
+                is the one already resolved for the Present card. */}
+            {entryPoint && (
+              <>
+                <Link
+                  to={`/bible-study/read?ep=${entryPoint.slug}`}
+                  className="font-semibold text-primary hover:underline shrink-0"
+                >
+                  Open the study
+                </Link>
+                <span aria-hidden="true">·</span>
+              </>
+            )}
             <span className="truncate">Study: {meeting.studyId}</span>
             <span aria-hidden="true">·</span>
             <span className="shrink-0">{published ? 'Published' : 'Draft'}</span>
@@ -427,7 +444,12 @@ export default function BibleStudyEditor() {
               setTitle(e.target.value);
               autosave(800, published);
             }}
-            className="text-2xl lg:text-3xl font-serif font-bold text-on-surface bg-transparent border-0 outline-none focus:ring-0 p-0"
+            // #946: the input carried no width, so it sat at the browser's
+            // intrinsic ~20ch and clipped titles that had room to spare. It
+            // now takes the header's remaining width. An input cannot wrap,
+            // so a title longer than the field scrolls inside it rather than
+            // pushing the 3-pane grid down a line.
+            className="w-full text-2xl lg:text-3xl font-serif font-bold text-on-surface bg-transparent border-0 outline-none focus:ring-0 p-0"
             placeholder="Meeting title"
           />
         </div>
@@ -464,7 +486,7 @@ export default function BibleStudyEditor() {
       </div>
 
       {/* 3-Pane Body */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[200px_minmax(400px,1fr)_380px] gap-4 pt-4 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[200px_minmax(400px,1fr)_minmax(380px,422px)] gap-4 pt-4 overflow-hidden">
         {/* Left Pane: Sections Gutter */}
         <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-3">
           <div className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant px-2 py-1 mb-2">
@@ -505,100 +527,122 @@ export default function BibleStudyEditor() {
         <div className="flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
           {/* #890: the toolbar holds only what goes INSIDE a Section —
               the Section itself is created by "+ Add section" in the
-              outline, never from a second place here. Two rows: the
-              block inserters (Passage, Verse, Blank, the lists, the four
-              Prompt kinds) first, and the inline markdown emphasis
-              buttons (B, I) on their own second row. */}
-          <div className="flex flex-col gap-1.5 p-2.5 border-b border-outline-variant bg-surface-variant/30">
-            <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => insertBlockAtSectionEnd('> ', 2)}
-              // #917: a toolbar click must not blur the textarea. The
-              // mousedown focus shift is what makes the value replacement
-              // land on an unfocused field and reset its scroll; preventing
-              // the default keeps focus on the textarea through the click.
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
-            >
-              Passage
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('Verse: ', 7)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
-            >
-              Verse
-            </button>
-            <button
-              onClick={() => insertTextAtCursor('[[', ']]')}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
-            >
-              Blank
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('1. \n2. \n3. ', 3)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
-              aria-label="Numbered list"
-            >
-              1.
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('- ', 2)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
-              aria-label="Bullet list"
-            >
-              •
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('Question: ', 10)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-slate-soft)] text-on-surface"
-            >
-              Question
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('Discuss: ', 9)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-sage-soft)] text-on-surface"
-            >
-              Discuss
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('Activity: ', 10)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-clay-soft)] text-on-surface"
-            >
-              Activity
-            </button>
-            <button
-              onClick={() => insertBlockAtSectionEnd('Apply: ', 7)}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-ochre-soft)] text-on-surface"
-            >
-              Apply
-            </button>
+              outline, never from a second place here.
+
+              #946: two labelled columns rather than two anonymous rows.
+              Insert holds the blocks that build the week's structure;
+              Prompts holds the four kinds a Section puts to the room, which
+              are the buttons a leader actually reaches for and were
+              previously lost at the end of a nine-button wrap. B and I are
+              inline emphasis and belong to neither group, so they sit beside
+              the Insert label at a lower visual weight — near the cursor's
+              work without pretending to be inserters. Each column wraps
+              internally, so this is taller than the old two rows; that cost
+              is paid out of the textarea. */}
+          <div className="grid grid-cols-2 gap-3 p-2.5 border-b border-outline-variant bg-surface-variant/30">
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-on-surface-variant">
+                  Insert
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => insertTextAtCursor('**', '**')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] font-bold hover:bg-surface-variant"
+                    aria-label="Bold"
+                  >
+                    B
+                  </button>
+                  <button
+                    onClick={() => insertTextAtCursor('*', '*')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] italic hover:bg-surface-variant"
+                    aria-label="Italic"
+                  >
+                    I
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => insertBlockAtSectionEnd('> ', 2)}
+                  // #917: a toolbar click must not blur the textarea. The
+                  // mousedown focus shift is what makes the value replacement
+                  // land on an unfocused field and reset its scroll; preventing
+                  // the default keeps focus on the textarea through the click.
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
+                >
+                  Passage
+                </button>
+                <button
+                  onClick={() => insertBlockAtSectionEnd('Verse: ', 7)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
+                >
+                  Verse
+                </button>
+                <button
+                  onClick={() => insertTextAtCursor('[[', ']]')}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant text-[var(--t-sage)]"
+                >
+                  Blank
+                </button>
+                <button
+                  onClick={() => insertBlockAtSectionEnd('1. \n2. \n3. ', 3)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
+                  aria-label="Numbered list"
+                >
+                  1.
+                </button>
+                <button
+                  onClick={() => insertBlockAtSectionEnd('- ', 2)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
+                  aria-label="Bullet list"
+                >
+                  •
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => insertTextAtCursor('**', '**')}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-bold hover:bg-surface-variant"
-              aria-label="Bold"
-            >
-              B
-            </button>
-            <button
-              onClick={() => insertTextAtCursor('*', '*')}
-              onMouseDown={(e) => e.preventDefault()}
-              className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs italic hover:bg-surface-variant"
-              aria-label="Italic"
-            >
-              I
-            </button>
+            <div className="flex flex-col gap-1.5 min-w-0 border-l border-outline-variant pl-3">
+              <span className="text-[10px] font-bold tracking-wider uppercase text-on-surface-variant">
+                Prompts
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => insertBlockAtSectionEnd('Question: ', 10)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-slate-soft)] text-on-surface"
+                >
+                  Question
+                </button>
+                <button
+                  onClick={() => insertBlockAtSectionEnd('Discuss: ', 9)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-sage-soft)] text-on-surface"
+                >
+                  Discuss
+                </button>
+                <button
+                  onClick={() => insertBlockAtSectionEnd('Activity: ', 10)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-clay-soft)] text-on-surface"
+                >
+                  Activity
+                </button>
+                <button
+                  onClick={() => insertBlockAtSectionEnd('Apply: ', 7)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--t-ochre-soft)] text-on-surface"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           </div>
 
@@ -731,7 +775,26 @@ export default function BibleStudyEditor() {
           <div
             ref={previewPaneRef}
             data-testid="preview-scroll"
-            className="mt-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar"
+            // #946: overflow-clip, not overflow-y-auto — and deliberately
+            // not overflow-hidden. previewScale now guarantees the frame fits
+            // on both axes with the pane's fractional dimensions floored, so
+            // this can never NEED to scroll, and clipping also swallows the
+            // brief pre-measurement frame (true size, before the
+            // ResizeObserver fires) instead of flashing a scrollbar.
+            //
+            // `hidden` would not have been enough, for the same reason the
+            // phone frame below uses `clip`: an overflow-hidden box is still
+            // programmatically scrollable, and the reader's caret-follow
+            // jump (scrollIntoView) scrolls every scrollable ancestor. That
+            // is the #939 bug — a scrolled container slides the phone up
+            // under its own bezel and slices the sticky header off the top —
+            // and `hidden` here would simply have moved it one level out.
+            // `clip` paints identically and can never be scrolled by either
+            // scrollTop or scrollIntoView.
+            //
+            // The testid keeps its name; this is the preview's box, no
+            // longer a scroller.
+            className="mt-4 flex-1 min-h-0 overflow-clip"
           >
             <div className="min-h-full flex flex-col">
               <div className="flex-1 min-h-0" />
@@ -740,8 +803,11 @@ export default function BibleStudyEditor() {
                   data-testid="preview-frame"
                   className="overflow-clip shadow-xl border border-outline-variant"
                   style={{
-                    width: PREVIEW_PHONE_WIDTH * scale,
-                    height: PREVIEW_PHONE_HEIGHT * scale,
+                    // Floored: the scale already fits, but a fractional
+                    // layout box rounds up and re-creates the sub-pixel
+                    // overflow this is meant to eliminate (#946).
+                    width: Math.floor(PREVIEW_PHONE_WIDTH * scale),
+                    height: Math.floor(PREVIEW_PHONE_HEIGHT * scale),
                     borderRadius: Math.round(28 * scale),
                   }}
                 >
@@ -778,7 +844,10 @@ export default function BibleStudyEditor() {
               require scrolling the phone out of the way. */}
           <div
             data-testid="present-card"
-            className="mt-4 bg-surface border border-outline-variant rounded-xl p-3 flex items-center gap-3 shrink-0"
+            // #946: its own ground. Sharing bg-surface with the pane made a
+            // separate, differently-purposed card read as the bottom strip of
+            // the preview.
+            className="mt-4 bg-surface-variant border border-outline-variant rounded-xl p-3 flex items-center gap-3 shrink-0"
           >
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold text-on-surface">Present mode</div>

@@ -30,7 +30,7 @@ import { UserAvatar } from '../ui/UserAvatar';
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
 import {
-  NAV_ITEMS,
+  navItemsForRole,
   navExternalFor,
   primaryNavFor,
   moreNavFor,
@@ -472,7 +472,10 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               </button>
             </div>
 
-            {NAV_ITEMS.filter((item) => canAccessRoute(role as AppRole, item.href)).map((item) => {
+            {/* navItemsForRole, not a bare canAccessRoute filter: the list now
+                holds two items sharing the label "Bible study" and the role
+                picks which one is meant, which only that helper knows (#946). */}
+            {navItemsForRole(role as AppRole).map((item) => {
               const href = item.href;
               const label = href === '/' ? homeLabel : item.label;
               // Not NavLink's own `isActive`: that matches the pathname, which

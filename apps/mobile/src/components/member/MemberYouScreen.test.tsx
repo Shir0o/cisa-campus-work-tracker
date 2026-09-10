@@ -3,6 +3,10 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { MemberYouScreen } from './MemberYouScreen';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 
+jest.mock('../../lib/data/bibleStudy', () => ({
+  subscribeEntryPoints: jest.fn(() => () => {}),
+}));
+
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({
     user: { displayName: 'Student Alex' },

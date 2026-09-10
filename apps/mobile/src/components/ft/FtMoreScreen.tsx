@@ -17,6 +17,7 @@ import { Room } from '../v2/Widget';
 import { useImpersonateSheet } from '../impersonate/ImpersonateLayer';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { M2Release } from '../release/M2Release';
+import { ThisWeeksStudyRow } from '../bibleStudy/ThisWeeksStudyRow';
 
 export function FtMoreScreen() {
   return (
@@ -91,6 +92,10 @@ function FtMore() {
         </View>
 
         <View style={{ backgroundColor: c.widget.bg, borderRadius: radius.tile, ...c.widget.shadow }}>
+          {/* This week's study (#946) sits above FT_MORE rather than inside it:
+              FT_MORE is a list of in-app routes and this one opens a URL in a
+              browser, with its own Copy and QR actions on the row. */}
+          <ThisWeeksStudyRow isFirst />
           {FT_MORE.map((item, i) => (
             <Pressable
               key={item.key}
@@ -100,7 +105,7 @@ function FtMore() {
                 alignItems: 'center',
                 minHeight: 58,
                 paddingHorizontal: 18,
-                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopWidth: 1,
                 borderTopColor: c.widget.line,
                 opacity: pressed ? 0.7 : 1,
               })}

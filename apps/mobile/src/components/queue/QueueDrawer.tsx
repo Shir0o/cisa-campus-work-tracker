@@ -15,6 +15,7 @@ import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from './atoms';
 
 const WIDTH = Math.min(300, Dimensions.get('window').width * 0.82);
+import { ThisWeeksStudyRow } from '../bibleStudy/ThisWeeksStudyRow';
 
 /** The ☰ itself. Drawn bars, not a glyph — v2's rule about text marks. */
 export function DrawerButton({ onPress }: { onPress: () => void }) {
@@ -117,6 +118,10 @@ export function QueueDrawer({
           </View>
 
           <View style={{ borderTopWidth: 1, borderTopColor: c.card.line }}>
+            {/* This week's study (#946). The trainee shell has no tab bar, so
+                the drawer is the only place a Trainee can reach it — the More
+                tab the other two shells use does not exist here. */}
+            <ThisWeeksStudyRow variant="drawer" onNavigate={onClose} />
             {TRAINEE_DRAWER.map((item) => (
               <React.Fragment key={item.key}>
                 <Pressable

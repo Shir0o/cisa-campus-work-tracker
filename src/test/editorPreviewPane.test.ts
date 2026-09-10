@@ -97,15 +97,43 @@ describe('editor preview pane guardrail (#916)', () => {
     // The Present card itself must not scroll: it carries no overflow-y.
     const lines = source.split('\n');
     const presentIdx = lines.findIndex((line) => line.includes('data-testid="present-card"'));
-    const presentCardLine = lines.slice(presentIdx, presentIdx + 3).find((line) => line.includes('className'));
+    const presentCardLine = lines.slice(presentIdx, presentIdx + 8).find((line) => line.includes('className'));
     expect(presentCardLine).toMatch(/mt-4/);
+    // #946: and it must not share the preview pane's ground, or a separate,
+    // differently-purposed card reads as the preview's bottom strip.
+    expect(presentCardLine).toMatch(/bg-surface-variant/);
+  });
+
+  it('leaves the preview box no way to scroll at all — clip, not hidden (#946)', () => {
+    // previewScale fits both axes on FLOORED pane dimensions, so the box can
+    // never need to scroll, and the old 0.5 legibility floor (which guaranteed
+    // an oversized frame below a 422px pane) is gone.
+    //
+    // `hidden` is NOT sufficient, and this assertion exists to say so: an
+    // overflow-hidden box is still programmatically scrollable — verified in a
+    // real browser, scrollTop moved it 122px — and the reader's caret-follow
+    // scrollIntoView scrolls every scrollable ancestor. That is the #939 bug
+    // one level out from the frame. `clip` paints the same and cannot be
+    // scrolled by scrollTop or scrollIntoView.
+    const lines = source.split('\n');
+    const idx = lines.findIndex((line) => line.includes('data-testid="preview-scroll"'));
+    expect(idx, 'preview box should exist').toBeGreaterThanOrEqual(0);
+    const classLine = lines.slice(idx, idx + 22).find((line) => line.includes('className'));
+    expect(classLine, 'preview box className should exist').toBeDefined();
+    expect(classLine!).toMatch(/overflow-clip/);
+    expect(classLine!).not.toMatch(/overflow-hidden|overflow-y-auto|overflow-y-scroll/);
+  });
+
+  it('floors the frame\'s pixel box, so an exact fit cannot round into an overflow (#946)', () => {
+    expect(source).toMatch(/Math\.floor\(PREVIEW_PHONE_WIDTH \* scale\)/);
+    expect(source).toMatch(/Math\.floor\(PREVIEW_PHONE_HEIGHT \* scale\)/);
   });
 
   it('clips the phone frame with overflow: clip, never overflow: hidden', () => {
     const lines = source.split('\n');
     const frameIdx = lines.findIndex((line) => line.includes('data-testid="preview-frame"'));
     expect(frameIdx, 'preview frame should exist').toBeGreaterThanOrEqual(0);
-    const frameClassLine = lines.slice(frameIdx, frameIdx + 3).find((line) => line.includes('className'));
+    const frameClassLine = lines.slice(frameIdx, frameIdx + 8).find((line) => line.includes('className'));
     expect(frameClassLine, 'preview frame className should exist').toBeDefined();
     expect(frameClassLine!).toMatch(/overflow-clip/);
     expect(frameClassLine!).not.toMatch(/overflow-hidden/);
