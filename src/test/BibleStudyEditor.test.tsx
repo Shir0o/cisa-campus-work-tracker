@@ -108,6 +108,12 @@ describe('BibleStudyEditor view', () => {
     );
   }
 
+  // The block inserters live behind the Insert/Prompts dropdowns; a test
+  // that wants one opens its menu first.
+  function openMenu(label: string) {
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}$`) }));
+  }
+
   // The preview IS the reader (#890, ADR 0014), and the reader mirrors the
   // visible panel through an IntersectionObserver (#914). The global jsdom
   // stub in setup.ts is inert, so these tests install the same per-test
@@ -222,20 +228,20 @@ describe('BibleStudyEditor view', () => {
 
     await screen.findByDisplayValue('Initial Meeting');
 
-    const blankBtn = screen.getByRole('button', { name: /Blank/i });
-    fireEvent.click(blankBtn);
+    openMenu('Insert');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Blank/i }));
 
-    const questionBtn = screen.getByRole('button', { name: /Question/i });
-    fireEvent.click(questionBtn);
+    openMenu('Prompts');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Question/i }));
 
-    const passageBtn = screen.getByRole('button', { name: /Passage/i });
-    fireEvent.click(passageBtn);
+    openMenu('Insert');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
-    const discussBtn = screen.getByRole('button', { name: /Discuss/i });
-    fireEvent.click(discussBtn);
+    openMenu('Prompts');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Discuss/i }));
 
-    const activityBtn = screen.getByRole('button', { name: /Activity/i });
-    fireEvent.click(activityBtn);
+    openMenu('Prompts');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Activity/i }));
     const addSecBtn = screen.getByRole('button', { name: /\+ Add section/i });
     fireEvent.click(addSecBtn);
     // #890: "+ Add section" appends at the END of the document even when the
@@ -249,11 +255,11 @@ describe('BibleStudyEditor view', () => {
 
     // The list inserters land their starter templates at the end of the
     // caret's Section (#921), never at the cursor.
-    const numBtn = screen.getByRole('button', { name: /Numbered list/i });
-    fireEvent.click(numBtn);
+    openMenu('Insert');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Numbered list/i }));
 
-    const bulletBtn = screen.getByRole('button', { name: /Bullet list/i });
-    fireEvent.click(bulletBtn);
+    openMenu('Insert');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Bullet list/i }));
 
     const md = (screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement).value;
     expect(md).toContain('1. ');
@@ -284,8 +290,15 @@ describe('BibleStudyEditor view', () => {
       expect(document.activeElement).toBe(area);
 
       // A real mousedown on a toolbar button must not move focus: the
-      // textarea stays active through the whole click sequence.
-      const passage = screen.getByRole('button', { name: /Passage/i });
+      // textarea stays active through the whole click sequence. The block
+      // inserters sit behind the Insert menu, so the sequence runs through
+      // the trigger and the menu item.
+      const insert = screen.getByRole('button', { name: /^Insert$/i });
+      fireEvent.mouseDown(insert);
+      expect(document.activeElement).toBe(area);
+      fireEvent.mouseUp(insert);
+      fireEvent.click(insert);
+      const passage = screen.getByRole('menuitem', { name: /Passage/i });
       fireEvent.mouseDown(passage);
       expect(document.activeElement).toBe(area);
       fireEvent.mouseUp(passage);
@@ -302,7 +315,8 @@ describe('BibleStudyEditor view', () => {
       area.setSelectionRange(0, 0);
       area.scrollTop = 1234;
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       // The insertion landed at the end of the caret's Section (#921) and
       // the caret sits after the blockquote marker (the deferred selection
@@ -345,7 +359,8 @@ describe('BibleStudyEditor view', () => {
       // the outline highlight off the caret's Section.
       area.setSelectionRange(MEETING_MD.indexOf('Point 2'), MEETING_MD.indexOf('Point 2'));
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       // The caret-section sync runs in the deferred selection callback.
       await waitFor(() => {
@@ -359,7 +374,8 @@ describe('BibleStudyEditor view', () => {
       await screen.findByDisplayValue('Initial Meeting');
 
       vi.useFakeTimers();
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await act(async () => { vi.advanceTimersByTime(1200); });
       expect(bibleData.saveMeeting).toHaveBeenCalledWith(
@@ -386,7 +402,8 @@ describe('BibleStudyEditor view', () => {
       area.focus();
       area.setSelectionRange(0, 0);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         expect(area.value).toContain('\n\n> ');
@@ -404,7 +421,8 @@ describe('BibleStudyEditor view', () => {
       // Caret inside Section 1's body.
       area.setSelectionRange(3, 3);
 
-      fireEvent.click(screen.getByRole('button', { name: /Discuss/i }));
+      openMenu('Prompts');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Discuss/i }));
 
       await waitFor(() => {
         // The Discuss line lands at the end of Section 1, before Section 2's
@@ -423,7 +441,8 @@ describe('BibleStudyEditor view', () => {
       area.focus();
       area.setSelectionRange(3, 3);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         expect(area.value).toBe(
@@ -444,7 +463,8 @@ describe('BibleStudyEditor view', () => {
       area.focus();
       area.setSelectionRange(3, 3);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         expect(area.value).toBe('## Section 1\n- Point 1\n\n> ');
@@ -461,7 +481,8 @@ describe('BibleStudyEditor view', () => {
       const mid = MEETING_MD.indexOf('Point 1') + 3;
       area.setSelectionRange(mid, mid);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         // The caret's line is untouched — the block lands at the Section's
@@ -484,7 +505,8 @@ describe('BibleStudyEditor view', () => {
       area.focus();
       area.setSelectionRange(2, 2);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         expect(area.value).toBe('Just prose, no headings.\n\n> ');
@@ -506,7 +528,8 @@ describe('BibleStudyEditor view', () => {
       // first heading, never at the document end under the last Section.
       area.setSelectionRange(2, 2);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         expect(area.value).toBe('Intro prose\n\n> \n\n## Alpha\n- point');
@@ -521,7 +544,8 @@ describe('BibleStudyEditor view', () => {
       area.focus();
       area.setSelectionRange(3, 3);
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
         // The caret lands right after the blockquote marker, ready to type
@@ -557,8 +581,9 @@ describe('BibleStudyEditor view', () => {
     await screen.findByDisplayValue('Initial Meeting');
 
     expect(screen.queryByRole('button', { name: /^Section$/i })).toBeNull();
-    // The intra-Section inserters stay.
-    expect(screen.getByRole('button', { name: /Passage/i })).toBeInTheDocument();
+    // The intra-Section inserters stay, behind the Insert menu.
+    openMenu('Insert');
+    expect(screen.getByRole('menuitem', { name: /Passage/i })).toBeInTheDocument();
   });
 
   it('offers Verse alongside Passage in the toolbar (#918)', async () => {
@@ -569,7 +594,8 @@ describe('BibleStudyEditor view', () => {
     area.focus();
     area.setSelectionRange(3, 3);
 
-    fireEvent.click(screen.getByRole('button', { name: /Verse/i }));
+    openMenu('Insert');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Verse/i }));
 
     await waitFor(() => {
       // The Verse line lands at the end of the caret's Section, ready to
@@ -586,17 +612,18 @@ describe('BibleStudyEditor view', () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');
 
-    // The toolbar offers all four Prompt kinds.
-    expect(screen.getByRole('button', { name: /Question/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Discuss/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Activity/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Apply/i })).toBeInTheDocument();
+    // The toolbar offers all four Prompt kinds, behind the Prompts menu.
+    openMenu('Prompts');
+    expect(screen.getByRole('menuitem', { name: /Question/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Discuss/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Activity/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /Apply/i })).toBeInTheDocument();
 
     const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
     area.focus();
     area.setSelectionRange(3, 3);
 
-    fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Apply/i }));
 
     await waitFor(() => {
       // The Apply line lands at the end of the caret's Section, ready to
@@ -722,19 +749,26 @@ describe('BibleStudyEditor view', () => {
     expect(title.className).toMatch(/w-full/);
   });
 
-  it('groups the toolbar into Insert and Prompts, with emphasis beside Insert (#946)', async () => {
+  it('groups the toolbar into Insert and Prompts dropdowns, with emphasis beside them (#946)', async () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');
 
-    expect(screen.getByText('Insert')).toBeInTheDocument();
-    expect(screen.getByText('Prompts')).toBeInTheDocument();
-    // Every button survived the regroup — the columns are a rearrangement,
-    // not a cull.
-    for (const name of ['Passage', 'Verse', 'Blank', 'Question', 'Discuss', 'Activity', 'Apply']) {
+    // The block inserters live behind the two labelled dropdowns; the
+    // emphasis buttons stay visible beside them.
+    expect(screen.getByRole('button', { name: /^Insert$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Prompts$/i })).toBeInTheDocument();
+    for (const name of ['Bold', 'Italic']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
-    for (const name of ['Bold', 'Italic', 'Numbered list', 'Bullet list']) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    // Every block inserter survived the regroup — the dropdowns are a
+    // rearrangement, not a cull.
+    openMenu('Insert');
+    for (const name of ['Passage', 'Verse', 'Blank', 'Numbered list', 'Bullet list']) {
+      expect(screen.getByRole('menuitem', { name })).toBeInTheDocument();
+    }
+    openMenu('Prompts');
+    for (const name of ['Question', 'Discuss', 'Activity', 'Apply']) {
+      expect(screen.getByRole('menuitem', { name })).toBeInTheDocument();
     }
   });
 
@@ -1146,7 +1180,8 @@ describe('BibleStudyEditor view', () => {
       area.setSelectionRange(0, 0);
       area.scrollTop = 1234;
 
-      fireEvent.click(screen.getByRole('button', { name: /Passage/i }));
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       // The insertion went through the collaborative channel, landing at the
       // end of the caret's Section (#921).
