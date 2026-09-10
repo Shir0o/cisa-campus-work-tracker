@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { collectionGroup, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { collection, collectionGroup, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { useOptionalLayout } from "../App";
 import { Users } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
@@ -53,7 +54,7 @@ function dayLabel(iso: string): string {
 }
 
 export default function AroundTheTeam({
-  contacts = [],
+  contacts: propsContacts,
   interactions: propsInteractions,
   threads: propsThreads,
   staffNameMap: propsStaffNameMap,
@@ -78,6 +79,9 @@ export default function AroundTheTeam({
   const uid = effectiveUserId || user?.uid || "u1";
   const meName = user?.displayName || propsStaffNameMap?.[uid] || "Someone";
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const layout = useOptionalLayout();
 
   // ── Filters are URL state (#943) ─────────────────────────────────────────
   // Read on load, written on change, never persisted per user — a filter you
@@ -113,6 +117,7 @@ export default function AroundTheTeam({
     setSearchParams(next, { replace: false });
   };
 
+  const [liveContacts, setLiveContacts] = useState<Contact[]>([]);
   const [liveInteractions, setLiveInteractions] = useState<Interaction[]>([]);
   const [liveThreads, setLiveThreads] = useState<ThreadMessageWithContact[]>([]);
   // Completed HERE, this visit. A card you finish greys in place and clears when
@@ -128,6 +133,26 @@ export default function AroundTheTeam({
   // would outlive the click that cleared it.
   const [inboxTick, setInboxTick] = useState(0);
   useEffect(() => InboxState.subscribe(() => setInboxTick((n) => n + 1)), []);
+
+  useEffect(() => {
+    if (propsContacts) return;
+    try {
+      const unsubContacts = onSnapshot(
+        query(collection(db, "contacts")),
+        (snap) =>
+          setLiveContacts(
+            snap.docs.map((d) => ({
+              id: d.id,
+              ...(d.data() as Record<string, unknown>),
+            })) as Contact[],
+          ),
+        (e) => handleFirestoreError(e, OperationType.LIST, "contacts"),
+      );
+      return () => unsubContacts();
+    } catch {
+      // Degrade gracefully in test environments without live firestore
+    }
+  }, [propsContacts]);
 
   useEffect(() => {
     if (propsInteractions) return;
@@ -160,6 +185,7 @@ export default function AroundTheTeam({
     }
   }, [propsThreads]);
 
+  const contacts = propsContacts || liveContacts;
   const interactions = propsInteractions || liveInteractions;
   // Team-scope Discussion is Full-timer-only; hide it from any other role even
   // before the security rules filter it out server-side.
@@ -188,15 +214,20 @@ export default function AroundTheTeam({
   }, [contacts]);
 
   const handleOpenContact = (contactId: string, initialTab?: "overview" | "thread" | "history") => {
-    if (!onOpenContact) return;
     const c = contactMap.get(contactId);
-    if (c) {
-      onOpenContact(c, { tab: initialTab });
+    if (onOpenContact) {
+      if (c) onOpenContact(c, { tab: initialTab });
       return;
     }
-    // Orphan reference (e.g. an activity that points at a deleted contact):
-    // skip the open entirely rather than passing the raw string id downstream,
-    // which would otherwise build `/people/${string}` → `/people/undefined`.
+    if (c && layout?.setSelectedContact) {
+      layout.setSelectedContact(c);
+      return;
+    }
+    if (contactId) {
+      navigate(`/people/${contactId}${initialTab === "thread" ? "?tab=thread" : ""}`, {
+        state: { from: location.pathname },
+      });
+    }
   };
 
   const rawItems = useMemo(
