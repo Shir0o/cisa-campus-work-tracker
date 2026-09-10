@@ -321,13 +321,14 @@ export default function BibleStudyEditor() {
     }, 0);
   };
 
-  // Block inserters (#921): a Prompt, a Passage and a Verse all live INSIDE
+  // Block inserters (#921): a Prompt, a Passage, etc. all live INSIDE
   // a Section, so the block lands at the END of the caret's Section — never
   // at the caret, which would split the line the author is mid-way through —
   // separated from what came before by exactly one blank line whatever the
-  // document was terminated with. With the caret in no Section, the block
-  // falls back to the end of the document. The editor scrolls to the
-  // insertion and leaves the caret ready to type, as "+ Add section" does.
+  // document was terminated with (Verse sits in the flow and inserts at
+  // cursor #946). With the caret in no Section, the block falls back to the
+  // end of the document. The editor scrolls to the insertion and leaves the
+  // caret ready to type, as "+ Add section" does.
   const insertBlockAtSectionEnd = (block: string, caretInBlock: number) => {
     const el = textareaRef.current;
     if (!el) return;
@@ -552,7 +553,7 @@ export default function BibleStudyEditor() {
                 {
                   id: 'verse',
                   label: 'Verse',
-                  onSelect: () => insertBlockAtSectionEnd('Verse: ', 7),
+                  onSelect: () => insertTextAtCursor('Verse: '),
                 },
                 {
                   id: 'blank',
