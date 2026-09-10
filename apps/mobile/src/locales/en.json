@@ -1285,7 +1285,6 @@
     "relative_day_of_month": "Relative day of month",
     "new_contact": "New Contact",
     "tagged_for_season": "Tagged for this season's cohort",
-
     "christian": "Christian",
     "catholic": "Catholic",
     "other_religion": "Other Religion / Background",
@@ -1500,7 +1499,6 @@
       "phone": "Phone",
       "email": "Email",
       "instagram": "Instagram",
-
       "faith_so_far": "Faith, so far",
       "goes_by": "Goes by",
       "known": "Known",
@@ -1633,6 +1631,15 @@
       "delete_forever": "Delete Forever",
       "delete_forever_title": "Delete Forever?",
       "delete_forever_message": "This will permanently delete this page. It cannot be recovered."
+    },
+    "study": {
+      "this_weeks_study": "This week's study",
+      "bible_study": "Bible study",
+      "copy": "Copy",
+      "copied": "Copied",
+      "qr": "QR",
+      "copy_link": "Copy link",
+      "show_qr": "Show QR"
     }
   }
 }

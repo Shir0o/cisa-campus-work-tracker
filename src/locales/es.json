@@ -1728,5 +1728,30 @@
     "placeholder_question": "¿Qué quieres saber? Todos los vinculados a esta persona lo verán.",
     "placeholder_follow_up": "¿Qué hay que hacer: enviarle un mensaje, un correo? Di lo suficiente para que cualquiera pueda encargarse.",
     "placeholder_full_timers": "Añade al hilo de tiempo completo…"
+  },
+  "study": {
+    "loading": "Cargando el estudio bíblico…",
+    "edit_week": "Editar esta semana",
+    "copy_link": "Copiar enlace",
+    "link_copied": "Enlace copiado",
+    "show_qr": "Mostrar código QR",
+    "none_set_up": "Aún no hay ningún estudio",
+    "none_set_up_body": "No hay nada detrás del código de esta aplicación. Pídele a un obrero de tiempo completo que cree el punto de entrada.",
+    "which_study": "¿Cuál estudio?",
+    "more_than_one": "Hay más de uno",
+    "chooser_note": "Lo recordaremos en este dispositivo. Puedes cambiarlo más tarde desde el estudio.",
+    "week_not_found": "Semana no encontrada",
+    "week_not_found_body": "Este enlace no apunta a ninguna semana publicada.",
+    "between_terms": "Entre semestres",
+    "nothing_running": "Nada en curso ahora mismo",
+    "nothing_running_named": "{name} vuelve cuando comience el próximo estudio. Guarda este código: será el mismo.",
+    "nothing_running_unnamed": "El estudio vuelve cuando comience el próximo. Guarda este código: será el mismo.",
+    "nothing_yet": "Todavía nada",
+    "never_published": "El estudio no ha publicado ninguna semana",
+    "never_published_body": "Un estudio recién creado, o un código mostrado antes de publicar la primera semana. No hay nada a lo que recurrir.",
+    "bold": "Negrita",
+    "italic": "Cursiva",
+    "numbered_list": "Lista numerada",
+    "bullet_list": "Lista con viñetas"
   }
 }

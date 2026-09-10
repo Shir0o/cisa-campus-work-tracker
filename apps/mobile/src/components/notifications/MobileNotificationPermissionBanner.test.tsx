@@ -104,10 +104,23 @@ describe('MobileNotificationPermissionBanner', () => {
 
     fireEvent.press(getByText('Enable'));
 
+    // Two independent facts, waited on separately (#946). Sharing one waitFor
+    // meant the dismissal raced whatever was left of the block's single 1s
+    // budget after the call assertion, and the Enable path needs one more
+    // async hop than Later does — it awaits ensureNotificationPermission AND
+    // the storage write before three state updates flush. That margin held
+    // until the suite grew and CI's runner got there slower. The component
+    // dismisses from a `finally`, so this is never conditional; only the
+    // flushing is.
     await waitFor(() => {
       expect(mobileNotifications.ensureNotificationPermission).toHaveBeenCalled();
-      expect(queryByText(/Enable notifications/i)).toBeNull();
     });
+    await waitFor(
+      () => {
+        expect(queryByText(/Enable notifications/i)).toBeNull();
+      },
+      { timeout: 5000 },
+    );
     expect(await AsyncStorage.getItem(NOTIFICATION_PROMPT_STORAGE_KEY)).toBe('true');
   });
 });

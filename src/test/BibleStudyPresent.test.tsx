@@ -4,7 +4,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BibleStudyPresent from '../views/BibleStudyPresent';
 import * as bibleData from '../lib/data/bibleStudy';
+import * as auth from '../components/AuthProvider';
 import type { EntryPoint, Meeting, Study } from '../lib/bibleStudy';
+
+vi.mock('../components/AuthProvider', () => ({
+  useAuth: vi.fn(),
+}));
 
 vi.mock('../lib/data/bibleStudy', () => ({
   subscribeEntryPoint: vi.fn(),
@@ -55,8 +60,17 @@ describe('BibleStudyPresent', () => {
     });
   }
 
+  // Present mode is any signed-in user's, and since #946 the role decides two
+  // things on this screen: whether the edit pencil renders, and where Leave
+  // falls back to. Default to a Full-timer — the existing cases were written
+  // for the person who launched it from the editor.
+  const signInAs = (isAdmin: boolean) => {
+    vi.mocked(auth.useAuth).mockReturnValue({ isAdmin } as ReturnType<typeof auth.useAuth>);
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    signInAs(true);
     Object.defineProperty(navigator, 'wakeLock', {
       value: {
         request: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
@@ -146,6 +160,51 @@ describe('BibleStudyPresent', () => {
 
     fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
     expect(screen.getByText('Weeks index')).toBeInTheDocument();
+  });
+
+  it('a Trainee leaves back to the week they were reading, never the index (#946)', async () => {
+    // The Weeks index is Full-timers only, so falling back to it bounced a
+    // non-admin to their dashboard — breaking the very invariant the fallback
+    // exists to hold ("leaving never lands on the home page").
+    signInAs(false);
+    mockChain([MEETING]);
+
+    render(
+      <MemoryRouter initialEntries={['/bible-study/present?ep=cisa-wednesday']}>
+        <Routes>
+          <Route path="/" element={<div>Home</div>} />
+          <Route path="/bible-study" element={<div>Weeks index</div>} />
+          <Route path="/bible-study/read" element={<div>This week's study</div>} />
+          <Route path="/bible-study/present" element={<BibleStudyPresent />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Leave present mode' }));
+    expect(screen.getByText("This week's study")).toBeInTheDocument();
+  });
+
+  it('offers a Full-timer the week\'s editor from the code, and nobody else (#946)', async () => {
+    mockChain([MEETING]);
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/bible-study/present']}>
+        <BibleStudyPresent />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('link', { name: 'Edit this week' })).toHaveAttribute(
+      'href',
+      '/bible-study/m-1',
+    );
+    unmount();
+
+    signInAs(false);
+    mockChain([MEETING]);
+    render(
+      <MemoryRouter initialEntries={['/bible-study/present']}>
+        <BibleStudyPresent />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('link', { name: 'Edit this week' })).not.toBeInTheDocument();
   });
 
   it("launched from a week's editor, leaves back to that week, not the index", async () => {

@@ -15,8 +15,18 @@ import {
   subscribeStudy,
 } from '../lib/data/bibleStudy';
 import { entryPointUrl } from '../lib/publicUrl';
+import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 
 type WakeLockSentinelLike = { release: () => Promise<void> };
+
+// Present mode is a white screen whatever the app's theme is doing — a dark
+// ground behind a QR hurts scan reliability (ADR 0011) — so its two corner
+// controls cannot resolve through the theme tokens. They are deliberately
+// identical: the back arrow at top-left and the edit pencil at top-right
+// mirror each other, and both must stay quieter than the code.
+const QUIET_CORNER_BUTTON =
+  'absolute top-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors'; // colour-token-ignore: fixed white ground, independent of theme, for QR scan reliability
 
 /**
  * Present mode — the code you hold up in the room (ADR 0011, `Present`
@@ -25,6 +35,8 @@ type WakeLockSentinelLike = { release: () => Promise<void> };
  * phone is often not a Full-timer.
  */
 export default function BibleStudyPresent() {
+  const { isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const epSlug = searchParams.get('ep');
   const backMeeting = searchParams.get('meeting');
@@ -151,22 +163,47 @@ export default function BibleStudyPresent() {
   // never lands on the home page. The target is validated to a plain meeting
   // id so the query string can never steer an authenticated holder anywhere
   // else in the app.
-  const backTo =
-    backMeeting && /^[A-Za-z0-9-]+$/.test(backMeeting)
-      ? `/bible-study/${backMeeting}`
-      : '/bible-study';
+  const backTo = (() => {
+    if (backMeeting && /^[A-Za-z0-9-]+$/.test(backMeeting)) return `/bible-study/${backMeeting}`;
+    // #946: the Weeks index is Full-timers only, so it is the wrong fallback
+    // for the Trainee who can now reach Present mode from This week's study —
+    // sending them there bounced them to their dashboard, which is precisely
+    // the "leaving never lands on the home page" invariant this exists to
+    // uphold. Everyone else goes back to the week they were reading.
+    if (!isAdmin) return `/bible-study/read${entryPoint ? `?ep=${entryPoint.slug}` : ''}`;
+    return '/bible-study';
+  })();
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center p-6 relative">
       <Link
         to={backTo}
-        className="absolute top-4 left-4 w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+        className={`${QUIET_CORNER_BUTTON} left-4`}
         aria-label="Leave present mode"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="m15 18-6-6 6-6" />
         </svg>
       </Link>
+
+      {/* Fix-it-here (#946), Full-timers only: an error spotted while the code
+          is up is one tap from the week's editor and one tap back, instead of
+          leaving the room's screen to go find it. An icon at the mirrored
+          corner, not a labelled button — the code has to stay the loudest
+          thing on this screen. */}
+      {isAdmin && currentWeek && (
+        <Link
+          to={`/bible-study/${currentWeek.id}`}
+          className={`${QUIET_CORNER_BUTTON} right-4`}
+          aria-label={t('study.edit_week')}
+          title={t('study.edit_week')}
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+        </Link>
+      )}
 
       {/* The code dominates; everything else is quiet. */}
       <div className="bg-white border border-neutral-200 rounded-3xl p-5 shadow-sm">

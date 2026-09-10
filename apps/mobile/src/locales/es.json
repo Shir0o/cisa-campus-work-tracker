@@ -1285,7 +1285,6 @@
     "relative_day_of_month": "Día relativo del mes",
     "new_contact": "Nuevo contacto",
     "tagged_for_season": "Etiquetado para la cohorte de esta temporada",
-
     "christian": "Cristiano",
     "catholic": "Católico",
     "other_religion": "Otra religión / trasfondo",
@@ -1500,7 +1499,6 @@
       "phone": "Teléfono",
       "email": "Correo",
       "instagram": "Instagram",
-
       "faith_so_far": "Fe, hasta ahora",
       "goes_by": "Se hace llamar",
       "known": "Conocido",
@@ -1633,6 +1631,15 @@
       "delete_forever": "Eliminar definitivamente",
       "delete_forever_title": "¿Eliminar definitivamente?",
       "delete_forever_message": "Esto eliminará permanentemente esta página. No se puede recuperar."
+    },
+    "study": {
+      "this_weeks_study": "El estudio de esta semana",
+      "bible_study": "Estudio bíblico",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "qr": "QR",
+      "copy_link": "Copiar enlace",
+      "show_qr": "Mostrar código QR"
     }
   }
 }

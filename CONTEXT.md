@@ -133,6 +133,10 @@ _Avoid_: QR page, QR screen, projector view
 The Full-timer page at `/bible-study` where a term's Meetings are listed and edited, and where Present mode is opened from. When someone says "the bible study page", they mean this.
 _Avoid_: Bible study (bare), study list
 
+**This week's study**:
+What everyone who is not a Full-timer reaches at `/bible-study/read` — the newest published Meeting of the Entry point's active Study, resolved by exactly the chain a scan follows, rendered by the same reader a student sees. It is one week, the current one, never an archive: the **Weeks index** stays Full-timers-only and no other week is reachable from here. It is a signed-in destination rather than a scan, so it keeps the app's own chrome and a way back, and it carries Show QR and Copy link so anyone in the room can pass the study on without a Full-timer present. A Full-timer also gets an Edit chip from it into that week's editor and straight back.
+_Avoid_: The reader, scan view, bible study page, the study (bare)
+
 **Full-timers (contact tab)**:
 The Full-timers-only thread on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. The tab is named for its audience on purpose: it sits beside **Conversation**, which is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
 _Avoid_: Discussion, Private, Comments, internal thread, chat

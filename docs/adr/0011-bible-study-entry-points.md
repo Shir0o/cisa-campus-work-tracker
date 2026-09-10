@@ -28,9 +28,12 @@ That leaves the question of what a durable QR points at, since the content behin
 
 6. **The archive is for Full-timers only.** `/bible-study` becomes an index of a Study's Meetings; `/bible-study/:meetingId` is the editor. There is no public archive — students scan and read on the spot. `/study/:studyId/:date` remains a public but unlisted staff permalink carrying `noindex`, because the Firestore rule already serves any published Meeting to anyone and a UI gate over an open door would misrepresent it as protected.
 
+   *Amended #946:* the **archive** is Full-timers only; **one week** is not. `/bible-study/read` — "This week's study" — is a signed-in destination for every role that resolves through exactly this ADR's three hops and renders the same reader, so a Trainee holding a phone in the room sees what the student beside them sees. It reaches one Meeting, the current one, and no other week is addressable from it, so §6's substance is unchanged: the index stays admin-only and there is still no archive for anyone else. The clause had been read as "the whole feature is Full-timers only", which left non-admins with no way in at all — not even the one a QR gives a stranger — and left Present mode reachable in principle but linked from nowhere they could go.
+
 ## Consequences
 - The table QR is generated once and never reprinted or re-shown differently, across terms and across Studies.
 - Three hops must resolve before a student sees anything, and each hop is a failure mode with its own empty state. This is the cost paid for the durable URL.
 - A future reader encountering `/s/cisa-wednesday` will not find a Study by that name. That indirection is the point of this record.
 - This ADR reverses three rows previously marked Settled in `docs/design/bible-study/README.md` (Entry, Desktop, Splits); those rows are edited in place to match, and the rejected alternatives live here.
 - The index screen and present mode must work on a phone, which retires the earlier "Desktop: admin editing only" position.
+- *(#946)* The durable URL is what makes a native entry cheap: the phone app opens `/s/:slug` in an in-app browser rather than porting the reader's Section/Prompt/Blank renderer to React Native. Consequence #1 above — the code is generated once and never changes — is what lets a hardcoded production origin sit in the native row without a config path.

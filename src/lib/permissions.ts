@@ -63,7 +63,18 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
   '/coordination/trash': 'admin',
+  // The Weeks index is the archive, and the archive is Full-timers only
+  // (ADR 0011 §6).
   '/bible-study': 'admin',
+  // "This week's study" is every role's (#946): one week, the current one,
+  // resolved by exactly the chain a scan follows. Not an archive — no other
+  // week is reachable from it.
+  '/bible-study/read': 'viewer',
+  // Present mode is any signed-in user's: whoever holds the phone up in the
+  // room is often not a Full-timer. It had no entry here, so it fell through
+  // to the 'admin' default and contradicted both its own route guard and its
+  // comment — a Trainee sent to it was bounced home (#946).
+  '/bible-study/present': 'viewer',
   'https://shared-calendar-6u6.pages.dev/': 'admin',
 };
 
@@ -72,6 +83,13 @@ export interface NavItem {
   label: string;
   minRole: AppRole;
   isExternal?: boolean;
+  /**
+   * Roles that must NOT see this item even though they can reach its href.
+   * Exists for one shape: two destinations wearing the same label, where the
+   * role decides which one is meant. "Bible study" is the Weeks index for a
+   * Full-timer and This week's study for everyone else (#946).
+   */
+  hideForRoles?: AppRole[];
 }
 
 export interface ExternalNavItem {
@@ -103,7 +121,12 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
+  // One label, two destinations (#946). A Full-timer means the Weeks index;
+  // everyone else means the week itself. Exactly one is ever shown, because
+  // the index entry is admin-gated by its href and the reader entry is hidden
+  // from admins.
   { href: '/bible-study', label: 'Bible study', minRole: 'admin' },
+  { href: '/bible-study/read', label: 'Bible study', minRole: 'viewer', hideForRoles: ['admin'] },
   { href: '/outreach', label: 'Gospel', minRole: 'viewer' },
   { href: '/visits', label: 'Visits', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
@@ -129,7 +152,10 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // is still enforced inside ContactDetailsModal.
   if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) return hasMinRole(role, 'viewer');
   if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/contact'];
+    // Trainees are an allowlist, not a rung on the ladder, so a viewer-level
+    // ROUTE_MIN_ROLE does not reach them — the two study routes are named here
+    // explicitly (#946).
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/contact', '/bible-study/read', '/bible-study/present'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;
@@ -138,7 +164,26 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
 }
 
 export function navItemsForRole(role: AppRole | string | null): NavItem[] {
-  return NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
+  return NAV_ITEMS.filter(
+    (item) =>
+      canAccessRoute(role, item.href) && !item.hideForRoles?.includes(role as AppRole),
+  );
+}
+
+/**
+ * Where to send a role that reached a route it cannot open, when the honest
+ * answer is a sibling rather than home.
+ *
+ * Only the Bible study pair needs this so far: a Trainee following an old link
+ * or a bookmark to the Weeks index wants the week, not their dashboard, and
+ * bouncing them home reads as the app losing the page (#946). Returns null
+ * when there is no better place than the role's default.
+ */
+export function fallbackRouteFor(role: AppRole | string | null, path: string): string | null {
+  if (path === '/bible-study' && canAccessRoute(role, '/bible-study/read')) {
+    return '/bible-study/read';
+  }
+  return null;
 }
 
 // ── Top-anchored navigation (shell bake-off, direction B — picked 18 Aug) ────
@@ -197,7 +242,9 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
   Today: ['/', '/coordination', '/questions', '/around'],
   People: ['/board', '/directory', '/visits', '/outreach', '/history'],
-  Gatherings: ['/attendance', '/bible-study', '/messages'],
+  // Both Bible study destinations sit here; navItemsForRole has already
+  // dropped whichever one this role does not mean (#946).
+  Gatherings: ['/attendance', '/bible-study', '/bible-study/read', '/messages'],
   Prayer: ['/prayer', '/answered'],
 };
 
