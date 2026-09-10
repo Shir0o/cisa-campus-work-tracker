@@ -90,12 +90,13 @@ export default function LandingCommunity() {
       />
 
       {/* ── Open gatherings ── */}
+      {/* No "Full calendar" door: Gatherings is staff-facing (it carries the
+          contact database), so Community has no calendar page to open. The
+          inline list and RSVP below are the whole of what they get. */}
       <UpcomingEventsRsvp
         heading="Open gatherings"
         sub="You're warmly invited."
         emptyText="Nothing on the calendar just yet — check back soon."
-        linkLabel="Full calendar"
-        onLink={() => navigate("/attendance")}
       />
 
       {/* ── Reach out ── */}

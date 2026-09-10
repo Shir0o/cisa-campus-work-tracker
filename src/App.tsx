@@ -718,7 +718,7 @@ export default function App() {
                   path="/attendance"
                   element={
                     <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
+                      <RoleGuard minRole="operator">
                         <DashboardLayout>
                           <Attendance />
                         </DashboardLayout>

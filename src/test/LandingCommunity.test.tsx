@@ -85,9 +85,8 @@ describe('LandingCommunity component', () => {
     fireEvent.click(rsvpBtn);
     // Second click covers the add branch of toggle
     fireEvent.click(rsvpBtn);
-    // Click Full calendar to cover onLink callback
-    const calendarBtn = screen.getByRole('button', { name: /Full calendar/i });
-    fireEvent.click(calendarBtn);
+    // No calendar door for Community — Gatherings is staff-facing.
+    expect(screen.queryByRole('button', { name: /Full calendar/i })).not.toBeInTheDocument();
 
     const reachOutBtn = screen.getByRole('button', { name: /Reach out/i });
     fireEvent.click(reachOutBtn);

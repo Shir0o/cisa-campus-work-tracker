@@ -116,7 +116,7 @@ describe('canAccessRoute()', () => {
     // '/bible-study/read' (This week's study) and '/bible-study/present' are
     // every role's (#946): one week, the current one, and the code anyone in
     // the room may hold up. Only '/bible-study' — the archive — stays admin.
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', '/bible-study/read', '/bible-study/present'],
+    viewer:   ['/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', '/bible-study/read', '/bible-study/present'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', '/bible-study/read', '/bible-study/present'],
     manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/bible-study/read', '/bible-study/present'],
     admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', '/bible-study', '/bible-study/read', '/bible-study/present', '/around', 'https://shared-calendar-6u6.pages.dev/'],
@@ -233,17 +233,17 @@ describe('roleLabel()', () => {
 describe('TopNav primary tabs per role', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: Home, Gatherings, On our hearts as primary tabs; More holds the rest', () => {
+  it('viewer: Home and On our hearts as primary tabs; Gatherings is denied; More holds the rest', () => {
     currentUser = TEST_USERS.viewer;
     renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
+    expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Board')).not.toBeInTheDocument();
     expect(screen.queryByText('People')).not.toBeInTheDocument();
     // primaryNavFor drives the tabs
-    expect(primaryNavFor('viewer').map((i) => i.href)).toEqual(['/', '/attendance', '/prayer']);
+    expect(primaryNavFor('viewer').map((i) => i.href)).toEqual(['/', '/prayer']);
     expect(primaryNavFor('viewer').every((i) => canAccessRoute('viewer', i.href))).toBe(true);
   });
 
@@ -321,11 +321,12 @@ describe('TopNav primary tabs per role', () => {
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows Gatherings and Prayer, no search FAB', () => {
+  it('viewer: shows Home and Prayer, no search FAB', () => {
     currentUser = TEST_USERS.viewer;
     renderMobileNav();
-    expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Contacts')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
@@ -602,7 +603,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
     viewer: [
       { label: 'Today', hrefs: ['/'] },
       { label: 'People', hrefs: ['/outreach'] },
-      { label: 'Gatherings', hrefs: ['/attendance', '/bible-study/read', '/messages'] },
+      { label: 'Gatherings', hrefs: ['/bible-study/read', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
   };

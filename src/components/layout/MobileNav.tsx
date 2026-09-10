@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Contact,
-  CalendarCheck,
   HeartHandshake,
   Search,
 } from 'lucide-react';
@@ -24,47 +23,25 @@ export default function MobileNav() {
       aria-label="Mobile Navigation"
       className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-low border-t border-outline-variant flex items-center justify-around z-50 animate-in slide-in-from-bottom duration-300 pb-safe px-4"
     >
-      {isOperator ? (
-        <NavLink
-          to="/"
-          className={({ isActive }) => cn(
-            "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
-            isActive && window.location.pathname === '/' ? "text-accent" : "text-on-surface-variant"
-          )}
-        >
-          {({ isActive }) => (
-            <>
-              <div className={cn(
-                "w-12 h-8 rounded-full flex items-center justify-center transition-all",
-                isActive && window.location.pathname === '/' ? "bg-secondary-container text-on-secondary-container" : "hover:bg-surface-container-high"
-              )}>
-                <LayoutDashboard className="w-5 h-5" />
-              </div>
-              <span className="text-[11px] font-medium">{t('nav.home', 'Home')}</span>
-            </>
-          )}
-        </NavLink>
-      ) : (
-        <NavLink
-          to="/attendance"
-          className={({ isActive }) => cn(
-            "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
-            isActive ? "text-accent" : "text-on-surface-variant"
-          )}
-        >
-          {({ isActive }) => (
-            <>
-              <div className={cn(
-                "w-12 h-8 rounded-full flex items-center justify-center transition-all",
-                isActive ? "bg-secondary-container text-on-secondary-container" : "hover:bg-surface-container-high"
-              )}>
-                <CalendarCheck className="w-5 h-5" />
-              </div>
-              <span className="text-[11px] font-medium">{t('nav.gatherings', 'Gatherings')}</span>
-            </>
-          )}
-        </NavLink>
-      )}
+      <NavLink
+        to="/"
+        className={({ isActive }) => cn(
+          "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
+          isActive && window.location.pathname === '/' ? "text-accent" : "text-on-surface-variant"
+        )}
+      >
+        {({ isActive }) => (
+          <>
+            <div className={cn(
+              "w-12 h-8 rounded-full flex items-center justify-center transition-all",
+              isActive && window.location.pathname === '/' ? "bg-secondary-container text-on-secondary-container" : "hover:bg-surface-container-high"
+            )}>
+              <LayoutDashboard className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-medium">{t('nav.home', 'Home')}</span>
+          </>
+        )}
+      </NavLink>
 
       {/* Center button — Global Search (#19), staff only. Replaces the old
           Quick-Actions FAB; quick-add now lives in the search overlay's empty
