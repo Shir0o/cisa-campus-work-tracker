@@ -16,6 +16,7 @@ import {
 } from '../lib/data/bibleStudy';
 import { entryPointUrl } from '../lib/publicUrl';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 
 type WakeLockSentinelLike = { release: () => Promise<void> };
 
@@ -35,6 +36,7 @@ const QUIET_CORNER_BUTTON =
  */
 export default function BibleStudyPresent() {
   const { isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const epSlug = searchParams.get('ep');
   const backMeeting = searchParams.get('meeting');
@@ -193,8 +195,8 @@ export default function BibleStudyPresent() {
         <Link
           to={`/bible-study/${currentWeek.id}`}
           className={`${QUIET_CORNER_BUTTON} right-4`}
-          aria-label="Edit this week"
-          title="Edit this week"
+          aria-label={t('study.edit_week')}
+          title={t('study.edit_week')}
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 20h9" />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 import { db } from '../lib/firebase';
 import { subscribeEntryPoints } from '../lib/data/bibleStudy';
 import { entryPointUrl } from '../lib/publicUrl';
@@ -70,6 +71,7 @@ const PencilIcon: React.FC = () => (
 
 export default function BibleStudyRead() {
   const { isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
@@ -132,7 +134,7 @@ export default function BibleStudyRead() {
   if (!entryPointsLoaded) {
     return (
       <div className="flex-1 flex items-center justify-center text-on-surface-variant">
-        <div className="animate-pulse text-sm font-medium">Loading Bible Study…</div>
+        <div className="animate-pulse text-sm font-medium">{t('study.loading')}</div>
       </div>
     );
   }
@@ -142,11 +144,8 @@ export default function BibleStudyRead() {
   if (entryPoints.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="font-serif text-2xl mb-2 font-medium">No study set up yet</h1>
-        <p className="text-on-surface-variant text-sm max-w-sm">
-          Nothing has been set up behind this app's code. Ask a Full-timer to seed the entry
-          point.
-        </p>
+        <h1 className="font-serif text-2xl mb-2 font-medium">{t('study.none_set_up')}</h1>
+        <p className="text-on-surface-variant text-sm max-w-sm">{t('study.none_set_up_body')}</p>
       </div>
     );
   }
@@ -158,9 +157,9 @@ export default function BibleStudyRead() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <p className="text-xs font-semibold tracking-wider uppercase text-on-surface-variant mb-3">
-          Which study?
+          {t('study.which_study')}
         </p>
-        <h1 className="font-serif text-2xl mb-6 font-medium">There's more than one</h1>
+        <h1 className="font-serif text-2xl mb-6 font-medium">{t('study.more_than_one')}</h1>
         <div className="w-full max-w-xs flex flex-col gap-2">
           {entryPoints.map((ep) => (
             <button
@@ -172,9 +171,7 @@ export default function BibleStudyRead() {
             </button>
           ))}
         </div>
-        <p className="text-on-surface-variant text-xs max-w-xs mt-5">
-          We'll remember this on this device. You can switch later from the study itself.
-        </p>
+        <p className="text-on-surface-variant text-xs max-w-xs mt-5">{t('study.chooser_note')}</p>
       </div>
     );
   }
@@ -182,7 +179,7 @@ export default function BibleStudyRead() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-on-surface-variant">
-        <div className="animate-pulse text-sm font-medium">Loading Bible Study…</div>
+        <div className="animate-pulse text-sm font-medium">{t('study.loading')}</div>
       </div>
     );
   }
@@ -200,8 +197,8 @@ export default function BibleStudyRead() {
       {isAdmin && (
         <Link
           to={`/bible-study/${meeting!.id}`}
-          aria-label="Edit this week"
-          title="Edit this week"
+          aria-label={t('study.edit_week')}
+          title={t('study.edit_week')}
           className="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
         >
           <PencilIcon />
@@ -210,8 +207,8 @@ export default function BibleStudyRead() {
       <button
         type="button"
         onClick={copyLink}
-        aria-label={copied ? 'Link copied' : 'Copy link'}
-        title={copied ? 'Link copied' : 'Copy link'}
+        aria-label={copied ? t('study.link_copied') : t('study.copy_link')}
+        title={copied ? t('study.link_copied') : t('study.copy_link')}
         className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
           copied ? 'text-[var(--t-sage)]' : 'text-on-surface-variant hover:bg-surface-variant/60'
         }`}
@@ -220,8 +217,8 @@ export default function BibleStudyRead() {
       </button>
       <Link
         to={`/bible-study/present?ep=${entryPoint!.slug}`}
-        aria-label="Show QR"
-        title="Show QR"
+        aria-label={t('study.show_qr')}
+        title={t('study.show_qr')}
         className="w-7 h-7 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-variant/60 transition-colors"
       >
         <QrIcon />

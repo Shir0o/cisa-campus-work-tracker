@@ -173,7 +173,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
             Above "How this works" because it is a weekly destination and that
             is a one-time read. */}
         <View>
-          <Sech label="Bible study" />
+          <Sech label={t('mobile.study.bible_study')} />
           <View style={{ backgroundColor: c.widget.bg, borderRadius: radius.tile, ...c.widget.shadow }}>
             <ThisWeeksStudyRow isFirst />
           </View>

@@ -28,6 +28,7 @@ import {
 import { entryPointUrl } from '../lib/publicUrl';
 import { format } from 'date-fns';
 import { getUserInitials } from '../lib/utils';
+import { useLanguage } from '../components/LanguageProvider';
 import * as Y from 'yjs';
 import { MeetingCollab } from '../lib/meetingCollab';
 import { peersFromAwareness, type Peer } from '../lib/presence';
@@ -36,6 +37,7 @@ import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 export default function BibleStudyEditor() {
   const { meetingId = '' } = useParams<{ meetingId: string }>();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
@@ -550,7 +552,7 @@ export default function BibleStudyEditor() {
                     onClick={() => insertTextAtCursor('**', '**')}
                     onMouseDown={(e) => e.preventDefault()}
                     className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] font-bold hover:bg-surface-variant"
-                    aria-label="Bold"
+                    aria-label={t('study.bold')}
                   >
                     B
                   </button>
@@ -558,7 +560,7 @@ export default function BibleStudyEditor() {
                     onClick={() => insertTextAtCursor('*', '*')}
                     onMouseDown={(e) => e.preventDefault()}
                     className="w-6 h-6 rounded-full bg-surface border border-outline-variant text-[11px] italic hover:bg-surface-variant"
-                    aria-label="Italic"
+                    aria-label={t('study.italic')}
                   >
                     I
                   </button>
@@ -594,7 +596,7 @@ export default function BibleStudyEditor() {
                   onClick={() => insertBlockAtSectionEnd('1. \n2. \n3. ', 3)}
                   onMouseDown={(e) => e.preventDefault()}
                   className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant tabular-nums"
-                  aria-label="Numbered list"
+                  aria-label={t('study.numbered_list')}
                 >
                   1.
                 </button>
@@ -602,7 +604,7 @@ export default function BibleStudyEditor() {
                   onClick={() => insertBlockAtSectionEnd('- ', 2)}
                   onMouseDown={(e) => e.preventDefault()}
                   className="px-2.5 py-1 rounded-full bg-surface border border-outline-variant text-xs font-medium hover:bg-surface-variant"
-                  aria-label="Bullet list"
+                  aria-label={t('study.bullet_list')}
                 >
                   •
                 </button>

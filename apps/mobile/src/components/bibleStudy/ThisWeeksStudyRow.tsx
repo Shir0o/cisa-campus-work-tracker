@@ -19,6 +19,7 @@ import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
 import { subscribeEntryPoints, type EntryPoint } from '../../lib/data/bibleStudy';
 import { useV2Theme } from '../../theme/v2';
+import { useLanguage } from '../../lib/LanguageProvider';
 
 /**
  * The production origin, matching web's `VITE_PUBLIC_APP_URL` default. Never
@@ -57,6 +58,8 @@ export function ThisWeeksStudyRow({
   onNavigate?: () => void;
 }) {
   const { c, font, fs, radius } = useV2Theme();
+  const { t } = useLanguage();
+  const label = t('mobile.study.this_weeks_study', "This week's study");
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
   const [qrFor, setQrFor] = useState<EntryPoint | null>(null);
   const [copied, setCopied] = useState(false);
@@ -108,12 +111,10 @@ export function ThisWeeksStudyRow({
             onPress={() => open(ep)}
             style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.7 : 1, paddingVertical: 12 })}
             accessibilityRole="button"
-            accessibilityLabel={
-              entryPoints.length > 1 ? `This week's study — ${ep.name}` : "This week's study"
-            }
+            accessibilityLabel={entryPoints.length > 1 ? `${label} — ${ep.name}` : label}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(drawer ? 16 : 15.5), color: ink }}>
-              This week's study
+              {label}
             </Text>
             {entryPoints.length > 1 && (
               <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: ink3 }}>
@@ -128,21 +129,23 @@ export function ThisWeeksStudyRow({
               setCopied(true);
             }}
             accessibilityRole="button"
-            accessibilityLabel="Copy link"
+            accessibilityLabel={t('mobile.study.copy_link', 'Copy link')}
             style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: ink3 }}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? t('mobile.study.copied', 'Copied') : t('mobile.study.copy', 'Copy')}
             </Text>
           </Pressable>
 
           <Pressable
             onPress={() => setQrFor(ep)}
             accessibilityRole="button"
-            accessibilityLabel="Show QR"
+            accessibilityLabel={t('mobile.study.show_qr', 'Show QR')}
             style={({ pressed }) => ({ paddingLeft: 10, paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: ink3 }}>QR</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: ink3 }}>
+              {t('mobile.study.qr', 'QR')}
+            </Text>
           </Pressable>
         </View>
       ))}

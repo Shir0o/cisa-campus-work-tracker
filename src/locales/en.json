@@ -1728,5 +1728,30 @@
     "placeholder_question": "What do you want to know? Everyone tied to this person will see it.",
     "placeholder_follow_up": "What wants doing — text them, email them? Say enough that anyone could pick it up.",
     "placeholder_full_timers": "Add to the Full-timers thread…"
+  },
+  "study": {
+    "loading": "Loading Bible Study…",
+    "edit_week": "Edit this week",
+    "copy_link": "Copy link",
+    "link_copied": "Link copied",
+    "show_qr": "Show QR",
+    "none_set_up": "No study set up yet",
+    "none_set_up_body": "Nothing has been set up behind this app's code. Ask a Full-timer to seed the entry point.",
+    "which_study": "Which study?",
+    "more_than_one": "There's more than one",
+    "chooser_note": "We'll remember this on this device. You can switch later from the study itself.",
+    "week_not_found": "Week not found",
+    "week_not_found_body": "This link doesn't point at a published week.",
+    "between_terms": "Between terms",
+    "nothing_running": "Nothing running right now",
+    "nothing_running_named": "{name} picks up again when the next study starts. Keep this code — it will be the same one.",
+    "nothing_running_unnamed": "The study picks up again when the next one starts. Keep this code — it will be the same one.",
+    "nothing_yet": "Nothing yet",
+    "never_published": "The study has never published a week",
+    "never_published_body": "A brand-new study, or a code shown before the first week went up. There is nothing to fall back to.",
+    "bold": "Bold",
+    "italic": "Italic",
+    "numbered_list": "Numbered list",
+    "bullet_list": "Bullet list"
   }
 }
