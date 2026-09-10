@@ -123,6 +123,7 @@ export function traineeWaitingItems(
   for (const m of threads) {
     if (allowedContactIds && !allowedContactIds.has(m.contactId)) continue;
     if (!fts.includes(m.from ?? "")) continue;
+    if (m.scope === "team") continue; // Full-timers tab — admin-only, never visible to trainees
     if (m.kind !== "nudge" && m.kind !== "question") continue;
     const answered = threads.some(
       (r) =>
