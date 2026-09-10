@@ -17,6 +17,14 @@ import { applyTeams } from '../lib/teams';
 import type { Contact, Interaction } from '../types';
 import type { ThreadMessageWithContact } from '../lib/threads';
 
+const h = vi.hoisted(() => ({
+  layout: undefined as { setSelectedContact: (c: any) => void } | undefined,
+}));
+
+vi.mock('../App', () => ({
+  useOptionalLayout: () => h.layout,
+}));
+
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     user: { uid: 'u1', email: 'ruth@cisa.org', displayName: 'Ruth' },
@@ -24,6 +32,37 @@ vi.mock('../components/AuthProvider', () => ({
     role: 'admin',
   }),
 }));
+
+vi.mock('firebase/firestore', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    onSnapshot: vi.fn((q: any, cb: any) => {
+      // If querying contacts collection, provide default contacts
+      if (q && q.path === 'contacts') {
+        cb({
+          docs: [
+            {
+              id: 'kofi',
+              data: () => ({
+                name: 'Kofi Mensah',
+                createdBy: 'mei',
+                owner: 'mei',
+                createdAt: new Date().toISOString(),
+              }),
+            },
+          ],
+        });
+      }
+      return vi.fn();
+    }),
+    collection: vi.fn((_db, path) => ({ path })),
+    collectionGroup: vi.fn((_db, path) => ({ path })),
+    query: vi.fn((ref) => ref),
+    orderBy: vi.fn(),
+    limit: vi.fn(),
+  };
+});
 
 vi.mock('../lib/firebase', () => ({
   db: {},
@@ -78,6 +117,7 @@ function LocationProbe({ initialEntries = ['/around'] }: { initialEntries?: stri
     <>
       <AroundTheTeam contacts={contacts} interactions={interactions} threads={[]} staffNameMap={staffNameMap} />
       <div data-testid="location">{location.search}</div>
+      <div data-testid="pathname">{location.pathname}</div>
     </>
   );
 }
@@ -378,4 +418,35 @@ describe('Around the team page (#943)', () => {
     expect(screen.queryByRole('button', { name: 'Call' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Email' })).not.toBeInTheDocument();
   });
+
+  it('shows contact name and opens contact via layout.setSelectedContact when rendered with default props', () => {
+    const setSelectedContact = vi.fn();
+    h.layout = { setSelectedContact };
+
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam interactions={interactions} threads={[]} staffNameMap={staffNameMap} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('button', { name: 'Contact' })).not.toBeInTheDocument();
+    const contactBtn = screen.getByRole('button', { name: 'Kofi Mensah' });
+    expect(contactBtn).toBeInTheDocument();
+
+    fireEvent.click(contactBtn);
+    expect(setSelectedContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'kofi', name: 'Kofi Mensah' }));
+  });
+
+  it('navigates to /people/:id when layout is not present and onOpenContact is not provided', () => {
+    h.layout = undefined;
+
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <LocationProbe initialEntries={['/around']} />
+      </MemoryRouter>,
+    );
+    const contactBtn = screen.getByRole('button', { name: 'Kofi Mensah' });
+    fireEvent.click(contactBtn);
+    expect(screen.getByTestId('pathname').textContent).toBe('/people/kofi');
+  });
 });
+
