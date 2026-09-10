@@ -192,7 +192,7 @@ export function impScope(
   } else if (role === 'operator') {
     missingKeys.push('board', 'history');
   } else if (role === 'viewer') {
-    missingKeys.push('board', 'contacts', 'history', 'coordination');
+    missingKeys.push('board', 'contacts', 'attendance', 'history', 'coordination');
   }
 
   const missingLabels = missingKeys.map((k) => IMP_SCOPE_LABEL[k] || k);

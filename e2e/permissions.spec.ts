@@ -50,11 +50,11 @@ const EXPECT: Record<Role, {
   community: { // viewer
     landing: '/',
     nav: {
-      present: ['Home', 'Gatherings', 'On our hearts', 'Messages'],
-      absent: ['The Journey', 'People', 'Looking back', 'Coordination Notes'],
+      present: ['Home', 'On our hearts', 'Messages'],
+      absent: ['The Journey', 'People', 'Gatherings', 'Looking back', 'Coordination Notes'],
     },
-    allowed: ['/', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
-    denied: ['/board', '/directory', '/history', '/coordination', '/admin/feedback'],
+    allowed: ['/', '/prayer', '/messages', '/settings', '/feedback'],
+    denied: ['/board', '/directory', '/attendance', '/history', '/coordination', '/admin/feedback'],
     fallback: '/',
   },
   student: { // operator

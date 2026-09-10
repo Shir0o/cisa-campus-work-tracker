@@ -148,7 +148,7 @@ test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () =>
     }
   });
 
-  test('Community role is denied from both The Journey board and People directory', async ({ page }) => {
+  test('Community role is denied the Journey board, the People directory, and Gatherings', async ({ page }) => {
     await signInAs(page, 'community');
 
     // 1. Attempt /board -> redirect to /
@@ -161,9 +161,10 @@ test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () =>
     await page.waitForURL((url) => url.pathname !== '/directory', { timeout: 10_000 });
     expect(new URL(page.url()).pathname).toBe('/');
 
-    // 3. Can access Gatherings /attendance
+    // 3. Gatherings exposes the whole contact database, so it shares People's
+    //    floor — Community is denied /attendance too.
     await page.goto('/attendance');
-    await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
-    expect(new URL(page.url()).pathname).toBe('/attendance');
+    await page.waitForURL((url) => url.pathname !== '/attendance', { timeout: 10_000 });
+    expect(new URL(page.url()).pathname).toBe('/');
   });
 });

@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import Attendance from '../views/Attendance';
-import { useAuth } from '../components/AuthProvider';
+import { useAuth, type AuthContextType } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import React from 'react';
 
@@ -162,6 +162,61 @@ describe('Attendance', () => {
 
     global.URL.createObjectURL = vi.fn(() => 'mock-url');
     global.URL.revokeObjectURL = vi.fn();
+  });
+
+  it('shows only the contacts the signed-in role may see', async () => {
+    // A Trainee sees only their own contacts everywhere else in the app; the
+    // Gatherings page must not become a second, wider door to the directory.
+    // The route floor keeps Community out entirely — this asserts the page's
+    // own guard for whoever can reach it.
+    const ownContact = {
+      id: 'c-own',
+      data: () => ({
+        name: 'Bob Lee',
+        email: 'bob@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        createdBy: 'u-john',
+        attendance: { e1: true },
+      }),
+    };
+    const otherContact = {
+      id: 'c-other',
+      data: () => ({
+        name: 'Alice Johnson',
+        email: 'alice@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        createdBy: 'u-admin',
+        attendance: { e1: true },
+      }),
+    };
+    const pastEvents = [
+      { id: 'e1', data: () => ({ name: 'Study 1', date: '2026-06-05', type: 'Weekly', order: 1, roster: ['c-own', 'c-other'] }) },
+      { id: 'e2', data: () => ({ name: 'Study 2', date: '2026-06-12', type: 'Weekly', order: 2, roster: ['c-own', 'c-other'] }) },
+      { id: 'e3', data: () => ({ name: 'Study 3', date: '2026-06-19', type: 'Weekly', order: 3, roster: ['c-own', 'c-other'] }) },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (snap: unknown) => void) => {
+      if (ref?.path === 'contacts') callback({ docs: [ownContact, otherContact], size: 2 });
+      else if (ref?.path === 'events') callback({ docs: pastEvents, size: 3 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    }) as unknown as typeof onSnapshot);
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'u-john', displayName: 'John' },
+      effectiveUserId: 'u-john',
+      role: 'manager',
+      isAdmin: false,
+      isManager: true,
+    } as unknown as AuthContextType);
+
+    render(<Attendance />);
+
+    await waitFor(() => expect(screen.getByText("Who we've missed lately")).toBeInTheDocument());
+    expect(screen.getByText('Bob Lee')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
   });
 
   it('renders loading state initially by mocking onSnapshot delay', () => {

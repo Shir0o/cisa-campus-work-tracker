@@ -31,6 +31,7 @@ import {
 } from '../lib/gatheringViewModel';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
+import { visibleContacts } from '../lib/permissions';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -168,11 +169,11 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 );
 
 export default function Attendance() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, role, effectiveUserId } = useAuth();
   const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const gatheringTypes = useGatheringTypes();
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [rawContacts, setRawContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +209,7 @@ export default function Attendance() {
     const unsubscribeContacts = onSnapshot(
       collection(db, 'contacts'),
       (snapshot) => {
-        setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
+        setRawContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
       },
       (e) => onLoadError(e, 'contacts'),
     );
@@ -243,6 +244,16 @@ export default function Attendance() {
       unsubscribeUsers();
     };
   }, []);
+
+  // Everything this page hands out — rosters, the missed list, the walk-in
+  // picker, the CSV, and the door into a person's detail page — runs off
+  // `contacts`. Scope it through the same guard Directory uses, so reaching
+  // Gatherings can never become a way to read the whole contact database.
+  const staffId = effectiveUserId || user?.uid;
+  const contacts = useMemo(
+    () => visibleContacts(role, staffId, rawContacts),
+    [role, staffId, rawContacts],
+  );
 
   const handleExport = () => {
     if (contacts.length === 0 || events.length === 0) return;
@@ -458,7 +469,6 @@ export default function Attendance() {
   );
 
   // upcoming gatherings — ours, plus the shared calendar's
-  const { role } = useAuth();
   const calOn = canSeeCalendarSync(role);
   const { getMergedGatherings, getItemsBetween } = useCalendarSync(contacts);
   const upFrom = useMemo(() => calStartOfDay(new Date()), []);

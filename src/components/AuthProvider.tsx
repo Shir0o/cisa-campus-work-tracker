@@ -15,7 +15,7 @@ import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole, roleLabel } fro
 import { ImpersonateTarget } from '../types';
 import { Impersonation, meIdFor, identityKey } from '../lib/impersonate';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   effectiveUserId: string | null;
   effectiveUserName: string | null;

@@ -41,7 +41,11 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/board': 'manager',
   '/directory': 'operator',
   '/history': 'manager',
-  '/attendance': 'viewer',
+  // Gatherings carries the whole contact database — the missed list, the
+  // rosters, the walk-in picker, and a door into every person's detail page.
+  // Community has no People page, so it may not reach the directory sideways
+  // through here: this shares People's floor.
+  '/attendance': 'operator',
   // Outreach is admin + community — a deliberately non-ladder access, so
   // `canAccessRoute` special-cases it below (viewer and admin only, never
   // operator or manager). This entry only exists so the route has an entry.
@@ -120,7 +124,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
-  { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
+  { href: '/attendance', label: 'Gatherings', minRole: 'operator' },
   // One label, two destinations (#946). A Full-timer means the Weeks index;
   // everyone else means the week itself. Exactly one is ever shown, because
   // the index entry is admin-gated by its href and the reader entry is hidden
@@ -205,7 +209,7 @@ const PRIMARY_BY_ROLE: Record<AppRole, string[]> = {
   admin: ['/coordination', '/directory', '/prayer'],
   manager: ['/', '/directory', '/board'],
   operator: ['/', '/directory', '/prayer'],
-  viewer: ['/', '/attendance', '/prayer'],
+  viewer: ['/', '/prayer'],
 };
 
 export function primaryNavFor(role: AppRole | string | null): NavItem[] {
