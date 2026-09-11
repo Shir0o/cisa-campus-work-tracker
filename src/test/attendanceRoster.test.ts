@@ -4,6 +4,8 @@ import {
   calculateMissedContacts,
   shouldCountSessionForContact,
   getRecurringSeriesEventIdsToUpdate,
+  assignSeriesAnchor,
+  planGatheringSeriesBackfill,
 } from '../lib/attendanceRoster';
 import type { Contact, Event } from '../types';
 
@@ -161,6 +163,95 @@ describe('attendanceRoster', () => {
       const futureIds = getRecurringSeriesEventIdsToUpdate(child1, allEvents);
 
       expect(futureIds).toEqual(['child-1', 'child-2']);
+    });
+  });
+
+  describe('assignSeriesAnchor', () => {
+    it('sets parentEventId to the earliest occurrence id for all occurrences in a recurring series', () => {
+      const occurrences = [
+        { id: 'doc-1', date: '2026-09-09' },
+        { id: 'doc-2', date: '2026-09-16' },
+        { id: 'doc-3', date: '2026-09-23' },
+      ];
+      const result = assignSeriesAnchor(occurrences, true);
+      expect(result).toEqual([
+        { id: 'doc-1', date: '2026-09-09', parentEventId: 'doc-1' },
+        { id: 'doc-2', date: '2026-09-16', parentEventId: 'doc-1' },
+        { id: 'doc-3', date: '2026-09-23', parentEventId: 'doc-1' },
+      ]);
+    });
+
+    it('anchors at the earliest date even when occurrences are supplied out of order', () => {
+      const occurrences = [
+        { id: 'doc-3', date: '2026-09-23' },
+        { id: 'doc-1', date: '2026-09-09' },
+        { id: 'doc-2', date: '2026-09-16' },
+      ];
+      const result = assignSeriesAnchor(occurrences, true);
+      expect(result).toEqual([
+        { id: 'doc-3', date: '2026-09-23', parentEventId: 'doc-1' },
+        { id: 'doc-1', date: '2026-09-09', parentEventId: 'doc-1' },
+        { id: 'doc-2', date: '2026-09-16', parentEventId: 'doc-1' },
+      ]);
+    });
+
+    it('does not set parentEventId for a non-recurring event', () => {
+      const occurrences = [{ id: 'doc-1', date: '2026-09-09' }];
+      const result = assignSeriesAnchor(occurrences, false);
+      expect(result).toEqual([{ id: 'doc-1', date: '2026-09-09' }]);
+    });
+
+    it('returns empty array when given empty occurrences', () => {
+      expect(assignSeriesAnchor([], true)).toEqual([]);
+    });
+  });
+
+  describe('planGatheringSeriesBackfill', () => {
+    it('groups recurring gatherings by name and weekday, anchoring to earliest occurrence', () => {
+      const gatherings = [
+        // Wednesday Bible Study (2026-09-09 and 2026-09-16 are Wednesdays)
+        { id: 'wed-2', name: 'Bible Study', date: '2026-09-16', isRecurring: true },
+        { id: 'wed-1', name: 'Bible Study', date: '2026-09-09', isRecurring: true },
+      ];
+      const plan = planGatheringSeriesBackfill(gatherings);
+      expect(plan).toEqual([
+        { id: 'wed-1', parentEventId: 'wed-1' },
+        { id: 'wed-2', parentEventId: 'wed-1' },
+      ]);
+    });
+
+    it('keeps two terms sharing a weekday but not a name separate', () => {
+      // 2026-09-10 and 2026-09-17 are Thursdays
+      const gatherings = [
+        { id: 'cm-1', name: 'College Meeting', date: '2026-09-10', isRecurring: true },
+        { id: 'bs-1', name: 'Bible Study', date: '2026-09-10', isRecurring: true },
+        { id: 'cm-2', name: 'College Meeting', date: '2026-09-17', isRecurring: true },
+        { id: 'bs-2', name: 'Bible Study', date: '2026-09-17', isRecurring: true },
+      ];
+      const plan = planGatheringSeriesBackfill(gatherings);
+      const cmPlans = plan.filter((p) => p.id.startsWith('cm'));
+      const bsPlans = plan.filter((p) => p.id.startsWith('bs'));
+      expect(cmPlans).toEqual([
+        { id: 'cm-1', parentEventId: 'cm-1' },
+        { id: 'cm-2', parentEventId: 'cm-1' },
+      ]);
+      expect(bsPlans).toEqual([
+        { id: 'bs-1', parentEventId: 'bs-1' },
+        { id: 'bs-2', parentEventId: 'bs-1' },
+      ]);
+    });
+
+    it('skips non-recurring gatherings and gatherings that already have parentEventId', () => {
+      const gatherings = [
+        { id: 'oneoff', name: 'Welcome BBQ', date: '2026-09-05', isRecurring: false },
+        { id: 'migrated-1', name: 'Prayer', date: '2026-09-08', isRecurring: true, parentEventId: 'migrated-1' },
+        { id: 'migrated-2', name: 'Prayer', date: '2026-09-15', isRecurring: true, parentEventId: 'migrated-1' },
+        { id: 'unmigrated', name: 'New Series', date: '2026-09-11', isRecurring: true },
+      ];
+      const plan = planGatheringSeriesBackfill(gatherings);
+      expect(plan).toEqual([
+        { id: 'unmigrated', parentEventId: 'unmigrated' },
+      ]);
     });
   });
 });

@@ -133,3 +133,91 @@ export function getRecurringSeriesEventIdsToUpdate(
     })
     .map((e) => e.id);
 }
+
+/**
+ * Assigns series anchor (`parentEventId`) to a list of occurrence items.
+ * If isRecurring is true, every occurrence carries `parentEventId` set to the id of the earliest occurrence.
+ */
+export function assignSeriesAnchor<T extends { id: string; date: string }>(
+  occurrences: readonly T[],
+  isRecurring: boolean,
+): Array<T & { parentEventId?: string }> {
+  if (occurrences.length === 0) return [];
+  if (!isRecurring) {
+    return occurrences.map((occ) => ({ ...occ }));
+  }
+
+  // Find the occurrence with the earliest date.
+  let earliest = occurrences[0];
+  for (let i = 1; i < occurrences.length; i++) {
+    if (occurrences[i].date < earliest.date) {
+      earliest = occurrences[i];
+    }
+  }
+
+  const anchorId = earliest.id;
+  return occurrences.map((occ) => ({
+    ...occ,
+    parentEventId: anchorId,
+  }));
+}
+
+export interface GatheringSeriesBackfillItem {
+  id: string;
+  name: string;
+  date: string;
+  isRecurring?: boolean;
+  parentEventId?: string;
+}
+
+export interface GatheringSeriesBackfillPlanRow {
+  id: string;
+  parentEventId: string;
+}
+
+/**
+ * Pure planner for backfilling `parentEventId` for existing recurring Gatherings.
+ * Groups recurring gatherings without `parentEventId` by name and weekday,
+ * orders each group by date ascending, and assigns the earliest member's id as `parentEventId`.
+ */
+export function planGatheringSeriesBackfill(
+  gatherings: readonly GatheringSeriesBackfillItem[],
+): GatheringSeriesBackfillPlanRow[] {
+  // Only consider recurring gatherings without an existing parentEventId
+  const candidates = gatherings.filter(
+    (g) => g.isRecurring === true && !g.parentEventId,
+  );
+
+  // Group by trimmed name + weekday
+  const groups = new Map<string, GatheringSeriesBackfillItem[]>();
+  for (const g of candidates) {
+    // Parse weekday from date string YYYY-MM-DD
+    const parts = g.date.split('-').map(Number);
+    const weekday = !isNaN(parts[0]) && parts.length === 3
+      ? new Date(parts[0], parts[1] - 1, parts[2]).getDay()
+      : -1;
+    const key = `${g.name.trim()}|${weekday}`;
+    const group = groups.get(key);
+    if (group) {
+      group.push(g);
+    } else {
+      groups.set(key, [g]);
+    }
+  }
+
+  const result: GatheringSeriesBackfillPlanRow[] = [];
+  for (const group of groups.values()) {
+    // Sort by date ascending; tie-break by id
+    group.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+    const anchorId = group[0].id;
+    for (const item of group) {
+      result.push({
+        id: item.id,
+        parentEventId: anchorId,
+      });
+    }
+  }
+
+  return result;
+}
+

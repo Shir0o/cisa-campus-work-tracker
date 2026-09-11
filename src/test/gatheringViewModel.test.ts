@@ -5,6 +5,7 @@ import {
   endOfWeekSunday,
   type ChipState,
 } from '../lib/gatheringViewModel';
+import { assignSeriesAnchor } from '../lib/attendanceRoster';
 import type { Contact, Event } from '../types';
 
 // Fixed Wednesday 2026-09-09 so tests are deterministic. 09-09 is mid-week:
@@ -227,6 +228,33 @@ describe('buildGatheringViewModel — Rhythm grouping', () => {
     const rhythm = m.rhythms.find((r) => r.id === 'ghost')!;
     expect(rhythm).toBeDefined();
     expect(rhythm.chips.map((c) => c.id).sort()).toEqual(['c1', 'c2']);
+  });
+
+  it('fails to group recurring events into a Rhythm when created without parentEventId (the defect)', () => {
+    // Exactly how AddEventModal previously created recurring events:
+    // isRecurring: true, but parentEventId was never written.
+    const week1 = baseEvent({ id: 'w1', name: 'Bible Study', date: '2026-09-09', isRecurring: true });
+    const week2 = baseEvent({ id: 'w2', name: 'Bible Study', date: '2026-09-16', isRecurring: true });
+    const m = buildGatheringViewModel({ events: [week1, week2], contacts: [], now: NOW });
+    // This asserts the defect: without parentEventId, they do NOT group into a Rhythm row.
+    expect(m.rhythms).toHaveLength(0);
+    // Instead they fall through to oneOffs (and future occurrences get dropped).
+    expect(m.oneOffs.map((g) => g.id)).toEqual(['w1']);
+  });
+
+  it('folds recurring events into a single Rhythm row when anchored with assignSeriesAnchor (the fix)', () => {
+    const raw = [
+      { id: 'w1', date: '2026-09-09', name: 'Bible Study', isRecurring: true },
+      { id: 'w2', date: '2026-09-16', name: 'Bible Study', isRecurring: true },
+    ];
+    const anchored = assignSeriesAnchor(raw, true);
+    const events = anchored.map((a) => baseEvent(a));
+    const m = buildGatheringViewModel({ events, contacts: [], now: NOW });
+    expect(m.rhythms).toHaveLength(1);
+    expect(m.rhythms[0].id).toBe('w1');
+    expect(m.rhythms[0].chips).toHaveLength(2);
+    expect(m.rhythms[0].chips.map((c) => c.id)).toEqual(['w1', 'w2']);
+    expect(m.oneOffs).toHaveLength(0);
   });
 });
 
