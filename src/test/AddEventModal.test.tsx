@@ -192,6 +192,14 @@ describe('AddEventModal Component', () => {
     await waitFor(() => {
       expect(firestore.writeBatch).toHaveBeenCalled();
       expect(batchMock.set).toHaveBeenCalled();
+      const calls = (batchMock.set as any).mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      for (const call of calls) {
+        expect(call[1]).toEqual(expect.objectContaining({
+          parentEventId: 'mock-doc-id',
+          isRecurring: true,
+        }));
+      }
       expect(batchMock.commit).toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalled();
     });

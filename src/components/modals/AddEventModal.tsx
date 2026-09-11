@@ -10,6 +10,7 @@ import DatePicker from '../ui/DatePicker';
 import { Switch } from '../ui/Switch';
 import { useGatheringTypes } from '../../lib/gatheringTypes';
 import { useLanguage } from '../LanguageProvider';
+import { assignSeriesAnchor } from '../../lib/attendanceRoster';
 import type { Contact } from '../../types';
 
 interface AddEventModalProps {
@@ -191,20 +192,32 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount, cont
           }
         }
 
-        const batch = writeBatch(db);
-        occurrences.forEach((eventDate, i) => {
+        const occurrenceItems = occurrences.map((eventDate, i) => {
           const eventRef = doc(collection(db, 'events'));
-          batch.set(eventRef, {
+          return {
+            ref: eventRef,
+            id: eventRef.id,
+            date: format(eventDate, 'yyyy-MM-dd'),
+            order: currentEventCount + i,
+          };
+        });
+
+        const anchoredItems = assignSeriesAnchor(occurrenceItems, true);
+
+        const batch = writeBatch(db);
+        anchoredItems.forEach((item) => {
+          batch.set(item.ref, {
             name: formData.name.trim(),
             type: formData.type,
             location: formData.location.trim() || null,
-            date: format(eventDate, 'yyyy-MM-dd'),
-            order: currentEventCount + i,
+            date: item.date,
+            order: item.order,
             isRecurring: true,
             recurrenceType: formData.recurrenceType,
             recurrenceEndDate: formData.recurrenceEndDate,
             recurrenceDays: formData.recurrenceType === 'weekly' ? formData.recurrenceDays : null,
             monthlyType: formData.recurrenceType === 'monthly' ? formData.monthlyType : null,
+            parentEventId: item.parentEventId,
             createdAt: new Date().toISOString(),
             roster: selectedRoster,
           });
