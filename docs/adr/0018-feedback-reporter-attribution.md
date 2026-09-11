@@ -1,4 +1,4 @@
-# 0017: Feedback-created GitHub issues use first-name attribution, no email, and no screenshots
+# 0018: Feedback-created GitHub issues use first-name attribution, no email, and no screenshots
 
 ## Status
 Accepted
