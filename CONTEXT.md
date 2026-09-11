@@ -29,6 +29,15 @@ _Avoid_: Test database, sandbox Firestore, staging db
 **Feedback Note ("Tell us how it's going")**:
 An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators.
 _Avoid_: Bug ticket, customer support issue, help desk ticket
+
+**Outcome (of a Feedback Note)**:
+What became of a Note, as its submitter would put it — it shipped, it is not planned, or it is already there. Distinct from the Note's **status**, which is where it sits in the team's own pipeline: status belongs to the team, an outcome belongs to the person who wrote the Note. It is set once when the work behind the Note is closed, and cleared if that reopens.
+_Avoid_: Resolution, disposition, ticket state
+
+**What came of it**:
+The short fixed sentence a submitter is told when their Note reaches an outcome, shown under the composer on their own feedback page and pushed as a notification. There is one sentence per outcome and nobody writes prose to a submitter; anything that needs explaining is said in person, by text, or in Messages. Asking a submitter a question is likewise not something a Note carries — a Note is a one-shot note, never a thread.
+_Avoid_: Reply, response, resolution message, support reply
+
 **Remove an interaction**:
 Permanently deleting a logged conversation from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
 _Avoid_: Archive entry, trash a conversation
