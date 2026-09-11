@@ -11,8 +11,6 @@ import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { FeedbackKind } from '../types';
 
-const MAX_SCREENSHOT_DIMENSION = 1000;
-const MAX_PAYLOAD_LENGTH = 600000;
 
 export default function FeedbackFAB() {
   const { user, role } = useAuth();
@@ -79,51 +77,12 @@ export default function FeedbackFAB() {
 
     setPhase('busy');
 
-    // Auto-capture screenshot and diagnostic information
-    let screenshot = '';
-    try {
-      const html2canvas = (await import('html2canvas-pro')).default;
-      const canvas = await html2canvas(document.body, {
-        logging: false,
-        useCORS: true,
-        scale: 1.0,
-        ignoreElements: (el) =>
-          el.id === 'feedback-fab-btn' ||
-          el.getAttribute('role') === 'dialog' ||
-          Boolean(el.closest('[role="dialog"]')),
-      });
-
-      let finalCanvas = canvas;
-      if (canvas.width > MAX_SCREENSHOT_DIMENSION || canvas.height > MAX_SCREENSHOT_DIMENSION) {
-        const scale = Math.min(MAX_SCREENSHOT_DIMENSION / canvas.width, MAX_SCREENSHOT_DIMENSION / canvas.height);
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = Math.round(canvas.width * scale);
-        tempCanvas.height = Math.round(canvas.height * scale);
-        const ctx = tempCanvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-          finalCanvas = tempCanvas;
-        }
-      }
-      screenshot = finalCanvas.toDataURL('image/jpeg', 0.65);
-      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
-        screenshot = finalCanvas.toDataURL('image/jpeg', 0.4);
-      }
-      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
-        screenshot = '';
-      }
-    } catch (err) {
-      console.error('Failed to capture screenshot:', err);
-    }
-
     const payload = {
       userId: user.uid,
-      userEmail: user.email?.toLowerCase() || 'anonymous',
       userName: user.displayName || 'Anonymous User',
       type,
       kind: submissionKind,
       message: submissionMessage,
-      screenshot,
       url: window.location.href,
       userAgent: navigator.userAgent,
       viewport: `${window.innerWidth}x${window.innerHeight} (DPR: ${window.devicePixelRatio})`,

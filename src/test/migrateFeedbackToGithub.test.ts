@@ -58,26 +58,40 @@ describe('migrate-feedback-to-github script', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('creates a GitHub issue and links the Firestore doc for unlinked feedback', async () => {
+  it('creates a GitHub issue, reporter label, and links the Firestore doc for unlinked feedback', async () => {
     const { db, updates } = makeDb([
-      { id: 'f1', data: () => ({ message: 'Fix the search bar', kind: 'off', type: 'bug', userName: 'Ada', userEmail: 'ada@example.com' }) },
+      { id: 'f1', data: () => ({ message: 'Fix the search bar', kind: 'off', type: 'bug', userName: 'Ada Lovelace', userEmail: 'ada@example.com' }) },
     ]);
     await migrateFeedbackToGithub(db as any);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [labelUrl] = fetchMock.mock.calls[0];
+    expect(labelUrl).toBe('https://api.github.com/repos/org/repo/labels');
+
+    const [url, init] = fetchMock.mock.calls[1];
     expect(url).toBe('https://api.github.com/repos/org/repo/issues');
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.title).toContain("Something's off");
     expect(body.title).toContain('Fix the search bar');
-    expect(body.labels).toEqual(['bug', 'feedback']);
+    expect(body.labels).toEqual(['bug', 'feedback', 'reporter:ada-l']);
+    expect(body.body).toContain('- **Submitted By:** Ada');
+    expect(body.body).not.toContain('Ada Lovelace');
+    expect(body.body).not.toContain('ada@example.com');
 
     expect(updates).toEqual([
-      { id: 'f1', patch: { githubIssueUrl: 'https://github.com/org/repo/issues/5', status: 'in_progress' } },
+      {
+        id: 'f1',
+        patch: {
+          githubIssueUrl: 'https://github.com/org/repo/issues/5',
+          status: 'in_progress',
+          reporterLabel: 'reporter:ada-l',
+        },
+      },
     ]);
   });
 
-  it('includes screenshot image markdown when item has a screenshot and APP_URL is configured', async () => {
+  it('does not include screenshot markdown when item has a screenshot and APP_URL is configured', async () => {
     vi.stubEnv('APP_URL', 'https://app.example.com');
     const { db } = makeDb([
       { id: 'f-screen', data: () => ({ message: 'Screen test', screenshot: 'data:image/jpeg;base64,123', type: 'bug' }) },
@@ -85,10 +99,10 @@ describe('migrate-feedback-to-github script', () => {
     await migrateFeedbackToGithub(db as any);
 
     const bodyStr = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).body;
-    expect(bodyStr).toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen/screenshot)');
+    expect(bodyStr).not.toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen/screenshot)');
   });
 
-  it('strips trailing slashes from APP_URL when constructing screenshot markdown URL in migration', async () => {
+  it('does not include screenshot markdown even when APP_URL has trailing slashes', async () => {
     vi.stubEnv('APP_URL', 'https://app.example.com///');
     const { db } = makeDb([
       { id: 'f-screen-2', data: () => ({ message: 'Screen test 2', screenshot: 'data:image/jpeg;base64,123', type: 'bug' }) },
@@ -96,7 +110,7 @@ describe('migrate-feedback-to-github script', () => {
     await migrateFeedbackToGithub(db as any);
 
     const bodyStr = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).body;
-    expect(bodyStr).toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen-2/screenshot)');
+    expect(bodyStr).not.toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen-2/screenshot)');
     expect(bodyStr).not.toContain('https://app.example.com//api/feedback/');
   });
 

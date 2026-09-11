@@ -299,8 +299,9 @@ export type FeedbackKind = 'thought' | 'idea' | 'off' | 'request';
 export interface Feedback {
   id: string;
   userId: string;
-  userEmail: string;
+  userEmail?: string;
   userName: string;
+  reporterLabel?: string;
   type: 'bug' | 'enhancement';
   kind?: FeedbackKind;
   message: string;

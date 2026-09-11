@@ -3,6 +3,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import type { Firestore } from 'firebase-admin/firestore';
 import { readFileSync, existsSync } from 'node:fs';
 import dotenv from 'dotenv';
+import { feedbackIssueSubmittedByLine, reporterLabelFromName } from '../src/lib/feedbackReporter';
+import { ensureGitHubLabel } from '../src/lib/githubFeedbackLabels';
 
 // Load local .env variables
 dotenv.config();
@@ -30,6 +32,7 @@ export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
   }
 
   const feedbackColl = db.collection('feedback');
+  const readyLabels = new Set<string>();
 
   // Get all feedbacks
   const snapshot = await feedbackColl.get();
@@ -47,6 +50,7 @@ export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
   console.log(`Found ${unlinked.length} feedback items to migrate to GitHub repo "${GITHUB_REPO}"...`);
 
   for (const item of unlinked) {
+    const reporterLabel = reporterLabelFromName(item.userName);
     const kindLabel = item.kind ? (kindLabels[item.kind] || item.kind) : item.type;
     const cleanMsg = item.message || '';
     const prefix = `[Feedback] ${kindLabel}: `;
@@ -60,7 +64,7 @@ export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
       new Date().toISOString();
 
     let body = `### Feedback Details
-- **Submitted By:** ${item.userName || 'Anonymous'} (${item.userEmail || 'anonymous'})
+${feedbackIssueSubmittedByLine(item.userName)}
 - **Type:** ${item.type || 'enhancement'}
 - **Kind:** ${kindLabel}
 - **Date:** ${new Date(createdAtStr).toLocaleString()}
@@ -74,16 +78,15 @@ ${cleanMsg}
 ---
 *Created automatically via bulk migration script from CISA Campus Work Tracker.*`;
 
-    if (item.screenshot) {
-      const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || '';
-      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
-      if (baseUrl) {
-        const imageUrl = `${baseUrl}/api/feedback/${item.id}/screenshot`;
-        body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
-      }
-    }
-
     const labels = [item.type || 'enhancement', 'feedback'];
+    if (reporterLabel && GITHUB_TOKEN && GITHUB_REPO) {
+      if (readyLabels.has(reporterLabel) === false) {
+        const labelReady = await ensureGitHubLabel(GITHUB_REPO, GITHUB_TOKEN, reporterLabel);
+        if (labelReady) readyLabels.add(reporterLabel);
+        else console.warn(`Reporter label "${reporterLabel}" could not be created; creating issue without it.`);
+      }
+      if (readyLabels.has(reporterLabel)) labels.push(reporterLabel);
+    }
 
     console.log(`Migrating item "${item.id}": "${title}"...`);
 
@@ -113,10 +116,12 @@ ${cleanMsg}
       console.log(`  ✓ Created GitHub Issue #${issueData.number}: ${issueData.html_url}`);
 
       // Update Firestore
-      await feedbackColl.doc(item.id).update({
+      const updateData: any = {
         githubIssueUrl: issueData.html_url,
         status: 'in_progress',
-      });
+      };
+      if (reporterLabel) updateData.reporterLabel = reporterLabel;
+      await feedbackColl.doc(item.id).update(updateData);
       console.log(`  ✓ Updated Firestore document "${item.id}" status to in_progress and githubIssueUrl.`);
     } catch (err: any) {
       console.error(`  ✗ Failed to migrate item "${item.id}":`, err.message || err);
