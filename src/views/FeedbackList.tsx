@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } fro
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { Feedback, FeedbackKind } from '../types';
+import { feedbackIssueSubmittedByLine, reporterLabelFromName } from '../lib/feedbackReporter';
 import { FEEDBACK_KINDS, kindMeta, typeToKind, TONE_CLASSES } from '../lib/feedbackKinds';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -35,7 +36,7 @@ const getGitHubIssueUrl = (item: Feedback) => {
   const kindLabel = item.kind ? kindMeta(item.kind).label : item.type;
   const title = `[Feedback] ${kindLabel}: ${item.message.slice(0, 50)}${item.message.length > 50 ? '...' : ''}`;
   let body = `### Feedback Details
-- **Submitted By:** ${item.userName} (${item.userEmail})
+${feedbackIssueSubmittedByLine(item.userName)}
 - **Type:** ${item.type}
 - **Kind:** ${kindLabel}
 - **Date:** ${item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
@@ -54,12 +55,9 @@ ${item.message}
 ---
 *Created from CISA Campus Work Tracker user feedback.*`;
 
-  if (item.screenshot && item.id) {
-    const imageUrl = `${window.location.origin}/api/feedback/${item.id}/screenshot`;
-    body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
-  }
 
-  const labels = [item.type, 'feedback'].join(',');
+  const reporterLabel = item.reporterLabel ?? reporterLabelFromName(item.userName);
+  const labels = [item.type, 'feedback', reporterLabel].filter(Boolean).join(',');
   const params = new URLSearchParams({ title, body, labels });
   return `${gitHubRepoUrl}/issues/new?${params.toString()}`;
 };
@@ -230,7 +228,7 @@ export default function FeedbackList() {
     const matchesSearch = 
       item.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.userEmail?.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     
     const matchesKind = activeTab === 'all' || resolveKind(item) === activeTab;
     const matchesStatus =
@@ -437,7 +435,7 @@ export default function FeedbackList() {
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-on-surface text-base">{item.userName}</span>
-                      <span className="text-xs text-on-surface-variant/80 font-mono">({item.userEmail})</span>
+                      {item.userEmail ? <span className="text-xs text-on-surface-variant/80 font-mono">({item.userEmail})</span> : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
                       <span className={`flex items-center gap-1 text-xs font-semibold py-0.5 px-2 rounded-md ${tone.chip}`}>

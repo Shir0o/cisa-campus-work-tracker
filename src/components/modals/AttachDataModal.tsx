@@ -165,7 +165,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setItems(snap.docs.map(doc => ({
             id: doc.id,
             name: doc.data().message.substring(0, 80) + (doc.data().message.length > 80 ? '...' : ''),
-            subtitle: `${doc.data().userEmail} • ${doc.data().type}`,
+            subtitle: doc.data().userEmail ? doc.data().userEmail + ' ' + '•' + ' ' + doc.data().type : doc.data().type,
             status: doc.data().status,
             ...doc.data()
           })));

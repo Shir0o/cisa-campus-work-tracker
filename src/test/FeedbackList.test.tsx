@@ -305,7 +305,7 @@ describe('FeedbackList View', () => {
     });
   });
 
-  it('includes screenshot image markdown in GitHub issue URL when screenshot exists', async () => {
+  it('does not include screenshot markdown or email in the prefilled GitHub issue URL', async () => {
     (useAuth as any).mockReturnValue({
       user: {
         uid: 'u-admin',
@@ -353,8 +353,9 @@ describe('FeedbackList View', () => {
     expect(openSpy).toHaveBeenCalled();
     const openedUrl = openSpy.mock.calls[0][0] as string;
     const bodyParam = new URL(openedUrl).searchParams.get('body') || '';
-    expect(bodyParam).toContain('![Feedback Screenshot](');
-    expect(bodyParam).toContain('/api/feedback/f-img-create/screenshot)');
+    expect(bodyParam).not.toContain('![Feedback Screenshot](');
+    expect(bodyParam).not.toContain('/api/feedback/f-img-create/screenshot)');
+    expect(bodyParam).not.toContain('dave@example.com');
   });
 
   // ── Save/unlink GitHub link ────────────────────────────────────────

@@ -252,61 +252,6 @@ describe('User Feedback Feature', () => {
       });
     });
 
-    it('downscales an oversized screenshot before sending', async () => {
-      const html2canvas = vi.mocked((await import('html2canvas-pro')).default);
-      html2canvas.mockResolvedValueOnce({
-        width: 2000,
-        height: 2000,
-        toDataURL: () => 'data:image/jpeg;base64,' + 'a'.repeat(400),
-      } as any);
-      const drawImage = vi.fn();
-      const realCreateElement = document.createElement.bind(document);
-      (document.createElement as any) = vi.fn((tag: string) => {
-        if (tag === 'canvas') {
-          return {
-            width: 0,
-            height: 0,
-            getContext: () => ({ drawImage }),
-            toDataURL: () => 'data:image/jpeg;base64,resized',
-          };
-        }
-        return realCreateElement(tag);
-      });
-
-      const userAct = userEvent.setup();
-      render(<FeedbackFAB />);
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'resize me');
-      await userAct.click(screen.getByRole('button', { name: 'Send' }));
-
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/feedback',
-          expect.objectContaining({ body: expect.stringContaining('resized') }),
-        );
-      });
-      expect(drawImage).toHaveBeenCalled();
-      document.createElement = realCreateElement;
-    });
-
-    it('continues without a screenshot when capture fails', async () => {
-      const html2canvas = vi.mocked((await import('html2canvas-pro')).default);
-      html2canvas.mockRejectedValueOnce(new Error('canvas blocked'));
-
-      const userAct = userEvent.setup();
-      render(<FeedbackFAB />);
-      await userAct.click(screen.getByTitle('Leave a note for the team'));
-      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'no screenshot');
-      await userAct.click(screen.getByRole('button', { name: 'Send' }));
-
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/feedback',
-          expect.objectContaining({ body: expect.stringContaining('"screenshot":""') }),
-        );
-      });
-    });
-
     it('still submits when the ID token cannot be acquired', async () => {
       (useAuth as any).mockReturnValue({
         user: {

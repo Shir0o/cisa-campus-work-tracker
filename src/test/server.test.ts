@@ -247,7 +247,7 @@ describe("POST /api/feedback", () => {
       new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/42", number: 42 }), { status: 201 })
     );
 
-    const res = await request(app).post("/api/feedback").send({ message: "Bug found", kind: "bug" });
+    const res = await request(app).post("/api/feedback").send({ message: "Bug found", kind: "off", type: "bug" });
     expect(res.status).toBe(200);
     expect(res.body.githubIssueUrl).toBe("https://github.com/org/repo/issues/42");
     expect(res.body.status).toBe("in_progress");
@@ -255,11 +255,72 @@ describe("POST /api/feedback", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.github.com/repos/org/repo/issues");
     expect((init as RequestInit).method).toBe("POST");
-    expect(JSON.parse((init as RequestInit).body as string).labels).toEqual(["enhancement", "feedback"]);
+    expect(JSON.parse((init as RequestInit).body as string).labels).toEqual(["bug", "feedback"]);
 
     const saved = Object.values(getCollection("feedback"))[0];
     expect(saved.githubIssueUrl).toBe("https://github.com/org/repo/issues/42");
     expect(saved.status).toBe("in_progress");
+  });
+
+  it("creates a reporter label and keeps email out of the GitHub issue", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    mockVerifyIdToken.mockResolvedValueOnce({ uid: "uid-sarah", email: "sarah@example.com", name: "Sarah Carvajal" });
+    fetchMock.mockImplementation((input: any) => {
+      const url = String(input);
+      if (url.endsWith("/labels")) {
+        return Promise.resolve(new Response(JSON.stringify({ name: "reporter:sarah-c" }), { status: 201 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/42", number: 42 }), { status: 201 }));
+    });
+
+    const res = await request(app)
+      .post("/api/feedback")
+      .set("Authorization", "Bearer valid-token")
+      .send({ message: "Bug found", kind: "off", type: "bug" });
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [labelUrl, labelInit] = fetchMock.mock.calls[0];
+    expect(String(labelUrl)).toBe("https://api.github.com/repos/org/repo/labels");
+    expect(JSON.parse((labelInit as RequestInit).body as string).name).toBe("reporter:sarah-c");
+
+    const [issueUrl, issueInit] = fetchMock.mock.calls[1];
+    expect(String(issueUrl)).toBe("https://api.github.com/repos/org/repo/issues");
+    const issueBody = JSON.parse((issueInit as RequestInit).body as string);
+    expect(issueBody.labels).toEqual(["bug", "feedback", "reporter:sarah-c"]);
+    expect(issueBody.body).toContain("- **Submitted By:** Sarah");
+    expect(issueBody.body).not.toContain("Sarah Carvajal");
+    expect(issueBody.body).not.toContain("sarah@example.com");
+
+    const saved = Object.values(getCollection("feedback"))[0];
+    expect(saved.userEmail).toBeUndefined();
+    expect(saved.reporterLabel).toBe("reporter:sarah-c");
+  });
+
+  it("still creates the issue when reporter label creation fails", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    mockVerifyIdToken.mockResolvedValueOnce({ uid: "uid-ada", email: "ada@example.com", name: "Ada Lovelace" });
+    fetchMock.mockImplementation((input: any) => {
+      const url = String(input);
+      if (url.endsWith("/labels")) {
+        return Promise.resolve(new Response("label failure", { status: 500 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/43", number: 43 }), { status: 201 }));
+    });
+
+    const res = await request(app)
+      .post("/api/feedback")
+      .set("Authorization", "Bearer valid-token")
+      .send({ message: "Idea", kind: "idea" });
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const issueInit = fetchMock.mock.calls[1][1] as RequestInit;
+    const issueBody = JSON.parse(issueInit.body as string);
+    expect(issueBody.labels).toEqual(["enhancement", "feedback"]);
   });
 
   it("keeps the full feedback message in the GitHub issue title", async () => {
@@ -295,130 +356,6 @@ describe("POST /api/feedback", () => {
     expect(body.title.endsWith("…")).toBe(true);
   });
 
-  it("includes screenshot markdown in GitHub issue body when screenshot is attached", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "org/repo");
-    vi.stubEnv("APP_URL", "https://app.example.com");
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/43", number: 43 }), { status: 201 })
-    );
-
-    const res = await request(app).post("/api/feedback").send({
-      message: "Bug with screenshot",
-      kind: "bug",
-      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-    });
-    expect(res.status).toBe(200);
-
-    const [_, init] = fetchMock.mock.calls[0];
-    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
-    expect(bodyStr).toContain("![Feedback Screenshot](https://app.example.com/api/feedback/");
-    expect(bodyStr).toContain("/screenshot)");
-  });
-
-  it("strips trailing slashes from APP_URL when constructing screenshot markdown URL", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "org/repo");
-    vi.stubEnv("APP_URL", "https://app.example.com///");
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/44", number: 44 }), { status: 201 })
-    );
-
-    const res = await request(app).post("/api/feedback").send({
-      message: "Bug with screenshot trailing slash",
-      kind: "bug",
-      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-    });
-    expect(res.status).toBe(200);
-
-    const [_, init] = fetchMock.mock.calls[0];
-    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
-    expect(bodyStr).toContain("![Feedback Screenshot](https://app.example.com/api/feedback/");
-    expect(bodyStr).not.toContain("https://app.example.com//api/feedback/");
-  });
-
-  it("falls back to the canonical product URL for the screenshot link when APP_URL and VITE_APP_URL are both unset", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "org/repo");
-    vi.stubEnv("APP_URL", "");
-    vi.stubEnv("VITE_APP_URL", "");
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/45", number: 45 }), { status: 201 })
-    );
-
-    const res = await request(app).post("/api/feedback").send({
-      message: "Bug with screenshot and no APP_URL",
-      kind: "bug",
-      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-    });
-    expect(res.status).toBe(200);
-
-    const [_, init] = fetchMock.mock.calls[0];
-    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
-    expect(bodyStr).toContain("![Feedback Screenshot](https://cisa-campus-work-tracker.pages.dev/api/feedback/");
-    expect(bodyStr).toContain("/screenshot)");
-    // Never the request host, and never the retired misspelled domain (ADR 0002).
-    expect(bodyStr).not.toContain("127.0.0.1");
-    expect(bodyStr).not.toContain("localhost");
-    expect(bodyStr).not.toContain("traker");
-  });
-
-  it("prefers VITE_APP_URL over the canonical fallback when APP_URL is unset", async () => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "org/repo");
-    vi.stubEnv("APP_URL", "");
-    vi.stubEnv("VITE_APP_URL", "https://vite.example.com/");
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/46", number: 46 }), { status: 201 })
-    );
-
-    const res = await request(app).post("/api/feedback").send({
-      message: "Bug with screenshot and only VITE_APP_URL",
-      kind: "bug",
-      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-    });
-    expect(res.status).toBe(200);
-
-    const [_, init] = fetchMock.mock.calls[0];
-    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
-    expect(bodyStr).toContain("![Feedback Screenshot](https://vite.example.com/api/feedback/");
-    expect(bodyStr).not.toContain("https://vite.example.com//api/feedback/");
-  });
-
-  // Production APP_URL was observed as "https://cisa-campus-work-traker.pages.dev/" (trailing
-  // slash). A `//` after the host does not match the /api/feedback/:id/screenshot route, so the
-  // embedded image breaks. These pin the invariant: the generated URL never has a double slash,
-  // whatever surrounding whitespace the env value carries.
-  it.each([
-    ["a trailing slash", "https://app.example.com/"],
-    ["trailing whitespace after a slash", "https://app.example.com/  "],
-    ["a trailing newline after a slash", "https://app.example.com/\n"],
-    ["leading and trailing whitespace", "  https://app.example.com  "],
-    ["several trailing slashes and whitespace", "  https://app.example.com//  "],
-  ])("never emits a double-slash screenshot URL when APP_URL has %s", async (_label, appUrl) => {
-    vi.stubEnv("GITHUB_TOKEN", "gh-token");
-    vi.stubEnv("GITHUB_REPO", "org/repo");
-    vi.stubEnv("APP_URL", appUrl);
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/47", number: 47 }), { status: 201 })
-    );
-
-    const res = await request(app).post("/api/feedback").send({
-      message: "Bug with screenshot and a messy APP_URL",
-      kind: "bug",
-      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-    });
-    expect(res.status).toBe(200);
-
-    const [_, init] = fetchMock.mock.calls[0];
-    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
-    expect(bodyStr).toContain("![Feedback Screenshot](https://app.example.com/api/feedback/");
-
-    const imageUrl = bodyStr.match(/!\[Feedback Screenshot\]\(([^)]+)\)/)![1];
-    expect(imageUrl.slice("https://".length)).not.toContain("//");
-    expect(imageUrl).not.toMatch(/\s/);
-  });
-
   it("uses the authenticated Firebase user when an Authorization header is present", async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "uid-1", email: "sarah@example.com", name: "Sarah" });
     const res = await request(app)
@@ -428,7 +365,8 @@ describe("POST /api/feedback", () => {
     expect(res.status).toBe(200);
     const saved = Object.values(getCollection("feedback"))[0];
     expect(saved.userId).toBe("uid-1");
-    expect(saved.userEmail).toBe("sarah@example.com");
+    expect(saved.userEmail).toBeUndefined();
+    expect(saved.reporterLabel).toBe("reporter:sarah");
   });
 
   it("returns 401 when token verification fails", async () => {
@@ -439,33 +377,6 @@ describe("POST /api/feedback", () => {
       .send({ message: "hello" });
     expect(res.status).toBe(401);
     expect(res.body.error).toContain("Unauthorized");
-  });
-});
-
-describe("GET /api/feedback/:id/screenshot", () => {
-  it("returns 404 when the feedback document does not exist", async () => {
-    const res = await request(app).get("/api/feedback/non-existent-id/screenshot");
-    expect(res.status).toBe(404);
-    expect(res.body.error).toContain("not found");
-  });
-
-  it("returns 404 when the feedback document has no screenshot", async () => {
-    seedDoc("feedback", "fb-no-img", { message: "No screenshot here" });
-    const res = await request(app).get("/api/feedback/fb-no-img/screenshot");
-    expect(res.status).toBe(404);
-    expect(res.body.error).toContain("No screenshot");
-  });
-
-  it("returns 200 with image/jpeg Content-Type and binary buffer for valid base64 screenshot", async () => {
-    const mockBase64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
-    seedDoc("feedback", "fb-img-1", { message: "Has image", screenshot: mockBase64 });
-
-    const res = await request(app).get("/api/feedback/fb-img-1/screenshot");
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("image/jpeg");
-    expect(res.headers["cache-control"]).toContain("public, max-age=86400");
-    expect(res.body).toBeInstanceOf(Buffer);
-    expect(res.body.length).toBeGreaterThan(0);
   });
 });
 

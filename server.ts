@@ -11,6 +11,9 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import dotenv from "dotenv";
 import { verifyTwilioRequest } from "./src/lib/twilioVerify";
+import { feedbackIssueSubmittedByLine } from "./src/lib/feedbackReporter";
+import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
+import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
 
 dotenv.config();
 
@@ -193,11 +196,10 @@ export async function createApp() {
     }
   }
 
-  // Endpoint: Submit feedback (with capture diagnostics and auto GitHub issue creation)
+  // Endpoint: Submit feedback (with diagnostics and auto GitHub issue creation)
   app.post("/api/feedback", async (req, res) => {
     try {
       let userId = req.body.userId;
-      let userEmail = req.body.userEmail;
       let userName = req.body.userName;
 
       // Authenticate via Firebase ID token if Authorization header is present
@@ -205,34 +207,31 @@ export async function createApp() {
         try {
           const decoded = await authenticateFirebaseUser(req);
           userId = decoded.uid;
-          userEmail = decoded.email || "anonymous";
           userName = decoded.name || decoded.displayName || req.body.userName || "Anonymous User";
         } catch (authErr: any) {
           console.error("Firebase ID token verification failed:", authErr);
-          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+          return res.status(401).json({ error: "Unauthorized: " + (authErr.message || String(authErr)) });
         }
       } else if (process.env.NODE_ENV !== "test") {
         return res.status(401).json({ error: "Unauthorized: Authorization header is required." });
       }
 
-      const {
-        type,
-        kind,
-        message,
-        screenshot,
-        url,
-        userAgent,
-        viewport
-      } = req.body;
+      const { type, kind, message, url, userAgent, viewport } = req.body;
 
       if (!message || typeof message !== "string") {
         return res.status(400).json({ error: "Missing required 'message' parameter." });
       }
 
       const db = getAdminDb();
+      let reporterLabel: string | null = null;
+      try {
+        reporterLabel = await ensureReporterLabel(db, userId, userName);
+      } catch (labelErr) {
+        console.error("Failed to establish reporter label:", labelErr);
+      }
+
       const feedbackData: any = {
         userId: userId || "anonymous",
-        userEmail: userEmail || "anonymous",
         userName: userName || "Anonymous User",
         type: type || "enhancement",
         kind: kind || "thought",
@@ -242,14 +241,16 @@ export async function createApp() {
         archived: false,
       };
 
-      if (screenshot) feedbackData.screenshot = screenshot;
+      if (reporterLabel) {
+        feedbackData.reporterLabel = reporterLabel;
+      }
       if (url) feedbackData.url = url;
       if (userAgent) feedbackData.userAgent = userAgent;
       if (viewport) feedbackData.viewport = viewport;
 
       // 1. Save to Firestore
       const docRef = await db.collection("feedback").add(feedbackData);
-      console.log(`Saved feedback document to Firestore: "${docRef.id}"`);
+      console.log("Saved feedback document to Firestore: " + docRef.id);
 
       // 2. Best-effort create GitHub issue if credentials exist
       const githubToken = process.env.GITHUB_TOKEN;
@@ -260,72 +261,69 @@ export async function createApp() {
         try {
           const kindLabel = kind || type;
           const cleanMsg = message.trim();
-          const prefix = `[Feedback] ${kindLabel}: `;
+          const prefix = "[Feedback] " + kindLabel + ": ";
           const remaining = GITHUB_TITLE_MAX - prefix.length;
+          const ellipsis = '…';
           const title = cleanMsg.length <= remaining
-            ? `${prefix}${cleanMsg}`
-            : `${prefix}${cleanMsg.slice(0, remaining - 1)}…`;
+            ? prefix + cleanMsg
+            : prefix + cleanMsg.slice(0, remaining - 1) + ellipsis;
+          const fence = '```';
 
-          let body = `### Feedback Details
-- **Submitted By:** ${userName || 'Anonymous'} (${userEmail || 'anonymous'})
-- **Type:** ${type || 'enhancement'}
-- **Kind:** ${kindLabel}
-- **Date:** ${new Date().toLocaleString()}
-- **Page URL:** ${url || 'N/A'}
-- **Viewport:** ${viewport || 'N/A'}
-- **User Agent:** ${userAgent || 'N/A'}
+          const bodyLines = [
+            "### Feedback Details",
+            feedbackIssueSubmittedByLine(userName),
+            "- **Type:** " + (type || "enhancement"),
+            "- **Kind:** " + kindLabel,
+            "- **Date:** " + new Date().toLocaleString(),
+            "- **Page URL:** " + (url || "N/A"),
+            "- **Viewport:** " + (viewport || "N/A"),
+            "- **User Agent:** " + (userAgent || "N/A"),
+            "",
+            "### Message",
+            fence + "text",
+            cleanMsg,
+            fence,
+            "",
+            "---",
+            "*Created automatically from CISA Campus Work Tracker user feedback.*",
+          ];
+          const body = bodyLines.join("\n");
 
-### Message
-\`\`\`text
-${cleanMsg}
-\`\`\`
-
----
-*Created automatically from CISA Campus Work Tracker user feedback.*`;
-
-          if (screenshot) {
-            // APP_URL is operator-set on the backend deployment and has historically carried a
-            // trailing slash. A `//` after the host does not match this server's own
-            // /api/feedback/:id/screenshot route (nor the Cloudflare Pages /api/* function), so it
-            // renders as a broken image in a permanently-baked GitHub issue body. trim() before
-            // stripping so a pasted-in newline or space cannot defeat the strip.
-            const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || "https://cisa-campus-work-tracker.pages.dev";
-            const baseUrl = rawBaseUrl.trim().replace(/\/+$/, '');
-            const imageUrl = `${baseUrl}/api/feedback/${docRef.id}/screenshot`;
-            body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
+          const labels: string[] = [type || "enhancement", "feedback"];
+          if (reporterLabel) {
+            try {
+              const labelReady = await ensureGitHubLabel(githubRepo, githubToken, reporterLabel);
+              if (labelReady) labels.push(reporterLabel);
+              else console.warn("Reporter label could not be created; creating issue without it.");
+            } catch (labelErr) {
+              console.error("Failed to create reporter label:", labelErr);
+            }
           }
 
-          const labels = [type || 'enhancement', 'feedback'];
-
-          const ghResponse = await fetch(`https://api.github.com/repos/${githubRepo}/issues`, {
+          const ghResponse = await fetch("https://api.github.com/repos/" + githubRepo + "/issues", {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${githubToken}`,
+              'Authorization': "Bearer " + githubToken,
               'Accept': 'application/vnd.github+json',
               'X-GitHub-Api-Version': '2022-11-28',
               'Content-Type': 'application/json',
               'User-Agent': 'CISA-Campus-Work-Tracker-Server',
             },
-            body: JSON.stringify({
-              title,
-              body,
-              labels,
-            }),
+            body: JSON.stringify({ title, body, labels }),
           });
 
           if (ghResponse.ok) {
             const issueData = (await ghResponse.json()) as { html_url: string; number: number };
             githubIssueUrl = issueData.html_url;
-            console.log(`  ✓ Auto-created GitHub Issue #${issueData.number}: ${githubIssueUrl}`);
-            
-            // Update Firestore with the GitHub Issue URL and status in_progress
+            console.log("Auto-created GitHub issue: " + githubIssueUrl);
+
             await docRef.update({
               githubIssueUrl,
               status: "in_progress"
             });
           } else {
             const errorText = await ghResponse.text();
-            console.error(`GitHub API error creating issue: ${ghResponse.status} - ${errorText}`);
+            console.error("GitHub API error creating issue: " + ghResponse.status + " - " + errorText);
           }
         } catch (ghErr) {
           console.error("Failed to auto-create GitHub issue:", ghErr);
@@ -345,48 +343,6 @@ ${cleanMsg}
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });
-
-  // Endpoint: GET /api/feedback/:id/screenshot (serves binary image bytes for GitHub issue embedding)
-  app.get("/api/feedback/:id/screenshot", async (req, res) => {
-    try {
-      const feedbackId = req.params.id;
-      if (!feedbackId) {
-        return res.status(400).json({ error: "Missing required feedback id parameter." });
-      }
-
-      const db = getAdminDb();
-      const docSnap = await db.collection("feedback").doc(feedbackId).get();
-      if (!docSnap.exists) {
-        return res.status(404).json({ error: `Feedback document with id "${feedbackId}" not found.` });
-      }
-
-      const data = docSnap.data()!;
-      const screenshot = data.screenshot;
-      if (!screenshot || typeof screenshot !== "string") {
-        return res.status(404).json({ error: `No screenshot attached to feedback document "${feedbackId}".` });
-      }
-
-      // Parse data URL format: data:<contentType>;base64,<base64Data>
-      const match = screenshot.match(/^data:([^;]+);base64,(.+)$/);
-      let contentType = "image/jpeg";
-      let base64Data = screenshot;
-
-      if (match) {
-        contentType = match[1];
-        base64Data = match[2];
-      }
-
-      const buffer = Buffer.from(base64Data, "base64");
-      res.setHeader("Content-Type", contentType);
-      res.setHeader("Content-Length", buffer.length);
-      res.setHeader("Cache-Control", "public, max-age=86400");
-      res.status(200).send(buffer);
-    } catch (error: any) {
-      console.error("Error in GET /api/feedback/:id/screenshot: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
   // Endpoint: Update feedback status / archive (admin-facing, syncs with GitHub)
   app.post("/api/feedback/update", async (req, res) => {
     try {

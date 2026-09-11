@@ -41,6 +41,7 @@
         "properties": {
             "email": { "type": "string" },
             "displayName": { "type": "string" },
+            "reporterLabel": { "type": "string" },
             "photoURL": { "type": "string" },
             "approved": { "type": "boolean" },
             "role": { 
@@ -200,6 +201,7 @@
         "userId": { "type": "string" },
         "userEmail": { "type": "string" },
         "userName": { "type": "string" },
+        "reporterLabel": { "type": "string" },
         "type": { "type": "string", "enum": ["bug", "enhancement"] },
         "kind": { "type": "string", "enum": ["thought", "idea", "off", "request"] },
         "message": { "type": "string" },
@@ -207,7 +209,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "githubIssueUrl": { "type": "string" }
       },
-      "required": ["userId", "userEmail", "type", "message", "status", "createdAt"]
+      "required": ["userId", "type", "message", "status", "createdAt"]
     },
     "webhook_logs": {
       "title": "Webhook Log",
