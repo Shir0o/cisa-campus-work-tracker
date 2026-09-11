@@ -7,546 +7,690 @@
 <body>
 <x-dc>
 <helmet>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@300;400;500;600&display=swap">
   <style>
     body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
-    * { box-sizing: border-box; }
-    a { color: #52525B; } a:hover { color: #0A0A0B; }
-    .h { font-family: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, sans-serif; font-weight: 600; }
-    .hov:hover { background: rgba(127,127,127,0.08); }
-    .rowhov:hover { background: rgba(234,234,236,0.4); }
-    .cardhov:hover { border-color: rgba(19,19,22,0.4) !important; }
-    button { font-family: inherit; cursor: pointer; }
+    a { color: #52525B; text-decoration: none; }
+    a:hover { color: #0A0A0B; }
+    .gp-scroll { scrollbar-width: thin; scrollbar-color: #E4E4E7 transparent; }
+    .gp-scroll::-webkit-scrollbar { height: 6px; }
+    .gp-scroll::-webkit-scrollbar-thumb { background: #E4E4E7; border-radius: 999px; }
+    .gp-scroll::-webkit-scrollbar-track { background: transparent; }
   </style>
 </helmet>
 
-<div style="background: #FFFFFF; color: #0A0A0B; min-height: 100%; padding: 32px 0 48px;">
-<div style="max-width: 1280px; margin: 0 auto; padding: 0 32px;">
+<div style="background: #FFFFFF; min-height: 100%; padding: 40px 56px 72px; box-sizing: border-box;">
+<div style="max-width: 1140px; margin: 0 auto;">
 
-  <!-- ══ Header ══ -->
-  <div style="display: flex; align-items: flex-end; gap: 24px;">
-    <div style="flex-grow: 1; min-width: 0;">
-      <p style="margin: 0; font-size: 14px; color: #52525B;">Wednesday, September 2</p>
-      <h1 class="h" style="margin: 4px 0 0; font-size: 36px; line-height: 1.1; color: #0A0A0B;">Gatherings</h1>
-      <p style="margin: 12px 0 0; font-size: 16px; line-height: 1.625; color: #52525B; max-width: 672px; text-wrap: pretty;">
-        We've come together <b style="color: #0A0A0B; font-weight: 600;">31 times</b> — about <span style="color: #0A0A0B; font-weight: 500;">17</span> people each time. This week's gatherings are at the top; a few faces have gone quiet, and they're just below.
-      </p>
+  <!-- ── Page header ─────────────────────────────────────────────── -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 44px;">
+    <div style="min-width: 0;">
+      <div style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #A1A1AA; font-weight: 500;">Thursday, 10 September</div>
+      <h1 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 36px; font-weight: 600; color: #0A0A0B; margin: 6px 0 0; letter-spacing: -0.02em;">Gatherings</h1>
+      <p style="font-size: 15px; line-height: 1.6; color: #52525B; margin: 10px 0 0; max-width: 560px;">Who came, who we missed, and what is on this week.</p>
     </div>
-    <div style="display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
-      <button class="hov" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 0; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500;">
+    <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 22px;">
+      <div onClick="{{ openCreate }}" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500; cursor: pointer;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        Log a gathering
-      </button>
+        New
+      </div>
+      <div style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 999px; border: 1px solid #E4E4E7; color: #52525B; font-size: 13px; font-weight: 500; cursor: pointer;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Export
+      </div>
     </div>
   </div>
 
-  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;">
-    <button class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; font-size: 12px; font-weight: 500; color: #52525B;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      Sync sheet
-    </button>
-    <button class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; font-size: 12px; font-weight: 500; color: #52525B;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-      Export
-    </button>
+  <!-- ── 1 · This week ───────────────────────────────────────────── -->
+  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+    <h2 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 24px; font-weight: 600; color: #0A0A0B; margin: 0; letter-spacing: -0.01em;">This week</h2>
+    <span style="font-size: 14px; color: #52525B;">What we&#39;re gathering for.</span>
   </div>
 
-  <!-- ══ This week — the new anchor ══ -->
-  <div style="margin-top: 48px;">
-    <div style="display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px;">
-      <div style="flex-grow: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;">
-        <h2 class="h" style="margin: 0; font-size: 24px; color: #0A0A0B;">{{week.heading}}</h2>
-        <span style="font-size: 14px; color: #52525B;">{{week.range}}</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-        <button onClick="{{week.prev}}" class="hov" aria-label="Previous week" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; color: #52525B;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <button onClick="{{week.today}}" class="hov" style="height: 36px; padding: 0 16px; border: 1px solid {{week.todayBorder}}; border-radius: 999px; background: {{week.todayBg}}; color: {{week.todayFg}}; font-size: 14px; font-weight: 500;">This week</button>
-        <button onClick="{{week.next}}" class="hov" aria-label="Next week" style="width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #F0F0F2; border-radius: 999px; background: transparent; color: #52525B;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; overflow: hidden;">
-      <sc-for list="{{week.rows}}" as="row" hint-placeholder-count="2">
-        <div style="border-top: {{row.divider}};">
-          <button onClick="{{row.toggle}}" class="rowhov" style="width: 100%; display: flex; align-items: center; gap: 16px; padding: 20px; border: 0; background: transparent; text-align: left;">
-            <div style="width: 48px; flex-shrink: 0; text-align: center;">
-              <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">{{row.dow}}</div>
-              <div class="h" style="font-size: 26px; line-height: 1; color: {{row.dayColor}};">{{row.day}}</div>
-              <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">{{row.mon}}</div>
-            </div>
-            <div style="min-width: 0; flex-grow: 1;">
-              <div style="font-size: 16px; font-weight: 600; color: #0A0A0B;">{{row.name}}</div>
-              <div style="font-size: 14px; color: #52525B; margin-top: 2px;">{{row.meta}}</div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
-              <span style="font-size: 14px; color: {{row.statusColor}}; white-space: nowrap;">{{row.statusText}}</span>
-              <sc-if value="{{row.isTodo}}" hint-placeholder-val="{{ true }}">
-                <span style="display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500; white-space: nowrap;">Take attendance</span>
-              </sc-if>
-              <sc-if value="{{row.isAhead}}" hint-placeholder-val="{{ false }}">
-                <span style="display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #0A0A0B; font-size: 13px; font-weight: 500; white-space: nowrap;">See who&#39;s coming</span>
-              </sc-if>
-              <sc-if value="{{row.canOpen}}" hint-placeholder-val="{{ true }}">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate({{row.caret}}deg);"><path d="M6 9l6 6 6-6"/></svg>
-              </sc-if>
-            </div>
-          </button>
-
-          <sc-if value="{{row.isOpen}}" hint-placeholder-val="{{ true }}">
-            <div style="padding: 16px 20px 20px; border-top: 1px solid rgba(240, 240, 242, 0.4);">
-              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: 12px; color: #52525B; margin-bottom: 16px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 8px; height: 8px; border-radius: 999px; background: #131316; display: inline-block;"></i> Here</span>
-                <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 8px; height: 8px; border-radius: 999px; background: #E4E4E7; display: inline-block;"></i> Missed</span>
-                <span style="font-style: italic;">Tap a name to update who was there.</span>
+  <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 52px;">
+    <sc-for list="{{ weekGroups }}" as="group" hint-placeholder-count="2">
+      <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 6px 22px 18px;">
+        <div style="display: flex; align-items: baseline; gap: 10px; padding: 14px 0 10px;">
+          <span style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 15px; font-weight: 600; color: #0A0A0B;">{{ group.weekday }}</span>
+          <span style="font-size: 13px; color: #A1A1AA;">{{ group.dateLabel }}</span>
+          <span style="font-size: 13px; color: #A1A1AA;">{{ group.tail }}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 16px; background: #FFFFFF; border: 1px solid #E4E4E7; border-radius: 14px; padding: 14px 18px;">
+              <div style="min-width: 0; flex-grow: 1;">
+                <div style="font-size: 15px; font-weight: 600; color: #0A0A0B;">{{ item.name }}</div>
+                <div style="font-size: 13px; color: #52525B; margin-top: 3px;">{{ item.meta }}</div>
               </div>
+              <div style="font-size: 13px; color: #52525B; white-space: nowrap;">{{ item.count }}</div>
+              <div style="{{ item.ctaStyle }}">{{ item.cta }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
 
-              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px;">
+  <!-- ── 2 · What we run (Rhythms) ───────────────────────────────── -->
+  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+    <h2 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 24px; font-weight: 600; color: #0A0A0B; margin: 0; letter-spacing: -0.01em;">What we run</h2>
+    <span style="font-size: 14px; color: #52525B;">Each one holds its whole term. Pick a week to see it.</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 52px;">
+    <sc-for list="{{ rhythms }}" as="r" hint-placeholder-count="3">
+      <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; overflow: hidden;">
+
+        <div onClick="{{ r.toggle }}" style="display: flex; align-items: center; gap: 18px; padding: 18px 22px 14px; cursor: pointer;">
+          <div style="min-width: 0; flex-grow: 1;">
+            <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 16px; font-weight: 600; color: #0A0A0B;">{{ r.name }}</div>
+            <div style="font-size: 13px; color: #52525B; margin-top: 3px;">{{ r.meta }}</div>
+          </div>
+          <div style="font-size: 13px; color: #52525B; white-space: nowrap;">{{ r.summaryCount }}</div>
+          <div onClick="{{ r.openDrawer }}" title="Rhythm settings" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #52525B; cursor: pointer; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <div style="{{ r.chevronStyle }}; color: #52525B; flex-shrink: 0; display: inline-flex;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <!-- chip strip -->
+        <div style="display: flex; align-items: center; gap: 10px; padding: 0 22px 16px;">
+          <div class="gp-scroll" style="display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 6px; flex-grow: 1;">
+            <sc-for list="{{ r.chips }}" as="chip" hint-placeholder-count="16">
+              <div onClick="{{ chip.pick }}" title="{{ chip.title }}" style="{{ chip.style }}">
+                <span style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13px; line-height: 1; font-weight: 600;">{{ chip.day }}</span>
+                <span style="font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75;">{{ chip.mon }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ r.today }}" title="Back to this week" style="{{ r.todayStyle }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+            Today
+          </div>
+        </div>
+
+        <!-- expanded week -->
+        <sc-if value="{{ r.open }}" hint-placeholder-val="{{ true }}">
+          <div style="border-top: 1px solid #E4E4E7; background: #FFFFFF; padding: 20px 22px 22px;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 18px;">
+              <div style="min-width: 0;">
+                <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 15px; font-weight: 600; color: #0A0A0B;">{{ r.sel.heading }}</div>
+                <div style="font-size: 13px; color: #52525B; margin-top: 4px;">{{ r.sel.provenance }}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                <div onClick="{{ r.sel.toggleCancel }}" style="{{ r.sel.cancelStyle }}">{{ r.sel.cancelLabel }}</div>
+                <sc-if value="{{ r.sel.showTake }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: inline-flex; align-items: center; gap: 7px; padding: 9px 17px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 13px; font-weight: 500; cursor: pointer;">Take attendance</div>
+                </sc-if>
+              </div>
+            </div>
+
+            <sc-if value="{{ r.sel.cancelled }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; align-items: center; gap: 10px; background: #F4F4F5; border: 1px dashed #E4E4E7; border-radius: 14px; padding: 18px 20px; color: #52525B; font-size: 14px;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+                We didn&#39;t meet this week. Nobody is counted absent.
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ r.sel.showRoster }}" hint-placeholder-val="{{ true }}">
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px;">
                 <div>
-                  <div style="font-size: 12px; font-weight: 600; color: #0A0A0B; margin-bottom: 8px;">Attended <span style="color: #52525B;">{{row.hereCount}}</span></div>
-                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <sc-if value="{{row.noneHere}}" hint-placeholder-val="{{ false }}">
-                      <span style="font-size: 14px; color: #52525B; font-style: italic;">No one marked yet.</span>
-                    </sc-if>
-                    <sc-for list="{{row.here}}" as="p" hint-placeholder-count="6">
-                      <button onClick="{{p.toggle}}" style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid rgba(19, 19, 22, 0.3); background: rgba(10, 10, 11, 0.03); color: #0A0A0B;">
-                        <span class="h" style="width: 32px; height: 32px; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">{{p.initials}}</span>
-                        <span style="font-size: 14px;">{{p.name}}</span>
-                      </button>
+                  <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
+                    <span style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13px; font-weight: 600; color: #0A0A0B;">Here</span>
+                    <span style="font-size: 13px; color: #52525B;">{{ r.sel.hereCount }}</span>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <sc-for list="{{ r.sel.here }}" as="p" hint-placeholder-count="12">
+                      <span style="display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #0A0A0B; font-size: 12.5px;">{{ p.name }}</span>
                     </sc-for>
                   </div>
                 </div>
                 <div>
-                  <div style="font-size: 12px; font-weight: 600; color: #52525B; margin-bottom: 8px;">We missed <span>{{row.missCount}}</span></div>
-                  <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <sc-if value="{{row.noneMissed}}" hint-placeholder-val="{{ false }}">
-                      <span style="font-size: 14px; color: #52525B; font-style: italic;">Everyone came.</span>
-                    </sc-if>
-                    <sc-for list="{{row.missed}}" as="p" hint-placeholder-count="4">
-                      <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 6px 4px 4px; border-radius: 999px; border: 1px solid #E4E4E7; color: #52525B; background: #FFFFFF;">
-                        <button onClick="{{p.toggle}}" style="display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; color: inherit;">
-                          <span class="h" style="width: 32px; height: 32px; border-radius: 999px; background: #EAEAEC; color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 12px;">{{p.initials}}</span>
-                          <span style="font-size: 14px;">{{p.name}}</span>
-                        </button>
-                        <span class="hov" style="padding: 6px; border-radius: 999px; display: inline-flex; color: #A1A1AA;">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                        </span>
-                      </span>
+                  <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;">
+                    <span style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13px; font-weight: 600; color: #0A0A0B;">We missed</span>
+                    <span style="font-size: 13px; color: #52525B;">{{ r.sel.missedCount }}</span>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <sc-for list="{{ r.sel.missed }}" as="p" hint-placeholder-count="3">
+                      <span style="display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; border: 1px solid #E4E4E7; color: #52525B; font-size: 12.5px;">{{ p.name }}</span>
                     </sc-for>
                   </div>
                 </div>
               </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
 
-              <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(240, 240, 242, 0.3); display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-flex; align-items: center; width: 100%; max-width: 384px; height: 32px; padding: 0 12px; border-radius: 14px; background: rgba(234, 234, 236, 0.5); border: 1px solid rgba(228, 228, 231, 0.3); font-size: 12px; color: #A1A1AA;">Add attendee or walk-in...</span>
-              </div>
-            </div>
-          </sc-if>
+  <!-- ── 3 · One-offs ────────────────────────────────────────────── -->
+  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+    <h2 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 24px; font-weight: 600; color: #0A0A0B; margin: 0; letter-spacing: -0.01em;">One-offs</h2>
+    <span style="font-size: 14px; color: #52525B;">Things that happened once. Faint ones are still ahead.</span>
+  </div>
+
+  <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 4px 22px; margin-bottom: 52px;">
+    <sc-for list="{{ oneOffs }}" as="o" hint-placeholder-count="3">
+      <div style="{{ o.rowStyle }}">
+        <div style="text-align: center; width: 44px; flex-shrink: 0;">
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 21px; line-height: 1; font-weight: 600; color: #0A0A0B;">{{ o.day }}</div>
+          <div style="font-size: 10.5px; color: #A1A1AA; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">{{ o.mon }}</div>
+        </div>
+        <div style="min-width: 0; flex-grow: 1;">
+          <div style="font-size: 14.5px; font-weight: 500; color: #0A0A0B;">{{ o.name }}</div>
+          <div style="font-size: 13px; color: #52525B; margin-top: 3px;">{{ o.meta }}</div>
+        </div>
+        <div style="font-size: 13px; color: #52525B; white-space: nowrap;">{{ o.count }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ── 4 · Who we've missed lately ─────────────────────────────── -->
+  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+    <h2 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 24px; font-weight: 600; color: #0A0A0B; margin: 0; letter-spacing: -0.01em;">Who we&#39;ve missed lately</h2>
+    <span style="font-size: 14px; color: #52525B;">Three gatherings or more without them.</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-bottom: 52px; align-items: start;">
+    <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 10px;">
+      <sc-for list="{{ missed }}" as="m" hint-placeholder-count="4">
+        <div style="display: flex; align-items: center; gap: 14px; background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 14px; padding: 14px 18px;">
+          <div style="width: 36px; height: 36px; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; flex-shrink: 0;">{{ m.initials }}</div>
+          <div style="min-width: 0; flex-grow: 1;">
+            <div style="font-size: 14.5px; font-weight: 500; color: #0A0A0B;">{{ m.name }}</div>
+            <div style="font-size: 12.5px; color: #52525B; margin-top: 2px;">{{ m.last }}</div>
+          </div>
+          <div style="font-size: 13px; color: #52525B; white-space: nowrap;">{{ m.streak }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 4px 22px;">
+      <sc-for list="{{ figures }}" as="f" hint-placeholder-count="3">
+        <div style="{{ f.rowStyle }}">
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 30px; line-height: 1; font-weight: 600; color: #0A0A0B; letter-spacing: -0.02em;">{{ f.value }}</div>
+          <div style="font-size: 12.5px; color: #52525B; margin-top: 7px; line-height: 1.45;">{{ f.label }}</div>
         </div>
       </sc-for>
     </div>
   </div>
 
-  <!-- ══ Who we've missed lately — heading now spans both columns ══ -->
-  <div style="margin-top: 48px;">
-    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 16px;">
-      <h2 class="h" style="margin: 0; font-size: 24px; color: #0A0A0B;">Who we've missed lately</h2>
-      <span style="font-size: 14px; color: #52525B;">They used to come, but it's been a few gatherings.</span>
-    </div>
-
-    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start;">
-      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
-
-        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
-          <div style="display: flex; gap: 16px; min-width: 0;">
-            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">EN</span>
-            <div style="min-width: 0;">
-              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Elena Novak</span>
-                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">Regular</span>
-              </div>
-              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Friday Night Gathering · Aug 7 — 4 gatherings ago</div>
-              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Junior, Environmental Science</p>
-            </div>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
-              Reach out
-            </span>
-            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
-          </div>
-        </div>
-
-        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
-          <div style="display: flex; gap: 16px; min-width: 0;">
-            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">SW</span>
-            <div style="min-width: 0;">
-              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Sam Whitfield</span>
-                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">Second Contact</span>
-              </div>
-              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Tuesday Small Group · Aug 14 — 3 gatherings ago</div>
-              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Freshman, undeclared</p>
-            </div>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
-              Reach out
-            </span>
-            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
-          </div>
-        </div>
-
-        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
-          <div style="display: flex; gap: 16px; min-width: 0;">
-            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">AD</span>
-            <div style="min-width: 0;">
-              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Ana Duarte</span>
-                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">Regular</span>
-              </div>
-              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Friday Night Gathering · Jul 31 — 5 gatherings ago</div>
-              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Grad student, Public Health</p>
-            </div>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
-              Reach out
-            </span>
-            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
-          </div>
-        </div>
-
-        <div class="cardhov" style="display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
-          <div style="display: flex; gap: 16px; min-width: 0;">
-            <span class="h" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">KN</span>
-            <div style="min-width: 0;">
-              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Kai Nakamura</span>
-                <span style="display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #EAEAEC; color: #52525B; white-space: nowrap;">First Contact</span>
-              </div>
-              <div style="font-size: 14px; font-weight: 500; color: #52525B; margin-top: 2px;">Last with us at Welcome BBQ · Aug 14 — 3 gatherings ago</div>
-              <p style="margin: 4px 0 0; font-size: 14px; color: #52525B;">Sophomore, Computer Science</p>
-            </div>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-            <span class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid #F0F0F2; font-size: 12px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
-              Reach out
-            </span>
-            <span style="display: inline-flex; padding: 6px 12px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 12px; font-weight: 500;">Open</span>
-          </div>
-        </div>
-
-      </div>
-
-      <div style="align-self: start; background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 4px 24px;">
-        <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);">
-          <span class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">31</span>
-          <span style="font-size: 12px; color: #52525B;">gatherings</span>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);">
-          <span class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">17</span>
-          <span style="font-size: 12px; color: #52525B;">come, on average</span>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 2px; padding: 16px 0; border-bottom: 1px solid rgba(228, 228, 231, 0.7);">
-          <span class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">4</span>
-          <span style="font-size: 12px; color: #52525B;">gone quiet</span>
-        </div>
-        <p style="margin: 0; padding: 16px 0; font-size: 14px; line-height: 1.5; color: #52525B; font-style: italic; text-wrap: pretty;">Counting heads is just a way of noticing who's missing.</p>
-      </div>
-    </div>
+  <!-- ── 5 · Also on the calendar ────────────────────────────────── -->
+  <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; margin-bottom: 16px;">
+    <h2 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 24px; font-weight: 600; color: #0A0A0B; margin: 0; letter-spacing: -0.01em;">Also on the calendar</h2>
+    <span style="font-size: 14px; color: #52525B;">Not gatherings — just worth knowing.</span>
   </div>
 
-  <!-- ══ When we met — series folded into one card each ══ -->
-  <div style="margin-top: 48px;">
-    <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 16px;">
-      <h2 class="h" style="margin: 0; font-size: 24px; color: #0A0A0B;">When we met</h2>
-      <span style="font-size: 14px; color: #52525B;">Tap a gathering to see who came — and mark anyone you remember.</span>
-    </div>
+  <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 4px 22px;">
+    <sc-for list="{{ calendar }}" as="c" hint-placeholder-count="3">
+      <div style="{{ c.rowStyle }}">
+        <div style="text-align: center; width: 44px; flex-shrink: 0;">
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 21px; line-height: 1; font-weight: 600; color: #0A0A0B;">{{ c.day }}</div>
+          <div style="font-size: 10.5px; color: #A1A1AA; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">{{ c.mon }}</div>
+        </div>
+        <div style="min-width: 0; flex-grow: 1;">
+          <div style="font-size: 14.5px; font-weight: 500; color: #0A0A0B;">{{ c.name }}</div>
+          <div style="font-size: 12.5px; color: #52525B; margin-top: 3px;">{{ c.meta }}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
 
-    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px;">
-      <span style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #131316; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500;">All</span>
-      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #F0F0F2; color: #0A0A0B; font-size: 14px; font-weight: 500;">Weekly</span>
-      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #F0F0F2; color: #0A0A0B; font-size: 14px; font-weight: 500;">Small Group</span>
-      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid #F0F0F2; color: #0A0A0B; font-size: 14px; font-weight: 500;">One-off</span>
-      <span class="hov" style="height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; border: 1px dashed #E4E4E7; color: #52525B; font-size: 12px; font-weight: 500;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 7H4M20 12H4M20 17H4"/></svg>
-        Manage kinds
-      </span>
-    </div>
+</div>
 
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-      <sc-for list="{{series}}" as="s" hint-placeholder-count="2">
-        <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 24px; padding: 20px;">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: inline-flex; align-items: center; justify-content: center;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-            </span>
-            <div style="min-width: 0; flex-grow: 1;">
-              <div style="font-size: 16px; font-weight: 600; color: #0A0A0B;">{{s.name}}</div>
-              <div style="font-size: 14px; color: #52525B; margin-top: 2px;">{{s.cadence}}</div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
-              <span style="font-size: 14px; color: #52525B; white-space: nowrap;">{{s.progress}}</span>
-              <button onClick="{{s.jump}}" class="hov" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #0A0A0B; font-size: 13px; font-weight: 500; white-space: nowrap;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="12" cy="16" r="1.6" fill="currentColor" stroke="none"/></svg>
-                Jump to this week
-              </button>
-            </div>
+<!-- ── Rhythm settings drawer ────────────────────────────────────── -->
+<sc-if value="{{ drawer.open }}" hint-placeholder-val="{{ true }}">
+  <div style="position: fixed; inset: 0; background: rgba(10, 10, 11, 0.32); display: flex; justify-content: flex-end; z-index: 40;">
+    <div onClick="{{ drawer.close }}" style="flex-grow: 1;"></div>
+    <div style="width: 432px; max-width: 92%; background: #FFFFFF; border-left: 1px solid #E4E4E7; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16); padding: 28px 28px 36px; overflow-y: auto; box-sizing: border-box;">
+
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 26px;">
+        <div style="min-width: 0;">
+          <div style="font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #A1A1AA; font-weight: 500;">Rhythm settings</div>
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 20px; font-weight: 600; color: #0A0A0B; margin-top: 6px;">{{ drawer.name }}</div>
+        </div>
+        <div onClick="{{ drawer.close }}" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; border: 1px solid #E4E4E7; color: #52525B; cursor: pointer; flex-shrink: 0;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 22px;">
+        <div>
+          <div style="font-size: 12px; color: #52525B; margin-bottom: 7px; font-weight: 500;">Name</div>
+          <div style="border: 1px solid #E4E4E7; border-radius: 10px; padding: 11px 14px; font-size: 14px; color: #0A0A0B; background: #FFFFFF;">{{ drawer.name }}</div>
+          <div style="font-size: 12px; color: #A1A1AA; margin-top: 7px; line-height: 1.5;">Renaming applies to every week, past ones included.</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+          <div>
+            <div style="font-size: 12px; color: #52525B; margin-bottom: 7px; font-weight: 500;">Repeats</div>
+            <div style="border: 1px solid #E4E4E7; border-radius: 10px; padding: 11px 14px; font-size: 14px; color: #0A0A0B;">{{ drawer.cadence }}</div>
           </div>
+          <div>
+            <div style="font-size: 12px; color: #52525B; margin-bottom: 7px; font-weight: 500;">Through</div>
+            <div style="border: 1px solid #E4E4E7; border-radius: 10px; padding: 11px 14px; font-size: 14px; color: #0A0A0B;">{{ drawer.until }}</div>
+          </div>
+        </div>
 
-          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(228, 228, 231, 0.6);">
-            <sc-for list="{{s.weeks}}" as="w" hint-placeholder-count="17">
-              <button onClick="{{w.pick}}" title="{{w.title}}" style="width: 54px; padding: 6px 0 7px; border-radius: 10px; border: {{w.border}}; background: {{w.bg}}; color: {{w.fg}}; box-shadow: {{w.ring}}; text-align: center;">
-                <span style="display: block; font-size: 10px; letter-spacing: 0.06em; opacity: 0.7;">{{w.mon}}</span>
-                <span class="h" style="display: block; font-size: 15px; line-height: 1.3;">{{w.day}}</span>
-              </button>
+        <div>
+          <div style="font-size: 12px; color: #52525B; margin-bottom: 7px; font-weight: 500;">Usually meets at</div>
+          <div style="border: 1px solid #E4E4E7; border-radius: 10px; padding: 11px 14px; font-size: 14px; color: #0A0A0B;">{{ drawer.location }}</div>
+          <div style="font-size: 12px; color: #A1A1AA; margin-top: 7px; line-height: 1.5;">Weeks you already moved keep where they actually met.</div>
+        </div>
+
+        <div style="height: 1px; background: #F0F0F2;"></div>
+
+        <div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px;">
+            <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 14px; font-weight: 600; color: #0A0A0B;">Who usually comes</div>
+            <div style="font-size: 12.5px; color: #52525B;">{{ drawer.rosterCount }}</div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <sc-for list="{{ drawer.roster }}" as="p" hint-placeholder-count="10">
+              <span style="display: inline-flex; align-items: center; gap: 7px; padding: 6px 8px 6px 12px; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #0A0A0B; font-size: 12.5px;">
+                {{ p.name }}
+                <span onClick="{{ p.remove }}" title="Remove from the roster" style="display: inline-flex; cursor: pointer;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </span>
+              </span>
             </sc-for>
           </div>
 
-          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 12px; font-size: 11px; color: #52525B;">
-            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; background: #131316; display: inline-block;"></i> Marked</span>
-            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; background: #FFFFFF; border: 2px solid #0A0A0B; display: inline-block;"></i> This week</span>
-            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; background: #FFFFFF; border: 1px solid #E4E4E7; display: inline-block;"></i> Happened, not marked</span>
-            <span style="display: inline-flex; align-items: center; gap: 6px;"><i style="width: 10px; height: 10px; border-radius: 3px; border: 1px solid #F0F0F2; display: inline-block;"></i> Still ahead</span>
+          <div style="position: relative; margin-top: 12px;">
+            <div style="display: flex; align-items: center; gap: 9px; border: 1px solid #E4E4E7; border-radius: 10px; padding: 10px 13px; background: #FFFFFF;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round" style="flex-shrink: 0;"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="text" value="{{ search.value }}" onChange="{{ search.onInput }}" onInput="{{ search.onInput }}" placeholder="Add someone — search every contact" style="border: none; outline: none; flex-grow: 1; font-family: inherit; font-size: 13.5px; color: #0A0A0B; background: transparent; min-width: 0;">
+            </div>
+
+            <sc-if value="{{ search.open }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top: 7px; border: 1px solid #E4E4E7; border-radius: 14px; background: #FFFFFF; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16); overflow: hidden;">
+                <sc-for list="{{ search.results }}" as="m" hint-placeholder-count="3">
+                  <div onClick="{{ m.add }}" style="{{ m.rowStyle }}">
+                    <div style="width: 30px; height: 30px; border-radius: 999px; background: rgba(10, 10, 11, 0.06); color: #52525B; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 600; flex-shrink: 0;">{{ m.initials }}</div>
+                    <div style="min-width: 0; flex-grow: 1;">
+                      <div style="font-size: 13.5px; color: #0A0A0B;">{{ m.name }}</div>
+                      <div style="font-size: 12px; color: #A1A1AA; margin-top: 1px;">{{ m.note }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ search.showCreate }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ search.create }}" style="display: flex; align-items: center; gap: 11px; padding: 11px 14px; border-top: 1px solid #F0F0F2; cursor: pointer;">
+                    <div style="width: 30px; height: 30px; border-radius: 999px; border: 1px dashed #E4E4E7; color: #52525B; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    </div>
+                    <div style="min-width: 0;">
+                      <div style="font-size: 13.5px; color: #0A0A0B;">{{ search.createLabel }}</div>
+                      <div style="font-size: 12px; color: #A1A1AA; margin-top: 1px;">New contact — just a name for now</div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 16px; margin-top: 12px; padding: 14px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid rgba(228, 228, 231, 0.7);">
-            <div style="width: 44px; flex-shrink: 0; text-align: center;">
-              <div class="h" style="font-size: 22px; line-height: 1; color: #0A0A0B;">{{s.sel.day}}</div>
-              <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em; margin-top: 2px;">{{s.sel.mon}}</div>
-            </div>
-            <div style="min-width: 0; flex-grow: 1;">
-              <div style="font-size: 14px; font-weight: 600; color: #0A0A0B;">{{s.sel.label}}</div>
-              <div style="font-size: 13px; color: #52525B; margin-top: 2px;">{{s.sel.detail}}</div>
-            </div>
-            <span class="hov" style="display: inline-flex; padding: 8px 14px; border-radius: 999px; border: 1px solid #E4E4E7; font-size: 13px; font-weight: 500; color: #0A0A0B; white-space: nowrap;">{{s.sel.action}}</span>
-          </div>
+          <div style="font-size: 12px; color: #A1A1AA; margin-top: 10px; line-height: 1.5;">Changes reach every week from here on. Weeks already gone keep the roster they had.</div>
         </div>
-      </sc-for>
 
-      <div style="background: #F4F4F5; border: 1px solid rgba(240, 240, 242, 0.6); border-radius: 16px; display: flex; align-items: center; gap: 16px; padding: 20px;">
-        <div style="width: 48px; flex-shrink: 0; text-align: center;">
-          <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">SAT</div>
-          <div class="h" style="font-size: 24px; line-height: 1; color: #0A0A0B;">29</div>
-          <div style="font-size: 11px; color: #52525B; letter-spacing: 0.04em;">AUG</div>
+        <div style="height: 1px; background: #F0F0F2;"></div>
+
+        <div>
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 14px; font-weight: 600; color: #0A0A0B; margin-bottom: 10px;">Weeks we didn&#39;t meet</div>
+          <sc-for list="{{ drawer.cancelled }}" as="w" hint-placeholder-count="1">
+            <div style="display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid #F0F0F2;">
+              <div style="min-width: 0; flex-grow: 1;">
+                <div style="font-size: 13.5px; color: #0A0A0B;">{{ w.date }}</div>
+                <div style="font-size: 12px; color: #A1A1AA; margin-top: 2px;">{{ w.note }}</div>
+              </div>
+              <span style="font-size: 12.5px; color: #52525B; cursor: pointer; white-space: nowrap;">Undo</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ drawer.noneCancelled }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size: 13px; color: #A1A1AA; padding: 4px 0;">Every week so far went ahead.</div>
+          </sc-if>
         </div>
-        <div style="min-width: 0; flex-grow: 1;">
-          <div style="font-size: 16px; font-weight: 600; color: #0A0A0B;">Welcome BBQ</div>
-          <div style="font-size: 14px; color: #52525B; margin-top: 2px;">One-off · Riverside Park</div>
+
+        <div style="height: 1px; background: #F0F0F2;"></div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="display: inline-flex; align-items: center; gap: 7px; padding: 10px 17px; border-radius: 999px; background: #131316; color: #FFFFFF; font-size: 13px; font-weight: 500; cursor: pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Extend the term
+          </div>
+          <div style="font-size: 12.5px; color: #A1A1AA;">Adds weeks past {{ drawer.until }}.</div>
         </div>
-        <div style="font-size: 14px; color: #52525B; white-space: nowrap;"><b style="color: #0A0A0B; font-weight: 600;">34</b> came</div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </div>
     </div>
-
-    <p style="margin: 20px 0 0; font-size: 13px; color: #A1A1AA; font-style: italic;">A recurring series is one row now, not seventeen — “Coming up” and “Also on the calendar” continue below, unchanged.</p>
   </div>
+</sc-if>
 
-</div>
+<!-- ── Create: two acts ──────────────────────────────────────────── -->
+<sc-if value="{{ create.open }}" hint-placeholder-val="{{ true }}">
+  <div style="position: fixed; inset: 0; background: rgba(10, 10, 11, 0.32); display: flex; align-items: flex-start; justify-content: center; padding-top: 128px; z-index: 50;">
+    <div onClick="{{ create.close }}" style="position: absolute; inset: 0;"></div>
+    <div style="position: relative; width: 620px; max-width: 92%; background: #FFFFFF; border-radius: 24px; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.16); padding: 30px; box-sizing: border-box;">
+      <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 20px; font-weight: 600; color: #0A0A0B;">What are you adding?</div>
+      <div style="font-size: 14px; color: #52525B; margin-top: 8px;">One is a schedule you keep. The other happened once.</div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 22px;">
+        <div style="border: 1px solid #E4E4E7; border-radius: 14px; padding: 20px; cursor: pointer;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3.1-6.8"/><path d="M21 3v5h-5"/></svg>
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 15px; font-weight: 600; color: #0A0A0B; margin-top: 14px;">Start a Rhythm</div>
+          <div style="font-size: 13px; color: #52525B; margin-top: 7px; line-height: 1.55;">Something you run every week. Set the day, where it meets, and who usually comes — once.</div>
+        </div>
+        <div style="border: 1px solid #E4E4E7; border-radius: 14px; padding: 20px; cursor: pointer;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 15px; font-weight: 600; color: #0A0A0B; margin-top: 14px;">Log a gathering</div>
+          <div style="font-size: 13px; color: #52525B; margin-top: 7px; line-height: 1.55;">A barbecue, a retreat, a one-off night. Name it, date it, mark who came.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
 </div>
 </x-dc>
 
-<script data-dc-script data-props='{"$preview":{"width":1440,"height":2160}}'>
+<script data-dc-script data-props='{"$preview":{"width":1280,"height":2080}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { week: 0, openRow: 'w0-fri', marks: {}, pick: { fri: 2, tue: 2 } };
-  }
-
-  roster() {
-    return [
-      { id: 'grace', name: 'Grace Lim', initials: 'GL' },
-      { id: 'daniel', name: 'Daniel Ortiz', initials: 'DO' },
-      { id: 'priya', name: 'Priya Raman', initials: 'PR' },
-      { id: 'hannah', name: 'Hannah Cho', initials: 'HC' },
-      { id: 'tobi', name: 'Tobi Adeyemi', initials: 'TA' },
-      { id: 'marcus', name: 'Marcus Webb', initials: 'MW' },
-      { id: 'ana', name: 'Ana Duarte', initials: 'AD' },
-      { id: 'elena', name: 'Elena Novak', initials: 'EN' },
-      { id: 'sam', name: 'Sam Whitfield', initials: 'SW' },
-      { id: 'kai', name: 'Kai Nakamura', initials: 'KN' }
-    ];
-  }
-
-  weeksData() {
-    return [
-      {
-        heading: 'Last week', range: 'Mon Aug 24 – Sun Aug 30',
-        rows: [
-          { id: 'wm1-tue', dow: 'TUE', day: '25', mon: 'AUG', name: 'Tuesday Small Group', meta: 'Small Group · 7:00pm · Kettle House', state: 'marked', seeded: true },
-          { id: 'wm1-fri', dow: 'FRI', day: '28', mon: 'AUG', name: 'Friday Night Gathering', meta: 'Weekly · 7:00pm · Bethel Hall', state: 'marked', seeded: true }
-        ]
+    const all = this.everyone();
+    this.state = {
+      open: 'wed',
+      sel: { wed: 'wed-2026-09-09', thuBs: 'thuBs-2026-09-10', cm: 'cm-2026-09-10' },
+      cancelled: { 'thuBs-2026-11-26': true },
+      drawer: null,
+      create: false,
+      query: '',
+      rosters: {
+        wed: all.slice(0, 18),
+        thuBs: all.slice(2, 13),
+        cm: all.slice(0, 24),
       },
-      {
-        heading: 'This week', range: 'Mon Aug 31 – Sun Sep 6',
-        rows: [
-          { id: 'w0-tue', dow: 'TUE', day: '1', mon: 'SEP', name: 'Tuesday Small Group', meta: 'Small Group · 7:00pm · Kettle House', state: 'marked', seeded: true },
-          { id: 'w0-fri', dow: 'FRI', day: '4', mon: 'SEP', name: 'Friday Night Gathering', meta: 'Weekly · 7:00pm · Bethel Hall', state: 'todo', seeded: false }
-        ]
-      },
-      {
-        heading: 'Next week', range: 'Mon Sep 7 – Sun Sep 13',
-        rows: [
-          { id: 'wp1-tue', dow: 'TUE', day: '8', mon: 'SEP', name: 'Tuesday Small Group', meta: 'Small Group · 7:00pm · Kettle House', state: 'ahead', seeded: false },
-          { id: 'wp1-fri', dow: 'FRI', day: '11', mon: 'SEP', name: 'Friday Night Gathering', meta: 'Weekly · 7:00pm · Bethel Hall', state: 'ahead', seeded: false }
-        ]
-      }
-    ];
-  }
-
-  isHere(row, personId) {
-    const key = row.id + '|' + personId;
-    const marks = this.state.marks;
-    if (Object.prototype.hasOwnProperty.call(marks, key)) return marks[key];
-    if (!row.seeded) return false;
-    return personId !== 'elena' && personId !== 'sam' && personId !== 'kai';
-  }
-
-  toggleMark(row, personId) {
-    const key = row.id + '|' + personId;
-    const next = Object.assign({}, this.state.marks);
-    next[key] = !this.isHere(row, personId);
-    this.setState({ marks: next });
-  }
-
-  buildRow(row, index) {
-    const here = [];
-    const missed = [];
-    this.roster().forEach((p) => {
-      const entry = {
-        id: p.id, name: p.name, initials: p.initials,
-        toggle: () => this.toggleMark(row, p.id)
-      };
-      if (this.isHere(row, p.id)) here.push(entry); else missed.push(entry);
-    });
-
-    const isOpen = this.state.openRow === row.id;
-    const ahead = row.state === 'ahead';
-    let statusText = here.length + ' here · ' + missed.length + ' missed';
-    if (ahead) statusText = '10 on the roster · 6 going';
-    if (row.state === 'todo' && here.length === 0) statusText = 'Not marked yet';
-
-    return {
-      id: row.id, dow: row.dow, day: row.day, mon: row.mon, name: row.name, meta: row.meta,
-      dayColor: row.state === 'ahead' ? '#A1A1AA' : '#0A0A0B',
-      divider: index === 0 ? 'none' : '1px solid rgba(228, 228, 231, 0.7)',
-      statusText: statusText,
-      statusColor: ahead ? '#A1A1AA' : '#52525B',
-      isTodo: row.state === 'todo' && here.length === 0,
-      isAhead: ahead,
-      canOpen: !ahead,
-      isOpen: isOpen && !ahead,
-      caret: isOpen && !ahead ? 180 : 0,
-      here: here, missed: missed,
-      hereCount: here.length, missCount: missed.length,
-      noneHere: here.length === 0, noneMissed: missed.length === 0,
-      toggle: () => { if (!ahead) this.setState({ openRow: isOpen ? null : row.id }); }
     };
   }
 
-  seriesData() {
-    return [
-      {
-        key: 'fri', name: 'Friday Night Gathering', cadence: 'Every Friday · 7:00pm · Bethel Hall · Aug 21 – Dec 11',
-        current: 2,
-        dates: [
-          ['AUG', '21', 'marked'], ['AUG', '28', 'marked'], ['SEP', '4', 'now'], ['SEP', '11', 'ahead'],
-          ['SEP', '18', 'ahead'], ['SEP', '25', 'ahead'], ['OCT', '2', 'ahead'], ['OCT', '9', 'ahead'],
-          ['OCT', '16', 'ahead'], ['OCT', '23', 'ahead'], ['OCT', '30', 'ahead'], ['NOV', '6', 'ahead'],
-          ['NOV', '13', 'ahead'], ['NOV', '20', 'ahead'], ['NOV', '27', 'ahead'], ['DEC', '4', 'ahead'],
-          ['DEC', '11', 'ahead']
-        ]
-      },
-      {
-        key: 'tue', name: 'Tuesday Small Group', cadence: 'Every Tuesday · 7:00pm · Kettle House · Aug 25 – Dec 8',
-        current: 2,
-        dates: [
-          ['AUG', '25', 'marked'], ['SEP', '1', 'marked'], ['SEP', '8', 'ahead'], ['SEP', '15', 'ahead'],
-          ['SEP', '22', 'ahead'], ['SEP', '29', 'ahead'], ['OCT', '6', 'ahead'], ['OCT', '13', 'ahead'],
-          ['OCT', '20', 'ahead'], ['OCT', '27', 'ahead'], ['NOV', '3', 'ahead'], ['NOV', '10', 'ahead'],
-          ['NOV', '17', 'ahead'], ['NOV', '24', 'ahead'], ['DEC', '1', 'ahead'], ['DEC', '8', 'ahead']
-        ]
-      }
-    ];
+  // The contact directory the roster search reaches across.
+  everyone() {
+    return ['Amara Osei', 'Julian Reyes', 'Grace Lim', 'Daniel Cho', 'Priya Nair',
+            'Tomás Herrera', 'Hannah Lund', 'Wei Zhang', 'Noor Haddad', 'Eli Brandt',
+            'Sofia Márquez', 'Kenji Watanabe', 'Ruth Abebe', 'Marcus Bell',
+            'Lena Fischer', 'Ivan Petrov', 'Chloe Tan', 'Samuel Okafor',
+            'Adaeze Nwosu', 'Farid Rahimi', 'Beatriz Alves', 'Omar Siddiqui',
+            'Mirela Kovač', 'Jonah Whitfield', 'Yuki Nakamura', 'Thandiwe Dube',
+            'Caleb Ortiz', 'Ingrid Solheim', 'Rashid Al-Amin', 'Dara O’Connell'];
   }
 
-  chipStyle(kind, selected) {
-    let s;
-    if (kind === 'marked') s = { bg: '#131316', fg: '#FFFFFF', border: '1px solid #131316' };
-    else if (kind === 'now') s = { bg: '#FFFFFF', fg: '#0A0A0B', border: '2px solid #0A0A0B' };
-    else if (kind === 'past') s = { bg: '#FFFFFF', fg: '#52525B', border: '1px solid #E4E4E7' };
-    else s = { bg: 'transparent', fg: '#A1A1AA', border: '1px solid #F0F0F2' };
-    s.ring = selected ? '0 0 0 2px #F4F4F5, 0 0 0 4px rgba(10, 10, 11, 0.35)' : 'none';
-    return s;
+  roster(key) {
+    return (this.state.rosters && this.state.rosters[key]) || [];
   }
 
-  buildSeries(def) {
-    const picked = this.state.pick[def.key];
-    const weeks = def.dates.map((d, i) => {
-      const style = this.chipStyle(d[2], i === picked);
+  initials(name) {
+    const p = name.split(' ').filter(Boolean);
+    return ((p[0] || '').charAt(0) + (p[1] || '').charAt(0)).toUpperCase();
+  }
+
+  MONTHS() { return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; }
+  DAYNAMES() { return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; }
+
+  // Term dates for a weekday, as ISO strings.
+  dates(startIso, count) {
+    const out = [];
+    const d = new Date(startIso + 'T00:00:00');
+    for (let i = 0; i < count; i++) {
+      const x = new Date(d.getTime());
+      x.setDate(d.getDate() + i * 7);
+      out.push(x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'));
+    }
+    return out;
+  }
+
+  label(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return { day: String(d.getDate()), mon: this.MONTHS()[d.getMonth()], weekday: this.DAYNAMES()[d.getDay()], full: this.DAYNAMES()[d.getDay()] + ' ' + d.getDate() + ' ' + this.MONTHS()[d.getMonth()] };
+  }
+
+  // now = Thu 10 Sep 2026; current week runs Mon 7 – Sun 13 Sep.
+  chipState(iso, prefix) {
+    if (this.state.cancelled[prefix + '-' + iso]) return 'cancelled';
+    if (iso >= '2026-09-07' && iso <= '2026-09-13') return 'current';
+    if (iso > '2026-09-13') return 'ahead';
+    return this.takenFor(prefix, iso) ? 'taken' : 'nottaken';
+  }
+
+  takenFor(prefix, iso) {
+    // One deliberate gap: Wednesday 2 Sep was never marked.
+    if (prefix === 'wed' && iso === '2026-09-02') return false;
+    if (iso > '2026-09-13') return false;
+    if (iso >= '2026-09-07' && prefix !== 'wed') return false;
+    return true;
+  }
+
+  chipStyle(state, selected) {
+    const base = 'display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; width: 42px; padding: 7px 0 6px; border-radius: 12px; cursor: pointer; box-sizing: border-box; transition: transform 120ms ease;';
+    const ring = selected ? ' outline: 2px solid #131316; outline-offset: 2px;' : '';
+    if (state === 'taken')    return base + ring + ' background: #131316; color: #FFFFFF; border: 1px solid #131316;';
+    if (state === 'nottaken') return base + ring + ' background: #FFFFFF; color: #52525B; border: 1px solid #E4E4E7;';
+    if (state === 'current')  return base + ring + ' background: rgba(10, 10, 11, 0.06); color: #0A0A0B; border: 1px solid #131316; font-weight: 600;';
+    if (state === 'cancelled')return base + ring + ' background: #FFFFFF; color: #A1A1AA; border: 1px dashed #E4E4E7; text-decoration: line-through;';
+    return base + ring + ' background: #FFFFFF; color: rgba(82, 82, 91, 0.55); border: 1px dashed #E4E4E7;';
+  }
+
+  present(prefix, iso, expected) {
+    // The weeks quoted elsewhere on the page are pinned so the band, the row
+    // and the anatomy sheet cannot disagree about the same gathering.
+    const pinned = { 'wed-2026-09-09': 15, 'wed-2026-08-26': 14 };
+    if (pinned[prefix + '-' + iso] != null) return pinned[prefix + '-' + iso];
+    let h = 0;
+    for (let i = 0; i < iso.length; i++) h = (h * 31 + iso.charCodeAt(i)) % 997;
+    for (let i = 0; i < prefix.length; i++) h = (h * 17 + prefix.charCodeAt(i)) % 997;
+    return expected - (h % 5);
+  }
+
+  buildRhythm(cfg) {
+    const isos = this.dates(cfg.start, 16);
+    const selIso = this.state.sel[cfg.key];
+    const chips = isos.map((iso) => {
+      const id = cfg.key + '-' + iso;
+      const st = this.chipState(iso, cfg.key);
+      const lb = this.label(iso);
+      const note = st === 'taken' ? ' · marked by Tony' : st === 'nottaken' ? ' · nobody has recorded this one' : st === 'cancelled' ? ' · we didn’t meet' : '';
       return {
-        mon: d[0], day: d[1], title: d[0] + ' ' + d[1],
-        bg: style.bg, fg: style.fg, border: style.border, ring: style.ring,
-        pick: () => {
-          const next = Object.assign({}, this.state.pick);
-          next[def.key] = i;
-          this.setState({ pick: next });
-        }
+        id: id, day: lb.day, mon: lb.mon,
+        title: lb.full + note,
+        style: this.chipStyle(st, id === selIso),
+        pick: () => { const s = Object.assign({}, this.state.sel); s[cfg.key] = id; this.setState({ sel: s, open: cfg.key }); },
       };
     });
 
-    const d = def.dates[picked];
-    const kind = d[2];
-    let label = 'Marked · 18 here, 3 missed';
-    let action = 'Open';
-    let detail = def.name;
-    if (kind === 'now') { label = 'This week — not marked yet'; action = 'Take attendance'; }
-    if (kind === 'ahead') { label = 'Still ahead'; action = "See who's coming"; }
-    if (kind === 'past') { label = 'Happened — nobody marked'; action = 'Take attendance'; }
-    if (picked === def.current) detail = def.name + ' · this week';
+    const selLb = this.label(selIso.slice(cfg.key.length + 1));
+    const selDate = selIso.slice(cfg.key.length + 1);
+    const selState = this.chipState(selDate, cfg.key);
+    const people = this.roster(cfg.key);
+    const expected = people.length;
+    const hereN = selState === 'taken' || (selState === 'current' && this.takenFor(cfg.key, selDate)) ? Math.min(expected, this.present(cfg.key, selDate, expected)) : 0;
+    const isCancelled = selState === 'cancelled';
+    const untaken = selState === 'nottaken' || (selState === 'current' && hereN === 0) || selState === 'ahead';
 
-    const markedCount = def.dates.filter((x) => x[2] === 'marked').length;
+    const provenance = isCancelled ? 'Cancelled — nobody is counted absent.'
+      : untaken ? (selState === 'ahead' ? 'Still ahead — nothing to record yet.' : 'Nobody has recorded this one yet.')
+      : 'Attendance taken by Tony Wang · ' + selLb.full;
+
+    const onCurrent = selDate >= '2026-09-07' && selDate <= '2026-09-13';
 
     return {
-      name: def.name, cadence: def.cadence,
-      progress: markedCount + ' of ' + def.dates.length + ' marked',
-      weeks: weeks,
-      sel: { day: d[1], mon: d[0], label: label, detail: detail, action: action },
-      jump: () => {
-        const next = Object.assign({}, this.state.pick);
-        next[def.key] = def.current;
-        this.setState({ pick: next });
-      }
+      id: cfg.key,
+      name: cfg.name,
+      meta: cfg.cadence + ' · ' + cfg.location,
+      summaryCount: hereN > 0 ? hereN + ' / ' + expected + ' came' : expected + ' expected',
+      open: this.state.open === cfg.key,
+      chevronStyle: this.state.open === cfg.key ? 'transform: rotate(180deg)' : 'transform: none',
+      chips: chips,
+      toggle: () => this.setState({ open: this.state.open === cfg.key ? null : cfg.key }),
+      openDrawer: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ drawer: cfg.key, open: cfg.key }); },
+      today: () => { const s = Object.assign({}, this.state.sel); s[cfg.key] = cfg.key + '-' + cfg.current; this.setState({ sel: s, open: cfg.key }); },
+      todayStyle: 'display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500; cursor: pointer; ' +
+        (onCurrent ? 'background: #FFFFFF; border: 1px solid #E4E4E7; color: #A1A1AA;' : 'background: #131316; border: 1px solid #131316; color: #FFFFFF;'),
+      sel: {
+        heading: selLb.full,
+        provenance: provenance,
+        cancelled: isCancelled,
+        showRoster: !isCancelled && !untaken,
+        showTake: !isCancelled && untaken && selState !== 'ahead',
+        cancelLabel: isCancelled ? 'We did meet after all' : 'We didn’t meet',
+        cancelStyle: 'display: inline-flex; align-items: center; padding: 9px 16px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #52525B; font-size: 13px; font-weight: 500; cursor: pointer;',
+        toggleCancel: () => {
+          const c = Object.assign({}, this.state.cancelled);
+          if (c[selIso]) { delete c[selIso]; } else { c[selIso] = true; }
+          this.setState({ cancelled: c });
+        },
+        hereCount: String(hereN),
+        missedCount: String(Math.max(0, expected - hereN)),
+        here: people.slice(0, hereN).map((n) => ({ name: n })),
+        missed: people.slice(hereN).map((n) => ({ name: n })),
+      },
     };
   }
 
   renderVals() {
-    const weeks = this.weeksData();
-    const idx = this.state.week + 1;
-    const w = weeks[idx];
-    const atToday = this.state.week === 0;
+    const rhythms = [
+      this.buildRhythm({ key: 'wed', name: 'Wednesday Bible Study', cadence: 'Wednesdays', location: 'Whitman Lounge', start: '2026-08-26', current: '2026-09-09', expected: 18 }),
+      this.buildRhythm({ key: 'thuBs', name: 'Thursday Bible Study', cadence: 'Thursdays', location: 'Briarcliff Common', start: '2026-08-27', current: '2026-09-10', expected: 11 }),
+      this.buildRhythm({ key: 'cm', name: 'College Meeting', cadence: 'Thursdays', location: 'Lower Common Room', start: '2026-08-27', current: '2026-09-10', expected: 24 }),
+    ];
+
+    const ctaBase = 'display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: 999px; white-space: nowrap; font-size: 13px; font-weight: 500; cursor: pointer; flex-shrink: 0;';
+    const ctaTake = ctaBase + ' background: #131316; color: #FFFFFF; border: 1px solid #131316;';
+    const ctaDone = ctaBase + ' background: #FFFFFF; color: #52525B; border: 1px solid #E4E4E7;';
+
+    const wedRoster = this.roster('wed');
+    const wedHere = Math.min(wedRoster.length, this.present('wed', '2026-09-09', wedRoster.length));
+
+    const weekGroups = [
+      {
+        weekday: 'Wednesday', dateLabel: '9 September', tail: 'yesterday',
+        items: [{ name: 'Wednesday Bible Study', meta: 'Whitman Lounge · 7:00 PM', count: wedHere + ' / ' + wedRoster.length + ' came', cta: 'Review', ctaStyle: ctaDone }],
+      },
+      {
+        weekday: 'Thursday', dateLabel: '10 September', tail: 'today',
+        items: [
+          { name: 'Thursday Bible Study', meta: 'Briarcliff Common · 7:00 PM', count: this.roster('thuBs').length + ' expected', cta: 'Take attendance', ctaStyle: ctaTake },
+          { name: 'College Meeting', meta: 'Lower Common Room · 8:30 PM', count: this.roster('cm').length + ' expected', cta: 'Take attendance', ctaStyle: ctaTake },
+        ],
+      },
+    ];
+
+    const rowBase = 'display: flex; align-items: center; gap: 16px; padding: 15px 0;';
+    const oneOffSrc = [
+      { day: '30', mon: 'Aug', name: 'Welcome BBQ', meta: 'Riverside Park', count: '41 came', faint: false },
+      { day: '22', mon: 'Aug', name: 'Move-in help', meta: 'North Quad', count: '12 came', faint: false },
+      { day: '17', mon: 'Oct', name: 'Fall retreat', meta: 'Camp Lindenwood · still ahead', count: '—', faint: true },
+    ];
+    const oneOffs = oneOffSrc.map((o, i) => Object.assign({}, o, {
+      rowStyle: rowBase + (i > 0 ? ' border-top: 1px solid #F0F0F2;' : '') + (o.faint ? ' opacity: 0.5;' : ''),
+    }));
+
+    const missed = [
+      { initials: 'RA', name: 'Ruth Abebe', last: 'Last here 20 August', streak: '4 missed' },
+      { initials: 'IP', name: 'Ivan Petrov', last: 'Last here 27 August', streak: '3 missed' },
+      { initials: 'CT', name: 'Chloe Tan', last: 'Last here 27 August', streak: '3 missed' },
+      { initials: 'SO', name: 'Samuel Okafor', last: 'Last here 3 September', streak: '3 missed' },
+    ];
+
+    const figSrc = [
+      { value: '53', label: 'people we have seen this term' },
+      { value: '4', label: 'we have missed three times or more' },
+      { value: '86%', label: 'of expected seats filled last week' },
+    ];
+    const figures = figSrc.map((f, i) => Object.assign({}, f, {
+      rowStyle: 'padding: 20px 0;' + (i > 0 ? ' border-top: 1px solid #F0F0F2;' : ''),
+    }));
+
+    const calSrc = [
+      { day: '14', mon: 'Sep', name: 'Staff planning morning', meta: '9:00 AM · Meeting' },
+      { day: '19', mon: 'Sep', name: 'Campus club fair', meta: 'All day · Social' },
+      { day: '25', mon: 'Sep', name: 'Grant report due', meta: 'All day · Deadline' },
+    ];
+    const calendar = calSrc.map((c, i) => Object.assign({}, c, {
+      rowStyle: rowBase + (i > 0 ? ' border-top: 1px solid #F0F0F2;' : ''),
+    }));
+
+    const dk = this.state.drawer;
+    const dcfg = { wed: { name: 'Wednesday Bible Study', cadence: 'Every Wednesday', until: '9 Dec 2026', location: 'Whitman Lounge', expected: 18 },
+                   thuBs: { name: 'Thursday Bible Study', cadence: 'Every Thursday', until: '10 Dec 2026', location: 'Briarcliff Common', expected: 11 },
+                   cm: { name: 'College Meeting', cadence: 'Every Thursday', until: '10 Dec 2026', location: 'Lower Common Room', expected: 24 } };
+    const d = dk ? dcfg[dk] : null;
+    const live = dk ? this.roster(dk) : [];
+
+    const addTo = (name) => {
+      if (!dk) return;
+      const rs = Object.assign({}, this.state.rosters);
+      if (rs[dk].indexOf(name) === -1) rs[dk] = rs[dk].concat([name]);
+      this.setState({ rosters: rs, query: '' });
+    };
+    const removeFrom = (name) => {
+      if (!dk) return;
+      const rs = Object.assign({}, this.state.rosters);
+      rs[dk] = rs[dk].filter((n) => n !== name);
+      this.setState({ rosters: rs });
+    };
+
+    const q = (this.state.query || '').trim();
+    const ql = q.toLowerCase();
+    const matches = q
+      ? this.everyone()
+          .filter((n) => n.toLowerCase().indexOf(ql) !== -1 && live.indexOf(n) === -1)
+          .slice(0, 5)
+      : [];
+    const exact = this.everyone().some((n) => n.toLowerCase() === ql);
+    const cancelledWeeks = [];
+    if (dk) {
+      Object.keys(this.state.cancelled).forEach((k) => {
+        if (k.indexOf(dk + '-') === 0) {
+          const lb = this.label(k.slice(dk.length + 1));
+          cancelledWeeks.push({ date: lb.full, note: 'Marked by Tony Wang' });
+        }
+      });
+    }
 
     return {
-      week: {
-        heading: w.heading,
-        range: w.range,
-        rows: w.rows.map((r, i) => this.buildRow(r, i)),
-        prev: () => this.setState({ week: Math.max(-1, this.state.week - 1) }),
-        next: () => this.setState({ week: Math.min(1, this.state.week + 1) }),
-        today: () => this.setState({ week: 0 }),
-        todayBg: atToday ? '#131316' : 'transparent',
-        todayFg: atToday ? '#FFFFFF' : '#0A0A0B',
-        todayBorder: atToday ? '#131316' : '#F0F0F2'
+      weekGroups: weekGroups,
+      rhythms: rhythms,
+      oneOffs: oneOffs,
+      missed: missed,
+      figures: figures,
+      calendar: calendar,
+      openCreate: () => this.setState({ create: true }),
+      create: { open: !!this.state.create, close: () => this.setState({ create: false }) },
+      drawer: {
+        open: !!dk,
+        name: d ? d.name : '',
+        cadence: d ? d.cadence : '',
+        until: d ? d.until : '',
+        location: d ? d.location : '',
+        rosterCount: live.length + ' people',
+        roster: live.map((n) => ({ name: n, remove: () => removeFrom(n) })),
+        cancelled: cancelledWeeks,
+        noneCancelled: cancelledWeeks.length === 0,
+        close: () => this.setState({ drawer: null, query: '' }),
       },
-      series: this.seriesData().map((s) => this.buildSeries(s))
+      search: {
+        value: this.state.query || '',
+        onInput: (e) => this.setState({ query: e.target.value }),
+        open: q.length > 0,
+        results: matches.map((n) => ({
+          name: n,
+          initials: this.initials(n),
+          note: 'In the directory',
+          add: () => addTo(n),
+          rowStyle: 'display: flex; align-items: center; gap: 11px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #F0F0F2;',
+        })),
+        showCreate: q.length > 1 && !exact,
+        createLabel: 'Add “' + q + '”',
+        create: () => addTo(q),
+      },
     };
   }
 }
