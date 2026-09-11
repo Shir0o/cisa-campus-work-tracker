@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+  </style>
+</helmet>
+
+<div style="background: #FFFFFF; min-height: 100%; padding: 40px 44px 48px; box-sizing: border-box;">
+
+  <div style="font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #B1000F; font-weight: 500;">What ships today</div>
+  <h1 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 27px; font-weight: 600; color: #0A0A0B; margin: 8px 0 0; letter-spacing: -0.02em;">The same term, as the page actually renders it</h1>
+  <p style="font-size: 14px; line-height: 1.6; color: #52525B; margin: 10px 0 30px; max-width: 640px;">The Rhythm fold was built and merged, but nothing ever writes the field it groups on. Against real data every occurrence falls through to the one-off list, and everything still ahead is filtered out of the page entirely.</p>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 34px;">
+    <sc-for list="{{ faults }}" as="f" hint-placeholder-count="4">
+      <div style="border: 1px solid #E4E4E7; border-radius: 14px; padding: 17px 19px; background: #FFFFFF;">
+        <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13.5px; font-weight: 600; color: #0A0A0B;">{{ f.title }}</div>
+        <div style="font-size: 12.5px; line-height: 1.6; color: #52525B; margin-top: 6px;">{{ f.body }}</div>
+        <div style="font-size: 11.5px; color: #A1A1AA; margin-top: 9px; font-family: ui-monospace, Menlo, monospace;">{{ f.where }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- kind pills that narrow nothing -->
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 18px;">
+    <sc-for list="{{ pills }}" as="p" hint-placeholder-count="5">
+      <span style="{{ p.style }}">{{ p.label }}</span>
+    </sc-for>
+    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; color: #52525B; font-size: 12.5px; margin-left: 6px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.9 2.9M16.9 16.9l2.9 2.9M1 12h4M19 12h4M4.2 19.8l2.9-2.9M16.9 7.1l2.9-2.9"/></svg>
+      Manage kinds
+    </span>
+  </div>
+
+  <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 4px 22px; position: relative;">
+    <div style="font-size: 12px; color: #A1A1AA; padding: 14px 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500;">When we met</div>
+    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+      <div style="display: flex; align-items: center; gap: 16px; padding: 13px 0; border-top: 1px solid #F0F0F2;">
+        <div style="text-align: center; width: 42px; flex-shrink: 0;">
+          <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 19px; line-height: 1; font-weight: 600; color: #0A0A0B;">{{ r.day }}</div>
+          <div style="font-size: 10px; color: #A1A1AA; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em;">{{ r.mon }}</div>
+        </div>
+        <div style="min-width: 0; flex-grow: 1;">
+          <div style="font-size: 14px; font-weight: 500; color: #0A0A0B;">{{ r.name }}</div>
+          <div style="font-size: 12.5px; color: #52525B; margin-top: 2px;">{{ r.kind }}</div>
+        </div>
+        <div style="font-size: 12.5px; color: #52525B; white-space: nowrap;">{{ r.count }}</div>
+      </div>
+    </sc-for>
+    <div style="padding: 16px 0 18px; border-top: 1px solid #F0F0F2; text-align: center; font-size: 12.5px; color: #A1A1AA;">That is the entire list. Three names, nine rows, no grouping — and the term has barely started.</div>
+  </div>
+
+  <div style="margin-top: 20px; display: flex; align-items: flex-start; gap: 13px; border: 1px dashed #E4E4E7; border-radius: 14px; padding: 17px 19px; background: #FFFFFF;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BA5900" stroke-width="1.8" stroke-linecap="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+    <div>
+      <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13.5px; font-weight: 600; color: #0A0A0B;">Everything after this week is missing</div>
+      <div style="font-size: 12.5px; line-height: 1.6; color: #52525B; margin-top: 5px;">Thirty-nine more weeks are already scheduled. They are excluded from the past-tense list and belong to no Rhythm row, so they render nowhere at all. The term runs to December; the page stops at today.</div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":880,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const faults = [
+      { title: 'Nothing writes the grouping field',
+        body: 'Creating a recurring term writes N sibling documents and never links them. Every read, test fixture and type declaration expects the link; no code path sets it.',
+        where: 'AddEventModal.tsx:190' },
+      { title: 'So no Rhythm row is ever built',
+        body: 'Series identity falls back to each document’s own id, so every group holds one item and the is-a-series test fails on both of its branches.',
+        where: 'gatheringViewModel.ts:246' },
+      { title: '“Apply to all future” updates one week',
+        body: 'The same missing link means the series lookup matches only the gathering you opened. The prompt has been telling Full-timers it did more.',
+        where: 'attendanceRoster.ts:123' },
+      { title: 'Kind filters narrow three rows to three',
+        body: 'Four managed categories over three Rhythms. The blurb attached to each is rendered by nothing — it is called only by its own tests.',
+        where: 'gatheringTypes.ts:59' },
+    ];
+
+    const pillBase = 'display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 500;';
+    const pills = [
+      { label: 'All', on: true },
+      { label: 'Weekly', on: false },
+      { label: 'Small Group', on: false },
+      { label: 'Special', on: false },
+      { label: 'Outreach', on: false },
+    ].map((p) => ({
+      label: p.label,
+      style: pillBase + (p.on ? ' background: #131316; color: #FFFFFF;' : ' background: #FFFFFF; color: #52525B; border: 1px solid #E4E4E7;'),
+    }));
+
+    const rows = [
+      { day: '9', mon: 'Sep', name: 'Wednesday Bible Study', kind: 'Weekly', count: '15 came' },
+      { day: '3', mon: 'Sep', name: 'Thursday Bible Study', kind: 'Weekly', count: '9 came' },
+      { day: '3', mon: 'Sep', name: 'College Meeting', kind: 'Weekly', count: '21 came' },
+      { day: '2', mon: 'Sep', name: 'Wednesday Bible Study', kind: 'Weekly', count: '—' },
+      { day: '30', mon: 'Aug', name: 'Welcome BBQ', kind: 'Special', count: '41 came' },
+      { day: '27', mon: 'Aug', name: 'Thursday Bible Study', kind: 'Weekly', count: '8 came' },
+      { day: '27', mon: 'Aug', name: 'College Meeting', kind: 'Weekly', count: '19 came' },
+      { day: '26', mon: 'Aug', name: 'Wednesday Bible Study', kind: 'Weekly', count: '14 came' },
+      { day: '22', mon: 'Aug', name: 'Move-in help', kind: 'Outreach', count: '12 came' },
+    ];
+
+    return { faults: faults, pills: pills, rows: rows };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Lexend:wght@300;400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: "Lexend", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #52525B; } a:hover { color: #0A0A0B; }
+  </style>
+</helmet>
+
+<div style="background: #FFFFFF; min-height: 100%; padding: 40px 44px 48px; box-sizing: border-box;">
+
+  <div style="font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #A1A1AA; font-weight: 500;">Anatomy</div>
+  <h1 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 27px; font-weight: 600; color: #0A0A0B; margin: 8px 0 0; letter-spacing: -0.02em;">The Rhythm row</h1>
+  <p style="font-size: 14px; line-height: 1.6; color: #52525B; margin: 10px 0 32px; max-width: 620px;">One row per thing we actually run. The strip carries the whole term; the state of a chip says what happened, not what was scheduled.</p>
+
+  <!-- the row itself, annotated -->
+  <div style="background: #F4F4F5; border: 1px solid #F0F0F2; border-radius: 24px; padding: 18px 22px 16px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <div style="min-width: 0; flex-grow: 1;">
+        <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 16px; font-weight: 600; color: #0A0A0B;">Wednesday Bible Study</div>
+        <div style="font-size: 13px; color: #52525B; margin-top: 3px;">Wednesdays · Whitman Lounge</div>
+      </div>
+      <div style="font-size: 13px; color: #52525B; white-space: nowrap;">15 / 18 came</div>
+      <div style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #52525B; flex-shrink: 0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </div>
+      <div style="color: #52525B; flex-shrink: 0; display: inline-flex;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 14px;">
+      <div style="display: flex; align-items: center; gap: 6px; flex-grow: 1;">
+        <sc-for list="{{ strip }}" as="c" hint-placeholder-count="9">
+          <div style="{{ c.style }}">
+            <span style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13px; line-height: 1; font-weight: 600;">{{ c.day }}</span>
+            <span style="font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75;">{{ c.mon }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 8px 14px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E4E4E7; color: #A1A1AA; font-size: 12.5px; font-weight: 500;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+        Today
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 24px; font-size: 11.5px; color: #A1A1AA; margin-bottom: 40px; padding-left: 22px;">
+    <span>name + cadence · location</span>
+    <span>selected week&#39;s count</span>
+    <span>settings drawer</span>
+    <span>expand</span>
+  </div>
+
+  <!-- the five states -->
+  <h2 style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 18px; font-weight: 600; color: #0A0A0B; margin: 0 0 6px;">What a chip can say</h2>
+  <p style="font-size: 13.5px; line-height: 1.6; color: #52525B; margin: 0 0 20px; max-width: 620px;">Four describe attendance. The fifth says the week was not there at all — so it reads as absence of a gathering, not absence of people.</p>
+
+  <div style="display: flex; flex-direction: column; gap: 2px;">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="5">
+      <div style="{{ s.rowStyle }}">
+        <div style="{{ s.style }}">
+          <span style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13px; line-height: 1; font-weight: 600;">{{ s.day }}</span>
+          <span style="font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75;">{{ s.mon }}</span>
+        </div>
+        <div style="min-width: 0; flex-grow: 1;">
+          <div style="font-size: 14px; font-weight: 600; color: #0A0A0B;">{{ s.name }}</div>
+          <div style="font-size: 13px; color: #52525B; margin-top: 3px; line-height: 1.5;">{{ s.desc }}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="margin-top: 34px; border: 1px solid #E4E4E7; border-radius: 14px; padding: 18px 20px; background: #FFFFFF;">
+    <div style="font-family: 'Plus Jakarta Sans', 'Lexend', sans-serif; font-size: 13.5px; font-weight: 600; color: #0A0A0B; margin-bottom: 7px;">Why &ldquo;taken&rdquo; cannot be inferred</div>
+    <div style="font-size: 13px; line-height: 1.65; color: #52525B;">An empty present list means two different things: nobody came, or nobody has opened it. Reading one as the other permanently mislabels a week. The Gathering records who marked it and when, so the strip can tell a gap from an empty room.</div>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":880,"height":900}}'>
+class Component extends DCLogic {
+  chip(kind) {
+    const base = 'display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; flex-shrink: 0; width: 42px; padding: 7px 0 6px; border-radius: 12px; box-sizing: border-box;';
+    if (kind === 'taken')     return base + ' background: #131316; color: #FFFFFF; border: 1px solid #131316;';
+    if (kind === 'nottaken')  return base + ' background: #FFFFFF; color: #52525B; border: 1px solid #E4E4E7;';
+    if (kind === 'current')   return base + ' background: rgba(10, 10, 11, 0.06); color: #0A0A0B; border: 1px solid #131316; outline: 2px solid #131316; outline-offset: 2px; font-weight: 600;';
+    if (kind === 'cancelled') return base + ' background: #FFFFFF; color: #A1A1AA; border: 1px dashed #E4E4E7; text-decoration: line-through;';
+    return base + ' background: #FFFFFF; color: rgba(82, 82, 91, 0.55); border: 1px dashed #E4E4E7;';
+  }
+
+  renderVals() {
+    const stripSrc = [
+      { day: '26', mon: 'Aug', k: 'taken' },
+      { day: '2', mon: 'Sep', k: 'nottaken' },
+      { day: '9', mon: 'Sep', k: 'current' },
+      { day: '16', mon: 'Sep', k: 'ahead' },
+      { day: '23', mon: 'Sep', k: 'ahead' },
+      { day: '30', mon: 'Sep', k: 'ahead' },
+      { day: '7', mon: 'Oct', k: 'ahead' },
+      { day: '14', mon: 'Oct', k: 'ahead' },
+      { day: '21', mon: 'Oct', k: 'ahead' },
+    ];
+
+    const stateSrc = [
+      { day: '26', mon: 'Aug', k: 'taken', name: 'Attendance taken',
+        desc: 'Someone marked it. The row shows how many of the expected roster came.' },
+      { day: '2', mon: 'Sep', k: 'nottaken', name: 'Happened, not taken',
+        desc: 'The week has passed and nobody recorded it. This is the gap the strip exists to make visible.' },
+      { day: '9', mon: 'Sep', k: 'current', name: 'This week',
+        desc: 'Falls inside the current Monday–Sunday week. Outlined so you find it by looking, not by counting dates.' },
+      { day: '16', mon: 'Sep', k: 'ahead', name: 'Still ahead',
+        desc: 'Scheduled, not yet happened. Faint and dashed — the same vocabulary a future one-off row uses.' },
+      { day: '26', mon: 'Nov', k: 'cancelled', name: 'We didn’t meet',
+        desc: 'Struck through rather than coloured: it is not a fifth kind of attendance, it is the week not being there. Nobody is counted absent.' },
+    ];
+
+    return {
+      strip: stripSrc.map((c) => ({ day: c.day, mon: c.mon, style: this.chip(c.k) })),
+      states: stateSrc.map((s, i) => ({
+        day: s.day, mon: s.mon, name: s.name, desc: s.desc,
+        style: this.chip(s.k),
+        rowStyle: 'display: flex; align-items: flex-start; gap: 18px; padding: 16px 0;' + (i > 0 ? ' border-top: 1px solid #F0F0F2;' : ''),
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

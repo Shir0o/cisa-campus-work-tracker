@@ -12,6 +12,8 @@ That leaves the question of what a durable QR points at, since the content behin
 
 1. **A slug per Study** — `/s/romans-fall26`, then `/s/john-spring27`. Simple and direct, but the QR must be regenerated and re-shown every term, which is the same chore the weekly QR imposed, just less often.
 2. **Binding to a Rhythm** — resolve through "the Wednesday Bible Study", which the glossary already defines as the durable gathering a Study is taught on. Rejected on inspection: a Rhythm is *derived*, not stored — it is the anchor `Event` found via `parentEventId` (`src/lib/gatheringViewModel.ts:155`). It has no slug and no identity of its own, so binding to one means persisting an opaque event id and depending on the anchor event surviving.
+
+   *Annotated #957:* the stated rationale has gone stale. ADR 0016 makes a Rhythm a stored record with its own identity, cadence, location and roster, so "a Rhythm is derived, not stored" is no longer true. **The decision is unchanged**, for reasons that never depended on it: an Entry point must outlive every Study that passes through it, a Rhythm carries no slug, and binding the QR to a Rhythm would still make a printed-once code depend on that Rhythm surviving. The alternative stays rejected; only its supporting observation is obsolete.
 3. **A standalone Entry point record** — `{ slug, name, activeStudyId }`, owned by nothing else.
 
 ## Decision

@@ -78,7 +78,7 @@ _Avoid_: Edit user profile, rename user
 
 
 **Gathering Roster**:
-The defined cohort of people expected to attend a specific gathering or recurring series (`Event.roster`). Defaults to empty rather than defaulting to the entire contact database. Only roster members are tracked under "We missed" if absent; walk-ins can be marked present, integrated into the roster going forward (without retroactive absence penalties), or created on the spot by name. Roster management is restricted to Full-timers (`isAdmin`).
+Who is expected at a Gathering. It defaults to empty rather than to the entire contact database. A Rhythm owns the roster — "who usually comes" is settled once, not per week — and a single Gathering may differ from it for that week alone; weeks already past keep the roster they had, so changing who comes now does not rewrite who was expected then. Only roster members appear under "We missed" when absent. Walk-ins can be marked present, folded into the roster going forward without retroactive absence penalties, or created on the spot by name. Roster management is restricted to Full-timers.
 _Avoid_: Member pool, invite list, attendance group
 
 **Entry point**:
@@ -114,16 +114,20 @@ A word hidden in a Section's outline points or Passage that a reader taps to rev
 _Avoid_: Cloze, fill-in, hidden word, quiz
 
 **Gathering**:
-One occasion the team comes together and takes attendance for — a single Wednesday Bible Study, one Thursday College Meeting, a Welcome BBQ. A Gathering carries who was there and who was expected. It is not the document anyone reads in the room (that is a Meeting), and it is not the arc it belongs to (that is a Rhythm, or a Study).
+One occasion the team comes together and takes attendance for — a single Wednesday Bible Study, one Thursday College Meeting, a Welcome BBQ. A Gathering carries who was there, who was expected, and whether it happened at all. It is not the document anyone reads in the room (that is a Meeting), and it is not the arc it belongs to (that is a Rhythm, or a Study).
 _Avoid_: Session, event, occurrence
 
 **Rhythm**:
-A Gathering that repeats on a fixed cadence — the Wednesday Bible Study, the Thursday Bible Study, the Thursday College Meeting. A Rhythm owns the name, kind, cadence, location and the expected roster; each turn of the cadence produces one Gathering, and a Gathering may override the roster for its week alone. A Study may be taught on a Rhythm, but the two are not the same thing: College Meeting is a Rhythm with no Study, and a Study's Meetings are documents rather than attendance records.
+The standing arrangement behind a Gathering that repeats — the Wednesday Bible Study, the Thursday Bible Study, the Thursday College Meeting. A Rhythm is a record in its own right, owning the name, the cadence, where it usually meets and who usually comes. Each turn of the cadence produces one Gathering; a Gathering may differ from its Rhythm for that week alone, in its roster or its room. The name is the Rhythm's — renaming it renames every week, past ones included — while where a week met is that week's own. A Study may be taught on a Rhythm, but the two are not the same thing: College Meeting is a Rhythm with no Study, and a Study's Meetings are documents rather than attendance records.
 _Avoid_: Series, recurring event, schedule, repeat
 
 **Attendance taken**:
 The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so the record says explicitly that a person marked it and when.
 _Avoid_: Marked, complete, closed
+
+**Cancelled**:
+A Gathering that was scheduled and did not happen — a snow day, a reading week, a Thanksgiving Thursday. Cancelling is a state the Gathering carries, never a deletion: a deleted week leaves no trace, so "we didn't meet" and "this week was never scheduled" collapse into the same silence. Nobody is counted absent for a cancelled week.
+_Avoid_: Skipped, deleted, off
 
 **Present mode**:
 The full-screen display of an Entry point's QR code, held up in the room for students to scan — white ground, screen kept awake. Showing the code is not an admin action: whoever holds the phone is often not a Full-timer. Entered from the Weeks index or a week's editor via "Show QR"; leaving returns to whoever showed the code — the week's editor when Show QR was pressed there, the Weeks index when it was pressed there or the mode was entered directly (a pasted link, a relaunch) — never the home page.

@@ -34,3 +34,6 @@ tmp/
 
 # Design canvas payloads are generated from the .dc.html sources beside them
 docs/design/**/[a-z]*-*.html
+
+# impeccable design-hook cache (local only)
+.impeccable/hook.cache.json

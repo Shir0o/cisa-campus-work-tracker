@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-09-11T00:51:25.424Z",
+        "reason": "Ink design system --font-serif, src/index.css:5; these artboards must match the shipped app"
+      }
+    ]
+  }
+}
