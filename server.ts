@@ -212,15 +212,13 @@ export async function createApp() {
           console.error("Firebase ID token verification failed:", authErr);
           return res.status(401).json({ error: "Unauthorized: " + (authErr.message || String(authErr)) });
         }
-      } else if (process.env.NODE_ENV === "test") {
-        // Test mode permits unauthenticated feedback fixtures.
-      } else {
+      } else if (process.env.NODE_ENV !== "test") {
         return res.status(401).json({ error: "Unauthorized: Authorization header is required." });
       }
 
       const { type, kind, message, url, userAgent, viewport } = req.body;
 
-      if (message === undefined || message === null || typeof message !== "string") {
+      if (!message || typeof message !== "string") {
         return res.status(400).json({ error: "Missing required 'message' parameter." });
       }
 
