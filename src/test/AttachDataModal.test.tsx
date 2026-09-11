@@ -315,6 +315,32 @@ describe('AttachDataModal Component', () => {
     });
   });
 
+  it('supports feedback without an email after the privacy change', async () => {
+    setupOnSnapshot([
+      { id: 'f2', message: 'No email note', type: 'enhancement', status: 'new' }
+    ]);
+    render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Feedback'));
+    expect(await screen.findByText('No email note')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('No email note').closest('button') as HTMLButtonElement);
+
+    expect(mockOnAttach).toHaveBeenCalledWith({
+      type: 'feedback',
+      id: 'f2',
+      name: 'No email note',
+      subtitle: 'enhancement',
+      status: 'new',
+      priority: undefined
+    });
+  });
+
   it('closes on Escape key when open', () => {
     setupOnSnapshot([]);
     render(

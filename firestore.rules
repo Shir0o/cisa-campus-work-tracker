@@ -641,8 +641,8 @@ service cloud.firestore {
       function isValidFeedback(data) {
         return data.keys().hasAll(['userId', 'type', 'message', 'status', 'createdAt']) &&
                data.userId == request.auth.uid &&
-               ((('userEmail' in data) == false) || (data.userEmail is string && data.userEmail.size() <= 128)) &&
-               ((('reporterLabel' in data) == false) || (data.reporterLabel is string && data.reporterLabel.size() <= 100)) &&
+               (!('userEmail' in data) || (data.userEmail is string && data.userEmail.size() <= 128)) &&
+               (!('reporterLabel' in data) || (data.reporterLabel is string && data.reporterLabel.size() <= 100)) &&
                data.type in ['bug', 'enhancement'] &&
                (!('kind' in data) || data.kind in ['thought', 'idea', 'off', 'request']) &&
                data.message is string && data.message.size() <= 5000 &&

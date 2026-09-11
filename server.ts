@@ -265,11 +265,11 @@ export async function createApp() {
           const cleanMsg = message.trim();
           const prefix = "[Feedback] " + kindLabel + ": ";
           const remaining = GITHUB_TITLE_MAX - prefix.length;
-          const ellipsis = String.fromCharCode(8230);
+          const ellipsis = '…';
           const title = cleanMsg.length <= remaining
             ? prefix + cleanMsg
             : prefix + cleanMsg.slice(0, remaining - 1) + ellipsis;
-          const fence = String.fromCharCode(96).repeat(3);
+          const fence = '```';
 
           const bodyLines = [
             "### Feedback Details",
