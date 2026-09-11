@@ -223,11 +223,11 @@ const isDirectExecution =
 
 if (isDirectExecution) {
   const repo = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO;
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
   const execute = process.argv.includes('--execute');
 
   if (repo === undefined || token === undefined) {
-    console.error('GITHUB_REPO and GITHUB_TOKEN are required.');
+    console.error('GITHUB_REPO and a GitHub token are required. Prefer GH_TOKEN with issues:write; on this machine run with GH_TOKEN="$(gh auth token)".');
     process.exit(1);
   }
 
