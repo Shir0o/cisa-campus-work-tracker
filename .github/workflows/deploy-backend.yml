@@ -6,7 +6,8 @@ name: Deploy Cloud Run Backend
 # Auth: keyless via Workload Identity Federation (WIF). GitHub's per-run OIDC
 # token is exchanged for short-lived credentials that impersonate the deploy SA
 # github-action@sac-campus-hub (which holds roles/run.developer,
-# roles/cloudbuild.builds.editor, and roles/artifactregistry.writer).
+# roles/cloudbuild.builds.editor, roles/artifactregistry.writer,
+# and roles/storage.admin).
 # No service-account key is stored anywhere.
 
 on:
