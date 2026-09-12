@@ -1,4 +1,5 @@
-import type { Contact, Event } from '../types';
+import type { Contact, Gathering, Rhythm } from '../types';
+import { resolveRoster } from './attendanceRoster';
 
 // ─── week bounds ───────────────────────────────────────────────────────────
 // Mon–Sun, in the viewer's local zone. Date-only strings (yyyy-MM-dd) are
@@ -51,20 +52,22 @@ const sortByDateDesc = <T extends { date: string }>(rows: T[]): T[] =>
 // Deriving "taken" from a non-empty present list is explicitly rejected — it
 // would permanently mislabel a Gathering nobody attended.
 
-export type ChipState = 'taken' | 'happened-not-taken' | 'current-week' | 'ahead';
+export type ChipState = 'taken' | 'happened-not-taken' | 'current-week' | 'ahead' | 'cancelled';
 
 /** One Gathering in the term, rendered as a chip on a Rhythm row. */
 export interface Chip {
   id: string;
   /** Date the Gathering falls on, yyyy-MM-dd. */
   date: string;
-  /** Gathering name (taken from the row anchor; children inherit). */
+  /** Gathering name (the Rhythm's live name; children inherit). */
   name: string;
   state: ChipState;
   /** True for "still ahead" — the renderer tints the chip faintly. */
   faint: boolean;
   /** People marked present for this Gathering. */
   presentCount: number;
+  /** How many were expected — the resolved roster's size for this occasion. */
+  expectedCount: number;
   /** Who recorded attendance (if stamped). */
   takenByName?: string;
   takenAt?: string;
@@ -78,19 +81,22 @@ export interface ThisWeekGroup {
   dateObj: Date;
   gatherings: OneOffGathering[];
 }
-/** A series of Gatherings sharing an identity — one row in the page. */
+/** A Rhythm, rendered as one row carrying its term as a chip strip. */
 export interface RhythmRow {
-  /** The rhythm anchor: parentEventId when set, else this Gathering's own id. */
+  /** The Rhythm doc's id. */
   id: string;
   name: string;
-  type?: string;
-  /** Denominator for the row — union of roster IDs across the term. */
+  location?: string;
+  /** Cadence + location, for the row's subtitle (Story 31). */
+  subtitle: string;
+  /** Denominator for the row — the selected chip's resolved roster size. */
   expectedCount: number;
   /** Chip in time order, oldest first. */
   chips: Chip[];
   /** The chip the view should show in the row summary. */
   selectedChipId: string;
   selectedChip?: Chip;
+  rhythm: Rhythm;
 }
 
 /** A Gathering that doesn't belong to a Rhythm, listed below. */
@@ -98,9 +104,9 @@ export interface OneOffGathering {
   id: string;
   name: string;
   date: string;
-  type?: string;
   presentCount: number;
   expectedCount: number;
+  cancelled: boolean;
   takenByName?: string;
   takenAt?: string;
 }
@@ -116,17 +122,18 @@ export interface GatheringViewModel {
   thisWeekEmpty: boolean;
   /** One entry per date with a Gathering in the current week. */
   thisWeek: ThisWeekGroup[];
-  /** Rhythm rows in day-of-week order, then by name. */
+  /** Rhythm rows, day-of-week order then by name (Story 32). */
   rhythms: RhythmRow[];
-  /** One-offs newest-first, past only. Future one-offs belong in "Coming up"
-   *  (or in a This-week band when the week arrives); the "When we met" page
-   *  lists what has happened, not what's ahead. (Story 20.) */
+  /** One-offs newest-first, past only. Future one-offs surface separately
+   *  (Story 20/36) — the "When we met" list is what's happened. */
   oneOffs: OneOffGathering[];
+  /** Future one-offs, faint-rendered (Story 36). */
+  upcomingOneOffs: OneOffGathering[];
 }
 
 // ─── internals ─────────────────────────────────────────────────────────────
 
-const isStamped = (e: Event, nowMs: number): boolean => {
+const isStamped = (e: Gathering, nowMs: number): boolean => {
   // Attendance can only be "taken" for a Gathering that has already happened —
   // a future-dated Gathering with a stamp should still read as `ahead`.
   const dateMs = parseLocalDate(e.date)?.getTime();
@@ -134,7 +141,8 @@ const isStamped = (e: Event, nowMs: number): boolean => {
   return !!e.attendanceTakenAt;
 };
 
-const chipState = (e: Event, mondayMs: number, sundayMs: number, nowMs: number): ChipState => {
+const chipState = (e: Gathering, mondayMs: number, sundayMs: number, nowMs: number): ChipState => {
+  if (e.cancelled) return 'cancelled';
   const dateMs = parseLocalDate(e.date)?.getTime();
   if (dateMs == null) return 'happened-not-taken';
   // Current-week wins over taken: the spec says a current-week chip must be
@@ -146,26 +154,11 @@ const chipState = (e: Event, mondayMs: number, sundayMs: number, nowMs: number):
   return isStamped(e, nowMs) ? 'taken' : 'happened-not-taken';
 };
 
-const presentCountFor = (e: Event, contacts: Contact[]): number =>
+const presentCountFor = (e: Gathering, contacts: Contact[]): number =>
   contacts.reduce(
     (n, c) => (c.attendance?.[e.id] === true ? n + 1 : n),
     0,
   );
-
-const rhythmId = (e: Event): string => e.parentEventId || e.id;
-
-const rhythmName = (e: Event, byRhythmId: Map<string, Event>): string =>
-  byRhythmId.get(rhythmId(e))?.name || e.name;
-
-const rhythmType = (e: Event, byRhythmId: Map<string, Event>): string | undefined =>
-  byRhythmId.get(rhythmId(e))?.type ?? e.type;
-
-/** Union of all roster contact IDs across a Rhythm's Gatherings. */
-const expectedCountForRhythm = (gatherings: Event[]): number => {
-  const ids = new Set<string>();
-  for (const g of gatherings) for (const cid of g.roster || []) ids.add(cid);
-  return ids.size;
-};
 
 /** Pick the default selected chip: current-week first, then most-recent past,
  *  then earliest future. */
@@ -173,39 +166,63 @@ const defaultSelectedChipId = (chips: Chip[]): string | undefined => {
   if (chips.length === 0) return undefined;
   const cur = chips.find((c) => c.state === 'current-week');
   if (cur) return cur.id;
-  const past = chips.filter((c) => c.state === 'happened-not-taken' || c.state === 'taken');
+  const past = chips.filter((c) => c.state === 'happened-not-taken' || c.state === 'taken' || c.state === 'cancelled');
   if (past.length > 0) return past[past.length - 1].id; // chips are time-ordered asc
   const ahead = chips.filter((c) => c.state === 'ahead');
   if (ahead.length > 0) return ahead[0].id;
   return chips[0].id;
 };
 
+const CADENCE_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Cadence text + location for the Rhythm row subtitle (Story 31). */
+function rhythmSubtitle(rhythm: Rhythm): string {
+  let cadenceText: string;
+  if (rhythm.cadence.type === 'weekly') {
+    const names = rhythm.cadence.days.map((d) => CADENCE_DAY_NAMES[d] ?? '').filter(Boolean);
+    cadenceText = names.length > 0 ? `Every ${names.join(', ')}` : 'Weekly';
+  } else {
+    cadenceText = rhythm.cadence.monthlyType === 'relative-day' ? 'Monthly' : 'Monthly';
+  }
+  return [cadenceText, rhythm.location].filter(Boolean).join(' · ');
+}
+
 // ─── entry point ───────────────────────────────────────────────────────────
 
 export function buildGatheringViewModel(input: {
-  events: Event[];
+  events: Gathering[];
+  rhythms: Rhythm[];
   contacts: Contact[];
   now: Date;
 }): GatheringViewModel {
-  const { events, contacts, now } = input;
+  const { events, rhythms, contacts, now } = input;
   const nowMs = now.getTime();
   const monday = startOfWeekMonday(now);
   const sunday = endOfWeekSunday(now);
   const mondayMs = monday.getTime();
   const sundayMs = sunday.getTime();
 
-  // Index by rhythm anchor id for name/type/roster resolution.
-  const byRhythmId = new Map<string, Event>();
-  for (const e of events) byRhythmId.set(rhythmId(e), e);
+  const rhythmsById = new Map<string, Rhythm>();
+  for (const r of rhythms) rhythmsById.set(r.id, r);
 
-  // Group events by rhythm anchor.
-  const groups = new Map<string, Event[]>();
+  const gatheringsByRhythm = new Map<string, Gathering[]>();
   for (const e of events) {
-    const key = rhythmId(e);
-    const arr = groups.get(key);
+    if (!e.rhythmId) continue;
+    const arr = gatheringsByRhythm.get(e.rhythmId);
     if (arr) arr.push(e);
-    else groups.set(key, [e]);
+    else gatheringsByRhythm.set(e.rhythmId, [e]);
   }
+
+  const toOneOff = (e: Gathering): OneOffGathering => ({
+    id: e.id,
+    name: e.name,
+    date: e.date,
+    presentCount: presentCountFor(e, contacts),
+    expectedCount: (e.roster || []).length,
+    cancelled: !!e.cancelled,
+    takenByName: e.attendanceTakenAt ? e.attendanceTakenBy : undefined,
+    takenAt: e.attendanceTakenAt,
+  });
 
   // ── this-week band ───────────────────────────────────────────────────────
   const thisWeekMap = new Map<string, OneOffGathering[]>();
@@ -213,20 +230,10 @@ export function buildGatheringViewModel(input: {
     const d = parseLocalDate(e.date);
     if (!d) continue;
     if (!isInWeek(d, monday, sunday)) continue;
-    const key = e.date;
-    const entry: OneOffGathering = {
-      id: e.id,
-      name: e.name,
-      date: e.date,
-      type: e.type,
-      presentCount: presentCountFor(e, contacts),
-      expectedCount: (e.roster || []).length,
-      takenByName: e.attendanceTakenBy,
-      takenAt: e.attendanceTakenAt,
-    };
-    const arr = thisWeekMap.get(key);
+    const entry = toOneOff(e);
+    const arr = thisWeekMap.get(e.date);
     if (arr) arr.push(entry);
-    else thisWeekMap.set(key, [entry]);
+    else thisWeekMap.set(e.date, [entry]);
   }
   const thisWeek: ThisWeekGroup[] = sortByDate(
     Array.from(thisWeekMap.entries()).map(([date, gatherings]) => ({
@@ -238,72 +245,64 @@ export function buildGatheringViewModel(input: {
   );
 
   // ── Rhythms ─────────────────────────────────────────────────────────────
-  const rhythms: RhythmRow[] = [];
-  for (const [id, groupEvents] of groups) {
-    // Any event with a parentEventId belongs to a Rhythm — it might be the
-    // anchor (parentEventId === self for first-of-series) or a child of one.
-    // Events without parentEventId and no children are one-offs.
-    const isSeries = groupEvents.length > 1 || groupEvents[0]?.parentEventId === id;
-    if (!isSeries) continue;
+  const rhythmRows: RhythmRow[] = [];
+  for (const rhythm of rhythms) {
+    const groupEvents = gatheringsByRhythm.get(rhythm.id) ?? [];
     const ordered = sortByDate(groupEvents);
     const chips: Chip[] = ordered.map((e) => {
       const state = chipState(e, mondayMs, sundayMs, nowMs);
+      const resolved = resolveRoster(e, rhythm, now);
       return {
         id: e.id,
         date: e.date,
-        name: e.name,
+        name: rhythm.name,
         state,
         faint: state === 'ahead',
         presentCount: presentCountFor(e, contacts),
+        expectedCount: resolved.length,
         takenByName: state === 'taken' ? e.attendanceTakenBy : undefined,
         takenAt: state === 'taken' ? e.attendanceTakenAt : undefined,
       };
     });
     const selectedChipId = defaultSelectedChipId(chips);
-    const anchor = byRhythmId.get(id) || ordered[0];
+    const selectedChip = chips.find((c) => c.id === selectedChipId);
 
-    rhythms.push({
-      id,
-      name: rhythmName(anchor, byRhythmId),
-      type: rhythmType(anchor, byRhythmId),
-      expectedCount: expectedCountForRhythm(groupEvents),
+    rhythmRows.push({
+      id: rhythm.id,
+      name: rhythm.name,
+      location: rhythm.location,
+      subtitle: rhythmSubtitle(rhythm),
+      expectedCount: selectedChip?.expectedCount ?? rhythm.roster.length,
       chips,
-      selectedChipId: selectedChipId || chips[0]?.id || id,
-      selectedChip: chips.find((c) => c.id === selectedChipId),
+      selectedChipId: selectedChipId || chips[0]?.id || rhythm.id,
+      selectedChip,
+      rhythm,
     });
   }
-  rhythms.sort((a, b) => {
-    const da = parseLocalDate(a.chips[0]?.date)?.getDay() ?? 0;
-    const db = parseLocalDate(b.chips[0]?.date)?.getDay() ?? 0;
+  rhythmRows.sort((a, b) => {
+    const da = a.rhythm.cadence.days[0] ?? 0;
+    const db = b.rhythm.cadence.days[0] ?? 0;
     if (da !== db) return da - db;
     return a.name.localeCompare(b.name);
   });
 
+  // ── one-offs: no rhythmId (Story 20/36) ──────────────────────────────────
+  const allOneOffEvents = events.filter((e) => !e.rhythmId);
   const oneOffs: OneOffGathering[] = sortByDateDesc(
-    events
-      .filter((e) => {
-        const key = rhythmId(e);
-        const group = groups.get(key);
-        if (!group) return true;
-        // A first-of-series with no children is a Rhythm anchor, not a one-off.
-        if (group.length === 1 && group[0].parentEventId === group[0].id) return false;
-        return group.length === 1;
-      })
-      // Story 20: future Gatherings don't belong on a past-tense list.
+    allOneOffEvents
       .filter((e) => {
         const ms = parseLocalDate(e.date)?.getTime();
         return ms == null || ms <= nowMs;
       })
-      .map((e) => ({
-        id: e.id,
-        name: e.name,
-        date: e.date,
-        type: e.type,
-        presentCount: presentCountFor(e, contacts),
-        expectedCount: (e.roster || []).length,
-        takenByName: e.attendanceTakenAt ? e.attendanceTakenBy : undefined,
-        takenAt: e.attendanceTakenAt,
-      })),
+      .map(toOneOff),
+  );
+  const upcomingOneOffs: OneOffGathering[] = sortByDate(
+    allOneOffEvents
+      .filter((e) => {
+        const ms = parseLocalDate(e.date)?.getTime();
+        return ms != null && ms > nowMs;
+      })
+      .map(toOneOff),
   );
 
   return {
@@ -311,8 +310,9 @@ export function buildGatheringViewModel(input: {
     weekEnd: formatLocal(sunday),
     thisWeekEmpty: thisWeek.length === 0,
     thisWeek,
-    rhythms,
+    rhythms: rhythmRows,
     oneOffs,
+    upcomingOneOffs,
   };
 }
 

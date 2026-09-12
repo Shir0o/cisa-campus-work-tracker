@@ -1,4 +1,4 @@
-import type { Contact, Event } from '../types';
+import type { Contact, Gathering, Rhythm } from '../types';
 
 /**
  * Determines whether a contact was marked present for a session.
@@ -8,22 +8,75 @@ export function isContactPresent(contact: Contact, eventId: string): boolean {
 }
 
 /**
+ * Resolves who's on the roster for a Gathering.
+ *
+ * Rule (issue #957 / ADR 0005 amendment): a Rhythm's roster with the
+ * Gathering's `rosterOverride` applied on top. A Gathering dated in the past
+ * is FROZEN — it reads back whatever was recorded at the time
+ * (`gathering.rosterOverride ?? gathering.roster ?? []`), never the Rhythm's
+ * roster as it stands today, so renaming/re-rostering a Rhythm doesn't
+ * rewrite history. Today/future Gatherings resolve live from
+ * `rhythm.roster` (+ override), so a roster change takes effect immediately
+ * for the current and upcoming weeks — this is what retires the "apply to
+ * future series?" prompt.
+ *
+ * A one-off Gathering (no `rhythmId`) has no Rhythm to resolve from, so it
+ * always reads its own `roster`.
+ */
+export function resolveRoster(gathering: Gathering, rhythm: Rhythm | undefined, now: Date): string[] {
+  if (!gathering.rhythmId) return gathering.roster ?? [];
+
+  const isPast = isPastDate(gathering.date, now);
+  if (isPast) {
+    return gathering.rosterOverride ?? gathering.roster ?? [];
+  }
+
+  const base = rhythm?.roster ?? [];
+  const override = gathering.rosterOverride;
+  if (!override) return base;
+  // An override for a live occasion is the full replacement list for that
+  // occasion (additions/removals already folded in by the caller), not a
+  // diff — so it's just returned as-is once present.
+  return override;
+}
+
+const parseLocalDate = (s?: string | null): Date | null => {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const startOfDay = (d: Date): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+function isPastDate(date: string, now: Date): boolean {
+  const d = parseLocalDate(date);
+  if (!d) return false;
+  return d.getTime() < startOfDay(now).getTime();
+}
+
+/**
  * Segregates contacts for a gathering into:
  * - `present`: Anyone marked present (roster or walk-in).
- * - `absent`: Only contacts in the event's roster who are NOT marked present,
+ * - `absent`: Only contacts on the resolved roster who are NOT marked present,
  *   OR anyone outside the roster explicitly marked 'absent'.
  * - `nonRoster`: Other contacts in the organization who did not attend and are not on the roster.
+ *
+ * A cancelled Gathering counts nobody absent — everyone not marked present
+ * falls through to `nonRoster` instead.
  */
 export function getSessionRoster(
-  event: Event,
+  event: Gathering,
   contacts: Contact[],
   isPresent: (contact: Contact, eventId: string) => boolean = (c, eventId) => c.attendance?.[eventId] === true,
+  resolvedRoster?: string[],
 ): {
   present: Contact[];
   absent: Contact[];
   nonRoster: Contact[];
 } {
-  const rosterSet = new Set(event.roster ?? []);
+  const rosterSet = new Set(resolvedRoster ?? event.roster ?? []);
   const present: Contact[] = [];
   const absent: Contact[] = [];
   const nonRoster: Contact[] = [];
@@ -34,7 +87,7 @@ export function getSessionRoster(
 
     if (isAttending) {
       present.push(contact);
-    } else if (rosterSet.has(contact.id) || status === 'absent') {
+    } else if (!event.cancelled && (rosterSet.has(contact.id) || status === 'absent')) {
       absent.push(contact);
     } else {
       nonRoster.push(contact);
@@ -47,19 +100,22 @@ export function getSessionRoster(
 /**
  * Checks whether a given session should count toward a contact's attendance / absence metrics.
  * Per ADR 0005, sessions prior to a contact's first attendance or roster inclusion
- * do not count against them as an absence.
+ * do not count against them as an absence. A cancelled Gathering never counts.
  */
 export function shouldCountSessionForContact(
   contact: Contact,
-  session: Event,
-  allSessionsSortedDesc: Event[],
+  session: Gathering,
+  allSessionsSortedDesc: Gathering[],
+  resolvedRosterFor: (s: Gathering) => string[] = (s) => s.roster ?? [],
 ): boolean {
+  if (session.cancelled) return false;
+
   // If contact was present or explicitly marked absent, it counts
   const status = contact.attendance?.[session.id];
   if (status !== undefined) return true;
 
-  // If contact is explicitly in this session's roster, it counts
-  if (session.roster?.includes(contact.id)) return true;
+  // If contact is explicitly in this session's resolved roster, it counts
+  if (resolvedRosterFor(session).includes(contact.id)) return true;
 
   // Otherwise, check if the contact has ever attended this session or any older session
   // If their very first attendance in history occurred after this session, this session does not count.
@@ -69,7 +125,8 @@ export function shouldCountSessionForContact(
   // Did the contact attend any session at or before this session?
   for (let i = sessionIdx; i < allSessionsSortedDesc.length; i++) {
     const olderSession = allSessionsSortedDesc[i];
-    if (olderSession.roster?.includes(contact.id) || contact.attendance?.[olderSession.id] === true) {
+    if (olderSession.cancelled) continue;
+    if (resolvedRosterFor(olderSession).includes(contact.id) || contact.attendance?.[olderSession.id] === true) {
       return true;
     }
   }
@@ -80,25 +137,28 @@ export function shouldCountSessionForContact(
 /**
  * Identifies contacts who used to come or are on regular rosters, but have missed
  * recent gatherings (since >= 2). Random contacts not in rosters or with no history are excluded.
+ * Cancelled Gatherings are excluded from the scan entirely (they never happened).
  */
 export function calculateMissedContacts(
   contacts: Contact[],
-  sessionsNewestFirst: Event[],
-): { contact: Contact; since: number; lastSeen: Event }[] {
-  const out: { contact: Contact; since: number; lastSeen: Event }[] = [];
+  sessionsNewestFirst: Gathering[],
+  resolvedRosterFor: (s: Gathering) => string[] = (s) => s.roster ?? [],
+): { contact: Contact; since: number; lastSeen: Gathering }[] {
+  const scannable = sessionsNewestFirst.filter((s) => !s.cancelled);
+  const out: { contact: Contact; since: number; lastSeen: Gathering }[] = [];
 
   for (const c of contacts) {
     let since = 0;
-    let lastSeen: Event | null = null;
+    let lastSeen: Gathering | null = null;
     let hasRelevantHistory = false;
 
-    for (const s of sessionsNewestFirst) {
+    for (const s of scannable) {
       if (isContactPresent(c, s.id)) {
         lastSeen = s;
         hasRelevantHistory = true;
         break;
       }
-      if (shouldCountSessionForContact(c, s, sessionsNewestFirst)) {
+      if (shouldCountSessionForContact(c, s, scannable, resolvedRosterFor)) {
         since++;
         hasRelevantHistory = true;
       }
@@ -112,112 +172,13 @@ export function calculateMissedContacts(
   return out.sort((a, b) => b.since - a.since).slice(0, 4);
 }
 
-/**
- * Given an event and all events, finds all events belonging to the same recurring series
- * occurring on or after the current event's date (inclusive of current event).
- */
-export function getRecurringSeriesEventIdsToUpdate(
-  currentEvent: Event,
-  allEvents: Event[],
-): string[] {
-  const seriesId = currentEvent.parentEventId || (currentEvent.isRecurring ? currentEvent.id : null);
-  if (!seriesId) return [currentEvent.id];
-
-  const currentDate = currentEvent.date;
-
-  return allEvents
-    .filter((e) => {
-      const belongsToSeries = e.id === seriesId || e.parentEventId === seriesId;
-      if (!belongsToSeries) return false;
-      return e.date >= currentDate;
-    })
-    .map((e) => e.id);
+/** Pure state helper: mark a Gathering cancelled. */
+export function cancelGathering(gathering: Gathering): Gathering {
+  return { ...gathering, cancelled: true };
 }
 
-/**
- * Assigns series anchor (`parentEventId`) to a list of occurrence items.
- * If isRecurring is true, every occurrence carries `parentEventId` set to the id of the earliest occurrence.
- */
-export function assignSeriesAnchor<T extends { id: string; date: string }>(
-  occurrences: readonly T[],
-  isRecurring: boolean,
-): Array<T & { parentEventId?: string }> {
-  if (occurrences.length === 0) return [];
-  if (!isRecurring) {
-    return occurrences.map((occ) => ({ ...occ }));
-  }
-
-  // Find the occurrence with the earliest date.
-  let earliest = occurrences[0];
-  for (let i = 1; i < occurrences.length; i++) {
-    if (occurrences[i].date < earliest.date) {
-      earliest = occurrences[i];
-    }
-  }
-
-  const anchorId = earliest.id;
-  return occurrences.map((occ) => ({
-    ...occ,
-    parentEventId: anchorId,
-  }));
+/** Pure state helper: undo a cancellation. */
+export function uncancelGathering(gathering: Gathering): Gathering {
+  const { cancelled, ...rest } = gathering;
+  return rest;
 }
-
-export interface GatheringSeriesBackfillItem {
-  id: string;
-  name: string;
-  date: string;
-  isRecurring?: boolean;
-  parentEventId?: string;
-}
-
-export interface GatheringSeriesBackfillPlanRow {
-  id: string;
-  parentEventId: string;
-}
-
-/**
- * Pure planner for backfilling `parentEventId` for existing recurring Gatherings.
- * Groups recurring gatherings without `parentEventId` by name and weekday,
- * orders each group by date ascending, and assigns the earliest member's id as `parentEventId`.
- */
-export function planGatheringSeriesBackfill(
-  gatherings: readonly GatheringSeriesBackfillItem[],
-): GatheringSeriesBackfillPlanRow[] {
-  // Only consider recurring gatherings without an existing parentEventId
-  const candidates = gatherings.filter(
-    (g) => g.isRecurring === true && !g.parentEventId,
-  );
-
-  // Group by trimmed name + weekday
-  const groups = new Map<string, GatheringSeriesBackfillItem[]>();
-  for (const g of candidates) {
-    // Parse weekday from date string YYYY-MM-DD
-    const parts = g.date.split('-').map(Number);
-    const weekday = !isNaN(parts[0]) && parts.length === 3
-      ? new Date(parts[0], parts[1] - 1, parts[2]).getDay()
-      : -1;
-    const key = `${g.name.trim()}|${weekday}`;
-    const group = groups.get(key);
-    if (group) {
-      group.push(g);
-    } else {
-      groups.set(key, [g]);
-    }
-  }
-
-  const result: GatheringSeriesBackfillPlanRow[] = [];
-  for (const group of groups.values()) {
-    // Sort by date ascending; tie-break by id
-    group.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
-    const anchorId = group[0].id;
-    for (const item of group) {
-      result.push({
-        id: item.id,
-        parentEventId: anchorId,
-      });
-    }
-  }
-
-  return result;
-}
-
