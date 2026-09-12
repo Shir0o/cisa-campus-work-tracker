@@ -118,7 +118,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount, cont
                     value={formData.name}
                     onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                    placeholder="e.g. Welcome BBQ"
+                    placeholder={t('modals.example_gathering_name', 'e.g. Welcome BBQ')}
                   />
                 </div>
 

@@ -132,7 +132,7 @@ export default function CreateRhythmModal({ isOpen, onClose, contacts = [] }: Cr
                   value={formData.name}
                   onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
                   className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  placeholder="e.g. Wednesday Bible Study"
+                  placeholder={t('modals.example_rhythm_name', 'e.g. Wednesday Bible Study')}
                 />
               </div>
 
@@ -215,14 +215,14 @@ export default function CreateRhythmModal({ isOpen, onClose, contacts = [] }: Cr
               {/* Location (optional) */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1">
-                  <MapPin className="w-3 h-3" /> Location <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
+                  <MapPin className="w-3 h-3" /> {t('modals.location', 'Location')} <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">{t('common.optional', '(optional)')}</span>
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData((f) => ({ ...f, location: e.target.value }))}
                   className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  placeholder="e.g. Lower Common Room"
+                  placeholder={t('modals.example_location', 'e.g. Lower Common Room')}
                 />
               </div>
 

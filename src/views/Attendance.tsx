@@ -846,7 +846,7 @@ export default function Attendance() {
         {missed.length > 0 ? (
           <div className="mt-12">
             <SectionHead
-              title="Who we've missed lately"
+              title={t('attendance.missed_title', "Who we've missed lately")}
               sub="They used to come, but it's been a few gatherings."
             />
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
@@ -1024,23 +1024,26 @@ const chipStyle = (state: ChipState): string => {
 };
 
 // ── Shared props for any expandable Gathering row. ──
+/** Handlers that may write to Firestore. */
+type AsyncVoid = Promise<void>;
+
 interface GatheringRowProps {
   events: Gathering[];
   contacts: Contact[];
   resolvedRosterFor: (s: Gathering) => string[];
   here: (c: Contact, eventId: string) => boolean;
-  cycleAttendance: (c: Contact, eventId: string) => Promise<void>;
+  cycleAttendance: (c: Contact, eventId: string) => AsyncVoid;
   isAdmin: boolean;
   openContact: (c: Contact) => void;
   openTodoFor: (c: Contact, e: Gathering) => void;
   walkInQuery: Record<string, string>;
   setWalkInQuery: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   isCreatingContact: boolean;
-  handleCreateWalkInContact: (name: string, event: Gathering) => Promise<void>;
-  handleToggleRoster: (event: Gathering, contactId: string, add: boolean) => Promise<void>;
-  handleToggleCancelled: (event: Gathering) => Promise<void>;
-  markAttendanceTaken: (event: Gathering) => Promise<void>;
-  handleDeleteEvent: (id: string, name: string) => Promise<void>;
+  handleCreateWalkInContact: (name: string, event: Gathering) => AsyncVoid;
+  handleToggleRoster: (event: Gathering, contactId: string, add: boolean) => AsyncVoid;
+  handleToggleCancelled: (event: Gathering) => AsyncVoid;
+  markAttendanceTaken: (event: Gathering) => AsyncVoid;
+  handleDeleteEvent: (id: string, name: string) => AsyncVoid;
   setEditingEvent: (e: Gathering | null) => void;
   openId: string | null;
   setOpenId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -1267,7 +1270,7 @@ function GatheringExpansion({
                   >
                     <Avatar contact={c} size="sm" />
                     <span>{c.name}</span>
-                    <span className="text-[10px] text-accent">+ Check in</span>
+                    <span className="text-[10px] text-accent">{t('attendance.check_in', '+ Check in')}</span>
                   </button>
                 ))}
               </div>
