@@ -252,8 +252,9 @@ describe('Attendance', () => {
       expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
     });
 
-    // Click "Open" on Alice in the missed section
-    const openBtn = screen.getAllByRole('button', { name: 'Open' })[0];
+    // The whole missed card is the control now — the redundant "Open" button
+    // inside it did the same thing (issue 982).
+    const openBtn = screen.getByRole('button', { name: 'Open Alice Johnson' });
     fireEvent.click(openBtn);
     
     // Expect the ContactDetailsModal to open
@@ -304,7 +305,7 @@ describe('Attendance', () => {
     });
 
     // Click trash icon button
-    const deleteBtn = screen.getAllByTitle('Remove gathering')[0];
+    const deleteBtn = screen.getAllByRole('button', { name: /^Remove gathering — / })[0];
     fireEvent.click(deleteBtn);
 
     expect(deleteDoc).toHaveBeenCalled();
@@ -317,7 +318,7 @@ describe('Attendance', () => {
       expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
     });
 
-    const editBtn = screen.getAllByTitle('Edit gathering')[0];
+    const editBtn = screen.getAllByRole('button', { name: /^Edit gathering — / })[0];
     fireEvent.click(editBtn);
 
     expect(screen.getByTestId('edit-event-modal')).toBeInTheDocument();
