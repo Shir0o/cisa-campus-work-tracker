@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useAuth } from './AuthProvider';
-import { registerForPushToken } from './notifications';
-import { setPushToken } from './data/users';
+import { syncPushToken } from './pushRegistration';
 
 export function usePushRegistration() {
   // The real signed-in account — not the effective (possibly impersonated)
@@ -14,16 +13,11 @@ export function usePushRegistration() {
 
   useEffect(() => {
     if (!uid) return;
-    let cancelled = false;
 
+    // No cancellation guard: `uid` is closed over, so a late-resolving sync
+    // always writes the token to the account it was minted for.
     const syncToken = () => {
-      registerForPushToken()
-        .then((token) => {
-          if (!cancelled && token) void setPushToken(uid, token);
-        })
-        .catch((err) => {
-          console.error('Failed to sync push token:', err);
-        });
+      void syncPushToken(uid);
     };
 
     syncToken();
@@ -37,7 +31,6 @@ export function usePushRegistration() {
     const sub = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
-      cancelled = true;
       sub.remove();
     };
   }, [uid]);

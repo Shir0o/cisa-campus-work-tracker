@@ -6,9 +6,10 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { MobileNotificationPermissionBanner } from './MobileNotificationPermissionBanner';
 import * as mobileNotifications from '../../lib/notifications';
 import { NOTIFICATION_PROMPT_STORAGE_KEY } from '../../lib/notificationPrompt';
+import { setPushToken } from '../../lib/data/users';
 
 jest.mock('../../lib/AuthProvider', () => ({
-  useAuth: () => ({ uid: 'user1', user: null, role: 'admin' }),
+  useAuth: () => ({ uid: 'user1', user: { uid: 'user1' }, role: 'admin' }),
 }));
 
 jest.mock('expo-notifications', () => ({
@@ -18,6 +19,11 @@ jest.mock('expo-notifications', () => ({
 
 jest.mock('../../lib/notifications', () => ({
   ensureNotificationPermission: jest.fn(),
+  registerForPushToken: jest.fn(),
+}));
+
+jest.mock('../../lib/data/users', () => ({
+  setPushToken: jest.fn(),
 }));
 
 const renderBanner = () =>
@@ -122,5 +128,58 @@ describe('MobileNotificationPermissionBanner', () => {
       { timeout: 5000 },
     );
     expect(await AsyncStorage.getItem(NOTIFICATION_PROMPT_STORAGE_KEY)).toBe('true');
+  });
+  // #977 — background push on native. Granting permission from this banner has
+  // to register the device's push token there and then: usePushRegistration
+  // only syncs on mount and on AppState -> active, and neither happens while
+  // the app stays in the foreground after the tap. Without this, the user says
+  // yes and nothing ever buzzes until they background and reopen the app.
+  it('registers the push token when permission is granted from the banner', async () => {
+    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: 'undetermined',
+      canAskAgain: true,
+    });
+    (mobileNotifications.ensureNotificationPermission as jest.Mock).mockResolvedValue(true);
+    (mobileNotifications.registerForPushToken as jest.Mock).mockResolvedValue(
+      'ExponentPushToken[granted977]',
+    );
+
+    const { getByText } = renderBanner();
+    await waitFor(() => {
+      expect(getByText('Enable')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Enable'));
+
+    await waitFor(
+      () => {
+        expect(setPushToken).toHaveBeenCalledWith('user1', 'ExponentPushToken[granted977]');
+      },
+      { timeout: 5000 },
+    );
+  });
+
+  it('does not register a push token when permission is refused', async () => {
+    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: 'undetermined',
+      canAskAgain: true,
+    });
+    (mobileNotifications.ensureNotificationPermission as jest.Mock).mockResolvedValue(false);
+
+    const { getByText, queryByText } = renderBanner();
+    await waitFor(() => {
+      expect(getByText('Enable')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Enable'));
+
+    await waitFor(
+      () => {
+        expect(queryByText(/Enable notifications/i)).toBeNull();
+      },
+      { timeout: 5000 },
+    );
+    expect(mobileNotifications.registerForPushToken).not.toHaveBeenCalled();
+    expect(setPushToken).not.toHaveBeenCalled();
   });
 });
