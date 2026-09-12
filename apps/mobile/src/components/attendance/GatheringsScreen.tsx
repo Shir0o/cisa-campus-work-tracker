@@ -115,13 +115,28 @@ function SessionRow({
           </Text>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: font.extra, fontSize: fs(15), letterSpacing: -0.3, color: c.card.ink }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontFamily: font.extra,
+              fontSize: fs(15),
+              letterSpacing: -0.3,
+              color: c.card.ink,
+              textDecorationLine: session.cancelled ? 'line-through' : 'none',
+            }}
+          >
             {session.name}
           </Text>
-          {!!session.type && (
+          {session.cancelled ? (
             <Text numberOfLines={1} style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink3, marginTop: 2 }}>
-              {[session.type, session.location].filter(Boolean).join(' · ')}
+              Cancelled
             </Text>
+          ) : (
+            !!session.location && (
+              <Text numberOfLines={1} style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink3, marginTop: 2 }}>
+                {session.location}
+              </Text>
+            )
           )}
         </View>
         <View style={{ alignItems: 'flex-end' }}>
@@ -281,7 +296,7 @@ function Gatherings() {
                     id: ev.id,
                     date: new Date(ms).toISOString(),
                     title: ev.name,
-                    sub: [ev.type, ev.location].filter(Boolean).join(' · '),
+                    sub: ev.location || '',
                   }))}
                 />
               )}

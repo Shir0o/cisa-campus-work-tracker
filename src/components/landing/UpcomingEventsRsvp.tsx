@@ -75,7 +75,7 @@ export function UpcomingEventsRsvp({
         <div className="flex flex-col gap-3">
           {upcoming.map(({ ev, ms }) => {
             const d = new Date(ms);
-            const meta = [isValid(d) ? format(d, "EEEE") : "", ev.location, ev.type]
+            const meta = [isValid(d) ? format(d, "EEEE") : "", ev.location]
               .filter(Boolean)
               .join(" · ");
             const isGoing = going.has(ev.id);

@@ -567,21 +567,20 @@ describe('ftWeekAhead', () => {
     expect(ftWeekAhead(many, NOW)).toHaveLength(5);
   });
 
-  it('says the kind and the place under the name', () => {
-    const [chip] = ftWeekAhead([event({ type: 'Weekly', location: 'Hillcrest' })], NOW);
-    expect(chip.sub).toBe('Weekly · Hillcrest');
+  it('says the place under the name', () => {
+    const [chip] = ftWeekAhead([event({ location: 'Hillcrest' })], NOW);
+    expect(chip.sub).toBe('Hillcrest');
   });
 
-  it('leaves the middot out when only one of the two is set', () => {
-    expect(ftWeekAhead([event({ type: 'Weekly' })], NOW)[0].sub).toBe('Weekly');
-    expect(ftWeekAhead([event({ location: 'Hillcrest' })], NOW)[0].sub).toBe('Hillcrest');
+  it('reads empty when there is no location', () => {
+    expect(ftWeekAhead([event()], NOW)[0].sub).toBe('');
   });
 
   // Unlike the trainee queue's `queueDates`, which is one-off specials only: a
   // full-timer's week IS the recurring gatherings, and the recurrence generator
   // writes each occurrence as a real dated doc.
-  it('includes a recurring gathering, unlike the trainee queue', () => {
-    const chips = ftWeekAhead([event({ id: 'week3', parentEventId: 'e0', isRecurring: true })], NOW);
+  it('includes a Rhythm-linked occasion, unlike the trainee queue', () => {
+    const chips = ftWeekAhead([event({ id: 'week3', rhythmId: 'r1' })], NOW);
     expect(chips.map((c) => c.id)).toEqual(['week3']);
   });
 });

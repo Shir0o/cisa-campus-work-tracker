@@ -358,12 +358,13 @@ export interface QueueDate {
   sub: string;
 }
 
-/** One-off dates worth knowing — end of queue only. Recurring gatherings never
- * appear on mobile v2. */
+/** One-off dates worth knowing — end of queue only. Rhythm-linked occasions
+ * never appear on mobile v2 (issue #957 replaced `parentEventId` with
+ * `rhythmId`; the old kind-based "special/outreach/retreat" filter went with
+ * the retired kind taxonomy — every one-off now qualifies). */
 export function queueDates(events: Event[], now: number = Date.now()): QueueDate[] {
   return events
-    .filter((e) => !e.isRecurring && !e.parentEventId)
-    .filter((e) => /special|outreach|retreat/i.test(e.type || ""))
+    .filter((e) => !e.rhythmId)
     .filter((e) => (parseMs(e.date) ?? 0) >= now - DAY_MS)
     .sort((a, b) => (parseMs(a.date) ?? 0) - (parseMs(b.date) ?? 0))
     .slice(0, 4)
@@ -371,7 +372,7 @@ export function queueDates(events: Event[], now: number = Date.now()): QueueDate
       id: e.id,
       date: e.date,
       title: e.name,
-      sub: [e.type, e.location].filter(Boolean).join(" · "),
+      sub: e.location || "",
     }));
 }
 

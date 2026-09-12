@@ -359,7 +359,7 @@ describe('queue helpers', () => {
     expect(personColor('')).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
-  it('keeps recurring gatherings out of the end-of-queue dates', () => {
+  it('keeps Rhythm-linked occasions out of the end-of-queue dates', () => {
     const event = (o: Partial<Event>): Event => ({
       id: 'e',
       name: 'Something',
@@ -370,15 +370,15 @@ describe('queue helpers', () => {
     });
     const dates = queueDates(
       [
-        event({ id: 'weekly', name: 'Friday Night', type: 'Gathering', isRecurring: true }),
-        event({ id: 'retreat', name: 'Spring retreat', type: 'Retreat', location: 'Big Bear' }),
-        event({ id: 'past', name: 'Old outreach', type: 'Outreach', date: iso(-10) }),
-        event({ id: 'club', name: 'Club rush', type: 'Special', date: iso(1) }),
+        event({ id: 'weekly', name: 'Friday Night', rhythmId: 'r1' }),
+        event({ id: 'retreat', name: 'Spring retreat', location: 'Big Bear' }),
+        event({ id: 'past', name: 'Old outreach', date: iso(-10) }),
+        event({ id: 'club', name: 'Club rush', date: iso(1) }),
       ],
       NOW,
     );
     expect(dates.map((d) => d.id)).toEqual(['club', 'retreat']);
-    expect(dates[1].sub).toBe('Retreat · Big Bear');
+    expect(dates[1].sub).toBe('Big Bear');
   });
 
   it('looks back only at what I logged in the last week', () => {
