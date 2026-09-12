@@ -10,9 +10,14 @@ import {
   shouldShowMobileNotificationPrompt,
 } from '../../lib/notificationPrompt';
 import { ensureNotificationPermission } from '../../lib/notifications';
+import { syncPushToken } from '../../lib/pushRegistration';
+import { useAuth } from '../../lib/AuthProvider';
 
 export function MobileNotificationPermissionBanner() {
   const { c, font, fs } = useV2Theme();
+  // The real signed-in account, not the effective (possibly impersonated) uid —
+  // a push token is a device-level registration for the actual auth user.
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -59,7 +64,13 @@ export function MobileNotificationPermissionBanner() {
     if (requesting) return;
     setRequesting(true);
     try {
-      await ensureNotificationPermission();
+      const granted = await ensureNotificationPermission();
+      // Register the device the moment permission lands. usePushRegistration
+      // otherwise only syncs on mount and on AppState -> active, so a grant
+      // made while the app stays in the foreground left the device without a
+      // token — the user said yes and nothing arrived in the background until
+      // they happened to background and reopen the app (#977).
+      if (granted) await syncPushToken(user?.uid ?? null);
     } finally {
       await setNotificationPromptDismissed(true);
       setVisible(false);

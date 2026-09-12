@@ -1,9 +1,9 @@
-// Local/scheduled OS notifications — expo-notifications. Remote push (a real
-// Expo push token reaching a server) stays deferred: this project has no
-// extra.eas.projectId (no `eas init` has run — see MIGRATION.md's Phase 5),
-// which getExpoPushTokenAsync requires to mint a token, and no server-side
-// infra exists to dispatch one. Every call here is a no-op on web — Expo web
-// doesn't support real token minting or persistent local scheduling.
+// Local/scheduled OS notifications plus Expo push-token minting —
+// expo-notifications. Remote push is live: app.json carries extra.eas.projectId
+// (what getExpoPushTokenAsync needs to mint a token), the token is persisted to
+// the user's doc by lib/pushRegistration.ts, and the server's /api/send-push
+// dispatches to Expo. Every call here is a no-op on web — Expo web supports
+// neither real token minting nor persistent local scheduling.
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
