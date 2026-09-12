@@ -58,19 +58,6 @@ export interface CalRawEvent {
   __instanceDate?: string;
 }
 
-export interface CalGatheringItem {
-  id: string;
-  title: string;
-  type: string;
-  date: Date;
-  time: string;
-  location: string;
-  attended: string[];
-  synced: true;
-  cat: string;
-  seriesId: string;
-}
-
 export interface CalAwayItem {
   id: string;
   who: { name: string; id?: string } | null;
@@ -265,54 +252,6 @@ export const CalFeed = (() => {
   };
 })();
 
-// ── Category mapping store ──
-export const CALMAP_LS = 'cisa.calmap.v1';
-export const CALMAP_SEED: Record<string, string | null> = {
-  social: 'Special',
-  workshop: 'Small Group',
-};
-
-export const CalMap = (() => {
-  const subs = new Set<() => void>();
-  let map: Record<string, string | null> = (() => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const item = localStorage.getItem(CALMAP_LS);
-        return item ? { ...CALMAP_SEED, ...JSON.parse(item) } : { ...CALMAP_SEED };
-      }
-      return { ...CALMAP_SEED };
-    } catch {
-      return { ...CALMAP_SEED };
-    }
-  })();
-
-  const save = () => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(CALMAP_LS, JSON.stringify(map));
-      }
-    } catch {}
-    subs.forEach((f) => f());
-  };
-
-  return {
-    all: () => ({ ...map }),
-    kindFor: (cat: string) => map[cat] || null,
-    set(cat: string, kind: string | null) {
-      map = { ...map, [cat]: kind || null };
-      save();
-    },
-    reset() {
-      map = { ...CALMAP_SEED };
-      save();
-    },
-    subscribe(f: () => void) {
-      subs.add(f);
-      return () => subs.delete(f);
-    },
-  };
-})();
-
 // Staff first name matcher for travel events
 export function calAwayWho(
   ev: { title?: string; notes?: string },
@@ -327,18 +266,18 @@ export function calAwayWho(
   );
 }
 
+// Only context/away items come from the calendar now — the calendar→Gathering
+// merge (ADR 0016 decision 2) is gone: nothing here becomes a Gathering
+// anymore, since the kind taxonomy it depended on is retired too.
 export function calItemsBetween(
   events: CalRawEvent[],
   from: Date,
   to: Date,
-  categoryMap: Record<string, string | null> = CalMap.all(),
   staffList: Array<{ name: string; id?: string }> = [],
 ): {
-  gatherings: CalGatheringItem[];
   away: CalAwayItem[];
   context: CalContextItem[];
 } {
-  const gatherings: CalGatheringItem[] = [];
   const away: CalAwayItem[] = [];
   const context: CalContextItem[] = [];
 
@@ -347,21 +286,7 @@ export function calItemsBetween(
   );
 
   for (const ev of expanded) {
-    const kind = categoryMap[ev.cat];
-    if (kind) {
-      gatherings.push({
-        id: ev.id,
-        title: ev.title,
-        type: kind,
-        date: ev.start,
-        time: ev.allDay ? 'All day' : calTimeLabel(ev.start),
-        location: ev.loc || '',
-        attended: [],
-        synced: true,
-        cat: ev.cat,
-        seriesId: ev.__seriesId || ev.id,
-      });
-    } else if (ev.cat === 'travel') {
+    if (ev.cat === 'travel') {
       const who = calAwayWho(ev, staffList);
       away.push({
         id: ev.id,
@@ -386,49 +311,7 @@ export function calItemsBetween(
     }
   }
 
-  return { gatherings, away, context };
-}
-
-export interface UnifiedGathering {
-  id: string;
-  name?: string;
-  title: string;
-  type: string;
-  date: string | Date;
-  time?: string;
-  location?: string;
-  attended?: string[];
-  synced: boolean;
-  cat?: string;
-  seriesId?: string;
-}
-
-export function calGatheringsMerged(
-  ownEvents: Array<{ id: string; name?: string; title?: string; type?: string; date: string | Date; location?: string; attended?: string[]; time?: string }>,
-  calendarEvents: CalRawEvent[],
-  from: Date,
-  to: Date,
-  categoryMap: Record<string, string | null> = CalMap.all(),
-): UnifiedGathering[] {
-  const own: UnifiedGathering[] = (ownEvents || [])
-    .filter((e) => {
-      const d = new Date(e.date);
-      return d >= from && to > d;
-    })
-    .map((e) => ({
-      ...e,
-      type: e.type || '',
-      title: e.name || e.title || '',
-      date: new Date(e.date),
-      synced: false,
-    }));
-
-  const cal: UnifiedGathering[] = calItemsBetween(calendarEvents, from, to, categoryMap).gatherings.map((g) => ({
-    ...g,
-    name: g.title,
-  }));
-
-  return own.concat(cal).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return { away, context };
 }
 
 export function calAwaySentence(away: CalAwayItem[]): string {
@@ -498,19 +381,19 @@ export function subscribeLiveCalendarEvents(
 }
 
 // ── Hook for reactive calendar sync ──
+// The calendar→Gathering merge is gone (ADR 0016 decision 2) — this hook now
+// only surfaces "away" (travel) and "context" (everything else, not a
+// Gathering) items. The calendar never becomes a roster-bearing Gathering.
 export function useCalendarSync(staffList: Array<{ name: string; id?: string }> = []) {
   const [enabled, setEnabledState] = useState(CalFeed.enabled());
-  const [categoryMap, setCategoryMap] = useState(CalMap.all());
   const [rawEvents, setRawEvents] = useState<CalRawEvent[]>([]);
 
   useEffect(() => {
     const unsubFeed = CalFeed.subscribe(() => setEnabledState(CalFeed.enabled()));
-    const unsubMap = CalMap.subscribe(() => setCategoryMap(CalMap.all()));
     const unsubEvents = subscribeLiveCalendarEvents((evs) => setRawEvents(evs));
 
     return () => {
       unsubFeed();
-      unsubMap();
       unsubEvents();
     };
   }, []);
@@ -520,37 +403,10 @@ export function useCalendarSync(staffList: Array<{ name: string; id?: string }> 
   return {
     enabled,
     isEnabled: enabled,
-    categoryMap,
-    calMap: categoryMap,
     rawEvents: activeEvents,
     setEnabled: (v: boolean) => CalFeed.setEnabled(v),
-    setCategoryKind: (cat: string, kind: string | null) => CalMap.set(cat, kind),
-    setMapCategory: (cat: string, kind: string | null) => CalMap.set(cat, kind),
-    getItemsBetween: (from: Date, to: Date) =>
-      calItemsBetween(activeEvents, from, to, categoryMap, staffList),
-    getMergedGatherings: (
-      ownEvents: Array<{ id: string; name?: string; title?: string; type?: string; date: string | Date; location?: string; attended?: string[]; time?: string }>,
-      from: Date,
-      to: Date,
-    ): UnifiedGathering[] => {
-      if (enabled) {
-        return calGatheringsMerged(ownEvents, activeEvents, from, to, categoryMap);
-      }
-      return (ownEvents || [])
-        .filter((e) => {
-          const d = new Date(e.date);
-          return d >= from && to > d;
-        })
-        .map((e) => ({
-          ...e,
-          type: e.type || '',
-          title: e.name || e.title || '',
-          date: new Date(e.date),
-          synced: false,
-        }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    },
+    getItemsBetween: (from: Date, to: Date) => calItemsBetween(activeEvents, from, to, staffList),
     getAwaySentence: (from: Date, to: Date) =>
-      enabled ? calAwaySentence(calItemsBetween(activeEvents, from, to, categoryMap, staffList).away) : '',
+      enabled ? calAwaySentence(calItemsBetween(activeEvents, from, to, staffList).away) : '',
   };
 }

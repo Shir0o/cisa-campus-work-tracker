@@ -52,7 +52,6 @@ export * from './data/rsvp';
 export * from './data/users';
 export * from './data/attendance';
 export * from './data/events';
-export * from './data/gatheringTypes';
 export * from './data/notifications';
 export * from './data/signup';
 export * from './data/feedback';

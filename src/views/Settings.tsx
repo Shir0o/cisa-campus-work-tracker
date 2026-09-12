@@ -77,7 +77,6 @@ import {
 import { TEAMS, teamLabelKey, isKnownTeam, saveUserTeam } from '../lib/teams';
 import { isRealPerson } from '../lib/permissions';
 import { useDayGoal, GOAL_MIN, GOAL_MAX } from '../lib/goal';
-import { useGatheringTypes } from '../lib/gatheringTypes';
 import {
   useCalendarSync,
   CAL_CATEGORIES,
@@ -1803,17 +1802,13 @@ function InviteModal({
 
 function CalendarSyncPanel() {
   const { t } = useLanguage();
-  const gatheringTypes = useGatheringTypes();
-  const { isEnabled, setEnabled, calMap, setMapCategory, getItemsBetween } = useCalendarSync();
+  const { isEnabled, setEnabled, getItemsBetween } = useCalendarSync();
 
   const counts = useMemo(() => {
     const from = calStartOfDay(new Date());
     const to = calAddDays(from, 30);
-    const { gatherings, context } = getItemsBetween(from, to);
+    const { context } = getItemsBetween(from, to);
     const out: Record<string, number> = {};
-    for (const g of gatherings) {
-      if (g.cat) out[g.cat] = (out[g.cat] || 0) + 1;
-    }
     for (const c of context) {
       if (c.cat) out[c.cat] = (out[c.cat] || 0) + 1;
     }
@@ -1853,31 +1848,20 @@ function CalendarSyncPanel() {
           )}
         </p>
 
+        {/* The category→kind mapping (and any per-category selector) is gone with
+            the kind taxonomy (ADR 0016 decision 4) — every non-travel category now
+            reads as plain "context", never becomes a Gathering. */}
         {isEnabled && (
           <div className="cals-rows mt-4 divide-y divide-outline-variant/30">
             {CAL_CATEGORIES.map((cat) => (
-              <div className="cals-row py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2" key={cat.id}>
-                <div className="cals-cat">
-                  <div className="cals-cat-n font-medium text-sm text-on-surface flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.dot }} />
-                    {cat.label}
-                  </div>
-                  <div className="cals-cat-c text-xs text-on-surface-variant">
-                    {counts[cat.id] ? `${counts[cat.id]} in the next month` : 'nothing coming up'}
-                  </div>
+              <div className="cals-row py-3 flex items-center justify-between gap-2" key={cat.id}>
+                <div className="cals-cat-n font-medium text-sm text-on-surface flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.dot }} />
+                  {cat.label}
                 </div>
-                <select
-                  className="hist-sel cals-sel text-xs rounded-xl border border-outline-variant/60 bg-surface px-3 py-1.5 text-on-surface"
-                  value={calMap[cat.id] || ''}
-                  onChange={(e) => setMapCategory(cat.id, e.target.value)}
-                >
-                  <option value="">{t('settings.just_a_date', 'Just a date we should know')}</option>
-                  {gatheringTypes.map((k) => (
-                    <option key={k.id} value={k.name}>
-                      {t('settings.becomes_gathering', 'Becomes a {name} gathering').replace('{name}', k.name.toLowerCase())}
-                    </option>
-                  ))}
-                </select>
+                <div className="cals-cat-c text-xs text-on-surface-variant">
+                  {counts[cat.id] ? `${counts[cat.id]} in the next month` : 'nothing coming up'}
+                </div>
               </div>
             ))}
           </div>
@@ -1885,7 +1869,7 @@ function CalendarSyncPanel() {
 
         {isEnabled && (
           <p className="cals-note cals-foot text-xs text-on-surface-variant mt-3 italic">
-            {t('settings.shared_calendar_footnote', "A category left as a date still shows up under “Also on the calendar” — it just never opens a roster. Travel is read as who's away, and named on your day.")}
+            {t('settings.shared_calendar_footnote', 'Nothing on the shared calendar becomes a gathering — it shows up under "Also on the calendar" as a date worth knowing. Travel is read as who\'s away, and named on your day.')}
           </p>
         )}
       </div>
