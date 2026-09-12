@@ -14,6 +14,7 @@ import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 import { feedbackIssueSubmittedByLine } from "./src/lib/feedbackReporter";
 import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
 import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
+import { outcomeCopy, type FeedbackOutcome } from "./src/lib/feedbackKinds";
 
 dotenv.config();
 
@@ -458,14 +459,26 @@ export async function createApp() {
       console.log(`GitHub Webhook: Found ${snapshot.size} feedback documents matching issue URL: ${issueUrl}`);
 
       const updates: any = {};
+      let outcome: FeedbackOutcome | undefined;
+
       if (action === "closed") {
         updates.status = "resolved";
-        if (issue.state_reason === "not_planned") {
-          updates.archived = true;
+
+        const hasAlreadyExistsLabel = Array.isArray(issue.labels) &&
+          issue.labels.some((l: any) => (typeof l === "string" ? l : l?.name) === "already-exists");
+
+        if (hasAlreadyExistsLabel) {
+          outcome = "already-there";
+        } else if (issue.state_reason === "not_planned") {
+          outcome = "not-planned";
+        } else {
+          outcome = "shipped";
         }
+        updates.outcome = outcome;
       } else if (action === "reopened") {
         updates.status = "in_progress";
         updates.archived = false;
+        updates.outcome = FieldValue.delete();
       } else {
         return res.status(200).json({ message: `Ignored action: ${action}` });
       }
@@ -476,6 +489,30 @@ export async function createApp() {
         batch.update(doc.ref, updates);
       });
       await batch.commit();
+
+      // Write notification for each submitter if outcome was set
+      if (outcome) {
+        const message = outcomeCopy(outcome);
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
+          if (data.userId && data.userId !== "anonymous") {
+            try {
+              await db.collection("notifications").add({
+                userId: data.userId,
+                title: "What came of your note",
+                message,
+                type: "info",
+                tone: "accent",
+                read: false,
+                link: "/feedback",
+                createdAt: FieldValue.serverTimestamp(),
+              });
+            } catch (notifErr) {
+              console.error(`Failed to create notification for feedback submitter ${data.userId}:`, notifErr);
+            }
+          }
+        }
+      }
 
       console.log(`GitHub Webhook: Successfully updated feedback doc(s) for issue ${issueUrl} with updates:`, updates);
       res.status(200).json({ success: true, matchedDocsCount: snapshot.size, updates });

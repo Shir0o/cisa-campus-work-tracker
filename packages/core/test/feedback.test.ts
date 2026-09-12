@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { filterFeedback, kindMeta, kindToType, typeToKind, type FeedbackFilters } from '../src/feedback';
+import {
+  filterFeedback,
+  kindMeta,
+  kindToType,
+  typeToKind,
+  FEEDBACK_OUTCOMES,
+  outcomeCopy,
+  outcomeLabel,
+  type FeedbackFilters,
+} from '../src/feedback';
 import type { Feedback } from '../src/types';
 
 const item = (overrides: Partial<Feedback> = {}): Feedback => ({
@@ -29,6 +38,24 @@ describe('kindToType / typeToKind', () => {
   it('maps bug back to "off" and enhancement back to "idea" (legacy fallback)', () => {
     expect(typeToKind('bug')).toBe('off');
     expect(typeToKind('enhancement')).toBe('idea');
+  });
+});
+
+describe('FEEDBACK_OUTCOMES & outcomeCopy', () => {
+  it('defines the three canonical canned outcomes', () => {
+    expect(FEEDBACK_OUTCOMES).toEqual(['shipped', 'not-planned', 'already-there']);
+  });
+
+  it('returns the exact canned copy for each outcome', () => {
+    expect(outcomeCopy('shipped')).toBe('This shipped! Thank you for helping shape the app.');
+    expect(outcomeCopy('not-planned')).toBe("We looked into this and aren't planning to build it right now, but thank you for speaking up.");
+    expect(outcomeCopy('already-there')).toBe("This is already in the app! Ask someone on the team and we'll show you where it lives.");
+  });
+
+  it('provides a human-readable label for each outcome', () => {
+    expect(outcomeLabel('shipped')).toBe('Shipped');
+    expect(outcomeLabel('not-planned')).toBe('Not planned');
+    expect(outcomeLabel('already-there')).toBe('Already in the app');
   });
 });
 

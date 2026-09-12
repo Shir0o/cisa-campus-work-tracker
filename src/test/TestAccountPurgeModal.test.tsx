@@ -34,13 +34,11 @@ describe('TestAccountPurgeModal', () => {
     expect(screen.getByText(/Scanning database for test account traces/i)).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('Test Account Purge')).toBeInTheDocument();
+      expect(screen.getByText('Test accounts:')).toBeInTheDocument();
+      expect(screen.getByText('Pending invitations:')).toBeInTheDocument();
+      expect(screen.getByText('Personal prayers:')).toBeInTheDocument();
+      expect(screen.getByText('Interaction logs:')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Test accounts:')).toBeInTheDocument();
-    expect(screen.getByText('Pending invitations:')).toBeInTheDocument();
-    expect(screen.getByText('Personal prayers:')).toBeInTheDocument();
-    expect(screen.getByText('Interaction logs:')).toBeInTheDocument();
   });
 
   it('allows executing purge and displays completion screen', async () => {

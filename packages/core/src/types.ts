@@ -254,6 +254,8 @@ export interface Notification {
 
 export type FeedbackKind = 'thought' | 'idea' | 'off' | 'request';
 
+export type FeedbackOutcome = 'shipped' | 'not-planned' | 'already-there';
+
 export interface Feedback {
   id: string;
   userId: string;
@@ -261,6 +263,7 @@ export interface Feedback {
   userName: string;
   type: 'bug' | 'enhancement';
   kind?: FeedbackKind;
+  outcome?: FeedbackOutcome;
   message: string;
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;

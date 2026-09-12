@@ -21,6 +21,7 @@ vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn().mockResolvedValue({ id: 'test-feedback-id' }),
   serverTimestamp: vi.fn(),
   query: vi.fn(),
+  where: vi.fn(),
   orderBy: vi.fn(),
   onSnapshot: vi.fn((_, callback) => {
     callback({
@@ -500,7 +501,7 @@ describe('User Feedback Feature', () => {
     it('renders the dedicated feedback form elements', () => {
       render(<SubmitFeedback />);
       expect(screen.getByRole('heading', { name: 'Leave a note' })).toBeInTheDocument();
-      expect(screen.getByText('A thought')).toBeInTheDocument();
+      expect(screen.getAllByText('A thought')[0]).toBeInTheDocument();
       expect(screen.getByText('An idea')).toBeInTheDocument();
       expect(screen.getByText('A request')).toBeInTheDocument();
     });

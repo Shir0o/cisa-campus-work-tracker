@@ -66,6 +66,8 @@ const {
     };
   };
 
+  const DELETE_SENTINEL = Symbol("DELETE");
+
   const db = {
     collection,
     batch: () => {
@@ -83,7 +85,15 @@ const {
         },
         commit: async () => {
           for (const p of pending) {
-            (store[p._col] ??= {})[p._id] = { ...(store[p._col]?.[p._id] ?? {}), ...p.data };
+            const target = (store[p._col] ??= {})[p._id] ?? {};
+            for (const [k, v] of Object.entries(p.data)) {
+              if (v === DELETE_SENTINEL || (v && (v as any).__mockDelete)) {
+                delete target[k];
+              } else {
+                target[k] = v;
+              }
+            }
+            store[p._col][p._id] = target;
           }
         },
       };
@@ -101,6 +111,7 @@ const {
     mockCreateCustomToken: vi.fn(),
     fetchMock: vi.fn(),
     getFirestoreDbIds: [] as (string | undefined)[],
+    DELETE_SENTINEL,
   };
 });
 
@@ -117,7 +128,10 @@ vi.mock("firebase-admin/firestore", () => ({
     getFirestoreDbIds.push(dbId);
     return mockDb;
   },
-  FieldValue: { serverTimestamp: () => ({ __mockServerTimestamp: true }) },
+  FieldValue: {
+    serverTimestamp: () => ({ __mockServerTimestamp: true }),
+    delete: () => ({ __mockDelete: true }),
+  },
 }));
 
 vi.mock("firebase-admin/auth", () => ({
@@ -452,9 +466,9 @@ describe("POST /api/webhook/github", () => {
     expect(res.body.message).toContain("Ignored non-issues event");
   });
 
-  it("marks matching feedback docs resolved when the issue is closed", async () => {
+  it("sets outcome to shipped, marks resolved, and writes a notification when closed normally", async () => {
     vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
-    seedDoc("feedback", "fb-9", { status: "in_progress", githubIssueUrl: issueUrl });
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
     const res = await request(app)
       .post("/api/webhook/github")
       .set("x-github-event", "issues")
@@ -462,13 +476,22 @@ describe("POST /api/webhook/github", () => {
       .send(closedPayload);
     expect(res.status).toBe(200);
     expect(res.body.matchedDocsCount).toBe(1);
-    expect(res.body.updates).toMatchObject({ status: "resolved" });
+    expect(res.body.updates).toMatchObject({ status: "resolved", outcome: "shipped" });
     expect(getCollection("feedback")["fb-9"].status).toBe("resolved");
+    expect(getCollection("feedback")["fb-9"].outcome).toBe("shipped");
+    expect(getCollection("feedback")["fb-9"].archived).toBeFalsy();
+
+    // Check notification was sent to user
+    const notifications = Object.values(getCollection("notifications"));
+    const userNotifs = notifications.filter((n: any) => n.userId === "user-ada");
+    expect(userNotifs).toHaveLength(1);
+    expect(userNotifs[0].message).toBe("This shipped! Thank you for helping shape the app.");
+    expect(userNotifs[0].link).toBe("/feedback");
   });
 
-  it("archives feedback when closed with not_planned", async () => {
+  it("sets outcome to not-planned without archiving when closed with state_reason: not_planned", async () => {
     vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
-    seedDoc("feedback", "fb-10", { status: "in_progress", githubIssueUrl: issueUrl });
+    seedDoc("feedback", "fb-10", { userId: "user-bob", status: "in_progress", githubIssueUrl: issueUrl });
     const payload = { action: "closed", issue: { html_url: issueUrl, state_reason: "not_planned" } };
     const res = await request(app)
       .post("/api/webhook/github")
@@ -477,12 +500,47 @@ describe("POST /api/webhook/github", () => {
       .send(payload);
     expect(res.status).toBe(200);
     expect(getCollection("feedback")["fb-10"].status).toBe("resolved");
-    expect(getCollection("feedback")["fb-10"].archived).toBe(true);
+    expect(getCollection("feedback")["fb-10"].outcome).toBe("not-planned");
+    expect(getCollection("feedback")["fb-10"].archived).toBeFalsy();
+
+    const notifications = Object.values(getCollection("notifications"));
+    const userNotifs = notifications.filter((n: any) => n.userId === "user-bob");
+    expect(userNotifs).toHaveLength(1);
+    expect(userNotifs[0].message).toBe("We looked into this and aren't planning to build it right now, but thank you for speaking up.");
+    expect(userNotifs[0].link).toBe("/feedback");
   });
 
-  it("reopens feedback when the issue is reopened", async () => {
+  it("sets outcome to already-there when already-exists label is present (label beats state_reason)", async () => {
     vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
-    seedDoc("feedback", "fb-11", { status: "resolved", archived: true, githubIssueUrl: issueUrl });
+    seedDoc("feedback", "fb-label", { userId: "user-clara", status: "in_progress", githubIssueUrl: issueUrl });
+    const payload = {
+      action: "closed",
+      issue: {
+        html_url: issueUrl,
+        state_reason: "not_planned",
+        labels: [{ name: "bug" }, { name: "already-exists" }],
+      },
+    };
+    const res = await request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .set("x-hub-signature-256", sign(payload, "sekret"))
+      .send(payload);
+    expect(res.status).toBe(200);
+    expect(getCollection("feedback")["fb-label"].status).toBe("resolved");
+    expect(getCollection("feedback")["fb-label"].outcome).toBe("already-there");
+    expect(getCollection("feedback")["fb-label"].archived).toBeFalsy();
+
+    const notifications = Object.values(getCollection("notifications"));
+    const userNotifs = notifications.filter((n: any) => n.userId === "user-clara");
+    expect(userNotifs).toHaveLength(1);
+    expect(userNotifs[0].message).toBe("This is already in the app! Ask someone on the team and we'll show you where it lives.");
+    expect(userNotifs[0].link).toBe("/feedback");
+  });
+
+  it("reopens feedback when the issue is reopened, clears outcome, and does not send notification", async () => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    seedDoc("feedback", "fb-11", { userId: "user-dan", status: "resolved", outcome: "shipped", githubIssueUrl: issueUrl });
     const payload = { action: "reopened", issue: { html_url: issueUrl } };
     const res = await request(app)
       .post("/api/webhook/github")
@@ -492,6 +550,11 @@ describe("POST /api/webhook/github", () => {
     expect(res.status).toBe(200);
     expect(getCollection("feedback")["fb-11"].status).toBe("in_progress");
     expect(getCollection("feedback")["fb-11"].archived).toBe(false);
+    expect(getCollection("feedback")["fb-11"].outcome).toBeUndefined();
+
+    const notifications = Object.values(getCollection("notifications"));
+    const userNotifs = notifications.filter((n: any) => n.userId === "user-dan");
+    expect(userNotifs).toHaveLength(0);
   });
 
   it("returns a no-match message when no feedback doc references the issue", async () => {

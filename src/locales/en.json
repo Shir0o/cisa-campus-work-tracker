@@ -286,7 +286,10 @@
     "characters": "characters",
     "go_home": "Go home",
     "saved_body": "Thank you for taking the time, {name}. Your note has been saved and our administrators will read it soon.",
-    "goes_to_team": "Your note goes straight to the team."
+    "goes_to_team": "Your note goes straight to the team.",
+    "your_past_notes": "Your past notes",
+    "what_came_of_it": "What came of it",
+    "still_open": "Still open"
   },
   "feedbackList": {
     "access_denied": "Access Denied",
@@ -323,6 +326,8 @@
     "restore_from_archive": "Restore from Archive",
     "delete_feedback": "Delete Feedback",
     "not_auto_synced": "Not auto-synced",
+    "cannot_reach_author": "Cannot reach author",
+    "cannot_reach_author_title": "This note has no linked GitHub issue and cannot reach its author when resolved",
     "view_screenshot": "View Screenshot",
     "captured_screenshot_alt": "Captured Screenshot",
     "click_to_enlarge": "Click to enlarge",
