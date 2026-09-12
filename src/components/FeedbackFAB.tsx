@@ -9,6 +9,7 @@ import { Translate } from './Translate';
 import { useTranslate } from '../hooks/useTranslate';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
+import { capturePageScreenshot } from '../lib/feedbackScreenshot';
 import { FeedbackKind } from '../types';
 
 
@@ -77,12 +78,17 @@ export default function FeedbackFAB() {
 
     setPhase('busy');
 
+    // Capture before the payload is built. `ignoreElements` keeps the FAB and
+    // this dialog out of the shot, so what lands is the page behind them.
+    const screenshot = await capturePageScreenshot();
+
     const payload = {
       userId: user.uid,
       userName: user.displayName || 'Anonymous User',
       type,
       kind: submissionKind,
       message: submissionMessage,
+      screenshot,
       url: window.location.href,
       userAgent: navigator.userAgent,
       viewport: `${window.innerWidth}x${window.innerHeight} (DPR: ${window.devicePixelRatio})`,

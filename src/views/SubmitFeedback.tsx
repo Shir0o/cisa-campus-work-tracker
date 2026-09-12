@@ -10,6 +10,7 @@ import { useTranslate } from '../hooks/useTranslate';
 import { useNavigate } from 'react-router-dom';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
+import { capturePageScreenshot } from '../lib/feedbackScreenshot';
 import { Feedback, FeedbackKind } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 
@@ -69,6 +70,7 @@ export default function SubmitFeedback() {
     setIsSubmitting(true);
 
     const type = kindToType(kind);
+    const screenshot = await capturePageScreenshot();
 
     const payload = {
       userId: user.uid,
@@ -76,6 +78,7 @@ export default function SubmitFeedback() {
       type,
       kind,
       message: message.trim(),
+      screenshot,
       url: window.location.href,
       userAgent: navigator.userAgent,
       viewport: `${window.innerWidth}x${window.innerHeight} (DPR: ${window.devicePixelRatio})`,

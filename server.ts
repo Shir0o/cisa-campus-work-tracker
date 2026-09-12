@@ -14,7 +14,7 @@ import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 import { feedbackIssueSubmittedByLine } from "./src/lib/feedbackReporter";
 import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
 import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
-import { outcomeCopy, type FeedbackOutcome } from "./src/lib/feedbackKinds";
+import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/lib/feedbackKinds";
 
 dotenv.config();
 
@@ -217,7 +217,7 @@ export async function createApp() {
         return res.status(401).json({ error: "Unauthorized: Authorization header is required." });
       }
 
-      const { type, kind, message, url, userAgent, viewport } = req.body;
+      const { type, kind, message, screenshot, url, userAgent, viewport } = req.body;
 
       if (!message || typeof message !== "string") {
         return res.status(400).json({ error: "Missing required 'message' parameter." });
@@ -248,6 +248,24 @@ export async function createApp() {
       if (url) feedbackData.url = url;
       if (userAgent) feedbackData.userAgent = userAgent;
       if (viewport) feedbackData.viewport = viewport;
+      // Screenshots are admin-only context: they live on the Firestore doc and
+      // are rendered in the feedback list, but never reach the GitHub issue
+      // body below (ADR 0018 decision 7). An oversized or malformed capture is
+      // dropped rather than rejected — the written note is the point, the
+      // screenshot is a bonus.
+      if (screenshot !== undefined && screenshot !== "") {
+        if (isStorableScreenshot(screenshot)) {
+          feedbackData.screenshot = screenshot;
+        } else {
+          console.warn(
+            "Discarding unstorable feedback screenshot (type " +
+              typeof screenshot +
+              ", length " +
+              (typeof screenshot === "string" ? screenshot.length : "n/a") +
+              ")."
+          );
+        }
+      }
 
       // 1. Save to Firestore
       const docRef = await db.collection("feedback").add(feedbackData);
@@ -270,6 +288,9 @@ export async function createApp() {
             : prefix + cleanMsg.slice(0, remaining - 1) + ellipsis;
           const fence = '```';
 
+          // NOTE: `screenshot` is deliberately absent from every line below.
+          // ADR 0018 decision 7 keeps captures out of the public issue tracker;
+          // src/test/server.test.ts asserts the body stays screenshot-free.
           const bodyLines = [
             "### Feedback Details",
             feedbackIssueSubmittedByLine(userName),

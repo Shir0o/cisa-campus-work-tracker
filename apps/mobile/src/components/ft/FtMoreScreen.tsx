@@ -5,7 +5,7 @@
 // The list is exactly FT_MORE from @cisa/core and nothing else. The heavier
 // work (Board pages, gatherings, kinds) is read-mostly on the phone, which the
 // foot line says out loud.
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
@@ -51,8 +51,16 @@ function FtMore() {
   };
 
 
+  // Ref for the feedback screenshot capture. The bottom sheet renders at the
+  // app-root BottomSheetModalProvider's position, not inline, so this captures
+  // the screen behind the sheet rather than the sheet itself. `collapsable`
+  // keeps the view natively backed on Android, without which captureRef has
+  // nothing to draw.
+  const captureRef = useRef<View>(null);
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+      <View ref={captureRef} collapsable={false} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 32 }}>
         <View style={{ paddingTop: 14, paddingBottom: 22 }}>
           <Text
@@ -224,7 +232,8 @@ function FtMore() {
           {t('mobile.ft_more.foot')}
         </Text>
       </ScrollView>
-      <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      </View>
+      <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} targetRef={captureRef} />
       <M2Release
         role={role}
         forceOpen={whatsNewOpen}

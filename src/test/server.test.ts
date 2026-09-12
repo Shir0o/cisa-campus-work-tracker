@@ -392,6 +392,59 @@ describe("POST /api/feedback", () => {
     expect(res.status).toBe(401);
     expect(res.body.error).toContain("Unauthorized");
   });
+
+  // ── Screenshots: stored for admins, never published (ADR 0018 decision 7) ──
+  describe("screenshots", () => {
+    const JPEG = "data:image/jpeg;base64,";
+    const SHOT = `${JPEG}abc123`;
+
+    it("stores a valid screenshot on the feedback document", async () => {
+      const res = await request(app).post("/api/feedback").send({ message: "with shot", screenshot: SHOT });
+      expect(res.status).toBe(200);
+      expect(Object.values(getCollection("feedback"))[0].screenshot).toBe(SHOT);
+    });
+
+    it("never puts the screenshot in the GitHub issue", async () => {
+      vi.stubEnv("GITHUB_TOKEN", "gh-token");
+      vi.stubEnv("GITHUB_REPO", "org/repo");
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/50", number: 50 }), { status: 201 })
+      );
+
+      const res = await request(app).post("/api/feedback").send({ message: "with shot", kind: "bug", screenshot: SHOT });
+      expect(res.status).toBe(200);
+
+      // The screenshot reached Firestore...
+      expect(Object.values(getCollection("feedback"))[0].screenshot).toBe(SHOT);
+
+      // ...but appears nowhere in the outbound GitHub payload.
+      const issuePayload = fetchMock.mock.calls[0][1] as RequestInit;
+      const raw = issuePayload.body as string;
+      expect(raw).not.toContain(SHOT);
+      expect(raw).not.toContain("abc123");
+      expect(raw).not.toContain("base64");
+      expect(JSON.parse(raw).body).not.toMatch(/screenshot/i);
+    });
+
+    it.each([
+      ["an oversized capture", JPEG + "x".repeat(200000)],
+      ["a bare base64 string with no data URL prefix", "abc123"],
+      ["an svg data URL", "data:image/svg+xml;base64,abc"],
+      ["a non-string", 12345],
+    ])("drops %s without failing the submission", async (_label, screenshot) => {
+      const res = await request(app).post("/api/feedback").send({ message: "bad shot", screenshot });
+      expect(res.status).toBe(200);
+      const saved = Object.values(getCollection("feedback"))[0];
+      expect(saved.screenshot).toBeUndefined();
+      expect(saved.message).toBe("bad shot");
+    });
+
+    it("omits the field entirely when no screenshot is sent", async () => {
+      const res = await request(app).post("/api/feedback").send({ message: "no shot" });
+      expect(res.status).toBe(200);
+      expect(Object.values(getCollection("feedback"))[0]).not.toHaveProperty("screenshot");
+    });
+  });
 });
 
 describe("POST /api/feedback/update", () => {

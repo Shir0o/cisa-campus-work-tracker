@@ -6,7 +6,7 @@
 // This shell has no tab bar at all (app/(tabs)/_layout.tsx hides it for the
 // trainee): the chrome is ☰ · the meta line · the ＋ log button, and everything
 // that isn't the queue lives behind the drawer.
-import React from 'react';
+import React, { useRef } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -240,8 +240,16 @@ export function QueueScreen() {
   const upNext = waiting.slice(0, 3);
   const meta = queueMeta(queue.length, queueState.handledCount, at);
 
+  // Ref for the feedback screenshot capture. The bottom sheet renders at the
+  // app-root BottomSheetModalProvider's position, not inline, so this captures
+  // the screen behind the sheet rather than the sheet itself. `collapsable`
+  // keeps the view natively backed on Android, without which captureRef has
+  // nothing to draw.
+  const captureRef = useRef<View>(null);
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+      <View ref={captureRef} collapsable={false} style={{ flex: 1 }}>
       {!!data.error && (
         <Text
           style={{
@@ -437,12 +445,13 @@ export function QueueScreen() {
         onSend={sendReply}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
+      </View>
       <QueueDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onFeedback={() => setFeedbackOpen(true)}
       />
-      <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} targetRef={captureRef} />
       {/* What changed since you last opened this (#546) — held while the
           on-campus window is open, so it never interrupts the two hours you're
           actually on campus. */}
