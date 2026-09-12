@@ -11,7 +11,7 @@ The team wants GitHub issues to remain attributable and filterable without publi
 
 ## Decision
 
-1. **Reporter labels are public and minimal.** A feedback-created issue receives a label of the form `reporter:<first-name>-<last-initial>`. If the reporter has no usable display name, the issue gets no reporter label. Anonymous reporters are not grouped under a shared anonymous label.
+1. **Reporter labels are public and minimal.** A feedback-created issue receives a label of the form `reporter:<first-name>-<last-initial>`. If the reporter has no usable display name or has no last name / last initial, the issue gets no reporter label. Anonymous reporters and single-name reporters are not grouped under a shared or bare first-name label.
 
 2. **Public issue bodies show first name only.** The body carries `- **Submitted By:** <first-name>` and no surname, email address, GitHub mention, assignee, or author change.
 
@@ -48,7 +48,7 @@ The team wants GitHub issues to remain attributable and filterable without publi
 
 **Use a single `reporter:anonymous` label.** Rejected because the label cannot identify anyone and only adds label noise.
 
-**Always use a first-name-only reporter label.** Rejected because two different reporters with the same first name would share a label; the last initial keeps the common case readable while reducing collisions.
+**Always use a first-name-only reporter label.** Rejected because two different reporters with the same first name would share a label, and bare first-name labels caused duplicate/redundant labeling; the last initial keeps the common case readable while preventing collisions and duplicate tags.
 
 **Rewrite Git history to remove old email snapshots.** Rejected because the disruption and force-push coordination outweigh the benefit; the current snapshots are cleaned instead.
 

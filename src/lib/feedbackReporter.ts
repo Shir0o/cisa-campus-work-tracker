@@ -33,7 +33,9 @@ export function reporterLabelFromName(userName?: string | null): string | null {
 
   const last = parts.length > 1 ? slugNamePart(parts[parts.length - 1]) : '';
   const initial = last.length > 0 ? last[0] : '';
-  const label = initial.length > 0 ? 'reporter:' + first + '-' + initial : 'reporter:' + first;
+  if (initial.length === 0) return null;
+
+  const label = 'reporter:' + first + '-' + initial;
 
   return label.length <= REPORTER_LABEL_MAX
     ? label

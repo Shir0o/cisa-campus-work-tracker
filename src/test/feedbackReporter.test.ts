@@ -20,9 +20,9 @@ describe('feedback reporter attribution', () => {
     expect(reporterLabelFromName('Elodie  Nguyen')).toBe('reporter:elodie-n');
   });
 
-  it('falls back to a first-name-only label when no last name is available', () => {
-    expect(reporterLabelFromName('Tony')).toBe('reporter:tony');
-    expect(reporterLabelFromName('  Tony  ')).toBe('reporter:tony');
+  it('returns null when no last name or last initial is available', () => {
+    expect(reporterLabelFromName('Tony')).toBeNull();
+    expect(reporterLabelFromName('  Tony  ')).toBeNull();
   });
 
   it('treats empty and anonymous display names as anonymous', () => {
