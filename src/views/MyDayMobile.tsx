@@ -28,7 +28,14 @@ import AskStack from '../components/landing/AskStack';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
-import type { UnifiedGathering } from '../lib/calendar/calendarSync';
+// A Gathering in the coming week — no calendar merge anymore (ADR 0016
+// decision 2), so this is just our own `events` doc's display fields.
+interface WeekGathering {
+  id: string;
+  name: string;
+  date: Date | string;
+  location?: string;
+}
 
 interface MyTask {
   id: string;
@@ -56,7 +63,7 @@ interface MyDayMobileProps {
   personalTasks?: MyTask[];
   contactPrayers?: PrayerRecord[];
   activePersonalPrayers?: any[];
-  thisWeek?: UnifiedGathering[];
+  thisWeek?: WeekGathering[];
   awaySentence?: string;
   leftToDo?: number;
   prayersCount?: number;
@@ -167,16 +174,13 @@ export default function MyDayMobile({
     });
   }, [contacts, personalContactIds]);
 
-  const thisWeek = useMemo<UnifiedGathering[]>(() => {
+  const thisWeek = useMemo<WeekGathering[]>(() => {
     if (rawThisWeek.length > 0) return rawThisWeek;
     return events.map((ev) => ({
       id: ev.id,
-      title: ev.name,
       name: ev.name,
       date: ev.date,
       location: ev.location,
-      type: ev.type || '',
-      synced: false,
     }));
   }, [rawThisWeek, events]);
 
@@ -584,30 +588,15 @@ export default function MyDayMobile({
                     : t('myDay.this_week')}
                   {featuredEvent.location ? ` · ${featuredEvent.location}` : ""}
                 </span>
-                {featuredEvent.synced && (
-                  <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
-                )}
               </div>
               <div className="flex items-center gap-2 mt-1.5">
                 <h3 className="font-serif text-xl text-on-surface md-huddle-title truncate">
-                  {featuredEvent.title || featuredEvent.name}
+                  {featuredEvent.name}
                 </h3>
               </div>
               <p className="text-xs text-on-surface-variant mt-2 leading-relaxed md-huddle-lead">
                 {t('myDay.good_chance')}
               </p>
-              <div className="flex flex-wrap gap-2 mt-3 md-focus">
-                {featuredEvent.time && (
-                  <span className="bg-surface rounded-full px-2.5 py-1 text-xs border border-outline-variant/60 text-on-surface-variant/80 md-focus-item font-medium">
-                    {featuredEvent.time}
-                  </span>
-                )}
-                {featuredEvent.type && (
-                  <span className="bg-surface rounded-full px-2.5 py-1 text-xs border border-outline-variant/60 text-on-surface-variant/80 md-focus-item">
-                    {featuredEvent.type}
-                  </span>
-                )}
-              </div>
             </div>
 
             {/* Rest of week */}
@@ -630,12 +619,10 @@ export default function MyDayMobile({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
-                          {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                          <div className="font-medium text-on-surface truncate">{ev.name}</div>
                         </div>
                         <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate flex items-center gap-1">
-                          {ev.time && <span>{ev.time} · </span>}
-                          <span>{ev.location || ev.type || t('myDay.no_location_set')}</span>
+                          <span>{ev.location || t('myDay.no_location_set')}</span>
                         </div>
                       </div>
                     </div>

@@ -253,11 +253,12 @@ export function teamHolding(
 
 // ── bringing someone with you ──────────────────────────────────────────────
 
-/** The one line under an event: what kind it is and where. The design also put
- * a time of day here; `Event` has no time field at all (the same gap ftHome.ts
- * hit with its "team prayer" tile), so it reads type · location. */
+/** The one line under an event: where. The design also put a time of day
+ * here; `Gathering` has no time field at all (the same gap ftHome.ts hit with
+ * its "team prayer" tile), and the kind taxonomy is retired (issue #957), so
+ * this just reads the location. */
 export function memberEventSub(ev: Event): string {
-  return [ev.type, ev.location].filter(Boolean).join(" · ");
+  return ev.location || "";
 }
 
 /** The invitation a student sends — the design's own sentence. "The easiest

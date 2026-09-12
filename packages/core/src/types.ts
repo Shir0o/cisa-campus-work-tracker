@@ -136,32 +136,75 @@ export interface Interaction {
   createdAt: string;
 }
 
-export interface Event {
+// A recurring "Rhythm" — Wednesday Bible Study, Friday Gathering, etc. — as
+// its own Firestore record (issue #957 / ADR 0016). Previously this was
+// inferred by grouping sibling `events` docs on `parentEventId`; that made a
+// term un-extendable and forced roster edits to prompt "this one or all
+// future?" on every edit. Now the Rhythm itself carries name/cadence/
+// location/roster, and each occasion (a `Gathering` doc in `events`) just
+// points back at it via `rhythmId`.
+export interface Rhythm {
   id: string;
+  name: string;
+  cadence: {
+    type: 'weekly' | 'monthly';
+    /** Day-of-week (0=Sun..6=Sat) for weekly; day-of-month anchor days for monthly. */
+    days: number[];
+    monthlyType?: 'same-day' | 'relative-day';
+  };
+  location?: string;
+  /** The standing roster — who's expected at every occasion, absent an override. */
+  roster: string[];
+  /** yyyy-MM-dd — earliest generated occurrence. */
+  termStart: string;
+  /** yyyy-MM-dd — extendable; `extendRhythmTerm` generates occasions up to it. */
+  termEnd: string;
+  createdAt: string;
+  createdById: string;
+}
+
+// One occasion — a one-off gathering, or one occurrence of a Rhythm. Lives in
+// the `events` collection (kept — renaming buys nothing per the issue).
+export interface Gathering {
+  id: string;
+  /** Authoritative only for a one-off (no `rhythmId`). A Rhythm-linked row
+   *  resolves its display name live from the Rhythm, since the name isn't
+   *  duplicated onto every occasion. */
   name: string;
   date: string;
   order: number;
-  type?: string;
+  /** Set when this occasion belongs to a Rhythm; replaces `parentEventId`. */
+  rhythmId?: string;
+  /** Per-occasion override; falls back to `rhythm.location` when unset. */
   location?: string;
-  isRecurring?: boolean;
-  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly';
-  recurrenceCount?: number;
-  recurrenceEndDate?: string;
-  recurrenceDays?: number[];
-  monthlyType?: 'same-day' | 'relative-day';
-  parentEventId?: string;
+  /** Roster override for a Rhythm-linked occasion (added/removed just for this
+   *  one week) — layered on top of `rhythm.roster` by `resolveRoster`. */
+  rosterOverride?: string[];
+  /** The Rhythm roster the override was authored against, so a live override
+   *  survives a later Rhythm roster change instead of amputating that week. */
+  rosterOverrideBase?: string[];
+  /** A week that was called off — no absence is counted, and it's excluded
+   *  from missed-streak scans. Undoable from the Rhythm drawer. */
+  cancelled?: boolean;
   createdAt: string;
+  /** A one-off's own expected roster. Also kept (unwritten) on pre-migration
+   *  Rhythm-linked docs so old code paths can still read it during rollout —
+   *  new writes for a Rhythm-linked occasion use `rosterOverride` instead. */
+  roster?: string[];
+  /** ISO timestamp; stamped on the Gathering the first time attendance is
+   *  recorded for it. Absent on Gatherings created before this field
+   *  existed — those are read as "happened, but nobody marked it" until
+   *  someone does. Never stamped for a future-dated Gathering. */
+  attendanceTakenAt?: string;
+  /** Display name of the person who recorded attendance. */
+  attendanceTakenBy?: string;
+  /** uid of the same person, for join-free display. */
+  attendanceTakenById?: string;
 }
 
-// A managed "kind of gathering" (Weekly / Small Group / …) with a warm one-line
-// blurb. Lives in the `gatheringTypes` collection so the list is team-shared and
-// editable (mirrors the `stages` taxonomy). Events reference a type by NAME.
-export interface GatheringType {
-  id: string;
-  name: string;
-  blurb?: string;
-  order: number;
-}
+// Deprecated alias — kept only for modules this issue didn't touch. Remove
+// once those modules are next touched; new code should use `Gathering`.
+export type Event = Gathering;
 
 // Team-wide season/club-rush settings (one doc: settings/season). The active
 // season is auto-derived from today's date unless `override` is set; `clubRush`

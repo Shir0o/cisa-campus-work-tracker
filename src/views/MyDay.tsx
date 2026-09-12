@@ -38,12 +38,7 @@ import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import PageContainer from "../components/layout/PageContainer";
 import { Translate } from "../components/Translate";
 import { useLanguage } from "../components/LanguageProvider";
-import {
-  useCalendarSync,
-  calStartOfDay,
-  calAddDays,
-  type UnifiedGathering,
-} from "../lib/calendar/calendarSync";
+import { useCalendarSync, calStartOfDay, calAddDays } from "../lib/calendar/calendarSync";
 import {
   addTodo,
   updateTodo,
@@ -489,7 +484,7 @@ export default function MyDay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { getMergedGatherings, getAwaySentence } = useCalendarSync(contacts);
+  const { getAwaySentence } = useCalendarSync(contacts);
   const calWeekFrom = useMemo(() => calStartOfDay(new Date()), []);
   const calWeekTo = useMemo(() => calAddDays(calWeekFrom, 8), [calWeekFrom]);
 
@@ -742,10 +737,19 @@ export default function MyDay() {
     [activeTasks],
   );
 
-  // This week — unified calendar events & gatherings dated within the next 7 days.
+  // This week — our own Gatherings dated within the next 8 days. Nothing from
+  // the shared calendar becomes a Gathering (ADR 0016 decision 2), so this no
+  // longer merges in calendar events.
   const thisWeek = useMemo(() => {
-    return getMergedGatherings(events, calWeekFrom, calWeekTo);
-  }, [getMergedGatherings, events, calWeekFrom, calWeekTo]);
+    return events
+      .filter((e) => !e.cancelled)
+      .filter((e) => {
+        const d = new Date(e.date);
+        return d >= calWeekFrom && calWeekTo > d;
+      })
+      .map((e) => ({ id: e.id, name: e.name, date: new Date(e.date), location: e.location }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [events, calWeekFrom, calWeekTo]);
 
   const awaySentence = useMemo(() => {
     return getAwaySentence(calWeekFrom, calWeekTo);
@@ -1080,7 +1084,7 @@ export default function MyDay() {
               {thisWeek.length > 1 ? (
                 <div className={cardClass}>
                   {thisWeek.slice(1).map((ev, i) => {
-                    const rd = new Date(ev.date);
+                    const rd = ev.date;
                     return (
                       <div
                         key={ev.id}
@@ -1099,12 +1103,10 @@ export default function MyDay() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
-                            {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                            <div className="font-medium text-on-surface truncate">{ev.name}</div>
                           </div>
                           <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
                             <span>{isValid(rd) ? format(rd, "EEEE") : ""}</span>
-                            {ev.time && <span>· {ev.time}</span>}
                             {ev.location && <span>· {ev.location}</span>}
                           </div>
                         </div>
@@ -1210,19 +1212,16 @@ export default function MyDay() {
           <div className="lg:col-span-6 rounded-3xl p-6 text-accent-on bg-accent-strong flex flex-col justify-between shadow-xs md-next">
             {thisWeek.length > 0 ? (() => {
               const lead = thisWeek[0];
-              const d = new Date(lead.date);
-              const facts = [lead.type, lead.time, lead.location].filter(Boolean) as string[];
+              const d = lead.date;
+              const facts = [lead.location].filter(Boolean) as string[];
               return (
                 <>
                   <div>
                     <div className="text-xs font-medium text-accent-on/75 flex items-center gap-2">
                       <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
-                      {lead.synced && (
-                        <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
-                      )}
                     </div>
                     <div className="flex items-center gap-2.5 mt-2">
-                      <h3 className="text-2xl font-semibold text-accent-on truncate">{lead.title || lead.name}</h3>
+                      <h3 className="text-2xl font-semibold text-accent-on truncate">{lead.name}</h3>
                     </div>
                     <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5 max-w-2xl">
                       {t('myDay.good_chance')}

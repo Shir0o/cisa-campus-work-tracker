@@ -7,29 +7,23 @@ import {
   expandCalEvent,
   expandCalEvents,
   CalFeed,
-  CalMap,
   canSeeCalendarSync,
   calStartOfDay,
   calAddDays,
   calAwayWho,
   calAwaySentence,
-  calGatheringsMerged,
   calItemsBetween,
   useCalendarSync,
   subscribeLiveCalendarEvents,
   type CalRawEvent,
   type CalAwayItem,
 } from '../lib/calendar/calendarSync';
-import type { Contact, Event } from '../types';
+import type { Contact } from '../types';
 
 describe('calendarSync domain engine', () => {
   beforeEach(() => {
     localStorage.clear();
     CalFeed.setEnabled(true);
-    CalMap.reset();
-    CalMap.set('meeting', 'Weekly');
-    CalMap.set('social', 'Small Group');
-    CalMap.set('workshop', 'Special');
   });
 
   describe('Categories and Constants', () => {
@@ -186,7 +180,7 @@ describe('calendarSync domain engine', () => {
     });
   });
 
-  describe('CalFeed and CalMap Stores', () => {
+  describe('CalFeed store', () => {
     it('manages enabled toggle and listeners in CalFeed', () => {
       let notified = false;
       const unsub = CalFeed.subscribe(() => {
@@ -199,15 +193,6 @@ describe('calendarSync domain engine', () => {
       expect(notified).toBe(true);
 
       unsub();
-    });
-
-    it('handles category mappings in CalMap', () => {
-      expect(CalMap.kindFor('meeting')).toBe('Weekly');
-      expect(CalMap.kindFor('product')).toBeNull();
-
-      CalMap.set('product', 'Outreach');
-      expect(CalMap.kindFor('product')).toBe('Outreach');
-      expect(CalMap.all().product).toBe('Outreach');
     });
   });
 
@@ -244,52 +229,30 @@ describe('calendarSync domain engine', () => {
     });
   });
 
-  describe('Gathering Merge and Context Items', () => {
-    it('merges tracker gatherings and mapped calendar events soonest first', () => {
-      const trackerGatherings: Event[] = [
-        {
-          id: 'g1',
-          name: 'Friday Fellowship',
-          type: 'Weekly',
-          date: '2026-08-28',
-          location: 'Student Union',
-          order: 1,
-          createdAt: '2026-08-20',
-        },
-      ];
-
+  describe('Context items', () => {
+    it('reads every non-travel calendar event as context — nothing becomes a Gathering', () => {
       const calInstances: CalRawEvent[] = [
         {
           id: 'ce1',
           title: 'Prayer Breakfast',
           start: new Date('2026-08-26T08:00:00'),
-          cat: 'social', // mapped to 'Small Group'
+          cat: 'social',
           loc: 'Dining Hall',
         },
         {
           id: 'ce2',
           title: 'Project Sprint',
           start: new Date('2026-08-27T10:00:00'),
-          cat: 'product', // unmapped
+          cat: 'product',
         },
       ];
 
       const from = new Date('2026-08-24T00:00:00');
       const to = new Date('2026-08-31T00:00:00');
 
-      const merged = calGatheringsMerged(trackerGatherings, calInstances, from, to);
-      expect(merged).toHaveLength(2);
-      expect(merged[0].title).toBe('Prayer Breakfast');
-      expect(merged[0].synced).toBe(true);
-      expect(merged[0].type).toBe('Small Group');
-
-      expect(merged[1].name).toBe('Friday Fellowship');
-      expect(merged[1].synced).toBe(false);
-
-      const { gatherings, context } = calItemsBetween(calInstances, from, to);
-      expect(gatherings).toHaveLength(1);
-      expect(context).toHaveLength(1);
-      expect(context[0].title).toBe('Project Sprint');
+      const { context } = calItemsBetween(calInstances, from, to);
+      expect(context).toHaveLength(2);
+      expect(context.map((c) => c.title).sort()).toEqual(['Prayer Breakfast', 'Project Sprint']);
     });
   });
 
@@ -312,11 +275,6 @@ describe('calendarSync domain engine', () => {
         result.current.setEnabled(false);
       });
       expect(result.current.isEnabled).toBe(false);
-
-      act(() => {
-        result.current.setMapCategory('travel', 'Weekly');
-      });
-      expect(result.current.calMap.travel).toBe('Weekly');
     });
   });
 });

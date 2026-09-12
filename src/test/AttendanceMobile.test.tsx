@@ -22,7 +22,6 @@ const contact = (over: any = {}) => ({
 const session = (over: any = {}) => ({
   id: 's1',
   name: 'Bible Study',
-  type: 'Bible Study',
   location: 'Room 101',
   date: '2026-08-01',
   ...over,
@@ -31,7 +30,6 @@ const session = (over: any = {}) => ({
 const event = (over: any = {}) => ({
   id: 'e1',
   name: 'Worship Night',
-  type: 'Worship',
   location: 'Main Hall',
   date: '2026-08-12',
   ...over,
@@ -44,13 +42,9 @@ const baseProps = {
   upcoming: [] as any[],
   missed: [] as any[],
   avgPer: 0,
-  activeFilter: 'All',
-  setTypeFilter: vi.fn(),
-  gatheringTypes: [{ id: 'g1', name: 'Outreach' }] as any[],
   isAdmin: false,
   onOpenContact: vi.fn(),
   onLogGathering: vi.fn(),
-  onManageTypes: vi.fn(),
   onEditSession: vi.fn(),
   onDeleteSession: vi.fn().mockResolvedValue(undefined),
   cycleAttendance: vi.fn().mockResolvedValue(undefined),
@@ -98,13 +92,6 @@ describe('AttendanceMobile', () => {
     expect(openMessage).toHaveBeenCalledWith('+15551234');
   });
 
-  it('renders filter pills and calls setTypeFilter on selection', () => {
-    const setTypeFilter = vi.fn();
-    render(<AttendanceMobile {...baseProps} setTypeFilter={setTypeFilter} />);
-    fireEvent.click(screen.getByText('Outreach'));
-    expect(setTypeFilter).toHaveBeenCalledWith('Outreach');
-  });
-
   it('renders past sessions with attended counts and opens the roster sheet', () => {
     const here = vi.fn((c: any) => c.id === 'c1');
     render(
@@ -116,7 +103,7 @@ describe('AttendanceMobile', () => {
       />
     );
     expect(screen.getByText('Bible Study')).toBeInTheDocument();
-    expect(screen.getByText('Bible Study · Room 101')).toBeInTheDocument();
+    expect(screen.getByText('Room 101')).toBeInTheDocument();
     expect(document.querySelector('.gthm-scount b')?.textContent).toBe('1');
 
     fireEvent.click(screen.getByText('Bible Study'));
@@ -164,7 +151,7 @@ describe('AttendanceMobile', () => {
     render(
       <AttendanceMobile
         {...baseProps}
-        upcoming={[{ id: 'e1', title: 'Worship Night', name: 'Worship Night', type: 'Weekly', date: '2026-08-28', synced: false }]}
+        upcoming={[{ id: 'e1', name: 'Worship Night', date: '2026-08-28' }]}
       />
     );
     expect(screen.getByText('Worship Night')).toBeInTheDocument();

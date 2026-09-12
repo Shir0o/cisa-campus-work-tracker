@@ -342,7 +342,7 @@ export function ftWeekAhead(events: Event[], now: number = Date.now()): FtWeekCh
       id: ev.id,
       when: whenWord(ev.date, now),
       title: ev.name,
-      sub: [ev.type, ev.location].filter(Boolean).join(" · "),
+      sub: ev.location || "",
     }));
 }
 

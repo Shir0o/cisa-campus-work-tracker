@@ -38,7 +38,6 @@ const event = (overrides: Partial<Event> = {}): Event => ({
   name: 'Friday Night',
   date: day(2),
   order: 0,
-  type: 'Gathering',
   location: 'Hillside 204',
   createdAt: iso(-30),
   ...overrides,
@@ -241,14 +240,12 @@ describe('memberUpcoming', () => {
 });
 
 describe('memberEventSub', () => {
-  it('reads type · location', () => {
-    expect(memberEventSub(event())).toBe('Gathering · Hillside 204');
+  it('reads the location', () => {
+    expect(memberEventSub(event())).toBe('Hillside 204');
   });
 
-  it('drops whichever half is missing', () => {
-    expect(memberEventSub(event({ type: undefined }))).toBe('Hillside 204');
-    expect(memberEventSub(event({ location: '' }))).toBe('Gathering');
-    expect(memberEventSub(event({ type: undefined, location: '' }))).toBe('');
+  it('reads empty when there is no location', () => {
+    expect(memberEventSub(event({ location: '' }))).toBe('');
   });
 });
 

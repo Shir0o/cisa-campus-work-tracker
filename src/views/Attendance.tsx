@@ -11,18 +11,17 @@ import {
   Pencil,
   Settings2,
   CheckSquare,
+  Ban,
+  Repeat,
+  Undo2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, deleteField } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
-import { useGatheringTypes, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
-import {
-  getSessionRoster,
-  calculateMissedContacts,
-  getRecurringSeriesEventIdsToUpdate,
-} from '../lib/attendanceRoster';
+import { getSessionRoster, calculateMissedContacts, resolveRoster } from '../lib/attendanceRoster';
+import { subscribeRhythms, uncancelGatheringDoc, cancelGatheringForRhythm } from '../lib/rhythms';
 import {
   buildGatheringViewModel,
   type ChipState,
@@ -32,12 +31,13 @@ import {
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { visibleContacts } from '../lib/permissions';
-import { Contact, Event } from '../types';
+import { Contact, Gathering, Rhythm } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import AddEventModal from '../components/modals/AddEventModal';
 import EditEventModal from '../components/modals/EditEventModal';
-import ManageGatheringTypesModal from '../components/modals/ManageGatheringTypesModal';
+import CreateRhythmModal from '../components/modals/CreateRhythmModal';
+import RhythmDrawer from '../components/modals/RhythmDrawer';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
 import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
@@ -48,16 +48,7 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import AttendanceMobile from './AttendanceMobile';
 import { useLanguage } from '../components/LanguageProvider';
-import {
-  useCalendarSync,
-  calStartOfDay,
-  calAddDays,
-  canSeeCalendarSync,
-  type UnifiedGathering,
-  type CalContextItem,
-} from '../lib/calendar/calendarSync';
-
-const DAY_MS = 86_400_000;
+import { useCalendarSync, calStartOfDay, calAddDays, canSeeCalendarSync, type CalContextItem } from '../lib/calendar/calendarSync';
 
 // Event dates are date-only ('yyyy-MM-dd'); parseISO reads them as LOCAL midnight
 // (new Date(...) would treat them as UTC and shift a day in negative-offset zones).
@@ -78,7 +69,7 @@ const isFutureEventDate = (s?: string | null): boolean => {
  *  something that hasn't happened). Per ADR 0005, "attendance taken" is a
  *  fact on the Gathering, not a derivation from contact attendance.
  */
-async function stampAttendanceTaken(event: Event, by: { uid: string | null; name: string }): Promise<void> {
+async function stampAttendanceTaken(event: Gathering, by: { uid: string | null; name: string }): Promise<void> {
   if (event.attendanceTakenAt || isFutureEventDate(event.date)) return;
   try {
     await updateDoc(doc(db, 'events', event.id), {
@@ -111,15 +102,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
       <img src={contact.avatar} alt={contact.name} className={cn(dim, 'rounded-full object-cover shrink-0')} />
     );
   }
-  return (
-    <div
-      className={cn(
-        dim,
-      )}
-    >
-      {initials}
-    </div>
-  );
+  return <div className={cn(dim)}>{initials}</div>;
 }
 
 function Figure({ n, label }: { n: number | string; label: string }) {
@@ -172,30 +155,20 @@ export default function Attendance() {
   const { user, isAdmin, role, effectiveUserId } = useAuth();
   const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const gatheringTypes = useGatheringTypes();
   const [rawContacts, setRawContacts] = useState<Contact[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<Gathering[]>([]);
+  const [rhythms, setRhythms] = useState<Rhythm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
-  const [isManageTypesOpen, setIsManageTypesOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [isCreateRhythmOpen, setIsCreateRhythmOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Gathering | null>(null);
+  const [drawerRhythmId, setDrawerRhythmId] = useState<string | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string>('All');
   const [openId, setOpenId] = useState<string | null>(null);
   const [team, setTeam] = useState<TodoPerson[]>([]);
-  const [todoFor, setTodoFor] = useState<{ contact: Contact; event: Event } | null>(null);
-
-  // Seed the default kinds the first time an admin opens Gatherings (mirrors how
-  // OutreachBoard seeds the default stages). One-shot; no-op once any kind exists.
-  useEffect(() => {
-    if (isAdmin) void seedDefaultGatheringTypesIfEmpty();
-  }, [isAdmin]);
-
-  // A filter pointing at a kind that was just renamed/removed falls back to All.
-  const activeFilter =
-    typeFilter !== 'All' && gatheringTypes.some((t) => t.name === typeFilter) ? typeFilter : 'All';
+  const [todoFor, setTodoFor] = useState<{ contact: Contact; event: Gathering } | null>(null);
 
   useEffect(() => {
     // Clear state before handleFirestoreError (which throws), so the skeleton always
@@ -218,11 +191,13 @@ export default function Attendance() {
     const unsubscribeEvents = onSnapshot(
       qEvents,
       (snapshot) => {
-        setEvents(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Event[]);
+        setEvents(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Gathering[]);
         setTimeout(() => setLoading(false), 600);
       },
       (e) => onLoadError(e, 'events'),
     );
+
+    const unsubscribeRhythms = subscribeRhythms(setRhythms, (e) => onLoadError(e, 'rhythms'));
 
     // Team for the "make a to-do" affordance — who can be assigned the check-in.
     const unsubscribeUsers = onSnapshot(
@@ -241,6 +216,7 @@ export default function Attendance() {
     return () => {
       unsubscribeContacts();
       unsubscribeEvents();
+      unsubscribeRhythms();
       unsubscribeUsers();
     };
   }, []);
@@ -254,6 +230,8 @@ export default function Attendance() {
     () => visibleContacts(role, staffId, rawContacts),
     [role, staffId, rawContacts],
   );
+
+  const rhythmsById = useMemo(() => new Map(rhythms.map((r) => [r.id, r])), [rhythms]);
 
   const handleExport = () => {
     if (contacts.length === 0 || events.length === 0) return;
@@ -303,15 +281,7 @@ export default function Attendance() {
     return s === true;
   };
 
-  // Tapping a name cycles present → absent → present.
-  // Anyone "missed" (absent or unmarked) jumps to present on first tap.
-  // The first record on a Gathering stamps `attendanceTakenAt`/`By`/`ById`
-  // on the event — the spec rejects deriving "taken" from a non-empty
-  // present list because an empty room reads the same as no record at all.
-  // Story 21: a Gathering nobody came to can be recorded as held. Without this
-  // the stamp is only ever reachable by marking someone present, so an empty
-  // room stays indistinguishable from a Gathering nobody has opened.
-  const markAttendanceTaken = async (event: Event) => {
+  const markAttendanceTaken = async (event: Gathering) => {
     await stampAttendanceTaken(event, {
       uid: user?.uid || null,
       name: user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user'),
@@ -350,8 +320,6 @@ export default function Attendance() {
       }
 
       await updateDoc(doc(db, 'contacts', contact.id), updateData);
-      // Stamp the event the first time attendance is recorded for it.
-      // stampAttendanceTaken already no-ops when the event is already stamped.
       const wasUnmarked = current === undefined;
       if (wasUnmarked && event) await stampAttendanceTaken(event, { uid: userUid, name: userName });
       logActivity({
@@ -367,7 +335,7 @@ export default function Attendance() {
     }
   };
 
-   const handleCreateWalkInContact = async (name: string, event: Event) => {
+  const handleCreateWalkInContact = async (name: string, event: Gathering) => {
     const trimmed = name.trim();
     if (!trimmed || isCreatingContact) return;
     setIsCreatingContact(true);
@@ -386,9 +354,7 @@ export default function Attendance() {
         lastContactedBy: userName,
         lastContactedById: userUid,
         hasNewActivity: true,
-        attendance: {
-          [event.id]: true,
-        },
+        attendance: { [event.id]: true },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: userUid,
@@ -396,7 +362,6 @@ export default function Attendance() {
 
       const docRef = await addDoc(collection(db, 'contacts'), newContactData);
 
-      // Stamp the event the first time attendance is recorded for it.
       await stampAttendanceTaken(event, { uid: userUid, name: userName });
       logActivity({
         action: 'added new contact via gathering walk-in',
@@ -407,39 +372,57 @@ export default function Attendance() {
         description: `Created contact "${trimmed}" from gathering "${event.name}"`,
       });
 
-      // Clear search query for this session
       setWalkInQuery((prev) => ({ ...prev, [event.id]: '' }));
     } finally {
       setIsCreatingContact(false);
     }
   };
 
-   const handleToggleRoster = async (event: Event, contactId: string, addToRoster: boolean) => {
+  // Roster edits on a Gathering now either edit the Rhythm (via the drawer)
+  // or set a one-off override — no "apply to future series?" prompt (issue
+  // #957 retires it). A live Rhythm-linked occasion writes the full resolved
+  // list plus the base it was authored against; a past one freezes the full
+  // list in `roster`, and a one-off writes `roster`.
+  const handleToggleRoster = async (event: Gathering, contactId: string, addToRoster: boolean) => {
     if (!isAdmin) return;
     try {
-      const currentRoster = event.roster || [];
+      const rhythm = event.rhythmId ? rhythmsById.get(event.rhythmId) : undefined;
+      const currentRoster = resolveRoster(event, rhythm, new Date());
       const newRoster = addToRoster
         ? Array.from(new Set([...currentRoster, contactId]))
         : currentRoster.filter((id) => id !== contactId);
 
-      const isRecurring = !!(event.isRecurring || event.parentEventId);
-      let applySeries = false;
-      if (isRecurring && events.length > 1) {
-        applySeries = window.confirm(
-          t('attendance.apply_to_future_series', 'Apply roster update to all future gatherings in this series?'),
-        );
-      }
-
-      if (applySeries) {
-        const eventIds = getRecurringSeriesEventIdsToUpdate(event, events);
-        for (const evId of eventIds) {
-          await updateDoc(doc(db, 'events', evId), { roster: newRoster });
-        }
-      } else {
+      if (event.rhythmId === undefined) {
         await updateDoc(doc(db, 'events', event.id), { roster: newRoster });
+        return;
+      }
+      // Past weeks freeze the full list in `roster`; live weeks record the
+      // diff base so a later Rhythm roster change still lands on this week
+      // (story 5) instead of the override amputating it.
+      const isPast = (evtMs(event.date) ?? 0) < calStartOfDay(new Date()).getTime();
+      if (isPast) {
+        await updateDoc(doc(db, 'events', event.id), {
+          roster: newRoster,
+          rosterOverride: deleteField(),
+          rosterOverrideBase: deleteField(),
+        });
+      } else {
+        await updateDoc(doc(db, 'events', event.id), {
+          rosterOverride: newRoster,
+          rosterOverrideBase: rhythm?.roster ?? [],
+        });
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    }
+  };
+
+  const handleToggleCancelled = async (event: Gathering) => {
+    if (!isAdmin) return;
+    if (event.cancelled) {
+      await uncancelGatheringDoc(event.id);
+    } else {
+      await cancelGatheringForRhythm(event.id);
     }
   };
 
@@ -457,50 +440,42 @@ export default function Attendance() {
     [events],
   );
 
-  // Who we've missed: attended before, bounded by first appearance and roster.
-  const missed = useMemo(() => {
-    return calculateMissedContacts(contacts, sessionsNewestFirst);
-  }, [contacts, sessionsNewestFirst]);
-
-  // gatherings to mark / review — newest first, filtered by type
-  const sessions = useMemo(
-    () => sessionsNewestFirst.filter((s) => activeFilter === 'All' || s.type === activeFilter),
-    [sessionsNewestFirst, activeFilter],
+  const resolvedRosterFor = useMemo(
+    () => (s: Gathering) => resolveRoster(s, s.rhythmId ? rhythmsById.get(s.rhythmId) : undefined, new Date()),
+    [rhythmsById],
   );
 
-  // upcoming gatherings — ours, plus the shared calendar's
+  // Who we've missed: attended before, bounded by first appearance and roster.
+  const missed = useMemo(
+    () => calculateMissedContacts(contacts, sessionsNewestFirst, resolvedRosterFor),
+    [contacts, sessionsNewestFirst, resolvedRosterFor],
+  );
+
+  // The shared calendar's context/away items only — nothing from it becomes a
+  // Gathering anymore (ADR 0016 decision 2: the calendar→Gathering merge is gone).
   const calOn = canSeeCalendarSync(role);
-  const { getMergedGatherings, getItemsBetween } = useCalendarSync(contacts);
+  const { getItemsBetween } = useCalendarSync(contacts);
   const upFrom = useMemo(() => calStartOfDay(new Date()), []);
   const upTo = useMemo(() => calAddDays(upFrom, 30), [upFrom]);
-
-  const upcoming: UnifiedGathering[] = useMemo(() => {
-    if (calOn) {
-      return getMergedGatherings(events, upFrom, upTo).slice(0, 4);
-    }
-    const now = Date.now() - DAY_MS;
-    return events
-      .filter((ev) => {
-        const ms = evtMs(ev.date);
-        return ms != null && ms >= now;
-      })
-      .map((ev) => ({
-        id: ev.id,
-        title: ev.name,
-        name: ev.name,
-        type: ev.type || '',
-        date: new Date(ev.date),
-        location: ev.location,
-        attended: [],
-        synced: false,
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, 4);
-  }, [calOn, getMergedGatherings, events, upFrom, upTo]);
 
   const calContext: CalContextItem[] = useMemo(() => {
     return calOn ? getItemsBetween(upFrom, upTo).context.slice(0, 4) : [];
   }, [calOn, getItemsBetween, upFrom, upTo]);
+
+  // Mobile's "Coming up" — our own upcoming Gatherings only (the calendar
+  // merge is gone; ADR 0016 decision 2).
+  const upcomingOwnEvents = useMemo(() => {
+    const now = Date.now() - 86_400_000;
+    return events
+      .filter((ev) => !ev.cancelled)
+      .filter((ev) => {
+        const ms = evtMs(ev.date);
+        return ms != null && ms >= now;
+      })
+      .sort((a, b) => (evtMs(a.date) ?? 0) - (evtMs(b.date) ?? 0))
+      .slice(0, 4)
+      .map((ev) => ({ id: ev.id, name: ev.name, date: ev.date, location: ev.location }));
+  }, [events]);
 
   // quiet figures
   const avgPer = useMemo(() => {
@@ -510,23 +485,12 @@ export default function Attendance() {
     return Math.round(slots / events.length);
   }, [contacts, events]);
 
-  // The full view model: this-week band, Rhythms with chips, and one-offs.
-  // The view below is a renderer of this model and holds no grouping,
-  // week-bounding or chip-state logic of its own.
+  // The full view model: this-week band, Rhythm rows, and one-offs. The view
+  // below is a renderer of this model and holds no grouping, week-bounding
+  // or chip-state logic of its own.
   const viewModel = useMemo(
-    () => buildGatheringViewModel({ events, contacts, now: new Date() }),
-    [events, contacts],
-  );
-
-  // Apply the type filter at the row level so the "kind filters keep working
-  // over the new grouping". One-offs inherit the filter too.
-  const filteredRhythms = useMemo(
-    () => viewModel.rhythms.filter((r) => activeFilter === 'All' || r.type === activeFilter),
-    [viewModel.rhythms, activeFilter],
-  );
-  const filteredOneOffs = useMemo(
-    () => viewModel.oneOffs.filter((g) => activeFilter === 'All' || g.type === activeFilter),
-    [viewModel.oneOffs, activeFilter],
+    () => buildGatheringViewModel({ events, rhythms, contacts, now: new Date() }),
+    [events, rhythms, contacts],
   );
 
   // Per-rhythm override: clicking a chip selects it; "back to current week"
@@ -544,9 +508,14 @@ export default function Attendance() {
     });
   };
 
-   const openContact = (c: Contact) => setSelectedContact(c);
+  const openContact = (c: Contact) => setSelectedContact(c);
+  const openTodoFor = (contact: Contact, event: Gathering) => setTodoFor({ contact, event });
 
-  const openTodoFor = (contact: Contact, event: Event) => setTodoFor({ contact, event });
+  const drawerRhythm = drawerRhythmId ? rhythmsById.get(drawerRhythmId) ?? null : null;
+  const drawerGatherings = useMemo(
+    () => (drawerRhythmId ? events.filter((e) => e.rhythmId === drawerRhythmId) : []),
+    [events, drawerRhythmId],
+  );
 
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!selectedContact);
@@ -570,18 +539,14 @@ export default function Attendance() {
         <AttendanceMobile
           contacts={contacts}
           events={events}
-          sessions={sessions}
-          upcoming={upcoming}
+          sessions={sessionsNewestFirst}
+          upcoming={upcomingOwnEvents}
           calContext={calContext}
           missed={missed}
           avgPer={avgPer}
-          activeFilter={activeFilter}
-          setTypeFilter={setTypeFilter}
-          gatheringTypes={gatheringTypes}
           isAdmin={isAdmin}
           onOpenContact={openContact}
           onLogGathering={() => setIsAddEventModalOpen(true)}
-          onManageTypes={() => setIsManageTypesOpen(true)}
           onEditSession={(session) => setEditingEvent(session)}
           onDeleteSession={async (id, name) => { await handleDeleteEvent(id, name); }}
           cycleAttendance={cycleAttendance}
@@ -651,16 +616,22 @@ export default function Attendance() {
               {missed.length > 0 && ' A few faces have gone quiet lately; they’re the first thing below.'}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 shrink-0">
-            {isAdmin && (
+          {isAdmin && (
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <button
+                onClick={() => setIsCreateRhythmOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface text-sm font-medium hover:bg-surface-variant transition-colors"
+              >
+                <Repeat className="w-4 h-4" /> {t('modals.start_a_rhythm', 'Start a Rhythm')}
+              </button>
               <button
                 onClick={() => setIsAddEventModalOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                <Plus className="w-4 h-4" /> Log a gathering
+                <Plus className="w-4 h-4" /> {t('modals.log_gathering', 'Log a gathering')}
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </header>
 
         {/* quiet admin actions */}
@@ -681,6 +652,193 @@ export default function Attendance() {
           </button>
         </div>
 
+        {/* ── This week: the first thing on the page when there's something on. ──
+           * Groups by date; two Rhythms on one day share a heading, each keeping
+           * its own roster and attendance. Empty weeks say so plainly. */}
+        <section className="mt-12">
+          <SectionHead title="This week" sub="What we're gathering for." />
+          {viewModel.thisWeekEmpty ? (
+            <div className="bg-surface rounded-3xl border border-outline-variant/60 p-10 text-center">
+              <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
+              <p className="text-sm text-on-surface-variant">
+                Nothing on this week — the schedule starts up again next week.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {viewModel.thisWeek.map((group) => {
+                const d = parseISO(group.date);
+                return (
+                  <div key={group.id} className="bg-surface rounded-2xl border border-outline-variant/60 p-5">
+                    <div className="flex items-baseline gap-3 mb-3">
+                      <span className="font-serif text-xl text-on-surface leading-none">
+                        {isValid(d) ? format(d, 'EEEE') : group.date}
+                      </span>
+                      <span className="text-sm text-on-surface-variant">
+                        {isValid(d) ? format(d, 'MMMM d') : ''}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {group.gatherings.map((g) => (
+                        <ThisWeekGatheringRow
+                          key={g.id}
+                          gathering={g}
+                          events={events}
+                          contacts={contacts}
+                          resolvedRosterFor={resolvedRosterFor}
+                          here={here}
+                          cycleAttendance={cycleAttendance}
+                          isAdmin={isAdmin}
+                          openContact={openContact}
+                          openTodoFor={openTodoFor}
+                          walkInQuery={walkInQuery}
+                          setWalkInQuery={setWalkInQuery}
+                          isCreatingContact={isCreatingContact}
+                          handleCreateWalkInContact={handleCreateWalkInContact}
+                          handleToggleRoster={handleToggleRoster}
+                          handleToggleCancelled={handleToggleCancelled}
+                          markAttendanceTaken={markAttendanceTaken}
+                          handleDeleteEvent={handleDeleteEvent}
+                          setEditingEvent={setEditingEvent}
+                          openId={openId}
+                          setOpenId={setOpenId}
+                          t={t}
+                          parseISO={parseISO}
+                          isValid={isValid}
+                          format={format}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ── What we run — Rhythms, folded into rows carrying the term as a
+           * chip strip. Future occasions live above too (in This-week as the
+           * week arrives); here is the standing schedule. ── */}
+        <section className="mt-12">
+          <SectionHead title={t('attendance.what_we_run', 'What we run')} sub={t('attendance.tap_gathering_sub')} />
+
+          {viewModel.rhythms.length === 0 ? (
+            <div className="bg-surface rounded-3xl border border-outline-variant/60 p-10 text-center">
+              <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
+              <p className="text-sm text-on-surface-variant">{t('attendance.no_rhythms_yet', "Nothing standing yet — start a Rhythm when there's one to keep.")}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {viewModel.rhythms.map((r) => (
+                <RhythmRowCard
+                  key={r.id}
+                  rhythm={r}
+                  events={events}
+                  contacts={contacts}
+                  resolvedRosterFor={resolvedRosterFor}
+                  selectedChipId={chipOverride[r.id] ?? r.selectedChipId}
+                  onSelectChip={(chipId) => selectChip(r.id, chipId)}
+                  onResetSelection={() => resetChipSelection(r.id)}
+                  onOpenDrawer={() => setDrawerRhythmId(r.id)}
+                  here={here}
+                  cycleAttendance={cycleAttendance}
+                  isAdmin={isAdmin}
+                  openContact={openContact}
+                  openTodoFor={openTodoFor}
+                  walkInQuery={walkInQuery}
+                  setWalkInQuery={setWalkInQuery}
+                  isCreatingContact={isCreatingContact}
+                  handleCreateWalkInContact={handleCreateWalkInContact}
+                  handleToggleRoster={handleToggleRoster}
+                  handleToggleCancelled={handleToggleCancelled}
+                  markAttendanceTaken={markAttendanceTaken}
+                  handleDeleteEvent={handleDeleteEvent}
+                  setEditingEvent={setEditingEvent}
+                  setOpenId={setOpenId}
+                  openId={openId}
+                  t={t}
+                  parseISO={parseISO}
+                  isValid={isValid}
+                  format={format}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── One-offs — Gatherings with no standing Rhythm. ── */}
+        <section className="mt-12">
+          <SectionHead title={t('attendance.one_offs', 'One-offs')} />
+          {viewModel.oneOffs.length === 0 && viewModel.upcomingOneOffs.length === 0 ? (
+            <div className="bg-surface rounded-3xl border border-outline-variant/60 p-10 text-center">
+              <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
+              <p className="text-sm text-on-surface-variant">{t('attendance.no_gatherings_recorded')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {viewModel.upcomingOneOffs.map((g) => (
+                <OneOffGatheringRow
+                  key={g.id}
+                  gathering={g}
+                  faint
+                  events={events}
+                  contacts={contacts}
+                  resolvedRosterFor={resolvedRosterFor}
+                  here={here}
+                  cycleAttendance={cycleAttendance}
+                  isAdmin={isAdmin}
+                  openContact={openContact}
+                  openTodoFor={openTodoFor}
+                  walkInQuery={walkInQuery}
+                  setWalkInQuery={setWalkInQuery}
+                  isCreatingContact={isCreatingContact}
+                  handleCreateWalkInContact={handleCreateWalkInContact}
+                  handleToggleRoster={handleToggleRoster}
+                  handleToggleCancelled={handleToggleCancelled}
+                  markAttendanceTaken={markAttendanceTaken}
+                  handleDeleteEvent={handleDeleteEvent}
+                  setEditingEvent={setEditingEvent}
+                  openId={openId}
+                  setOpenId={setOpenId}
+                  t={t}
+                  parseISO={parseISO}
+                  isValid={isValid}
+                  format={format}
+                />
+              ))}
+              {viewModel.oneOffs.map((g) => (
+                <OneOffGatheringRow
+                  key={g.id}
+                  gathering={g}
+                  events={events}
+                  contacts={contacts}
+                  resolvedRosterFor={resolvedRosterFor}
+                  here={here}
+                  cycleAttendance={cycleAttendance}
+                  isAdmin={isAdmin}
+                  openContact={openContact}
+                  openTodoFor={openTodoFor}
+                  walkInQuery={walkInQuery}
+                  setWalkInQuery={setWalkInQuery}
+                  isCreatingContact={isCreatingContact}
+                  handleCreateWalkInContact={handleCreateWalkInContact}
+                  handleToggleRoster={handleToggleRoster}
+                  handleToggleCancelled={handleToggleCancelled}
+                  markAttendanceTaken={markAttendanceTaken}
+                  handleDeleteEvent={handleDeleteEvent}
+                  setEditingEvent={setEditingEvent}
+                  openId={openId}
+                  setOpenId={setOpenId}
+                  t={t}
+                  parseISO={parseISO}
+                  isValid={isValid}
+                  format={format}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* ── Who we've missed lately, beside a figures side column ──
            * Heading spans both columns; figures card stops stretching and
            * stays in view while the list scrolls; hairlines separate the
@@ -688,7 +846,7 @@ export default function Attendance() {
         {missed.length > 0 ? (
           <div className="mt-12">
             <SectionHead
-              title="Who we've missed lately"
+              title={t('attendance.missed_title', "Who we've missed lately")}
               sub="They used to come, but it's been a few gatherings."
             />
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
@@ -749,232 +907,15 @@ export default function Attendance() {
               </aside>
             </div>
           </div>
-        ) : null}
-
-        {/* ── When we met ── */}
-        {/* ── This week: the first thing on the page when there's something on. ──
-           * Groups by date; two Rhythms on one day share a heading, each keeping
-           * its own roster and attendance. Empty weeks say so plainly. */}
-        <section className="mt-12">
-          <SectionHead title="This week" sub="What we're gathering for." />
-          {viewModel.thisWeekEmpty ? (
-            <div className="bg-surface rounded-3xl border border-outline-variant/60 p-10 text-center">
-              <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
-              <p className="text-sm text-on-surface-variant">
-                Nothing on this week — the schedule starts up again next week.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {viewModel.thisWeek.map((group) => {
-                const groupActive = group.gatherings.some(
-                  (g) => activeFilter === 'All' || g.type === activeFilter,
-                );
-                if (!groupActive) return null;
-                const groupGatherings = group.gatherings.filter(
-                  (g) => activeFilter === 'All' || g.type === activeFilter,
-                );
-                const d = parseISO(group.date);
-                return (
-                  <div key={group.id} className="bg-surface rounded-2xl border border-outline-variant/60 p-5">
-                    <div className="flex items-baseline gap-3 mb-3">
-                      <span className="font-serif text-xl text-on-surface leading-none">
-                        {isValid(d) ? format(d, 'EEEE') : group.date}
-                      </span>
-                      <span className="text-sm text-on-surface-variant">
-                        {isValid(d) ? format(d, 'MMMM d') : ''}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {groupGatherings.map((g) => (
-                        <ThisWeekGatheringRow
-                          key={g.id}
-                          gathering={g}
-                          events={events}
-                          contacts={contacts}
-                          here={here}
-                          cycleAttendance={cycleAttendance}
-                          isAdmin={isAdmin}
-                          openContact={openContact}
-                          openTodoFor={openTodoFor}
-                          walkInQuery={walkInQuery}
-                          setWalkInQuery={setWalkInQuery}
-                          isCreatingContact={isCreatingContact}
-                          handleCreateWalkInContact={handleCreateWalkInContact}
-                          handleToggleRoster={handleToggleRoster}
-                          markAttendanceTaken={markAttendanceTaken}
-                          handleDeleteEvent={handleDeleteEvent}
-                          setEditingEvent={setEditingEvent}
-                          openId={openId}
-                          setOpenId={setOpenId}
-                          t={t}
-                          parseISO={parseISO}
-                          isValid={isValid}
-                          format={format}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* ── When we met — the term, folded into Rhythms. ──
-           * A Rhythm is one row carrying the term as a chip strip. Future
-           * Gatherings live above (in the This-week band as the week arrives);
-           * here is the long-arc view of how the term unfolded. */}
-        <section className="mt-12">
-          <SectionHead title={t('attendance.when_we_met')} sub={t('attendance.tap_gathering_sub')} />
-
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {[t('attendance.all'), ...gatheringTypes.map((x) => x.name)].map((kind) => (
-              <button
-                key={kind}
-                onClick={() => setTypeFilter(kind)}
-                className={cn(
-                  'h-9 px-4 rounded-full border text-sm font-medium transition-colors',
-                  activeFilter === kind
-                    ? 'bg-primary text-on-primary border-primary'
-                    : 'border-outline-variant text-on-surface hover:bg-surface-variant',
-                )}
-              >
-                {kind}
-              </button>
-            ))}
-            {isAdmin && (
-              <button
-                onClick={() => setIsManageTypesOpen(true)}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-              >
-                <Settings2 className="w-3.5 h-3.5" /> {t('attendance.manage_kinds')}
-              </button>
-            )}
+        ) : (
+          <div className="mt-12 max-w-sm">
+            <FiguresCard eventsCount={events.length} avgPer={avgPer} missedCount={missed.length} />
           </div>
-
-          {filteredRhythms.length === 0 && filteredOneOffs.length === 0 ? (
-            <div className="bg-surface rounded-3xl border border-outline-variant/60 p-10 text-center">
-              <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
-              <p className="text-sm text-on-surface-variant">
-                {events.length === 0
-                  ? t('attendance.no_gatherings_recorded')
-                  : t('attendance.no_gatherings_of_kind')}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredRhythms.map((r) => (
-                <RhythmRowCard
-                  key={r.id}
-                  rhythm={r}
-                  events={events}
-                  contacts={contacts}
-                  selectedChipId={chipOverride[r.id] ?? r.selectedChipId}
-                  onSelectChip={(chipId) => selectChip(r.id, chipId)}
-                  onResetSelection={() => resetChipSelection(r.id)}
-                  here={here}
-                  cycleAttendance={cycleAttendance}
-                  isAdmin={isAdmin}
-                  openContact={openContact}
-                  openTodoFor={openTodoFor}
-                  walkInQuery={walkInQuery}
-                  setWalkInQuery={setWalkInQuery}
-                  isCreatingContact={isCreatingContact}
-                  handleCreateWalkInContact={handleCreateWalkInContact}
-                  handleToggleRoster={handleToggleRoster}
-                  markAttendanceTaken={markAttendanceTaken}
-                  handleDeleteEvent={handleDeleteEvent}
-                  setEditingEvent={setEditingEvent}
-                  setOpenId={setOpenId}
-                  openId={openId}
-                  t={t}
-                  parseISO={parseISO}
-                  isValid={isValid}
-                  format={format}
-                />
-              ))}
-              {filteredOneOffs.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="font-serif text-lg text-on-surface mb-3">One-offs</h3>
-                  <div className="space-y-2">
-                    {filteredOneOffs.map((g) => (
-                      <OneOffGatheringRow
-                        key={g.id}
-                        gathering={g}
-                        events={events}
-                        contacts={contacts}
-                        here={here}
-                        cycleAttendance={cycleAttendance}
-                        isAdmin={isAdmin}
-                        openContact={openContact}
-                        openTodoFor={openTodoFor}
-                        walkInQuery={walkInQuery}
-                        setWalkInQuery={setWalkInQuery}
-                        isCreatingContact={isCreatingContact}
-                        handleCreateWalkInContact={handleCreateWalkInContact}
-                        handleToggleRoster={handleToggleRoster}
-                        markAttendanceTaken={markAttendanceTaken}
-                        handleDeleteEvent={handleDeleteEvent}
-                        setEditingEvent={setEditingEvent}
-                        openId={openId}
-                        setOpenId={setOpenId}
-                        t={t}
-                        parseISO={parseISO}
-                        isValid={isValid}
-                        format={format}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* ── Coming up ── */}
-        {upcoming.length > 0 && (
-          <section className="mt-12">
-            <SectionHead title={t('attendance.coming_up')} sub={t('attendance.coming_up_sub')} />
-            <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
-              {upcoming.map((ev, i) => {
-                const d = new Date(ev.date);
-                return (
-                  <div
-                    key={ev.id}
-                    className={cn(
-                      'flex items-center gap-4 py-4',
-                      i > 0 && 'border-t border-outline-variant/40',
-                    )}
-                  >
-                    <div className="text-center w-11 shrink-0">
-                      <div className="font-serif text-2xl text-on-surface leading-none">
-                        {isValid(d) ? format(d, 'd') : '–'}
-                      </div>
-                      <div className="text-[11px] text-on-surface-variant mt-1">
-                        {isValid(d) ? format(d, 'MMM') : ''}
-                      </div>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-on-surface truncate">
-                        {ev.title || ev.name}
-                        {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
-                      </div>
-                      <div className="text-xs text-on-surface-variant mt-0.5 truncate">
-                        {[isValid(d) ? format(d, 'EEEE') : '', ev.time, ev.location].filter(Boolean).join(' · ')}
-                      </div>
-                    </div>
-                    {!ev.synced && <RsvpCount eventId={ev.id} />}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
         )}
 
-        {/* ── Dates worth knowing about. Not gatherings, so no roster. ── */}
+        {/* ── Also on the calendar — dates worth knowing about. Not gatherings, no roster. ── */}
         {calContext.length > 0 && (
-          <section className="mt-8">
+          <section className="mt-12">
             <SectionHead title={t('calendar.also_on_calendar', 'Also on the calendar')} sub={t('attendance.also_on_calendar_sub', 'Not gatherings — just worth knowing.')} />
             <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
               {calContext.map((it, i) => {
@@ -1007,18 +948,6 @@ export default function Attendance() {
             </div>
           </section>
         )}
-
-        {/* ── Quiet figures: present, but never the headline ──
-           * Same card as the missed-section sidebar — one figures treatment. */}
-        {missed.length === 0 && (
-          <div className="mt-12 max-w-sm">
-            <FiguresCard
-              eventsCount={events.length}
-              avgPer={avgPer}
-              missedCount={missed.length}
-            />
-          </div>
-        )}
       </motion.div>
       </PageContainer>
 
@@ -1029,17 +958,23 @@ export default function Attendance() {
         currentEventCount={events.length}
         contacts={contacts}
       />
+      <CreateRhythmModal
+        isOpen={isCreateRhythmOpen}
+        onClose={() => setIsCreateRhythmOpen(false)}
+        contacts={contacts}
+      />
       <EditEventModal
         isOpen={editingEvent !== null}
         onClose={() => setEditingEvent(null)}
         event={editingEvent}
         contacts={contacts}
-        allEvents={events}
       />
-      <ManageGatheringTypesModal
-        isOpen={isManageTypesOpen}
-        onClose={() => setIsManageTypesOpen(false)}
-        types={gatheringTypes}
+      <RhythmDrawer
+        isOpen={drawerRhythmId !== null}
+        onClose={() => setDrawerRhythmId(null)}
+        rhythm={drawerRhythm}
+        gatherings={drawerGatherings}
+        contacts={contacts}
       />
 
       {todoFor && (
@@ -1083,26 +1018,33 @@ const chipStyle = (state: ChipState): string => {
       return 'bg-primary-container text-on-primary-container border-primary ring-2 ring-primary/40';
     case 'ahead':
       return 'bg-surface text-on-surface-variant/60 border-outline-variant/60 border-dashed';
+    case 'cancelled':
+      return 'bg-surface text-on-surface-variant/50 border-outline-variant/40 line-through';
   }
 };
 
 // ── Shared props for any expandable Gathering row. ──
+/** Handlers that may write to Firestore. */
+type AsyncVoid = Promise<void>;
+
 interface GatheringRowProps {
-  events: Event[];
+  events: Gathering[];
   contacts: Contact[];
+  resolvedRosterFor: (s: Gathering) => string[];
   here: (c: Contact, eventId: string) => boolean;
-  cycleAttendance: (c: Contact, eventId: string) => Promise<void>;
+  cycleAttendance: (c: Contact, eventId: string) => AsyncVoid;
   isAdmin: boolean;
   openContact: (c: Contact) => void;
-  openTodoFor: (c: Contact, e: Event) => void;
+  openTodoFor: (c: Contact, e: Gathering) => void;
   walkInQuery: Record<string, string>;
   setWalkInQuery: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   isCreatingContact: boolean;
-  handleCreateWalkInContact: (name: string, event: Event) => Promise<void>;
-  handleToggleRoster: (event: Event, contactId: string, add: boolean) => Promise<void>;
-  markAttendanceTaken: (event: Event) => Promise<void>;
-  handleDeleteEvent: (id: string, name: string) => Promise<void>;
-  setEditingEvent: (e: Event | null) => void;
+  handleCreateWalkInContact: (name: string, event: Gathering) => AsyncVoid;
+  handleToggleRoster: (event: Gathering, contactId: string, add: boolean) => AsyncVoid;
+  handleToggleCancelled: (event: Gathering) => AsyncVoid;
+  markAttendanceTaken: (event: Gathering) => AsyncVoid;
+  handleDeleteEvent: (id: string, name: string) => AsyncVoid;
+  setEditingEvent: (e: Gathering | null) => void;
   openId: string | null;
   setOpenId: React.Dispatch<React.SetStateAction<string | null>>;
   t: (key: string, fallback?: string) => string;
@@ -1129,7 +1071,9 @@ function GatheringExpansion({
     isCreatingContact,
     handleCreateWalkInContact,
     handleToggleRoster,
+    handleToggleCancelled,
     markAttendanceTaken,
+    resolvedRosterFor,
     parseISO,
     isValid,
     format,
@@ -1137,7 +1081,7 @@ function GatheringExpansion({
   } = rest;
   const ev = events.find((e) => e.id === gathering.id);
   if (!ev) return null;
-  const { present, absent, nonRoster } = getSessionRoster(ev, contacts);
+  const { present, absent, nonRoster } = getSessionRoster(ev, contacts, undefined, resolvedRosterFor(ev));
   const queryText = walkInQuery[ev.id] || '';
   const filteredNonRoster = queryText.trim()
     ? nonRoster.filter((c) => c.name.toLowerCase().includes(queryText.trim().toLowerCase()))
@@ -1150,158 +1094,190 @@ function GatheringExpansion({
 
   return (
     <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4 space-y-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant">
-        <span className="inline-flex items-center gap-1.5">
-          <i className="w-2 h-2 rounded-full bg-primary inline-block" /> {t('attendance.here')}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="w-2 h-2 rounded-full bg-outline inline-block" /> {t('attendance.missed')}
-        </span>
-        <span className="italic">{t('attendance.tap_name_to_update')}</span>
-      </div>
+      {/* Cancel/undo lives with the selected week's summary. */}
+      {isAdmin && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => handleToggleCancelled(ev)}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+              ev.cancelled
+                ? 'border-primary/40 text-accent hover:bg-primary/10'
+                : 'border-outline-variant text-on-surface-variant hover:bg-error-container/40 hover:text-error',
+            )}
+          >
+            {ev.cancelled ? (
+              <>
+                <Undo2 className="w-3.5 h-3.5" /> {t('attendance.undo_cancel', 'Un-cancel this week')}
+              </>
+            ) : (
+              <>
+                <Ban className="w-3.5 h-3.5" /> {t('attendance.cancel_this_week', 'Cancel this week')}
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
-      {/* Whether anyone has recorded this Gathering — and who. A blank week
-          reads as an empty room only once someone has said so. */}
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        {ev.attendanceTakenAt ? (
-          <span className="text-on-surface-variant">
-            {t('attendance.taken_by', 'Attendance taken by')}{' '}
-            <b className="text-on-surface font-medium">
-              {ev.attendanceTakenBy || t('attendance.unknown_user')}
-            </b>
-            {takenOn ? ` · ${takenOn}` : ''}
-          </span>
-        ) : (
-          <>
-            <span className="text-on-surface-variant italic">
-              {t('attendance.not_taken_yet', 'nobody has recorded this one yet')}
+      {ev.cancelled ? (
+        <p className="text-sm text-on-surface-variant italic">
+          {t('attendance.week_cancelled', "This week was called off — nobody's counted absent.")}
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+            <span className="inline-flex items-center gap-1.5">
+              <i className="w-2 h-2 rounded-full bg-primary inline-block" /> {t('attendance.here')}
             </span>
-            {!isFutureEventDate(ev.date) && (
-              <button
-                type="button"
-                onClick={() => markAttendanceTaken(ev)}
-                className="px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-              >
-                {t('attendance.nobody_came', 'We met — nobody came')}
-              </button>
-            )}
-          </>
-        )}
-      </div>
+            <span className="inline-flex items-center gap-1.5">
+              <i className="w-2 h-2 rounded-full bg-outline inline-block" /> {t('attendance.missed')}
+            </span>
+            <span className="italic">{t('attendance.tap_name_to_update')}</span>
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-        <div>
-          <div className="text-xs font-semibold text-on-surface   mb-2">
-            {t('attendance.attended_header')} <span className="text-on-surface-variant">{present.length}</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {present.length === 0 && (
-              <span className="text-sm text-on-surface-variant italic">{t('attendance.no_one_marked_yet')}</span>
-            )}
-            {present.map((c) => {
-              const isOnRoster = (ev.roster || []).includes(c.id);
-              return (
-                <div
-                  key={c.id}
-                  className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border transition-colors bg-primary-container/50 border-primary/30 text-on-surface"
-                >
-                  <button onClick={() => cycleAttendance(c, ev.id)} className="inline-flex items-center gap-2">
-                    <Avatar contact={c} size="sm" />
-                    <span className="text-sm">{c.name}</span>
-                  </button>
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleRoster(ev, c.id, !isOnRoster)}
-                      title={isOnRoster ? t('attendance.remove_from_roster', 'Remove from roster') : t('attendance.add_to_roster', 'Add to roster')}
-                      className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors',
-                        isOnRoster ? 'text-on-surface-variant/70 hover:text-error' : 'bg-primary/20 text-accent hover:bg-primary/30',
-                      )}
-                    >
-                      {isOnRoster ? '★' : '+ Roster'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs font-semibold text-on-surface-variant   mb-2">
-            {t('attendance.we_missed')} <span>{absent.length}</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {absent.length === 0 && (
-              <span className="text-sm text-on-surface-variant italic">{t('attendance.everyone_came_period')}</span>
-            )}
-            {absent.map((c) => (
-              <span key={c.id} className="inline-flex items-center gap-1 pl-1 pr-1.5 py-1 rounded-full border border-outline-variant text-on-surface-variant">
-                <button
-                  onClick={() => cycleAttendance(c, ev.id)}
-                  className="inline-flex items-center gap-2"
-                  title={t('attendance.tap_to_mark_present')}
-                >
-                  <Avatar contact={c} size="sm" />
-                  <span className="text-sm">{c.name}</span>
-                </button>
-                <button
-                  onClick={() => openTodoFor(c, ev)}
-                  title={t('attendance.make_a_todo_check_on').replace('{name}', c.name)}
-                  aria-label={t('attendance.make_a_todo_for').replace('{name}', c.name)}
-                  className="p-1.5 rounded-full hover:bg-surface-variant hover:text-accent transition-colors"
-                >
-                  <CheckSquare className="w-3.5 h-3.5" />
-                </button>
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            {ev.attendanceTakenAt ? (
+              <span className="text-on-surface-variant">
+                {t('attendance.taken_by', 'Attendance taken by')}{' '}
+                <b className="text-on-surface font-medium">
+                  {ev.attendanceTakenBy || t('attendance.unknown_user')}
+                </b>
+                {takenOn ? ` · ${takenOn}` : ''}
               </span>
-            ))}
+            ) : (
+              <>
+                <span className="text-on-surface-variant italic">
+                  {t('attendance.not_taken_yet', 'nobody has recorded this one yet')}
+                </span>
+                {!isFutureEventDate(ev.date) && (
+                  <button
+                    type="button"
+                    onClick={() => markAttendanceTaken(ev)}
+                    className="px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                  >
+                    {t('attendance.nobody_came', 'We met — nobody came')}
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        </div>
-      </div>
 
-      <div className="pt-3 border-t border-outline-variant/30">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={queryText}
-            onChange={(e) => setWalkInQuery((prev) => ({ ...prev, [ev.id]: e.target.value }))}
-            placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
-            className="w-full max-w-sm h-8 px-3 rounded-xl bg-surface-variant/50 border border-outline/30 text-xs text-on-surface outline-none focus:border-primary"
-          />
-          {queryText.trim() && !exactMatch && (
-            <button
-              type="button"
-              disabled={isCreatingContact}
-              onClick={() => handleCreateWalkInContact(queryText, ev)}
-              className="h-8 px-3 rounded-xl bg-primary text-on-primary text-xs font-medium whitespace-nowrap hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {isCreatingContact
-                ? t('attendance.creating', 'Creating...')
-                : t('attendance.create_contact_named', 'Create contact "{name}"').replace('{name}', queryText.trim())}
-            </button>
-          )}
-        </div>
-
-        {queryText.trim() && filteredNonRoster.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {filteredNonRoster.slice(0, 10).map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={async () => {
-                  await cycleAttendance(c, ev.id);
-                  setWalkInQuery((prev) => ({ ...prev, [ev.id]: '' }));
-                }}
-                className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-lg bg-surface border border-outline-variant text-xs hover:border-primary text-on-surface transition-colors"
-              >
-                <Avatar contact={c} size="sm" />
-                <span>{c.name}</span>
-                <span className="text-[10px] text-accent">+ Check in</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            <div>
+              <div className="text-xs font-semibold text-on-surface   mb-2">
+                {t('attendance.attended_header')} <span className="text-on-surface-variant">{present.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {present.length === 0 && (
+                  <span className="text-sm text-on-surface-variant italic">{t('attendance.no_one_marked_yet')}</span>
+                )}
+                {present.map((c) => {
+                  const isOnRoster = resolvedRosterFor(ev).includes(c.id);
+                  return (
+                    <div
+                      key={c.id}
+                      className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border transition-colors bg-primary-container/50 border-primary/30 text-on-surface"
+                    >
+                      <button onClick={() => cycleAttendance(c, ev.id)} className="inline-flex items-center gap-2">
+                        <Avatar contact={c} size="sm" />
+                        <span className="text-sm">{c.name}</span>
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRoster(ev, c.id, !isOnRoster)}
+                          title={isOnRoster ? t('attendance.remove_from_roster', 'Remove from roster') : t('attendance.add_to_roster', 'Add to roster')}
+                          className={cn(
+                            'text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors',
+                            isOnRoster ? 'text-on-surface-variant/70 hover:text-error' : 'bg-primary/20 text-accent hover:bg-primary/30',
+                          )}
+                        >
+                          {isOnRoster ? '★' : '+ Roster'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-on-surface-variant   mb-2">
+                {t('attendance.we_missed')} <span>{absent.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {absent.length === 0 && (
+                  <span className="text-sm text-on-surface-variant italic">{t('attendance.everyone_came_period')}</span>
+                )}
+                {absent.map((c) => (
+                  <span key={c.id} className="inline-flex items-center gap-1 pl-1 pr-1.5 py-1 rounded-full border border-outline-variant text-on-surface-variant">
+                    <button
+                      onClick={() => cycleAttendance(c, ev.id)}
+                      className="inline-flex items-center gap-2"
+                      title={t('attendance.tap_to_mark_present')}
+                    >
+                      <Avatar contact={c} size="sm" />
+                      <span className="text-sm">{c.name}</span>
+                    </button>
+                    <button
+                      onClick={() => openTodoFor(c, ev)}
+                      title={t('attendance.make_a_todo_check_on').replace('{name}', c.name)}
+                      aria-label={t('attendance.make_a_todo_for').replace('{name}', c.name)}
+                      className="p-1.5 rounded-full hover:bg-surface-variant hover:text-accent transition-colors"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+
+          <div className="pt-3 border-t border-outline-variant/30">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={queryText}
+                onChange={(e) => setWalkInQuery((prev) => ({ ...prev, [ev.id]: e.target.value }))}
+                placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
+                className="w-full max-w-sm h-8 px-3 rounded-xl bg-surface-variant/50 border border-outline/30 text-xs text-on-surface outline-none focus:border-primary"
+              />
+              {queryText.trim() && !exactMatch && (
+                <button
+                  type="button"
+                  disabled={isCreatingContact}
+                  onClick={() => handleCreateWalkInContact(queryText, ev)}
+                  className="h-8 px-3 rounded-xl bg-primary text-on-primary text-xs font-medium whitespace-nowrap hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {isCreatingContact
+                    ? t('attendance.creating', 'Creating...')
+                    : t('attendance.create_contact_named', 'Create contact "{name}"').replace('{name}', queryText.trim())}
+                </button>
+              )}
+            </div>
+
+            {queryText.trim() && filteredNonRoster.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {filteredNonRoster.slice(0, 10).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={async () => {
+                      await cycleAttendance(c, ev.id);
+                      setWalkInQuery((prev) => ({ ...prev, [ev.id]: '' }));
+                    }}
+                    className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-lg bg-surface border border-outline-variant text-xs hover:border-primary text-on-surface transition-colors"
+                  >
+                    <Avatar contact={c} size="sm" />
+                    <span>{c.name}</span>
+                    <span className="text-[10px] text-accent">{t('attendance.check_in', '+ Check in')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1310,16 +1286,16 @@ function GatheringExpansion({
  *  old list, but listed under the "One-offs" heading rather than flattened
  *  into "When we met" alongside future dates. */
 function OneOffGatheringRow(
-  props: GatheringRowProps & { gathering: OneOffGathering },
+  props: GatheringRowProps & { gathering: OneOffGathering; faint?: boolean },
 ) {
-  const { gathering, events, openId, setOpenId, t, setEditingEvent, isAdmin, handleDeleteEvent, parseISO, isValid, format } = props;
+  const { gathering, events, openId, setOpenId, t, setEditingEvent, isAdmin, handleDeleteEvent, parseISO, isValid, format, faint } = props;
   const ev = events.find((e) => e.id === gathering.id);
   if (!ev) return null;
   const isOpen = openId === ev.id;
   const d = parseISO(ev.date);
-  const { present } = getSessionRoster(ev, props.contacts);
+  const { present } = getSessionRoster(ev, props.contacts, undefined, props.resolvedRosterFor(ev));
   return (
-    <div className="bg-surface rounded-2xl border border-outline-variant/60 overflow-hidden">
+    <div className={cn('bg-surface rounded-2xl border border-outline-variant/60 overflow-hidden', faint && 'opacity-60')}>
       <button
         onClick={() => setOpenId(isOpen ? null : ev.id)}
         className="w-full flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors group/header"
@@ -1330,8 +1306,8 @@ function OneOffGatheringRow(
           <div className="text-[11px] text-on-surface-variant">{d && isValid(d) ? format(d, 'MMM') : ''}</div>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-on-surface truncate">{ev.name}</div>
-          <div className="text-sm text-on-surface-variant truncate">{ev.type || t('attendance.a_time_together')}</div>
+          <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{ev.name}</div>
+          <div className="text-sm text-on-surface-variant truncate">{ev.location || t('attendance.a_time_together')}</div>
         </div>
         <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
           <b className="text-on-surface font-semibold">{present.length}</b> {t('attendance.came')}
@@ -1375,7 +1351,7 @@ function ThisWeekGatheringRow(
   const ev = events.find((e) => e.id === gathering.id);
   if (!ev) return null;
   const isOpen = openId === ev.id;
-  const { present } = getSessionRoster(ev, props.contacts);
+  const { present } = getSessionRoster(ev, props.contacts, undefined, props.resolvedRosterFor(ev));
   return (
     <div className="bg-surface-variant/30 rounded-xl border border-outline-variant/30 overflow-hidden">
       <button
@@ -1383,14 +1359,14 @@ function ThisWeekGatheringRow(
         className="w-full flex items-center gap-3 p-3 text-left hover:bg-surface-variant/50 transition-colors group/header"
       >
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-on-surface truncate">{ev.name}</div>
-          <div className="text-xs text-on-surface-variant truncate">{ev.type || t('attendance.a_time_together')}</div>
+          <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{gathering.name}</div>
+          <div className="text-xs text-on-surface-variant truncate">{gathering.location || t('attendance.a_time_together')}</div>
         </div>
         <div className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
           <b className="text-on-surface font-semibold">{present.length}</b> {t('attendance.came')}
         </div>
         <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
-        {isAdmin && (
+        {isAdmin && !ev.rhythmId && (
           <span
             role="button"
             tabIndex={0}
@@ -1409,24 +1385,27 @@ function ThisWeekGatheringRow(
 
 /** A Rhythm row: name + counts + a horizontally-scrollable chip strip
  *  carrying every Gathering in the term. Click a chip to view that
- *  Gathering's attendance in the expansion below. */
+ *  Gathering's attendance in the expansion below. Editing the row's own
+ *  configuration (name/cadence/location/roster) opens the Rhythm drawer,
+ *  not EditEventModal. */
 function RhythmRowCard({
   rhythm,
   events,
   selectedChipId,
   onSelectChip,
   onResetSelection,
+  onOpenDrawer,
   openId,
   setOpenId,
   t,
   isAdmin,
-  setEditingEvent,
   ...rest
 }: GatheringRowProps & {
   rhythm: RhythmRow;
   selectedChipId: string;
   onSelectChip: (chipId: string) => void;
   onResetSelection: () => void;
+  onOpenDrawer: () => void;
 }) {
   const selectedChip = rhythm.chips.find((c) => c.id === selectedChipId) ?? rhythm.chips[0];
   const ev = events.find((e) => e.id === selectedChip?.id);
@@ -1442,28 +1421,24 @@ function RhythmRowCard({
       >
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-on-surface truncate">{rhythm.name}</div>
-          <div className="text-sm text-on-surface-variant truncate">{rhythm.type || t('attendance.a_time_together')}</div>
+          <div className="text-sm text-on-surface-variant truncate">{rhythm.subtitle}</div>
         </div>
-        {rhythm.expectedCount > 0 && (
+        {selectedChip && (
           <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
-            <b className="text-on-surface font-semibold">{selectedChip?.presentCount ?? 0}</b> / {rhythm.expectedCount} {t('attendance.came')}
-          </div>
-        )}
-        {rhythm.expectedCount === 0 && selectedChip && (
-          <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
-            <b className="text-on-surface font-semibold">{selectedChip.presentCount}</b> {t('attendance.came')}
+            <b className="text-on-surface font-semibold">{selectedChip.presentCount}</b>
+            {rhythm.expectedCount > 0 ? ` / ${rhythm.expectedCount}` : ''} {t('attendance.came')}
           </div>
         )}
         <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
-        {isAdmin && ev && (
+        {isAdmin && (
           <span
             role="button"
             tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); setEditingEvent(ev); }}
-            className="p-1.5 rounded-full text-on-surface-variant opacity-0 hover:opacity-100 group-hover:opacity-100 hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
-            title={t('attendance.edit_gathering')}
+            onClick={(e) => { e.stopPropagation(); onOpenDrawer(); }}
+            className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
+            title={t('attendance.rhythm_settings', 'Rhythm settings')}
           >
-            <Pencil className="w-3.5 h-3.5" />
+            <Settings2 className="w-3.5 h-3.5" />
           </span>
         )}
       </button>
@@ -1478,7 +1453,7 @@ function RhythmRowCard({
             <button
               key={chip.id}
               onClick={(e) => { e.stopPropagation(); onSelectChip(chip.id); }}
-              title={`${chip.date}${chip.state === 'taken' && chip.takenByName ? ` · marked by ${chip.takenByName}` : ''}`}
+              title={`${chip.date}${chip.state === 'taken' && chip.takenByName ? ` · marked by ${chip.takenByName}` : ''}${chip.state === 'cancelled' ? ' · cancelled' : ''}`}
               className={cn(
                 'shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors',
                 chipStyle(chip.state),
@@ -1506,7 +1481,6 @@ function RhythmRowCard({
           {...rest}
           events={events}
           isAdmin={isAdmin}
-          setEditingEvent={setEditingEvent}
           openId={openId}
           setOpenId={setOpenId}
           t={t}
