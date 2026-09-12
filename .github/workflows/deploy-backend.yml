@@ -1,0 +1,58 @@
+name: Deploy Cloud Run Backend
+
+# Publishes the server container to Cloud Run on merge to main, mirroring
+# the keyless deploy workflows for Firestore and Realtime Database rules.
+#
+# Auth: keyless via Workload Identity Federation (WIF). GitHub's per-run OIDC
+# token is exchanged for short-lived credentials that impersonate the deploy SA
+# github-action@sac-campus-hub (which holds roles/run.developer,
+# roles/cloudbuild.builds.editor, and roles/artifactregistry.writer).
+# No service-account key is stored anywhere.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'apps/mobile/**'
+      - 'content/**'
+      - 'README.md'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: sac-campus-hub
+          workload_identity_provider: projects/914549253362/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: github-action@sac-campus-hub.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: >
+          gcloud run deploy campus-hub-backend
+          --source .
+          --platform managed
+          --region us-west2
+          --allow-unauthenticated
+          --port 3000
+          --quiet
