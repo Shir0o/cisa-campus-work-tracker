@@ -2,7 +2,6 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { FeedbackSheet } from './FeedbackSheet';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { captureRef } from 'react-native-view-shot';
 
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({
@@ -19,10 +18,6 @@ jest.mock('../../lib/firebase', () => ({
       getIdToken: jest.fn().mockResolvedValue('tok-1'),
     },
   },
-}));
-
-jest.mock('react-native-view-shot', () => ({
-  captureRef: jest.fn().mockResolvedValue('fake-base64-string'),
 }));
 
 jest.mock('@gorhom/bottom-sheet', () => {
@@ -49,33 +44,12 @@ describe('FeedbackSheet', () => {
     });
   });
 
-  it('triggers captureRef when visible with targetRef', async () => {
-    const dummyRef = { current: {} };
-    render(
-      <ThemeProvider>
-        <FeedbackSheet visible={true} onClose={jest.fn()} targetRef={dummyRef} />
-      </ThemeProvider>
-    );
-
-    await waitFor(() => {
-      expect(captureRef).toHaveBeenCalledWith(dummyRef, expect.objectContaining({
-        format: 'jpg',
-        result: 'base64',
-      }));
-    });
-  });
-
-  it('submits feedback message and screenshot to /api/feedback', async () => {
-    const dummyRef = { current: {} };
+  it('submits feedback message to /api/feedback', async () => {
     const { getByPlaceholderText, getByText } = render(
       <ThemeProvider>
-        <FeedbackSheet visible={true} onClose={jest.fn()} targetRef={dummyRef} />
+        <FeedbackSheet visible={true} onClose={jest.fn()} />
       </ThemeProvider>
     );
-
-    await waitFor(() => {
-      expect(captureRef).toHaveBeenCalled();
-    });
 
     const input = getByPlaceholderText("What's on your mind?");
     fireEvent.changeText(input, 'Mobile test feedback note');
@@ -91,7 +65,8 @@ describe('FeedbackSheet', () => {
     });
 
     const bodyStr = (global.fetch as jest.Mock).mock.calls[0][1].body;
-    expect(bodyStr).toContain('data:image/jpeg;base64,fake-base64-string');
+    expect(JSON.parse(bodyStr)).not.toHaveProperty('screenshot');
+    expect(JSON.parse(bodyStr)).not.toHaveProperty('userEmail');
 
     await waitFor(() => {
       expect(getByText(/We got your note/)).toBeTruthy();

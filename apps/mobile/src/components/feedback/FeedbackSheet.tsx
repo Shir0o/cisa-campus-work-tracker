@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
-import { captureRef } from 'react-native-view-shot';
 import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
@@ -11,7 +10,6 @@ import type { FeedbackKind } from '@cisa/core';
 interface FeedbackSheetProps {
   visible: boolean;
   onClose: () => void;
-  targetRef?: React.RefObject<any>;
 }
 
 const getApiUrl = () => {
@@ -21,40 +19,22 @@ const getApiUrl = () => {
   return Platform.OS === 'web' ? '' : 'https://cisa-campus-work-tracker.pages.dev';
 };
 
-export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProps) {
+export function FeedbackSheet({ visible, onClose }: FeedbackSheetProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { c, font, radius, fs } = useV2Theme();
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
-  const [screenshot, setScreenshot] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (visible && targetRef?.current) {
+    if (visible) {
       setErrorMsg(null);
       setSubmitted(false);
-      // Capture background screen before user interacts with sheet
-      captureRef(targetRef, {
-        format: 'jpg',
-        quality: 0.65,
-        result: 'base64',
-      })
-        .then((base64) => {
-          if (base64) {
-            setScreenshot(`data:image/jpeg;base64,${base64}`);
-          }
-        })
-        .catch((err) => {
-          console.warn('Failed to capture screen view shot:', err);
-          setScreenshot('');
-        });
-    } else if (!visible) {
-      setScreenshot('');
     }
-  }, [visible, targetRef]);
+  }, [visible]);
 
   const handleSubmit = async () => {
     if (!message.trim() || submitting) return;
@@ -67,12 +47,10 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
 
     const payload = {
       userId: user?.uid || 'anonymous',
-      userEmail: user?.email?.toLowerCase() || 'anonymous',
       userName: user?.displayName || 'Anonymous User',
       type,
       kind,
       message: message.trim(),
-      screenshot,
       url: 'Mobile App',
       userAgent: 'CISA Campus Mobile App (React Native)',
       viewport: `${Math.round(width)}x${Math.round(height)}`,
@@ -117,7 +95,6 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
   const handleClose = () => {
     setSubmitted(false);
     setMessage('');
-    setScreenshot('');
     setErrorMsg(null);
     onClose();
   };
