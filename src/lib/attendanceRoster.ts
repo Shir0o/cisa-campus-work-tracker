@@ -28,16 +28,28 @@ export function resolveRoster(gathering: Gathering, rhythm: Rhythm | undefined, 
 
   const isPast = isPastDate(gathering.date, now);
   if (isPast) {
-    return gathering.rosterOverride ?? gathering.roster ?? [];
+    // Frozen: whatever was recorded for this week, never the Rhythm as it
+    // stands today. The Rhythm fallback covers occasions created after the
+    // migration that passed without ever being recorded.
+    return gathering.rosterOverride ?? gathering.roster ?? rhythm?.roster ?? [];
   }
 
-  const base = rhythm?.roster ?? [];
+  const base = rhythm?.roster ?? gathering.roster ?? [];
   const override = gathering.rosterOverride;
-  if (!override) return base;
-  // An override for a live occasion is the full replacement list for that
-  // occasion (additions/removals already folded in by the caller), not a
-  // diff — so it's just returned as-is once present.
-  return override;
+  if (override === undefined) return base;
+  // The override is the full list for this occasion, but it was authored
+  // against rosterOverrideBase. Re-apply it as a diff so a later Rhythm
+  // roster change still reaches this week (story 5) instead of the override
+  // amputating it. Without a recorded base, the current Rhythm roster is the
+  // best available snapshot.
+  const snapshot = gathering.rosterOverrideBase ?? base;
+  const removed = snapshot.filter((id) => override.indexOf(id) === -1);
+  const added = override.filter((id) => snapshot.indexOf(id) === -1);
+  const resolved = base.filter((id) => removed.indexOf(id) === -1);
+  for (const id of added) {
+    if (resolved.indexOf(id) === -1) resolved.push(id);
+  }
+  return resolved;
 }
 
 const parseLocalDate = (s?: string | null): Date | null => {

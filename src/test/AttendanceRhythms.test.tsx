@@ -26,6 +26,7 @@ vi.mock('firebase/firestore', () => ({
   getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
   where: vi.fn(),
   writeBatch: vi.fn(() => ({ set: vi.fn(), update: vi.fn(), commit: vi.fn(() => Promise.resolve()) })),
+  deleteField: vi.fn(() => 'DELETE_FIELD'),
   doc: vi.fn((_db, path, id) => ({ path, id })),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
 }));

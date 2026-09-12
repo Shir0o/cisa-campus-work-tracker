@@ -287,3 +287,51 @@ describe('buildGatheringViewModel — selected chip summary', () => {
     expect(row.selectedChip?.id).toBe('ev');
   });
 });
+
+describe('buildGatheringViewModel - Rhythm name reads through (story 9)', () => {
+  it('uses the Rhythm name for a linked week even when the stored event name is stale', () => {
+    const rhythm = baseRhythm({ id: 'r1', name: 'Wednesday Bible Study' });
+    const stale = baseEvent({ id: 'w', date: '2026-09-09', rhythmId: 'r1', name: 'Old Name' });
+    const m = build({ events: [stale], rhythms: [rhythm] });
+    const week = m.thisWeek[0].gatherings[0];
+    expect(week.name).toBe('Wednesday Bible Study');
+    expect(m.rhythms[0].chips[0].name).toBe('Wednesday Bible Study');
+  });
+
+  it('falls back to the Rhythm location, but an occasion keeps where it actually met', () => {
+    const rhythm = baseRhythm({ id: 'r1', location: 'Lower Common Room' });
+    const usual = baseEvent({ id: 'usual', date: '2026-09-09', rhythmId: 'r1' });
+    const moved = baseEvent({ id: 'moved', date: '2026-09-10', rhythmId: 'r1', location: 'Chapel' });
+    const m = build({ events: [usual, moved], rhythms: [rhythm] });
+    const byId = new Map(m.thisWeek.flatMap((g) => g.gatherings.map((e) => [e.id, e])));
+    expect(byId.get('usual')?.location).toBe('Lower Common Room');
+    expect(byId.get('moved')?.location).toBe('Chapel');
+  });
+
+  it('resolves the week band expected count from the Rhythm roster', () => {
+    const rhythm = baseRhythm({ id: 'r1', roster: ['c1', 'c2', 'c3'] });
+    const ev = baseEvent({ id: 'w', date: '2026-09-09', rhythmId: 'r1' });
+    const m = build({ events: [ev], rhythms: [rhythm] });
+    expect(m.thisWeek[0].gatherings[0].expectedCount).toBe(3);
+  });
+});
+
+describe('buildGatheringViewModel - default selection and cancellations', () => {
+  it('ignores a future cancelled chip when picking the most recent past', () => {
+    const rhythm = baseRhythm({ id: 'r1' });
+    const past = baseEvent({ id: 'past', date: '2026-09-02', rhythmId: 'r1' });
+    const futureCancelled = baseEvent({ id: 'cancelled', date: '2026-11-11', rhythmId: 'r1', cancelled: true });
+    const m = build({ events: [past, futureCancelled], rhythms: [rhythm] });
+    const row = m.rhythms.find((r) => r.id === 'r1');
+    expect(row?.selectedChipId).toBe('past');
+  });
+
+  it('picks the earliest future chip over a later cancelled one', () => {
+    const rhythm = baseRhythm({ id: 'r1' });
+    const future = baseEvent({ id: 'future', date: '2026-09-16', rhythmId: 'r1' });
+    const futureCancelled = baseEvent({ id: 'cancelled', date: '2026-11-11', rhythmId: 'r1', cancelled: true });
+    const m = build({ events: [future, futureCancelled], rhythms: [rhythm] });
+    const row = m.rhythms.find((r) => r.id === 'r1');
+    expect(row?.selectedChipId).toBe('future');
+  });
+});

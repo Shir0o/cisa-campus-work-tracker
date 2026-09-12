@@ -59,7 +59,7 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
     try {
       await updateRhythm(rhythm.id, {
         name: name.trim(),
-        location: location.trim() || undefined,
+        location: location.trim() || null,
         roster,
       });
       onClose();

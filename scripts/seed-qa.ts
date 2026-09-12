@@ -229,7 +229,6 @@ async function seed() {
     contacts: ['qa-c-'],
     events: ['qa-ev-'],
     stages: ['qa-stage-'],
-    gatheringTypes: ['qa-gt-oneonone'],
     prayers: ['qa-pray-'],
     tasks: ['qa-todo-'],
     board_docs: ['qa-board-'],
@@ -275,19 +274,6 @@ async function seed() {
     await db.collection('stages').doc(id).set(data, { merge: true });
   }
   console.log(`  ✓ ${stages.length} stages`);
-
-  // --- Gathering types taxonomy (design blurb set) ---
-  const gatheringTypes = [
-    { id: 'qa-gt-weekly', name: 'Weekly Gathering', blurb: 'Friday night, the whole fellowship', order: 1 },
-    { id: 'qa-gt-small', name: 'Small Group', blurb: 'A handful, around a table', order: 2 },
-    { id: 'qa-gt-outreach', name: 'Outreach', blurb: 'Meeting people where they are', order: 3 },
-    { id: 'qa-gt-special', name: 'Special', blurb: 'A one-off worship gathering', order: 4 },
-  ];
-  for (const g of gatheringTypes) {
-    const { id, ...data } = g;
-    await db.collection('gatheringTypes').doc(id).set(data, { merge: true });
-  }
-  console.log(`  ✓ ${gatheringTypes.length} gathering types`);
 
   // --- Season settings ---
   await db.collection('settings').doc('season').set({ override: null, clubRush: false }, { merge: true });

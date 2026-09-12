@@ -103,6 +103,8 @@ export interface RhythmRow {
 export interface OneOffGathering {
   id: string;
   name: string;
+  /** The occasion's own room, else the Rhythm's usual room. */
+  location?: string;
   date: string;
   presentCount: number;
   expectedCount: number;
@@ -162,13 +164,21 @@ const presentCountFor = (e: Gathering, contacts: Contact[]): number =>
 
 /** Pick the default selected chip: current-week first, then most-recent past,
  *  then earliest future. */
-const defaultSelectedChipId = (chips: Chip[]): string | undefined => {
+const defaultSelectedChipId = (chips: Chip[], nowMs: number): string | undefined => {
   if (chips.length === 0) return undefined;
   const cur = chips.find((c) => c.state === 'current-week');
   if (cur) return cur.id;
-  const past = chips.filter((c) => c.state === 'happened-not-taken' || c.state === 'taken' || c.state === 'cancelled');
+  // "Most recent past" must not pick a cancelled week that has not happened
+  // yet, or one future cancellation would become a long term's default view.
+  const past = chips.filter((c) => {
+    const ms = parseLocalDate(c.date)?.getTime() ?? 0;
+    return ms <= nowMs && c.state !== 'ahead';
+  });
   if (past.length > 0) return past[past.length - 1].id; // chips are time-ordered asc
-  const ahead = chips.filter((c) => c.state === 'ahead');
+  const ahead = chips.filter((c) => {
+    const ms = parseLocalDate(c.date)?.getTime() ?? 0;
+    return ms > nowMs;
+  });
   if (ahead.length > 0) return ahead[0].id;
   return chips[0].id;
 };
@@ -213,16 +223,23 @@ export function buildGatheringViewModel(input: {
     else gatheringsByRhythm.set(e.rhythmId, [e]);
   }
 
-  const toOneOff = (e: Gathering): OneOffGathering => ({
-    id: e.id,
-    name: e.name,
-    date: e.date,
-    presentCount: presentCountFor(e, contacts),
-    expectedCount: (e.roster || []).length,
-    cancelled: !!e.cancelled,
-    takenByName: e.attendanceTakenAt ? e.attendanceTakenBy : undefined,
-    takenAt: e.attendanceTakenAt,
-  });
+  const toOneOff = (e: Gathering, nowDate: Date): OneOffGathering => {
+    const rhythm = e.rhythmId ? rhythmsById.get(e.rhythmId) : undefined;
+    return {
+      id: e.id,
+      // A Rhythm's name reads through live, including past weeks (story 9).
+      // Location is the occasion's own when it moved, else the usual room
+      // (stories 7/8).
+      name: rhythm?.name ?? e.name,
+      location: e.location ?? rhythm?.location,
+      date: e.date,
+      presentCount: presentCountFor(e, contacts),
+      expectedCount: resolveRoster(e, rhythm, nowDate).length,
+      cancelled: Boolean(e.cancelled),
+      takenByName: e.attendanceTakenAt ? e.attendanceTakenBy : undefined,
+      takenAt: e.attendanceTakenAt,
+    };
+  };
 
   // ── this-week band ───────────────────────────────────────────────────────
   const thisWeekMap = new Map<string, OneOffGathering[]>();
@@ -230,7 +247,7 @@ export function buildGatheringViewModel(input: {
     const d = parseLocalDate(e.date);
     if (!d) continue;
     if (!isInWeek(d, monday, sunday)) continue;
-    const entry = toOneOff(e);
+    const entry = toOneOff(e, now);
     const arr = thisWeekMap.get(e.date);
     if (arr) arr.push(entry);
     else thisWeekMap.set(e.date, [entry]);
@@ -264,7 +281,7 @@ export function buildGatheringViewModel(input: {
         takenAt: state === 'taken' ? e.attendanceTakenAt : undefined,
       };
     });
-    const selectedChipId = defaultSelectedChipId(chips);
+    const selectedChipId = defaultSelectedChipId(chips, nowMs);
     const selectedChip = chips.find((c) => c.id === selectedChipId);
 
     rhythmRows.push({
@@ -294,7 +311,7 @@ export function buildGatheringViewModel(input: {
         const ms = parseLocalDate(e.date)?.getTime();
         return ms == null || ms <= nowMs;
       })
-      .map(toOneOff),
+      .map((e) => toOneOff(e, now)),
   );
   const upcomingOneOffs: OneOffGathering[] = sortByDate(
     allOneOffEvents
@@ -302,7 +319,7 @@ export function buildGatheringViewModel(input: {
         const ms = parseLocalDate(e.date)?.getTime();
         return ms != null && ms > nowMs;
       })
-      .map(toOneOff),
+      .map((e) => toOneOff(e, now)),
   );
 
   return {

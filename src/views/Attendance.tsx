@@ -16,7 +16,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, deleteField } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
@@ -380,8 +380,9 @@ export default function Attendance() {
 
   // Roster edits on a Gathering now either edit the Rhythm (via the drawer)
   // or set a one-off override — no "apply to future series?" prompt (issue
-  // #957 retires it). For a Rhythm-linked occasion this writes the full
-  // resolved list to `rosterOverride`; for a one-off it writes `roster`.
+  // #957 retires it). A live Rhythm-linked occasion writes the full resolved
+  // list plus the base it was authored against; a past one freezes the full
+  // list in `roster`, and a one-off writes `roster`.
   const handleToggleRoster = async (event: Gathering, contactId: string, addToRoster: boolean) => {
     if (!isAdmin) return;
     try {
@@ -391,8 +392,26 @@ export default function Attendance() {
         ? Array.from(new Set([...currentRoster, contactId]))
         : currentRoster.filter((id) => id !== contactId);
 
-      const field = event.rhythmId ? 'rosterOverride' : 'roster';
-      await updateDoc(doc(db, 'events', event.id), { [field]: newRoster });
+      if (event.rhythmId === undefined) {
+        await updateDoc(doc(db, 'events', event.id), { roster: newRoster });
+        return;
+      }
+      // Past weeks freeze the full list in `roster`; live weeks record the
+      // diff base so a later Rhythm roster change still lands on this week
+      // (story 5) instead of the override amputating it.
+      const isPast = (evtMs(event.date) ?? 0) < calStartOfDay(new Date()).getTime();
+      if (isPast) {
+        await updateDoc(doc(db, 'events', event.id), {
+          roster: newRoster,
+          rosterOverride: deleteField(),
+          rosterOverrideBase: deleteField(),
+        });
+      } else {
+        await updateDoc(doc(db, 'events', event.id), {
+          rosterOverride: newRoster,
+          rosterOverrideBase: rhythm?.roster ?? [],
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
     }
@@ -1337,8 +1356,8 @@ function ThisWeekGatheringRow(
         className="w-full flex items-center gap-3 p-3 text-left hover:bg-surface-variant/50 transition-colors group/header"
       >
         <div className="min-w-0 flex-1">
-          <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{ev.name}</div>
-          <div className="text-xs text-on-surface-variant truncate">{ev.location || t('attendance.a_time_together')}</div>
+          <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{gathering.name}</div>
+          <div className="text-xs text-on-surface-variant truncate">{gathering.location || t('attendance.a_time_together')}</div>
         </div>
         <div className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
           <b className="text-on-surface font-semibold">{present.length}</b> {t('attendance.came')}

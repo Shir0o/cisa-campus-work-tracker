@@ -31,6 +31,7 @@ vi.mock('firebase/firestore', () => ({
   updateDoc: vi.fn(() => Promise.resolve()),
   addDoc: vi.fn(() => Promise.resolve({ id: 'new-event-id' })),
   deleteDoc: vi.fn(() => Promise.resolve()),
+  deleteField: vi.fn(() => 'DELETE_FIELD'),
   doc: vi.fn((_db, path, id) => ({ path, id })),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
 }));

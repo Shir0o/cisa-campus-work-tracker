@@ -178,3 +178,76 @@ describe('attendanceRoster', () => {
     });
   });
 });
+
+describe('resolveRoster - live overrides rebase against later Rhythm changes (story 5)', () => {
+  const rhythm: Rhythm = {
+    id: 'r1',
+    name: 'Wednesday Bible Study',
+    cadence: { type: 'weekly', days: [3] },
+    roster: ['c1', 'c2'],
+    termStart: '2026-09-09',
+    termEnd: '2026-12-23',
+    createdAt: '2026-09-01T00:00:00Z',
+    createdById: 'u1',
+  };
+  const NOW = new Date('2026-09-09T14:00:00');
+
+  it('keeps a one-week addition when the Rhythm gains a new regular later', () => {
+    const occasion: Gathering = {
+      id: 'o1',
+      name: 'Wednesday Bible Study',
+      date: '2026-09-16',
+      order: 0,
+      createdAt: '',
+      rhythmId: 'r1',
+      rosterOverride: ['c1', 'c2', 'c3'],
+      rosterOverrideBase: ['c1', 'c2'],
+    };
+    const grown: Rhythm = { ...rhythm, roster: ['c1', 'c2', 'c4'] };
+    expect(resolveRoster(occasion, grown, NOW)).toEqual(['c1', 'c2', 'c4', 'c3']);
+  });
+
+  it('keeps a one-week removal when the Rhythm gains a new regular later', () => {
+    const occasion: Gathering = {
+      id: 'o1',
+      name: 'Wednesday Bible Study',
+      date: '2026-09-16',
+      order: 0,
+      createdAt: '',
+      rhythmId: 'r1',
+      rosterOverride: ['c2'],
+      rosterOverrideBase: ['c1', 'c2'],
+    };
+    const grown: Rhythm = { ...rhythm, roster: ['c1', 'c2', 'c4'] };
+    expect(resolveRoster(occasion, grown, NOW)).toEqual(['c2', 'c4']);
+  });
+
+  it('freezes a past occasion with a recorded roster when the Rhythm changes', () => {
+    const occasion: Gathering = {
+      id: 'o1',
+      name: 'Wednesday Bible Study',
+      date: '2026-09-02',
+      order: 0,
+      createdAt: '',
+      rhythmId: 'r1',
+      roster: ['c1'],
+    };
+    const changed: Rhythm = { ...rhythm, roster: ['c9'] };
+    expect(resolveRoster(occasion, changed, NOW)).toEqual(['c1']);
+  });
+
+  it('freezes a past occasion with an override when the Rhythm changes', () => {
+    const occasion: Gathering = {
+      id: 'o1',
+      name: 'Wednesday Bible Study',
+      date: '2026-09-02',
+      order: 0,
+      createdAt: '',
+      rhythmId: 'r1',
+      rosterOverride: ['c1', 'c3'],
+      rosterOverrideBase: ['c1', 'c2'],
+    };
+    const changed: Rhythm = { ...rhythm, roster: ['c9'] };
+    expect(resolveRoster(occasion, changed, NOW)).toEqual(['c1', 'c3']);
+  });
+});

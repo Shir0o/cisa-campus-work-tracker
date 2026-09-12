@@ -180,6 +180,9 @@ export interface Gathering {
   /** Roster override for a Rhythm-linked occasion (added/removed just for this
    *  one week) — layered on top of `rhythm.roster` by `resolveRoster`. */
   rosterOverride?: string[];
+  /** The Rhythm roster the override was authored against, so a live override
+   *  survives a later Rhythm roster change instead of amputating that week. */
+  rosterOverrideBase?: string[];
   /** A week that was called off — no absence is counted, and it's excluded
    *  from missed-streak scans. Undoable from the Rhythm drawer. */
   cancelled?: boolean;

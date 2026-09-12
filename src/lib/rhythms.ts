@@ -7,6 +7,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   onSnapshot,
@@ -158,7 +159,7 @@ export async function createRhythm(input: CreateRhythmInput): Promise<string> {
     const rhythm: Omit<Rhythm, 'id'> = {
       name: input.name.trim(),
       cadence: input.cadence,
-      location: input.location?.trim() || undefined,
+      ...(input.location?.trim() ? { location: input.location.trim() } : {}),
       roster: input.roster,
       termStart: input.termStart,
       termEnd: input.termEnd,
@@ -190,9 +191,28 @@ export async function createRhythm(input: CreateRhythmInput): Promise<string> {
 /** Updates the Rhythm's own fields (name/cadence/location/roster/term).
  *  Occasions aren't rewritten — a name change reads through live for
  *  present/future rows; past rows stay frozen (per `resolveRoster`). */
-export async function updateRhythm(id: string, patch: Partial<Omit<Rhythm, 'id' | 'createdAt' | 'createdById'>>): Promise<void> {
+export interface RhythmPatch {
+  name?: string;
+  cadence?: Rhythm['cadence'];
+  /** `null` (or an empty string) clears the location; `undefined` leaves it. */
+  location?: string | null;
+  roster?: string[];
+  termStart?: string;
+  termEnd?: string;
+}
+
+export async function updateRhythm(id: string, patch: RhythmPatch): Promise<void> {
   try {
-    await updateDoc(doc(db, 'rhythms', id), { ...patch });
+    const data: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      if (key === 'location') continue;
+      if (value !== undefined) data[key] = value;
+    }
+    if ('location' in patch) {
+      const loc = patch.location?.trim();
+      data.location = loc ? loc : deleteField();
+    }
+    await updateDoc(doc(db, 'rhythms', id), data);
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, `rhythms/${id}`);
   }
