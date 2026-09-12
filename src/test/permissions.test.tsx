@@ -13,6 +13,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
 import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -29,6 +30,10 @@ vi.mock('../lib/seasons', () => ({
     summer: { id: 'summer', label: 'Summer' },
     fall: { id: 'fall', label: 'Fall' },
     winter: { id: 'winter', label: 'Winter' },
+  },
+  seasonForDate: (d: Date = new Date()) => {
+    const month = d.getMonth();
+    return month <= 1 ? 'winter' : month <= 4 ? 'spring' : month <= 6 ? 'summer' : 'fall';
   },
   useSeason: () => ({
     autoId: 'summer',
@@ -380,6 +385,36 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
     expect(canSeeContact('manager', 'u1', null)).toBe(false);
   });
 
+  it('canSeeContact allows trainees to see current term contacts created by active gospel partners', () => {
+    // u1 and u2 are paired in the active term ("Fall 2026")
+    applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
+
+    // Contact created by partner u2 in the current term (season matches or tags include term)
+    const partnerContactCurrent = { id: 'c4', createdBy: 'u2', season: 'Fall 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', partnerContactCurrent)).toBe(true);
+
+    // Contact created by partner u2 in a past term/season without u1 in coCreators
+    const partnerContactPast = { id: 'c5', createdBy: 'u2', season: 'Spring 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', partnerContactPast)).toBe(false);
+
+    // If pairings change in Settings so u1 is now paired with u3 instead of u2
+    applyPartners({ 'Fall 2026': [['u1', 'u3']] }, new Date(2026, 8, 1));
+
+    // u1 can now see u3's current term contact
+    const newPartnerContact = { id: 'c6', createdBy: 'u3', season: 'Fall 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', newPartnerContact)).toBe(true);
+
+    // u1 can no longer dynamically see u2's contact (unless u1 was a co-creator)
+    expect(canSeeContact('manager', 'u1', partnerContactCurrent)).toBe(false);
+
+    // But u1 permanently retains access to contacts co-created with past partner u2
+    const coCreatedWithPastPartner = { id: 'c7', createdBy: 'u2', season: 'Fall 2026', coCreators: ['u1'] };
+    expect(canSeeContact('manager', 'u1', coCreatedWithPastPartner)).toBe(true);
+
+    // Clean up
+    applyPartners({});
+  });
+
   it('visibleContacts filters contacts for trainees', () => {
     const contacts = [
       { id: 'c1', createdBy: 'u2', coCreators: ['u3'] },
@@ -389,6 +424,17 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
 
     expect(visibleContacts('admin', 'u1', contacts)).toHaveLength(3);
     expect(visibleContacts('manager', 'u1', contacts)).toEqual([contacts[1], contacts[2]]);
+
+    // When u1 and u2 are active partners in the current term, u2's contact becomes visible to u1
+    applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
+    const partnerContacts = [
+      { id: 'c1', createdBy: 'u2', season: 'Fall 2026', coCreators: [] },
+      { id: 'c2', createdBy: 'u1', season: 'Fall 2026', coCreators: [] },
+      { id: 'c3', createdBy: 'u4', season: 'Fall 2026', coCreators: [] },
+    ];
+    expect(visibleContacts('manager', 'u1', partnerContacts)).toEqual([partnerContacts[0], partnerContacts[1]]);
+    expect(journeyContacts('manager', 'u1', partnerContacts, 'Fall 2026')).toEqual([partnerContacts[0], partnerContacts[1]]);
+    applyPartners({});
   });
 
   it('journeyContacts filters current semester contacts for trainees', () => {

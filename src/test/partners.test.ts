@@ -6,6 +6,7 @@ import {
   groupOf,
   partnerUidsOf,
   applyPartners,
+  currentTermKey,
   partnersOf,
   stampPartners,
   addToGroup,
@@ -64,6 +65,7 @@ describe("applyPartners / partnersOf / stampPartners", () => {
       { "Fall 2026": [["a", "b"]], "Spring 2026": [["z", "w"]] },
       new Date(2026, 8, 1),
     );
+    expect(currentTermKey()).toBe("Fall 2026");
     expect(partnersOf("a")).toEqual(["b"]);
     expect(partnersOf("b")).toEqual(["a"]);
     expect(partnersOf("z")).toEqual([]);
