@@ -4,7 +4,7 @@
 // The design calls the roster "who cares for you"; there's no such link in this
 // schema (see memberHome.ts's substitution note), so it reads "the team" and
 // offers to open a conversation with any of them.
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { firstName, roleLabel, type FullTimerSummary, type MemberRole } from '@cisa/core';
@@ -66,289 +66,298 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
     ).then((roomId) => router.push(`/messages/${roomId}`));
   };
 
+  // Ref for the feedback screenshot capture. The bottom sheet renders at the
+  // app-root BottomSheetModalProvider's position, not inline, so this captures
+  // the screen behind the sheet rather than the sheet itself. `collapsable`
+  // keeps the view natively backed on Android, without which captureRef has
+  // nothing to draw.
+  const captureRef = useRef<View>(null);
+
   return (
     <>
-      <MemberScreen>
-        {showBack && <MemberBack />}
-        <MemberHead greeting={t('mobile.member.you')} showDate={false} />
+      <View ref={captureRef} collapsable={false} style={{ flex: 1 }}>
+        <MemberScreen>
+          {showBack && <MemberBack />}
+          <MemberHead greeting={t('mobile.member.you')} showDate={false} />
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 13,
-            backgroundColor: c.widget.bg,
-            borderRadius: radius.tile,
-            padding: 16,
-            ...c.widget.shadow,
-          }}
-        >
-          <PersonMark name={me} id={uid} size={46} radius={15} fontSize={15} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: font.extra, fontSize: fs(17), color: c.widget.ink }}>{me}</Text>
-            <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 2 }}>
-              {roleLabel(appRole)}
-            </Text>
-          </View>
-        </View>
-
-        <View>
-          <Sech label={role === 'student' ? t('mobile.member.who_to_reach') : t('mobile.member.your_link_to_team')} />
-          <View style={{ gap: 10 }}>
-            {fullTimers.length === 0 && (
-              <Text
-                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}
-              >
-                We'll have someone to connect you with here soon.
-              </Text>
-            )}
-            {fullTimers.map((ft) => (
-              <View
-                key={ft.uid}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  backgroundColor: c.widget.bg,
-                  borderRadius: radius.tile,
-                  padding: 14,
-                  ...c.widget.shadow,
-                }}
-              >
-                <PersonMark name={ft.name} id={ft.uid} size={38} radius={13} fontSize={13} />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: fs(15), color: c.widget.ink }}>
-                    {ft.name}
-                  </Text>
-                  <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.widget.ink3 }}>
-                    {t('mobile.member.campus_team')}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => openDm(ft)}
-                  hitSlop={8}
-                  style={({ pressed }) => ({
-                    minHeight: 44,
-                    justifyContent: 'center',
-                    opacity: pressed ? 0.55 : 1,
-                  })}
-                >
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
-                    {t('mobile.member.message')}
-                  </Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {role === 'community' && (
-          <View>
-            <Sech label={t('mobile.member.gospel')} />
-            <Pressable
-              onPress={() => router.push('/outreach')}
-              style={({ pressed }) => ({
-                // the design's `.mbr-inv` quiet tile, like the student's invite
-                backgroundColor: c.widget.tile,
-                borderRadius: radius.tile,
-                padding: 18,
-                opacity: pressed ? 0.85 : 1,
-                ...c.widget.shadow,
-              })}
-            >
-              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-                {t('mobile.member.the_monthly_park_outing')}
-              </Text>
-              <Text
-                style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
-              >
-                {t('mobile.member.write_down_who_came_back')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* This week's study (#946) — a student or community member reaches the
-            same week a scan reaches, plus the code and the link to pass it on.
-            Above "How this works" because it is a weekly destination and that
-            is a one-time read. */}
-        <View>
-          <Sech label={t('mobile.study.bible_study')} />
-          <View style={{ backgroundColor: c.widget.bg, borderRadius: radius.tile, ...c.widget.shadow }}>
-            <ThisWeeksStudyRow isFirst />
-          </View>
-        </View>
-
-        <View>
-          <Sech label={t('mobile.member.how_this_works')} />
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/tutorial')}
-            style={({ pressed }) => ({
-              backgroundColor: c.widget.tile,
-              borderRadius: radius.tile,
-              padding: 18,
-              opacity: pressed ? 0.85 : 1,
-              ...c.widget.shadow,
-            })}
-          >
-            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-              {t('mobile.member.read_how_this_works')}
-            </Text>
-            <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}>
-              {t('mobile.member.a_quick_tour')}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View>
-          <Sech label={t('mobile.member.how_it_looks')} />
-          {/* Reads and writes ThemeProvider's own scheme — the one source of
-              truth for light/dark app-wide, just in v2 clothes here. */}
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {LOOKS.map((look) => {
-              const on = scheme === look.key;
-              return (
-                <Pressable
-                  key={look.key}
-                  onPress={() => setScheme(look.key)}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    minHeight: 48,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 8,
-                    borderRadius: radius.button,
-                    borderWidth: 1.5,
-                    borderColor: on ? 'transparent' : c.room.chip,
-                    backgroundColor: on ? c.widget.bg : 'transparent',
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontFamily: font.bold,
-                      fontSize: fs(13),
-                      textAlign: 'center',
-                      color: on ? c.widget.ink : c.room.ink2,
-                    }}
-                  >
-                    {t(`mobile.member.${look.key === 'light' ? 'daylight' : look.key === 'dark' ? 'dark' : 'match_my_phone'}`)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        {role === 'student' && (
-          <View>
-            <Sech label={t('mobile.member.bring_someone_in')} />
-            <Pressable
-              onPress={() => setInviteOpen(true)}
-              style={({ pressed }) => ({
-                // the design's `.mbr-inv` is the quiet tile, not the card
-                backgroundColor: c.widget.tile,
-                borderRadius: radius.tile,
-                padding: 18,
-                opacity: pressed ? 0.85 : 1,
-                ...c.widget.shadow,
-              })}
-            >
-              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-                {t('mobile.member.invite_a_friend')}
-              </Text>
-              <Text
-                style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
-              >
-                {t('mobile.member.an_invitation_you_can_send')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View>
-          <Sech label={t('mobile.member.tell_the_team', 'Tell the team')} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
-            onPress={() => setFeedbackOpen(true)}
-            style={({ pressed }) => ({
-              backgroundColor: c.widget.tile,
-              borderRadius: radius.tile,
-              padding: 18,
-              opacity: pressed ? 0.85 : 1,
-              ...c.widget.shadow,
-            })}
-          >
-            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-              {t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
-            </Text>
-            <Text
-              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
-            >
-              {t('mobile.member.tell_us_sub', 'An idea, something that felt off, or a thank-you')}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View>
-          <Sech label={t('mobile.member.whats_new', "What's New")} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('mobile.member.whats_new', "What's New")}
-            onPress={() => setWhatsNewOpen(true)}
-            style={({ pressed }) => ({
-              backgroundColor: c.widget.tile,
-              borderRadius: radius.tile,
-              padding: 18,
-              opacity: pressed ? 0.85 : 1,
-              ...c.widget.shadow,
-            })}
-          >
-            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-              {t('mobile.member.whats_new', "What's New")}
-            </Text>
-            <Text
-              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
-            >
-              {t('mobile.member.whats_new_sub', 'See the latest updates and improvements in CISA')}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View>
-          <Sech label={t('mobile.member.account_session')} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('mobile.member.log_out')}
-            onPress={() => logOut()}
-            style={({ pressed }) => ({
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 13,
               backgroundColor: c.widget.bg,
               borderRadius: radius.tile,
               padding: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1.5,
-              borderColor: '#FCA5A5',
-              opacity: pressed ? 0.75 : 1,
               ...c.widget.shadow,
-            })}
+            }}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: '#DC2626' }}>
-              {t('mobile.member.log_out')}
-            </Text>
-          </Pressable>
-        </View>
+            <PersonMark name={me} id={uid} size={46} radius={15} fontSize={15} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(17), color: c.widget.ink }}>{me}</Text>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 2 }}>
+                {roleLabel(appRole)}
+              </Text>
+            </View>
+          </View>
 
-        <MemberFoot>
-          {role === 'student'
-            ? `Your details, your gatherings and who you're connected to are kept by the team — ask ${
-                fullTimers[0] ? firstName(fullTimers[0].name) : 'them'
-              } anytime and they'll change it with you.`
-            : 'The team keeps the rest — students, gatherings, everything admin. Ask them anytime.'}
-        </MemberFoot>
-      </MemberScreen>
+          <View>
+            <Sech label={role === 'student' ? t('mobile.member.who_to_reach') : t('mobile.member.your_link_to_team')} />
+            <View style={{ gap: 10 }}>
+              {fullTimers.length === 0 && (
+                <Text
+                  style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}
+                >
+                  We'll have someone to connect you with here soon.
+                </Text>
+              )}
+              {fullTimers.map((ft) => (
+                <View
+                  key={ft.uid}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    backgroundColor: c.widget.bg,
+                    borderRadius: radius.tile,
+                    padding: 14,
+                    ...c.widget.shadow,
+                  }}
+                >
+                  <PersonMark name={ft.name} id={ft.uid} size={38} radius={13} fontSize={13} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: fs(15), color: c.widget.ink }}>
+                      {ft.name}
+                    </Text>
+                    <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.widget.ink3 }}>
+                      {t('mobile.member.campus_team')}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => openDm(ft)}
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                      minHeight: 44,
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.55 : 1,
+                    })}
+                  >
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
+                      {t('mobile.member.message')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {role === 'community' && (
+            <View>
+              <Sech label={t('mobile.member.gospel')} />
+              <Pressable
+                onPress={() => router.push('/outreach')}
+                style={({ pressed }) => ({
+                  // the design's `.mbr-inv` quiet tile, like the student's invite
+                  backgroundColor: c.widget.tile,
+                  borderRadius: radius.tile,
+                  padding: 18,
+                  opacity: pressed ? 0.85 : 1,
+                  ...c.widget.shadow,
+                })}
+              >
+                <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                  {t('mobile.member.the_monthly_park_outing')}
+                </Text>
+                <Text
+                  style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+                >
+                  {t('mobile.member.write_down_who_came_back')}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* This week's study (#946) — a student or community member reaches the
+              same week a scan reaches, plus the code and the link to pass it on.
+              Above "How this works" because it is a weekly destination and that
+              is a one-time read. */}
+          <View>
+            <Sech label={t('mobile.study.bible_study')} />
+            <View style={{ backgroundColor: c.widget.bg, borderRadius: radius.tile, ...c.widget.shadow }}>
+              <ThisWeeksStudyRow isFirst />
+            </View>
+          </View>
+
+          <View>
+            <Sech label={t('mobile.member.how_this_works')} />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/tutorial')}
+              style={({ pressed }) => ({
+                backgroundColor: c.widget.tile,
+                borderRadius: radius.tile,
+                padding: 18,
+                opacity: pressed ? 0.85 : 1,
+                ...c.widget.shadow,
+              })}
+            >
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                {t('mobile.member.read_how_this_works')}
+              </Text>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}>
+                {t('mobile.member.a_quick_tour')}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View>
+            <Sech label={t('mobile.member.how_it_looks')} />
+            {/* Reads and writes ThemeProvider's own scheme — the one source of
+                truth for light/dark app-wide, just in v2 clothes here. */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {LOOKS.map((look) => {
+                const on = scheme === look.key;
+                return (
+                  <Pressable
+                    key={look.key}
+                    onPress={() => setScheme(look.key)}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      minHeight: 48,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 8,
+                      borderRadius: radius.button,
+                      borderWidth: 1.5,
+                      borderColor: on ? 'transparent' : c.room.chip,
+                      backgroundColor: on ? c.widget.bg : 'transparent',
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: font.bold,
+                        fontSize: fs(13),
+                        textAlign: 'center',
+                        color: on ? c.widget.ink : c.room.ink2,
+                      }}
+                    >
+                      {t(`mobile.member.${look.key === 'light' ? 'daylight' : look.key === 'dark' ? 'dark' : 'match_my_phone'}`)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {role === 'student' && (
+            <View>
+              <Sech label={t('mobile.member.bring_someone_in')} />
+              <Pressable
+                onPress={() => setInviteOpen(true)}
+                style={({ pressed }) => ({
+                  // the design's `.mbr-inv` is the quiet tile, not the card
+                  backgroundColor: c.widget.tile,
+                  borderRadius: radius.tile,
+                  padding: 18,
+                  opacity: pressed ? 0.85 : 1,
+                  ...c.widget.shadow,
+                })}
+              >
+                <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                  {t('mobile.member.invite_a_friend')}
+                </Text>
+                <Text
+                  style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+                >
+                  {t('mobile.member.an_invitation_you_can_send')}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          <View>
+            <Sech label={t('mobile.member.tell_the_team', 'Tell the team')} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
+              onPress={() => setFeedbackOpen(true)}
+              style={({ pressed }) => ({
+                backgroundColor: c.widget.tile,
+                borderRadius: radius.tile,
+                padding: 18,
+                opacity: pressed ? 0.85 : 1,
+                ...c.widget.shadow,
+              })}
+            >
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                {t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
+              </Text>
+              <Text
+                style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+              >
+                {t('mobile.member.tell_us_sub', 'An idea, something that felt off, or a thank-you')}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View>
+            <Sech label={t('mobile.member.whats_new', "What's New")} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('mobile.member.whats_new', "What's New")}
+              onPress={() => setWhatsNewOpen(true)}
+              style={({ pressed }) => ({
+                backgroundColor: c.widget.tile,
+                borderRadius: radius.tile,
+                padding: 18,
+                opacity: pressed ? 0.85 : 1,
+                ...c.widget.shadow,
+              })}
+            >
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                {t('mobile.member.whats_new', "What's New")}
+              </Text>
+              <Text
+                style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+              >
+                {t('mobile.member.whats_new_sub', 'See the latest updates and improvements in CISA')}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View>
+            <Sech label={t('mobile.member.account_session')} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('mobile.member.log_out')}
+              onPress={() => logOut()}
+              style={({ pressed }) => ({
+                backgroundColor: c.widget.bg,
+                borderRadius: radius.tile,
+                padding: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1.5,
+                borderColor: '#FCA5A5',
+                opacity: pressed ? 0.75 : 1,
+                ...c.widget.shadow,
+              })}
+            >
+              <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: '#DC2626' }}>
+                {t('mobile.member.log_out')}
+              </Text>
+            </Pressable>
+          </View>
+
+          <MemberFoot>
+            {role === 'student'
+              ? `Your details, your gatherings and who you're connected to are kept by the team — ask ${
+                  fullTimers[0] ? firstName(fullTimers[0].name) : 'them'
+                } anytime and they'll change it with you.`
+              : 'The team keeps the rest — students, gatherings, everything admin. Ask them anytime.'}
+          </MemberFoot>
+        </MemberScreen>
+      </View>
 
       <InviteSheet
         visible={inviteOpen}
@@ -359,6 +368,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
       <FeedbackSheet
         visible={feedbackOpen}
         onClose={() => setFeedbackOpen(false)}
+        targetRef={captureRef}
       />
       <M2Release
         role={appRole}

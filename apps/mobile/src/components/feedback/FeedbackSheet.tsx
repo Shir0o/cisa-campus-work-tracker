@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
-import { FEEDBACK_KINDS, kindMeta, kindToType } from '@cisa/core';
+import {
+  FEEDBACK_KINDS,
+  kindMeta,
+  kindToType,
+  MAX_SCREENSHOT_CHARS,
+  MAX_SCREENSHOT_DIMENSION,
+  SCREENSHOT_QUALITY_LADDER,
+} from '@cisa/core';
 import type { FeedbackKind } from '@cisa/core';
 
 interface FeedbackSheetProps {
   visible: boolean;
   onClose: () => void;
+  targetRef?: React.RefObject<any>;
 }
 
 const getApiUrl = () => {
@@ -19,22 +28,74 @@ const getApiUrl = () => {
   return Platform.OS === 'web' ? '' : 'https://cisa-campus-work-tracker.pages.dev';
 };
 
-export function FeedbackSheet({ visible, onClose }: FeedbackSheetProps) {
+export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
   const { c, font, radius, fs } = useV2Theme();
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
+  const [screenshot, setScreenshot] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (visible) {
-      setErrorMsg(null);
-      setSubmitted(false);
+    if (!visible) {
+      setScreenshot('');
+      return;
     }
-  }, [visible]);
+
+    setErrorMsg(null);
+    setSubmitted(false);
+
+    if (!targetRef?.current) return;
+
+    let cancelled = false;
+
+    // Capture the background screen before the user interacts with the sheet.
+    // The result is admin-only context stored on the Firestore doc; it never
+    // reaches GitHub (ADR 0018 decision 7). Walk the quality ladder until the
+    // encoded string fits the size ceiling, and give up rather than store a
+    // capture Firestore rules would reject.
+    (async () => {
+      const { width, height } = Dimensions.get('window');
+      const longestEdge = Math.max(width, height);
+      const scale = longestEdge > MAX_SCREENSHOT_DIMENSION ? MAX_SCREENSHOT_DIMENSION / longestEdge : 1;
+
+      for (const quality of SCREENSHOT_QUALITY_LADDER) {
+        try {
+          const base64 = await captureRef(targetRef, {
+            format: 'jpg',
+            quality,
+            result: 'base64',
+            width: Math.round(width * scale),
+            height: Math.round(height * scale),
+          });
+          if (cancelled) return;
+          if (!base64) continue;
+
+          const dataUrl = `data:image/jpeg;base64,${base64}`;
+          if (dataUrl.length <= MAX_SCREENSHOT_CHARS) {
+            setScreenshot(dataUrl);
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to capture screen view shot:', err);
+          if (!cancelled) setScreenshot('');
+          return;
+        }
+      }
+
+      if (!cancelled) {
+        console.warn('Screenshot exceeded the size ceiling at every quality; sending without one.');
+        setScreenshot('');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, targetRef]);
 
   const handleSubmit = async () => {
     if (!message.trim() || submitting) return;
@@ -51,6 +112,7 @@ export function FeedbackSheet({ visible, onClose }: FeedbackSheetProps) {
       type,
       kind,
       message: message.trim(),
+      screenshot,
       url: 'Mobile App',
       userAgent: 'CISA Campus Mobile App (React Native)',
       viewport: `${Math.round(width)}x${Math.round(height)}`,
@@ -95,6 +157,7 @@ export function FeedbackSheet({ visible, onClose }: FeedbackSheetProps) {
   const handleClose = () => {
     setSubmitted(false);
     setMessage('');
+    setScreenshot('');
     setErrorMsg(null);
     onClose();
   };

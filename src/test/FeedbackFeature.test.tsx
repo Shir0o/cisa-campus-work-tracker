@@ -12,6 +12,13 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+// Screenshot capture is exercised in src/test/feedbackScreenshot.test.ts. Here
+// it is stubbed so these tests stay about the feedback UI — and so submitting
+// does not drag html2canvas-pro through jsdom on every case.
+vi.mock('../lib/feedbackScreenshot', () => ({
+  capturePageScreenshot: vi.fn().mockResolvedValue('data:image/jpeg;base64,fake-shot'),
+}));
+
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
 }));
@@ -176,6 +183,23 @@ describe('User Feedback Feature', () => {
       expect(closeBtn).toHaveAttribute('aria-expanded', 'true');
     });
 
+    it('sends the captured screenshot in the payload', async () => {
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'Something looks off here');
+      await userAct.click(screen.getByRole('button', { name: 'Send' }));
+
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+
+      const call = (global.fetch as any).mock.calls.find(([url]: [string]) => url === '/api/feedback');
+      const body = JSON.parse(call[1].body);
+      expect(body.screenshot).toBe('data:image/jpeg;base64,fake-shot');
+      // ADR 0018 decision 5 is untouched by the screenshot amendment.
+      expect(body).not.toHaveProperty('userEmail');
+    });
+
     it('displays loading indication and keeps fab button visible while submitting', async () => {
       let resolveFetch: (val: any) => void = () => {};
       (global.fetch as any).mockImplementationOnce(
@@ -200,6 +224,10 @@ describe('User Feedback Feature', () => {
 
       // Loading state visible
       expect(screen.getByText('Sending…')).toBeInTheDocument();
+
+      // Submitting captures a screenshot before posting, so wait for the
+      // request to actually be in flight before resolving it.
+      await waitFor(() => expect(global.fetch).toHaveBeenCalled());
 
       // Resolve API call
       resolveFetch({
