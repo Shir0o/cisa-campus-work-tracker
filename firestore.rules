@@ -349,18 +349,29 @@ service cloud.firestore {
       }
     }
 
-    // 6b. Gathering Types — the managed "kinds of gathering" taxonomy (mirrors stages).
-    match /gatheringTypes/{typeId} {
-      function isValidGatheringType(data) {
-        return data.keys().hasAll(['name', 'order']) &&
-               data.name is string && data.name.size() > 0 && data.name.size() <= 64 &&
-               (!('blurb' in data) || data.blurb == null || (data.blurb is string && data.blurb.size() <= 200)) &&
-               data.order is int;
+    // 6b. Rhythms — a recurring gathering's own record (name/cadence/location/
+    // roster/term). Occasions stay in `events`, carrying `rhythmId` (issue #957 /
+    // ADR 0016; replaces the deleted `gatheringTypes` kind taxonomy).
+    match /rhythms/{rhythmId} {
+      function isValidCadence(c) {
+        return c.type in ['weekly', 'monthly'] &&
+               c.days is list &&
+               (!('monthlyType' in c) || c.monthlyType in ['same-day', 'relative-day']);
+      }
+
+      function isValidRhythm(data) {
+        return data.keys().hasAll(['name', 'cadence', 'roster', 'termStart', 'termEnd']) &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 128 &&
+               isValidCadence(data.cadence) &&
+               (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 128)) &&
+               data.roster is list &&
+               data.termStart is string && data.termStart.size() <= 64 &&
+               data.termEnd is string && data.termEnd.size() <= 64;
       }
 
       allow read: if isApprovedUser();
-      allow create, update: if isValidId(typeId) && isManager() && isValidGatheringType(incoming());
-      allow delete: if isValidId(typeId) && isManager();
+      allow create, update: if isValidId(rhythmId) && isOperator() && isValidRhythm(incoming());
+      allow delete: if isValidId(rhythmId) && isManager();
     }
 
     // 6c. Settings — small team-wide singletons (e.g. settings/season). Publicly

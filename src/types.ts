@@ -1,5 +1,14 @@
 import { AppRole } from './lib/permissions';
 
+// NOTE on `@cisa/core`: this web app deliberately has no `@cisa/core`
+// dependency (see src/lib/utils.ts, src/lib/goal.ts, and
+// src/test/bibleStudyMirrorParity.test.ts) — shared logic is mirrored, not
+// imported, and the mirrors are kept in step by parity tests. `Gathering`/
+// `Rhythm` below mirror packages/core/src/types.ts's shapes for the same
+// reason (issue #957 / ADR 0016): both sides carry the same fields (closing
+// the roster/attendance-stamp gap the old divergent `Event` defs had),
+// without wiring the web build to the mobile package.
+
 /** How we first met (#356) — the fixed "How we met" vocabulary replacing the
  * residence-hall concept. Values are stored as-is on Contact.metVia. */
 export const MET_VIA = [
@@ -177,21 +186,54 @@ export interface Visit {
   updatedByName?: string;
 }
 
-export interface Event {
+// A recurring "Rhythm" — Wednesday Bible Study, Friday Gathering, etc. — as
+// its own Firestore record (issue #957 / ADR 0016). Mirrors
+// packages/core/src/types.ts's `Rhythm` (see the note at the top of this
+// file on why this app doesn't import @cisa/core directly).
+export interface Rhythm {
   id: string;
+  name: string;
+  cadence: {
+    type: 'weekly' | 'monthly';
+    /** Day-of-week (0=Sun..6=Sat) for weekly; day-of-month anchor days for monthly. */
+    days: number[];
+    monthlyType?: 'same-day' | 'relative-day';
+  };
+  location?: string;
+  /** The standing roster — who's expected at every occasion, absent an override. */
+  roster: string[];
+  /** yyyy-MM-dd — earliest generated occurrence. */
+  termStart: string;
+  /** yyyy-MM-dd — extendable; `extendRhythmTerm` generates occasions up to it. */
+  termEnd: string;
+  createdAt: string;
+  createdById: string;
+}
+
+// One occasion — a one-off gathering, or one occurrence of a Rhythm. Lives in
+// the `events` collection (kept — renaming buys nothing per the issue).
+// Mirrors packages/core/src/types.ts's `Gathering`.
+export interface Gathering {
+  id: string;
+  /** Authoritative only for a one-off (no `rhythmId`). A Rhythm-linked row
+   *  resolves its display name live from the Rhythm, since the name isn't
+   *  duplicated onto every occasion. */
   name: string;
   date: string;
   order: number;
-  type?: string;
+  /** Set when this occasion belongs to a Rhythm; replaces `parentEventId`. */
+  rhythmId?: string;
+  /** Per-occasion override; falls back to `rhythm.location` when unset. */
   location?: string;
-  isRecurring?: boolean;
-  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly';
-  recurrenceCount?: number;
-  recurrenceEndDate?: string;
-  recurrenceDays?: number[];
-  monthlyType?: 'same-day' | 'relative-day';
-  parentEventId?: string;
+  /** Roster override for a Rhythm-linked occasion (added/removed just for this
+   *  one week) — layered on top of `rhythm.roster` by `resolveRoster`. */
+  rosterOverride?: string[];
+  /** A week that was called off — no absence is counted, and it's excluded
+   *  from missed-streak scans. Undoable from the Rhythm drawer. */
+  cancelled?: boolean;
   createdAt: string;
+  /** A one-off's own expected roster. New writes for a Rhythm-linked occasion
+   *  use `rosterOverride` instead. */
   roster?: string[];
   /** ISO timestamp; stamped on the Gathering the first time attendance is
    *  recorded for it. Absent on Gatherings created before this field
@@ -204,15 +246,9 @@ export interface Event {
   attendanceTakenById?: string;
 }
 
-// A managed "kind of gathering" (Weekly / Small Group / …) with a warm one-line
-// blurb. Lives in the `gatheringTypes` collection so the list is team-shared and
-// editable (mirrors the `stages` taxonomy). Events reference a type by NAME.
-export interface GatheringType {
-  id: string;
-  name: string;
-  blurb?: string;
-  order: number;
-}
+// Deprecated alias — kept only for modules this issue didn't touch. Remove
+// once those modules are next touched; new code should use `Gathering`.
+export type Event = Gathering;
 
 // Team-wide season/club-rush settings (one doc: settings/season). The active
 // season is auto-derived from today's date unless `override` is set; `clubRush`

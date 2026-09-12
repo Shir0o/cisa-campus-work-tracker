@@ -12,7 +12,7 @@ Furthermore, gatherings have distinct attendee circles (e.g. weekly fellowship r
 1. **Explicit Gathering Roster (`Event.roster`)**:
    - Each `Event` record includes an optional `roster: string[]` of contact IDs who are expected to attend.
    - When creating an event, the roster defaults to empty (`[]`) unless contacts are selected by the user.
-   - For recurring events, new instances inherit the series roster. When adding an attendee to a recurring instance, admins are prompted to add them to either *this gathering only* or *all future gatherings in this series*.
+   - **Amended by issue #957 (ADR 0016):** a recurring gathering's roster now lives on its own `Rhythm` record, not on each occasion. `resolveRoster(gathering, rhythm, now)` reads the Rhythm's roster with the occasion's `rosterOverride` layered on top, live, for today and every future occasion — a roster edit takes effect immediately, with no "this one or all future?" prompt. A Gathering dated in the past is **frozen**: it keeps reading back whatever roster was recorded for it at the time (`rosterOverride ?? roster ?? []`), so a later roster change never rewrites history. A one-off Gathering (no Rhythm) is unaffected — it still just reads its own `roster`.
 2. **"We Missed" Scope**:
    - "We missed" is strictly bounded: only contacts belonging to the gathering's `roster` (or those explicitly marked `'absent'`) appear under "We missed".
    - Contacts outside the roster are omitted from the absence list, keeping the missed roster clean and actionable.

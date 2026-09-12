@@ -2076,8 +2076,17 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  describe('Gathering Types', () => {
-    const validType = { name: 'Prayer Walk', blurb: 'on campus', order: 3 };
+  // Rhythms — a recurring gathering's own record (issue #957 / ADR 0016),
+  // replacing the deleted `gatheringTypes` kind taxonomy.
+  describe('Rhythms', () => {
+    const validRhythm = {
+      name: 'Wednesday Bible Study',
+      cadence: { type: 'weekly', days: [3] },
+      location: 'Lower Common Room',
+      roster: ['c1', 'c2'],
+      termStart: '2026-09-09',
+      termEnd: '2026-12-23',
+    };
 
     const seedRoles = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -2088,43 +2097,41 @@ describeRules('Firestore Security Rules', () => {
       });
     };
 
-    it('GT1: Manager can create a valid gathering type', async () => {
-      await seedRoles();
-      const db = getFirestore({ uid: 'manager1' });
-      await assertSucceeds(setDoc(doc(db, 'gatheringTypes', 'gt1'), validType));
-    });
-
-    it('GT2: Operator cannot create a gathering type (needs manager+)', async () => {
+    it('R1: Operator can create a valid Rhythm', async () => {
       await seedRoles();
       const db = getFirestore({ uid: 'operator1' });
-      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gt2'), validType));
+      await assertSucceeds(setDoc(doc(db, 'rhythms', 'r1'), validRhythm));
     });
 
-    it('GT3: Approved viewer can read but not create', async () => {
+    it('R2: Approved viewer can read but not create', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'gatheringTypes', 'gt1'), validType);
+        await setDoc(doc(context.firestore(), 'rhythms', 'r1'), validRhythm);
       });
       const db = getFirestore({ uid: 'viewer1' });
-      await assertSucceeds(getDoc(doc(db, 'gatheringTypes', 'gt1')));
-      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gtX'), validType));
+      await assertSucceeds(getDoc(doc(db, 'rhythms', 'r1')));
+      await assertFails(setDoc(doc(db, 'rhythms', 'rX'), validRhythm));
     });
 
-    it('GT4: Manager can update and delete a type', async () => {
+    it('R3: Operator can update a Rhythm, but only a manager can delete it', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'gatheringTypes', 'gt1'), validType);
+        await setDoc(doc(context.firestore(), 'rhythms', 'r1'), validRhythm);
       });
-      const db = getFirestore({ uid: 'manager1' });
-      await assertSucceeds(updateDoc(doc(db, 'gatheringTypes', 'gt1'), { name: 'Walk', blurb: '', order: 3 }));
-      await assertSucceeds(deleteDoc(doc(db, 'gatheringTypes', 'gt1')));
+      const opDb = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(updateDoc(doc(opDb, 'rhythms', 'r1'), { roster: ['c1'] }));
+      await assertFails(deleteDoc(doc(opDb, 'rhythms', 'r1')));
+
+      const mgrDb = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(deleteDoc(doc(mgrDb, 'rhythms', 'r1')));
     });
 
-    it('GT5: Rejects an invalid type (missing order / empty name)', async () => {
+    it('R4: Rejects an invalid Rhythm (bad cadence / missing roster or term)', async () => {
       await seedRoles();
-      const db = getFirestore({ uid: 'manager1' });
-      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gtBad'), { name: 'No order', blurb: '' }));
-      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gtBad2'), { name: '', blurb: '', order: 1 }));
+      const db = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(db, 'rhythms', 'rBad'), { ...validRhythm, cadence: { type: 'daily', days: [] } }));
+      await assertFails(setDoc(doc(db, 'rhythms', 'rBad2'), { name: 'No roster', cadence: { type: 'weekly', days: [3] }, termStart: '2026-09-09', termEnd: '2026-12-23' }));
+      await assertFails(setDoc(doc(db, 'rhythms', 'rBad3'), { name: '', cadence: { type: 'weekly', days: [3] }, roster: [], termStart: '2026-09-09', termEnd: '2026-12-23' }));
     });
   });
 
