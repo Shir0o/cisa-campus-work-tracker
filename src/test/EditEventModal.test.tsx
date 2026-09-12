@@ -5,30 +5,16 @@ import EditEventModal from '../components/modals/EditEventModal';
 import { updateDoc } from 'firebase/firestore';
 import { logActivity } from '../lib/firebase';
 
-vi.mock('firebase/firestore', () => {
-  const mockBatch = {
-    update: vi.fn(),
-    commit: vi.fn().mockResolvedValue(true),
-  };
-  return {
-    doc: vi.fn((_db, path, id) => ({ path, id })),
-    updateDoc: vi.fn(() => Promise.resolve()),
-    writeBatch: vi.fn(() => mockBatch),
-  };
-});
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn((_db, path, id) => ({ path, id })),
+  updateDoc: vi.fn(() => Promise.resolve()),
+}));
 
 vi.mock('../lib/firebase', () => ({
   db: {},
   handleFirestoreError: vi.fn(),
   OperationType: { UPDATE: 'UPDATE' },
   logActivity: vi.fn(),
-}));
-
-vi.mock('../lib/gatheringTypes', () => ({
-  useGatheringTypes: () => [
-    { id: 't1', name: 'Weekly', blurb: '', order: 0 },
-    { id: 't2', name: 'Small Group', blurb: '', order: 1 },
-  ],
 }));
 
 vi.mock('motion/react', () => ({
@@ -45,7 +31,6 @@ vi.mock('../components/ui/DatePicker', () => ({
 const EVENT = {
   id: 'e1',
   name: 'Friday Gathering',
-  type: 'Weekly',
   location: 'Lower Common Room',
   date: '2026-06-12',
   order: 1,
@@ -82,7 +67,6 @@ describe('EditEventModal', () => {
       expect.objectContaining({ path: 'events', id: 'e1' }),
       expect.objectContaining({
         name: 'Friday Night Gathering',
-        type: 'Weekly',
         location: 'Lower Common Room',
         date: '2026-06-12',
       }),
@@ -93,61 +77,40 @@ describe('EditEventModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('updates roster and allows cascading to recurring series', async () => {
+  it('toggles a contact onto the roster', async () => {
     const mockContacts = [
       { id: 'c1', name: 'Alice', role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'A' },
     ];
-    const recurringEvent = { ...EVENT, isRecurring: true, roster: [] };
-    const futureOccurrence = { ...EVENT, id: 'e2', date: '2026-06-19', parentEventId: 'e1' };
 
     render(
       <EditEventModal
         isOpen
         onClose={vi.fn()}
-        event={recurringEvent}
+        event={{ ...EVENT, roster: [] }}
         contacts={mockContacts}
-        allEvents={[recurringEvent, futureOccurrence]}
       />
     );
 
-    // Toggle Alice in roster
-    const aliceBtn = screen.getByText('Alice');
-    fireEvent.click(aliceBtn);
-
-    // Check cascade checkbox
-    const cascadeCheckbox = screen.getByLabelText(/All future in series/i);
-    fireEvent.click(cascadeCheckbox);
-
-    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
-
-    await waitFor(() => {
-      expect(logActivity).toHaveBeenCalled();
-    });
-  });
-
-  it('falls back to the first gathering type when the stored type was renamed/removed', async () => {
-    render(<EditEventModal isOpen onClose={vi.fn()} event={{ ...EVENT, type: 'Gone Type' }} />);
-
+    fireEvent.click(screen.getByText('Alice'));
     fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
 
     await waitFor(() =>
       expect(updateDoc).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ type: 'Weekly' }),
+        expect.objectContaining({ roster: ['c1'] }),
       ),
     );
   });
 
-  it('updates the type from a type pill', async () => {
+  it('toggles cancelled on the gathering', async () => {
     render(<EditEventModal isOpen onClose={vi.fn()} event={EVENT} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Small Group/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+    fireEvent.click(screen.getByText(/Cancel this gathering/i));
 
     await waitFor(() =>
       expect(updateDoc).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ type: 'Small Group' }),
+        expect.objectContaining({ cancelled: true }),
       ),
     );
   });

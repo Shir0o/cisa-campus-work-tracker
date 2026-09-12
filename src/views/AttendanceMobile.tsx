@@ -1,37 +1,43 @@
 import React, { useState } from 'react';
 import { format, isValid } from 'date-fns';
-import { Plus, Settings2, X, MessageSquare, ChevronRight, Check, Users, Pencil, CheckSquare } from 'lucide-react';
+import { Plus, X, MessageSquare, ChevronRight, Check, Users, Pencil, CheckSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Contact, Event } from '../types';
+import { Contact, Gathering } from '../types';
 import { Avatar } from '../components/landing/primitives';
 import { openMessage } from '../lib/messaging';
 import type { TodoPerson } from '../lib/todos';
 import { useLanguage } from '../components/LanguageProvider';
-import type { UnifiedGathering, CalContextItem } from '../lib/calendar/calendarSync';
+import type { CalContextItem } from '../lib/calendar/calendarSync';
 import { getSessionRoster } from '../lib/attendanceRoster';
+
+// A one-off Gathering shown in "Coming up" — no calendar merge anymore
+// (ADR 0016 decision 2), so this is just an upcoming `events` doc.
+export interface UpcomingGathering {
+  id: string;
+  name: string;
+  date: string | Date;
+  time?: string;
+  location?: string;
+}
 
 interface AttendanceMobileProps {
   contacts: Contact[];
-  events: Event[];
-  sessions: Event[];
-  upcoming: UnifiedGathering[];
+  events: Gathering[];
+  sessions: Gathering[];
+  upcoming: UpcomingGathering[];
   calContext?: CalContextItem[];
-  missed: { contact: Contact; since: number; lastSeen: Event }[];
+  missed: { contact: Contact; since: number; lastSeen: Gathering }[];
   avgPer: number;
-  activeFilter: string;
-  setTypeFilter: (type: string) => void;
-  gatheringTypes: any[];
   isAdmin: boolean;
   onOpenContact: (contact: Contact) => void;
   onLogGathering: () => void;
-  onManageTypes: () => void;
-  onEditSession: (session: Event) => void;
+  onEditSession: (session: Gathering) => void;
   onDeleteSession: (id: string, name: string) => Promise<void>;
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
   here: (contact: Contact, eventId: string) => boolean;
   RsvpCountComponent: React.ComponentType<{ eventId: string }>;
   team?: TodoPerson[];
-  onOpenTodo?: (contact: Contact, event: Event) => void;
+  onOpenTodo?: (contact: Contact, event: Gathering) => void;
 }
 
 export default function AttendanceMobile({
@@ -42,13 +48,9 @@ export default function AttendanceMobile({
   calContext,
   missed,
   avgPer,
-  activeFilter,
-  setTypeFilter,
-  gatheringTypes,
   isAdmin,
   onOpenContact,
   onLogGathering,
-  onManageTypes,
   onEditSession,
   onDeleteSession,
   cycleAttendance,
@@ -62,9 +64,6 @@ export default function AttendanceMobile({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const openSession = openSessionId ? sessions.find((s) => s.id === openSessionId) : null;
-
-  // Gatherings filter pills: 'All' + custom kinds
-  const filterOptions = [t('attendance.all'), ...gatheringTypes.map((x) => x.name)];
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page gatherings gthm">
@@ -135,32 +134,6 @@ export default function AttendanceMobile({
       <section className="mt-8 px-5 gthm-sec">
         <div className="flex items-center justify-between mb-3 gthm-sec-h">
           <h2 className="font-serif text-lg text-on-surface">{t('attendance.when_we_met')}</h2>
-          {isAdmin && (
-            <button
-              onClick={onManageTypes}
-              className="text-xs font-semibold text-accent inline-flex items-center gap-1 gthm-kinds"
-            >
-              <Settings2 className="w-3 h-3" /> {t('attendance.kinds')}
-            </button>
-          )}
-        </div>
-
-        {/* Filter scrollbar */}
-        <div className="flex gap-1.5 overflow-x-auto pb-3 mb-2 no-scrollbar whitespace-nowrap gthm-filter">
-          {filterOptions.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all gthm-fpill",
-                activeFilter === t
-                  ? "bg-primary text-on-primary border-primary active "
-                  : "bg-surface border-outline-variant/60 text-on-surface-variant hover:bg-surface-variant"
-              )}
-            >
-              {t}
-            </button>
-          ))}
         </div>
 
         {/* Past gatherings list */}
@@ -196,7 +169,7 @@ export default function AttendanceMobile({
                         {s.name}
                       </div>
                       <div className="text-xs text-on-surface-variant truncate mt-0.5 gthm-sblurb">
-                        {s.type} {s.location ? `· ${s.location}` : ''}
+                        {s.cancelled ? t('attendance.cancelled', 'Cancelled') : (s.location || '')}
                       </div>
                       <div className="text-[11px] font-semibold text-accent mt-1.5 gthm-scount">
                         <b>{attendedCount}</b> attended
@@ -234,14 +207,13 @@ export default function AttendanceMobile({
                   </div>
                   <div className="min-w-0 flex-1 gthm-up-main">
                     <div className="font-medium text-on-surface truncate tw-title">
-                      {ev.title || ev.name}
-                      {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                      {ev.name}
                     </div>
                     <div className="text-xs text-on-surface-variant mt-0.5 truncate tw-meta">
-                      {[ev.time, ev.location || ev.type || t('attendance.no_location_set')].filter(Boolean).join(' · ')}
+                      {[ev.time, ev.location || t('attendance.no_location_set')].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  {!ev.synced && <RsvpCountComponent eventId={ev.id} />}
+                  <RsvpCountComponent eventId={ev.id} />
                 </div>
               );
             })
@@ -312,15 +284,15 @@ export default function AttendanceMobile({
 }
 
 interface RosterSheetProps {
-  session: Event;
+  session: Gathering;
   contacts: Contact[];
   here: (contact: Contact, eventId: string) => boolean;
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
-  onEditSession: (session: Event) => void;
+  onEditSession: (session: Gathering) => void;
   onDeleteSession: (id: string, name: string) => Promise<void>;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
-  onOpenTodo?: (contact: Contact, event: Event) => void;
+  onOpenTodo?: (contact: Contact, event: Gathering) => void;
   onClose: () => void;
 }
 
@@ -337,7 +309,7 @@ function RosterSheet({
   onClose,
 }: RosterSheetProps) {
   const { t } = useLanguage();
-  const meta = `${session.type} ${session.location ? '· ' + session.location : ''}`;
+  const meta = session.cancelled ? t('attendance.cancelled', 'Cancelled') : (session.location || '');
   const { present, absent } = getSessionRoster(session, contacts, here);
 
   return (
