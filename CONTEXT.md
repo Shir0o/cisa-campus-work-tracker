@@ -7,7 +7,7 @@ The canonical name of the product — the web app, mobile app, and user-facing c
 _Avoid_: Traker, CampusHub, OutreachPro
 
 **Gospel Partners**:
-Two (or three) trainees paired together for a term/semester who go out together on campus. Contacts created by either partner are automatically shared with the other (`coCreators`).
+Two (or three) trainees paired together for a term/semester who go out together on campus. When a new partnership is formed, trainees can view contacts created by their current partner for the active term, while permanently retaining visibility of contacts they previously co-created with past partners.
 _Avoid_: Companion, buddy, accountability partner
 
 **Full-timer**:
