@@ -357,7 +357,7 @@ describe("POST /api/feedback", () => {
   });
 
   it("uses the authenticated Firebase user when an Authorization header is present", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "uid-1", email: "sarah@example.com", name: "Sarah" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "uid-1", email: "sarah@example.com", name: "Sarah Carvajal" });
     const res = await request(app)
       .post("/api/feedback")
       .set("Authorization", "Bearer valid-token")
@@ -366,7 +366,7 @@ describe("POST /api/feedback", () => {
     const saved = Object.values(getCollection("feedback"))[0];
     expect(saved.userId).toBe("uid-1");
     expect(saved.userEmail).toBeUndefined();
-    expect(saved.reporterLabel).toBe("reporter:sarah");
+    expect(saved.reporterLabel).toBe("reporter:sarah-c");
   });
 
   it("returns 401 when token verification fails", async () => {

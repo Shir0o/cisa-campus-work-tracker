@@ -1,5 +1,16 @@
 [
   {
+    "number": 974,
+    "title": "[Feedback] thought: Trainees to be able to add each other to see each other contacts in the contact form.",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback",
+      "reporter:kevin-m"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Kevin - **Type:** enhancement - **Kind:** thought - **Date:** 9/12/2026, 12:58:57 AM - **Page URL:** https://cisa-campus-work-tracker.pages.dev/people/GifbddKXsfgejQjJXg49 - **Viewport:** 667x823 (DPR: 2) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Safari/605.1.15 ### Message ```text Trainees to be able to add each other to see each other contacts in the contact form. ``` --- *Created automatically from CISA Campus Work Tracker user feedback.*"
+  },
+  {
     "number": 971,
     "title": "does changing pair also change the contacts they can view as a pair to the new person who created the contact (they can still see contacts they've been with)",
     "state": "open",
@@ -19,7 +30,7 @@
   {
     "number": 968,
     "title": "Spec: Reporter labels and email redaction for feedback-created GitHub issues",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "ready-for-agent"
     ],
