@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { kindToType, typeToKind, kindMeta, FEEDBACK_KINDS, TONE_CLASSES } from '../lib/feedbackKinds';
+import {
+  kindToType,
+  typeToKind,
+  kindMeta,
+  FEEDBACK_KINDS,
+  TONE_CLASSES,
+  FEEDBACK_OUTCOMES,
+  outcomeCopy,
+  outcomeLabel,
+} from '../lib/feedbackKinds';
 
 describe('feedbackKinds', () => {
   describe('kindToType', () => {
@@ -50,4 +59,23 @@ describe('feedbackKinds', () => {
       expect(TONE_CLASSES.teal).toBeDefined();
     });
   });
+
+  describe('FEEDBACK_OUTCOMES & outcomeCopy & outcomeLabel', () => {
+    it('defines the three canonical canned outcomes', () => {
+      expect(FEEDBACK_OUTCOMES).toEqual(['shipped', 'not-planned', 'already-there']);
+    });
+
+    it('returns the exact canned copy for each outcome', () => {
+      expect(outcomeCopy('shipped')).toBe('This shipped! Thank you for helping shape the app.');
+      expect(outcomeCopy('not-planned')).toBe("We looked into this and aren't planning to build it right now, but thank you for speaking up.");
+      expect(outcomeCopy('already-there')).toBe("This is already in the app! Ask someone on the team and we'll show you where it lives.");
+    });
+
+    it('provides a human-readable label for each outcome', () => {
+      expect(outcomeLabel('shipped')).toBe('Shipped');
+      expect(outcomeLabel('not-planned')).toBe('Not planned');
+      expect(outcomeLabel('already-there')).toBe('Already in the app');
+    });
+  });
 });
+

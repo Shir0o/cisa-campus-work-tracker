@@ -1,5 +1,29 @@
 import { Bug, HelpingHand, Lightbulb, MessageSquareText, type LucideIcon } from 'lucide-react';
-import { FeedbackKind } from '../types';
+import { FeedbackKind, FeedbackOutcome } from '../types';
+
+export type { FeedbackOutcome };
+
+export const FEEDBACK_OUTCOMES: readonly FeedbackOutcome[] = [
+  'shipped',
+  'not-planned',
+  'already-there',
+];
+
+const OUTCOME_COPY: Record<FeedbackOutcome, string> = {
+  shipped: 'This shipped! Thank you for helping shape the app.',
+  'not-planned': "We looked into this and aren't planning to build it right now, but thank you for speaking up.",
+  'already-there': "This is already in the app! Ask someone on the team and we'll show you where it lives.",
+};
+
+const OUTCOME_LABELS: Record<FeedbackOutcome, string> = {
+  shipped: 'Shipped',
+  'not-planned': 'Not planned',
+  'already-there': 'Already in the app',
+};
+
+export const outcomeCopy = (outcome: FeedbackOutcome): string => OUTCOME_COPY[outcome];
+
+export const outcomeLabel = (outcome: FeedbackOutcome): string => OUTCOME_LABELS[outcome];
 
 type FeedbackTone = 'accent' | 'violet' | 'amber' | 'teal';
 

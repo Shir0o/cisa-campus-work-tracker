@@ -286,7 +286,10 @@
     "characters": "caracteres",
     "go_home": "Ir al inicio",
     "saved_body": "Gracias por tomarte el tiempo, {name}. Tu nota se ha guardado y nuestros administradores la leerán pronto.",
-    "goes_to_team": "Tu nota va directamente al equipo."
+    "goes_to_team": "Tu nota va directamente al equipo.",
+    "your_past_notes": "Tus notas anteriores",
+    "what_came_of_it": "Qué fue de ella",
+    "still_open": "Aún abierta"
   },
   "feedbackList": {
     "access_denied": "Acceso denegado",
@@ -323,6 +326,8 @@
     "restore_from_archive": "Restaurar del archivo",
     "delete_feedback": "Eliminar comentario",
     "not_auto_synced": "No sincronizado automáticamente",
+    "cannot_reach_author": "No se puede contactar al autor",
+    "cannot_reach_author_title": "Esta nota no tiene un issue vinculado de GitHub y no puede notificar a su autor cuando se resuelva",
     "view_screenshot": "Ver captura",
     "captured_screenshot_alt": "Captura de pantalla",
     "click_to_enlarge": "Haz clic para ampliar",

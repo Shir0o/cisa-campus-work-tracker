@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, ArrowRight, Loader2 } from 'lucide-react';
-import { handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { Send, ArrowRight, Loader2, Clock, CheckCircle, Ban, Sparkles } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { Translate } from '../components/Translate';
 import { useTranslate } from '../hooks/useTranslate';
 import { useNavigate } from 'react-router-dom';
 import { roleLabel } from '../lib/permissions';
-import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
-import { FeedbackKind } from '../types';
+import { FEEDBACK_KINDS, kindMeta, kindToType, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
+import { Feedback, FeedbackKind } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 
 
@@ -21,6 +22,40 @@ export default function SubmitFeedback() {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [pastNotes, setPastNotes] = useState<Feedback[]>([]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+
+    const q = query(
+      collection(db, 'feedback'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const items: Feedback[] = [];
+        snapshot.forEach((d) => {
+          const data = d.data();
+          items.push({
+            id: d.id,
+            ...data,
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+          } as Feedback);
+        });
+        setPastNotes(items);
+      },
+      (err) => {
+        console.error('Failed to subscribe to user feedback:', err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const activeMeta = kindMeta(kind);
   const { translatedText: activePlaceholder } = useTranslate(activeMeta.placeholder);
@@ -243,6 +278,92 @@ export default function SubmitFeedback() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {pastNotes.length > 0 && (
+        <section className="space-y-4 pt-4 border-t border-outline-variant/60" aria-label={t('feedback.your_past_notes')}>
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-lg font-medium text-on-surface">
+              {t('feedback.your_past_notes')}
+            </h2>
+            <span className="text-xs text-on-surface-variant font-mono">
+              {pastNotes.length}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {pastNotes.map((note) => {
+              const meta = kindMeta(note.kind);
+              const tone = TONE_CLASSES[meta.tone];
+              const formattedDate = (() => {
+                try {
+                  return new Date(note.createdAt).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  });
+                } catch {
+                  return note.createdAt;
+                }
+              })();
+
+              return (
+                <div
+                  key={note.id}
+                  className="bg-surface-container border border-outline-variant p-4.5 rounded-xl space-y-3 relative overflow-hidden"
+                >
+                  <div className={`absolute top-0 left-0 bottom-0 w-1 ${tone.bar}`} />
+
+                  <div className="flex items-center justify-between gap-3 text-xs pl-1">
+                    <span className={`inline-flex items-center gap-1 font-semibold py-0.5 px-2 rounded ${tone.chip}`}>
+                      {meta.label}
+                    </span>
+                    <span className="text-on-surface-variant">{formattedDate}</span>
+                  </div>
+
+                  <p className="text-sm text-on-surface whitespace-pre-wrap leading-relaxed pl-1">
+                    {note.message}
+                  </p>
+
+                  <div className="pt-2 border-t border-outline-variant/40 flex items-start gap-2 pl-1 text-xs">
+                    {note.outcome ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          {note.outcome === 'shipped' && (
+                            <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              {outcomeLabel('shipped')}
+                            </span>
+                          )}
+                          {note.outcome === 'not-planned' && (
+                            <span className="inline-flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
+                              <Ban className="w-3.5 h-3.5" />
+                              {outcomeLabel('not-planned')}
+                            </span>
+                          )}
+                          {note.outcome === 'already-there' && (
+                            <span className="inline-flex items-center gap-1 text-accent">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              {outcomeLabel('already-there')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-on-surface-variant leading-relaxed">
+                          {outcomeCopy(note.outcome)}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-on-surface-variant/80">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{t('feedback.still_open')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </PageContainer>
   );
 }

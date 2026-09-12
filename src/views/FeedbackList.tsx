@@ -4,7 +4,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { Feedback, FeedbackKind } from '../types';
 import { feedbackIssueSubmittedByLine, reporterLabelFromName } from '../lib/feedbackReporter';
-import { FEEDBACK_KINDS, kindMeta, typeToKind, TONE_CLASSES } from '../lib/feedbackKinds';
+import { FEEDBACK_KINDS, kindMeta, typeToKind, TONE_CLASSES, outcomeLabel } from '../lib/feedbackKinds';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trash2,
@@ -19,7 +19,8 @@ import {
   Link,
   Unlink,
   ZoomIn,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 import PageContainer from '../components/layout/PageContainer';
@@ -272,6 +273,20 @@ export default function FeedbackList() {
           </span>
         );
     }
+  };
+
+  const getOutcomeBadge = (outcome: Feedback['outcome']) => {
+    if (!outcome) return null;
+    let colorClasses = 'bg-primary/10 text-accent';
+    if (outcome === 'shipped') colorClasses = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
+    if (outcome === 'not-planned') colorClasses = 'bg-neutral-500/15 text-neutral-700 dark:text-neutral-400';
+    if (outcome === 'already-there') colorClasses = 'bg-sky-500/15 text-sky-700 dark:text-sky-400';
+
+    return (
+      <span className={`flex items-center gap-1 py-1 px-2.5 font-semibold text-xs rounded-full ${colorClasses}`}>
+        {outcomeLabel(outcome)}
+      </span>
+    );
   };
 
   const getFormattedDate = (dateStr: string) => {
@@ -538,6 +553,16 @@ export default function FeedbackList() {
                         )}
 
                         {getStatusBadge(item.status)}
+                        {item.outcome && getOutcomeBadge(item.outcome)}
+                        {!item.githubIssueUrl && (
+                          <span
+                            className="flex items-center gap-1 py-0.5 px-2 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold text-[11px] rounded-full"
+                            title={t('feedbackList.cannot_reach_author_title')}
+                          >
+                            <AlertCircle className="w-3 h-3" />
+                            {t('feedbackList.cannot_reach_author')}
+                          </span>
+                        )}
                         
                         {/* Select update actions */}
                         <div className="relative">

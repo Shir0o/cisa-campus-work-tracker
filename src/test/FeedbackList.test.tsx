@@ -912,5 +912,126 @@ describe('FeedbackList View', () => {
       expect(screen.getByText('Invalid Date')).toBeInTheDocument();
     });
   });
+
+  // ── Outcome badge & author reachability (Issue 969) ─────────────────
+
+  it('renders outcome badge for feedback with an outcome', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User', email: 'admin@example.com' },
+      isAdmin: true,
+    });
+
+    const mockFeedbackWithOutcomes = [
+      {
+        id: 'f-shipped',
+        data: () => ({
+          userName: 'Alice',
+          userEmail: 'alice@example.com',
+          message: 'Shipped feature',
+          type: 'feature',
+          kind: 'idea',
+          status: 'resolved',
+          outcome: 'shipped',
+          githubIssueUrl: 'https://github.com/org/repo/issues/10',
+          archived: false,
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+      {
+        id: 'f-not-planned',
+        data: () => ({
+          userName: 'Bob',
+          userEmail: 'bob@example.com',
+          message: 'Not planned feature',
+          type: 'feedback',
+          kind: 'thought',
+          status: 'resolved',
+          outcome: 'not-planned',
+          githubIssueUrl: 'https://github.com/org/repo/issues/11',
+          archived: false,
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+      {
+        id: 'f-already-there',
+        data: () => ({
+          userName: 'Charlie',
+          userEmail: 'charlie@example.com',
+          message: 'Already exists feature',
+          type: 'bug',
+          kind: 'off',
+          status: 'resolved',
+          outcome: 'already-there',
+          githubIssueUrl: 'https://github.com/org/repo/issues/12',
+          archived: false,
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const forEach = (cb: any) => {
+        mockFeedbackWithOutcomes.forEach(docSnap => cb(docSnap));
+      };
+      callback({ forEach, size: 3 });
+      return vi.fn();
+    });
+
+    render(<FeedbackList />);
+
+    // Wait for initial render
+    await waitFor(() => {
+      expect(screen.getByText('User Feedback')).toBeInTheDocument();
+    });
+
+    // Default filter is 'unresolved' (which excludes 'resolved'). Switch to 'all'
+    const statusSelect = screen.getAllByRole('combobox').find(select => (select as HTMLSelectElement).value === 'unresolved');
+    expect(statusSelect).toBeDefined();
+    fireEvent.change(statusSelect!, { target: { value: 'all' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Shipped')).toBeInTheDocument();
+      expect(screen.getByText('Not planned')).toBeInTheDocument();
+      expect(screen.getByText('Already in the app')).toBeInTheDocument();
+    });
+  });
+
+  it('indicates that feedback without a GitHub issue cannot reach its author', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User', email: 'admin@example.com' },
+      isAdmin: true,
+    });
+
+    const mockFeedbackNoGh = [
+      {
+        id: 'f-no-gh',
+        data: () => ({
+          userName: 'Dave',
+          userEmail: 'dave@example.com',
+          message: 'Unlinked feedback note',
+          kind: 'thought',
+          status: 'new',
+          githubIssueUrl: null,
+          archived: false,
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const forEach = (cb: any) => {
+        mockFeedbackNoGh.forEach(docSnap => cb(docSnap));
+      };
+      callback({ forEach, size: 1 });
+      return vi.fn();
+    });
+
+    render(<FeedbackList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Cannot reach author')).toBeInTheDocument();
+    });
+  });
 });
+
 

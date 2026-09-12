@@ -19,6 +19,13 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
   addDoc: vi.fn().mockResolvedValue({ id: 'new-id' }),
   serverTimestamp: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  orderBy: vi.fn(),
+  onSnapshot: vi.fn((_q, cb) => {
+    cb({ docs: [], forEach: (fn: any) => [].forEach(fn) });
+    return vi.fn();
+  }),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -217,6 +224,75 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
     const form = screen.getByRole('textbox', { name: /Tell us more/i }).closest('form')!;
     fireEvent.submit(form);
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('renders nothing for past notes section when user has 0 notes', () => {
+    render(<SubmitFeedback />);
+    expect(screen.queryByText(/Your past notes/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/What came of it/i)).not.toBeInTheDocument();
+  });
+
+  it('renders past notes with what came of each when notes exist', async () => {
+    const { onSnapshot } = await import('firebase/firestore');
+    const mockDocs = [
+      {
+        id: 'fb-1',
+        data: () => ({
+          kind: 'idea',
+          message: 'Add dark mode to the app',
+          createdAt: '2026-09-01T12:00:00.000Z',
+          outcome: 'shipped',
+        }),
+      },
+      {
+        id: 'fb-2',
+        data: () => ({
+          kind: 'request',
+          message: 'Support exporting contacts to CSV',
+          createdAt: '2026-09-02T12:00:00.000Z',
+          outcome: 'not-planned',
+        }),
+      },
+      {
+        id: 'fb-3',
+        data: () => ({
+          kind: 'off',
+          message: 'Cannot find statistics',
+          createdAt: '2026-09-03T12:00:00.000Z',
+          outcome: 'already-there',
+        }),
+      },
+      {
+        id: 'fb-4',
+        data: () => ({
+          kind: 'thought',
+          message: 'Great service yesterday',
+          createdAt: '2026-09-04T12:00:00.000Z',
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementationOnce((_q: any, cb: any) => {
+      cb({
+        docs: mockDocs,
+        forEach: (fn: any) => mockDocs.forEach(fn),
+      });
+      return vi.fn();
+    });
+
+    render(<SubmitFeedback />);
+
+    expect(screen.getByText('Your past notes')).toBeInTheDocument();
+    expect(screen.getByText('Add dark mode to the app')).toBeInTheDocument();
+    expect(screen.getByText('This shipped! Thank you for helping shape the app.')).toBeInTheDocument();
+
+    expect(screen.getByText('Support exporting contacts to CSV')).toBeInTheDocument();
+    expect(screen.getByText("We looked into this and aren't planning to build it right now, but thank you for speaking up.")).toBeInTheDocument();
+
+    expect(screen.getByText('Cannot find statistics')).toBeInTheDocument();
+    expect(screen.getByText("This is already in the app! Ask someone on the team and we'll show you where it lives.")).toBeInTheDocument();
+
+    expect(screen.getByText('Great service yesterday')).toBeInTheDocument();
+    expect(screen.getByText('Still open')).toBeInTheDocument();
   });
 
 });
