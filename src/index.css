@@ -157,14 +157,9 @@
     --rail-on-selected: #0A0A0B;
     --rail-line: rgba(255, 255, 255, 0.10);
 
-    /* Ink shape: 10 small marks, 14 interactive, 24 containers, 32 shell,
-       999 pills/avatars. `--radius-xl` and `--radius-pill` are new; the others
-       carry the Bento values adjusted to the new scale. */
-    --radius-sm: 10px;
-    --radius: 14px;
-    --radius-lg: 24px;
-    --radius-xl: 32px;
-    --radius-pill: 999px;
+    /* Shape comes from `@theme` alone (ADR 0009). A theme block must not
+       re-declare a `--radius-*` token, or light and dark drift apart.
+       Guarded by src/test/radiusToken.test.ts. */
 
     /* Stage tones — Ink chroma and lightness raised; the eight hue angles and
        the legacy `board-*` names are unchanged (board stage colours are

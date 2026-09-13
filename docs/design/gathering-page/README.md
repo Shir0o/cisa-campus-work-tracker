@@ -37,12 +37,6 @@ These match the app, not a house style: Plus Jakarta Sans over Lexend, `#FFFFFF`
 page on `#F4F4F5` surfaces, `#0A0A0B` ink with `#52525B` dim, `#E4E4E7` borders,
 `#131316` as the only strong fill, and the radius ladder from ADR 0009.
 
-One caveat found while lifting those values: `.light` in `src/index.css`
-re-declares `--radius-lg` and `--radius-xl`, overriding the `@theme` ladder, so
-`rounded-xl` and `rounded-2xl` both render 32px in light and differ from dark.
-The artboards follow ADR 0009's documented intent rather than the shipped
-values. Unrelated to this work; worth its own issue.
-
 ## Regenerating
 
 The `.dc.html` files are the source; the published canvas is generated from them
