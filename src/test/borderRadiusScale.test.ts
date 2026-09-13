@@ -56,14 +56,15 @@ describe('Border radius scale — monotonic ladder (issue #688, ADR 0009)', () =
     expect(feedbackFabSource).toMatch(/<textarea[\s\S]*?rounded-sm/);
   });
 
-  it('enforces 3-tier nesting in SubmitFeedback: card (rounded-xl), kind buttons (rounded), and textarea (rounded-sm)', () => {
-    const submitFeedbackSource = read(join('src', 'views', 'SubmitFeedback.tsx'));
-    // Outer card is rounded-xl (24px)
-    expect(submitFeedbackSource).toContain('rounded-xl');
-    // Inner interactive buttons are rounded (14px)
-    expect(submitFeedbackSource).toMatch(/className=\{`flex items-center gap-3 p-3\.5 rounded border/);
-    // Inner icon chips and textarea are rounded-sm (10px)
-    expect(submitFeedbackSource).toContain('rounded-sm');
-    expect(submitFeedbackSource).toMatch(/<textarea[\s\S]*?rounded-sm/);
+  // The dedicated page composer was retired with ADR 0019 — the FAB above is
+  // now the only one, and `/feedback` is the submitter's own notes instead.
+  it('enforces 3-tier nesting in MyNotes: note card (rounded-xl), reply bubbles (rounded-lg), and textarea (rounded-sm)', () => {
+    const myNotesSource = read(join('src', 'views', 'MyNotes.tsx'));
+    // Outer note card is rounded-xl (24px)
+    expect(myNotesSource).toContain('rounded-xl');
+    // Follow-up bubbles nest one step in at rounded-lg
+    expect(myNotesSource).toMatch(/text-xs rounded-lg p-3/);
+    // The reply textarea is rounded-sm (10px)
+    expect(myNotesSource).toMatch(/<textarea[\s\S]*?rounded-sm/);
   });
 });

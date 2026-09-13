@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import FeedbackFAB from '../components/FeedbackFAB';
 import FeedbackList from '../views/FeedbackList';
-import SubmitFeedback from '../views/SubmitFeedback';
 import { useAuth } from '../components/AuthProvider';
 
 // Mock dependencies
@@ -489,39 +488,4 @@ describe('User Feedback Feature', () => {
     });
   });
 
-  describe('SubmitFeedback (Dedicated Page Form)', () => {
-    beforeEach(() => {
-      (useAuth as any).mockReturnValue({
-        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
-        role: 'operator',
-        isAdmin: false,
-      });
-    });
-
-    it('renders the dedicated feedback form elements', () => {
-      render(<SubmitFeedback />);
-      expect(screen.getByRole('heading', { name: 'Leave a note' })).toBeInTheDocument();
-      expect(screen.getAllByText('A thought')[0]).toBeInTheDocument();
-      expect(screen.getByText('An idea')).toBeInTheDocument();
-      expect(screen.getByText('A request')).toBeInTheDocument();
-    });
-
-    it('submits the form successfully and displays the confirmation screen', async () => {
-      const userAct = userEvent.setup();
-      render(<SubmitFeedback />);
-
-      // Fill message
-      const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
-      await userAct.type(textarea, 'This is a premium suggestion for Google Material Design');
-
-      // Send it
-      const sendBtn = screen.getByRole('button', { name: 'Send' });
-      await userAct.click(sendBtn);
-
-      // Verify the success text is displayed
-      await waitFor(() => {
-        expect(screen.getByText('We got your note.')).toBeInTheDocument();
-      });
-    });
-  });
 });

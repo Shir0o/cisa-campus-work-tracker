@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pencil, X, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
@@ -40,6 +41,8 @@ export default function FeedbackFAB() {
       return () => clearTimeout(t);
     }
   }, [isOpen, phase]);
+
+  const navigate = useNavigate();
 
   const clearAutoClose = () => {
     if (autoCloseTimer.current) {
@@ -218,17 +221,31 @@ export default function FeedbackFAB() {
                   </div>
                   <p className="font-serif text-lg text-on-surface">{t('feedback.we_got_your_note')}</p>
                   <p className="text-sm text-on-surface-variant">{t('feedback.thanks_for_time')} {firstName}.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearAutoClose();
-                      resetForm();
-                      areaRef.current?.focus();
-                    }}
-                    className="mt-3 py-2 px-5 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors cursor-pointer"
-                  >
-                    Send another
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearAutoClose();
+                        resetForm();
+                        areaRef.current?.focus();
+                      }}
+                      className="py-2 px-5 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors cursor-pointer"
+                    >
+                      Send another
+                    </button>
+                    {/* The only way in to Your notes besides the outcome
+                        notification — the page carries no nav entry. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        close();
+                        navigate('/feedback');
+                      }}
+                      className="py-2 px-5 bg-primary text-on-primary font-semibold rounded-full text-xs hover:opacity-95 transition-opacity cursor-pointer"
+                    >
+                      {t('feedback.see_your_notes')}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Form */

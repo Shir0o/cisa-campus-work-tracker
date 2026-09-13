@@ -20,7 +20,8 @@ import {
   Unlink,
   ZoomIn,
   X,
-  AlertCircle
+  AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 import PageContainer from '../components/layout/PageContainer';
@@ -554,6 +555,18 @@ export default function FeedbackList() {
 
                         {getStatusBadge(item.status)}
                         {item.outcome && getOutcomeBadge(item.outcome)}
+                        {/* A Follow-up is waiting (ADR 0019). Answer it by
+                            commenting on the linked issue — the webhook relays
+                            the comment back to the submitter. */}
+                        {item.awaitingReply && (
+                          <span
+                            className="flex items-center gap-1 py-0.5 px-2 bg-sky-500/15 text-sky-700 dark:text-sky-400 font-semibold text-[11px] rounded-full"
+                            title={t('feedbackList.awaiting_reply_title')}
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            {t('feedbackList.awaiting_reply')}
+                          </span>
+                        )}
                         {!item.githubIssueUrl && (
                           <span
                             className="flex items-center gap-1 py-0.5 px-2 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold text-[11px] rounded-full"

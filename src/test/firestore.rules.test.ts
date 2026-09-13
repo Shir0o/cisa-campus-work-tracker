@@ -2590,4 +2590,129 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
   });
+
+  describe('Feedback Notes — the submitter reads their own (ADR 0019)', () => {
+    const seedFeedbackUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'student1'), { role: 'viewer', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'student2'), { role: 'viewer', approved: true });
+      });
+    };
+
+    const seedNote = async (id: string, userId: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'feedback', id), {
+          userId,
+          userName: 'A Student',
+          type: 'enhancement',
+          kind: 'idea',
+          message: 'It would help if the roster remembered walk-ins.',
+          status: 'new',
+          archived: false,
+          createdAt: new Date(),
+          ...over,
+        });
+      });
+    };
+
+    const seedFollowUp = async (noteId: string, replyId: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'feedback', noteId, 'replies', replyId), {
+          authorRole: 'team',
+          body: 'We are looking at this.',
+          createdAt: new Date(),
+          ...over,
+        });
+      });
+    };
+
+    it('FB1: a submitter can read their own Note', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      await assertSucceeds(getDoc(doc(db, 'feedback', 'note1')));
+    });
+
+    it("FB2: a submitter cannot read someone else's Note", async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      const db = getFirestore({ uid: 'student2', email: 'student2@test.com' });
+      await assertFails(getDoc(doc(db, 'feedback', 'note1')));
+    });
+
+    it('FB3: a submitter can list their own Notes when the query is filtered to them', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      await seedNote('note2', 'student2');
+      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      await assertSucceeds(getDocs(query(collection(db, 'feedback'), where('userId', '==', 'student1'))));
+    });
+
+    it('FB4: an unfiltered list stays refused — the owner read is not a collection read', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      await assertFails(getDocs(collection(db, 'feedback')));
+    });
+
+    it("FB5: a submitter cannot query another person's Notes by filtering to them", async () => {
+      await seedFeedbackUsers();
+      await seedNote('note2', 'student2');
+      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      await assertFails(getDocs(query(collection(db, 'feedback'), where('userId', '==', 'student2'))));
+    });
+
+    it('FB6: a submitter can neither retriage nor delete their own Note', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      await assertFails(updateDoc(doc(db, 'feedback', 'note1'), { status: 'resolved' }));
+      await assertFails(deleteDoc(doc(db, 'feedback', 'note1')));
+    });
+
+    it('FB7: a Full-timer still reads the whole queue', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      await seedNote('note2', 'student2');
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(getDocs(collection(db, 'feedback')));
+    });
+
+    it("FB8: the Note's author reads its Follow-ups", async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      await seedFollowUp('note1', 'reply1');
+      const db = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      await assertSucceeds(getDocs(collection(db, 'feedback', 'note1', 'replies')));
+    });
+
+    it('FB9: another submitter cannot read those Follow-ups', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      await seedFollowUp('note1', 'reply1');
+      const db = getFirestore({ uid: 'student2', email: 'student2@test.com' });
+      await assertFails(getDocs(collection(db, 'feedback', 'note1', 'replies')));
+    });
+
+    it('FB10: nobody writes a Follow-up from a client — not the author, not a Full-timer', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      const authorDb = getFirestore({ uid: 'student1', email: 'student1@test.com' });
+      const ftDb = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      const reply = { authorRole: 'submitter', body: 'Any news?', createdAt: new Date() };
+      await assertFails(setDoc(doc(authorDb, 'feedback', 'note1', 'replies', 'r1'), reply));
+      await assertFails(setDoc(doc(ftDb, 'feedback', 'note1', 'replies', 'r2'), reply));
+    });
+
+    it('FB11: a Follow-up cannot be edited or deleted from a client either', async () => {
+      await seedFeedbackUsers();
+      await seedNote('note1', 'student1');
+      await seedFollowUp('note1', 'reply1');
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'feedback', 'note1', 'replies', 'reply1'), { body: 'edited' }));
+      await assertFails(deleteDoc(doc(db, 'feedback', 'note1', 'replies', 'reply1')));
+    });
+  });
+
 });

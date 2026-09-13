@@ -30,34 +30,49 @@ const {
     forEach: (cb: (d: any) => void) => docs.forEach(cb),
   });
 
-  const entry = (id: string, d: Doc) => ({ id, ref: { _col: "", _id: id }, data: () => d });
-
   const collection = (name: string) => {
     const col = (store[name] ??= {});
-    const list = () => Object.entries(col).map(([id, d]) => ({ ...entry(id, d), ref: { _col: name, _id: id } }));
+
+    // A document handle that is its own `ref`, so `snap.ref.update(...)` and
+    // `snap.ref.collection('replies')` work the way the real SDK does.
+    const docHandle = (docId: string) => {
+      const handle: any = {
+        id: docId,
+        _col: name,
+        _id: docId,
+        get: async () => ({ exists: docId in col, data: () => col[docId], id: docId, ref: handle }),
+        set: async (d: Doc) => { col[docId] = { ...d }; },
+        // Copy rather than mutate: a snapshot taken before this update must
+        // keep the values it was read with, as a real one does.
+        update: async (u: Doc) => {
+          const target = { ...(col[docId] ?? {}) };
+          for (const [k, v] of Object.entries(u)) {
+            if (v && (v as any).__mockDelete) delete target[k];
+            else target[k] = v;
+          }
+          col[docId] = target;
+        },
+        collection: (sub: string) => collection(`${name}/${docId}/${sub}`),
+      };
+      handle.ref = handle;
+      return handle;
+    };
+
+    const list = () => Object.keys(col).map((id) => ({ id, ref: docHandle(id), data: () => col[id] }));
+
+    const filtered = (pred: (d: any) => boolean) => ({
+      get: async () => snapshot(list().filter(pred)),
+      limit: (n: number) => ({ get: async () => snapshot(list().filter(pred).slice(0, n)) }),
+    });
 
     return {
       add: async (data: Doc) => {
         const id = `doc-${++seq}`;
         col[id] = { ...data };
-        return { id, update: async (u: Doc) => { col[id] = { ...col[id], ...u }; } };
+        return docHandle(id);
       },
-      doc: (id?: string) => {
-        const docId = id || `doc-${++seq}`;
-        return {
-          id: docId,
-          _col: name,
-          _id: docId,
-          get: async () => ({ exists: docId in col, data: () => col[docId], id: docId }),
-          set: async (d: Doc) => { col[docId] = { ...d }; },
-          update: async (u: Doc) => { col[docId] = { ...(col[docId] ?? {}), ...u }; },
-          ref: { _col: name, _id: docId },
-          collection: (sub: string) => collection(`${name}/${docId}/${sub}`),
-        };
-      },
-      where: (field: string, _op: string, value: any) => ({
-        get: async () => snapshot(list().filter((d) => d.data()[field] === value)),
-      }),
+      doc: (id?: string) => docHandle(id || `doc-${++seq}`),
+      where: (field: string, _op: string, value: any) => filtered((d) => d.data()[field] === value),
       orderBy: () => ({
         limit: (n: number) => ({ get: async () => snapshot(list().slice(0, n)) }),
       }),
@@ -145,7 +160,7 @@ vi.mock("@google/genai", () => ({
   GoogleGenAI: class {
     models = { generateContent: mockGenerateContent };
   },
-  Type: { OBJECT: "object", STRING: "string", ARRAY: "array" },
+  Type: { OBJECT: "object", STRING: "string", ARRAY: "array", BOOLEAN: "boolean" },
 }));
 
 vi.mock("vite", () => ({
@@ -463,7 +478,7 @@ describe("POST /api/webhook/github", () => {
       .set("x-hub-signature-256", sign(closedPayload, "sekret"))
       .send(closedPayload);
     expect(res.status).toBe(200);
-    expect(res.body.message).toContain("Ignored non-issues event");
+    expect(res.body.message).toContain("Ignored event type");
   });
 
   it("sets outcome to shipped, marks resolved, and writes a notification when closed normally", async () => {
@@ -1603,3 +1618,383 @@ describe("POST /api/translate — batch translation & smart caching", () => {
 });
 
 
+
+// ── Feedback Follow-ups and submitter-facing copy (ADR 0019) ────────────────
+
+describe("POST /api/feedback/reply", () => {
+  const issueUrl = "https://github.com/a/b/issues/7";
+
+  const seedNote = (over: Record<string, any> = {}) =>
+    seedDoc("feedback", "fb-1", {
+      userId: "user-ada",
+      userName: "Ada Student",
+      status: "in_progress",
+      githubIssueUrl: issueUrl,
+      ...over,
+    });
+
+  it("refuses a request with no Firebase token", async () => {
+    seedNote();
+    const res = await request(app).post("/api/feedback/reply").send({ id: "fb-1", body: "Any news?" });
+    expect(res.status).toBe(401);
+  });
+
+  it("requires both an id and a body", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "   " });
+    expect(res.status).toBe(400);
+  });
+
+  it("404s on a note that does not exist", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "nope", body: "Any news?" });
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses a stranger — neither the author nor a Full-timer", async () => {
+    seedNote();
+    seedDoc("users", "user-bob", { role: "viewer", approved: true, email: "bob@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-bob", email: "bob@test.com", name: "Bob" });
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "Nosy question" });
+    expect(res.status).toBe(403);
+  });
+
+  it("stores the author's follow-up, flags the note, and tells the Full-timers", async () => {
+    seedNote();
+    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
+    seedDoc("users", "ft-1", { role: "admin", approved: true, email: "ft1@test.com" });
+    seedDoc("users", "ft-2", { role: "admin", approved: true, email: "ft2@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "Which screen is it on?" });
+
+    expect(res.status).toBe(200);
+    const replies = Object.values(getCollection("feedback/fb-1/replies"));
+    expect(replies).toHaveLength(1);
+    expect(replies[0]).toMatchObject({ authorRole: "submitter", authorId: "user-ada", body: "Which screen is it on?" });
+    expect(getCollection("feedback")["fb-1"].awaitingReply).toBe(true);
+
+    const notified = Object.values(getCollection("notifications")).map((n: any) => n.userId);
+    expect(notified).toEqual(expect.arrayContaining(["ft-1", "ft-2"]));
+    expect(notified).not.toContain("user-ada");
+  });
+
+  it("a Full-timer's reply clears the flag and notifies the submitter instead", async () => {
+    seedNote({ awaitingReply: true });
+    seedDoc("users", "ft-1", { role: "admin", approved: true, email: "ft1@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "ft-1", email: "ft1@test.com", name: "Tony Wang" });
+
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "It's on the roster screen." });
+
+    expect(res.status).toBe(200);
+    const replies: any[] = Object.values(getCollection("feedback/fb-1/replies"));
+    expect(replies[0]).toMatchObject({ authorRole: "team", authorName: "Tony Wang" });
+    expect(getCollection("feedback")["fb-1"].awaitingReply).toBe(false);
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ userId: "user-ada", message: "It's on the roster screen." }),
+    ]);
+  });
+
+  it("never touches status or outcome — a follow-up is not a reopen", async () => {
+    seedNote({ status: "resolved", outcome: "shipped" });
+    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+
+    await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "One more thing" });
+
+    expect(getCollection("feedback")["fb-1"].status).toBe("resolved");
+    expect(getCollection("feedback")["fb-1"].outcome).toBe("shipped");
+  });
+
+  it("mirrors the follow-up onto the issue without naming the reporter", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+    seedNote();
+    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 4242 }), { status: 201 }));
+
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "Which screen is it on?" });
+
+    expect(res.body.mirroredToGitHub).toBe(true);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/repos/a/b/issues/7/comments");
+    const posted = JSON.parse((init as RequestInit).body as string).body;
+    expect(posted).toContain("**Reporter replied:**");
+    expect(posted).toContain("Which screen is it on?");
+    expect(posted).not.toContain("Ada Student");
+    expect(posted).not.toContain("ada@test.com");
+
+    const replies: any[] = Object.values(getCollection("feedback/fb-1/replies"));
+    expect(replies[0].githubCommentId).toBe(4242);
+  });
+
+  it("still stores and notifies when GitHub is unreachable", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+    seedNote();
+    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    fetchMock.mockRejectedValue(new Error("network down"));
+
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "Any news?" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mirroredToGitHub).toBe(false);
+    expect(Object.values(getCollection("feedback/fb-1/replies"))).toHaveLength(1);
+  });
+});
+
+describe("POST /api/webhook/github — issue_comment relay", () => {
+  const issueUrl = "https://github.com/a/b/issues/7";
+  const payload = (over: Record<string, any> = {}) => ({
+    action: "created",
+    issue: { html_url: issueUrl },
+    comment: { id: 99, body: "Specced as #910. Confirmed as the textarea rather than the preview.", user: { login: "Shir0o", type: "User" } },
+    ...over,
+  });
+
+  const post = (body: any) =>
+    request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issue_comment")
+      .set("x-hub-signature-256", sign(body, "sekret"))
+      .send(body);
+
+  beforeEach(() => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
+  });
+
+  it("relays a laundered restatement, never the raw comment", async () => {
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ relay: true, text: "We've traced this to the text box and a fix is on the way." }),
+    });
+
+    const res = await post(payload());
+    expect(res.status).toBe(200);
+    expect(res.body.relayedCount).toBe(1);
+
+    const replies: any[] = Object.values(getCollection("feedback/fb-9/replies"));
+    expect(replies[0]).toMatchObject({
+      authorRole: "team",
+      relayed: true,
+      githubCommentId: 99,
+      body: "We've traced this to the text box and a fix is on the way.",
+    });
+    expect(replies[0].body).not.toContain("#910");
+    expect(replies[0].launderedBody).toBeUndefined();
+  });
+
+  it("drops an AI triage brief without asking the model at all", async () => {
+    const body = payload({
+      comment: {
+        id: 100,
+        body: "> *This was generated by AI during triage.*\n\n## Agent Brief\n\n**Category:** bug\n**Summary:** the toolbar steals focus",
+        user: { login: "Shir0o", type: "User" },
+      },
+    });
+
+    const res = await post(body);
+    expect(res.status).toBe(200);
+    expect(res.body.relayedCount).toBe(0);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
+  });
+
+  it("drops a comment the model judges to be internal bookkeeping", async () => {
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: false, text: "" }) });
+    const res = await post(payload());
+    expect(res.body.relayedCount).toBe(0);
+    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(0);
+  });
+
+  it("does not relay a comment it already stored — the mirror does not echo", async () => {
+    seedDoc("feedback/fb-9/replies", "r1", { authorRole: "submitter", body: "Any news?", githubCommentId: 99 });
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "restated" }) });
+
+    const res = await post(payload());
+    expect(res.body.relayedCount).toBe(0);
+    expect(Object.values(getCollection("feedback/fb-9/replies"))).toHaveLength(1);
+  });
+
+  it("gives the owner the comment raw, with the restatement stored beside it", async () => {
+    seedDoc("users", "user-ada", { role: "admin", approved: true, email: "yilongwang05@gmail.com" });
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "We're on it." }) });
+
+    await post(payload());
+    const replies: any[] = Object.values(getCollection("feedback/fb-9/replies"));
+    expect(replies[0].body).toContain("#910");
+    expect(replies[0].launderedBody).toBe("We're on it.");
+  });
+
+  it("ignores an edited or deleted comment", async () => {
+    const body = payload({ action: "edited" });
+    const res = await post(body);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain("Ignored issue_comment action");
+  });
+
+  it("tells the submitter a reply landed", async () => {
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ relay: true, text: "We're on it." }) });
+    await post(payload());
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ userId: "user-ada", title: "A reply on your note", message: "We're on it." }),
+    ]);
+  });
+});
+
+describe("POST /api/webhook/github — the message written at close", () => {
+  const issueUrl = "https://github.com/a/b/issues/7";
+  const closed = { action: "closed", issue: { html_url: issueUrl, state_reason: "completed" } };
+
+  const post = (body: any = closed) =>
+    request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .set("x-hub-signature-256", sign(body, "sekret"))
+      .send(body);
+
+  // A PR that says "Closes #7" appears on the timeline as a cross-reference,
+  // never as an issue comment — which is why the close summary reads the PR.
+  const withLinkedPr = (prBody: string) => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes("/timeline")) {
+        return new Response(
+          JSON.stringify([
+            { event: "cross-referenced", source: { issue: { pull_request: { url: "https://api.github.com/repos/a/b/pulls/12", merged_at: "2026-09-01T00:00:00Z" } } } },
+          ]),
+          { status: 200 },
+        );
+      }
+      if (String(url).includes("/pulls/12")) {
+        return new Response(JSON.stringify({ title: "Keep walk-ins on the roster", body: prBody }), { status: 200 });
+      }
+      return new Response("{}", { status: 200 });
+    });
+  };
+
+  beforeEach(() => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+  });
+
+  it("draws the submitter's sentence from the PR that closed the issue", async () => {
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
+    withLinkedPr("Walk-ins added during a gathering now persist when the roster closes.");
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ usable: true, text: "The roster now keeps walk-ins after you close it." }),
+    });
+
+    await post();
+    expect(getCollection("feedback")["fb-9"].outcomeMessage).toBe("The roster now keeps walk-ins after you close it.");
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ message: "The roster now keeps walk-ins after you close it." }),
+    ]);
+  });
+
+  it("falls back to the canned sentence when there is no linked PR", async () => {
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+    await post();
+    expect(getCollection("feedback")["fb-9"].outcomeMessage).toBeUndefined();
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
+    ]);
+  });
+
+  it("falls back to the canned sentence when the model gives nothing usable", async () => {
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
+    withLinkedPr("chore: bump deps");
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ usable: false, text: "" }) });
+
+    await post();
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
+    ]);
+  });
+
+  it("gives the owner the canned sentence, not the written one", async () => {
+    seedDoc("feedback", "fb-9", { userId: "owner-uid", status: "in_progress", githubIssueUrl: issueUrl });
+    seedDoc("users", "owner-uid", { role: "admin", approved: true, email: "yilongwang05@gmail.com" });
+    withLinkedPr("Walk-ins now persist.");
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ usable: true, text: "The roster now keeps walk-ins." }) });
+
+    await post();
+    // Stored either way, so "see it as they do" has something to show.
+    expect(getCollection("feedback")["fb-9"].outcomeMessage).toBe("The roster now keeps walk-ins.");
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
+    ]);
+  });
+
+  it("does not ping twice when a re-close reaches the same outcome", async () => {
+    seedDoc("feedback", "fb-9", {
+      userId: "user-ada",
+      status: "in_progress",
+      githubIssueUrl: issueUrl,
+      notifiedOutcome: "shipped",
+    });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+    await post();
+    expect(Object.values(getCollection("notifications"))).toHaveLength(0);
+  });
+
+  it("does ping when a re-close reaches a different outcome", async () => {
+    seedDoc("feedback", "fb-9", {
+      userId: "user-ada",
+      status: "in_progress",
+      githubIssueUrl: issueUrl,
+      notifiedOutcome: "not-planned",
+    });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+    await post();
+    expect(Object.values(getCollection("notifications"))).toHaveLength(1);
+    expect(getCollection("feedback")["fb-9"].notifiedOutcome).toBe("shipped");
+  });
+
+  it("a reopen clears the outcome and its message but remembers what was said", async () => {
+    seedDoc("feedback", "fb-9", {
+      userId: "user-ada",
+      status: "resolved",
+      githubIssueUrl: issueUrl,
+      outcome: "shipped",
+      outcomeMessage: "The roster now keeps walk-ins.",
+      notifiedOutcome: "shipped",
+    });
+
+    const reopened = { action: "reopened", issue: { html_url: issueUrl } };
+    await post(reopened);
+
+    const note = getCollection("feedback")["fb-9"];
+    expect(note.outcome).toBeUndefined();
+    expect(note.outcomeMessage).toBeUndefined();
+    expect(note.notifiedOutcome).toBe("shipped");
+    expect(Object.values(getCollection("notifications"))).toHaveLength(0);
+  });
+});

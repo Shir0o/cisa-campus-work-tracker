@@ -289,7 +289,21 @@
     "goes_to_team": "Tu nota va directamente al equipo.",
     "your_past_notes": "Tus notas anteriores",
     "what_came_of_it": "Qué fue de ella",
-    "still_open": "Aún abierta"
+    "still_open": "Aún abierta",
+    "your_notes": "Tus notas",
+    "your_notes_intro": "Cada nota que has dejado y en qué terminó. Deja una nueva con el botón de notas.",
+    "no_notes_yet": "Todavía no has dejado ninguna nota. Usa el botón de notas en la esquina y aparecerá aquí.",
+    "notes_load_failed": "No pudimos cargar tus notas en este momento. Inténtalo de nuevo en un momento; si sigue pasando, avísale a un tiempo completo.",
+    "no_news_yet": "La tenemos — aún sin novedades",
+    "follow_ups": "Seguimientos",
+    "no_follow_ups": "Aún no hay seguimientos. Pregúntanos lo que quieras sobre esta nota.",
+    "follow_ups_load_failed": "No pudimos cargar los seguimientos de esta nota.",
+    "follow_up_placeholder": "Haz una pregunta de seguimiento…",
+    "follow_up_failed": "No se envió. Inténtalo de nuevo en un momento.",
+    "reply_is_public": "Las respuestas se publican en nuestro rastreador de incidencias público, donde cualquiera puede leerlas.",
+    "you": "Tú",
+    "the_team": "El equipo",
+    "see_your_notes": "Ver tus notas"
   },
   "feedbackList": {
     "access_denied": "Acceso denegado",
@@ -348,7 +362,9 @@
     "kind_request": "Una solicitud",
     "view_github_issue": "Ver issue de GitHub",
     "edit_github_link": "Editar enlace de GitHub",
-    "not_auto_synced_title": "No se creó automáticamente un issue de GitHub para este elemento; es posible que la integración de GitHub del servidor no esté configurada. Usa \"Crear issue\" o \"Vincular\" para adjuntar uno manualmente."
+    "not_auto_synced_title": "No se creó automáticamente un issue de GitHub para este elemento; es posible que la integración de GitHub del servidor no esté configurada. Usa \"Crear issue\" o \"Vincular\" para adjuntar uno manualmente.",
+    "awaiting_reply": "Seguimiento pendiente",
+    "awaiting_reply_title": "La persona hizo una pregunta de seguimiento. Comenta en el issue vinculado y le llegará."
   },
   "answered": {
     "eyebrow": "Contestadas",

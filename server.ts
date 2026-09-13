@@ -15,6 +15,7 @@ import { feedbackIssueSubmittedByLine } from "./src/lib/feedbackReporter";
 import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
 import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
 import { outcomeCopy, type FeedbackOutcome } from "./src/lib/feedbackKinds";
+import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 
 dotenv.config();
 
@@ -195,6 +196,273 @@ export async function createApp() {
     } catch (error) {
       console.error(`Failed to update GitHub issue state for ${issueUrl}:`, error);
     }
+  }
+
+
+  // --- Feedback Follow-ups and submitter-facing copy (ADR 0019) ---------------
+  //
+  // A Feedback Note is a conversation: Follow-ups live in
+  // `feedback/{id}/replies` with Firestore as the source of truth, and mirror
+  // to the linked GitHub issue's comments in both directions. Everything
+  // arriving from GitHub is laundered by a model first, because the issue
+  // stream carries agent triage briefs, stack traces and internal shorthand
+  // that no submitter should read.
+
+  // The owner's email, duplicated from OWNER_EMAIL in src/lib/permissions.ts.
+  // That module cannot be imported here: it reaches ./partners -> ./firebase,
+  // which initialises the *browser* Firebase SDK at module load.
+  const OWNER_EMAIL_SERVER = (process.env.OWNER_EMAIL || "yilongwang05@gmail.com").trim().toLowerCase();
+
+  function parseIssueUrl(issueUrl: string) {
+    const match = issueUrl.match(/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+    if (!match) return null;
+    return { owner: match[1], repo: match[2], issueNumber: match[3] };
+  }
+
+  function githubHeaders(token: string) {
+    return {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+      "User-Agent": "CISA-Campus-Work-Tracker-Server",
+    };
+  }
+
+  /**
+   * The owner reads the loop raw: the laundering exists to protect submitters
+   * who cannot read a stack trace, and the maintainer would rather see what
+   * actually happened. ADR 0018 stopped storing email on new feedback docs, so
+   * the Note carries only a uid and the owner test is a profile lookup.
+   */
+  async function isOwnerSubmitter(db: any, userId?: string): Promise<boolean> {
+    if (!userId || userId === "anonymous") return false;
+    try {
+      const snap = await db.collection("users").doc(userId).get();
+      const email: string = (snap.exists ? snap.data()?.email : "") || "";
+      return email.trim().toLowerCase() === OWNER_EMAIL_SERVER;
+    } catch (error) {
+      console.error(`Failed to resolve submitter email for ${userId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Restates one GitHub issue comment for the person who filed the Note.
+   * Returns null when there is nothing safe or useful to pass on — a dropped
+   * comment is always better than a leaked one, and the Note's outcome
+   * message still guarantees that something arrives.
+   */
+  async function launderIssueComment(raw: string): Promise<string | null> {
+    const body = (raw || "").trim();
+    if (shouldDropComment(body)) {
+      console.log("Feedback relay: dropped a comment before laundering.");
+      return null;
+    }
+
+    try {
+      const response = await getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: body,
+        config: {
+          systemInstruction: LAUNDER_INSTRUCTION,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              relay: { type: Type.BOOLEAN, description: "Whether this comment has anything worth telling the reporter." },
+              text: { type: Type.STRING, description: "The restated comment, at most two sentences. Empty when relay is false." },
+            },
+            required: ["relay", "text"],
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.text || "{}");
+      if (!parsed.relay) return null;
+      const text = (parsed.text || "").trim();
+      return text ? text : null;
+    } catch (error) {
+      console.error("Failed to launder issue comment; dropping it:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Writes the sentence a submitter reads when their Note's issue closes,
+   * drawn from the pull request that closed it. ADR 0017 could not do this
+   * because nothing linked an issue to a release; a PR is linked to its issue
+   * by the close itself. Returns null whenever there is no linked PR or the
+   * model is unavailable, and the canned sentence takes over.
+   */
+  async function closeMessageFromPr(
+    issueUrl: string,
+    outcome: FeedbackOutcome,
+  ): Promise<string | null> {
+    if (outcome !== "shipped") return null;
+
+    const token = process.env.GITHUB_TOKEN;
+    const parsed = parseIssueUrl(issueUrl);
+    if (!token || !parsed) return null;
+
+    try {
+      const { owner, repo, issueNumber } = parsed;
+      const timelineUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/timeline?per_page=100`;
+      const timelineRes = await fetch(timelineUrl, { headers: githubHeaders(token) });
+      if (!timelineRes.ok) {
+        console.warn(`Feedback close summary: timeline fetch failed (${timelineRes.status}).`);
+        return null;
+      }
+
+      const events: any[] = await timelineRes.json();
+      // A PR that says "Closes #N" shows up on the issue's timeline as a
+      // cross-reference, never as an issue comment — which is why the mirror
+      // alone would have had nothing to relay here. Prefer the most recent
+      // merged one; fall back to the most recent referenced PR.
+      const referenced = events
+        .filter((ev) => ev?.event === "cross-referenced" && ev?.source?.issue?.pull_request?.url)
+        .map((ev) => ({
+          url: ev.source.issue.pull_request.url as string,
+          merged: Boolean(ev.source.issue.pull_request.merged_at),
+        }))
+        .reverse();
+      const prUrl = referenced.find((pr) => pr.merged)?.url ?? referenced[0]?.url ?? null;
+
+      if (!prUrl) {
+        console.log(`Feedback close summary: no linked PR for issue ${issueNumber}; using canned copy.`);
+        return null;
+      }
+
+      const prRes = await fetch(prUrl, { headers: githubHeaders(token) });
+      if (!prRes.ok) {
+        console.warn(`Feedback close summary: PR fetch failed (${prRes.status}).`);
+        return null;
+      }
+      const pr = await prRes.json();
+
+      const response = await getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `Pull request title: ${pr.title || ""}\n\nPull request description:\n${(pr.body || "").slice(0, 8000)}`,
+        config: {
+          systemInstruction: CLOSE_SUMMARY_INSTRUCTION,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              usable: { type: Type.BOOLEAN, description: "Whether the PR describes a change the reporter would notice." },
+              text: { type: Type.STRING, description: "One or two sentences for the reporter. Empty when usable is false." },
+            },
+            required: ["usable", "text"],
+          },
+        },
+      });
+
+      const summary = JSON.parse(response.text || "{}");
+      if (!summary.usable) return null;
+      const text = (summary.text || "").trim();
+      return text ? text : null;
+    } catch (error) {
+      console.error("Failed to build a close summary from the linked PR:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Mirrors a Follow-up up onto the Note's issue. Attribution stays at
+   * "the reporter" (ADR 0018): the issue already carries a
+   * `reporter:<first>-<last-initial>` label, and the repository is public.
+   * Fail-open — a Follow-up that cannot reach GitHub is still stored and still
+   * notified in-app.
+   */
+  async function postIssueComment(issueUrl: string | undefined, body: string): Promise<number | null> {
+    const token = process.env.GITHUB_TOKEN;
+    if (!issueUrl || !token) return null;
+    const parsed = parseIssueUrl(issueUrl);
+    if (!parsed) return null;
+
+    try {
+      const { owner, repo, issueNumber } = parsed;
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+        { method: "POST", headers: githubHeaders(token), body: JSON.stringify({ body }) },
+      );
+      if (!response.ok) {
+        console.error(`GitHub API error posting comment: ${response.status} - ${await response.text()}`);
+        return null;
+      }
+      const created = await response.json();
+      return typeof created?.id === "number" ? created.id : null;
+    } catch (error) {
+      console.error(`Failed to post a comment to ${issueUrl}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fans a notification out to the Full-timers, with the author excluded —
+   * the stakeholder + self-exclusion shape of ADR 0007. Every other
+   * notification write on this server targets one known uid, so the role query
+   * lives here.
+   */
+  async function notifyFullTimers(
+    db: any,
+    payload: { title: string; message: string; link: string },
+    excludeUserId?: string,
+  ): Promise<void> {
+    try {
+      const snap = await db.collection("users").where("role", "==", "admin").get();
+      const targets = snap.docs
+        .map((d: any) => d.id)
+        .filter((uid: string) => uid !== excludeUserId);
+
+      await Promise.all(
+        targets.map((uid: string) =>
+          db.collection("notifications").add({
+            userId: uid,
+            title: payload.title,
+            message: payload.message,
+            type: "info",
+            tone: "accent",
+            read: false,
+            link: payload.link,
+            createdAt: FieldValue.serverTimestamp(),
+          }),
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to notify Full-timers:", error);
+    }
+  }
+
+  /** Stores one Follow-up. Server-only by rule: see firestore.rules 11b. */
+  async function writeFollowUp(
+    db: any,
+    feedbackId: string,
+    reply: {
+      authorRole: "submitter" | "team";
+      authorId?: string;
+      authorName?: string;
+      body: string;
+      /**
+       * The laundered restatement, stored beside a raw `body` only on the
+       * owner's own Notes so "see it as they do" has something to show.
+       */
+      launderedBody?: string;
+      relayed?: boolean;
+      githubCommentId?: number;
+    },
+  ): Promise<string> {
+    const docRef = await db.collection("feedback").doc(feedbackId).collection("replies").add({
+      authorRole: reply.authorRole,
+      ...(reply.authorId ? { authorId: reply.authorId } : {}),
+      ...(reply.authorName ? { authorName: reply.authorName } : {}),
+      body: reply.body,
+      ...(reply.launderedBody ? { launderedBody: reply.launderedBody } : {}),
+      ...(reply.relayed ? { relayed: true } : {}),
+      ...(typeof reply.githubCommentId === "number" ? { githubCommentId: reply.githubCommentId } : {}),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return docRef.id;
   }
 
   // Endpoint: Submit feedback (with diagnostics and auto GitHub issue creation)
@@ -407,6 +675,108 @@ export async function createApp() {
     }
   });
 
+  // Endpoint: post a Follow-up on a Feedback Note (ADR 0019)
+  // The only write path for `feedback/{id}/replies` — the rules refuse client
+  // writes — so that every Follow-up mirrors onto the linked issue and the
+  // awaiting-reply flag and notifications cannot be skipped.
+  app.post("/api/feedback/reply", async (req, res) => {
+    try {
+      let decoded: any;
+      try {
+        decoded = await authenticateFirebaseUser(req);
+      } catch (authErr: any) {
+        console.error("Firebase ID token verification failed:", authErr);
+        return res.status(401).json({ error: "Unauthorized: " + (authErr.message || String(authErr)) });
+      }
+
+      const { id, body } = req.body;
+      if (!id || typeof body !== "string" || !body.trim()) {
+        return res.status(400).json({ error: "Missing required 'id' and 'body' parameters." });
+      }
+      const text = body.trim().slice(0, 5000);
+
+      const db = getAdminDb();
+      const docRef = db.collection("feedback").doc(id);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        return res.status(404).json({ error: `Feedback document with id "${id}" not found.` });
+      }
+
+      const note = docSnap.data()!;
+      const uid = decoded.uid;
+      const isAuthor = note.userId === uid;
+
+      let isFullTimer = (decoded.email || "").toLowerCase() === OWNER_EMAIL_SERVER;
+      if (!isFullTimer) {
+        try {
+          const profile = await db.collection("users").doc(uid).get();
+          isFullTimer = profile.exists && profile.data()?.role === "admin";
+        } catch (roleErr) {
+          console.error(`Failed to resolve role for ${uid}:`, roleErr);
+        }
+      }
+
+      if (!isAuthor && !isFullTimer) {
+        return res.status(403).json({ error: "Forbidden: only the note's author or a Full-timer may reply." });
+      }
+
+      const authorRole: "submitter" | "team" = isAuthor ? "submitter" : "team";
+      const authorName: string | undefined = decoded.name || decoded.displayName || undefined;
+
+      // Mirror up. A reporter stays unnamed on the public issue (ADR 0018) —
+      // the issue already carries a reporter:<first>-<last-initial> label.
+      const prefix = authorRole === "submitter"
+        ? "**Reporter replied:**"
+        : `**${authorName || "The team"} replied from the app:**`;
+      const githubCommentId = await postIssueComment(note.githubIssueUrl, `${prefix}\n\n${text}`);
+
+      await writeFollowUp(db, id, {
+        authorRole,
+        authorId: uid,
+        authorName,
+        body: text,
+        ...(githubCommentId !== null ? { githubCommentId } : {}),
+      });
+
+      // A Follow-up from the submitter waits on the team; the team answering
+      // clears it. Neither touches `status` or `outcome` — a reply is not a
+      // reopen, and a reopen would delete the outcome the submitter just read.
+      await docRef.update({ awaitingReply: authorRole === "submitter" });
+
+      if (authorRole === "submitter") {
+        await notifyFullTimers(
+          db,
+          {
+            title: "A follow-up on a note",
+            message: `${note.userName || "Someone"} asked a follow-up on their note.`,
+            link: "/admin/feedback",
+          },
+          uid,
+        );
+      } else if (note.userId && note.userId !== "anonymous" && note.userId !== uid) {
+        try {
+          await db.collection("notifications").add({
+            userId: note.userId,
+            title: "A reply on your note",
+            message: text,
+            type: "info",
+            tone: "accent",
+            read: false,
+            link: "/feedback",
+            createdAt: FieldValue.serverTimestamp(),
+          });
+        } catch (notifErr) {
+          console.error(`Failed to notify ${note.userId} of a Follow-up:`, notifErr);
+        }
+      }
+
+      res.status(200).json({ success: true, mirroredToGitHub: githubCommentId !== null });
+    } catch (error: any) {
+      console.error("Error in POST /api/feedback/reply: ", error);
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+  });
+
   // Endpoint: GitHub Webhook to sync issue closure/reopening back to app feedback
   app.post("/api/webhook/github", async (req, res) => {
     try {
@@ -437,11 +807,11 @@ export async function createApp() {
       }
 
       const eventType = req.headers["x-github-event"];
-      if (eventType !== "issues") {
-        return res.status(200).json({ message: `Ignored non-issues event type: ${eventType}` });
+      if (eventType !== "issues" && eventType !== "issue_comment") {
+        return res.status(200).json({ message: `Ignored event type: ${eventType}` });
       }
 
-      const { action, issue } = req.body;
+      const { action, issue, comment } = req.body;
       if (!issue || !issue.html_url) {
         return res.status(400).json({ error: "Invalid issues event payload." });
       }
@@ -458,6 +828,74 @@ export async function createApp() {
 
       console.log(`GitHub Webhook: Found ${snapshot.size} feedback documents matching issue URL: ${issueUrl}`);
 
+      // --- issue_comment: relay a comment down as a Follow-up (ADR 0019) ------
+      // Requires the `issue_comment` event to be enabled on the repository
+      // webhook; without it this branch never runs and the thread is one-way.
+      if (eventType === "issue_comment") {
+        if (action !== "created" || !comment || typeof comment.body !== "string") {
+          return res.status(200).json({ message: `Ignored issue_comment action: ${action}` });
+        }
+
+        const commentId = typeof comment.id === "number" ? comment.id : null;
+        const raw = comment.body.trim();
+        let relayedCount = 0;
+
+        for (const docSnap of snapshot.docs) {
+          // A Follow-up we mirrored up comes straight back as issue_comment.
+          // The stored GitHub comment id is the dedupe key.
+          if (commentId !== null) {
+            const seen = await docSnap.ref
+              .collection("replies")
+              .where("githubCommentId", "==", commentId)
+              .limit(1)
+              .get();
+            if (!seen.empty) continue;
+          }
+
+          const data = docSnap.data();
+          const ownerSubmitted = await isOwnerSubmitter(db, data.userId);
+          const laundered = await launderIssueComment(raw);
+
+          // The owner reads the tracker as it is; everyone else reads a
+          // restatement, and a comment with nothing safe to say is dropped.
+          // On the owner's own Notes both are stored so that "see it as they
+          // do" has something to show — safe there because the owner is the
+          // only non-admin who can read their own Note.
+          const body = ownerSubmitted ? raw : laundered;
+          if (!body) continue;
+
+          await writeFollowUp(db, docSnap.id, {
+            authorRole: "team",
+            body,
+            relayed: true,
+            ...(ownerSubmitted && laundered ? { launderedBody: laundered } : {}),
+            ...(commentId !== null ? { githubCommentId: commentId } : {}),
+          });
+          relayedCount += 1;
+
+          if (data.userId && data.userId !== "anonymous") {
+            try {
+              await db.collection("notifications").add({
+                userId: data.userId,
+                title: "A reply on your note",
+                message: body,
+                type: "info",
+                tone: "accent",
+                read: false,
+                link: "/feedback",
+                createdAt: FieldValue.serverTimestamp(),
+              });
+            } catch (notifErr) {
+              console.error(`Failed to notify ${data.userId} of a relayed Follow-up:`, notifErr);
+            }
+          }
+        }
+
+        console.log(`GitHub Webhook: Relayed comment ${commentId} onto ${relayedCount} Note(s).`);
+        return res.status(200).json({ success: true, relayedCount });
+      }
+
+      // --- issues: closed / reopened -----------------------------------------
       const updates: any = {};
       let outcome: FeedbackOutcome | undefined;
 
@@ -479,6 +917,10 @@ export async function createApp() {
         updates.status = "in_progress";
         updates.archived = false;
         updates.outcome = FieldValue.delete();
+        updates.outcomeMessage = FieldValue.delete();
+        // `notifiedOutcome` deliberately survives the clear: it is the only
+        // thing that stops a re-close from repeating a sentence the submitter
+        // has already read, while still letting a *changed* answer through.
       } else {
         return res.status(200).json({ message: `Ignored action: ${action}` });
       }
@@ -492,15 +934,35 @@ export async function createApp() {
 
       // Write notification for each submitter if outcome was set
       if (outcome) {
-        const message = outcomeCopy(outcome);
+        // One summary per issue: every Note sharing it shipped the same change.
+        const prSummary = await closeMessageFromPr(issueUrl, outcome);
+        const canned = outcomeCopy(outcome);
+
         for (const docSnap of snapshot.docs) {
           const data = docSnap.data();
+          const ownerSubmitted = await isOwnerSubmitter(db, data.userId);
+
+          // Stored for everyone, including the owner — their own page renders
+          // the canned line until they switch to "see it as they do".
+          const perDoc: any = {};
+          if (prSummary) perDoc.outcomeMessage = prSummary;
+
+          // Reopen-then-reclose for the same reason is bookkeeping, not news.
+          const alreadyTold = data.notifiedOutcome === outcome;
+          if (!alreadyTold) perDoc.notifiedOutcome = outcome;
+          if (Object.keys(perDoc).length > 0) await docSnap.ref.update(perDoc);
+
+          if (alreadyTold) {
+            console.log(`GitHub Webhook: ${docSnap.id} already told about "${outcome}"; no second ping.`);
+            continue;
+          }
+
           if (data.userId && data.userId !== "anonymous") {
             try {
               await db.collection("notifications").add({
                 userId: data.userId,
                 title: "What came of your note",
-                message,
+                message: ownerSubmitted ? canned : (prSummary || canned),
                 type: "info",
                 tone: "accent",
                 read: false,

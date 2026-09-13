@@ -1,87 +1,61 @@
 /**
- * Feedback submission and admin triage (issue #628).
+ * Your notes and admin triage (issues #628, ADR 0019).
  *
- * Every signed-in role can leave a note on `/feedback`. The Full-timer
- * (admin) sees the full triage queue on `/admin/feedback`; every other
- * role is redirected back to `/` from that route.
+ * `/feedback` is no longer a composer — the FAB is the only one. The page is
+ * where a submitter reads their own Notes back, and every signed-in role can
+ * reach it. The Full-timer (admin) sees the triage queue on `/admin/feedback`;
+ * every other role is redirected back to `/` from that route.
  *
  * This spec verifies:
- *  - the feedback form is reachable and renders the kind selector,
- *    the message textarea, and a disabled-until-filled Send button,
- *  - the admin triage page renders the empty state when there are no
- *    feedback items,
+ *  - `/feedback` is reachable by every role and carries no composer,
+ *  - the admin triage page renders without permission errors,
  *  - a non-admin role is redirected away from `/admin/feedback`,
- *  - the Feedback FAB and the `/feedback` page share the same form
- *    affordance (the FAB is present on every authed page).
+ *  - the FAB is present on every authed page, since it is now the only way
+ *    to submit.
  *
- * The actual submit-to-API step calls `/api/feedback`, which the Vite dev
- * server (Playwright's `webServer`) does not serve; production uses the
- * Express server in `server.ts` and CI runs that path. The submit POST is
- * therefore not exercised here — it is covered by the unit / Express
- * integration tests in `src/test/`.
+ * Neither the submit POST nor a Follow-up POST is exercised here: both call
+ * `/api/feedback*`, which the Vite dev server (Playwright's `webServer`) does
+ * not serve. Those paths are covered by the Express integration tests in
+ * `src/test/server.test.ts`.
  */
 
 import { test, expect, type Page } from '@playwright/test';
 import { signInAs } from './helpers/auth';
 
-const FEEDBACK_TITLE = /leave a note|send (a )?note|tell us/i;
+const NOTES_TITLE = /your notes/i;
 
 async function gotoFeedbackPage(page: Page) {
   await page.goto('/feedback');
   await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
 }
 
-test.describe('Feedback Submission & Admin Triage (#628)', () => {
-  test('Community user can open the feedback form and the Send button stays disabled until they type', async ({ page }) => {
+test.describe('Your notes & Admin Triage (#628, ADR 0019)', () => {
+  test('Community user reaches their notes page, and it is not a composer', async ({ page }) => {
     await signInAs(page, 'community');
     await gotoFeedbackPage(page);
 
-    // Page heading is the stable "Leave a note" copy.
-    await expect(page.getByRole('heading', { name: FEEDBACK_TITLE })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: NOTES_TITLE })).toBeVisible({ timeout: 10_000 });
 
-    // The kind selector renders one button per FeedbackKind. We just check
-    // the kind buttons exist (the exact set is locale-dependent) and that
-    // they are clickable.
-    const kindButtons = page.locator('form button[type="button"]');
-    await expect(kindButtons.first()).toBeVisible();
-
-    // The message textarea has a stable id.
-    const textarea = page.locator('#form-message');
-    await expect(textarea).toBeVisible();
-
-    // The Send button is rendered but disabled while the message is empty.
-    const sendBtn = page.getByRole('button', { name: /^send$/i }).first();
-    await expect(sendBtn).toBeVisible();
-    await expect(sendBtn).toBeDisabled();
-
-    // Typing into the textarea enables the Send button.
-    await textarea.fill('E2E automated feedback entry — community perspective.');
-    await expect(sendBtn).toBeEnabled();
-
-    // Switch the kind via the first kind button so the spec also touches the
-    // kind selector, not just the textarea. We assert the form is still
-    // present after the switch.
-    const firstKind = kindButtons.first();
-    await firstKind.click();
-    await expect(textarea).toBeVisible();
+    // The dedicated page composer was retired: no kind selector, and no
+    // message box of its own. Submitting happens through the FAB.
+    await expect(page.locator('#form-message')).toHaveCount(0);
+    await expect(page.getByText(/what kind of note is it/i)).toHaveCount(0);
   });
 
-  test('Trainee can also open the feedback form', async ({ page }) => {
+  test('Trainee can also reach their notes page', async ({ page }) => {
     await signInAs(page, 'trainee');
     await gotoFeedbackPage(page);
 
-    await expect(page.getByRole('heading', { name: FEEDBACK_TITLE })).toBeVisible({ timeout: 10_000 });
-    const textarea = page.locator('#form-message');
-    await expect(textarea).toBeVisible();
+    await expect(page.getByRole('heading', { name: NOTES_TITLE })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#form-message')).toHaveCount(0);
   });
 
-  test('Student can also open the feedback form', async ({ page }) => {
+  test('Student can also reach their notes page', async ({ page }) => {
     await signInAs(page, 'student');
     await gotoFeedbackPage(page);
 
-    await expect(page.getByRole('heading', { name: FEEDBACK_TITLE })).toBeVisible({ timeout: 10_000 });
-    const textarea = page.locator('#form-message');
-    await expect(textarea).toBeVisible();
+    await expect(page.getByRole('heading', { name: NOTES_TITLE })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('#form-message')).toHaveCount(0);
   });
 
   test('Full-timer can open the admin feedback triage page and the empty state is rendered', async ({ page }) => {
