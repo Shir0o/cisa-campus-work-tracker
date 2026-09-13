@@ -1,96 +1,94 @@
-# Enterprise App Store Release Package & Checklist
+# Store submission checklist
 
-This document contains pre-configured templates, copy-paste review notes, and exact console steps for releasing an access-gated internal app on the **Apple App Store** and **Google Play Store**.
+What to paste into each console when submitting for review, and what the
+reviewers need in order to get in.
 
----
+The **build, signing, and upload are automated** — see
+[`RELEASING.md`](RELEASING.md). This file is only about the parts a human still
+does, which are the review metadata and the promotion click.
 
-## 1. Credentials Setup Template
+> This file previously contained a reviewer email with a plaintext password and
+a static 2FA bypass code. It is a **public repository**. Credentials are never
+committed: create the reviewer account in the QA database and keep its password
+where the other secrets live.
 
-Before submitting to either store, create this dedicated reviewer account in Firebase Auth / internal database:
+## 1. The reviewer account
 
-- **Email**: `reviewer-appstore@yourdomain.com`
-- **Password**: `TestReviewer2026!`
-- **Role / Permissions**: Viewer / Standard User (must have pre-populated data across all tabs).
-- **MFA / OTP Bypass**: MFA disabled OR static code `123456`.
-- **Network Exemption**: Whitelisted from IP firewall or VPN restrictions.
+The app is access-gated, so both stores require a working account a reviewer can
+sign into. One already exists in the QA database and is described by the
+**Test Account Purge** entry in [`CONTEXT.md`](CONTEXT.md) — it is one of the
+`reviewer*` accounts that tool scrubs.
 
----
+Before a submission, confirm the account:
 
-## 2. Apple App Store Connect Copy-Paste Block
+- Signs in from a clean device with no company VPN and no hardware token.
+- Has sample data across every tab, so nothing a reviewer taps is empty.
+- Does **not** trip MFA, or has a bypass code you can safely put in the store
+  console's review notes (which are private, unlike this file).
+- Is not swept away by running Test Account Purge.
 
-Navigate to **App Store Connect** $\rightarrow$ **My Apps** $\rightarrow$ **[App Version]** $\rightarrow$ **App Review Information**:
+## 2. App Store Connect → App Review Information
 
-### Sign-in required
-- [x] **Sign-in required**
+Under **App Version → App Review Information**:
 
-### Credentials
-- **User name**: `reviewer-appstore@yourdomain.com`
-- **Password**: `TestReviewer2026!`
+- **Sign-in required**: checked.
+- **User name / Password**: the reviewer account's. Type these directly into App
+  Store Connect; do not record them here.
+- **Notes**:
 
-### Notes (Copy & Paste):
 ```text
-APP ACCESS & DEMO INSTRUCTIONS:
-This application is an internal enterprise workspace tool. Access is gated by corporate user authentication.
+This is an internal enterprise workspace tool. Access is gated by corporate
+user authentication.
 
-DEMO CREDENTIALS:
-- Username: reviewer-appstore@yourdomain.com
-- Password: TestReviewer2026!
-- Static 2FA Bypass Code: 123456 (if prompted)
+DEMO CREDENTIALS: supplied in the User name and Password fields above.
 
 TEST ENVIRONMENT NOTES:
-1. The test account is pre-configured with active sample data (contacts, tasks, and attendance records).
-2. No corporate VPN, hardware token, or IP whitelisting is required to log in with these credentials.
-3. User accounts are provisioned exclusively by enterprise workspace administrators. Self-registration and automated public account creation are disabled by design.
-4. Privacy policy is accessible at: https://shir0o.github.io/cisa-campus-work-tracker/privacy.html
-5. Support page is accessible at: https://shir0o.github.io/cisa-campus-work-tracker/support.html
+1. The test account is pre-configured with active sample data (contacts, tasks,
+   and attendance records).
+2. No corporate VPN, hardware token, or IP whitelisting is required with these
+   credentials.
+3. Accounts are provisioned exclusively by enterprise workspace administrators.
+   Self-registration and public account creation are disabled by design.
+4. Privacy policy: https://shir0o.github.io/cisa-campus-work-tracker/privacy.html
+5. Support: https://shir0o.github.io/cisa-campus-work-tracker/support.html
 
-CONTACT FOR REVIEW ISSUES:
-If you experience any issues logging in, please contact technical lead at yilongwang05@gmail.com.
+CONTACT FOR REVIEW ISSUES: yilongwang05@gmail.com
 ```
 
----
+## 3. Play Console → App content → App access
 
-## 3. Google Play Console Copy-Paste Block
+Select **“All or some functionality is restricted”**, then **+ Add new
+instructions**:
 
-Navigate to **Google Play Console** $\rightarrow$ **Policy and programs** $\rightarrow$ **App content** $\rightarrow$ **App access**:
+- **Instruction name**: `Internal Reviewer Access`
+- **Username / Password**: the reviewer account's, typed here directly.
+- **Instructions**:
 
-### App Access Selection
-- Select **"All or some functionality is restricted"**
-- Click **+ Add new instructions**
-
-### Instruction Form:
-- **Instruction Name**: `Internal Reviewer Access`
-- **Username / Phone number**: `reviewer-appstore@yourdomain.com`
-- **Password**: `TestReviewer2026!`
-- **Instructions Text (Copy & Paste)**:
 ```text
-This app requires user authentication. Use the provided demo credentials (reviewer-appstore@yourdomain.com / TestReviewer2026!). The account is pre-populated with test data and does not require VPN or MFA. Accounts are admin-provisioned for enterprise employees. Support URL: https://shir0o.github.io/cisa-campus-work-tracker/support.html | Privacy URL: https://shir0o.github.io/cisa-campus-work-tracker/privacy.html
+This app requires user authentication. Use the credentials above. The account is
+pre-populated with test data and needs no VPN or MFA. Accounts are
+admin-provisioned for enterprise employees. Support:
+https://shir0o.github.io/cisa-campus-work-tracker/support.html | Privacy:
+https://shir0o.github.io/cisa-campus-work-tracker/privacy.html
 ```
 
----
+## 4. Compliance summary
 
-## 4. Platform Compliance Summary
+| Requirement | Status |
+| --- | --- |
+| Privacy policy URL | `https://shir0o.github.io/cisa-campus-work-tracker/privacy.html` |
+| Support URL | `https://shir0o.github.io/cisa-campus-work-tracker/support.html` |
+| Account deletion | Admin-provisioned accounts; deletion handled by a workspace admin (contact above) |
+| IAP / digital purchases | N/A — free app for authorised organisation users |
+| IPv6 / SSL | Supported; standard HTTPS endpoints |
 
-| Requirement | Implementation Status | Note for Store Reviewers |
-| :--- | :--- | :--- |
-| **Privacy Policy URL** | Implemented (`/privacy`) | Accessible publicly at `https://shir0o.github.io/cisa-campus-work-tracker/privacy.html` and in-app |
-| **Support URL** | Implemented (`/support`) | Accessible publicly at `https://shir0o.github.io/cisa-campus-work-tracker/support.html` and in-app |
-| **Account Deletion** | Enterprise Admin Provisioned | Stated in review notes: accounts and data removal handled by workspace admin via `yilongwang05@gmail.com` |
-| **IAP / Digital Purchases** | N/A (Internal Enterprise) | Free app for authorized organization users |
-| **IPv6 / SSL** | Supported | Standard HTTPS secure endpoints |
+## 5. Promotion
 
----
+1. **Android** — the AAB lands on the Play **internal testing** track as a
+   **draft**, so no tester is notified. Open the Play Console, paste the release
+   notes attached to the GitHub Release, and promote when ready.
+2. **iOS** — the IPA lands in **TestFlight** with “What to Test” already filled
+   from the compiled notes. Promote to review from App Store Connect when ready.
 
-## 5. Pre-Submission Execution Steps
-
-1. **Verify Test Account**:
-   ```bash
-   # Log in on a clean mobile device off company VPN with:
-   # Email: reviewer-appstore@yourdomain.com
-   ```
-2. **Build Production Bundle**:
-   - **iOS**: Archive in Xcode $\rightarrow$ Distribute App $\rightarrow$ App Store Connect.
-   - **Android**: `npm run build` / gradle build `.aab` $\rightarrow$ Upload to Play Console.
-3. **Submit for Review**:
-   - Check App Store Connect status $\rightarrow$ "Waiting for Review".
-   - Check Play Console status $\rightarrow$ "In review".
+Neither step is automated, by design. See
+[ADR 0020](docs/adr/0020-mobile-release-automation.md).
