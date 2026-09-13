@@ -490,7 +490,7 @@ describe("POST /api/feedback/update", () => {
     expect(res.status).toBe(200);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://api.github.com/repos/a/b/issues/9");
+    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/9");
     expect((init as RequestInit).method).toBe("PATCH");
     expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ state: "closed", state_reason: "completed" });
   });
@@ -1222,7 +1222,7 @@ describe("POST /api/feedback/update — GitHub sync branches", () => {
     const res = await request(app).post("/api/feedback/update").send({ id: "fb-arch", archived: true });
     expect(res.status).toBe(200);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://api.github.com/repos/a/b/issues/10");
+    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/10");
     expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ state: "closed", state_reason: "not_planned" });
   });
 
@@ -1791,7 +1791,7 @@ describe("POST /api/feedback/reply", () => {
 
     expect(res.body.mirroredToGitHub).toBe(true);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://api.github.com/repos/a/b/issues/7/comments");
+    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/7/comments");
     const posted = JSON.parse((init as RequestInit).body as string).body;
     expect(posted).toContain("**Reporter replied:**");
     expect(posted).toContain("Which screen is it on?");
@@ -2099,7 +2099,7 @@ describe("Feedback GitHub URLs are not a request-forgery surface", () => {
       .send({ id: "fb-1", body: "Any news?" });
 
     expect(res.body.mirroredToGitHub).toBe(true);
-    expect(fetchMock.mock.calls[0][0]).toBe(
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
       "https://api.github.com/repos/Shir0o/cisa-campus-work-tracker/issues/988/comments",
     );
   });
@@ -2131,6 +2131,35 @@ describe("Feedback GitHub URLs are not a request-forgery surface", () => {
 
     expect(fetchMock.mock.calls.map((c: any[]) => String(c[0]))).not.toContain("https://evil.test/pulls/12");
     // Falls back to the canned sentence rather than going silent.
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
+    ]);
+  });
+
+  it("refuses an api.github.com URL whose path is not one this server asks for", async () => {
+    const issueUrl = "https://github.com/a/b/issues/7";
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes("/timeline")) {
+        return new Response(
+          JSON.stringify([
+            { event: "cross-referenced", source: { issue: { pull_request: { url: "https://api.github.com/user/repos", merged_at: "2026-09-01T00:00:00Z" } } } },
+          ]),
+          { status: 200 },
+        );
+      }
+      return new Response("{}", { status: 200 });
+    });
+
+    const closed = { action: "closed", issue: { html_url: issueUrl, state_reason: "completed" } };
+    await request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .set("x-hub-signature-256", sign(closed, "sekret"))
+      .send(closed);
+
+    expect(fetchMock.mock.calls.map((c: any[]) => String(c[0]))).not.toContain("https://api.github.com/user/repos");
     expect(Object.values(getCollection("notifications"))).toEqual([
       expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
     ]);

@@ -260,18 +260,44 @@ export async function createApp() {
   }
 
   /**
-   * The single place a GitHub API request is issued. The host is re-checked
-   * against a constant here, immediately before the call, so no caller can
-   * aim a request somewhere else however its URL was assembled.
+   * The single place a GitHub API request is issued.
+   *
+   * The parse, the host check and the call all live here, and the value that
+   * is fetched is the very one the check guarded — an earlier version rebuilt
+   * the URL from the parsed path *after* checking, which put untrusted
+   * segments back into a fresh URL past the guard. The path is also held to
+   * the shapes this server actually asks for, so a segment carrying `..`, a
+   * query or a fragment cannot reshape the request.
    */
+  const GITHUB_API_PATHS = [
+    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues$/,
+    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues\/\d+$/,
+    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues\/\d+\/comments$/,
+    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues\/\d+\/timeline$/,
+    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pulls\/\d+$/,
+    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/labels$/,
+  ];
+
   async function githubApiFetch(candidate: string, init: RequestInit): Promise<Response | null> {
-    if (!isGitHubApiUrl(candidate)) {
+    let parsed: URL;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      console.warn("Refusing a GitHub API request built from an unparseable URL.");
+      return null;
+    }
+
+    if (parsed.protocol !== "https:" || parsed.hostname !== "api.github.com") {
       console.warn("Refusing a GitHub API request to a non-API host.");
       return null;
     }
-    const parsed = new URL(candidate);
-    const safeUrl = new URL(parsed.pathname + parsed.search, `https://${GITHUB_API_HOST}`);
-    return fetch(safeUrl.toString(), init);
+
+    if (!GITHUB_API_PATHS.some((shape) => shape.test(parsed.pathname))) {
+      console.warn("Refusing a GitHub API request to an unexpected path.");
+      return null;
+    }
+
+    return fetch(parsed, init);
   }
 
   function githubHeaders(token: string) {
