@@ -160,14 +160,15 @@ export async function createApp() {
       return;
     }
 
-    // Parse owner, repo, issue number from HTML URL
-    const match = issueUrl.match(/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
-    if (!match) {
-      console.error(`Invalid GitHub issue URL format for sync: ${issueUrl}`);
+    // Same strict parse as everywhere else. This used to carry its own loose
+    // substring regex, which had the hole parseIssueUrl now closes.
+    const parsed = parseIssueUrl(issueUrl);
+    if (!parsed) {
+      console.error("Invalid GitHub issue URL format for sync: %s", issueUrl);
       return;
     }
 
-    const [_, owner, repo, issueNumber] = match;
+    const { owner, repo, issueNumber } = parsed;
     const targetUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
 
     try {
@@ -176,7 +177,7 @@ export async function createApp() {
         payload.state_reason = reason;
       }
 
-      const response = await fetch(targetUrl, {
+      const response = await githubApiFetch(targetUrl, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -188,14 +189,14 @@ export async function createApp() {
         body: JSON.stringify(payload),
       });
 
+      if (!response) return;
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`GitHub API error updating issue: ${response.status} - ${errorText}`);
+        console.error("GitHub API error updating issue: %s - %s", response.status, await response.text());
       } else {
-        console.log(`Successfully updated GitHub issue state to ${state} (${reason || 'no reason'}) for ${issueUrl}`);
+        console.log("Successfully updated GitHub issue state to %s (%s) for %s", state, reason || 'no reason', issueUrl);
       }
     } catch (error) {
-      console.error(`Failed to update GitHub issue state for ${issueUrl}:`, error);
+      console.error("Failed to update GitHub issue state for %s: %o", issueUrl, error);
     }
   }
 
@@ -240,18 +241,37 @@ export async function createApp() {
     return { owner: match[1], repo: match[2], issueNumber: match[3] };
   }
 
+  const GITHUB_API_HOST = "api.github.com";
+
   /**
-   * Whether a URL handed to us inside an API response may itself be fetched.
-   * The timeline's `pull_request.url` is data from a response, not something we
-   * built, so it is checked against the API host before it becomes a request.
+   * Whether a URL may be issued as a GitHub API request. Applies both to URLs
+   * we build from a parsed issue link and to URLs handed to us inside an API
+   * response (the timeline's `pull_request.url`), because neither origin is
+   * trustworthy on its own: the issue link is free text a Full-timer types,
+   * and the response is reached through it.
    */
   function isGitHubApiUrl(candidate: string): boolean {
     try {
       const parsed = new URL(candidate);
-      return parsed.protocol === "https:" && parsed.hostname === "api.github.com";
+      return parsed.protocol === "https:" && parsed.hostname === GITHUB_API_HOST;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * The single place a GitHub API request is issued. The host is re-checked
+   * against a constant here, immediately before the call, so no caller can
+   * aim a request somewhere else however its URL was assembled.
+   */
+  async function githubApiFetch(candidate: string, init: RequestInit): Promise<Response | null> {
+    if (!isGitHubApiUrl(candidate)) {
+      console.warn("Refusing a GitHub API request to a non-API host.");
+      return null;
+    }
+    const parsed = new URL(candidate);
+    const safeUrl = new URL(parsed.pathname + parsed.search, `https://${GITHUB_API_HOST}`);
+    return fetch(safeUrl.toString(), init);
   }
 
   function githubHeaders(token: string) {
@@ -343,9 +363,9 @@ export async function createApp() {
     try {
       const { owner, repo, issueNumber } = parsed;
       const timelineUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/timeline?per_page=100`;
-      const timelineRes = await fetch(timelineUrl, { headers: githubHeaders(token) });
-      if (!timelineRes.ok) {
-        console.warn(`Feedback close summary: timeline fetch failed (${timelineRes.status}).`);
+      const timelineRes = await githubApiFetch(timelineUrl, { headers: githubHeaders(token) });
+      if (!timelineRes || !timelineRes.ok) {
+        console.warn("Feedback close summary: timeline fetch failed with status %s.", timelineRes?.status ?? "refused");
         return null;
       }
 
@@ -367,14 +387,10 @@ export async function createApp() {
         console.log(`Feedback close summary: no linked PR for issue ${issueNumber}; using canned copy.`);
         return null;
       }
-      if (!isGitHubApiUrl(prUrl)) {
-        console.warn(`Feedback close summary: refusing to fetch a non-API PR URL (${prUrl}).`);
-        return null;
-      }
 
-      const prRes = await fetch(prUrl, { headers: githubHeaders(token) });
-      if (!prRes.ok) {
-        console.warn(`Feedback close summary: PR fetch failed (${prRes.status}).`);
+      const prRes = await githubApiFetch(prUrl, { headers: githubHeaders(token) });
+      if (!prRes || !prRes.ok) {
+        console.warn("Feedback close summary: PR fetch failed with status %s.", prRes?.status ?? "refused");
         return null;
       }
       const pr = await prRes.json();
@@ -421,12 +437,13 @@ export async function createApp() {
 
     try {
       const { owner, repo, issueNumber } = parsed;
-      const response = await fetch(
+      const response = await githubApiFetch(
         `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
         { method: "POST", headers: githubHeaders(token), body: JSON.stringify({ body }) },
       );
+      if (!response) return null;
       if (!response.ok) {
-        console.error(`GitHub API error posting comment: ${response.status} - ${await response.text()}`);
+        console.error("GitHub API error posting comment: %s - %s", response.status, await response.text());
         return null;
       }
       const created = await response.json();
@@ -1055,7 +1072,7 @@ export async function createApp() {
         }
       }
 
-      console.log(`GitHub Webhook: Successfully updated feedback doc(s) for issue ${issueUrl} with updates:`, updates);
+      console.log("GitHub Webhook: Successfully updated feedback doc(s) for issue %s with updates: %o", issueUrl, updates);
       res.status(200).json({ success: true, matchedDocsCount: snapshot.size, updates });
     } catch (error: any) {
       console.error("Error in POST /api/webhook/github: ", error);

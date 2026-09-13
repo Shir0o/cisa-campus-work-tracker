@@ -1259,7 +1259,7 @@ describe("POST /api/feedback/update — GitHub sync branches", () => {
     seedDoc("feedback", "fb-err", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/14" });
     const res = await request(app).post("/api/feedback/update").send({ id: "fb-err", status: "resolved" });
     expect(res.status).toBe(200);
-    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("GitHub API error updating issue"));
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("GitHub API error updating issue"), 500, expect.any(String));
     errSpy.mockRestore();
   });
 
@@ -1270,7 +1270,7 @@ describe("POST /api/feedback/update — GitHub sync branches", () => {
     seedDoc("feedback", "fb-fetch", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/15" });
     const res = await request(app).post("/api/feedback/update").send({ id: "fb-fetch", status: "resolved" });
     expect(res.status).toBe(200);
-    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to update GitHub issue state for"), expect.any(Error));
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to update GitHub issue state for"), expect.any(String), expect.any(Error));
     errSpy.mockRestore();
   });
 });
