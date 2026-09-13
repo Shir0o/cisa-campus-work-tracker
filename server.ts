@@ -169,7 +169,6 @@ export async function createApp() {
     }
 
     const { owner, repo, issueNumber } = parsed;
-    const targetUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
 
     try {
       const payload: any = { state };
@@ -177,7 +176,7 @@ export async function createApp() {
         payload.state_reason = reason;
       }
 
-      const response = await githubApiFetch(targetUrl, {
+      const response = await githubApiFetch(["repos", owner, repo, "issues", issueNumber], {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -241,63 +240,40 @@ export async function createApp() {
     return { owner: match[1], repo: match[2], issueNumber: match[3] };
   }
 
-  const GITHUB_API_HOST = "api.github.com";
+  const GITHUB_SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 
-  /**
-   * Whether a URL may be issued as a GitHub API request. Applies both to URLs
-   * we build from a parsed issue link and to URLs handed to us inside an API
-   * response (the timeline's `pull_request.url`), because neither origin is
-   * trustworthy on its own: the issue link is free text a Full-timer types,
-   * and the response is reached through it.
-   */
-  function isGitHubApiUrl(candidate: string): boolean {
-    try {
-      const parsed = new URL(candidate);
-      return parsed.protocol === "https:" && parsed.hostname === GITHUB_API_HOST;
-    } catch {
-      return false;
+  async function githubApiFetch(
+    segments: string[],
+    init: RequestInit,
+    search: "" | "?per_page=100" = "",
+  ): Promise<Response | null> {
+    if (segments.length === 0 || !segments.every((seg) => GITHUB_SAFE_SEGMENT.test(seg))) {
+      console.warn("Refusing a GitHub API request with an unexpected path segment.");
+      return null;
     }
+
+    const path = segments.map((seg) => encodeURIComponent(seg)).join("/");
+    return fetch(`https://api.github.com/${path}${search}`, init);
   }
 
   /**
-   * The single place a GitHub API request is issued.
-   *
-   * The parse, the host check and the call all live here, and the value that
-   * is fetched is the very one the check guarded — an earlier version rebuilt
-   * the URL from the parsed path *after* checking, which put untrusted
-   * segments back into a fresh URL past the guard. The path is also held to
-   * the shapes this server actually asks for, so a segment carrying `..`, a
-   * query or a fragment cannot reshape the request.
+   * Pulls the three components back out of a pull-request API URL. The
+   * timeline hands us that URL inside a response, and a URL from a response is
+   * no more trustworthy than the issue link we reached it through — so it is
+   * reduced to components and rebuilt rather than followed.
    */
-  const GITHUB_API_PATHS = [
-    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues$/,
-    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues\/\d+$/,
-    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues\/\d+\/comments$/,
-    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/issues\/\d+\/timeline$/,
-    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pulls\/\d+$/,
-    /^\/repos\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/labels$/,
-  ];
-
-  async function githubApiFetch(candidate: string, init: RequestInit): Promise<Response | null> {
+  function parsePullApiUrl(candidate: string) {
     let parsed: URL;
     try {
       parsed = new URL(candidate);
     } catch {
-      console.warn("Refusing a GitHub API request built from an unparseable URL.");
       return null;
     }
+    if (parsed.protocol !== "https:" || parsed.hostname !== "api.github.com") return null;
 
-    if (parsed.protocol !== "https:" || parsed.hostname !== "api.github.com") {
-      console.warn("Refusing a GitHub API request to a non-API host.");
-      return null;
-    }
-
-    if (!GITHUB_API_PATHS.some((shape) => shape.test(parsed.pathname))) {
-      console.warn("Refusing a GitHub API request to an unexpected path.");
-      return null;
-    }
-
-    return fetch(parsed, init);
+    const match = parsed.pathname.match(/^\/repos\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/pulls\/(\d+)$/);
+    if (!match) return null;
+    return { owner: match[1], repo: match[2], pullNumber: match[3] };
   }
 
   function githubHeaders(token: string) {
@@ -388,8 +364,11 @@ export async function createApp() {
 
     try {
       const { owner, repo, issueNumber } = parsed;
-      const timelineUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/timeline?per_page=100`;
-      const timelineRes = await githubApiFetch(timelineUrl, { headers: githubHeaders(token) });
+      const timelineRes = await githubApiFetch(
+        ["repos", owner, repo, "issues", issueNumber, "timeline"],
+        { headers: githubHeaders(token) },
+        "?per_page=100",
+      );
       if (!timelineRes || !timelineRes.ok) {
         console.warn("Feedback close summary: timeline fetch failed with status %s.", timelineRes?.status ?? "refused");
         return null;
@@ -414,7 +393,15 @@ export async function createApp() {
         return null;
       }
 
-      const prRes = await githubApiFetch(prUrl, { headers: githubHeaders(token) });
+      const pr_ = parsePullApiUrl(prUrl);
+      if (!pr_) {
+        console.warn("Feedback close summary: the linked PR URL was not a GitHub API pull URL.");
+        return null;
+      }
+      const prRes = await githubApiFetch(
+        ["repos", pr_.owner, pr_.repo, "pulls", pr_.pullNumber],
+        { headers: githubHeaders(token) },
+      );
       if (!prRes || !prRes.ok) {
         console.warn("Feedback close summary: PR fetch failed with status %s.", prRes?.status ?? "refused");
         return null;
@@ -464,7 +451,7 @@ export async function createApp() {
     try {
       const { owner, repo, issueNumber } = parsed;
       const response = await githubApiFetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+        ["repos", owner, repo, "issues", issueNumber, "comments"],
         { method: "POST", headers: githubHeaders(token), body: JSON.stringify({ body }) },
       );
       if (!response) return null;
