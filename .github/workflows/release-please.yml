@@ -1,0 +1,46 @@
+name: Release Please
+
+# release-please reads conventional-commit PR titles on main, opens (or updates)
+# a release PR that bumps apps/mobile/package.json and regenerates
+# apps/mobile/CHANGELOG.md, and — once that PR is merged — pushes the tag
+# (e.g. v1.4.0) that the two release workflows build and submit from.
+#
+# RELEASE_PLEASE_TOKEN is MANDATORY, not an optimisation: a tag created with the
+# built-in GITHUB_TOKEN is suppressed by GitHub's recursion prevention and will
+# never trigger release-android.yml / release-ios.yml. See RELEASING.md.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Open or update the release PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify RELEASE_PLEASE_TOKEN is present
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RELEASE_PLEASE_TOKEN:-}" ]; then
+            echo "::error::Missing required GitHub secret: RELEASE_PLEASE_TOKEN"
+            echo "::error::A PAT is required because tags created with GITHUB_TOKEN cannot trigger downstream workflows."
+            echo "::error::See RELEASING.md for the one-time setup."
+            exit 1
+          fi
+          echo "RELEASE_PLEASE_TOKEN present."
+
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
