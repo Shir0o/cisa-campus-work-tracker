@@ -37,3 +37,8 @@ docs/design/**/[a-z]*-*.html
 
 # impeccable design-hook cache (local only)
 .impeccable/hook.cache.json
+
+# Store signing material materialized from secrets at build time - never commit
+*.p8
+*.p12
+*.mobileprovision

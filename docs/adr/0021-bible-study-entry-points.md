@@ -1,4 +1,4 @@
-# 0011: Bible study QRs point at a durable Entry point, not a Study or a Meeting
+# 0021: Bible study QRs point at a durable Entry point, not a Study or a Meeting
 
 ## Status
 Accepted

@@ -6,7 +6,7 @@ Design for issue [#822](https://github.com/Shir0o/cisa-campus-work-tracker/issue
 Canvas: https://claude.ai/code/artifact/abbe5271-3a17-4539-b720-89062eccde59
 
 Decisions and rejected alternatives live in
-[ADR 0011](../../adr/0011-bible-study-entry-points.md). Glossary terms (Entry
+[ADR 0011](../../adr/0021-bible-study-entry-points.md). Glossary terms (Entry
 point, Study, Meeting) live in `CONTEXT.md`. This round reverses three rows
 previously marked Settled in [`../bible-study/README.md`](../bible-study/README.md)
 — Entry, Splits and Desktop — which are edited in place there.
