@@ -17,6 +17,7 @@ import type { Gathering, Rhythm } from '../types';
 
 const batchSet = vi.fn();
 const batchUpdate = vi.fn();
+const batchDelete = vi.fn();
 const batchCommit = vi.fn(() => Promise.resolve());
 
 vi.mock('firebase/firestore', () => {
@@ -41,7 +42,7 @@ vi.mock('firebase/firestore', () => {
     updateDoc: vi.fn(() => Promise.resolve()),
     deleteDoc: vi.fn(() => Promise.resolve()),
     deleteField: vi.fn(() => 'DELETE_FIELD'),
-    writeBatch: vi.fn(() => ({ set: batchSet, update: batchUpdate, commit: batchCommit })),
+    writeBatch: vi.fn(() => ({ set: batchSet, update: batchUpdate, delete: batchDelete, commit: batchCommit })),
   };
 });
 
@@ -188,15 +189,135 @@ describe('rhythms lib', () => {
     });
   });
 
+  // Removing a Rhythm keeps the record (issue 982). Past occasions detach into
+  // One-offs carrying the name, room and resolved roster they were recorded
+  // with; future occasions, which have nothing recorded, go with the Rhythm.
+  // The whole thing is one batch, so a failure never half-removes a schedule.
   describe('deleteRhythm', () => {
+    const NOW = new Date('2026-09-16T12:00:00');
+
     it('deletes the Rhythm doc', async () => {
-      await deleteRhythm('r1');
-      expect(deleteDoc).toHaveBeenCalledWith({ path: 'rhythms/r1' });
+      await deleteRhythm(makeRhythm(), [], NOW);
+      expect(batchDelete).toHaveBeenCalledWith({ path: 'rhythms/r1' });
+    });
+
+    it('detaches a past occasion instead of deleting it', async () => {
+      const past = makeGathering({ id: 'e1', date: '2026-09-09', rhythmId: 'r1' });
+      await deleteRhythm(makeRhythm(), [past], NOW);
+      expect(batchDelete).not.toHaveBeenCalledWith({ path: 'events/e1' });
+      expect(batchUpdate).toHaveBeenCalledWith(
+        { path: 'events/e1' },
+        expect.objectContaining({ rhythmId: 'DELETE_FIELD' }),
+      );
+    });
+
+    it('writes the Rhythm name onto a detached occasion, so a past week keeps its identity', async () => {
+      const past = makeGathering({ id: 'e1', date: '2026-09-09', rhythmId: 'r1', name: 'stale' });
+      await deleteRhythm(makeRhythm({ name: 'Wednesday Bible Study' }), [past], NOW);
+      expect(batchUpdate).toHaveBeenCalledWith(
+        { path: 'events/e1' },
+        expect.objectContaining({ name: 'Wednesday Bible Study' }),
+      );
+    });
+
+    it('writes the usual room onto a detached occasion that never moved', async () => {
+      const past = makeGathering({ id: 'e1', date: '2026-09-09', rhythmId: 'r1' });
+      await deleteRhythm(makeRhythm({ location: 'Cypress Hall' }), [past], NOW);
+      expect(batchUpdate).toHaveBeenCalledWith(
+        { path: 'events/e1' },
+        expect.objectContaining({ location: 'Cypress Hall' }),
+      );
+    });
+
+    it('leaves a detached occasion its own room when it moved that week', async () => {
+      const past = makeGathering({ id: 'e1', date: '2026-09-09', rhythmId: 'r1', location: 'Room 204' });
+      await deleteRhythm(makeRhythm({ location: 'Cypress Hall' }), [past], NOW);
+      expect(batchUpdate).toHaveBeenCalledWith(
+        { path: 'events/e1' },
+        expect.objectContaining({ location: 'Room 204' }),
+      );
+    });
+
+    it('freezes the resolved roster onto a detached past occasion', async () => {
+      // Past weeks are frozen by resolveRoster: what was recorded, not the
+      // Rhythm as it stands. Without writing it down, a detached occasion
+      // would resolve against nothing and stop counting anyone as missed.
+      const past = makeGathering({ id: 'e1', date: '2026-09-09', rhythmId: 'r1', roster: ['c1', 'c2'] });
+      await deleteRhythm(makeRhythm({ roster: ['c9'] }), [past], NOW);
+      expect(batchUpdate).toHaveBeenCalledWith(
+        { path: 'events/e1' },
+        expect.objectContaining({ roster: ['c1', 'c2'] }),
+      );
+    });
+
+    it('clears the roster override, which means nothing once the Rhythm is gone', async () => {
+      const past = makeGathering({
+        id: 'e1',
+        date: '2026-09-09',
+        rhythmId: 'r1',
+        roster: ['c1'],
+        rosterOverride: ['c1', 'c2'],
+        rosterOverrideBase: ['c1'],
+      });
+      await deleteRhythm(makeRhythm(), [past], NOW);
+      expect(batchUpdate).toHaveBeenCalledWith(
+        { path: 'events/e1' },
+        expect.objectContaining({
+          roster: ['c1', 'c2'],
+          rosterOverride: 'DELETE_FIELD',
+          rosterOverrideBase: 'DELETE_FIELD',
+        }),
+      );
+    });
+
+    it('leaves recorded attendance, its stamp and a cancellation alone', async () => {
+      const past = makeGathering({
+        id: 'e1',
+        date: '2026-09-09',
+        rhythmId: 'r1',
+        cancelled: true,
+        attendanceTakenAt: '2026-09-09T20:00:00.000Z',
+        attendanceTakenBy: 'Tony Wang',
+      });
+      await deleteRhythm(makeRhythm(), [past], NOW);
+      const patch = batchUpdate.mock.calls.find((c) => c[0].path === 'events/e1')?.[1] ?? {};
+      expect(patch).not.toHaveProperty('cancelled');
+      expect(patch).not.toHaveProperty('attendanceTakenAt');
+      expect(patch).not.toHaveProperty('attendanceTakenBy');
+    });
+
+    it('deletes a future occasion, which has nothing recorded to keep', async () => {
+      const future = makeGathering({ id: 'e2', date: '2026-09-23', rhythmId: 'r1' });
+      await deleteRhythm(makeRhythm(), [future], NOW);
+      expect(batchDelete).toHaveBeenCalledWith({ path: 'events/e2' });
+    });
+
+    it('treats today as past, since this week may already carry attendance', async () => {
+      const today = makeGathering({ id: 'e3', date: '2026-09-16', rhythmId: 'r1' });
+      await deleteRhythm(makeRhythm(), [today], NOW);
+      expect(batchDelete).not.toHaveBeenCalledWith({ path: 'events/e3' });
+      expect(batchUpdate).toHaveBeenCalledWith({ path: 'events/e3' }, expect.anything());
+    });
+
+    it('ignores occasions belonging to some other Rhythm', async () => {
+      const other = makeGathering({ id: 'other', date: '2026-09-09', rhythmId: 'r2' });
+      await deleteRhythm(makeRhythm(), [other], NOW);
+      expect(batchUpdate).not.toHaveBeenCalled();
+      expect(batchDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it('commits everything as one batch', async () => {
+      const gatherings = [
+        makeGathering({ id: 'e1', date: '2026-09-09', rhythmId: 'r1' }),
+        makeGathering({ id: 'e2', date: '2026-09-23', rhythmId: 'r1' }),
+      ];
+      await deleteRhythm(makeRhythm(), gatherings, NOW);
+      expect(batchCommit).toHaveBeenCalledTimes(1);
     });
 
     it('surfaces delete failures', async () => {
-      vi.mocked(deleteDoc).mockRejectedValueOnce(new Error('nope'));
-      await deleteRhythm('r1');
+      batchCommit.mockRejectedValueOnce(new Error('nope'));
+      await deleteRhythm(makeRhythm(), [], NOW);
       expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'delete', 'rhythms/r1');
     });
   });

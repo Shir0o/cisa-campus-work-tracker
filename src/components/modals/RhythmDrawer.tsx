@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Tag, MapPin, Users, Loader2, Undo2, CalendarPlus } from 'lucide-react';
 import { addDoc, collection } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { format, parseISO, isValid } from 'date-fns';
 import { cn, getUserInitials } from '../../lib/utils';
 import { updateRhythm, deleteRhythm, extendRhythmTerm, uncancelGatheringDoc } from '../../lib/rhythms';
 import { useLanguage } from '../LanguageProvider';
@@ -51,6 +52,13 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
 
   if (!rhythm) return null;
 
+  // Date-only strings, written the way the rest of the page writes dates
+  // rather than as the database value they are stored as (issue 982).
+  const asDate = (ymd: string): string => {
+    const d = parseISO(ymd);
+    return isValid(d) ? format(d, 'MMM d, yyyy') : ymd;
+  };
+
   const cancelledWeeks = gatherings.filter((g) => g.cancelled).sort((a, b) => a.date.localeCompare(b.date));
 
   const handleSave = async () => {
@@ -79,8 +87,11 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(t('attendance.remove_rhythm_confirm', 'Remove this Rhythm? Its past gatherings stay on record.'))) return;
-    await deleteRhythm(rhythm.id);
+    if (!window.confirm(t(
+      'attendance.remove_rhythm_confirm',
+      'Remove this Rhythm? Past gatherings stay on record as one-offs, keeping who came. Upcoming weeks are removed with it.',
+    ))) return;
+    await deleteRhythm(rhythm, gatherings);
     onClose();
   };
 
@@ -126,6 +137,22 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
 
   const rosterQuery = rosterSearch.trim().toLowerCase();
   const rosterExactMatch = contacts.some((c) => c.name.trim().toLowerCase() === rosterQuery);
+
+  // Roster members first, then everyone else, each group by name — and only
+  // then the display cap. Ordering after the cap is what let the drawer count
+  // six on the roster while showing one of them, with no way to remove the
+  // other five (issue 982).
+  const ROSTER_LIST_CAP = 30;
+  const matchingContacts = contacts
+    .filter((c) => !rosterQuery || c.name.toLowerCase().includes(rosterQuery))
+    .sort((a, b) => {
+      const aOn = roster.includes(a.id);
+      const bOn = roster.includes(b.id);
+      if (aOn !== bOn) return aOn ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  const shownContacts = matchingContacts.slice(0, ROSTER_LIST_CAP);
+  const elidedCount = matchingContacts.length - shownContacts.length;
 
   return (
     <AnimatePresence>
@@ -214,27 +241,29 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
                   )}
                 </div>
                 <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
-                  {contacts
-                    .filter((c) => !rosterSearch.trim() || c.name.toLowerCase().includes(rosterSearch.toLowerCase()))
-                    .slice(0, 30)
-                    .map((c) => {
-                      const isSelected = roster.includes(c.id);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => toggleRosterMember(c)}
-                          className={cn(
-                            'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left',
-                            isSelected ? 'bg-primary/10 text-accent font-medium' : 'hover:bg-surface text-on-surface-variant',
-                          )}
-                        >
-                          <span>{c.name}</span>
-                          <span className="text-[10px]">{isSelected ? '✓ on roster' : '+ add'}</span>
-                        </button>
-                      );
-                    })}
+                  {shownContacts.map((c) => {
+                    const isSelected = roster.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => toggleRosterMember(c)}
+                        className={cn(
+                          'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left',
+                          isSelected ? 'bg-primary/10 text-accent font-medium' : 'hover:bg-surface text-on-surface-variant',
+                        )}
+                      >
+                        <span>{c.name}</span>
+                        <span className="text-[10px]">{isSelected ? '✓ on roster' : '+ add'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+                {elidedCount > 0 && (
+                  <p className="text-[11px] text-on-surface-variant px-1">
+                    {t('attendance.roster_more_not_shown', '{n} more — search to narrow the list.').replace('{n}', String(elidedCount))}
+                  </p>
+                )}
                 <p className="text-[11px] text-on-surface-variant italic px-1">
                   {t('attendance.roster_live_note', 'Takes effect for this week and every week ahead — past weeks keep the roster they were recorded with.')}
                 </p>
@@ -254,7 +283,7 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
                   <CalendarPlus className="w-3 h-3" /> {t('attendance.extend_term', 'Extend the term')}
                 </label>
                 <p className="text-xs text-on-surface-variant px-1">
-                  {t('attendance.term_runs_through', 'Currently runs through')} <b className="text-on-surface">{rhythm.termEnd}</b>.
+                  {t('attendance.term_runs_through', 'Currently runs through')} <b className="text-on-surface">{asDate(rhythm.termEnd)}</b>.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -286,7 +315,7 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
                         key={g.id}
                         className="flex items-center justify-between px-3 py-2 rounded-xl bg-surface-container-high border border-outline/30"
                       >
-                        <span className="text-xs text-on-surface-variant line-through">{g.date}</span>
+                        <span className="text-xs text-on-surface-variant line-through">{asDate(g.date)}</span>
                         <button
                           onClick={() => uncancelGatheringDoc(g.id)}
                           className="inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:opacity-80"

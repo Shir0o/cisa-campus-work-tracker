@@ -304,8 +304,8 @@ describe('buildGatheringViewModel - Rhythm name reads through (story 9)', () => 
     const moved = baseEvent({ id: 'moved', date: '2026-09-10', rhythmId: 'r1', location: 'Chapel' });
     const m = build({ events: [usual, moved], rhythms: [rhythm] });
     const byId = new Map(m.thisWeek.flatMap((g) => g.gatherings.map((e) => [e.id, e])));
-    expect(byId.get('usual')?.location).toBe('Lower Common Room');
-    expect(byId.get('moved')?.location).toBe('Chapel');
+    expect(byId.get('usual')?.subtitle).toBe('Lower Common Room');
+    expect(byId.get('moved')?.subtitle).toBe('Chapel');
   });
 
   it('resolves the week band expected count from the Rhythm roster', () => {
@@ -333,5 +333,106 @@ describe('buildGatheringViewModel - default selection and cancellations', () => 
     const m = build({ events: [future, futureCancelled], rhythms: [rhythm] });
     const row = m.rhythms.find((r) => r.id === 'r1');
     expect(row?.selectedChipId).toBe('future');
+  });
+});
+
+// ── Orphaned occasions (issue issue 982) ────────────────────────────────────────
+// A Gathering whose `rhythmId` names no live Rhythm must still reach the page.
+// The one-off partition used to be "no rhythmId at all", so a removed Rhythm —
+// whether removed in-app or by hand in the console — hid every occasion it had
+// generated while those occasions still counted toward the page's headline.
+describe('buildGatheringViewModel — occasions orphaned by a missing Rhythm', () => {
+  it('lists an occasion whose Rhythm is gone among the one-offs', () => {
+    const orphan = baseEvent({ id: 'orphan', date: '2026-09-02', rhythmId: 'deleted' });
+    const m = build({ events: [orphan], rhythms: [] });
+    expect(m.oneOffs.map((g) => g.id)).toEqual(['orphan']);
+  });
+
+  it('reads an orphan\'s own name and room, since no Rhythm can supply them', () => {
+    const orphan = baseEvent({
+      id: 'orphan',
+      name: 'Wednesday Bible Study',
+      location: 'Cypress Hall',
+      date: '2026-09-02',
+      rhythmId: 'deleted',
+    });
+    const m = build({ events: [orphan], rhythms: [] });
+    expect(m.oneOffs[0]).toMatchObject({ name: 'Wednesday Bible Study', subtitle: 'Cypress Hall' });
+  });
+
+  it('sorts an orphan into past or upcoming one-offs by its date, like any other', () => {
+    const pastOrphan = baseEvent({ id: 'past', date: '2026-08-26', rhythmId: 'deleted' });
+    const futureOrphan = baseEvent({ id: 'future', date: '2026-09-16', rhythmId: 'deleted' });
+    const m = build({ events: [pastOrphan, futureOrphan], rhythms: [] });
+    expect(m.oneOffs.map((g) => g.id)).toEqual(['past']);
+    expect(m.upcomingOneOffs.map((g) => g.id)).toEqual(['future']);
+  });
+
+  it('counts who came to an orphan against the roster frozen on the occasion', () => {
+    const orphan = baseEvent({
+      id: 'orphan',
+      date: '2026-09-02',
+      rhythmId: 'deleted',
+      roster: ['c1', 'c2'],
+    });
+    const came = baseContact({ id: 'c1', attendance: { orphan: true } });
+    const missed = baseContact({ id: 'c2' });
+    const m = build({ events: [orphan], rhythms: [], contacts: [came, missed] });
+    expect(m.oneOffs[0]).toMatchObject({ presentCount: 1, expectedCount: 2 });
+  });
+
+  it('still builds no Rhythm row for a Rhythm that is gone', () => {
+    const orphan = baseEvent({ id: 'orphan', date: '2026-09-02', rhythmId: 'deleted' });
+    const m = build({ events: [orphan], rhythms: [] });
+    expect(m.rhythms).toEqual([]);
+  });
+
+  it('keeps a live Rhythm\'s occasions out of the one-offs', () => {
+    const rhythm = baseRhythm({ id: 'r1' });
+    const linked = baseEvent({ id: 'linked', date: '2026-09-02', rhythmId: 'r1' });
+    const orphan = baseEvent({ id: 'orphan', date: '2026-09-02', rhythmId: 'deleted' });
+    const m = build({ events: [linked, orphan], rhythms: [rhythm] });
+    expect(m.oneOffs.map((g) => g.id)).toEqual(['orphan']);
+    expect(m.rhythms[0].chips.map((c) => c.id)).toEqual(['linked']);
+  });
+
+  it('shows an orphan falling in the current week in the This-week band', () => {
+    const orphan = baseEvent({ id: 'orphan', date: '2026-09-09', rhythmId: 'deleted' });
+    const m = build({ events: [orphan], rhythms: [] });
+    expect(m.thisWeekEmpty).toBe(false);
+    expect(m.thisWeek[0].gatherings.map((g) => g.id)).toEqual(['orphan']);
+  });
+});
+
+// ── Row subtitle (issue issue 982) ──────────────────────────────────────────────
+// Every roomless row rendered the same placeholder, so rows read as duplicates.
+// The view model now supplies what it knows; the view keeps the last-resort
+// phrase because that string is translated copy, which the model does not hold.
+describe('buildGatheringViewModel — occasion subtitle', () => {
+  it('prefers the room a Gathering met in', () => {
+    const rhythm = baseRhythm({ id: 'r1', location: 'Cypress Hall' });
+    const ev = baseEvent({ id: 'e1', date: '2026-09-09', rhythmId: 'r1', location: 'Room 204' });
+    const m = build({ events: [ev], rhythms: [rhythm] });
+    expect(m.thisWeek[0].gatherings[0].subtitle).toBe('Room 204');
+  });
+
+  it('falls back to the Rhythm\'s usual room when the occasion did not move', () => {
+    const rhythm = baseRhythm({ id: 'r1', location: 'Cypress Hall' });
+    const ev = baseEvent({ id: 'e1', date: '2026-09-09', rhythmId: 'r1' });
+    const m = build({ events: [ev], rhythms: [rhythm] });
+    expect(m.thisWeek[0].gatherings[0].subtitle).toBe('Cypress Hall');
+  });
+
+  it('falls back to the cadence when a Rhythm-linked occasion has no room at all', () => {
+    const rhythm = baseRhythm({ id: 'r1', cadence: { type: 'weekly', days: [3] } });
+    const ev = baseEvent({ id: 'e1', date: '2026-09-09', rhythmId: 'r1' });
+    const m = build({ events: [ev], rhythms: [rhythm] });
+    expect(m.thisWeek[0].gatherings[0].subtitle).toBe('Every Wednesday');
+  });
+
+  it('leaves the subtitle empty for a roomless one-off, so the view can say its piece', () => {
+    const ev = baseEvent({ id: 'bbq', name: 'Welcome BBQ', date: '2026-09-05' });
+    const m = build({ events: [ev] });
+    expect(m.oneOffs[0].subtitle).toBeUndefined();
   });
 });

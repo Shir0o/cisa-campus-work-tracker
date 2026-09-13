@@ -145,7 +145,7 @@ describe('RhythmDrawer (issue #957)', () => {
   it('lists cancelled weeks and undoes a cancellation', async () => {
     render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
     expect(screen.getByText('Cancelled weeks')).toBeInTheDocument();
-    expect(screen.getByText('2026-09-16')).toBeInTheDocument();
+    expect(screen.getByText('Sep 16, 2026')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Undo' })[0]);
     await waitFor(() => {
       expect(uncancelGatheringDoc).toHaveBeenCalledWith('e2');
@@ -157,9 +157,48 @@ describe('RhythmDrawer (issue #957)', () => {
     render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
     fireEvent.click(screen.getByRole('button', { name: 'Remove this Rhythm' }));
     await waitFor(() => {
-      expect(deleteRhythm).toHaveBeenCalledWith('r1');
+      expect(deleteRhythm).toHaveBeenCalledWith(rhythm, gatherings);
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // issue 982 — the drawer said "6 on roster" while showing one of them, because
+  // the list was the first N contacts in arbitrary order. A member you can see
+  // counted must be a member you can remove.
+  it('lists roster members before everyone else, so a counted member is always reachable', () => {
+    const many = [
+      ...Array.from({ length: 40 }, (_, i) => ({
+        id: `filler${i}`, name: `Filler ${i}`, role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'F',
+      })),
+      { id: 'zed', name: 'Zed Zulu', role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'Z' },
+    ];
+    const rostered: Rhythm = { ...rhythm, roster: ['zed'] };
+    render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rostered} gatherings={gatherings} contacts={many} />);
+    expect(screen.getByRole('button', { name: /Zed Zulu/ })).toBeInTheDocument();
+  });
+
+  it('says how many contacts it is not showing, so a missing name reads as elided rather than absent', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      id: `c${i}`, name: `Person ${i}`, role: '', location: '', email: '', phone: '', stage: '', lastSeen: '', initials: 'P',
+    }));
+    render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={many} />);
+    expect(screen.getByText(/10 more/)).toBeInTheDocument();
+  });
+
+  it('writes the term end as a date, not as a database value', () => {
+    render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
+    expect(screen.getByText('Oct 1, 2026')).toBeInTheDocument();
+  });
+
+  it('tells you what happens to past and to future weeks before removing', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this Rhythm' }));
+    const message = confirmSpy.mock.calls[0][0] as string;
+    expect(message).toMatch(/past/i);
+    expect(message).toMatch(/one-offs/i);
+    expect(message).toMatch(/upcoming|future/i);
+    expect(deleteRhythm).not.toHaveBeenCalled();
   });
 
   it('closes on Escape', () => {

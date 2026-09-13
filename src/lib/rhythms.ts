@@ -6,7 +6,6 @@
 // what actually exists).
 import {
   collection,
-  deleteDoc,
   deleteField,
   doc,
   getDocs,
@@ -18,6 +17,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
+import { resolveRoster } from './attendanceRoster';
 import type { Gathering, Rhythm } from '../types';
 
 const col = () => collection(db, 'rhythms');
@@ -218,11 +218,54 @@ export async function updateRhythm(id: string, patch: RhythmPatch): Promise<void
   }
 }
 
-export async function deleteRhythm(id: string): Promise<void> {
+/** Removes a Rhythm without losing what it recorded (issue 982).
+ *
+ *  Past and current-week occasions are detached rather than deleted: they
+ *  keep their attendance and become one-offs, so `rhythmId` is cleared and
+ *  the name, room and *resolved* roster are written onto each one. Writing
+ *  the resolved roster down is the part that matters — once `rhythmId` is
+ *  gone `resolveRoster` reads only the occasion's own `roster`, so without
+ *  it a detached week would resolve against nothing and silently stop
+ *  counting anyone as missed (ADR 0005).
+ *
+ *  Future occasions have nothing recorded to keep, so they go with the
+ *  Rhythm. Today counts as past: this week may already carry attendance.
+ *
+ *  One batch, so a failure never leaves a half-removed schedule behind.
+ */
+export async function deleteRhythm(
+  rhythm: Rhythm,
+  gatherings: readonly Gathering[],
+  now: Date = new Date(),
+): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'rhythms', id));
+    const today = formatLocal(now);
+    const batch = writeBatch(db);
+
+    for (const g of gatherings) {
+      if (g.rhythmId !== rhythm.id) continue;
+      const ref = doc(db, 'events', g.id);
+      if (g.date > today) {
+        batch.delete(ref);
+        continue;
+      }
+      const location = g.location ?? rhythm.location;
+      batch.update(ref, {
+        rhythmId: deleteField(),
+        name: rhythm.name,
+        ...(location ? { location } : {}),
+        roster: resolveRoster(g, rhythm, now),
+        // Meaningless once there is no Rhythm to diff against — `roster`
+        // above already holds what the override resolved to.
+        rosterOverride: deleteField(),
+        rosterOverrideBase: deleteField(),
+      });
+    }
+
+    batch.delete(doc(db, 'rhythms', rhythm.id));
+    await batch.commit();
   } catch (e) {
-    handleFirestoreError(e, OperationType.DELETE, `rhythms/${id}`);
+    handleFirestoreError(e, OperationType.DELETE, `rhythms/${rhythm.id}`);
   }
 }
 

@@ -4696,6 +4696,20 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cal-ctx:last-child { border-bottom: 0; }
 .cal-ctx .tw-title { color: var(--on-surface-variant); font-weight: 500; }
 
+/* A Rhythm's chip strip fades on whichever side still has term out of view,
+   so a clipped term reads as clipped rather than as a short one (issue 982).
+   `mask-image` rather than an overlay gradient: the strip scrolls, and an
+   overlay would need the parent's background to match whatever sits behind. */
+.chip-strip-fade-end {
+  mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+}
+.chip-strip-fade-start {
+  mask-image: linear-gradient(to right, transparent 0, black 32px);
+}
+.chip-strip-fade-both {
+  mask-image: linear-gradient(to right, transparent 0, black 32px, black calc(100% - 32px), transparent 100%);
+}
+
 /* ---- Settings: the category map ---- */
 .cals-toggle {
   display: flex; align-items: center; gap: 10px;

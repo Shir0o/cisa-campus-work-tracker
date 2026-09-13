@@ -172,11 +172,17 @@ export default function FeedbackFAB() {
 
   return (
     <>
-      {/* FAB Button — pencil, morphs to × when open */}
+      {/* FAB Button — pencil, morphs to × when open.
+          It sits below the overlay layer (z-100) so drawers and modals stack
+          above it; at z-[100] it used to land on top of the Rhythm drawer's
+          own controls (issue 982). While its own panel is open it rises above that
+          panel. It stays there while its own panel is open too: the panel's
+          scrim closes on click, so the × landing under the scrim does the same
+          thing as pressing it. */}
       <button
         id="feedback-fab-btn"
         onClick={() => (isOpen ? close() : openFresh())}
-        className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+        className={`fixed right-4 z-40 w-12 h-12 rounded-full shadow-lg active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
           isMessagesPage ? 'bottom-28 lg:bottom-28 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
         } ${
           isOpen

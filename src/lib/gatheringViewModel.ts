@@ -103,8 +103,11 @@ export interface RhythmRow {
 export interface OneOffGathering {
   id: string;
   name: string;
-  /** The occasion's own room, else the Rhythm's usual room. */
-  location?: string;
+  /** What the row says under the name: the occasion's own room if it moved,
+   *  else the Rhythm's usual room, else the cadence for a Rhythm-linked
+   *  occasion. Undefined when none of those is known — the view supplies the
+   *  last-resort phrase, since that string is translated copy. */
+  subtitle?: string;
   date: string;
   presentCount: number;
   expectedCount: number;
@@ -185,16 +188,19 @@ const defaultSelectedChipId = (chips: Chip[], nowMs: number): string | undefined
 
 const CADENCE_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/** Cadence text + location for the Rhythm row subtitle (Story 31). */
-function rhythmSubtitle(rhythm: Rhythm): string {
-  let cadenceText: string;
+/** How often a Rhythm comes round, in words. Shared by the Rhythm row's own
+ *  subtitle and by a Rhythm-linked occasion with no room to name (issue 982). */
+function cadenceText(rhythm: Rhythm): string {
   if (rhythm.cadence.type === 'weekly') {
     const names = rhythm.cadence.days.map((d) => CADENCE_DAY_NAMES[d] ?? '').filter(Boolean);
-    cadenceText = names.length > 0 ? `Every ${names.join(', ')}` : 'Weekly';
-  } else {
-    cadenceText = rhythm.cadence.monthlyType === 'relative-day' ? 'Monthly' : 'Monthly';
+    return names.length > 0 ? `Every ${names.join(', ')}` : 'Weekly';
   }
-  return [cadenceText, rhythm.location].filter(Boolean).join(' · ');
+  return 'Monthly';
+}
+
+/** Cadence text + location for the Rhythm row subtitle (Story 31). */
+function rhythmSubtitle(rhythm: Rhythm): string {
+  return [cadenceText(rhythm), rhythm.location].filter(Boolean).join(' · ');
 }
 
 // ─── entry point ───────────────────────────────────────────────────────────
@@ -225,13 +231,15 @@ export function buildGatheringViewModel(input: {
 
   const toOneOff = (e: Gathering, nowDate: Date): OneOffGathering => {
     const rhythm = e.rhythmId ? rhythmsById.get(e.rhythmId) : undefined;
+    const location = e.location ?? rhythm?.location;
     return {
       id: e.id,
       // A Rhythm's name reads through live, including past weeks (story 9).
       // Location is the occasion's own when it moved, else the usual room
-      // (stories 7/8).
+      // (stories 7/8). An orphan — `rhythmId` naming a Rhythm that is gone —
+      // has no Rhythm to read through, so its own fields stand (issue 982).
       name: rhythm?.name ?? e.name,
-      location: e.location ?? rhythm?.location,
+      subtitle: location ?? (rhythm ? cadenceText(rhythm) : undefined),
       date: e.date,
       presentCount: presentCountFor(e, contacts),
       expectedCount: resolveRoster(e, rhythm, nowDate).length,
@@ -303,8 +311,12 @@ export function buildGatheringViewModel(input: {
     return a.name.localeCompare(b.name);
   });
 
-  // ── one-offs: no rhythmId (Story 20/36) ──────────────────────────────────
-  const allOneOffEvents = events.filter((e) => !e.rhythmId);
+  // ── one-offs: no Rhythm to belong to (Story 20/36) ───────────────────────
+  // Either no `rhythmId` at all, or one naming a Rhythm that is gone. The
+  // second case is the guarantee that no record can be hidden by a missing
+  // parent (issue 982) — it covers a Rhythm removed by hand as well as in-app,
+  // which `repairRhythmOccurrences` already treats as a real occurrence.
+  const allOneOffEvents = events.filter((e) => !e.rhythmId || !rhythmsById.has(e.rhythmId));
   const oneOffs: OneOffGathering[] = sortByDateDesc(
     allOneOffEvents
       .filter((e) => {

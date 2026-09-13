@@ -151,6 +151,68 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
   </div>
 );
 
+/** How many came, said the same way on every row (issue 982). The three row types
+ *  used to phrase one fact three ways — "3 came", "3 / 6 came", "1 came" — so
+ *  no two rows could be compared at a glance. An expected count of zero means
+ *  nobody was expected, so there is no denominator worth printing. */
+function AttendanceCount({
+  present,
+  expected,
+  size = 'sm',
+  t,
+}: {
+  present: number;
+  expected: number;
+  size?: 'sm' | 'xs';
+  t: (key: string, fallback?: string) => string;
+}) {
+  const template = expected > 0
+    ? t('attendance.n_of_m_came', '{n} of {m} came').replace('{m}', String(expected))
+    : t('attendance.n_came', '{n} came');
+  // The figure carries the weight; the rest of the phrase stays quiet. Split
+  // on the placeholder rather than on the first space, so the bold lands on
+  // the count in a language that does not open the sentence with it.
+  const [before, after = ''] = template.split('{n}');
+  return (
+    <div className={cn('text-on-surface-variant whitespace-nowrap shrink-0', size === 'xs' ? 'text-xs' : 'text-sm')}>
+      {before}
+      <b className="text-on-surface font-semibold">{present}</b>
+      {after}
+    </div>
+  );
+}
+
+/** A quiet control sitting beside a row's disclosure button — never inside it.
+ *  These were spans with `role="button"` nested in the row's own button and no
+ *  key handler, which is invalid markup and left every one of them unreachable
+ *  by keyboard (issue 982). */
+function RowAction({
+  label,
+  onClick,
+  danger,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'p-1.5 rounded-full text-on-surface-variant transition-colors shrink-0',
+        danger ? 'hover:bg-error-container hover:text-on-error-container' : 'hover:bg-surface-variant hover:text-on-surface',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Attendance() {
   const { user, isAdmin, role, effectiveUserId } = useAuth();
   const { t } = useLanguage();
@@ -597,7 +659,10 @@ export default function Attendance() {
         exit={{ opacity: 0, y: -10 }}
       >
         {/* ── Greeting + state of things ── */}
-        <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+        {/* Actions gather into one cluster. They used to split across two rows
+            and two edges — the primaries pinned to the bottom of a three-line
+            paragraph, the quiet pair left-aligned underneath (issue 982). */}
+        <header className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
           <div className="flex-1">
             <p className="text-sm text-on-surface-variant">{format(new Date(), 'EEEE, MMMM d')}</p>
             <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">{t('nav.gatherings')}</h1>
@@ -616,41 +681,37 @@ export default function Attendance() {
               {missed.length > 0 && ' A few faces have gone quiet lately; they’re the first thing below.'}
             </p>
           </div>
-          {isAdmin && (
-            <div className="flex flex-wrap gap-2 shrink-0">
-              <button
-                onClick={() => setIsCreateRhythmOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface text-sm font-medium hover:bg-surface-variant transition-colors"
-              >
-                <Repeat className="w-4 h-4" /> {t('modals.start_a_rhythm', 'Start a Rhythm')}
-              </button>
-              <button
-                onClick={() => setIsAddEventModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4" /> {t('modals.log_gathering', 'Log a gathering')}
-              </button>
-            </div>
-          )}
-        </header>
-
-        {/* quiet admin actions */}
-        <div className="flex flex-wrap gap-2 mt-4">
-          {isAdmin && (
+          <div className="flex flex-wrap items-center gap-2 shrink-0 lg:justify-end lg:mt-9">
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setIsCreateRhythmOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface text-sm font-medium hover:bg-surface-variant transition-colors"
+                >
+                  <Repeat className="w-4 h-4" /> {t('modals.start_a_rhythm', 'Start a Rhythm')}
+                </button>
+                <button
+                  onClick={() => setIsAddEventModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-4 h-4" /> {t('modals.log_gathering', 'Log a gathering')}
+                </button>
+                <button
+                  onClick={() => setIsSyncModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> {t('attendance.sync_sheet', 'Sync sheet')}
+                </button>
+              </>
+            )}
             <button
-              onClick={() => setIsSyncModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+              onClick={handleExport}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" /> Sync sheet
+              <Download className="w-3.5 h-3.5" /> {t('attendance.export', 'Export')}
             </button>
-          )}
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" /> Export
-          </button>
-        </div>
+          </div>
+        </header>
 
         {/* ── This week: the first thing on the page when there's something on. ──
            * Groups by date; two Rhythms on one day share a heading, each keeping
@@ -852,47 +913,56 @@ export default function Attendance() {
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
               <section className="min-w-0">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                  {/* The card lays itself out from its own width, not the
+                      window's: at 1440px these sit in a ~373px column, so the
+                      old `sm:` split fired anyway and gave cards with an email
+                      a 209px text column and cards without one 259px — no two
+                      lined up (issue 982). The action column reserves a fixed width
+                      so the presence of an email is not a layout event. */}
                   {missed.map(({ contact, since, lastSeen }) => (
                     <div
                       key={contact.id}
-                      onClick={() => openContact(contact)}
-                      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
+                      className="@container/missed bg-surface rounded-3xl border border-outline-variant/60 hover:border-primary/40 transition-colors"
                     >
-                      <div className="flex gap-4 min-w-0">
-                        <Avatar contact={contact} />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-on-surface">{contact.name}</span>
-                            <StageChip stage={contact.stage} />
-                          </div>
-                          <div className="text-sm text-accent font-medium mt-0.5">
-                            Last with us at {lastSeen.name} · {formatEventDate(lastSeen.date)} — {since} gatherings ago
-                          </div>
-                          {contact.role && (
-                            <p className="text-sm text-on-surface-variant mt-1">
-                              {contact.role}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div
-                        className="flex sm:flex-col gap-2 items-start sm:items-end"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {contact.email && (
-                          <a
-                            href={`mailto:${contact.email}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                          >
-                            <Mail className="w-3.5 h-3.5" /> Reach out
-                          </a>
-                        )}
+                      <div className="grid grid-cols-1 @sm/missed:grid-cols-[minmax(0,1fr)_7rem] gap-4 p-5">
                         <button
+                          type="button"
                           onClick={() => openContact(contact)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
+                          aria-label={t('attendance.open_contact', 'Open {name}').replace('{name}', contact.name)}
+                          className="flex gap-4 min-w-0 text-left"
                         >
-                          Open
+                          <Avatar contact={contact} />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-on-surface">{contact.name}</span>
+                              <StageChip stage={contact.stage} />
+                            </div>
+                            <div className="text-sm text-accent font-medium mt-0.5">
+                              {t('attendance.last_with_us_at', 'Last with us at {event} · {date} — {n} gatherings ago')
+                                .replace('{event}', lastSeen.name)
+                                .replace('{date}', formatEventDate(lastSeen.date))
+                                .replace('{n}', String(since))}
+                            </div>
+                            {contact.role && (
+                              <p className="text-sm text-on-surface-variant mt-1">
+                                {contact.role}
+                              </p>
+                            )}
+                          </div>
                         </button>
+                        {/* Rendered only when there is something to put in it,
+                            so a contact with no email doesn't carry an empty
+                            row's worth of gap. */}
+                        {contact.email && (
+                          <div className="flex @sm/missed:flex-col gap-2 items-start @sm/missed:items-end">
+                            <a
+                              href={`mailto:${contact.email}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                            >
+                              <Mail className="w-3.5 h-3.5" /> {t('attendance.reach_out', 'Reach out')}
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1093,7 +1163,7 @@ function GatheringExpansion({
   const takenOn = takenAt && isValid(takenAt) ? format(takenAt, 'MMM d') : '';
 
   return (
-    <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4 space-y-4">
+    <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-outline-variant/40 pt-4 space-y-4">
       {/* Cancel/undo lives with the selected week's summary. */}
       {isAdmin && (
         <div className="flex justify-end">
@@ -1165,7 +1235,7 @@ function GatheringExpansion({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
             <div>
-              <div className="text-xs font-semibold text-on-surface   mb-2">
+              <div className="text-xs font-semibold text-on-surface mb-2">
                 {t('attendance.attended_header')} <span className="text-on-surface-variant">{present.length}</span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1202,15 +1272,15 @@ function GatheringExpansion({
               </div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-on-surface-variant   mb-2">
-                {t('attendance.we_missed')} <span>{absent.length}</span>
+              <div className="text-xs font-semibold text-on-surface mb-2">
+                {t('attendance.we_missed')} <span className="text-on-surface-variant">{absent.length}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {absent.length === 0 && (
                   <span className="text-sm text-on-surface-variant italic">{t('attendance.everyone_came_period')}</span>
                 )}
                 {absent.map((c) => (
-                  <span key={c.id} className="inline-flex items-center gap-1 pl-1 pr-1.5 py-1 rounded-full border border-outline-variant text-on-surface-variant">
+                  <span key={c.id} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border border-outline-variant bg-surface-variant/40 text-on-surface-variant">
                     <button
                       onClick={() => cycleAttendance(c, ev.id)}
                       className="inline-flex items-center gap-2"
@@ -1296,46 +1366,44 @@ function OneOffGatheringRow(
   const { present } = getSessionRoster(ev, props.contacts, undefined, props.resolvedRosterFor(ev));
   return (
     <div className={cn('bg-surface rounded-2xl border border-outline-variant/60 overflow-hidden', faint && 'opacity-60')}>
-      <button
-        onClick={() => setOpenId(isOpen ? null : ev.id)}
-        className="w-full flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors group/header"
-      >
-        <div className="text-center w-12 shrink-0">
-          <div className="text-[11px] text-on-surface-variant">{d && isValid(d) ? format(d, 'EEE') : ''}</div>
-          <div className="font-serif text-2xl text-on-surface leading-none">{d && isValid(d) ? format(d, 'd') : '–'}</div>
-          <div className="text-[11px] text-on-surface-variant">{d && isValid(d) ? format(d, 'MMM') : ''}</div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{ev.name}</div>
-          <div className="text-sm text-on-surface-variant truncate">{ev.location || t('attendance.a_time_together')}</div>
-        </div>
-        <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
-          <b className="text-on-surface font-semibold">{present.length}</b> {t('attendance.came')}
-        </div>
-        <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
+      {/* The disclosure button and the row's actions are siblings: an action
+          nested inside the disclosure would be invalid markup and unreachable
+          by keyboard (issue 982). */}
+      <div className="flex items-center gap-1 pr-4 sm:pr-5">
+        <button
+          onClick={() => setOpenId(isOpen ? null : ev.id)}
+          className="min-w-0 flex-1 flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors"
+        >
+          <div className="text-center w-12 shrink-0">
+            <div className="text-[11px] text-on-surface-variant">{d && isValid(d) ? format(d, 'EEE') : ''}</div>
+            <div className="font-serif text-2xl text-on-surface leading-none">{d && isValid(d) ? format(d, 'd') : '–'}</div>
+            <div className="text-[11px] text-on-surface-variant">{d && isValid(d) ? format(d, 'MMM') : ''}</div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{ev.name}</div>
+            <div className="text-sm text-on-surface-variant truncate">{gathering.subtitle || t('attendance.a_time_together')}</div>
+          </div>
+          <AttendanceCount present={present.length} expected={gathering.expectedCount} t={t} />
+          <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
+        </button>
         {isAdmin && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); setEditingEvent(ev); }}
-            className="p-1.5 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
-            title={t('attendance.edit_gathering')}
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </span>
+          <>
+            <RowAction
+              label={t('attendance.edit_gathering_for', 'Edit gathering — {name}').replace('{name}', ev.name)}
+              onClick={() => setEditingEvent(ev)}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </RowAction>
+            <RowAction
+              danger
+              label={t('attendance.remove_gathering_for', 'Remove gathering — {name}').replace('{name}', ev.name)}
+              onClick={() => handleDeleteEvent(ev.id, ev.name)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </RowAction>
+          </>
         )}
-        {isAdmin && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); handleDeleteEvent(ev.id, ev.name); }}
-            className="p-1.5 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-error-container hover:text-on-error-container transition-all shrink-0"
-            title={t('attendance.remove_gathering')}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </span>
-        )}
-      </button>
+      </div>
       {isOpen && <GatheringExpansion {...props} gathering={{ id: ev.id }} />}
     </div>
   );
@@ -1354,30 +1422,27 @@ function ThisWeekGatheringRow(
   const { present } = getSessionRoster(ev, props.contacts, undefined, props.resolvedRosterFor(ev));
   return (
     <div className="bg-surface-variant/30 rounded-xl border border-outline-variant/30 overflow-hidden">
-      <button
-        onClick={() => setOpenId(isOpen ? null : ev.id)}
-        className="w-full flex items-center gap-3 p-3 text-left hover:bg-surface-variant/50 transition-colors group/header"
-      >
-        <div className="min-w-0 flex-1">
-          <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{gathering.name}</div>
-          <div className="text-xs text-on-surface-variant truncate">{gathering.location || t('attendance.a_time_together')}</div>
-        </div>
-        <div className="text-xs text-on-surface-variant whitespace-nowrap shrink-0">
-          <b className="text-on-surface font-semibold">{present.length}</b> {t('attendance.came')}
-        </div>
-        <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
+      <div className="flex items-center gap-1 pr-3">
+        <button
+          onClick={() => setOpenId(isOpen ? null : ev.id)}
+          className="min-w-0 flex-1 flex items-center gap-3 p-3 text-left hover:bg-surface-variant/50 transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <div className={cn('font-semibold text-on-surface truncate', gathering.cancelled && 'line-through')}>{gathering.name}</div>
+            <div className="text-xs text-on-surface-variant truncate">{gathering.subtitle || t('attendance.a_time_together')}</div>
+          </div>
+          <AttendanceCount present={present.length} expected={gathering.expectedCount} size="xs" t={t} />
+          <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
+        </button>
         {isAdmin && !ev.rhythmId && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); setEditingEvent(ev); }}
-            className="p-1 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
-            title={t('attendance.edit_gathering')}
+          <RowAction
+            label={t('attendance.edit_gathering_for', 'Edit gathering — {name}').replace('{name}', ev.name)}
+            onClick={() => setEditingEvent(ev)}
           >
             <Pencil className="w-3 h-3" />
-          </span>
+          </RowAction>
         )}
-      </button>
+      </div>
       {isOpen && <GatheringExpansion {...props} gathering={{ id: ev.id }} />}
     </div>
   );
@@ -1413,45 +1478,87 @@ function RhythmRowCard({
   const currentWeekChip = rhythm.chips.find((c) => c.state === 'current-week');
   const overrideActive = currentWeekChip ? currentWeekChip.id !== selectedChipId : false;
 
+  // A term long enough to overflow used to open scrolled to its first week,
+  // leaving the current one off-screen with nothing to say so (issue 982).
+  const stripRef = React.useRef<HTMLDivElement>(null);
+  const selectedChipRef = React.useRef<HTMLButtonElement>(null);
+  const [stripEdges, setStripEdges] = useState({ start: false, end: false });
+
+  // Which side has more term out of view. Read from the DOM rather than
+  // derived from chip count: it depends on the rendered width.
+  const updateStripEdges = React.useCallback(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const maxScroll = strip.scrollWidth - strip.clientWidth;
+    const atStart = strip.scrollLeft <= 1;
+    const atEnd = strip.scrollLeft >= maxScroll - 1;
+    const next = { start: !atStart, end: !atEnd };
+    setStripEdges((prev) => (prev.start === next.start && prev.end === next.end ? prev : next));
+  }, []);
+
+  React.useEffect(() => {
+    const strip = stripRef.current;
+    const chip = selectedChipRef.current;
+    if (!strip) return;
+    if (chip && strip.scrollWidth > strip.clientWidth) {
+      // Centre the selection rather than `scrollIntoView`, which would also
+      // scroll the page vertically to reach a row further down.
+      strip.scrollLeft = chip.offsetLeft - strip.clientWidth / 2 + chip.offsetWidth / 2;
+    }
+    updateStripEdges();
+  }, [selectedChipId, rhythm.chips.length, updateStripEdges]);
+
   return (
     <div className="bg-surface rounded-2xl border border-outline-variant/60 overflow-hidden">
-      <button
-        onClick={() => setOpenId(isOpen ? null : rhythm.id)}
-        className="w-full flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors"
-      >
-        <div className="min-w-0 flex-1">
-          <div className="font-semibold text-on-surface truncate">{rhythm.name}</div>
-          <div className="text-sm text-on-surface-variant truncate">{rhythm.subtitle}</div>
-        </div>
-        {selectedChip && (
-          <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
-            <b className="text-on-surface font-semibold">{selectedChip.presentCount}</b>
-            {rhythm.expectedCount > 0 ? ` / ${rhythm.expectedCount}` : ''} {t('attendance.came')}
+      {/* Settings sits before the chevron and outside the disclosure button —
+          the chevron stays the row's own affordance, and the control is a real
+          button a keyboard can reach (issue 982). */}
+      <div className="flex items-center gap-1 pr-4 sm:pr-5">
+        <button
+          onClick={() => setOpenId(isOpen ? null : rhythm.id)}
+          className="min-w-0 flex-1 flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-on-surface truncate">{rhythm.name}</div>
+            <div className="text-sm text-on-surface-variant truncate">{rhythm.subtitle}</div>
           </div>
-        )}
-        <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
+          {selectedChip && (
+            <AttendanceCount present={selectedChip.presentCount} expected={rhythm.expectedCount} t={t} />
+          )}
+          <ChevronDown className={cn('w-4 h-4 text-on-surface-variant transition-transform shrink-0', isOpen && 'rotate-180')} />
+        </button>
         {isAdmin && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); onOpenDrawer(); }}
-            className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
-            title={t('attendance.rhythm_settings', 'Rhythm settings')}
+          <RowAction
+            label={t('attendance.rhythm_settings_for', 'Rhythm settings — {name}').replace('{name}', rhythm.name)}
+            onClick={onOpenDrawer}
           >
             <Settings2 className="w-3.5 h-3.5" />
-          </span>
+          </RowAction>
         )}
-      </button>
+      </div>
 
       {/* Chip strip — the term at a glance. Horizontally scrollable for
-          long terms; a year-long Rhythm keeps its strip usable. */}
-      <div className="px-4 sm:px-5 pb-3 flex items-center gap-2 overflow-x-auto">
+          long terms; a year-long Rhythm keeps its strip usable, and the
+          selected week is scrolled into view so it opens on where we are.
+          The edges fade only on the side there is more to scroll to, so a
+          clipped term does not read as a short one (story 29). */}
+      <div
+        ref={stripRef}
+        onScroll={updateStripEdges}
+        className={cn(
+          'px-4 sm:px-5 pt-1 pb-3 flex items-center gap-2 overflow-x-auto',
+          stripEdges.start && stripEdges.end && 'chip-strip-fade-both',
+          stripEdges.start && !stripEdges.end && 'chip-strip-fade-start',
+          !stripEdges.start && stripEdges.end && 'chip-strip-fade-end',
+        )}
+      >
         {rhythm.chips.map((chip) => {
           const d = new Date(chip.date + 'T00:00:00');
           const isSelected = chip.id === selectedChipId;
           return (
             <button
               key={chip.id}
+              ref={isSelected ? selectedChipRef : undefined}
               onClick={(e) => { e.stopPropagation(); onSelectChip(chip.id); }}
               title={`${chip.date}${chip.state === 'taken' && chip.takenByName ? ` · marked by ${chip.takenByName}` : ''}${chip.state === 'cancelled' ? ' · cancelled' : ''}`}
               className={cn(
