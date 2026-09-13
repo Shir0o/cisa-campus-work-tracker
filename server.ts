@@ -1,6 +1,7 @@
 
 
 import express from "express";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
@@ -213,10 +214,44 @@ export async function createApp() {
   // which initialises the *browser* Firebase SDK at module load.
   const OWNER_EMAIL_SERVER = (process.env.OWNER_EMAIL || "yilongwang05@gmail.com").trim().toLowerCase();
 
+  /**
+   * Parses an issue URL into the three components used to rebuild an API URL.
+   *
+   * Strict by necessity: `githubIssueUrl` is free text a Full-timer types into
+   * the admin list, and an issue URL also arrives on the webhook body, which is
+   * unsigned whenever GITHUB_WEBHOOK_SECRET is unset. A loose substring match
+   * would let `https://evil.test/?x=github.com/a/b/issues/1` through, and owner
+   * or repo could then carry `?`, `#` or `..` into the API path. The host must
+   * be github.com exactly, and owner/repo are held to GitHub's own charset.
+   */
   function parseIssueUrl(issueUrl: string) {
-    const match = issueUrl.match(/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+    let parsed: URL;
+    try {
+      parsed = new URL(issueUrl);
+    } catch {
+      return null;
+    }
+    if (parsed.protocol !== "https:") return null;
+    if (parsed.hostname !== "github.com" && parsed.hostname !== "www.github.com") return null;
+
+    const match = parsed.pathname.match(/^\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/issues\/(\d+)$/);
     if (!match) return null;
+    if (match[1] === "." || match[1] === ".." || match[2] === "." || match[2] === "..") return null;
     return { owner: match[1], repo: match[2], issueNumber: match[3] };
+  }
+
+  /**
+   * Whether a URL handed to us inside an API response may itself be fetched.
+   * The timeline's `pull_request.url` is data from a response, not something we
+   * built, so it is checked against the API host before it becomes a request.
+   */
+  function isGitHubApiUrl(candidate: string): boolean {
+    try {
+      const parsed = new URL(candidate);
+      return parsed.protocol === "https:" && parsed.hostname === "api.github.com";
+    } catch {
+      return false;
+    }
   }
 
   function githubHeaders(token: string) {
@@ -330,6 +365,10 @@ export async function createApp() {
 
       if (!prUrl) {
         console.log(`Feedback close summary: no linked PR for issue ${issueNumber}; using canned copy.`);
+        return null;
+      }
+      if (!isGitHubApiUrl(prUrl)) {
+        console.warn(`Feedback close summary: refusing to fetch a non-API PR URL (${prUrl}).`);
         return null;
       }
 
@@ -465,8 +504,27 @@ export async function createApp() {
     return docRef.id;
   }
 
+  /**
+   * Both feedback write paths cost more than a database row: each creates or
+   * comments on a public GitHub issue, fans notifications out, and (for a
+   * close summary or a laundered relay) spends a model call. Authenticating
+   * bounds who can do that, not how often — so the writes are also capped per
+   * IP. Reads, the webhook and the admin triage routes are untouched.
+   */
+  const feedbackWriteLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many notes from this address. Please wait a few minutes." },
+    // Off under test, matching this file's existing NODE_ENV convention: the
+    // suite drives both routes well past the cap from one address, and a
+    // shared counter would make results depend on test order.
+    skip: () => process.env.NODE_ENV === "test",
+  });
+
   // Endpoint: Submit feedback (with diagnostics and auto GitHub issue creation)
-  app.post("/api/feedback", async (req, res) => {
+  app.post("/api/feedback", feedbackWriteLimiter, async (req, res) => {
     try {
       let userId = req.body.userId;
       let userName = req.body.userName;
@@ -700,7 +758,7 @@ export async function createApp() {
   // The only write path for `feedback/{id}/replies` — the rules refuse client
   // writes — so that every Follow-up mirrors onto the linked issue and the
   // awaiting-reply flag and notifications cannot be skipped.
-  app.post("/api/feedback/reply", async (req, res) => {
+  app.post("/api/feedback/reply", feedbackWriteLimiter, async (req, res) => {
     try {
       let decoded: any;
       try {

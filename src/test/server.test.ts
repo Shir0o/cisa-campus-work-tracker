@@ -2051,3 +2051,88 @@ describe("POST /api/webhook/github — the message written at close", () => {
     expect(Object.values(getCollection("notifications"))).toHaveLength(0);
   });
 });
+
+describe("Feedback GitHub URLs are not a request-forgery surface", () => {
+  beforeEach(() => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    seedDoc("users", "user-ada", { role: "viewer", approved: true, email: "ada@test.com" });
+  });
+
+  // `githubIssueUrl` is free text a Full-timer types into the admin list, so a
+  // substring match on "github.com" would have been enough to aim a request.
+  it.each([
+    ["a host that merely mentions github.com", "https://evil.test/?x=github.com/a/b/issues/1"],
+    ["a lookalike host", "https://github.com.evil.test/a/b/issues/1"],
+    ["plain http", "http://github.com/a/b/issues/1"],
+    ["a traversal in the repo segment", "https://github.com/a/../../issues/1"],
+    ["a query smuggled into the owner", "https://github.com/a?x=/b/issues/1"],
+    ["not an issue URL at all", "https://github.com/a/b/pulls/1"],
+  ])("stores a follow-up but makes no request for %s", async (_label, githubIssueUrl) => {
+    seedDoc("feedback", "fb-1", { userId: "user-ada", userName: "Ada Student", status: "new", githubIssueUrl });
+
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "Any news?" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mirroredToGitHub).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    // The Follow-up is still stored and still notified — failing to mirror
+    // never costs the submitter their message.
+    expect(Object.values(getCollection("feedback/fb-1/replies"))).toHaveLength(1);
+  });
+
+  it("mirrors normally to a real issue URL", async () => {
+    seedDoc("feedback", "fb-1", {
+      userId: "user-ada",
+      status: "new",
+      githubIssueUrl: "https://github.com/Shir0o/cisa-campus-work-tracker/issues/988",
+    });
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 7 }), { status: 201 }));
+
+    const res = await request(app)
+      .post("/api/feedback/reply")
+      .set("Authorization", "Bearer t")
+      .send({ id: "fb-1", body: "Any news?" });
+
+    expect(res.body.mirroredToGitHub).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.github.com/repos/Shir0o/cisa-campus-work-tracker/issues/988/comments",
+    );
+  });
+
+  it("refuses to follow a PR link off api.github.com when summarising a close", async () => {
+    const issueUrl = "https://github.com/a/b/issues/7";
+    seedDoc("feedback", "fb-9", { userId: "user-ada", status: "in_progress", githubIssueUrl: issueUrl });
+
+    // The timeline is a response we read, not a URL we built — so what it
+    // points at is checked before it becomes a request.
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).includes("/timeline")) {
+        return new Response(
+          JSON.stringify([
+            { event: "cross-referenced", source: { issue: { pull_request: { url: "https://evil.test/pulls/12", merged_at: "2026-09-01T00:00:00Z" } } } },
+          ]),
+          { status: 200 },
+        );
+      }
+      return new Response("{}", { status: 200 });
+    });
+
+    const closed = { action: "closed", issue: { html_url: issueUrl, state_reason: "completed" } };
+    await request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .set("x-hub-signature-256", sign(closed, "sekret"))
+      .send(closed);
+
+    expect(fetchMock.mock.calls.map((c: any[]) => String(c[0]))).not.toContain("https://evil.test/pulls/12");
+    // Falls back to the canned sentence rather than going silent.
+    expect(Object.values(getCollection("notifications"))).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("This shipped!") }),
+    ]);
+  });
+});
