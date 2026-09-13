@@ -63,3 +63,32 @@ export const TONE_CLASSES: Record<FeedbackTone, { text: string; softBg: string; 
   amber:  { text: 'text-stage-amber',  softBg: 'bg-stage-amber-soft',  bar: 'bg-stage-amber',  chip: 'text-stage-amber bg-stage-amber-soft'  },
   teal:   { text: 'text-stage-teal',   softBg: 'bg-stage-teal-soft',   bar: 'bg-stage-teal',   chip: 'text-stage-teal bg-stage-teal-soft'   },
 };
+
+// --- Screenshot capture contract -------------------------------------------
+// Mirrors packages/core/src/feedback.ts (the web app deliberately has no
+// @cisa/core dependency — see the note atop src/types.ts). Kept in step by
+// src/test/feedbackScreenshotParity.test.ts.
+//
+// Feedback screenshots are captured in-app, stored on the Firestore feedback
+// doc as a base64 JPEG data URL, and shown to admins in the feedback list.
+// They are never sent to GitHub — see ADR 0018 decision 7.
+//
+// The ceiling mirrors the `feedback` rule in firestore.rules, which rejects a
+// screenshot over 200000 characters.
+export const MAX_SCREENSHOT_CHARS = 200000;
+
+/** Longest edge, in pixels, before a capture is downscaled. */
+export const MAX_SCREENSHOT_DIMENSION = 1000;
+
+/** Re-encode qualities, tried in order until the result fits the ceiling. */
+export const SCREENSHOT_QUALITY_LADDER: readonly number[] = [0.65, 0.4, 0.25];
+
+/** True when `value` is a JPEG/PNG data URL within the size ceiling. */
+export function isStorableScreenshot(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= MAX_SCREENSHOT_CHARS &&
+    /^data:image\/(jpeg|jpg|png);base64,/.test(value)
+  );
+}

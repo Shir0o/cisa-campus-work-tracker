@@ -238,7 +238,6 @@ export function WorklistCard({
   meName,
   completed,
   onOpenContact,
-  onOpened,
   onComplete,
   onToast,
   mobile,
@@ -251,8 +250,6 @@ export function WorklistCard({
   meName: string;
   completed: boolean;
   onOpenContact?: (contactId: string, initialTab?: "overview" | "thread" | "history") => void;
-  /** The reader opened this card this visit — seen, but not reviewed. */
-  onOpened?: (stack: AttentionStack) => void;
   onComplete: (stack: AttentionStack, verb: WorklistVerb) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
@@ -284,7 +281,6 @@ export function WorklistCard({
   const openThem = () => {
     // Seen is set here and only here — opening the person is the whole of it.
     InboxState.markSeen(uid, stack.id);
-    onOpened?.(stack);
     if (stack.contactId && onOpenContact) onOpenContact(stack.contactId);
   };
 
@@ -528,7 +524,6 @@ export function WorklistCard({
           onPosted={() => {
             setComposing(false);
             InboxState.markSeen(uid, stack.id);
-            onOpened?.(stack);
             onToast?.(t("whatsNew.posted"));
           }}
         />

@@ -49,7 +49,7 @@ Looking at the repository settled the shape of the risk. Issue #977 — closed b
 - **The laundering is safety-critical and only partly verifiable.** The triage-marker drop is a pure function with tests over the real #946 and #906 bodies. The model's own obedience is not tested, because `generateContent` is mocked in every server test — a bad restatement would ship green. The prompts are asserted for their prohibitions, which is a check on the instruction, not on the output.
 - **A comment that says something real can still be dropped**, if the model judges it bookkeeping. That is the deliberate direction to fail in.
 - **The relay costs one model call per relayed comment and one per shipped close.** At this volume that is cents a month; the sites that would feel a model change are translation and smart-import, not this one.
-- Legacy `screenshot` and `userEmail` values on older Notes are now readable by their own authors, which they were not before. They are the author's own data; no new party gains access.
+- **A Note's `screenshot` is now readable by its own author.** [#984](https://github.com/Shir0o/cisa-campus-work-tracker/pull/984) restored in-app capture for admin context, so this is no longer a legacy field, and Firestore cannot project fields away. No new party gains access — it is a picture of the author's own screen, and the admin list already downloads every Note's screenshot — but the author's notes page pays for its own, which is why the owner query is capped at 50. Legacy `userEmail` values become author-readable on the same terms.
 - `navTrail` calls `/feedback` "Your notes" rather than "Send feedback", and the page's visual design is deliberately left plain for a separate design pass.
 
 ## Alternatives considered

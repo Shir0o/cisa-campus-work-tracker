@@ -120,11 +120,9 @@ export default function AroundTheTeam({
   const [liveContacts, setLiveContacts] = useState<Contact[]>([]);
   const [liveInteractions, setLiveInteractions] = useState<Interaction[]>([]);
   const [liveThreads, setLiveThreads] = useState<ThreadMessageWithContact[]>([]);
-  // Completed HERE, this visit. A card you finish greys in place and clears when
-  // you leave — never under your cursor while you are still reading it.
+  // Completed HERE, this visit. Under New, a card you finish greys in place and
+  // clears when you leave; All keeps completed cards visible grayed.
   const [completedHere, setCompletedHere] = useState<Set<string>>(new Set());
-  // Opened HERE, this visit — the same rule as completedHere, on the seen axis.
-  const [openedHere, setOpenedHere] = useState<Set<string>>(new Set());
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   // Seen and completed change under the memos below, not in the props, so the
@@ -256,8 +254,6 @@ export default function AroundTheTeam({
   );
 
   const isCompleted = (stack: AttentionStack) => InboxState.isCompleted(uid, stack.id);
-  const stillListed = (stack: AttentionStack) =>
-    !isCompleted(stack) || completedHere.has(stack.id);
 
   const filter = useMemo(() => ({ team, who }), [team, who]);
 
@@ -283,12 +279,10 @@ export default function AroundTheTeam({
   const aroundTeam = useMemo(
     () =>
       filterAttentionStacks(allSides.aroundTeam, { team, who: effectiveWho }).filter(
-        (s) =>
-          stillListed(s) &&
-          (!newOnly || !s.seen || completedHere.has(s.id) || openedHere.has(s.id)),
+        (s) => !newOnly || !isCompleted(s) || completedHere.has(s.id),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allSides.aroundTeam, team, effectiveWho, newOnly, uid, completedHere, openedHere, inboxTick],
+    [allSides.aroundTeam, team, effectiveWho, newOnly, uid, completedHere, inboxTick],
   );
 
   const resting = isRestingFilter({ team, who: effectiveWho });
@@ -316,7 +310,7 @@ export default function AroundTheTeam({
   }, [allSides.aroundTeam, aroundTeam]);
 
   const toWorkThrough = aroundTeam.filter((s) => !isCompleted(s)).length;
-  const anyUnseen = aroundTeam.some((s) => !s.seen);
+  const anyUnseen = aroundTeam.some((s) => !s.seen && !isCompleted(s));
 
   const handleMarkAllSeen = () => {
     // What's on screen, not what's behind the filter — "all" means all of what
@@ -542,7 +536,6 @@ export default function AroundTheTeam({
                       meName={meName}
                       completed={isCompleted(stack)}
                       onOpenContact={handleOpenContact}
-                      onOpened={(s) => setOpenedHere((prev) => (prev.has(s.id) ? prev : new Set(prev).add(s.id)))}
                       onComplete={handleComplete}
                       onToast={onToast}
                       showReach

@@ -9,7 +9,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AroundTheTeam from '../views/AroundTheTeam';
 import { __resetUserEntityStateCache } from '../lib/userEntityState';
 import { InboxState, __resetInboxState } from '../lib/inboxState';
@@ -128,6 +128,12 @@ function renderWithProbe(initialEntries: string[] = ['/around']) {
       <LocationProbe initialEntries={initialEntries} />
     </MemoryRouter>,
   );
+}
+
+/** Simulates opening a contact's detail route from Around, then going back. */
+function DetailProbe() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(-1)}>Back to Around</button>;
 }
 
 describe('Around the team page (#943)', () => {
@@ -346,6 +352,75 @@ describe('Around the team page (#943)', () => {
     // The box is an inbox: the person stays in view, still to work through.
     expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
     expect(screen.getByText('1 to work through')).toBeInTheDocument();
+  });
+
+  it('keeps a seen person in New on a fresh visit - seen dims, it does not clear', () => {
+    InboxState.markSeen('u1', 'att:contact:kofi');
+    render(
+      <MemoryRouter initialEntries={['/around?new=1']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
+    expect(screen.getByText(/opened, not finished/i)).toBeInTheDocument();
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+  });
+
+  it('keeps a seen person in New after opening contact detail and returning', () => {
+    h.layout = undefined;
+    render(
+      <MemoryRouter initialEntries={['/around?new=1']}>
+        <Routes>
+          <Route
+            path="/around"
+            element={<AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />}
+          />
+          <Route path="/people/:id" element={<DetailProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Kofi Mensah'));
+    expect(screen.getByText('Back to Around')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Back to Around'));
+    expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+  });
+
+  it('keeps a completed person in All on a fresh visit - grey, not vanished', () => {
+    InboxState.markCompleted('u1', 'att:contact:kofi');
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
+    expect(screen.queryByText('1 to work through')).not.toBeInTheDocument();
+  });
+
+  it('hides a completed person from New on a later visit but keeps them in All', () => {
+    InboxState.markCompleted('u1', 'att:contact:kofi');
+    const first = render(
+      <MemoryRouter initialEntries={['/around?new=1']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('Kofi Mensah')).not.toBeInTheDocument();
+    first.unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
+    expect(screen.queryByText('1 to work through')).not.toBeInTheDocument();
   });
 
   it('only the completion verb clears a person — grey in place with an Undo, even under New', () => {

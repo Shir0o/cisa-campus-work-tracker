@@ -5,7 +5,14 @@ import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
-import { FEEDBACK_KINDS, kindMeta, kindToType } from '@cisa/core';
+import {
+  FEEDBACK_KINDS,
+  kindMeta,
+  kindToType,
+  MAX_SCREENSHOT_CHARS,
+  MAX_SCREENSHOT_DIMENSION,
+  SCREENSHOT_QUALITY_LADDER,
+} from '@cisa/core';
 import type { FeedbackKind } from '@cisa/core';
 
 interface FeedbackSheetProps {
@@ -33,27 +40,61 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (visible && targetRef?.current) {
-      setErrorMsg(null);
-      setSubmitted(false);
-      // Capture background screen before user interacts with sheet
-      captureRef(targetRef, {
-        format: 'jpg',
-        quality: 0.65,
-        result: 'base64',
-      })
-        .then((base64) => {
-          if (base64) {
-            setScreenshot(`data:image/jpeg;base64,${base64}`);
-          }
-        })
-        .catch((err) => {
-          console.warn('Failed to capture screen view shot:', err);
-          setScreenshot('');
-        });
-    } else if (!visible) {
+    if (!visible) {
       setScreenshot('');
+      return;
     }
+
+    setErrorMsg(null);
+    setSubmitted(false);
+
+    if (!targetRef?.current) return;
+
+    let cancelled = false;
+
+    // Capture the background screen before the user interacts with the sheet.
+    // The result is admin-only context stored on the Firestore doc; it never
+    // reaches GitHub (ADR 0018 decision 7). Walk the quality ladder until the
+    // encoded string fits the size ceiling, and give up rather than store a
+    // capture Firestore rules would reject.
+    (async () => {
+      const { width, height } = Dimensions.get('window');
+      const longestEdge = Math.max(width, height);
+      const scale = longestEdge > MAX_SCREENSHOT_DIMENSION ? MAX_SCREENSHOT_DIMENSION / longestEdge : 1;
+
+      for (const quality of SCREENSHOT_QUALITY_LADDER) {
+        try {
+          const base64 = await captureRef(targetRef, {
+            format: 'jpg',
+            quality,
+            result: 'base64',
+            width: Math.round(width * scale),
+            height: Math.round(height * scale),
+          });
+          if (cancelled) return;
+          if (!base64) continue;
+
+          const dataUrl = `data:image/jpeg;base64,${base64}`;
+          if (dataUrl.length <= MAX_SCREENSHOT_CHARS) {
+            setScreenshot(dataUrl);
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to capture screen view shot:', err);
+          if (!cancelled) setScreenshot('');
+          return;
+        }
+      }
+
+      if (!cancelled) {
+        console.warn('Screenshot exceeded the size ceiling at every quality; sending without one.');
+        setScreenshot('');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [visible, targetRef]);
 
   const handleSubmit = async () => {
@@ -67,7 +108,6 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
 
     const payload = {
       userId: user?.uid || 'anonymous',
-      userEmail: user?.email?.toLowerCase() || 'anonymous',
       userName: user?.displayName || 'Anonymous User',
       type,
       kind,

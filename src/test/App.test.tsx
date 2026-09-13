@@ -35,7 +35,7 @@ vi.mock('../views/PrayerList', () => ({ default: () => <div data-testid="prayer-
 vi.mock('../views/Settings', () => ({ default: () => <div data-testid="settings-view">Settings View</div> }));
 vi.mock('../views/SignUp', () => ({ default: () => <div data-testid="signup-view">SignUp View</div> }));
 vi.mock('../views/FeedbackList', () => ({ default: () => <div data-testid="feedback-list-view">FeedbackList View</div> }));
-vi.mock('../views/SubmitFeedback', () => ({ default: () => <div data-testid="submit-feedback-view">SubmitFeedback View</div> }));
+vi.mock('../views/MyNotes', () => ({ default: () => <div data-testid="my-notes-view">MyNotes View</div> }));
 vi.mock('../views/CoordinationNotes', () => ({ default: () => <div data-testid="coordination-view">CoordinationNotes View</div> }));
 
 // Mock components that we don't need to test in App context

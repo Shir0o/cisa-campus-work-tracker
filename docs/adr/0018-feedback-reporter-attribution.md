@@ -1,5 +1,7 @@
 # 0018: Feedback-created GitHub issues use first-name attribution, no email, and no screenshots
 
+> Decision 7 was amended in #984: screenshots are captured and stored again, and shown to admins in-app. What stays retired is publishing them to GitHub.
+
 ## Status
 Accepted
 
@@ -23,7 +25,11 @@ The team wants GitHub issues to remain attributable and filterable without publi
 
 6. **Existing feedback issues are backfilled.** Issues with the `feedback` label or a `[Feedback]` title are scanned for an existing `Submitted By` line. The backfill strips surname and email, adds the reporter label, and skips issues with no parseable reporter. The backfill defaults to dry-run and requires explicit execution.
 
-7. **Screenshots are removed from future feedback capture and from issue bodies.** Client capture, payload transport, Firestore writes, issue-body embeds, and the screenshot-serving endpoint are retired. Existing Firestore screenshots remain available only as legacy admin data and are not republished to GitHub.
+7. **Screenshots never reach GitHub.** Issue-body embeds and the screenshot-serving endpoint are retired. Existing Firestore screenshots are not republished to GitHub.
+
+   *Amended #984:* capture is **not** retired. The original decision also removed client capture, payload transport, and the Firestore write; that went further than the privacy goal required and is reversed here. Screenshots are captured in-app on both clients, stored on the Firestore feedback document, and shown to admins in the feedback list — the surface that was never the problem. What stays retired is the part that published them: the issue-body embed and the serving endpoint. The boundary is now "captured and stored privately, never syndicated", matching decision 5's treatment of `userName`, rather than "not collected at all".
+
+   The capture path holds itself to the `feedback` rule's 200000-character ceiling (`firestore.rules`), downscaling to a 1000px longest edge and walking a quality ladder before giving up. A capture that will not fit is dropped, not truncated. The server writes through the Admin SDK and so bypasses rules, but applies the same ceiling: a document rules would reject is one a client-direct write could never have made. The ceiling and ladder are mirrored in `packages/core/src/feedback.ts` and `src/lib/feedbackKinds.ts` (the web app has no `@cisa/core` dependency) and held in step by `src/test/feedbackScreenshotParity.test.ts`.
 
 8. **Git history is not rewritten.** Current tracked issue snapshots and current GitHub issue bodies are cleaned, but old Git blobs and any copies GitHub keeps internally, in notifications, or in forks are outside the purge.
 
@@ -34,7 +40,9 @@ The team wants GitHub issues to remain attributable and filterable without publi
 - Removing email from new feedback documents means the admin UI must handle new documents without an email.
 - Reporter labels expose the last initial publicly. That is the deliberate cost of keeping labels human-readable and collision-resistant.
 - Historical backfill is best-effort. Two feedback-labelled issues with rewritten design bodies have no parseable reporter and remain unlabelled.
-- Screen storage is removed from the capture path, but legacy screenshots already in Firestore are not deleted and may still be visible to admins.
+- Screenshots are stored in Firestore and visible to admins, and are never sent to GitHub. Legacy screenshots predating this ADR are indistinguishable from new ones in the admin list, which is the intended outcome rather than a migration gap.
+- Storing a capture on every submission costs Firestore document size. The 200000-character ceiling bounds it, and a submission whose capture overflows still lands — without a screenshot — so the note is never lost to the size limit.
+- The no-GitHub guarantee is enforced by construction (the issue body is built from an explicit field list) and asserted in `src/test/server.test.ts`, rather than resting on the field being absent from the payload.
 - The current repository snapshots lose email in their current commit, but old commits still contain the previously published email addresses.
 - GitHub internal edit history, prior notifications, forks, and third-party archives cannot be guaranteed clean after issue-body edits.
 
@@ -52,4 +60,6 @@ The team wants GitHub issues to remain attributable and filterable without publi
 
 **Rewrite Git history to remove old email snapshots.** Rejected because the disruption and force-push coordination outweigh the benefit; the current snapshots are cleaned instead.
 
-**Keep screenshot capture and only stop embedding it in GitHub issues.** Rejected because the team asked to remove the capture path itself, and collecting a screenshot that is never used is unnecessary data collection.
+**Keep screenshot capture and only stop embedding it in GitHub issues.** Originally rejected because the team asked to remove the capture path itself, and collecting a screenshot that is never used is unnecessary data collection. **Adopted in #984** — see decision 7's amendment. The objection assumed the screenshot went unused; in fact the admin feedback list renders it, so the capture has a reader. Removing the publication path addressed the privacy concern on its own.
+
+**Remove capture entirely (the original decision 7).** Superseded. It cost admins the context a screenshot gives when triaging "something's off" reports, in exchange for a privacy benefit already delivered by dropping the issue-body embed.

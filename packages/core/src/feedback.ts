@@ -88,3 +88,35 @@ export function filterFeedback(items: Feedback[], filters: FeedbackFilters): Fee
     .filter((f) => filters.status === "all" || f.status === filters.status)
     .filter((f) => matchesSearch(f, needle));
 }
+
+// --- Screenshot capture contract -------------------------------------------
+// Feedback screenshots are captured in-app, stored on the Firestore feedback
+// doc as a base64 JPEG data URL, and shown to admins in the feedback list.
+// They are never sent to GitHub — see ADR 0018 decision 7.
+//
+// The ceiling mirrors the `feedback` rule in firestore.rules, which rejects a
+// screenshot over 200000 characters. The server writes through the Admin SDK
+// and so bypasses rules, but it holds itself to the same limit: a doc that
+// rules would reject is one a client-direct write could never have made, and
+// Firestore caps a whole document at 1MB regardless.
+export const MAX_SCREENSHOT_CHARS = 200000;
+
+// Longest edge, in pixels, before a capture is downscaled. Keeps a desktop
+// screenshot from blowing the character budget on resolution the admin list
+// renders as a thumbnail anyway.
+export const MAX_SCREENSHOT_DIMENSION = 1000;
+
+// Quality ladder for re-encoding. Each rung is tried in order until the
+// encoded length fits MAX_SCREENSHOT_CHARS; if none fit, the capture is
+// dropped rather than truncated — half a JPEG renders as a broken image.
+export const SCREENSHOT_QUALITY_LADDER: readonly number[] = [0.65, 0.4, 0.25];
+
+/** True when `value` is a JPEG/PNG data URL within the size ceiling. */
+export function isStorableScreenshot(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_SCREENSHOT_CHARS &&
+    /^data:image\/(jpeg|jpg|png);base64,/.test(value)
+  );
+}
