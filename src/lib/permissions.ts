@@ -144,6 +144,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/questions', label: 'Questions', minRole: 'manager' },
   // "Around the team" — the label the team already says, not renamed (#943).
   { href: '/around', label: 'Around the team', minRole: 'admin' },
+  // Your notes (`/feedback`) is the submitter's own side of the feedback
+  // loop (ADR 0019). It reads as a personal inbox, so it sits in Today
+  // beside the other things aimed at you.
+  { href: '/feedback', label: 'Your notes', minRole: 'viewer' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 
@@ -246,7 +250,7 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
 // here; the "grouping covers every NAV_ITEMS destination except /settings"
 // test in src/test/permissions.test.tsx guards against drift.
 const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
-  Today: ['/', '/coordination', '/questions', '/around'],
+  Today: ['/', '/coordination', '/questions', '/around', '/feedback'],
   People: ['/board', '/directory', '/visits', '/outreach', '/history'],
   // Both Bible study destinations sit here; navItemsForRole has already
   // dropped whichever one this role does not mean (#946).

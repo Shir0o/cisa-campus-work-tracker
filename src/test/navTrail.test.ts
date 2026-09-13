@@ -87,8 +87,14 @@ describe('navTrailFor', () => {
     });
   });
 
-  it('names an in-shell route that is deliberately not a destination', () => {
-    expect(navTrailFor('/feedback', 'admin').current).toBe('Your notes');
+  it('names Your notes when /feedback is its own destination', () => {
+    // /feedback is a NAV_ITEMS destination (ADR 0019), so the trail gives
+    // it a name and no section crumb, like any other top-level route.
+    expect(navTrailFor('/feedback', 'admin')).toEqual({
+      section: null,
+      current: 'Your notes',
+      currentIsLabel: true,
+    });
   });
 
   it('is empty for a path outside the shell', () => {

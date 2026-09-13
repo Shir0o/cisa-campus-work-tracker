@@ -245,8 +245,9 @@ export default function FeedbackFAB() {
                     >
                       Send another
                     </button>
-                    {/* The only way in to Your notes besides the outcome
-                        notification — the page carries no nav entry. */}
+                    {/* Your notes also lives in the nav (Today group), and the
+                        outcome notification links here too; this is the shortcut from
+                        the note you just left. */}
                     <button
                       type="button"
                       onClick={() => {

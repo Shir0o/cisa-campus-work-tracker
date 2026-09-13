@@ -15,6 +15,7 @@ import {
   MessageCircleQuestion,
   LayoutDashboard,
   Users,
+  StickyNote,
   Settings as SettingsIcon,
   LogOut,
   Search,
@@ -66,6 +67,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/questions': MessageCircleQuestion,
   '/bible-study': BookOpen,
   '/around': Users,
+  '/feedback': StickyNote,
   '/settings': SettingsIcon,
 };
 

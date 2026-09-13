@@ -300,6 +300,7 @@ describe('TopNav primary tabs per role', () => {
       'Questions',
       'The Journey',
       'Visits',
+      'Your notes',
     ]);
   });
 
@@ -619,6 +620,34 @@ describe('Around the team as its own destination (#943)', () => {
   });
 });
 
+// Your notes, the submitter's own side of the feedback loop (ADR 0019)
+// `/feedback` used to be reachable only by link (the note button outcome and
+// the outcome notification). It is a destination now, so it belongs in the rail.
+
+describe('Your notes as its own destination', () => {
+  it('is reachable by every role that can leave a note', () => {
+    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      expect(canAccessRoute(role, '/feedback')).toBe(true);
+    }
+    expect(canAccessRoute(null, '/feedback')).toBe(false);
+  });
+
+  it('is labelled "Your notes" and sits in the rail Today group', () => {
+    const item = NAV_ITEMS.find((i) => i.href === '/feedback');
+    expect(item).toBeDefined();
+    expect(item?.label).toBe('Your notes');
+    expect(item?.minRole).toBe('viewer');
+
+    const today = groupedNavFor('viewer').find((g) => g.label === 'Today');
+    expect(today?.items.map((i) => i.href)).toContain('/feedback');
+  });
+
+  it('lands in the More menu, never in the primary tabs, for a Full-timer', () => {
+    expect(primaryNavFor('admin').map((i) => i.href)).not.toContain('/feedback');
+    expect(moreNavFor('admin').map((i) => i.href)).toContain('/feedback');
+  });
+});
+
 // ── Destination grouping for the rail (issue #662) ───────────────────────────
 // The rail (issue #664) consumes this data: ordered groups of destinations a
 // given role can reach. The groups and within-group order are fixed by the
@@ -630,24 +659,24 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
   // the hrefs inside each. Empty groups are omitted from the output.
   const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
     admin: [
-      { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around'] },
+      { label: 'Today', hrefs: ['/', '/coordination', '/questions', '/around', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study', '/messages'] },  // admin: the index, never the reader (#946)
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     manager: [
-      { label: 'Today', hrefs: ['/', '/questions'] },
+      { label: 'Today', hrefs: ['/', '/questions', '/feedback'] },
       { label: 'People', hrefs: ['/board', '/directory'] },
       { label: 'Gatherings', hrefs: ['/bible-study/read', '/messages'] },
     ],
     operator: [
-      { label: 'Today', hrefs: ['/', '/coordination'] },
+      { label: 'Today', hrefs: ['/', '/coordination', '/feedback'] },
       { label: 'People', hrefs: ['/directory'] },
       { label: 'Gatherings', hrefs: ['/attendance', '/bible-study/read', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
     ],
     viewer: [
-      { label: 'Today', hrefs: ['/'] },
+      { label: 'Today', hrefs: ['/', '/feedback'] },
       { label: 'People', hrefs: ['/outreach'] },
       { label: 'Gatherings', hrefs: ['/bible-study/read', '/messages'] },
       { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
