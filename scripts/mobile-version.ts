@@ -10,7 +10,7 @@
  * wait, clear-cache, auto-submit, auto-submit-with-profile, what-to-test,
  * resource-class, message, build-logger-level, freeze-credentials,
  * refresh-ad-hoc-provisioning-profile, verbose-logs). The build number must
- * therefore be written into `app.json` *before* the build  in CI and on a
+ * therefore be written into `app.json` *before* the build runs — in CI and on a
  * developer's machine alike. This script is the single derivation both use, so
  * a CI release and a local `eas build` can never disagree and mint the same
  * build number twice.
@@ -24,6 +24,9 @@
  *
  * The tag is authoritative: `v1.4.0` and `v1.4.0-rc.1` both yield version
  * `1.4.0` and build number 10400.
+ *
+ * When GITHUB_OUTPUT is set the script also emits `version` and `build_number`
+ * for downstream workflow steps.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,7 +64,7 @@ function resolveTag(): string {
 
 function parseTag(tag: string): ParsedTag {
   const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(tag.trim());
-  if (!match) {
+  if (match === null) {
     throw new Error(`Cannot parse a major.minor.patch version out of the tag '${tag}'.`);
   }
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
@@ -69,7 +72,7 @@ function parseTag(tag: string): ParsedTag {
 
 /**
  * `major*10000 + minor*100 + patch`. This is injective only while `minor` and
- * `patch` stay below 100, so the bounds are checked rather than 
+ * `patch` stay below 100, so the bounds are checked rather than assumed —
  * otherwise 1.100.0 and 2.0.0 would collide on the same build number.
  */
 function toBuildNumber({ major, minor, patch }: ParsedTag): number {
@@ -101,20 +104,22 @@ function main(): void {
     };
   };
 
-  const previous = {
-    version: appJson.expo.version,
-    iosBuildNumber: appJson.expo.ios?.buildNumber,
-    androidVersionCode: appJson.expo.android?.versionCode,
-  };
+  const previousVersion = appJson.expo.version;
+  const previousIosBuildNumber = appJson.expo.ios?.buildNumber;
+  const previousAndroidVersionCode = appJson.expo.android?.versionCode;
 
   appJson.expo.version = version;
   appJson.expo.ios = { ...appJson.expo.ios, buildNumber: String(buildNumber) };
   appJson.expo.android = { ...appJson.expo.android, versionCode: buildNumber };
 
-  console.log(`Tag            ${tag}`);
-  console.log(`Version        ${previous.version ?? '(unset)'} -> ${version}`);
-  console.log(`iOS buildNumber     ${previous.iosBuildNumber ?? '(unset)'} -> ${buildNumber}`);
-  console.log(`Android versionCode ${previous.androidVersionCode ?? '(unset)'} -> ${buildNumber}`);
+  console.log(`Tag                  ${tag}`);
+  console.log(`Version              ${previousVersion ?? '(unset)'} -> ${version}`);
+  console.log(`iOS buildNumber      ${previousIosBuildNumber ?? '(unset)'} -> ${buildNumber}`);
+  console.log(`Android versionCode  ${previousAndroidVersionCode ?? '(unset)'} -> ${buildNumber}`);
+
+  if (process.env.GITHUB_OUTPUT) {
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\nbuild_number=${buildNumber}\n`);
+  }
 
   if (dryRun) {
     console.log('--dry-run: app.json not written.');
