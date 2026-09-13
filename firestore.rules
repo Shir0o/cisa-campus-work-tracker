@@ -667,7 +667,13 @@ service cloud.firestore {
                (!('archived' in data) || data.archived is bool);
       }
 
-      allow list, get: if isAdmin();
+      // A submitter reads their own Notes (ADR 0019): the notes page queries
+      // `where userId == uid`, and `list` is evaluated per candidate document,
+      // so a filtered query succeeds while an unfiltered one is refused.
+      // `status`/`githubIssueUrl` reach the author's client as a consequence —
+      // the view withholds them, the rules no longer do.
+      allow get, list: if isAdmin() ||
+                          (isApprovedUser() && isOwner(resource.data.userId));
       allow create: if isValidId(feedbackId) && isApprovedUser() && isValidFeedback(incoming());
       allow update: if isValidId(feedbackId) && isAdmin() &&
                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'githubIssueUrl', 'archived']) &&
@@ -675,6 +681,22 @@ service cloud.firestore {
                       (!('githubIssueUrl' in incoming()) || (incoming().githubIssueUrl is string && incoming().githubIssueUrl.size() <= 1000 || incoming().githubIssueUrl == null)) &&
                       (!('archived' in incoming()) || incoming().archived is bool);
       allow delete: if isValidId(feedbackId) && isAdmin();
+    }
+
+    // 11b. Follow-ups on a Feedback Note (ADR 0019)
+    // Every Follow-up is written by the server (`POST /api/feedback/reply` and
+    // the `issue_comment` webhook) so that each one mirrors to the linked
+    // GitHub issue and every relayed comment is laundered before it is stored.
+    // Clients therefore read only: a client-written doc would silently skip
+    // both halves of that mirror.
+    match /feedback/{feedbackId}/replies/{replyId} {
+      function noteAuthorId() {
+        return get(/databases/$(database)/documents/feedback/$(feedbackId)).data.userId;
+      }
+
+      allow get, list: if isAdmin() ||
+                          (isApprovedUser() && isOwner(noteAuthorId()));
+      allow create, update, delete: if false;
     }
 
     // 12. Webhook Logs Collection

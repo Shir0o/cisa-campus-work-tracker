@@ -50,7 +50,7 @@ const LEAF_ROUTES: readonly { pattern: RegExp; section: string; leaf?: string }[
  * they still have a name.
  */
 const STANDALONE: Record<string, string> = {
-  '/feedback': 'Send feedback',
+  '/feedback': 'Your notes',
 };
 
 /** Trailing slashes only ever come from hand-typed URLs; `/` keeps its own. */

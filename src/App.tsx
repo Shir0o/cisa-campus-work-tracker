@@ -60,7 +60,7 @@ const SignUp = lazyWithRetry(() => import("./views/SignUp"));
 const PrivacyPolicy = lazyWithRetry(() => import("./views/PrivacyPolicy"));
 const Support = lazyWithRetry(() => import("./views/Support"));
 const FeedbackList = lazyWithRetry(() => import("./views/FeedbackList"));
-const SubmitFeedback = lazyWithRetry(() => import("./views/SubmitFeedback"));
+const MyNotes = lazyWithRetry(() => import("./views/MyNotes"));
 /* v8 ignore stop */
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
@@ -1016,7 +1016,7 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <SubmitFeedback />
+                        <MyNotes />
                       </DashboardLayout>
                     </ProtectedRoute>
                   }

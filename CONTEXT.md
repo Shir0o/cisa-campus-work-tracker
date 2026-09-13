@@ -27,7 +27,7 @@ The dedicated non-production Firestore database instance in the `sac-campus-hub`
 _Avoid_: Test database, sandbox Firestore, staging db
 
 **Feedback Note ("Tell us how it's going")**:
-An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators.
+An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators. Submitted only through the note button; **Your notes** is where a submitter reads their own Notes back, with each one's outcome and its Follow-ups.
 _Avoid_: Bug ticket, customer support issue, help desk ticket
 
 **Outcome (of a Feedback Note)**:
@@ -35,8 +35,20 @@ What became of a Note, as its submitter would put it — it shipped, it is not p
 _Avoid_: Resolution, disposition, ticket state
 
 **What came of it**:
-The short fixed sentence a submitter is told when their Note reaches an outcome, shown under the composer on their own feedback page and pushed as a notification. There is one sentence per outcome and nobody writes prose to a submitter; anything that needs explaining is said in person, by text, or in Messages. Asking a submitter a question is likewise not something a Note carries — a Note is a one-shot note, never a thread.
+What a submitter is told when their Note reaches an outcome, shown on **Your notes** and pushed as a notification. When the work shipped through a pull request, the sentence is written from that pull request; otherwise it is the **Canned response** for the outcome.
 _Avoid_: Reply, response, resolution message, support reply
+
+**Canned response**:
+The short fixed sentence for an outcome — one per outcome, never edited. It is the fallback when nothing can be written from a pull request, and so the guarantee that a submitter always hears *something*. It is no longer the only thing a submitter can be told.
+_Avoid_: Template, auto-reply, boilerplate
+
+**Follow-up (on a Feedback Note)**:
+A message on a Note, in either direction: the submitter asking about their own Note, or the team answering. A Note's Follow-ups mirror the comments on its linked GitHub issue both ways — a comment made there is restated for the submitter before they see it, and a Follow-up written here is posted onto the issue, where it is public. A Follow-up never changes a Note's status or outcome; one from a submitter marks the Note as waiting on the team.
+_Avoid_: Reply, comment, thread, message, question, ask — each of those already names something else in this product
+
+**Your notes (`/feedback`)**:
+The submitter's own side of the feedback loop: every Note they have left, what came of it, and its Follow-ups. It is not a place to submit — the note button is the only composer. The owner reads the loop raw here and switches to what a submitter sees through **owner view**.
+_Avoid_: Send feedback, feedback page, my tickets
 
 **Remove an interaction**:
 Permanently deleting a logged conversation from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.

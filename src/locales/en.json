@@ -289,7 +289,21 @@
     "goes_to_team": "Your note goes straight to the team.",
     "your_past_notes": "Your past notes",
     "what_came_of_it": "What came of it",
-    "still_open": "Still open"
+    "still_open": "Still open",
+    "your_notes": "Your notes",
+    "your_notes_intro": "Every note you've left, and what came of it. Leave a new one from the note button.",
+    "no_notes_yet": "You haven't left a note yet. Use the note button in the corner and it'll show up here.",
+    "notes_load_failed": "We couldn't load your notes just now. Try again in a moment — if it keeps happening, tell a Full-timer.",
+    "no_news_yet": "We have this — no news yet",
+    "follow_ups": "Follow-ups",
+    "no_follow_ups": "No follow-ups yet. Ask us anything about this note.",
+    "follow_ups_load_failed": "We couldn't load the follow-ups on this note.",
+    "follow_up_placeholder": "Ask a follow-up…",
+    "follow_up_failed": "That didn't send. Try again in a moment.",
+    "reply_is_public": "Replies are posted to our public issue tracker, where anyone can read them.",
+    "you": "You",
+    "the_team": "The team",
+    "see_your_notes": "See your notes"
   },
   "feedbackList": {
     "access_denied": "Access Denied",
@@ -348,7 +362,9 @@
     "kind_request": "A request",
     "view_github_issue": "View GitHub Issue",
     "edit_github_link": "Edit GitHub Link",
-    "not_auto_synced_title": "No GitHub issue was auto-created for this item — the server-side GitHub integration may not be configured. Use Create Issue or Link to attach one manually."
+    "not_auto_synced_title": "No GitHub issue was auto-created for this item — the server-side GitHub integration may not be configured. Use Create Issue or Link to attach one manually.",
+    "awaiting_reply": "Follow-up waiting",
+    "awaiting_reply_title": "The submitter asked a follow-up. Comment on the linked issue and it reaches them."
   },
   "answered": {
     "eyebrow": "Answered",

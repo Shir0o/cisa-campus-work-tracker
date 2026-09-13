@@ -88,7 +88,7 @@ describe('navTrailFor', () => {
   });
 
   it('names an in-shell route that is deliberately not a destination', () => {
-    expect(navTrailFor('/feedback', 'admin').current).toBe('Send feedback');
+    expect(navTrailFor('/feedback', 'admin').current).toBe('Your notes');
   });
 
   it('is empty for a path outside the shell', () => {

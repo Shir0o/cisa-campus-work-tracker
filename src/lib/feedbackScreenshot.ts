@@ -1,7 +1,7 @@
-// Browser-side feedback screenshot capture, shared by the two web entry
-// points: the FeedbackFAB dialog (the common case — the user is on some page
-// and the capture shows what is behind the dialog) and the dedicated
-// SubmitFeedback page.
+// Browser-side feedback screenshot capture, used by the FeedbackFAB dialog —
+// the web app's only composer since ADR 0019 retired the dedicated page. The
+// capture shows what is behind the dialog, which is the page the user was
+// looking at when something struck them as worth saying.
 //
 // The capture is admin-only context. It is stored on the Firestore feedback
 // document and rendered in the admin feedback list; it is never forwarded to
