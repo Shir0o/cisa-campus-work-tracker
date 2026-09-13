@@ -64,9 +64,11 @@ Three constraints shaped the answer:
    (`runLocalBuildAsync` hands it to `eas-cli-local-build-plugin`), never how
    versions or credentials resolve. The CLI marks `--local` **experimental**;
    this is accepted and recorded here.
-5. **Credentials are repo-managed** (`credentialsSource: "local"`), with a
-   single `credentials.json` generated once by EAS and stored as one base64
-   secret. `credentials.json` is already covered by `.gitignore`.
+5. **Credentials are repo-managed** (`credentialsSource: "local"`), downloaded
+   once with `eas credentials` and packed by `scripts/pack-eas-credentials.ts`
+   into a single base64 secret. `credentials.json` is a *pointer* file - it names
+   the Android keystore and the iOS `.p12` and `.mobileprovision` - so the secret
+   has to carry the whole set, not just the JSON.
 6. **`eas submit` reaches the Play internal track and TestFlight, and stops.**
    No `--auto-submit`, no promotion. Play uses `releaseStatus: draft` so internal
    testers are not notified.

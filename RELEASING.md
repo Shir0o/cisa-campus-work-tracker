@@ -81,15 +81,21 @@ the console link is not itself the credential.
 Do **not** hand-roll a `.p12` and `.mobileprovision`. Let EAS generate and record
 them once.
 
+EAS already holds this project's iOS certificate, provisioning profile and
+Android upload keystore. Download them into the working copy:
+
 ```bash
 cd apps/mobile
-npx eas-cli build --profile production --platform ios     --local
-npx eas-cli build --profile production --platform android --local
+npx eas-cli credentials     # iOS     -> credentials.json: Upload/Download -> Download
+npx eas-cli credentials     # Android -> credentials.json: Upload/Download -> Download
 ```
 
-EAS prompts for your Apple login, sets up the distribution certificate,
-provisioning profile, and Android upload keystore, and writes
-`apps/mobile/credentials.json`. That file is already covered by `.gitignore`.
+That writes `apps/mobile/credentials.json` **plus the files it points at** - the
+keystore, the `.p12` and the `.mobileprovision`. The JSON on its own is useless
+in CI: it is a pointer file, not a bundle.
+
+If EAS has no stored credentials for the app yet, the same menu's *Set up build
+credentials* action generates them first and will ask for your Apple login.
 
 ### D. GitHub secrets
 
@@ -97,16 +103,25 @@ provisioning profile, and Android upload keystore, and writes
 | --- | --- |
 | `RELEASE_PLEASE_TOKEN` | PAT with `contents:write` and `pull-requests:write`. **Mandatory** — tags created with the built-in `GITHUB_TOKEN` are suppressed by GitHub's recursion prevention and will never trigger the release workflows. |
 | `EXPO_TOKEN` | Expo access token. `eas build --local` still authenticates to EAS. |
-| `EAS_CREDENTIALS_JSON_B64` | `base64 -i apps/mobile/credentials.json` — the Android keystore **and** the iOS certificate and profile in one file. |
+| `EAS_CREDENTIALS_B64` | `npx tsx scripts/pack-eas-credentials.ts` — a gzipped tar of `credentials.json` **and the keystore, `.p12` and `.mobileprovision` it points at**, base64'd. |
 | `PLAY_SERVICE_ACCOUNT_JSON_B64` | `base64 -i <service-account>.json` |
 | `ASC_API_KEY_P8_B64` | `base64 -i AuthKey_XXXX.p8` |
 | `ASC_KEY_ID` | App Store Connect API Key ID |
 | `ASC_ISSUER_ID` | App Store Connect Issuer ID |
 
-Base64 output must have no line wrapping and no trailing newline:
+`scripts/pack-eas-credentials.ts` prints base64 with no line wrapping and no
+trailing newline, and refuses to pack if any path `credentials.json` names is
+missing:
 
 ```bash
-base64 -i apps/mobile/credentials.json | tr -d '\n'
+npx tsx scripts/pack-eas-credentials.ts > /tmp/eas-credentials.b64
+gh secret set EAS_CREDENTIALS_B64 --env mobile-release < /tmp/eas-credentials.b64
+```
+
+The `.p8` must likewise be base64'd with no wrapping and no trailing newline:
+
+```bash
+base64 -i AuthKey_XXXX.p8 | tr -d '\n'
 ```
 
 `google-services.json` and `GoogleService-Info.plist` are **committed** and need

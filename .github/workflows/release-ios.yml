@@ -46,14 +46,14 @@ jobs:
 
       - name: Verify release secrets are present
         env:
-          EAS_CREDENTIALS_JSON_B64: ${{ secrets.EAS_CREDENTIALS_JSON_B64 }}
+          EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
           ASC_API_KEY_P8_B64: ${{ secrets.ASC_API_KEY_P8_B64 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
           missing=()
-          for var in EXPO_TOKEN EAS_CREDENTIALS_JSON_B64 ASC_API_KEY_P8_B64 ASC_KEY_ID ASC_ISSUER_ID; do
+          for var in EXPO_TOKEN EAS_CREDENTIALS_B64 ASC_API_KEY_P8_B64 ASC_KEY_ID ASC_ISSUER_ID; do
             if [ -z "${!var:-}" ]; then missing+=("$var"); fi
           done
           if [ ${#missing[@]} -ne 0 ]; then
@@ -77,12 +77,12 @@ jobs:
 
       - name: Materialize EAS build credentials
         env:
-          EAS_CREDENTIALS_JSON_B64: ${{ secrets.EAS_CREDENTIALS_JSON_B64 }}
+          EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
         run: |
           set -euo pipefail
-          printf '%s' "$EAS_CREDENTIALS_JSON_B64" | base64 -d > credentials.json
+          printf '%s' "$EAS_CREDENTIALS_B64" | base64 -d | tar xzf - -C .
           chmod 600 credentials.json
-          echo "credentials.json materialized (contents not echoed)."
+          echo "credentials.json and the files it points at materialized (contents not echoed)."
 
       - name: Materialize App Store Connect API key
         env:

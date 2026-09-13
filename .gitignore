@@ -26,6 +26,10 @@ sac-*.json
 *service-account*.json
 *service_account*.json
 credentials.json
+# The files credentials.json points at (keystore, .p12, .mobileprovision).
+# apps/mobile/.gitignore's ios/ and android/ rules happen to cover these
+# today, but by accident - this rule is the one that means it.
+apps/mobile/credentials/
 
 # local scratch / capture harnesses — never commit
 tmp/
