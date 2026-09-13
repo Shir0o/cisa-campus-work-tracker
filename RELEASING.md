@@ -39,9 +39,12 @@ approval before doing anything.
 | `refactor:` | No bump; lands under “Refactoring” |
 | `docs:`, `test:`, `build:`, `ci:`, `chore:`, `revert:` | Hidden from the changelog (still allowed) |
 
-A `BREAKING CHANGE:` footer also triggers a major bump. Nothing enforces this
-yet — there is no PR-title lint — so a free-form title will silently produce no
-release. See “Not done yet” below.
+A `BREAKING CHANGE:` footer also triggers a major bump.
+
+`.github/workflows/pr-title-lint.yml` enforces the prefix, so a title that
+release-please would ignore fails the PR check instead of failing silently.
+It also requires a lowercase subject - that is the one tunable: relax
+`subjectPattern` in that workflow if it proves too strict.
 
 ## One-time setup
 
@@ -164,8 +167,6 @@ or below the last approved build.
 
 ## Not done yet
 
-- **No PR-title lint.** release-please depends on conventional PR titles;
-  without a lint, a free-form title silently produces no release.
 - **No OTA updates.** No profile sets a `channel`, so `expo-updates` cannot
   publish. Enabling it needs a channel per profile and a `runtimeVersion`
   decision.
