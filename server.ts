@@ -1462,7 +1462,6 @@ Analyze the input text carefully and extract the following:
           createdBy: opUserId,
           createdByName: opUserName,
           hasNewActivity: true,
-          attendance: {}
         };
 
         const docRef = await getAdminDb().collection("contacts").add(contactData);
@@ -1642,7 +1641,6 @@ Analyze the input text carefully and extract the following:
         createdByName: opUserName,
         owner: isRegisteredUser ? opUserId : null,
         hasNewActivity: true,
-        attendance: {}
       };
       // Add directly to contacts collection using admin privileges
       const docRef = await getAdminDb().collection("contacts").add(contactData);

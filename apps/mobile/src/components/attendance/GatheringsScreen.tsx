@@ -10,7 +10,7 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { format, isValid } from 'date-fns';
-import { firstName, type Contact, type Event, type MissedContact } from '@cisa/core';
+import { explicitlyAbsent, firstName, type Contact, type Event, type MissedContact } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useAttendanceData } from '../../lib/useAttendanceData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
@@ -81,15 +81,15 @@ function SessionRow({
 }: {
   session: Event;
   contacts: Contact[];
-  isHere: (contact: Contact, eventId: string) => boolean;
+  isHere: (gathering: Event, contactId: string) => boolean;
   open: boolean;
   canMark: boolean;
   onToggle: () => void;
   onCycle: (contact: Contact) => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
-  const came = contacts.filter((x) => isHere(x, session.id));
-  const away = contacts.filter((x) => x.attendance?.[session.id] === 'absent');
+  const came = contacts.filter((x) => isHere(session, x.id));
+  const away = contacts.filter((x) => explicitlyAbsent(session, x.id));
   const d = new Date(session.date);
 
   return (

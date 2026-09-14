@@ -29,3 +29,21 @@ Furthermore, gatherings have distinct attendee circles (e.g. weekly fellowship r
 - Gathering attendance rosters reflect realistic expected attendees rather than the entire campus contact database.
 - "We missed" metrics and follow-up to-do suggestions focus accurately on regular community members who were absent.
 - Newcomers can be checked in instantly with zero required fields beyond their name, reducing friction during live gatherings.
+
+## Amendment: attendance lives on the Gathering (#958)
+
+Issue #958 moved the attendance record from the Contact onto the Gathering.
+
+- `Contact.attendance` (a map of gathering id to present/absent/late) is no
+  longer the source of truth. A Gathering carries
+  `attendance: { present: string[]; absent: string[] }`. The field existing,
+  even empty, is the "attendance was taken" fact; the old
+  `attendanceTakenAt`/`By`/`ById` stamps are retired.
+- "We missed" is unchanged in behaviour: only roster members who are not
+  present, plus anyone explicitly marked absent, appear under it. A cancelled
+  week still counts nobody absent.
+- The no-retroactive-penalty rule is unchanged: a session before a Contact first
+  appearance or roster inclusion does not count against them. It is computed
+  from the Gathering records instead of a per-Contact map.
+- During the migration the legacy Contact maps are mirrored on write and read
+  through a hydration bridge; both are removed once the backfill compare passes.
