@@ -54,11 +54,11 @@
         "releaseStatus": "draft"
       },
       "ios": {
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID",
+        "ascAppId": "6801319306",
+        "appleTeamId": "4DP58Y67SQ",
         "ascApiKeyPath": "./asc-api-key.p8",
-        "ascApiKeyId": "REPLACE_WITH_ASC_KEY_ID",
-        "ascApiKeyIssuerId": "REPLACE_WITH_ASC_ISSUER_ID"
+        "ascApiKeyId": "9XG662P3SU",
+        "ascApiKeyIssuerId": "8deb752c-7ebf-4850-bb1e-ae5850726a5f"
       }
     }
   }
