@@ -54,6 +54,19 @@ interface ThreadProps {
   pane?: boolean;
   teamMembers?: TeamMemberLike[];
   contactStakeholders?: ThreadStakeholders | null;
+  /** The messages to render, supplied by a caller that already holds them.
+   *  When given, this renderer subscribes to nothing: "Around the team"
+   *  already subscribes to every thread in the product and passes the slice
+   *  down, so mounting it on a card must not open a second live query per
+   *  card — nor drag Firestore into a page-level test seam (#1012). Omit it
+   *  and the renderer subscribes for itself, as the contact page does. */
+  messages?: ThreadMessage[] | null;
+  /** Told what was just posted, so a caller can show it immediately rather
+   *  than wait for a round trip (#1012). */
+  onPosted?: (message: ThreadMessage) => void;
+  /** Messages to mark briefly as new — the writer's own, just posted. */
+  highlightIds?: ReadonlySet<string> | null;
+  highlightLabel?: string;
 }
 
 
@@ -62,9 +75,13 @@ interface ThrRowProps {
   meStaffId: string;
   contactId: string;
   children?: React.ReactNode;
+  /** Marked briefly as new, so the writer's eye finds their own message
+   *  without hunting for it (#1012). */
+  justPosted?: boolean;
+  justPostedLabel?: string;
 }
 
-function ThrRow({ m, meStaffId, contactId, children }: ThrRowProps) {
+function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel }: ThrRowProps) {
   const mine = m.from === meStaffId;
 
   const reactions = m.reactions || [];
@@ -89,6 +106,11 @@ function ThrRow({ m, meStaffId, contactId, children }: ThrRowProps) {
             {mine ? "You" : firstName(m.fromName)}
           </span>
           <span>{relTime(m.at)}</span>
+          {justPosted && justPostedLabel && (
+            <span className="px-1.5 py-px rounded-full bg-accent/15 text-accent font-semibold text-[10px] uppercase tracking-wide">
+              {justPostedLabel}
+            </span>
+          )}
         </div>
 
         <div
@@ -149,6 +171,10 @@ interface ThreadMsgProps {
   contactName?: string;
   teamMembers?: TeamMemberLike[];
   contactStakeholders?: ThreadStakeholders | null;
+  /** Supplied by a caller that already holds them — see `ThreadProps`. */
+  messages?: ThreadMessage[] | null;
+  highlightIds?: ReadonlySet<string> | null;
+  highlightLabel?: string;
 }
 
 function ThreadMsg({
@@ -159,10 +185,16 @@ function ThreadMsg({
   contactName,
   teamMembers = [],
   contactStakeholders,
+  messages: propsMessages,
+  highlightIds,
+  highlightLabel,
 }: ThreadMsgProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const allMessages = useThreads(contactId);
+  // A caller that already holds the messages passes them in; the hook is then
+  // called with no contact id so it opens no subscription of its own.
+  const subscribed = useThreads(propsMessages ? null : contactId);
+  const allMessages = propsMessages ?? subscribed;
   const replies = repliesOf(allMessages, m.id);
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState("");
@@ -269,7 +301,13 @@ function ThreadMsg({
 
   return (
     <div className="space-y-2">
-      <ThrRow m={m} meStaffId={meStaffId} contactId={contactId}>
+      <ThrRow
+        m={m}
+        meStaffId={meStaffId}
+        contactId={contactId}
+        justPosted={!!highlightIds?.has(m.id)}
+        justPostedLabel={highlightLabel}
+      >
         <button
           onClick={() => setReplying(!replying)}
           className="mt-1 inline-flex items-center gap-1 text-xs text-accent font-medium hover:underline"
@@ -282,7 +320,14 @@ function ThreadMsg({
       {(replies.length > 0 || replying) && (
         <div className="pl-6 border-l-2 border-outline-variant/30 space-y-3 mt-2">
           {replies.map((r) => (
-            <ThrRow key={r.id} m={r} meStaffId={meStaffId} contactId={contactId} />
+            <ThrRow
+              key={r.id}
+              m={r}
+              meStaffId={meStaffId}
+              contactId={contactId}
+              justPosted={!!highlightIds?.has(r.id)}
+              justPostedLabel={highlightLabel}
+            />
           ))}
 
           {replying && (
@@ -334,10 +379,15 @@ export default function Thread({
   pane = false,
   teamMembers = [],
   contactStakeholders,
+  messages: propsMessages,
+  onPosted,
+  highlightIds,
+  highlightLabel,
 }: ThreadProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const allMessages = useThreads(contactId);
+  const subscribed = useThreads(propsMessages ? null : contactId);
+  const allMessages = propsMessages ?? subscribed;
   const messages = threadsFor(allMessages, interactionId, scope);
 
   const [draft, setDraft] = useState("");
@@ -425,14 +475,16 @@ export default function Thread({
       return;
     }
     const mentionedUserIds = reconcileMentionedUsers(body, selectedUsers);
+    const kind = canPickKind ? composeKind : "comment";
+    const fromName = user?.displayName || "Someone";
     void addThreadMessage(
       contactId,
       {
         interactionId,
         scope,
         from: meStaffId,
-        fromName: user?.displayName || "Someone",
-        kind: canPickKind ? composeKind : "comment",
+        fromName,
+        kind,
         body,
         ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
       },
@@ -442,6 +494,23 @@ export default function Thread({
         ...(contactStakeholders ? { stakeholders: contactStakeholders } : {}),
       },
     );
+
+    // The write is fire-and-forget and returns no id, so the message a caller
+    // shows immediately is one built here. A caller reading from a live
+    // subscription will see the real document arrive and drop this twin.
+    onPosted?.({
+      id: `pending:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      interactionId,
+      parentId: null,
+      scope,
+      from: meStaffId,
+      fromName,
+      kind,
+      body,
+      at: new Date().toISOString(),
+      reactions: [],
+      ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
+    });
 
     setDraft("");
     setSelectedUsers([]);
@@ -489,12 +558,15 @@ export default function Thread({
             contactName={contactName}
             teamMembers={teamMembers}
             contactStakeholders={contactStakeholders}
+            messages={propsMessages}
+            highlightIds={highlightIds}
+            highlightLabel={highlightLabel}
           />
         ))}
       </div>
       {messages.length === 0 && (
         <div className="text-sm italic text-on-surface-variant/70 pb-3">
-          {compact
+          {interactionId
             ? "No comments on this interaction yet."
             : scope === "team"
               ? "Nothing here yet — start the team's discussion below."

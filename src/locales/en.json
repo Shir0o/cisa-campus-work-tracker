@@ -1692,7 +1692,7 @@
     "filter_new": "New",
     "filter_all": "All",
     "filter_by_state": "Show the new ones or all of them",
-    "mark_all_seen": "Mark all seen",
+    "mark_all_reviewed": "Mark all reviewed",
     "group_new_people": "New people",
     "group_everything_else": "Everything else",
     "verb_reviewed": "Reviewed",
@@ -1745,7 +1745,13 @@
     "show_all": "Show everything",
     "open_their_page": "Open their page",
     "recent_activity_note": "Recent team activity — the same window My Day’s feed always covered.",
-    "unseen_team_activity": "things you haven’t looked at",
+    "snack_all_reviewed": "Marked {n} reviewed.",
+    "conversation_n": "Conversation · {n}",
+    "which_thread": "Which thread you are reading",
+    "audience_conversation": "Everyone tied to {name} sees this.",
+    "audience_full_timers": "Full-timers only.",
+    "just_posted": "Just posted",
+    "to_work_through_label": "to work through",
     "see_around": "See around"
   },
   "thread": {

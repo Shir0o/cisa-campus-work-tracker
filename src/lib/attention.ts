@@ -572,23 +572,28 @@ export function partitionAttentionStacks(
   return { onYou, aroundTeam };
 }
 
-// ── The pointer card's number (#943) ────────────────────────────────────────
-// "Around the team" is its own destination now; My Day keeps a pointer card
-// that counts the team activity the reader has not looked at. The count is a
-// pure function of the partitioned team stacks and a seen-predicate — the
-// existing per-stack seen set already answers the question, so no new
-// persisted state is introduced and the number can never disagree with the
-// dots on the page.
+// ── The pointer card's number (#943, #1012) ─────────────────────────────────
+// "Around the team" is its own destination; My Day keeps a pointer card that
+// counts what the page's own pill counts — the stacks not yet Reviewed. The
+// count is a pure function of the partitioned team stacks and a reviewed
+// predicate, so no new persisted state is introduced and the number can never
+// disagree with the pill.
+//
+// It counted *unseen* until #1012. Around now carries one state rather than
+// two, and the moment `seen` stops being written there a number derived from
+// it does not degrade, it freezes — so the pointer moved to the same axis in
+// the same change. It falls only when someone reviews something, which makes
+// it a measure of work remaining rather than of pages read (ADR 0022).
 
 /**
- * How many of the team stacks the reader has not seen. The predicate is
+ * How many of the team stacks are still to work through. The predicate is
  * injected so the function stays pure and testable without a DOM or a store.
  */
-export function unseenTeamCount(
+export function toWorkThroughCount(
   aroundTeam: readonly AttentionStack[],
-  isSeen: (stack: AttentionStack) => boolean,
+  isReviewed: (stack: AttentionStack) => boolean,
 ): number {
-  return aroundTeam.filter((s) => !isSeen(s)).length;
+  return aroundTeam.filter((s) => !isReviewed(s)).length;
 }
 
 

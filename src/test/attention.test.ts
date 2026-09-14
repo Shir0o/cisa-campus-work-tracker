@@ -3,7 +3,7 @@ import {
   buildAttentionItems,
   attentionStacksFor,
   partitionAttentionStacks,
-  unseenTeamCount,
+  toWorkThroughCount,
   attentionPhrase,
   isTiedTo,
   type AttentionItem,
@@ -150,13 +150,15 @@ describe("partitionAttentionStacks (#595)", () => {
   });
 });
 
-// ── #943: the pointer card's number ─────────────────────────────────────────
-// The unseen count is a pure function of the partitioned team stacks and a
-// seen-predicate — no new persisted state, so the number on the card can never
-// disagree with the dots on the page.
+// ── #1012: the pointer card's number ────────────────────────────────────────
+// The pointer counts what the page's pill counts — the stacks not yet
+// Reviewed — with the predicate injected so the number stays a pure function
+// and the card and the page can never disagree. It replaces the unseen count
+// of #943: the moment `seen` stops being written on Around, a number derived
+// from it would not degrade, it would freeze.
 
-describe("unseenTeamCount (#943)", () => {
-  const stack = (id: string, seen: boolean): AttentionStack =>
+describe("toWorkThroughCount (#1012)", () => {
+  const stack = (id: string): AttentionStack =>
     ({
       id,
       contactId: id,
@@ -166,25 +168,33 @@ describe("unseenTeamCount (#943)", () => {
       bucket: "today",
       by: [],
       kinds: ["contact"],
-      seen,
+      seen: false,
     }) as AttentionStack;
 
-  const isSeen = (s: AttentionStack) => s.seen;
+  const reviewed = (...ids: string[]) => {
+    const set = new Set(ids);
+    return (s: AttentionStack) => set.has(s.id);
+  };
 
-  it("counts none when every team stack has been seen", () => {
-    expect(unseenTeamCount([stack("a", true), stack("b", true)], isSeen)).toBe(0);
+  it("counts none when every team stack has been reviewed", () => {
+    expect(toWorkThroughCount([stack("a"), stack("b")], reviewed("a", "b"))).toBe(0);
   });
 
-  it("counts some when only part of the team has been seen", () => {
-    expect(unseenTeamCount([stack("a", true), stack("b", false), stack("c", false)], isSeen)).toBe(2);
+  it("counts what is left when only part of the team has been reviewed", () => {
+    expect(toWorkThroughCount([stack("a"), stack("b"), stack("c")], reviewed("a"))).toBe(2);
   });
 
-  it("counts all when nothing has been seen", () => {
-    expect(unseenTeamCount([stack("a", false), stack("b", false)], isSeen)).toBe(2);
+  it("counts all when nothing has been reviewed", () => {
+    expect(toWorkThroughCount([stack("a"), stack("b")], reviewed())).toBe(2);
   });
 
   it("counts zero on an empty team stack", () => {
-    expect(unseenTeamCount([], isSeen)).toBe(0);
+    expect(toWorkThroughCount([], reviewed())).toBe(0);
+  });
+
+  it("ignores the seen axis entirely — a glance is not work done", () => {
+    const glanced = { ...stack("a"), seen: true } as AttentionStack;
+    expect(toWorkThroughCount([glanced], reviewed())).toBe(1);
   });
 });
 
