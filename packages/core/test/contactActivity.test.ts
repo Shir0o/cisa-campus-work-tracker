@@ -32,11 +32,9 @@ describe('packages/core contactActivity (#329)', () => {
   });
 
   describe('shouldTouchActivityForAttendance', () => {
-    it('returns true only for present and late', () => {
-      expect(shouldTouchActivityForAttendance(true)).toBe(true);
-      expect(shouldTouchActivityForAttendance('late')).toBe(true);
+    it('returns true only for present', () => {
+      expect(shouldTouchActivityForAttendance('present')).toBe(true);
       expect(shouldTouchActivityForAttendance('absent')).toBe(false);
-      expect(shouldTouchActivityForAttendance(false)).toBe(false);
       expect(shouldTouchActivityForAttendance(undefined)).toBe(false);
     });
   });
