@@ -48,12 +48,10 @@ jobs:
         env:
           EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
           ASC_API_KEY_P8_B64: ${{ secrets.ASC_API_KEY_P8_B64 }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           set -euo pipefail
           missing=()
-          for var in EXPO_TOKEN EAS_CREDENTIALS_B64 ASC_API_KEY_P8_B64 ASC_KEY_ID ASC_ISSUER_ID; do
+          for var in EXPO_TOKEN EAS_CREDENTIALS_B64 ASC_API_KEY_P8_B64; do
             if [ -z "${!var:-}" ]; then missing+=("$var"); fi
           done
           if [ ${#missing[@]} -ne 0 ]; then
@@ -62,6 +60,22 @@ jobs:
             exit 1
           fi
           echo "All iOS release secrets present."
+
+      # ascAppId / appleTeamId / ascApiKeyId / ascApiKeyIssuerId live in
+      # apps/mobile/eas.json, not in secrets: `eas submit` has no CLI flag for
+      # any of them, and the Key ID and Issuer ID are identifiers rather than
+      # credentials (Apple treats only the .p8 as secret). Fail here, early and
+      # legibly, instead of at the end of a 20-minute macOS build.
+      - name: Verify the App Store Connect submit config is filled in
+        working-directory: .
+        run: |
+          set -euo pipefail
+          if grep -n 'REPLACE_WITH_' apps/mobile/eas.json; then
+            echo "::error::apps/mobile/eas.json still contains placeholders (listed above)."
+            echo "::error::Fill in the submit.production.ios block. See RELEASING.md section B."
+            exit 1
+          fi
+          echo "App Store Connect submit config looks filled in."
 
       - name: Install dependencies
         run: npm ci

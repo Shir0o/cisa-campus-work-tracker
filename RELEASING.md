@@ -59,7 +59,7 @@ the console link is not itself the credential.
 2. Play App Signing is enrolled, so CI signs with the **upload key** and Google
    re-signs for distribution.
 
-### B. App Store Connect (not wired up yet)
+### B. App Store Connect
 
 1. Confirm the app record exists for `com.cisa.campus`, or let EAS create it
    (`eas submit` supports `--auto-testflight-setup`).
@@ -68,9 +68,18 @@ the console link is not itself the credential.
    create a **Team Key** with the **App Manager** role.
    - Download the `.p8` — you cannot download it twice.
    - Record the **Key ID** and the **Issuer ID**.
-4. Put all five values into `apps/mobile/eas.json` under `submit.production.ios`,
-   replacing the `REPLACE_WITH_*` placeholders. All three `ascApiKey*` fields
-   must be present together or `eas submit` throws.
+4. Fill the **four** `REPLACE_WITH_*` placeholders in the
+   `submit.production.ios` block of `apps/mobile/eas.json`:
+   `ascAppId`, `appleTeamId`, `ascApiKeyId`, `ascApiKeyIssuerId`.
+   (`ascApiKeyPath` is already the literal `./asc-api-key.p8`, which the workflow
+   materialises from the `ASC_API_KEY_P8_B64` secret.)
+
+   Ids, not secrets: `ascApiKeyId` and `ascApiKeyIssuerId` are identifiers, and
+   `eas submit` has no CLI flag for them, so they have to live in the committed
+   config. Only the `.p8` is a secret.
+
+   All three `ascApiKey*` fields must be present **together** or `eas submit`
+   throws; partial config is an error, not a fallback.
 
 > `~/.app-store/auth/*` and `itunes_service_key.txt` are iTunes Transporter /
 > `altool` credentials. They are **not** an App Store Connect API key and cannot
@@ -106,8 +115,13 @@ credentials* action generates them first and will ask for your Apple login.
 | `EAS_CREDENTIALS_B64` | `npx tsx scripts/pack-eas-credentials.ts` — a gzipped tar of `credentials.json` **and the keystore, `.p12` and `.mobileprovision` it points at**, base64'd. |
 | `PLAY_SERVICE_ACCOUNT_JSON_B64` | `base64 -i <service-account>.json` |
 | `ASC_API_KEY_P8_B64` | `base64 -i AuthKey_XXXX.p8` |
-| `ASC_KEY_ID` | App Store Connect API Key ID |
-| `ASC_ISSUER_ID` | App Store Connect Issuer ID |
+
+Only the `.p8` is a secret. The **Key ID** and **Issuer ID** are identifiers,
+not credentials - Apple treats only the key itself as secret - and `eas submit`
+has no CLI flag for them, so they belong in `apps/mobile/eas.json` with
+`ascAppId` and `appleTeamId` (see section B). Putting them in secrets would
+leave the committed config full of placeholders and CI would fail at the last
+step of a macOS build.
 
 `scripts/pack-eas-credentials.ts` prints base64 with no line wrapping and no
 trailing newline, and refuses to pack if any path `credentials.json` names is
