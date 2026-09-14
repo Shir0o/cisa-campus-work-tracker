@@ -1692,7 +1692,7 @@
     "filter_new": "Nuevos",
     "filter_all": "Todos",
     "filter_by_state": "Mostrar los nuevos o todos",
-    "mark_all_seen": "Marcar todo como visto",
+    "mark_all_reviewed": "Marcar todo como revisado",
     "group_new_people": "Personas nuevas",
     "group_everything_else": "Todo lo demás",
     "verb_reviewed": "Revisado",
@@ -1745,7 +1745,13 @@
     "show_all": "Mostrar todo",
     "open_their_page": "Abrir su página",
     "recent_activity_note": "Actividad reciente del equipo: la misma ventana que siempre cubrió el feed de Mi Día.",
-    "unseen_team_activity": "cosas que aún no viste",
+    "snack_all_reviewed": "Marcaste {n} como revisado.",
+    "conversation_n": "Conversación · {n}",
+    "which_thread": "Qué hilo estás leyendo",
+    "audience_conversation": "Todos los vinculados a {name} lo ven.",
+    "audience_full_timers": "Solo Full-timers.",
+    "just_posted": "Recién publicado",
+    "to_work_through_label": "por trabajar",
     "see_around": "Ver"
   },
   "thread": {
@@ -1757,6 +1763,9 @@
     "placeholder_comment": "Escribe algo…",
     "placeholder_question": "¿Qué quieres saber? Todos los vinculados a esta persona lo verán.",
     "placeholder_follow_up": "¿Qué hay que hacer: enviarle un mensaje, un correo? Di lo suficiente para que cualquiera pueda encargarse.",
+    "empty_interaction": "Aún no hay comentarios en esta conversación.",
+    "empty_full_timers": "Aún no hay nada — empieza aquí la conversación del equipo.",
+    "empty_conversation": "Aún no hay nada — deja el primer comentario abajo.",
     "placeholder_full_timers": "Añade al hilo de tiempo completo…"
   },
   "study": {

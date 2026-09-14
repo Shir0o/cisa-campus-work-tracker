@@ -141,6 +141,29 @@ describe("the worklist card, through On you (#813, #943)", () => {
     expect(screen.getByText("1 to work through")).toBeInTheDocument();
   });
 
+  // ── The fence "On you" is behind (#1012) ───────────────────────────────
+  // "Around the team" merged Seen and Completed into a single Reviewed and
+  // grew a conversation strip on its cards. On you is the one place the two
+  // axes still mean different things, so none of that may leak into it. The
+  // assertions above already pin both axes, all four verbs and the `null`
+  // case; these name the boundary outright.
+  it("keeps the swap-in composer rather than the conversation strip", () => {
+    card();
+    expect(screen.queryByRole("tablist")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Write back/ }));
+    // No tabs, no second audience: a card here can only ever write to the
+    // Conversation everyone tied to the person reads.
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("tab", { name: /Full-timers/ })).toBeNull();
+  });
+
+  it("keeps the button reading Write back, with no count on it", () => {
+    card();
+    expect(screen.getByRole("button", { name: /Write back/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Conversation ·/ })).toBeNull();
+  });
+
   it("clears the accent dot as soon as the person is opened", () => {
     const { container } = card({ onOpenContact: vi.fn() });
     const dots = () => container.querySelectorAll(".bg-accent.rounded-full");

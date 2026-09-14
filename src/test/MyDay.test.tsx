@@ -1075,10 +1075,15 @@ describe('MyDay', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
 
     // The pointer card is a link to /around whose accessible name carries the
-    // unseen count.
+    // count — the number still to work through, which is what the page's own
+    // pill shows, so the two can never disagree. It is labelled for what it
+    // counts: "unseen" described a number that no longer falls when you read
+    // (#1012).
     const pointer = screen.getByRole('link', { name: /Around the team/ });
     expect(pointer).toHaveAttribute('href', '/around');
     expect(pointer.textContent).toContain('2');
+    expect(pointer.textContent).toContain('to work through');
+    expect(pointer.textContent).not.toMatch(/haven.t looked at/i);
     // No "Around the team" region on My Day — the team column is gone.
     expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
   });

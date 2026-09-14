@@ -348,8 +348,8 @@ describe('Around the team page (#943)', () => {
     expect(screen.getByText(/Recent team activity/)).toBeInTheDocument();
   });
 
-  // ── Seen and completed survive the move (#943) ───────────────────────────
-  it('keeps a person in the box after you open them from the New view — seen dims, it does not clear', () => {
+  // ── One state survives the move (#943, #1012) ────────────────────────────
+  it('keeps a person in the box after you open them, and records nothing for the glance', () => {
     const onOpenContact = vi.fn();
     render(
       <MemoryRouter initialEntries={['/around']}>
@@ -365,7 +365,9 @@ describe('Around the team page (#943)', () => {
       expect.objectContaining({ id: 'kofi' }),
       { tab: undefined },
     );
-    expect(InboxState.isSeen('u1', 'att:contact:kofi')).toBe(true);
+    // A glance is not the same as having dealt with someone: opening the
+    // person leaves the card exactly as it was (#1012).
+    expect(InboxState.isSeen('u1', 'att:contact:kofi')).toBe(false);
     expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(false);
 
     // The box is an inbox: the person stays in view, still to work through.
@@ -373,7 +375,10 @@ describe('Around the team page (#943)', () => {
     expect(screen.getByText('1 to work through')).toBeInTheDocument();
   });
 
-  it('keeps a seen person in New on a fresh visit - seen dims, it does not clear', () => {
+  it('ignores an old seen stamp — it goes inert rather than counting as worked through', () => {
+    // Stamps written before #1012 are abandoned, never migrated: promoting a
+    // glance to "worked through" would claim on a teammate's behalf that they
+    // had dealt with people they only scrolled past.
     InboxState.markSeen('u1', 'att:contact:kofi');
     render(
       <MemoryRouter initialEntries={['/around?new=1']}>
@@ -382,7 +387,7 @@ describe('Around the team page (#943)', () => {
     );
 
     expect(screen.getByText('Kofi Mensah')).toBeInTheDocument();
-    expect(screen.getByText(/opened, not finished/i)).toBeInTheDocument();
+    expect(screen.queryByText(/opened, not finished/i)).not.toBeInTheDocument();
     expect(screen.getByText('1 to work through')).toBeInTheDocument();
   });
 
@@ -622,5 +627,434 @@ describe('Around the team — the signals that were never wired (#965, #966)', (
 
     await screen.findByText('Posted');
     expect(screen.queryByRole('button', { name: /undo/i })).not.toBeInTheDocument();
+  });
+});
+
+
+// ── The conversation, in place, and one worked-through state (#1012) ────────
+// The page told a Full-timer *that* something happened and never *what was
+// said*: it subscribed to every thread in the product and rendered none of
+// them. A card now reads the person's conversation on the card itself — both
+// staff threads, as tabs, with the composer at their foot — so a posted
+// message appears directly above where it was typed, and that appearance is
+// the confirmation #966 asked for. Alongside it, Seen and Completed merge into
+// a single Reviewed, set by a deliberate act and by nothing else.
+describe('Around the team — the conversation in place, and one state (#1012)', () => {
+  const now = new Date().toISOString();
+
+  const msg = (over: Partial<ThreadMessageWithContact>): ThreadMessageWithContact =>
+    ({
+      id: 'm1',
+      contactId: 'kofi',
+      interactionId: null,
+      parentId: null,
+      scope: null,
+      from: 'mei',
+      fromName: 'Mei Tanaka',
+      kind: 'comment',
+      body: 'She said she would come Thursday.',
+      at: now,
+      reactions: [],
+      ...over,
+    }) as ThreadMessageWithContact;
+
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+    __resetInboxState();
+    h.addThreadMessage.mockClear();
+    h.layout = undefined;
+    applyTeams([
+      { uid: 'mei', team: 'yp', displayName: 'Mei Tanaka' },
+      { uid: 'grace', team: 'campus', displayName: 'Grace Lim' },
+    ]);
+  });
+
+  function renderOne(threads: ThreadMessageWithContact[] = [], over: Partial<Contact> = {}) {
+    return render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[contact(over)]}
+          interactions={[]}
+          threads={threads}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+  }
+
+  // The action row's toggle, not the composer's "Comment" kind chip: the
+  // toggle is the control that says, in ARIA, whether the strip is open.
+  const stripToggle = (scope?: HTMLElement) =>
+    (scope ? within(scope) : screen)
+      .getAllByRole('button', { name: /^(Comment|Conversation · \d+)$/ })
+      .find((b) => b.hasAttribute('aria-expanded'))!;
+  const openStrip = (scope?: HTMLElement) => fireEvent.click(stripToggle(scope));
+
+  // ── The toggle is the control that was already there ─────────────────────
+  it('counts the conversation on the button that used to just say Comment', () => {
+    renderOne([msg({}), msg({ id: 'm2', body: 'I can drive.' })]);
+    expect(screen.getByRole('button', { name: /Conversation · 2/ })).toBeInTheDocument();
+  });
+
+  it('reads Comment with no number when nothing has been written — a zero is never a count', () => {
+    renderOne([]);
+    expect(screen.getByRole('button', { name: /^Comment$/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Conversation ·/ })).not.toBeInTheDocument();
+  });
+
+  it('opens the strip on that button and closes it again', () => {
+    renderOne([msg({})]);
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+
+    openStrip();
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByText('She said she would come Thursday.')).toBeInTheDocument();
+
+    openStrip();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it('adds no new row of buttons — the action row keeps the one control', () => {
+    renderOne([msg({})]);
+    openStrip();
+    expect(screen.queryByRole('button', { name: /Write back/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Conversation · 1/ })).toHaveLength(1);
+  });
+
+  // ── Both threads, as tabs, in the contact page's order ───────────────────
+  it('carries both staff threads as tabs, with Conversation open first', () => {
+    renderOne([msg({}), msg({ id: 'm2', scope: 'team', body: 'Worth pairing Mei with him.' })]);
+    openStrip();
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((el) => el.textContent?.replace(/\d+$/, '').trim())).toEqual([
+      'Conversation',
+      'Full-timers',
+    ]);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('counts each tab separately', () => {
+    renderOne([
+      msg({}),
+      msg({ id: 'm2', body: 'I can drive.' }),
+      msg({ id: 'm3', scope: 'team', body: 'Worth pairing Mei with him.' }),
+    ]);
+    openStrip();
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0].textContent).toContain('2');
+    expect(tabs[1].textContent).toContain('1');
+  });
+
+  it('shows the Full-timers thread from the card, and only under its own tab', () => {
+    renderOne([msg({}), msg({ id: 'm2', scope: 'team', body: 'Worth pairing Mei with him.' })]);
+    openStrip();
+
+    expect(screen.getByText('She said she would come Thursday.')).toBeInTheDocument();
+    expect(screen.queryByText('Worth pairing Mei with him.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
+    expect(screen.getByText('Worth pairing Mei with him.')).toBeInTheDocument();
+    expect(screen.queryByText('She said she would come Thursday.')).not.toBeInTheDocument();
+  });
+
+  it('says whose eyes a message will reach before Post is pressed', () => {
+    renderOne([msg({})]);
+    openStrip();
+    expect(screen.getByText('Everyone tied to Kofi sees this.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
+    expect(screen.getByText('Full-timers only.')).toBeInTheDocument();
+  });
+
+  it('opens an empty strip with the composer ready when nothing has been written', () => {
+    renderOne([]);
+    openStrip();
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/write something/i)).toBeInTheDocument();
+  });
+
+  // ── Posting, and seeing it land ──────────────────────────────────────────
+  it('shows a posted message in the strip at once, above the box it was typed in', async () => {
+    renderOne([]);
+    openStrip();
+
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'I have the chapter on this.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+
+    expect(h.addThreadMessage).toHaveBeenCalledTimes(1);
+    const posted = await screen.findByText('I have the chapter on this.');
+    const composer = screen.getByPlaceholderText(/write something/i);
+    // The evidence is where the writer is already looking.
+    expect(posted.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('leaves the composer open and empty, and ticks the count up', async () => {
+    renderOne([]);
+    openStrip();
+
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Dropping it in the shared folder.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+
+    await screen.findByText('Dropping it in the shared folder.');
+    expect(screen.getByPlaceholderText(/write something/i)).toHaveValue('');
+    expect(screen.getByRole('button', { name: /Conversation · 1/ })).toBeInTheDocument();
+  });
+
+  it('marks the just-posted message as new', async () => {
+    renderOne([]);
+    openStrip();
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Texting him now.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+
+    await screen.findByText('Texting him now.');
+    expect(screen.getByText('Just posted')).toBeInTheDocument();
+  });
+
+  it('keeps the just-posted marker when the real message lands, not only until then', async () => {
+    // The marker is keyed on the id. The optimistic twin takes on the real id
+    // when the write returns, so the arriving document replaces it rather than
+    // doubling it — and the marker survives the round trip instead of blinking
+    // out on it.
+    h.addThreadMessage.mockResolvedValueOnce('real-id-1');
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={staffNameMap} />
+      </MemoryRouter>,
+    );
+    openStrip();
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Texting him now.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+    await screen.findByText('Texting him now.');
+
+    // The subscription now delivers the real document.
+    rerender(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[contact({})]}
+          interactions={[]}
+          threads={[msg({ id: 'real-id-1', from: 'u1', fromName: 'Ruth', body: 'Texting him now.' })]}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+
+    // Once, not twice — and still marked.
+    expect(screen.getAllByText('Texting him now.')).toHaveLength(1);
+    expect(screen.getByText('Just posted')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Conversation · 1/ })).toBeInTheDocument();
+  });
+
+  it('shows both of two identical messages, rather than swallowing the second', async () => {
+    // Matching on the words alone would confuse one message for the other.
+    h.addThreadMessage.mockResolvedValueOnce('real-a').mockResolvedValueOnce('real-b');
+    renderOne([]);
+    openStrip();
+
+    for (const _ of [1, 2]) {
+      fireEvent.change(screen.getByPlaceholderText(/write something/i), { target: { value: 'ok' } });
+      fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+      await screen.findAllByText('ok');
+    }
+
+    expect(screen.getAllByText('ok')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Conversation · 2/ })).toBeInTheDocument();
+  });
+
+  it('keeps an encouragement summarised rather than padding the strip with hearts', () => {
+    renderOne([
+      msg({}),
+      msg({
+        id: 'heart',
+        kind: 'encouragement',
+        body: 'Praying for you both! Let me know if you need anything.',
+      }),
+    ]);
+
+    // The heart is not a contribution to the conversation, so it is neither
+    // listed nor counted: four hearts must not read as four things said.
+    expect(screen.getByRole('button', { name: /Conversation · 1/ })).toBeInTheDocument();
+    openStrip();
+    expect(screen.getByText('She said she would come Thursday.')).toBeInTheDocument();
+    expect(screen.queryByText(/Praying for you both/)).not.toBeInTheDocument();
+  });
+
+  it('sends the message to whichever tab is open', async () => {
+    renderOne([]);
+    openStrip();
+    fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
+
+    fireEvent.change(screen.getByPlaceholderText(/full-timers thread/i), {
+      target: { value: 'Let us not pair him with a first-termer.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+
+    expect(h.addThreadMessage).toHaveBeenCalledWith(
+      'kofi',
+      expect.objectContaining({ scope: 'team', body: 'Let us not pair him with a first-termer.' }),
+      expect.anything(),
+    );
+  });
+
+  it('does not re-date or re-sort a card when a comment is posted', async () => {
+    const older = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[
+            contact({ id: 'aisha', name: 'Aisha Rahman', createdBy: 'grace', owner: 'grace' }),
+            contact({ id: 'old', name: 'Old Person', createdAt: older }),
+          ]}
+          interactions={[]}
+          threads={[]}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+
+    const namesNow = () =>
+      screen.getAllByRole('heading').map((el) => el.textContent).concat(
+        screen.getAllByRole('button', { name: /Aisha Rahman|Old Person/ }).map((el) => el.textContent),
+      );
+    const before = namesNow();
+
+    // Comment on the older card, whose day heading is not Today.
+    const oldCard = screen.getByText('Old Person').closest('div.rounded-2xl') as HTMLElement;
+    openStrip(oldCard);
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Still worth a text.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+    await screen.findByText('Still worth a text.');
+
+    // Day headings mean when the TEAM touched this person, so the card has not
+    // moved and the page has not reshuffled under the reader.
+    expect(namesNow()).toEqual(before);
+  });
+
+  // ── One card open at a time, and the clamp ───────────────────────────────
+  it('closes the first card when a second one opens', () => {
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={contacts} interactions={[]} threads={[]} staffNameMap={staffNameMap} />
+      </MemoryRouter>,
+    );
+
+    const kofiCard = screen.getByText('Kofi Mensah').closest('div.rounded-2xl') as HTMLElement;
+    const aishaCard = screen.getByText('Aisha Rahman').closest('div.rounded-2xl') as HTMLElement;
+
+    openStrip(kofiCard);
+    expect(within(kofiCard).getByRole('tablist')).toBeInTheDocument();
+
+    openStrip(aishaCard);
+    expect(within(aishaCard).getByRole('tablist')).toBeInTheDocument();
+    expect(within(kofiCard).queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it('releases the two-line clamp on the interaction body when the card opens, and keeps it when collapsed', () => {
+    // The clamp has no accessible signal — a class is the only honest way to
+    // observe it. It is the reason a long note used to cost the reader their
+    // filters (#965), so it is worth pinning.
+    const long = 'He talked for a long time about his family back home, and about why he stopped going.';
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[contact({ notes: long })]}
+          interactions={[]}
+          threads={[]}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+
+    const body = () => screen.getByText(long);
+    expect(body().className).toContain('line-clamp-2');
+
+    openStrip();
+    expect(body().className).not.toContain('line-clamp-2');
+  });
+
+  // ── One state: Reviewed ──────────────────────────────────────────────────
+  it('shows no accent dot — under one state it would mark every card', () => {
+    const { container } = renderOne([]);
+    expect(container.querySelector('.bg-accent.rounded-full')).toBeNull();
+  });
+
+  it('leaves the card un-reviewed when a comment is posted', async () => {
+    renderOne([]);
+    openStrip();
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'On it.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+    await screen.findByText('On it.');
+
+    // The card must not go quiet as a result of the reader's own action.
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(false);
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+  });
+
+  it('marks a card reviewed only from the Reviewed button, and drops its action row', () => {
+    renderOne([msg({})]);
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Reviewed/ }));
+
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(true);
+    expect(screen.queryByText('1 to work through')).not.toBeInTheDocument();
+    // A dimmed card reads as a result: it says so, and stops asking anything.
+    expect(screen.getByText('Reviewed')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Conversation · 1/ })).not.toBeInTheDocument();
+  });
+
+  // ── Mark all reviewed ────────────────────────────────────────────────────
+  it('marks all reviewed within the current filter and nothing outside it', () => {
+    render(
+      <MemoryRouter initialEntries={['/around?team=yp']}>
+        <AroundTheTeam contacts={contacts} interactions={[]} threads={[]} staffNameMap={staffNameMap} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all reviewed' }));
+
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(true);
+    // Working inside one team never silently clears another.
+    expect(InboxState.isCompleted('u1', 'att:contact:aisha')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }));
+    expect(screen.getByText('1 to work through')).toBeInTheDocument();
+  });
+
+  it('undoes Mark all reviewed', () => {
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={contacts} interactions={[]} threads={[]} staffNameMap={staffNameMap} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all reviewed' }));
+    expect(screen.queryByText(/to work through/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(false);
+    expect(screen.getByText('2 to work through')).toBeInTheDocument();
+  });
+
+  it('offers no Mark all reviewed when nothing is left to work through', () => {
+    InboxState.markCompleted('u1', 'att:contact:kofi');
+    renderOne([]);
+    expect(screen.queryByRole('button', { name: 'Mark all reviewed' })).not.toBeInTheDocument();
   });
 });

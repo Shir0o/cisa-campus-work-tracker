@@ -11,20 +11,25 @@ import {
   attentionStacksFor,
   partitionAttentionStacks,
   feedVisibleThreads,
-  unseenTeamCount,
+  toWorkThroughCount,
   type AttentionStack,
 } from "../../lib/attention";
 import { useLanguage } from "../LanguageProvider";
 import { InboxState } from "../../lib/inboxState";
 import { subscribeAllThreads, type ThreadMessageWithContact } from "../../lib/threads";
 
-// ── The pointer card (#943) ─────────────────────────────────────────────────
-// A small card beside "On you" on a Full-timer's My Day: a count of team
-// activity the reader has not looked at, and a door to /around. It is a door
-// and nothing else — team rows are never read here, so there is exactly one
-// place with one behaviour. The count is the existing per-stack seen set, so
-// it changes when the reader acts and can never disagree with the dots on the
-// page. Trainees get no pointer card and no team destination.
+// ── The pointer card (#943, #1012) ──────────────────────────────────────────
+// A small card beside "On you" on a Full-timer's My Day: the count of team
+// activity still to work through, and a door to /around. It is a door and
+// nothing else — team rows are never read here, so there is exactly one place
+// with one behaviour. Trainees get no pointer card and no team destination.
+//
+// The count is the page's own number: the team stacks not yet Reviewed, the
+// same thing the pill on /around shows, so the two cannot disagree. It counted
+// *unseen* until #1012, a different axis from the one the page displayed —
+// ADR 0015 promised the pointer could never disagree with the page, and it
+// disagreed with the pill. It now falls only when the reader reviews
+// something, so it measures work remaining rather than pages read.
 
 export default function PointerCard({
   contacts = [],
@@ -47,9 +52,9 @@ export default function PointerCard({
   const [liveInteractions, setLiveInteractions] = useState<Interaction[]>([]);
   const [liveThreads, setLiveThreads] = useState<ThreadMessageWithContact[]>([]);
 
-  // Seen changes under the memo below, not in the props, so the derivation has
-  // to be told. Without the tick in its dependency list, the count would keep
-  // the seen flags it was built with and outlive the click that cleared them.
+  // Reviewed changes under the memo below, not in the props, so the derivation
+  // has to be told. Without the tick in its dependency list, the count would
+  // keep the flags it was built with and outlive the click that changed them.
   const [inboxTick, setInboxTick] = useState(0);
   useEffect(() => InboxState.subscribe(() => setInboxTick((n) => n + 1)), []);
 
@@ -115,11 +120,11 @@ export default function PointerCard({
     [allStacks, contacts, uid, role, personalContactIds],
   );
 
-  // The number is a pure function of the partitioned team stacks and the seen
-  // predicate — the same per-stack seen set the dots read, so the card and the
-  // page can never disagree.
-  const unseen = useMemo(
-    () => unseenTeamCount(aroundTeam, (s: AttentionStack) => InboxState.isSeen(uid, s.id)),
+  // The number is a pure function of the partitioned team stacks and the
+  // reviewed predicate — the same per-stack completed set the page's pill
+  // reads, so the card and the page can never disagree.
+  const toWorkThrough = useMemo(
+    () => toWorkThroughCount(aroundTeam, (s: AttentionStack) => InboxState.isCompleted(uid, s.id)),
     [aroundTeam, uid, inboxTick],
   );
 
@@ -146,10 +151,10 @@ export default function PointerCard({
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-3xl font-semibold text-on-surface tabular-nums leading-none">
-            {unseen}
+            {toWorkThrough}
           </div>
           <div className="text-xs text-on-surface-variant mt-1.5">
-            {t("whatsNew.unseen_team_activity")}
+            {t("whatsNew.to_work_through_label")}
           </div>
         </div>
         <span className="inline-flex items-center gap-1 text-xs font-medium text-accent group-hover:underline">

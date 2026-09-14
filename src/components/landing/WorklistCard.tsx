@@ -35,12 +35,16 @@ import { COMPOSE_KINDS, ComposeKindPicker, type ComposeKind } from "../ComposeKi
 import {
   addThreadMessage,
   closeFollowUpAsk,
+  countFor,
   daysOpen,
   reopenFollowUpAsk,
+  type ThreadMessage,
 } from "../../lib/threads";
+import { CardConversation, useCardThread } from "./CardConversation";
+import type { TeamMemberLike } from "../Thread";
 
-// ── The worklist card (#813) ────────────────────────────────────────────────
-// Two independent facts per card:
+// ── The worklist card (#813, #1012) ─────────────────────────────────────────
+// Two independent facts per card, on "On you":
 //
 //   seen      — you opened the person. The accent dot, and nothing else.
 //   completed — you are finished with this. The header count is everything NOT
@@ -51,9 +55,22 @@ import {
 // the number fall and an inbox built on it would have lied. Both now live per
 // person on the server (`lib/inboxState.ts`), so a laptop and a phone agree.
 //
-// Drawn in docs/design/followup-reach/Inbox.dc.html — including the verb table
-// below, which exists because "I followed up" on a card about a note claims you
-// texted the student, which you did not.
+// "Around the team" keeps only the deliberate half. There, one state —
+// **Reviewed** — is set by the card's own button and by "Mark all reviewed",
+// and by nothing else: not by opening the person, not by writing to them. That
+// is the `reviewedOnly` prop, and it is a prop rather than a rule inside this
+// component precisely so that "On you" keeps both axes, all four verbs, the
+// no-button case and the dot (ADR 0022 decision 8; ADR 0015 decision 5 warned
+// against one component carrying two pages' worth of behaviour).
+//
+// Drawn in docs/design/followup-reach/Inbox.dc.html and
+// docs/design/around-conversation/ — including the verb table below, which
+// exists because "I followed up" on a card about a note claims you texted the
+// student, which you did not.
+
+/** A stable empty list, so a card with no messages does not rebuild its view
+ *  of the conversation on every render. */
+const EMPTY_MESSAGES: ThreadMessage[] = [];
 
 const IBX_ENCOURAGE: Record<string, string> = {
   "🙏": "Praying for you both! Let me know if you need anything.",
@@ -242,6 +259,11 @@ export function WorklistCard({
   onToast,
   mobile,
   showReach,
+  reviewedOnly,
+  threads,
+  teamMembers,
+  conversationOpen,
+  onToggleConversation,
 }: {
   stack: AttentionStack;
   contact?: Contact;
@@ -254,11 +276,38 @@ export function WorklistCard({
   onToast?: (msg: string) => void;
   mobile?: boolean;
   showReach?: boolean;
+  /** One state on this card — Reviewed — instead of two (#1012). No accent
+   *  dot, no seen-based dimming, and neither opening the person nor writing to
+   *  them records anything: a glance is not the same as having dealt with
+   *  someone. "Around the team" passes this; "On you" never does. */
+  reviewedOnly?: boolean;
+  /** Every message on this contact, from the page's own subscription. Given
+   *  together with `onToggleConversation`, the action row's Comment button
+   *  becomes `Conversation · N` and toggles the strip (#1012). */
+  threads?: ThreadMessage[];
+  teamMembers?: TeamMemberLike[];
+  /** The page owns which card is expanded, so opening a second closes the
+   *  first — a top-aligned three-up grid strands its neighbours otherwise. */
+  conversationOpen?: boolean;
+  onToggleConversation?: () => void;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   const [reactOpen, setReactOpen] = useState(false);
+
+  // The strip replaces the swap-in composer when the page hands down both the
+  // messages to read and the ownership of which card is open.
+  const hasStrip = !!(onToggleConversation && stack.contactId && contact);
+  const stripOpen = hasStrip && !!conversationOpen && !completed;
+  // The card's own view of the conversation, so the count on the toggle and
+  // the messages in the strip are one fact rather than two.
+  const { messages, justPosted, notePosted } = useCardThread(threads ?? EMPTY_MESSAGES);
+  const conversationCount = countFor(messages, null, null);
+  // Under one state every un-reviewed card would carry a dot, so a dot would
+  // mark nothing. The pill carries the count; the dimmed treatment marks the
+  // reviewed ones.
+  const showDot = !reviewedOnly && !stack.seen && !completed;
 
   const newest = stack.items[0];
   const verb = worklistVerbFor(stack);
@@ -269,7 +318,7 @@ export function WorklistCard({
   const phrases = stack.items.slice(0, 3).map((it) => attentionPhrase(it, staffNameMap));
   const moreCount = stack.items.length - phrases.length;
   if (hasOpenAsk) phrases.push(t("whatsNew.nobody_yet"));
-  else if (stack.seen && !completed) phrases.push(t("whatsNew.opened_not_finished"));
+  else if (!reviewedOnly && stack.seen && !completed) phrases.push(t("whatsNew.opened_not_finished"));
 
   const latestText =
     newest.type === "thread"
@@ -280,7 +329,10 @@ export function WorklistCard({
 
   const openThem = () => {
     // Seen is set here and only here — opening the person is the whole of it.
-    InboxState.markSeen(uid, stack.id);
+    // Except where the page keeps one state: there, opening is a glance, and
+    // recording a glance as having dealt with someone would make the count a
+    // lie (#1012).
+    if (!reviewedOnly) InboxState.markSeen(uid, stack.id);
     if (stack.contactId && onOpenContact) onOpenContact(stack.contactId);
   };
 
@@ -308,7 +360,7 @@ export function WorklistCard({
         "rounded-2xl border p-4 transition-all duration-200",
         completed
           ? "bg-surface/60 border-outline-variant/40 opacity-60"
-          : stack.seen
+          : !reviewedOnly && stack.seen
             ? "bg-surface/60 border-outline-variant/40"
             : "bg-surface border-outline-variant shadow-xs",
         hasOpenAsk && !completed && "border-l-2 border-l-warning",
@@ -327,7 +379,7 @@ export function WorklistCard({
               >
                 {contact?.name || (stack.contactId ? t("whatsNew.a_contact") : t("whatsNew.activity"))}
               </button>
-              {!stack.seen && !completed && (
+              {showDot && (
                 <span className="w-2 h-2 rounded-full bg-accent shrink-0 inline-block" />
               )}
               <TalkedChip stack={stack} label={t("whatsNew.talked")} />
@@ -352,9 +404,17 @@ export function WorklistCard({
           )}
 
           {latestText && (
+            /* The two-line clamp exists so collapsed cards tile evenly in
+             * the three-up grid. An open card has left that constraint, so
+             * the same gesture that reveals the strip unclamps the body —
+             * which is the long interaction note that used to cost the
+             * reader their filters (#965). */
             <Translate
               as="p"
-              className="text-xs text-on-surface-variant/90 mt-1 line-clamp-2 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2"
+              className={cn(
+                "text-xs text-on-surface-variant/90 mt-1 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2",
+                !stripOpen && "line-clamp-2",
+              )}
               text={latestText}
             />
           )}
@@ -393,16 +453,27 @@ export function WorklistCard({
                 )}
 
                 {stack.contactId && contact && (
+                  /* The same control, carrying a count and toggling the strip
+                     rather than swapping itself for a composer. Nothing is
+                     added to the action row, and with no messages it still
+                     reads "Comment" — a zero is never displayed as a count. */
                   <button
                     type="button"
-                    onClick={() => setComposing((v) => !v)}
+                    aria-expanded={hasStrip ? stripOpen : undefined}
+                    onClick={() => (hasStrip ? onToggleConversation!() : setComposing((v) => !v))}
                     className={cn(
                       "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    {wantsAReply(stack) ? t("whatsNew.write_back") : t("whatsNew.comment")}
+                    {hasStrip
+                      ? conversationCount > 0
+                        ? t("whatsNew.conversation_n").replace("{n}", String(conversationCount))
+                        : t("whatsNew.comment")
+                      : wantsAReply(stack)
+                        ? t("whatsNew.write_back")
+                        : t("whatsNew.comment")}
                   </button>
                 )}
                 {showReach && contact && contact.phone && (
@@ -514,7 +585,23 @@ export function WorklistCard({
         </div>
       </div>
 
-      {composing && contact && !completed && (
+      {stripOpen && contact && (
+        <CardConversation
+          contact={contact}
+          uid={uid}
+          messages={messages}
+          justPosted={justPosted}
+          teamMembers={teamMembers}
+          onPosted={(m, landed) => {
+            notePosted(m, landed);
+            // The message appearing is the confirmation; the toast is a
+            // second, quieter one (ADR 0022).
+            onToast?.(t("whatsNew.posted"));
+          }}
+        />
+      )}
+
+      {!hasStrip && composing && contact && !completed && (
         <CardComposer
           contact={contact}
           uid={uid}
@@ -523,7 +610,9 @@ export function WorklistCard({
           onCancel={() => setComposing(false)}
           onPosted={() => {
             setComposing(false);
-            InboxState.markSeen(uid, stack.id);
+            // Writing to someone is not the same as being finished with them,
+            // so the page that keeps one state records nothing here (#1012).
+            if (!reviewedOnly) InboxState.markSeen(uid, stack.id);
             onToast?.(t("whatsNew.posted"));
           }}
         />

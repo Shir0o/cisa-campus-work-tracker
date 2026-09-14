@@ -26,19 +26,31 @@ import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
 import { closeFollowUpAsk, reopenFollowUpAsk, subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
 import { WorklistCard, VERB_SNACK } from "../components/landing/WorklistCard";
+import type { TeamMemberLike } from "../components/Thread";
 import PageContainer from "../components/layout/PageContainer";
 import { currentHref } from "../lib/navTrail";
+import { useMediaQuery } from "../lib/useMediaQuery";
 
-// ── "Around the team" as its own destination (#943) ─────────────────────────
+// ── "Around the team" as its own destination (#943, #1012) ──────────────────
 // The team's activity — everything the team has been doing on people you
 // aren't carrying — lives at /around, Full-timer-only. It keeps the team and
-// teammate filters, the new-only filter, per-stack seen and completed state,
-// and the reach affordance, and finally gets the width to show them properly,
-// paged by day.
+// teammate filters, the new-only filter, the reach affordance, and per-stack
+// **Reviewed** state, and finally gets the width to show them properly, paged
+// by day.
 //
 // Filters are URL state: read on load, written on change, never persisted per
 // user. The page reaches exactly as far as the existing feed subscription —
 // the same live query, the same document limit — and says so plainly.
+//
+// Two things changed in #1012. A card reads the person's conversation in
+// place, from the thread subscription this page already holds — so reading
+// what a teammate wrote, and writing back, no longer costs the reader their
+// filters, and a posted message has visible evidence: itself. And the page
+// keeps **one** state rather than two. Seen and Completed merge into Reviewed,
+// set by the card's button and by "Mark all reviewed" and by nothing else.
+// Existing `seen` stamps are abandoned rather than migrated: promoting a
+// glance to "worked through" would claim on a teammate's behalf that they had
+// dealt with people they only scrolled past (ADR 0022).
 
 /** The day a stack belongs to, as a real heading label. */
 function dayLabel(iso: string): string {
@@ -81,6 +93,10 @@ export default function AroundTheTeam({
   const navigate = useNavigate();
   const location = useLocation();
   const layout = useOptionalLayout();
+  // The page is one page at every width, so on a phone the cards use the same
+  // comfortable targets My Day's do — the strip has to be usable one-handed
+  // (#1012 story 40).
+  const compactWidth = useMediaQuery("(max-width: 768px)");
 
   // ── Filters are URL state (#943) ─────────────────────────────────────────
   // Read on load, written on change, never persisted per user — a filter you
@@ -122,6 +138,10 @@ export default function AroundTheTeam({
   // Completed HERE, this visit. Under New, a card you finish greys in place and
   // clears when you leave; All keeps completed cards visible grayed.
   const [completedHere, setCompletedHere] = useState<Set<string>>(new Set());
+  // Which card has its conversation open. The page owns it, not the card: the
+  // grid is top-aligned, so an expanded card lengthens its row and strands its
+  // neighbours with dead space. Opening a second collapses the first.
+  const [openConversation, setOpenConversation] = useState<string | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   // On its own route this page is mounted with no props, so a card's `onToast`
@@ -130,10 +150,10 @@ export default function AroundTheTeam({
   // snackbar this page already renders; an embed can still pass its own.
   const showToast = onToast ?? ((msg: string) => showUndoSnack(msg));
 
-  // Seen and completed change under the memos below, not in the props, so the
+  // Reviewed changes under the memos below, not in the props, so the
   // derivation has to be told. Without the tick in its dependency list,
-  // `allStacks` would keep the seen flags it was built with and the accent dot
-  // would outlive the click that cleared it.
+  // `allStacks` would keep the flags it was built with and the dimmed
+  // treatment would outlive the click that set it.
   const [inboxTick, setInboxTick] = useState(0);
   useEffect(() => InboxState.subscribe(() => setInboxTick((n) => n + 1)), []);
 
@@ -215,6 +235,28 @@ export default function AroundTheTeam({
     contacts.forEach((c) => map.set(c.id, c));
     return map;
   }, [contacts]);
+
+  // The strip is a reader on the page's existing subscription, not a second
+  // query per card: the messages are already here, sliced by contact once.
+  const threadsByContact = useMemo(() => {
+    const map = new Map<string, ThreadMessageWithContact[]>();
+    for (const m of threads) {
+      const list = map.get(m.contactId);
+      if (list) list.push(m);
+      else map.set(m.contactId, [m]);
+    }
+    return map;
+  }, [threads]);
+
+  // Who an @mention can reach from a card: the whole roster, plus anyone whose
+  // name the page has learned from the feed. The renderer narrows team-scope
+  // mentions to Full-timers itself.
+  const teamMembers = useMemo<TeamMemberLike[]>(() => {
+    const byUid = new Map<string, string>();
+    for (const m of rosterOnTeam(null)) byUid.set(m.uid, m.name);
+    for (const [id, name] of Object.entries(staffNameMap)) if (name) byUid.set(id, name);
+    return [...byUid.entries()].map(([id, name]) => ({ id, name }));
+  }, [staffNameMap]);
 
   const handleOpenContact = (contactId: string, initialTab?: "overview" | "thread" | "history") => {
     const c = contactMap.get(contactId);
@@ -314,15 +356,31 @@ export default function AroundTheTeam({
     }));
   }, [allSides.aroundTeam, aroundTeam]);
 
+  // The page's own number, and the one My Day's pointer card shows: what is
+  // left to work through. It falls only when something is reviewed, which
+  // makes it a measure of work remaining rather than of pages read.
   const toWorkThrough = aroundTeam.filter((s) => !isCompleted(s)).length;
-  const anyUnseen = aroundTeam.some((s) => !s.seen && !isCompleted(s));
 
-  const handleMarkAllSeen = () => {
+  const handleMarkAllReviewed = () => {
     // What's on screen, not what's behind the filter — "all" means all of what
-    // the person is looking at.
-    InboxState.markSeen(
-      uid,
-      aroundTeam.map((s) => s.id),
+    // the person is looking at, so working inside one team can never silently
+    // clear another. This is a heavier action than "Mark all seen" was, so it
+    // keeps its undo.
+    const ids = aroundTeam.filter((s) => !isCompleted(s)).map((s) => s.id);
+    if (ids.length === 0) return;
+    for (const id of ids) InboxState.markCompleted(uid, id);
+    setCompletedHere((prev) => new Set([...prev, ...ids]));
+
+    showUndoSnack(
+      t("whatsNew.snack_all_reviewed").replace("{n}", String(ids.length)),
+      () => {
+        for (const id of ids) InboxState.undoCompleted(uid, id);
+        setCompletedHere((prev) => {
+          const next = new Set(prev);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+      },
     );
   };
 
@@ -400,13 +458,13 @@ export default function AroundTheTeam({
                 {t("whatsNew.filter_all")}
               </button>
             </div>
-            {anyUnseen && (
+            {toWorkThrough > 0 && (
               <button
                 type="button"
-                onClick={handleMarkAllSeen}
+                onClick={handleMarkAllReviewed}
                 className="text-xs font-medium text-accent hover:underline cursor-pointer"
               >
-                {t("whatsNew.mark_all_seen")}
+                {t("whatsNew.mark_all_reviewed")}
               </button>
             )}
           </div>
@@ -544,6 +602,14 @@ export default function AroundTheTeam({
                       onComplete={handleComplete}
                       onToast={showToast}
                       showReach
+                      mobile={compactWidth}
+                      reviewedOnly
+                      threads={stack.contactId ? threadsByContact.get(stack.contactId) : undefined}
+                      teamMembers={teamMembers}
+                      conversationOpen={openConversation === stack.id}
+                      onToggleConversation={() =>
+                        setOpenConversation((cur) => (cur === stack.id ? null : stack.id))
+                      }
                     />
                   ))}
                 </div>
