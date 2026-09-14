@@ -154,7 +154,20 @@ jobs:
           npx eas-cli build --local --platform ios --profile production --non-interactive --output ./artifacts/app-release.ipa
 
       - name: Compile TestFlight release notes
-        run: npx tsx scripts/store-release-notes.ts --platform testflight --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/testflight-release-notes.txt
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          OUT=apps/mobile/artifacts/testflight-release-notes.txt
+          # A patch release often has no authored whats-new manifest of its
+          # own (1.4.1 was CI fixes only, so there was nothing to announce).
+          # Notes must never block a release: try the exact version first so a
+          # mismatch is still visible, then fall back to the most recent
+          # manifest. See ADR 0008.
+          if npx tsx scripts/store-release-notes.ts --platform testflight --version "$VERSION" --out "$OUT"; then
+            exit 0
+          fi
+          echo "::warning::No whats-new manifest declares $VERSION; using the most recent."
+          npx tsx scripts/store-release-notes.ts --platform testflight --out "$OUT"
         working-directory: .
 
       - name: Submit IPA to TestFlight
