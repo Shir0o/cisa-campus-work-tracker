@@ -101,6 +101,31 @@ jobs:
       - name: Submit AAB to the Play internal track
         run: npx eas-cli submit --platform android --profile production --path ./artifacts/app-release.aab --non-interactive
 
+      # No Gemfile.lock is committed on purpose. One resolved on a developer's
+      # machine would pin gems against that machine's Ruby and could contradict
+      # the runner's, so the runner resolves against its own Ruby instead.
+      - name: Setup Ruby for fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+          working-directory: apps/mobile
+
+      - name: Install fastlane
+        run: bundle install
+
+      - name: Attach release notes to the Play internal track
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON_PATH: ./play-service-account.json
+          VERSION_CODE: ${{ steps.version.outputs.build_number }}
+        run: |
+          set -euo pipefail
+          CHANGELOG_DIR="fastlane/metadata/android/en-US/changelogs"
+          mkdir -p "$CHANGELOG_DIR"
+          cp artifacts/play-release-notes.txt "$CHANGELOG_DIR/${VERSION_CODE}.txt"
+          echo "Staged $(wc -c < "$CHANGELOG_DIR/${VERSION_CODE}.txt") bytes of notes for version code ${VERSION_CODE}."
+          bundle exec fastlane play_upload_notes version_code:"$VERSION_CODE"
+
       - name: Attach artefacts to the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

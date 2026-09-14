@@ -102,7 +102,7 @@ credentials* action generates them first and will ask for your Apple login.
 | Secret | What it is |
 | --- | --- |
 | `RELEASE_PLEASE_TOKEN` | PAT with `contents:write` and `pull-requests:write`. **Mandatory** — tags created with the built-in `GITHUB_TOKEN` are suppressed by GitHub's recursion prevention and will never trigger the release workflows. |
-| `EXPO_TOKEN` | Expo access token. `eas build --local` still authenticates to EAS. |
+| `EXPO_TOKEN` | An EAS **programmatic access** token: expo.dev -> Account settings -> Access tokens. **Not** the `EXPO_ACCESS_TOKEN` in `apps/mobile/.env`, which is the push-notifications token the app reads at runtime - a different credential from a different page, and the one you already have lying around. Check with `EXPO_TOKEN=... npx eas-cli whoami`; it should print your username. |
 | `EAS_CREDENTIALS_B64` | `npx tsx scripts/pack-eas-credentials.ts` — a gzipped tar of `credentials.json` **and the keystore, `.p12` and `.mobileprovision` it points at**, base64'd. |
 | `PLAY_SERVICE_ACCOUNT_JSON_B64` | `base64 -i <service-account>.json` |
 | `ASC_API_KEY_P8_B64` | `base64 -i AuthKey_XXXX.p8` |
@@ -167,10 +167,32 @@ npx tsx scripts/store-release-notes.ts --platform play --version 1.4.0
 npx tsx scripts/store-release-notes.ts --platform testflight --version 1.4.0
 ```
 
-Play is capped at 500 characters; the script enforces that. **`eas submit`
-cannot upload Play release notes** — there is no option for it. They are
-attached to the GitHub Release and you paste them into the Play Console while
-promoting. TestFlight is automatic via `--what-to-test`.
+Play is capped at 500 characters; the script enforces that.
+
+**TestFlight** receives them automatically: `release-ios.yml` passes the compiled
+notes to `eas submit --what-to-test`.
+
+**Play** needs a second step. `eas submit` has no field for release notes -
+`AndroidSubmitProfile` is exactly `serviceAccountKeyPath`, `track`,
+`releaseStatus`, `changesNotSentForReview`, `applicationId` and `rollout`. So
+`release-android.yml` copies the compiled notes to
+`apps/mobile/fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` and
+runs `bundle exec fastlane play_upload_notes version_code:<versionCode>`, which
+uploads **only** the changelog (`skip_upload_aab: true`) against the AAB that
+`eas submit` already put on the internal track.
+
+Two things that make that lane work, both checked against fastlane 2.239.0:
+
+- `version_code` is mandatory. `supply` normally reads it from the binary it
+  uploads; because we skip that upload, `perform_upload_meta` falls back to
+  `Supply.config[:version_code]`. Without it the run uploads nothing, silently.
+- `changes_not_sent_for_review: true` stops the track edit from pushing the
+  draft release into review.
+
+`apps/mobile/Gemfile` deliberately does **not** pin `google-api-client` - that
+pin is what forces bible-read's monkey-patch around `commit_edit`. Fastlane
+bundles `google-apis-androidpublisher_v3`, whose `commit_edit` accepts the
+keyword natively.
 
 ## Known conflict
 

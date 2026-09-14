@@ -1,0 +1,64 @@
+default_platform(:android)
+
+# Upload ONLY the Play Console release notes for a version code whose AAB was
+# already uploaded by `eas submit`.
+#
+# Why this exists
+# ---------------
+# Play release notes are the one thing EAS Submit cannot carry: its
+# AndroidSubmitProfile has exactly `serviceAccountKeyPath`, `track`,
+# `releaseStatus`, `changesNotSentForReview`, `applicationId` and `rollout` - no
+# notes field. bible-read has this capability because it uploads with fastlane
+# `supply` directly. This lane closes that gap without giving up `eas submit`
+# for the binary.
+#
+# Why version_code is REQUIRED
+# ----------------------------
+# `supply` normally derives the version code from the binary it uploads. We skip
+# that upload, so `apk_version_codes` is empty and `perform_upload_meta` falls
+# back to `Supply.config[:version_code]`. Without it there is no version to
+# attach notes to, and the run silently uploads nothing.
+#
+# Draft-safety
+# ------------
+# EAS creates the release as a draft. `fetch_track_and_release!` filters by
+# version code, so the draft is found, and `changes_not_sent_for_review: true`
+# keeps the track edit from pushing it to review.
+#
+# No google-api-client monkey-patch is needed: see apps/mobile/Gemfile.
+lane :play_upload_notes do |options|
+  version_code = options[:version_code] || ENV["VERSION_CODE"]
+  if version_code.nil? || version_code.to_s.empty?
+    UI.user_error!("Pass version_code:, or set VERSION_CODE. Anchoring the changelog to a version is the whole point of this lane.")
+  end
+
+  metadata_path = File.join("fastlane", "metadata", "android")
+  changelog = File.join(metadata_path, "en-US", "changelogs", "#{version_code}.txt")
+
+  # supply only WARNS when the changelog file is missing, then uploads empty
+  # notes. Fail loudly instead: a silently empty changelog is worse than a red
+  # build, because nobody notices until the release is live.
+  unless File.exist?(changelog)
+    UI.user_error!("No changelog at #{changelog} - supply would only warn and upload nothing.")
+  end
+
+  upload_to_play_store(
+    package_name: "com.cisa.campus",
+    track: "internal",
+    version_code: version_code.to_i,
+    json_key: ENV["PLAY_SERVICE_ACCOUNT_JSON_PATH"],
+    metadata_path: metadata_path,
+    # The binary is already on the track via `eas submit`.
+    skip_upload_apk: true,
+    skip_upload_aab: true,
+    # We only want the changelog; store listings are managed by hand.
+    skip_upload_metadata: true,
+    skip_upload_images: true,
+    skip_upload_screenshots: true,
+    skip_upload_changelogs: false,
+    # The release is a draft. Do not push it to review by touching the track.
+    changes_not_sent_for_review: true
+  )
+
+  UI.success("Attached the release notes to version code #{version_code} on the internal track.")
+end
