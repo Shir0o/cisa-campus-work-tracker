@@ -29,6 +29,7 @@ import { WorklistCard, VERB_SNACK } from "../components/landing/WorklistCard";
 import type { TeamMemberLike } from "../components/Thread";
 import PageContainer from "../components/layout/PageContainer";
 import { currentHref } from "../lib/navTrail";
+import { useMediaQuery } from "../lib/useMediaQuery";
 
 // ── "Around the team" as its own destination (#943, #1012) ──────────────────
 // The team's activity — everything the team has been doing on people you
@@ -50,10 +51,6 @@ import { currentHref } from "../lib/navTrail";
 // Existing `seen` stamps are abandoned rather than migrated: promoting a
 // glance to "worked through" would claim on a teammate's behalf that they had
 // dealt with people they only scrolled past (ADR 0022).
-
-/** A stable empty slice, so a contact with no messages yet does not hand the
- *  card a fresh array on every render. */
-const EMPTY_THREADS: ThreadMessageWithContact[] = [];
 
 /** The day a stack belongs to, as a real heading label. */
 function dayLabel(iso: string): string {
@@ -96,6 +93,10 @@ export default function AroundTheTeam({
   const navigate = useNavigate();
   const location = useLocation();
   const layout = useOptionalLayout();
+  // The page is one page at every width, so on a phone the cards use the same
+  // comfortable targets My Day's do — the strip has to be usable one-handed
+  // (#1012 story 40).
+  const compactWidth = useMediaQuery("(max-width: 768px)");
 
   // ── Filters are URL state (#943) ─────────────────────────────────────────
   // Read on load, written on change, never persisted per user — a filter you
@@ -601,10 +602,9 @@ export default function AroundTheTeam({
                       onComplete={handleComplete}
                       onToast={showToast}
                       showReach
+                      mobile={compactWidth}
                       reviewedOnly
-                      threads={
-                        stack.contactId ? (threadsByContact.get(stack.contactId) ?? EMPTY_THREADS) : undefined
-                      }
+                      threads={stack.contactId ? threadsByContact.get(stack.contactId) : undefined}
                       teamMembers={teamMembers}
                       conversationOpen={openConversation === stack.id}
                       onToggleConversation={() =>

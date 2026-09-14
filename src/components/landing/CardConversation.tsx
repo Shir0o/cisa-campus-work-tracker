@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import type { Contact } from "../../types";
-import Thread, { type TeamMemberLike } from "../Thread";
+import Thread, { firstName, type TeamMemberLike } from "../Thread";
 import { countFor, type ThreadMessage } from "../../lib/threads";
 import { useLanguage } from "../LanguageProvider";
 
@@ -32,12 +32,6 @@ const JUST_POSTED_MS = 8_000;
 
 type Tab = "conversation" | "team";
 
-/** What identifies a message regardless of which copy of it this is: the
- *  optimistic twin and the document that lands agree on audience, author and
- *  words, and on nothing else — the id and the timestamp are both server-side
- *  facts the twin had to invent. */
-const twinKey = (m: ThreadMessage) => JSON.stringify([m.scope ?? null, m.from, m.body]);
-
 /**
  * What a card knows about a contact's threads: the messages the page holds,
  * plus the ones the reader has just written.
@@ -45,7 +39,12 @@ const twinKey = (m: ThreadMessage) => JSON.stringify([m.scope ?? null, m.from, m
  * The page's subscription is live, so a posted message does arrive on its own
  * — but only after a round trip, and the whole point of #966 is that the
  * appearing message *is* the confirmation. So the writer's own message shows
- * at once, and its twin is dropped as soon as the real document lands.
+ * at once under a placeholder id, and when the write returns the real id the
+ * twin takes it on. The subscription then delivers a document the twin already
+ * answers to, and it drops out by identity.
+ *
+ * Matching on the words instead would confuse two identical messages for one:
+ * post "ok" twice and the second would vanish until its own write returned.
  *
  * This lives beside the strip rather than inside it because the count on the
  * action row's toggle has to agree with it: a message that appeared in the
@@ -57,9 +56,14 @@ export function useCardThread(threads: ThreadMessage[]) {
   const [justPosted, setJustPosted] = useState<ReadonlySet<string>>(new Set());
 
   const messages = useMemo(() => {
-    const landed = new Set(threads.map(twinKey));
-    const twinless = pending.filter((m) => !landed.has(twinKey(m)));
-    return [...threads, ...twinless].sort((a, b) => a.at.localeCompare(b.at));
+    // An encouragement is a heart, not a contribution to the conversation:
+    // it stays summarised on the card and never pads the thread out (#1012
+    // story 17). It is excluded from the count on the toggle for the same
+    // reason — four hearts must not read as four things someone said.
+    const said = threads.filter((m) => m.kind !== "encouragement");
+    const landed = new Set(said.map((m) => m.id));
+    const twinless = pending.filter((m) => !landed.has(m.id));
+    return [...said, ...twinless].sort((a, b) => a.at.localeCompare(b.at));
   }, [threads, pending]);
 
   useEffect(() => {
@@ -68,9 +72,23 @@ export function useCardThread(threads: ThreadMessage[]) {
     return () => clearTimeout(timer);
   }, [justPosted]);
 
-  const notePosted = (m: ThreadMessage) => {
+  const notePosted = (m: ThreadMessage, landed: Promise<string | null>) => {
     setPending((prev) => [...prev, m]);
     setJustPosted((prev) => new Set([...prev, m.id]));
+    // The twin takes on the real id, so the arriving document replaces it
+    // rather than doubling it — and the "Just posted" marker, which is keyed
+    // on the id, survives the swap instead of vanishing on the round trip.
+    void landed.then((realId) => {
+      if (!realId) return;
+      setPending((prev) => prev.map((x) => (x.id === m.id ? { ...x, id: realId } : x)));
+      setJustPosted((prev) => {
+        if (!prev.has(m.id)) return prev;
+        const next = new Set(prev);
+        next.delete(m.id);
+        next.add(realId);
+        return next;
+      });
+    });
   };
 
   return { messages, justPosted, notePosted };
@@ -89,7 +107,7 @@ export function CardConversation({
   /** From `useCardThread` — the page's messages plus the reader's own. */
   messages: ThreadMessage[];
   justPosted: ReadonlySet<string>;
-  onPosted: (message: ThreadMessage) => void;
+  onPosted: (message: ThreadMessage, landed: Promise<string | null>) => void;
   teamMembers?: TeamMemberLike[];
 }) {
   const { t } = useLanguage();
@@ -98,7 +116,7 @@ export function CardConversation({
   const conversationCount = countFor(messages, null, null);
   const teamCount = countFor(messages, null, "team");
 
-  const firstName = (contact.name || "").trim().split(/\s+/)[0] || contact.name;
+  const who = firstName(contact.name);
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "conversation", label: t("modals.contactDetails.follow_up"), count: conversationCount },
@@ -141,7 +159,7 @@ export function CardConversation({
       <p className="text-[11px] text-on-surface-variant/80 mt-2 mb-2">
         {tab === "team"
           ? t("whatsNew.audience_full_timers")
-          : t("whatsNew.audience_conversation").replace("{name}", firstName)}
+          : t("whatsNew.audience_conversation").replace("{name}", who)}
       </p>
 
       {/* Keyed on the tab, so switching audience starts a fresh composer: a

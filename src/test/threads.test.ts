@@ -19,7 +19,7 @@ import { sendNotification } from "../lib/firebase";
 import { applyRoster } from "../lib/walking";
 
 vi.mock("firebase/firestore", () => ({
-  addDoc: vi.fn(() => Promise.resolve()),
+  addDoc: vi.fn(() => Promise.resolve({ id: "new-msg-id" })),
   collection: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
   collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
   doc: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
@@ -246,6 +246,30 @@ describe("addThreadMessage notify", () => {
     );
   });
 
+
+  // A caller that shows a message before the round trip needs to recognise its
+  // own document when the subscription delivers it. Matching on the words
+  // instead would confuse two identical messages for one (#1012).
+  it("hands back the id of the message it wrote", async () => {
+    const id = await addThreadMessage("C-1", {
+      from: "u1",
+      fromName: "Tony",
+      kind: "comment",
+      body: "ok",
+    });
+    expect(id).toBe("new-msg-id");
+  });
+
+  it("hands back null when the write failed, rather than an id that means nothing", async () => {
+    vi.mocked(addDoc).mockRejectedValueOnce(new Error("write denied"));
+    const id = await addThreadMessage("C-1", {
+      from: "u1",
+      fromName: "Tony",
+      kind: "comment",
+      body: "ok",
+    });
+    expect(id).toBeNull();
+  });
 
   it("funnels addThreadMessage failures through handleFirestoreError", async () => {
     const { handleFirestoreError } = await import("../lib/firebase");

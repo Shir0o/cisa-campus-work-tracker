@@ -298,7 +298,7 @@ export function WorklistCard({
 
   // The strip replaces the swap-in composer when the page hands down both the
   // messages to read and the ownership of which card is open.
-  const hasStrip = !!(threads && onToggleConversation && stack.contactId && contact);
+  const hasStrip = !!(onToggleConversation && stack.contactId && contact);
   const stripOpen = hasStrip && !!conversationOpen && !completed;
   // The card's own view of the conversation, so the count on the toggle and
   // the messages in the strip are one fact rather than two.
@@ -592,8 +592,8 @@ export function WorklistCard({
           messages={messages}
           justPosted={justPosted}
           teamMembers={teamMembers}
-          onPosted={(m) => {
-            notePosted(m);
+          onPosted={(m, landed) => {
+            notePosted(m, landed);
             // The message appearing is the confirmation; the toast is a
             // second, quieter one (ADR 0022).
             onToast?.(t("whatsNew.posted"));

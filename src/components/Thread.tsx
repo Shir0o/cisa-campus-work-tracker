@@ -28,7 +28,19 @@ import {
 } from "./ComposeKindPicker";
 import { useLanguage } from "./LanguageProvider";
 
-const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
+export const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
+
+/** The messages to render: the ones a caller already holds, or a subscription
+ *  of our own. A caller that passes them in opens no live query — "Around the
+ *  team" already subscribes to every thread in the product, and mounting this
+ *  renderer per card must not open a second one each time (#1012). */
+function useThreadMessages(
+  contactId: string,
+  supplied?: ThreadMessage[] | null,
+): ThreadMessage[] {
+  const subscribed = useThreads(supplied ? null : contactId);
+  return supplied ?? subscribed;
+}
 const getInitials = (name?: string) => {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/);
@@ -62,8 +74,10 @@ interface ThreadProps {
    *  and the renderer subscribes for itself, as the contact page does. */
   messages?: ThreadMessage[] | null;
   /** Told what was just posted, so a caller can show it immediately rather
-   *  than wait for a round trip (#1012). */
-  onPosted?: (message: ThreadMessage) => void;
+   *  than wait for a round trip. `landed` resolves to the id the write
+   *  actually got, which is how a caller recognises its own document when the
+   *  subscription delivers it (#1012). */
+  onPosted?: (message: ThreadMessage, landed: Promise<string | null>) => void;
   /** Messages to mark briefly as new — the writer's own, just posted. */
   highlightIds?: ReadonlySet<string> | null;
   highlightLabel?: string;
@@ -191,10 +205,7 @@ function ThreadMsg({
 }: ThreadMsgProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  // A caller that already holds the messages passes them in; the hook is then
-  // called with no contact id so it opens no subscription of its own.
-  const subscribed = useThreads(propsMessages ? null : contactId);
-  const allMessages = propsMessages ?? subscribed;
+  const allMessages = useThreadMessages(contactId, propsMessages);
   const replies = repliesOf(allMessages, m.id);
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState("");
@@ -355,7 +366,7 @@ function ThreadMsg({
                 <button
                   onClick={sendReply}
                   disabled={!draft.trim()}
-                  className="inline-flex items-center gap-1 px-2.5 h-7 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2.5 min-h-11 sm:min-h-0 sm:h-7 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition disabled:opacity-50"
                 >
                   <Send className="w-3 h-3" /> Reply
                 </button>
@@ -386,8 +397,7 @@ export default function Thread({
 }: ThreadProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const subscribed = useThreads(propsMessages ? null : contactId);
-  const allMessages = propsMessages ?? subscribed;
+  const allMessages = useThreadMessages(contactId, propsMessages);
   const messages = threadsFor(allMessages, interactionId, scope);
 
   const [draft, setDraft] = useState("");
@@ -477,7 +487,7 @@ export default function Thread({
     const mentionedUserIds = reconcileMentionedUsers(body, selectedUsers);
     const kind = canPickKind ? composeKind : "comment";
     const fromName = user?.displayName || "Someone";
-    void addThreadMessage(
+    const landed = addThreadMessage(
       contactId,
       {
         interactionId,
@@ -494,23 +504,27 @@ export default function Thread({
         ...(contactStakeholders ? { stakeholders: contactStakeholders } : {}),
       },
     );
+    void landed;
 
-    // The write is fire-and-forget and returns no id, so the message a caller
-    // shows immediately is one built here. A caller reading from a live
-    // subscription will see the real document arrive and drop this twin.
-    onPosted?.({
-      id: `pending:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-      interactionId,
-      parentId: null,
-      scope,
-      from: meStaffId,
-      fromName,
-      kind,
-      body,
-      at: new Date().toISOString(),
-      reactions: [],
-      ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
-    });
+    // The message a caller can show at once, before the write returns. It
+    // carries a placeholder id and the promise of the real one, so the caller
+    // can recognise its own document when the subscription delivers it.
+    onPosted?.(
+      {
+        id: `pending:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+        interactionId,
+        parentId: null,
+        scope,
+        from: meStaffId,
+        fromName,
+        kind,
+        body,
+        at: new Date().toISOString(),
+        reactions: [],
+        ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
+      },
+      landed,
+    );
 
     setDraft("");
     setSelectedUsers([]);
@@ -567,10 +581,10 @@ export default function Thread({
       {messages.length === 0 && (
         <div className="text-sm italic text-on-surface-variant/70 pb-3">
           {interactionId
-            ? "No comments on this interaction yet."
+            ? t("thread.empty_interaction")
             : scope === "team"
-              ? "Nothing here yet — start the team's discussion below."
-              : "Nothing here yet — leave the first comment below."}
+              ? t("thread.empty_full_timers")
+              : t("thread.empty_conversation")}
         </div>
       )}
 
@@ -601,7 +615,7 @@ export default function Thread({
           <button
             onClick={post}
             disabled={!draft.trim()}
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 min-h-11 sm:min-h-0 sm:h-8 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" /> {t("thread.send_post")}
           </button>

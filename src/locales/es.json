@@ -1763,6 +1763,9 @@
     "placeholder_comment": "Escribe algo…",
     "placeholder_question": "¿Qué quieres saber? Todos los vinculados a esta persona lo verán.",
     "placeholder_follow_up": "¿Qué hay que hacer: enviarle un mensaje, un correo? Di lo suficiente para que cualquiera pueda encargarse.",
+    "empty_interaction": "Aún no hay comentarios en esta conversación.",
+    "empty_full_timers": "Aún no hay nada — empieza aquí la conversación del equipo.",
+    "empty_conversation": "Aún no hay nada — deja el primer comentario abajo.",
     "placeholder_full_timers": "Añade al hilo de tiempo completo…"
   },
   "study": {

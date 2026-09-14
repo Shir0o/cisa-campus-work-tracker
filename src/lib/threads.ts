@@ -258,11 +258,16 @@ export async function addThreadMessage(
     contactName?: string;
     stakeholders?: ThreadStakeholders | null;
   },
-): Promise<void> {
+  /** The id of the message just written, or `null` if the write failed. A
+   *  caller showing the message before the round trip needs this to recognise
+   *  its own document when the subscription delivers it — matching on the
+   *  words instead would confuse two identical messages for one (#1012). */
+): Promise<string | null> {
   const body = input.body.trim();
   const mentionedUserIds = (input.mentionedUserIds || []).filter(Boolean);
+  let written: string | null = null;
   try {
-    await addDoc(col(contactId), {
+    const created = await addDoc(col(contactId), {
       interactionId: input.interactionId ?? null,
       parentId: input.parentId ?? null,
       scope: input.scope ?? null,
@@ -274,6 +279,9 @@ export async function addThreadMessage(
       reactions: [] as ThreadReaction[],
       ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
     });
+    // `addDoc` always hands back a reference; the guard keeps a caller that
+    // cannot learn the id from losing the write itself over it.
+    written = created?.id ?? null;
 
     const isTeamScope = input.scope === "team";
     const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
@@ -354,6 +362,7 @@ export async function addThreadMessage(
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
   }
+  return written;
 }
 
 // ── Closing a follow-up ask (#813) ──────────────────────────────────────────

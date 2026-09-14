@@ -820,6 +820,76 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     expect(screen.getByText('Just posted')).toBeInTheDocument();
   });
 
+  it('keeps the just-posted marker when the real message lands, not only until then', async () => {
+    // The marker is keyed on the id. The optimistic twin takes on the real id
+    // when the write returns, so the arriving document replaces it rather than
+    // doubling it — and the marker survives the round trip instead of blinking
+    // out on it.
+    h.addThreadMessage.mockResolvedValueOnce('real-id-1');
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={staffNameMap} />
+      </MemoryRouter>,
+    );
+    openStrip();
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Texting him now.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+    await screen.findByText('Texting him now.');
+
+    // The subscription now delivers the real document.
+    rerender(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[contact({})]}
+          interactions={[]}
+          threads={[msg({ id: 'real-id-1', from: 'u1', fromName: 'Ruth', body: 'Texting him now.' })]}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+
+    // Once, not twice — and still marked.
+    expect(screen.getAllByText('Texting him now.')).toHaveLength(1);
+    expect(screen.getByText('Just posted')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Conversation · 1/ })).toBeInTheDocument();
+  });
+
+  it('shows both of two identical messages, rather than swallowing the second', async () => {
+    // Matching on the words alone would confuse one message for the other.
+    h.addThreadMessage.mockResolvedValueOnce('real-a').mockResolvedValueOnce('real-b');
+    renderOne([]);
+    openStrip();
+
+    for (const _ of [1, 2]) {
+      fireEvent.change(screen.getByPlaceholderText(/write something/i), { target: { value: 'ok' } });
+      fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+      await screen.findAllByText('ok');
+    }
+
+    expect(screen.getAllByText('ok')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Conversation · 2/ })).toBeInTheDocument();
+  });
+
+  it('keeps an encouragement summarised rather than padding the strip with hearts', () => {
+    renderOne([
+      msg({}),
+      msg({
+        id: 'heart',
+        kind: 'encouragement',
+        body: 'Praying for you both! Let me know if you need anything.',
+      }),
+    ]);
+
+    // The heart is not a contribution to the conversation, so it is neither
+    // listed nor counted: four hearts must not read as four things said.
+    expect(screen.getByRole('button', { name: /Conversation · 1/ })).toBeInTheDocument();
+    openStrip();
+    expect(screen.getByText('She said she would come Thursday.')).toBeInTheDocument();
+    expect(screen.queryByText(/Praying for you both/)).not.toBeInTheDocument();
+  });
+
   it('sends the message to whichever tab is open', async () => {
     renderOne([]);
     openStrip();
