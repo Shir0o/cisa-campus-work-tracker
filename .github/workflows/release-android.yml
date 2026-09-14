@@ -9,12 +9,22 @@ name: Release Android
 on:
   push:
     tags: ['v*']
+  # A tag is the only automatic trigger, which means a transient CI failure used
+  # to cost a whole new version. This lets a failed release be retried against
+  # the tag it was meant for. The workflow file comes from the branch this is
+  # dispatched on; the code comes from the tag given here.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and submit, e.g. v1.4.0'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-android-${{ github.ref }}
+  group: release-android-${{ github.event.inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -29,8 +39,17 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
+      - name: Resolve the release tag
+        id: release
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag"
+
       - uses: actions/checkout@v7
         with:
+          ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v7
@@ -75,7 +94,7 @@ jobs:
 
       - name: Derive version and build number from the tag
         id: version
-        run: npx tsx scripts/mobile-version.ts --tag "${{ github.ref_name }}"
+        run: npx tsx scripts/mobile-version.ts --tag "${{ steps.release.outputs.tag }}"
         working-directory: .
 
       - name: Materialize EAS build credentials
@@ -139,7 +158,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "${{ github.ref_name }}" \
+          gh release upload "${{ steps.release.outputs.tag }}" \
             apps/mobile/artifacts/app-release.aab \
             apps/mobile/artifacts/play-release-notes.txt \
             --clobber
