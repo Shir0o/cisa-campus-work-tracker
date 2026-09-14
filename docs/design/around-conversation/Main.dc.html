@@ -1,0 +1,489 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --success:#016A1C; --success-soft:#E1FCDE; --danger:#B1000F; --danger-soft:#FFD4D8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+    code{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;font-size:11.5px;color:var(--on-surface)}
+
+    .sheet{padding:48px 56px 56px;display:flex;flex-direction:column;gap:38px}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:40px;line-height:1.03;
+      letter-spacing:-0.03em;margin:0;max-width:20ch}
+    .lede{font-size:15px;color:var(--on-surface-variant);max-width:74ch;margin:12px 0 0;line-height:1.68}
+    .lede strong{color:var(--on-surface);font-weight:600}
+    h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:23px;letter-spacing:-0.02em;margin:0}
+    .sec-sub{font-size:13.5px;color:var(--on-surface-variant);margin:6px 0 0;max-width:82ch;line-height:1.65}
+    .rule{height:1px;background:var(--outline);border:0;margin:0}
+    .kicker{display:inline-block;font-size:10.5px;font-weight:600;text-transform:uppercase;
+      letter-spacing:0.07em;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+    .kicker.bad{background:var(--danger-soft);color:var(--danger)}
+    .kicker.good{background:var(--success-soft);color:var(--success)}
+
+    .split{display:grid;grid-template-columns:1fr 360px;gap:44px;align-items:start}
+    .ann{display:flex;flex-direction:column;gap:14px;padding-top:6px}
+    .ann h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;
+      letter-spacing:-0.015em;margin:0}
+    .ann p{margin:0;font-size:13px;line-height:1.68;color:var(--on-surface-variant)}
+    .ann strong{color:var(--on-surface);font-weight:600}
+
+    .stage{background:var(--bg);border:1px solid var(--outline);border-radius:24px;padding:26px;
+      display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+    .stage.one{justify-content:flex-start}
+    .caption{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--text-mute);margin:0 0 10px}
+
+    /* ── the real card, 404px (3-up at xl inside the wide container) ───────── */
+    .card{width:404px;background:var(--surface);border:1px solid var(--outline-variant);
+      border-radius:32px;padding:16px;box-shadow:0 1px 2px rgba(10,10,11,0.05)}
+    .crow{display:flex;align-items:flex-start;gap:14px}
+    .av{width:40px;height:40px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:13px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .l1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .names{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pname{font-size:16px;font-weight:500;color:var(--on-surface)}
+    .dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+    .chip{font-size:11px;color:var(--on-surface-variant);border:1px solid var(--outline-variant);
+      border-radius:999px;padding:1px 6px;flex:none}
+    .chip.talked{background:var(--accent-soft);border-color:transparent}
+    .rel{font-size:12px;color:rgba(82,82,91,0.8);flex:none}
+    .phr{font-size:12px;font-weight:500;color:var(--on-surface-variant);margin-top:4px}
+    .body{font-size:12px;color:rgba(82,82,91,0.9);margin-top:4px;white-space:pre-line;
+      background:rgba(234,234,236,0.4);border-radius:20px;padding:8px}
+    .body.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .acts{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px}
+    .b-s{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:0;
+      background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:500}
+    .b-o{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface);
+      font-size:12px;font-weight:500}
+    .b-o.on{background:var(--bg);border-color:var(--outline);font-weight:600}
+    .b-i{width:32px;height:32px;border-radius:20px;border:1px solid var(--outline-variant);
+      background:transparent;color:var(--on-surface-variant);
+      display:flex;align-items:center;justify-content:center;flex:none}
+    .spacer{margin-left:auto;display:flex;align-items:center;gap:6px}
+    .cnt{font-variant-numeric:tabular-nums}
+
+    /* the conversation strip */
+    .strip{margin-top:14px;padding-top:12px;border-top:1px solid rgba(240,240,242,0.6);
+      display:flex;flex-direction:column;gap:12px}
+    .strip-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .strip-lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--text-mute)}
+    .msgs{display:flex;flex-direction:column;gap:12px}
+    .msg{display:flex;gap:10px;align-items:flex-start}
+    .mav{width:24px;height:24px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:10px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .mb{flex:1;min-width:0}
+    .mhd{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+    .mwho{font-size:12px;font-weight:600;color:var(--on-surface)}
+    .mwhen{font-size:11px;color:var(--text-mute)}
+    .mtx{font-size:12.5px;line-height:1.6;color:var(--on-surface-variant);margin:2px 0 0}
+    .msg.fresh .mb{background:rgba(234,234,236,0.55);border-radius:20px;padding:8px 10px;margin:-4px -4px 0}
+    .msg.fresh .mwhen{color:var(--success);font-weight:600}
+
+    .composer{display:flex;flex-direction:column;gap:8px}
+    .kinds{display:flex;gap:5px}
+    .kind{font-size:11px;font-weight:500;padding:4px 10px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-variant)}
+    .kind.on{background:var(--primary);color:var(--on-primary);border-color:transparent;font-weight:600}
+    .ta{border:1px solid rgba(240,240,242,0.9);background:var(--surface-variant);border-radius:24px;
+      padding:10px;font-size:13px;color:var(--text-mute);min-height:46px}
+    .ta.typed{color:var(--on-surface)}
+    .crow2{display:flex;justify-content:flex-end;gap:8px}
+
+    .snack{display:flex;align-items:center;justify-content:space-between;gap:14px;
+      background:var(--primary);color:var(--on-primary);border-radius:14px;padding:11px 14px;
+      font-size:12.5px;width:404px}
+    .snack button{background:transparent;border:0;color:var(--on-primary);font-size:12.5px;
+      font-weight:600;text-decoration:underline;text-underline-offset:2px}
+
+
+    .cmp{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:22px}
+    .pane{background:var(--surface);border-radius:24px;padding:22px 24px;
+      display:flex;flex-direction:column;gap:14px}
+    .pane h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:18px;
+      letter-spacing:-0.018em;margin:0;display:flex;align-items:center;gap:9px}
+    .pane p{margin:0;font-size:12.5px;line-height:1.62;color:var(--on-surface-variant)}
+    .pane p strong{color:var(--on-surface);font-weight:600}
+    .steps{display:flex;flex-direction:column;gap:9px;background:var(--bg);border-radius:20px;padding:15px}
+    .step{display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.55}
+    .step i{flex:none;margin-top:2px;display:flex;color:var(--text-mute)}
+    .step i.ok{color:var(--success)}
+    .step i.no{color:var(--danger)}
+    .step span{color:var(--on-surface-variant)}
+    .step b{color:var(--on-surface);font-weight:600}
+  </style>
+</helmet>
+
+<div class="sheet">
+
+  <header>
+    <span class="kicker">Around the team · #965 · #966</span>
+    <h1>Reading what was said, without leaving</h1>
+    <p class="lede">Around the team tells you <strong>that</strong> something happened and never <strong>what was said</strong>. Both ways out of that are broken: going to read it costs you your filters, and writing back produces no evidence it worked. The page subscribes to every conversation in the product and renders none of them — it has been a <strong>write-only</strong> surface. One control fixes both: the card opens the person's Conversation in place.</p>
+  </header>
+
+  <hr class="rule">
+
+  <!-- ── 1. collapsed ──────────────────────────────────────────────────── -->
+  <section class="split">
+    <div>
+      <h2>1 · Collapsed, and the dot is gone</h2>
+      <p class="sec-sub">The accent dot meant <em>unseen</em>. With one state left, every un-reviewed card would carry one — a dot on everything marks nothing. The count it was standing in for moves onto the control that earns it.</p>
+
+      <div class="stage one" style="margin-top:20px">
+        <div>
+          <p class="caption">Today</p>
+          <div class="card">
+            <div class="crow">
+              <div class="av">MO</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names">
+                    <span class="pname">Mei Oyelaran</span>
+                    <span class="dot"></span>
+                    <span class="chip talked">Talked</span>
+                    <span class="chip">YP team</span>
+                  </div>
+                  <span class="rel">3h</span>
+                </div>
+                <div class="phr">David logged a coffee · Ana added a note</div>
+                <p class="body clamp">Met after the Thursday meeting and she asked directly why the gospel matters if she is already a good person. Long conversation, mostly her talking. She is reading Mark on her own now and</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Comment
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p class="caption">Proposed</p>
+          <div class="card">
+            <div class="crow">
+              <div class="av">MO</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names">
+                    <span class="pname">Mei Oyelaran</span>
+                    <span class="chip talked">Talked</span>
+                    <span class="chip">YP team</span>
+                  </div>
+                  <span class="rel">3h</span>
+                </div>
+                <div class="phr">David logged a coffee · Ana added a note</div>
+                <p class="body clamp">Met after the Thursday meeting and she asked directly why the gospel matters if she is already a good person. Long conversation, mostly her talking. She is reading Mark on her own now and</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Conversation · <span class="cnt">3</span>
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <h3>One control, not a new one</h3>
+      <p>Comment becomes <strong>Conversation · 3</strong> — the same button, now carrying the count and toggling the strip instead of swapping itself for a composer. Nothing is added to the action row; the dot is removed from the header.</p>
+      <h3>When there is nothing yet</h3>
+      <p>No messages, no number: the button reads <strong>Comment</strong>, exactly as it does today, and opens onto an empty strip with the composer ready. The count appears only when there is something to count.</p>
+      <h3>What the dot was really doing</h3>
+      <p>It marked <em>unseen</em>, and unseen is being retired here (ADR 0022). Dropping it is not a loss of information — it is the removal of a second marker for a state the page no longer keeps.</p>
+      <h3>Height is unchanged</h3>
+      <p>Collapsed cards keep the two-line body clamp and the same anatomy, so the 3-up grid at <code>xl</code> still tiles evenly. Everything new lives below the fold of the card.</p>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ── 2. open ───────────────────────────────────────────────────────── -->
+  <section class="split">
+    <div>
+      <h2>2 · Open — and the clamp comes off</h2>
+      <p class="sec-sub">#965 says the body is unreadable because it is clipped at two lines. That clamp exists to keep collapsed cards a uniform height. Once you open a card you have left the grid's uniformity behind, so the same gesture releases both clips: the interaction text unclamps and the Conversation appears under it.</p>
+
+      <div class="stage one" style="margin-top:20px">
+        <div class="card">
+          <div class="crow">
+            <div class="av">MO</div>
+            <div class="grow">
+              <div class="l1">
+                <div class="names">
+                  <span class="pname">Mei Oyelaran</span>
+                  <span class="chip talked">Talked</span>
+                  <span class="chip">YP team</span>
+                </div>
+                <span class="rel">3h</span>
+              </div>
+              <div class="phr">David logged a coffee · Ana added a note</div>
+              <p class="body">Met after the Thursday meeting and she asked directly why the gospel matters if she is already a good person. Long conversation, mostly her talking. She is reading Mark on her own now and wanted to know whether the miracles are meant literally. I said I would come back to her on that rather than guess.</p>
+              <div class="acts">
+                <button class="b-s">Reviewed</button>
+                <button class="b-o on">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Conversation · <span class="cnt">3</span>
+                </button>
+                <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                  <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                  <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                </span>
+              </div>
+
+              <div class="strip">
+                <div class="strip-hd">
+                  <span class="strip-lab">Conversation</span>
+                  <span class="strip-lab" style="text-transform:none;letter-spacing:0;font-weight:500">Everyone tied to Mei</span>
+                </div>
+                <div class="msgs">
+                  <div class="msg">
+                    <div class="mav">DK</div>
+                    <div class="mb">
+                      <div class="mhd"><span class="mwho">David Kim</span><span class="mwhen">4d</span></div>
+                      <p class="mtx">She asked about the miracles again on Sunday. I don't want to fumble it — has anyone walked someone through this before?</p>
+                    </div>
+                  </div>
+                  <div class="msg">
+                    <div class="mav">AR</div>
+                    <div class="mb">
+                      <div class="mhd"><span class="mwho">Ana Reyes</span><span class="mwhen">3d</span></div>
+                      <p class="mtx">Start with the resurrection rather than the healings — it is the one the rest hangs on and she already takes it seriously as a claim.</p>
+                    </div>
+                  </div>
+                  <div class="msg">
+                    <div class="mav">DK</div>
+                    <div class="mb">
+                      <div class="mhd"><span class="mwho">David Kim</span><span class="mwhen">2d</span></div>
+                      <p class="mtx">That helped. Meeting her Thursday.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="composer">
+                  <div class="kinds">
+                    <button class="kind on">Comment</button>
+                    <button class="kind">Note</button>
+                    <button class="kind">Question</button>
+                    <button class="kind">Ask</button>
+                  </div>
+                  <div class="ta">Write something…</div>
+                  <div class="crow2">
+                    <button class="b-o">Cancel</button>
+                    <button class="b-s">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                      Post
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <h3>Messages above, composer below</h3>
+      <p>The composer sits at the <strong>foot</strong> of the strip and the list grows toward it, so a posted message appears directly above where it was typed — the shortest possible distance between the act and its evidence.</p>
+      <h3>Reuse, don't rebuild</h3>
+      <p>This is <code>Thread.tsx</code> in its existing <code>compact</code> variant, not a new renderer. Same mentions, same reactions, same kind picker the contact page uses.</p>
+      <h3>Unclamping is the fix for #965</h3>
+      <p>"Some fields are hard to read because of length" is the two-line clamp. Opening the card releases it in the same click that reveals the conversation — you never leave the page to read a long note.</p>
+      <h3>Still does not move</h3>
+      <p>An open card grows in place. It does not re-date, re-sort, or jump to another day heading — the day it sits under means <strong>when the team touched this person</strong>, not when someone last remarked on it.</p>
+      <h3>One at a time</h3>
+      <p>Opening a second card closes the first. Two expanded cards in a 3-up grid leave a ragged hole, and the page is for working down a list, not for holding several conversations open at once.</p>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ── 3. just posted ────────────────────────────────────────────────── -->
+  <section class="split">
+    <div>
+      <h2>3 · The instant you post — all of #966</h2>
+      <p class="sec-sub">Today the composer closes, the accent dot disappears, and the message renders nowhere. The only feedback for commenting is the card getting <em>dimmer</em>. Here the evidence is the message itself, landing where you were already looking.</p>
+
+      <div class="cmp" style="margin-top:20px">
+        <div class="pane">
+          <h3><span class="kicker bad">Today</span></h3>
+          <div class="steps">
+            <div class="step"><i class="ok"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></i><span><b>The write succeeds.</b> <code>addThreadMessage</code> reaches Firestore.</span></div>
+            <div class="step"><i><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></i><span>The composer unmounts and the draft clears.</span></div>
+            <div class="step"><i><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></i><span><code>markSeen</code> fires — the accent dot <b>disappears</b>.</span></div>
+            <div class="step"><i class="no"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></i><span>The "Posted" toast is a <b>no-op</b>: the page is mounted with no props, so <code>onToast</code> is undefined.</span></div>
+            <div class="step"><i class="no"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></i><span>The message <b>never renders</b> — thread items on untied contacts are dropped before they become anything.</span></div>
+          </div>
+          <p>Net: you write something, the composer vanishes, the card gets quieter, and nothing else happens.</p>
+        </div>
+        <div class="pane">
+          <h3><span class="kicker good">Proposed</span></h3>
+          <div class="steps">
+            <div class="step"><i class="ok"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></i><span><b>The message appears</b> at the foot of the strip, an inch below where you typed it.</span></div>
+            <div class="step"><i><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></i><span>The composer <b>stays open and empty</b> — you may have more to say.</span></div>
+            <div class="step"><i><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></i><span>The count on the button ticks <b>3 → 4</b>.</span></div>
+            <div class="step"><i><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></i><span>The revived snackbar confirms it, as a second signal rather than the only one.</span></div>
+            <div class="step"><i><svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></i><span>Nothing is marked reviewed. The card does not dim, re-date, or move.</span></div>
+          </div>
+          <p>The evidence that a message posted is <strong>the message</strong>. Everything else is corroboration.</p>
+        </div>
+      </div>
+
+      <div class="stage one" style="margin-top:22px;flex-direction:column;gap:14px">
+        <div>
+          <p class="caption">The strip, the moment after Post</p>
+          <div class="card">
+            <div class="crow">
+              <div class="av">MO</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names">
+                    <span class="pname">Mei Oyelaran</span>
+                    <span class="chip talked">Talked</span>
+                    <span class="chip">YP team</span>
+                  </div>
+                  <span class="rel">3h</span>
+                </div>
+                <div class="phr">David logged a coffee · Ana added a note</div>
+                <p class="body">Met after the Thursday meeting and she asked directly why the gospel matters if she is already a good person. Long conversation, mostly her talking. She is reading Mark on her own now and wanted to know whether the miracles are meant literally. I said I would come back to her on that rather than guess.</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o on">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Conversation · <span class="cnt">4</span>
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+                <div class="strip">
+                  <div class="strip-hd">
+                    <span class="strip-lab">Conversation</span>
+                    <span class="strip-lab" style="text-transform:none;letter-spacing:0;font-weight:500">Everyone tied to Mei</span>
+                  </div>
+                  <div class="msgs">
+                    <div class="msg">
+                      <div class="mav">DK</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">David Kim</span><span class="mwhen">4d</span></div>
+                        <p class="mtx">She asked about the miracles again on Sunday. I don't want to fumble it — has anyone walked someone through this before?</p>
+                      </div>
+                    </div>
+                    <div class="msg">
+                      <div class="mav">AR</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">Ana Reyes</span><span class="mwhen">3d</span></div>
+                        <p class="mtx">Start with the resurrection rather than the healings — it is the one the rest hangs on and she already takes it seriously as a claim.</p>
+                      </div>
+                    </div>
+                    <div class="msg">
+                      <div class="mav">DK</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">David Kim</span><span class="mwhen">2d</span></div>
+                        <p class="mtx">That helped. Meeting her Thursday.</p>
+                      </div>
+                    </div>
+                    <div class="msg fresh">
+                      <div class="mav">TW</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">Tony</span><span class="mwhen">Just now</span></div>
+                        <p class="mtx">I have the Keller chapter on this — dropping it in the shared folder tonight.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="composer">
+                    <div class="kinds">
+                      <button class="kind on">Comment</button>
+                      <button class="kind">Note</button>
+                      <button class="kind">Question</button>
+                      <button class="kind">Ask</button>
+                    </div>
+                    <div class="ta">Write something…</div>
+                    <div class="crow2">
+                      <button class="b-o">Cancel</button>
+                      <button class="b-s">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                        Post
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="snack">
+          <span>Posted to Mei's conversation.</span>
+          <button>Undo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ann">
+      <h3>Why the composer stays open</h3>
+      <p>Closing it was half of why the post felt like it evaporated — the thing you were looking at disappeared and nothing took its place. Leaving it open and empty says "that went through, carry on" without a word of copy.</p>
+      <h3>The fresh message is marked, briefly</h3>
+      <p>A tinted block and <strong>Just now</strong> in the success tone for a few seconds, then it settles into an ordinary row. Enough to catch the eye that was on the Post button; not a permanent badge.</p>
+      <h3>The snackbar already exists</h3>
+      <p>The page renders <code>UndoSnackbar</code> and holds <code>useUndoSnack</code> already — the composer's toast simply routes to a prop nobody passes. That wiring lands in the small correctness PR, ahead of this design.</p>
+      <h3>Encouragements too</h3>
+      <p>The ❤️ popover posts a canned encouragement and calls the same dead toast. It gets the same snackbar — but stays out of the strip, summarised rather than listed, as it is everywhere else.</p>
+    </div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

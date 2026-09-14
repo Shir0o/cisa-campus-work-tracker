@@ -1,0 +1,396 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg:#FFFFFF; --surface:#F4F4F5; --surface-variant:#EAEAEC;
+      --on-surface:#0A0A0B; --on-surface-variant:#52525B; --text-mute:#A1A1AA;
+      --outline:#E4E4E7; --outline-variant:#F0F0F2;
+      --primary:#131316; --on-primary:#FFFFFF;
+      --accent:#52525B; --accent-soft:rgba(10,10,11,0.06);
+      --success:#016A1C;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--on-surface);
+      font-family:Lexend,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+      font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+    a:hover{color:var(--primary)}
+    button{font-family:inherit}
+    svg{display:block}
+
+    .page{display:flex;min-height:100%}
+
+    /* the floating near-black rail (ADR 0003), light theme */
+    .rail{width:76px;flex:none;padding:14px 0 14px 14px}
+    .rail-in{background:#0A0A0B;border-radius:32px;height:100%;min-height:1000px;
+      padding:16px 0;display:flex;flex-direction:column;align-items:center;gap:6px;
+      box-shadow:0 8px 32px rgba(10,10,11,0.14)}
+    .rail-logo{width:34px;height:34px;border-radius:12px;background:#5c5595;margin-bottom:10px;flex:none}
+    .ri{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+      color:rgba(255,255,255,0.62)}
+    .ri.on{background:#FFFFFF;color:#0A0A0B}
+
+    .main{flex:1;min-width:0;padding:34px 40px 60px}
+    .wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+    .hrow{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    h1{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:30px;
+      letter-spacing:-0.025em;margin:0;display:flex;align-items:baseline;gap:10px}
+    .pill{font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;
+      background:rgba(82,82,91,0.15);color:var(--accent)}
+    .sub{font-size:13.5px;color:var(--on-surface-variant);margin:6px 0 0}
+    .htools{display:flex;align-items:center;gap:10px}
+    .seg{display:flex;background:var(--surface-variant);border-radius:999px;padding:2px}
+    .seg button{padding:5px 14px;border-radius:999px;border:0;background:transparent;
+      font-size:12px;font-weight:500;color:var(--on-surface-variant)}
+    .seg button.on{background:var(--bg);color:var(--on-surface);font-weight:600;
+      box-shadow:0 1px 2px rgba(10,10,11,0.08)}
+
+    .filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .fchip{font-size:12px;font-weight:500;padding:5px 13px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-variant)}
+    .fchip.on{background:var(--primary);color:var(--on-primary);border-color:transparent;font-weight:600}
+    .fsel{font-size:12px;font-weight:500;padding:5px 13px;border-radius:999px;
+      border:1px solid var(--outline-variant);color:var(--on-surface-variant);
+      display:inline-flex;align-items:center;gap:7px}
+    .clear{font-size:12px;font-weight:500;color:var(--accent);text-decoration:underline;
+      text-underline-offset:2px;margin-left:2px}
+
+    .day{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--on-surface-variant);padding:10px 2px 0}
+    .grid{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px;align-items:start}
+
+    .card{background:var(--surface);border:1px solid var(--outline-variant);
+      border-radius:32px;padding:16px;box-shadow:0 1px 2px rgba(10,10,11,0.05)}
+    .card.reviewed{background:rgba(244,244,245,0.6);border-color:rgba(240,240,242,0.4);opacity:.6;
+      box-shadow:none}
+    .crow{display:flex;align-items:flex-start;gap:14px}
+    .av{width:40px;height:40px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:13px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .grow{flex:1;min-width:0}
+    .l1{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .names{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+    .pname{font-size:16px;font-weight:500;color:var(--on-surface);white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis}
+    .chip{font-size:11px;color:var(--on-surface-variant);border:1px solid var(--outline-variant);
+      border-radius:999px;padding:1px 6px;flex:none}
+    .chip.talked{background:var(--accent-soft);border-color:transparent}
+    .rel{font-size:12px;color:rgba(82,82,91,0.8);flex:none}
+    .phr{font-size:12px;font-weight:500;color:var(--on-surface-variant);margin-top:4px}
+    .body{font-size:12px;color:rgba(82,82,91,0.9);margin-top:4px;white-space:pre-line;
+      background:rgba(234,234,236,0.4);border-radius:20px;padding:8px}
+    .body.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .acts{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px}
+    .b-s{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:0;
+      background:var(--primary);color:var(--on-primary);font-size:12px;font-weight:500}
+    .b-o{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface);
+      font-size:12px;font-weight:500}
+    .b-o.on{background:var(--bg);border-color:var(--outline);font-weight:600}
+    .b-i{width:32px;height:32px;border-radius:20px;border:1px solid var(--outline-variant);
+      background:transparent;color:var(--on-surface-variant);
+      display:flex;align-items:center;justify-content:center;flex:none}
+    .spacer{margin-left:auto;display:flex;align-items:center;gap:6px}
+    .cnt{font-variant-numeric:tabular-nums}
+    .doneline{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;
+      color:var(--success);font-weight:500}
+
+    .strip{margin-top:14px;padding-top:12px;border-top:1px solid rgba(240,240,242,0.6);
+      display:flex;flex-direction:column;gap:12px}
+    .strip-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .strip-lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+      color:var(--text-mute)}
+    .msgs{display:flex;flex-direction:column;gap:12px}
+    .msg{display:flex;gap:10px;align-items:flex-start}
+    .mav{width:24px;height:24px;flex:none;border-radius:999px;background:var(--accent-soft);
+      color:var(--accent);font-size:10px;font-weight:600;
+      display:flex;align-items:center;justify-content:center}
+    .mb{flex:1;min-width:0}
+    .mhd{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+    .mwho{font-size:12px;font-weight:600;color:var(--on-surface)}
+    .mwhen{font-size:11px;color:var(--text-mute)}
+    .mtx{font-size:12.5px;line-height:1.6;color:var(--on-surface-variant);margin:2px 0 0}
+    .composer{display:flex;flex-direction:column;gap:8px}
+    .kinds{display:flex;gap:5px}
+    .kind{font-size:11px;font-weight:500;padding:4px 10px;border-radius:999px;
+      border:1px solid var(--outline-variant);background:transparent;color:var(--on-surface-variant)}
+    .kind.on{background:var(--primary);color:var(--on-primary);border-color:transparent;font-weight:600}
+    .ta{border:1px solid rgba(240,240,242,0.9);background:var(--surface-variant);border-radius:24px;
+      padding:10px;font-size:13px;color:var(--text-mute);min-height:46px}
+    .crow2{display:flex;justify-content:flex-end;gap:8px}
+
+    .gapnote{font-size:11px;color:var(--text-mute);font-style:italic;padding:8px 4px 0}
+  </style>
+</helmet>
+
+<div class="page">
+
+  <nav class="rail">
+    <div class="rail-in">
+      <div class="rail-logo"></div>
+      <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="ri on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+      <div class="ri"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="wrap">
+
+      <div class="hrow">
+        <div>
+          <h1>Around the team <span class="pill">14 to work through</span></h1>
+          <p class="sub">Everything else the team has been doing. Nothing here is waiting on you.</p>
+        </div>
+        <div class="htools">
+          <div class="seg"><button class="on">New</button><button>All</button></div>
+          <button class="b-o">Mark all reviewed</button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <button class="fchip on">YP team</button>
+        <button class="fchip">Campus team</button>
+        <span class="fsel">Anyone
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+        <a class="clear" href="#">Show everyone</a>
+      </div>
+
+      <div>
+        <div class="day">Today</div>
+        <div class="grid">
+
+          <!-- open card -->
+          <div class="card">
+            <div class="crow">
+              <div class="av">MO</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names"><span class="pname">Mei Oyelaran</span><span class="chip talked">Talked</span></div>
+                  <span class="rel">3h</span>
+                </div>
+                <div class="phr">David logged a coffee · Ana added a note</div>
+                <p class="body">Met after the Thursday meeting and she asked directly why the gospel matters if she is already a good person. Long conversation, mostly her talking. She is reading Mark on her own now and wanted to know whether the miracles are meant literally.</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o on">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Conversation · <span class="cnt">3</span>
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+                <div class="strip">
+                  <div class="strip-hd">
+                    <span class="strip-lab">Conversation</span>
+                    <span class="strip-lab" style="text-transform:none;letter-spacing:0;font-weight:500">Everyone tied to Mei</span>
+                  </div>
+                  <div class="msgs">
+                    <div class="msg">
+                      <div class="mav">DK</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">David Kim</span><span class="mwhen">4d</span></div>
+                        <p class="mtx">She asked about the miracles again on Sunday. I don’t want to fumble it — has anyone walked someone through this before?</p>
+                      </div>
+                    </div>
+                    <div class="msg">
+                      <div class="mav">AR</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">Ana Reyes</span><span class="mwhen">3d</span></div>
+                        <p class="mtx">Start with the resurrection rather than the healings — it is the one the rest hangs on and she already takes it seriously as a claim.</p>
+                      </div>
+                    </div>
+                    <div class="msg">
+                      <div class="mav">DK</div>
+                      <div class="mb">
+                        <div class="mhd"><span class="mwho">David Kim</span><span class="mwhen">2d</span></div>
+                        <p class="mtx">That helped. Meeting her Thursday.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="composer">
+                    <div class="kinds">
+                      <button class="kind on">Comment</button>
+                      <button class="kind">Note</button>
+                      <button class="kind">Question</button>
+                      <button class="kind">Ask</button>
+                    </div>
+                    <div class="ta">Write something…</div>
+                    <div class="crow2">
+                      <button class="b-o">Cancel</button>
+                      <button class="b-s">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                        Post
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- collapsed -->
+          <div>
+            <div class="card">
+              <div class="crow">
+                <div class="av">JT</div>
+                <div class="grow">
+                  <div class="l1">
+                    <div class="names"><span class="pname">Joy Tan</span><span class="chip talked">Talked</span></div>
+                    <span class="rel">5h</span>
+                  </div>
+                  <div class="phr">Ana logged a text · 2 more</div>
+                  <p class="body clamp">Said she'd come to the Thursday thing if her lab finishes early. Didn't push it — she seemed genuinely busy rather than avoiding it.</p>
+                  <div class="acts">
+                    <button class="b-s">Reviewed</button>
+                    <button class="b-o">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      Conversation · <span class="cnt">1</span>
+                    </button>
+                    <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                      <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                      <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="gapnote">The row grows to the open card. Neighbours stay top-aligned — this is why only one card opens at a time.</p>
+          </div>
+
+          <!-- new person -->
+          <div class="card">
+            <div class="crow">
+              <div class="av">SB</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names"><span class="pname">Sam Boateng</span></div>
+                  <span class="rel">7h</span>
+                </div>
+                <div class="phr">David added Sam</div>
+                <p class="body clamp">Met at the engineering mixer. Second year, from Kumasi, came with a friend who already knows Ana.</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Comment
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div>
+        <div class="day">Yesterday</div>
+        <div class="grid">
+          <div class="card reviewed">
+            <div class="crow">
+              <div class="av">PN</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names"><span class="pname">Priya Nair</span><span class="chip talked">Talked</span></div>
+                  <span class="rel">1d</span>
+                </div>
+                <div class="phr">Ana logged a call</div>
+                <p class="body clamp">Catching up after the break. She's bringing her roommate on Thursday.</p>
+                <div class="doneline">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  Reviewed
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="crow">
+              <div class="av">LK</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names"><span class="pname">Leo Kwan</span><span class="chip talked">Talked</span></div>
+                  <span class="rel">1d</span>
+                </div>
+                <div class="phr">David logged a meal · Ana commented</div>
+                <p class="body clamp">Long one. He's wrestling with what his parents will say more than with the thing itself.</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Conversation · <span class="cnt">5</span>
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="crow">
+              <div class="av">HA</div>
+              <div class="grow">
+                <div class="l1">
+                  <div class="names"><span class="pname">Hana Abebe</span></div>
+                  <span class="rel">1d</span>
+                </div>
+                <div class="phr">Ana added Hana</div>
+                <p class="body clamp">Friend of Priya's. Hasn't been to anything yet.</p>
+                <div class="acts">
+                  <button class="b-s">Reviewed</button>
+                  <button class="b-o">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Comment
+                  </button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call</button>
+                  <button class="b-o"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Email</button>
+                  
+                  <span class="spacer">
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+                    <button class="b-i"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+</body>
+</html>
