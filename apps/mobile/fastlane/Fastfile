@@ -32,7 +32,16 @@ lane :play_upload_notes do |options|
     UI.user_error!("Pass version_code:, or set VERSION_CODE. Anchoring the changelog to a version is the whole point of this lane.")
   end
 
-  metadata_path = File.join("fastlane", "metadata", "android")
+  # Fastlane changes directory twice, and the difference bites:
+  #   runner.rb:45  - a LANE BODY runs with cwd = <project>/fastlane
+  #   runner.rb:229 - an ACTION runs with cwd = <project> (chdir "..")
+  # An unanchored path therefore means this guard checks
+  # fastlane/fastlane/metadata/... while upload_to_play_store checks
+  # fastlane/metadata/... - and the guard fired on a changelog that was
+  # sitting exactly where it belonged, failing the release for nothing.
+  # Anchor every path to the project root instead.
+  fastlane_dir = FastlaneCore::FastlaneFolder.path || Dir.pwd
+  metadata_path = File.join(File.expand_path("..", fastlane_dir), "fastlane", "metadata", "android")
   changelog = File.join(metadata_path, "en-US", "changelogs", "#{version_code}.txt")
 
   # supply only WARNS when the changelog file is missing, then uploads empty
