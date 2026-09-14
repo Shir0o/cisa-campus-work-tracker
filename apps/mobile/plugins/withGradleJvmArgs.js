@@ -25,7 +25,7 @@ const { withGradleProperties } = require('@expo/config-plugins');
  * (Java properties take the last occurrence, so a duplicate would work by
  * accident, not by design).
  */
-const JVM_ARGS = '-Xmx4096m -XX:MaxMetaspaceSize=1024m';
+const JVM_ARGS = '-Xmx4096m -XX:MaxMetaspaceSize=2048m';
 
 module.exports = function withGradleJvmArgs(config) {
   return withGradleProperties(config, (cfg) => {

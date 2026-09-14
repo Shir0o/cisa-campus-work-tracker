@@ -126,7 +126,7 @@ jobs:
           # the job sat until the 60-minute job timeout - and GitHub withholds a
           # job's log until it finalises, so the failure could not be read for
           # ~50 minutes. Fail in 40 instead of hanging.
-          timeout --signal=TERM 2400 npx eas-cli build --local --platform android --profile production --non-interactive --output ./artifacts/app-release.aab
+          timeout --signal=TERM 2700 npx eas-cli build --local --platform android --profile production --non-interactive --output ./artifacts/app-release.aab
 
       - name: Compile Play release notes
         run: npx tsx scripts/store-release-notes.ts --platform play --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/play-release-notes.txt
