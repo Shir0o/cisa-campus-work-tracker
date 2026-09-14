@@ -30,4 +30,15 @@ describe('UndoSnackbar', () => {
     expect(onClose).toHaveBeenCalled();
     expect(onUndo).not.toHaveBeenCalled();
   });
+
+  it('draws no Undo when there is nothing to reverse — a plain confirmation (#966)', () => {
+    const onClose = vi.fn();
+    render(<UndoSnackbar undoSnack={{ message: 'Posted' }} onClose={onClose} />);
+
+    expect(screen.getByText('Posted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+    // Dismissing it is still possible.
+    fireEvent.click(screen.getByRole('button', { name: 'Close snackbar' }));
+    expect(onClose).toHaveBeenCalled();
+  });
 });

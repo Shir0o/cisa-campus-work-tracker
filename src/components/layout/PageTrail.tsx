@@ -34,7 +34,7 @@ export interface PageTrailProps {
  * and not as a second heading. Design: docs/design/chrome-strip/.
  */
 export default function PageTrail({ className, leafOnly = false }: PageTrailProps) {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const { role } = useAuth();
   const layout = useOptionalLayout();
   const { t } = useI18n();
@@ -43,7 +43,10 @@ export default function PageTrail({ className, leafOnly = false }: PageTrailProp
   // `/messages/:roomId` isn't in layout state, so that route shows `‹ Messages`
   // — still a way back, and better than a placeholder.
   const leafName = pathname.startsWith('/people/') ? layout?.selectedContact?.name ?? null : null;
-  const { section, current, currentIsLabel } = navTrailFor(pathname, role, leafName);
+  // The place this route was opened from, filters and all — the trail points
+  // back there rather than at the section the route nominally belongs to.
+  const from = (state as { from?: string } | null)?.from ?? null;
+  const { section, current, currentIsLabel } = navTrailFor(pathname, role, leafName, from);
 
   if (leafOnly && !section) return null;
   if (!section && !current) return null;

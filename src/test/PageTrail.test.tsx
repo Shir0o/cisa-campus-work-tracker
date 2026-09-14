@@ -24,6 +24,14 @@ const at = (path: string, props: React.ComponentProps<typeof PageTrail> = {}) =>
     </MemoryRouter>,
   );
 
+/** As `at`, but for a route that records where it was opened from. */
+const openedFrom = (path: string, from: string) =>
+  render(
+    <MemoryRouter initialEntries={[{ pathname: path, state: { from } }]}>
+      <PageTrail />
+    </MemoryRouter>,
+  );
+
 describe('PageTrail (#803)', () => {
   beforeEach(() => {
     h.auth = { role: 'admin' };
@@ -76,5 +84,26 @@ describe('PageTrail (#803)', () => {
   it('does not throw without a layout provider — the strip mounts it directly', () => {
     h.layout = undefined;
     expect(() => at('/people/abc')).not.toThrow();
+  });
+
+  it('points back where the reader came from, filters and all (#965)', () => {
+    h.layout = { selectedContact: { name: 'Mei Oyelaran' } };
+    openedFrom('/people/abc', '/around?team=yp&who=mei&new=1');
+
+    const back = screen.getByRole('link', { name: /back to around the team/i });
+    expect(back).toHaveAttribute('href', '/around?team=yp&who=mei&new=1');
+    expect(screen.getByText('Around the team')).toBeInTheDocument();
+    expect(screen.getByText('Mei Oyelaran')).toBeInTheDocument();
+    expect(screen.queryByText('People')).not.toBeInTheDocument();
+  });
+
+  it('still says People when the contact was opened from the directory', () => {
+    h.layout = { selectedContact: { name: 'Mei Oyelaran' } };
+    openedFrom('/people/abc', '/directory');
+
+    expect(screen.getByRole('link', { name: /back to people/i })).toHaveAttribute(
+      'href',
+      '/directory',
+    );
   });
 });

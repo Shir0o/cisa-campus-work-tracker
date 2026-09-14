@@ -43,6 +43,7 @@ import { NotificationPermissionBanner } from "./components/notifications/Notific
 import { canAccessRoute, defaultRouteForRole, fallbackRouteFor, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
+import { currentHref } from "./lib/navTrail";
 import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
 import { applyTeams } from "./lib/teams";
@@ -393,7 +394,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const openSelectedContact = (contact: Contact | null) => {
     if (!contact) {
       const from = (location.state as { from?: string } | null)?.from;
-      if (from && from !== location.pathname) {
+      if (from && from !== currentHref(location)) {
         navigate(from);
       } else if (location.pathname.startsWith("/people/")) {
         navigate(-1);
@@ -410,7 +411,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
     setSelectedContact(contact);
     navigate(`/people/${contact.id}`, {
-      state: { from: location.pathname },
+      state: { from: currentHref(location) },
     });
   };
 
@@ -434,7 +435,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       if (contactId) {
         setSelectedContact(null);
         const from = (location.state as { from?: string } | null)?.from;
-        navigate(from && from !== location.pathname ? from : defaultRouteForRole(role));
+        navigate(from && from !== currentHref(location) ? from : defaultRouteForRole(role));
       }
       return;
     }

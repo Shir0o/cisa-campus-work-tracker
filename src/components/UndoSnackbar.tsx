@@ -30,15 +30,17 @@ export function UndoSnackbar({
               <Translate text={undoSnack.message} />
             </span>
             <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => {
-                  undoSnack.onUndo();
-                  onClose();
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
-              >
-                {t('actions.undo')}
-              </button>
+              {undoSnack.onUndo && (
+                <button
+                  onClick={() => {
+                    undoSnack.onUndo?.();
+                    onClose();
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
+                >
+                  {t('actions.undo')}
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"

@@ -44,6 +44,16 @@ const LEAF_ROUTES: readonly { pattern: RegExp; section: string; leaf?: string }[
   { pattern: /^\/admin\/feedback$/, section: '/settings', leaf: 'Feedback' },
 ];
 
+/**
+ * Where you are, filters included. A `from` handed to a detail route must carry
+ * the query string, not just the path: returning from a contact to a bare
+ * `/around` resets the team, teammate and new-only filters the reader had set,
+ * and they have to find their place again (#965).
+ */
+export function currentHref(location: { pathname: string; search?: string }): string {
+  return `${location.pathname}${location.search ?? ''}`;
+}
+
 /** Trailing slashes only ever come from hand-typed URLs; `/` keeps its own. */
 function normalize(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) return pathname.slice(0, -1);
@@ -96,6 +106,7 @@ export function navTrailFor(
   pathname: string,
   role: AppRole | string | null,
   leafName?: string | null,
+  from?: string | null,
 ): Trail {
   const path = normalize(pathname);
   const sectionHref = sectionHrefFor(path);
@@ -106,13 +117,38 @@ export function navTrailFor(
     return { section: null, current: labelFor(path, role), currentIsLabel: true };
   }
 
+  const declared = LEAF_ROUTES.find((r) => r.pattern.test(path));
+  const current = declared?.leaf ?? leafName ?? null;
+  const currentIsLabel = declared?.leaf !== undefined;
+
+  // Where the reader actually came from wins over the declared section. A
+  // person opened from /around used to show "‹ People" and send them to the
+  // directory — a trail that names a place they were never at (#965). Only a
+  // destination is honoured: a `from` that is itself a leaf (another contact)
+  // has no label of its own, so the declared section stays.
+  const fromSection = openedFrom(from, path, role);
+  if (fromSection) return { section: fromSection, current, currentIsLabel };
+
   const sectionLabel = labelFor(sectionHref, role);
   if (sectionLabel === null) return { section: null, current: null, currentIsLabel: false };
 
-  const declared = LEAF_ROUTES.find((r) => r.pattern.test(path));
-  return {
-    section: { label: sectionLabel, href: sectionHref },
-    current: declared?.leaf ?? leafName ?? null,
-    currentIsLabel: declared?.leaf !== undefined,
-  };
+  return { section: { label: sectionLabel, href: sectionHref }, current, currentIsLabel };
+}
+
+/**
+ * The crumb for the destination a detail route was opened from — label from the
+ * destination, href from the `from` itself, so the filters it carries come back
+ * with it. `null` when there is no usable origin.
+ */
+function openedFrom(
+  from: string | null | undefined,
+  path: string,
+  role: AppRole | string | null,
+): { label: string; href: string } | null {
+  if (!from) return null;
+  const fromPath = normalize(from.split('?')[0]);
+  if (fromPath === path) return null;
+  if (sectionHrefFor(fromPath) !== fromPath) return null;
+  const label = labelFor(fromPath, role);
+  return label === null ? null : { label, href: from };
 }
