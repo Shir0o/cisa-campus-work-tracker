@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.2...v1.5.0) (2026-09-14)
+
+
+### Features
+
+* **contacts:** allow co-owners to manage collaborators and fix impersonation bypass ([#1013](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1013)) ([#1017](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1017)) ([8b20de3](https://github.com/Shir0o/cisa-campus-work-tracker/commit/8b20de342293de7bf88d7316e221c96bc77f34f7))
+
 ## [1.4.2](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.1...v1.4.2) (2026-09-14)
 
 
