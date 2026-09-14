@@ -183,8 +183,12 @@ npx tsx scripts/store-release-notes.ts --platform testflight --version 1.4.0
 
 Play is capped at 500 characters; the script enforces that.
 
-**TestFlight** receives them automatically: `release-ios.yml` passes the compiled
-notes to `eas submit --what-to-test`.
+**TestFlight** does *not* receive them automatically either. `eas submit
+--what-to-test` is gated behind the Expo **Enterprise** plan - on the free tier
+it fails the whole submission with *"Changelog submission is currently available
+for Enterprise plan only"*. The compiled notes ride on the GitHub Release; paste
+them into App Store Connect while promoting. (Setting them through the App Store
+Connect API directly is possible and is a candidate follow-up.)
 
 **Play** needs a second step. `eas submit` has no field for release notes -
 `AndroidSubmitProfile` is exactly `serviceAccountKeyPath`, `track`,
