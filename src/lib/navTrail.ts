@@ -44,15 +44,6 @@ const LEAF_ROUTES: readonly { pattern: RegExp; section: string; leaf?: string }[
   { pattern: /^\/admin\/feedback$/, section: '/settings', leaf: 'Feedback' },
 ];
 
-/**
- * In-shell destinations that are deliberately not in `NAV_ITEMS` — reachable by
- * link rather than by navigating, so they have no rail item and no tab, but
- * they still have a name.
- */
-const STANDALONE: Record<string, string> = {
-  '/feedback': 'Your notes',
-};
-
 /** Trailing slashes only ever come from hand-typed URLs; `/` keeps its own. */
 function normalize(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) return pathname.slice(0, -1);
@@ -66,9 +57,7 @@ function normalize(pathname: string): string {
  */
 function labelFor(href: string, role: AppRole | string | null): string | null {
   if (href === '/' && role === 'admin') return 'My Day';
-  const item = NAV_ITEMS.find((i) => i.href === href);
-  if (item) return item.label;
-  return STANDALONE[href] ?? null;
+  return NAV_ITEMS.find((i) => i.href === href)?.label ?? null;
 }
 
 /**
@@ -81,8 +70,8 @@ export function sectionHrefFor(pathname: string): string | null {
   const leaf = LEAF_ROUTES.find((r) => r.pattern.test(path));
   if (leaf) return leaf.section;
 
-  // A destination, or one of the in-shell routes that deliberately isn't one.
-  if (NAV_ITEMS.some((i) => i.href === path) || path in STANDALONE) return path;
+  // A destination.
+  if (NAV_ITEMS.some((i) => i.href === path)) return path;
 
   // A child route nobody declared above. Fall back to the deepest destination
   // it sits under, which is the behaviour the shells had before this module —

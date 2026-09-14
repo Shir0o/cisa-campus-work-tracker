@@ -16,6 +16,7 @@ import {
   BookOpen,
   LayoutDashboard,
   Users,
+  StickyNote,
   ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
@@ -50,6 +51,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/questions': MessageCircleQuestion,
   '/bible-study': BookOpen,
   '/around': Users,
+  '/feedback': StickyNote,
 };
 
 function NavGlyph({ href, size = 20, className }: { href: string; size?: number; className?: string }) {

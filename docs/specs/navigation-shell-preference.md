@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-The desktop navigation is a sticky top bar. Horizontal space is finite, so the bar shows a handful of destinations and folds the rest into a More menu — and `PRIMARY_BY_ROLE` promotes only three destinations per role. A Full-timer has thirteen destinations available and sees three promoted, with ten behind a menu they have to remember exists. Reaching Looking back, Answered, Gospel or Visits is two clicks, the first of which is a menu with no affordance suggesting what is inside it.
+The desktop navigation is a sticky top bar. Horizontal space is finite, so the bar shows a handful of destinations and folds the rest into a More menu — and `PRIMARY_BY_ROLE` promotes only three destinations per role. A Full-timer has fourteen destinations available and sees three promoted, with eleven behind a menu they have to remember exists. Reaching Looking back, Answered, Gospel or Visits is two clicks, the first of which is a menu with no affordance suggesting what is inside it.
 
 This is not a styling complaint. Destinations that are two clicks behind an unlabelled menu get used less than destinations that are visible, and the ones currently buried include most of the pastoral work the product exists to support.
 
@@ -30,7 +30,7 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 10. As a Full-timer, I want to change the navigation style in Settings, so that there is one obvious place to find the option.
 11. *(Retired in #681)* The rail width preference is configured in Settings; the on-rail collapse toggle was removed to keep the rail footer minimal.
 12. *(Retired in #681)*
-13. As a Student using the compact rail, I want to see a destination's name on hover, so that I do not have to learn thirteen icons.
+13. As a Student using the compact rail, I want to see a destination's name on hover, so that I do not have to learn fourteen icons.
 14. As a keyboard user, I want destination names to appear on focus as well as hover, so that the compact rail is usable without a mouse.
 15. As a screen-reader user, I want every destination to keep its accessible name when its label is hidden, so that the compact rail is not silent.
 16. *(Retired in #681)*
@@ -112,7 +112,7 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 The three states, both rail widths at full size, the grouping, the Settings control and the width rules are drawn out on a canvas artboard, together with a side-by-side of the top bar and rail on the same destination with identical content. Sources are checked in under `docs/design/ink/` (`NavPref.dc.html` and `Shells.dc.html`); the published canvas is at https://claude.ai/code/artifact/15037373-dc36-41fa-98df-ca1d16678d73.
 
-Two findings from drawing it are worth carrying into implementation. The expanded rail is taller than a 13-inch laptop viewport once a Full-timer's thirteen destinations, four group labels and the pinned footer are counted — internal scrolling is a requirement, not a refinement. And the intermediate-width forced collapse is the sharp edge: it must be component state, never a write.
+Two findings from drawing it are worth carrying into implementation. The expanded rail is taller than a 13-inch laptop viewport once a Full-timer's fourteen destinations, four group labels and the pinned footer are counted — internal scrolling is a requirement, not a refinement. And the intermediate-width forced collapse is the sharp edge: it must be component state, never a write.
 
 This is three navigation states to keep in sync for as long as the product lives. Every destination added later needs a group, an icon that survives at 20px with no label beside it, and a check in all three. That cost was raised and accepted deliberately; it is recorded here so that whoever picks this up knows it was a choice rather than an accident.
 
