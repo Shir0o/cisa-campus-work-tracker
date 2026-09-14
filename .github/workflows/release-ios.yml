@@ -145,11 +145,13 @@ jobs:
           echo "asc-api-key.p8 materialized (contents not echoed)."
 
       - name: Build signed IPA locally
+        # See release-android.yml. Uses a step timeout, not the `timeout`
+        # command, which macOS does not ship.
+        timeout-minutes: 45
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          # See release-android.yml: a hang here would hide the failure's own log.
-          timeout --signal=TERM 2700 npx eas-cli build --local --platform ios --profile production --non-interactive --output ./artifacts/app-release.ipa
+          npx eas-cli build --local --platform ios --profile production --non-interactive --output ./artifacts/app-release.ipa
 
       - name: Compile TestFlight release notes
         run: npx tsx scripts/store-release-notes.ts --platform testflight --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/testflight-release-notes.txt
