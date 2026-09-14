@@ -19,7 +19,19 @@ import type { ThreadMessageWithContact } from '../lib/threads';
 
 const h = vi.hoisted(() => ({
   layout: undefined as { setSelectedContact: (c: any) => void } | undefined,
+  addThreadMessage: vi.fn(async () => 'new-msg-id'),
 }));
+
+vi.mock('../lib/threads', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    subscribeAllThreads: vi.fn(() => vi.fn()),
+    addThreadMessage: h.addThreadMessage,
+    closeFollowUpAsk: vi.fn(async () => {}),
+    reopenFollowUpAsk: vi.fn(async () => {}),
+  };
+});
 
 vi.mock('../App', () => ({
   useOptionalLayout: () => h.layout,
@@ -133,7 +145,14 @@ function renderWithProbe(initialEntries: string[] = ['/around']) {
 /** Simulates opening a contact's detail route from Around, then going back. */
 function DetailProbe() {
   const navigate = useNavigate();
-  return <button onClick={() => navigate(-1)}>Back to Around</button>;
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? '';
+  return (
+    <>
+      <button onClick={() => navigate(-1)}>Back to Around</button>
+      <div data-testid="from">{from}</div>
+    </>
+  );
 }
 
 describe('Around the team page (#943)', () => {
@@ -525,3 +544,83 @@ describe('Around the team page (#943)', () => {
   });
 });
 
+
+
+describe('Around the team — the signals that were never wired (#965, #966)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+    __resetInboxState();
+    h.addThreadMessage.mockClear();
+    h.layout = undefined;
+    applyTeams([
+      { uid: 'mei', team: 'yp', displayName: 'Mei Tanaka' },
+      { uid: 'grace', team: 'campus', displayName: 'Grace Lim' },
+    ]);
+  });
+
+  function renderWithDetail(entry: string) {
+    return render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route
+            path="/around"
+            element={<AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />}
+          />
+          <Route path="/people/:id" element={<DetailProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('hands the detail route the filters it was opened from, not a bare path', () => {
+    renderWithDetail('/around?team=yp&who=mei&new=1');
+
+    fireEvent.click(screen.getByText('Kofi Mensah'));
+
+    expect(screen.getByTestId('from')).toHaveTextContent('/around?team=yp&who=mei&new=1');
+  });
+
+  it('carries no query when the reader had set no filters', () => {
+    renderWithDetail('/around');
+
+    fireEvent.click(screen.getByText('Kofi Mensah'));
+
+    expect(screen.getByTestId('from')).toHaveTextContent('/around');
+    expect(screen.getByTestId('from').textContent).not.toContain('?');
+  });
+
+  it('confirms a posted comment on the page itself — the toast used to go nowhere', async () => {
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /comment/i }));
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'I have the chapter on this.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+
+    expect(h.addThreadMessage).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Posted')).toBeInTheDocument();
+  });
+
+  it('offers no Undo on that confirmation — a posted message is not a soft delete', async () => {
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam contacts={[contact({})]} interactions={[]} threads={[]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /comment/i }));
+    fireEvent.change(screen.getByPlaceholderText(/write something/i), {
+      target: { value: 'Dropping it in the shared folder.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^post$/i }));
+
+    await screen.findByText('Posted');
+    expect(screen.queryByRole('button', { name: /undo/i })).not.toBeInTheDocument();
+  });
+});

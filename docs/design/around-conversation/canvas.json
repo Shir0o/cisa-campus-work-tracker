@@ -1,0 +1,77 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1320,
+      "h": 3200,
+      "title": "Reading what was said, without leaving"
+    },
+    {
+      "file": "State.dc.html",
+      "x": 1420,
+      "y": 0,
+      "w": 1320,
+      "h": 2050,
+      "title": "Reviewed, and nothing else"
+    },
+    {
+      "file": "Page.dc.html",
+      "x": 2870,
+      "y": 0,
+      "w": 1440,
+      "h": 1500,
+      "title": "The page at 1440 — one card open"
+    },
+    {
+      "file": "Mobile.dc.html",
+      "x": 0,
+      "y": 3320,
+      "w": 390,
+      "h": 1850,
+      "title": "Around — 390"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -520,
+      "w": 520,
+      "text": "Issues #965 and #966 landed on the same seam from opposite sides.\n\n#965: the card text is clipped, so you open the person — and the in-app back drops you at a bare /around with every filter reset, because state.from carries the pathname and not the search string.\n\n#966: \"I can't see the comments I posted.\" Reading the code, that is worse than a display gap. The page is mounted with no props, so the \"Posted\" toast has never once fired. markSeen then clears the accent dot. And the message itself never renders — thread items on untied contacts are dropped before they become anything.\n\nYou write something, the composer vanishes, the card gets dimmer, and nothing else happens."
+    },
+    {
+      "id": "two-threads",
+      "x": 620,
+      "y": -520,
+      "w": 480,
+      "text": "SETTLED — the strip carries both threads.\n\nA contact has two:\n\n· Conversation — everyone tied to the contact (they added them, they are a co-creator, they are the owner, or they keep them on their own My Day).\n\n· Full-timers — staff only, scope: \"team\". Not visible to Trainees.\n\nBoth appear as tabs in the strip, in the same order as the contact page. Conversation opens first: it is the thread the card's composer already posts into, so what you write is what you see.\n\nAround is Full-timer-only, so no role branch is needed on this page — the second tab is always permitted here. The composer posts into whichever tab is open, which is the one place this differs from today: the card has only ever written to Conversation."
+    },
+    {
+      "id": "state-note",
+      "x": 1420,
+      "y": -520,
+      "w": 460,
+      "text": "Seen was passive, Completed deliberate. On Around the passive half had already stopped earning its place: the New/All filter cuts on completed, the header pill counts not-completed, and CONTEXT.md already said \"opening things never makes the number fall\".\n\nSeen survived as an accent dot and a \"Mark all seen\" button. Both go.\n\nThe consequence to watch, recorded in ADR 0022: the count gets bigger and stickier, because it now falls only when you review something. That is the point — but if it is allowed to sit permanently high it becomes wallpaper, and the fix then is to narrow what reaches Around, not to make the count decay again."
+    },
+    {
+      "id": "page-note",
+      "x": 2870,
+      "y": -520,
+      "w": 460,
+      "text": "The grid is items-start, so an open card makes its row taller and leaves its neighbours top-aligned with space beneath them.\n\nThat is the honest reason only one card opens at a time: two open cards in a 3-up row leave a ragged hole in the middle of a page you are trying to work down.\n\nNote what has NOT changed — the day headings, the order, the dates. A posted message does not re-date or re-sort its card. \"Today\" means when the team touched this person."
+    },
+    {
+      "id": "mobile-note",
+      "x": 470,
+      "y": 3320,
+      "w": 340,
+      "text": "One column, so there is no grid to keep uniform — but the collapsed clamp stays anyway, because scrolling past eight full interaction bodies to find the one you want is its own problem.\n\nEvery target is 44px. The action row stacks into two full-width primaries with the icons beneath.\n\nThe bottom nav bar is unchanged (ADR 0015 decision 7) and is omitted from the drawing."
+    }
+  ],
+  "launch": {
+    "view": "focused",
+    "file": "Main.dc.html"
+  }
+}

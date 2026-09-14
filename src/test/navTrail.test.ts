@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { navTrailFor, sectionHrefFor, isLeafRoute } from '../lib/navTrail';
+import { navTrailFor, sectionHrefFor, isLeafRoute, currentHref } from '../lib/navTrail';
 import { NAV_ITEMS } from '../lib/permissions';
 
 describe('sectionHrefFor (#803)', () => {
@@ -103,5 +103,54 @@ describe('navTrailFor', () => {
       current: null,
       currentIsLabel: false,
     });
+  });
+});
+
+describe('currentHref (#965)', () => {
+  it('carries the query string, which is where the filters live', () => {
+    expect(currentHref({ pathname: '/around', search: '?team=yp&who=mei&new=1' })).toBe(
+      '/around?team=yp&who=mei&new=1',
+    );
+  });
+
+  it('is just the path when there is no query', () => {
+    expect(currentHref({ pathname: '/around', search: '' })).toBe('/around');
+    expect(currentHref({ pathname: '/around' })).toBe('/around');
+  });
+});
+
+describe('navTrailFor with an origin (#965)', () => {
+  const contact = '/people/NduKn2BpBzrRql5Z9mHk';
+
+  it('names where the reader came from, not the section the route belongs to', () => {
+    const trail = navTrailFor(contact, 'admin', 'Mei Oyelaran', '/around?team=yp&new=1');
+    expect(trail.section).toEqual({ label: 'Around the team', href: '/around?team=yp&new=1' });
+    expect(trail.current).toBe('Mei Oyelaran');
+  });
+
+  it('keeps the filters on the way back', () => {
+    const trail = navTrailFor(contact, 'admin', 'Mei', '/around?team=yp&who=mei&new=1');
+    expect(trail.section?.href).toBe('/around?team=yp&who=mei&new=1');
+  });
+
+  it('falls back to the declared section when there is no origin', () => {
+    const trail = navTrailFor(contact, 'admin', 'Mei', null);
+    expect(trail.section).toEqual({ label: 'People', href: '/directory' });
+  });
+
+  it('ignores an origin that is not a destination — another contact has no label', () => {
+    const trail = navTrailFor(contact, 'admin', 'Mei', '/people/someone-else');
+    expect(trail.section).toEqual({ label: 'People', href: '/directory' });
+  });
+
+  it('ignores an origin pointing at the route you are already on', () => {
+    const trail = navTrailFor('/around', 'admin', null, '/around');
+    expect(trail.section).toBeNull();
+  });
+
+  it('still honours a fixed leaf label over a record name', () => {
+    const trail = navTrailFor('/coordination/trash', 'admin', null, '/around?team=yp');
+    expect(trail.current).toBe('Trash');
+    expect(trail.currentIsLabel).toBe(true);
   });
 });

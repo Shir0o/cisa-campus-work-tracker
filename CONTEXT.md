@@ -200,8 +200,16 @@ The four relationships that make someone a recipient of what is written on a per
 _Avoid_: Stakeholder, watcher, subscriber, assigned
 
 **Seen / Completed**:
-The two independent things a person records about an item in their My Day worklist. **Seen** is passive — you opened the contact — and shows as the unread dot. **Completed** is deliberate: *Reviewed* for something you only had to look at, *I followed up* or *Answered* for something you owed someone, *Got it* for information. The worklist count is the number **not completed**, so opening things never makes the number fall. Both are per person and stored server-side, so they agree across someone's phone and laptop.
+The two independent things a person records about an item in **On you**. **Seen** is passive — you opened the contact — and shows as the unread dot. **Completed** is deliberate: *Reviewed* for something you only had to look at, *I followed up* or *Answered* for something you owed someone, *Got it* for information. The count is the number **not completed**, so opening things never makes the number fall. Both are per person and stored server-side, so they agree across someone's phone and laptop. **Around the team** keeps only the deliberate half — see **Reviewed**.
 _Avoid_: Read/done, scanned, dismissed, cleared, archived
+
+**Reviewed**:
+The one state an **Around the team** card carries: you have worked this person through. Only the card's own button sets it, and "Mark all reviewed", which acts on the cards the current filter is showing and nothing else. Opening the person does not set it, and neither does writing in their **Conversation** from the card — a glance is not the same as having dealt with someone, and a page that quietly marked things done as you read them would make the count a lie. There is no passive half here: the unread dot belongs to **On you**, where **Seen** means something distinct.
+_Avoid_: Seen, read, dismissed, cleared, done, acknowledged
+
+**To work through**:
+The number of **Around the team** cards not yet **Reviewed**. It is what the page's own pill counts and what My Day's pointer card counts — the same number by construction, so the two can never disagree. It falls only when someone reviews something, which makes it a measure of work remaining rather than of pages read.
+_Avoid_: Unseen, unread, new, backlog, inbox count
 
 **What's New Announcement**:
 An in-app modal presented to users upon launching an updated web PWA or mobile build, highlighting user-facing changes and improvements for that release. Backed by markdown manifests in `content/whats-new/` compiled into static manifests, tracking the latest seen release ID locally on each device, and always re-accessible via Settings.
@@ -217,7 +225,7 @@ The My Day card of things addressed to you or on people you carry — questions 
 _Avoid_: My items, assigned to me
 
 **Around the team**:
-The Full-timer destination at `/around` for everything else the team has been doing on people you aren't carrying. It keeps the team and teammate filters, the new-only filter, per-stack seen and completed state, and the reach affordance, and pages by day. My Day keeps a pointer card — a count of unseen team activity and a door — so the doing happens in exactly one place, with one read model. Being long is normal: it is never truncated, capped, or internally scrolled.
+The Full-timer destination at `/around` for everything else the team has been doing on people you aren't carrying. It keeps the team and teammate filters, the new-only filter, per-card **Reviewed** state, and the reach affordance, and pages by day. A card opens the person's **Conversation** in place, so reading what was actually said and writing back never costs you your filters. My Day keeps a pointer card — the same **to work through** count and a door — so the doing happens in exactly one place, with one read model. Being long is normal: it is never truncated, capped, or internally scrolled.
 _Avoid_: Team activity feed, other people's news
 
 **Lion Mark**:

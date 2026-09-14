@@ -27,6 +27,7 @@ import { useUndoSnack } from "../hooks/useUndoSnack";
 import { closeFollowUpAsk, reopenFollowUpAsk, subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
 import { WorklistCard, VERB_SNACK } from "../components/landing/WorklistCard";
 import PageContainer from "../components/layout/PageContainer";
+import { currentHref } from "../lib/navTrail";
 
 // ── "Around the team" as its own destination (#943) ─────────────────────────
 // The team's activity — everything the team has been doing on people you
@@ -38,8 +39,6 @@ import PageContainer from "../components/layout/PageContainer";
 // Filters are URL state: read on load, written on change, never persisted per
 // user. The page reaches exactly as far as the existing feed subscription —
 // the same live query, the same document limit — and says so plainly.
-
-const COLLAPSED_LIMIT = 5;
 
 /** The day a stack belongs to, as a real heading label. */
 function dayLabel(iso: string): string {
@@ -124,6 +123,12 @@ export default function AroundTheTeam({
   // clears when you leave; All keeps completed cards visible grayed.
   const [completedHere, setCompletedHere] = useState<Set<string>>(new Set());
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
+
+  // On its own route this page is mounted with no props, so a card's `onToast`
+  // was `undefined` and "Posted" never once appeared — the only sign a comment
+  // had been written was the composer closing (#966). Fall back to the
+  // snackbar this page already renders; an embed can still pass its own.
+  const showToast = onToast ?? ((msg: string) => showUndoSnack(msg));
 
   // Seen and completed change under the memos below, not in the props, so the
   // derivation has to be told. Without the tick in its dependency list,
@@ -223,7 +228,7 @@ export default function AroundTheTeam({
     }
     if (contactId) {
       navigate(`/people/${contactId}${initialTab === "thread" ? "?tab=thread" : ""}`, {
-        state: { from: location.pathname },
+        state: { from: currentHref(location) },
       });
     }
   };
@@ -537,7 +542,7 @@ export default function AroundTheTeam({
                       completed={isCompleted(stack)}
                       onOpenContact={handleOpenContact}
                       onComplete={handleComplete}
-                      onToast={onToast}
+                      onToast={showToast}
                       showReach
                     />
                   ))}
