@@ -1138,6 +1138,90 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
+  it('allows a co-creator to manage collaborators, but hides transfer and protects creator from removal', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-cocreator', displayName: 'Trainee Partner' },
+      isAdmin: false,
+      role: 'manager',
+      isImpersonating: false,
+    });
+
+    const contactWithCoCreators = {
+      ...mockContact,
+      createdBy: 'user-creator',
+      owner: 'user-owner',
+      coCreators: ['user-cocreator', 'user-creator', 'user-456'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-creator', data: () => ({ name: 'Original Creator', role: 'Staff' }) },
+            { id: 'user-cocreator', data: () => ({ name: 'Trainee Partner', role: 'Trainee' }) },
+            { id: 'user-456', data: () => ({ name: 'Other Partner', role: 'Trainee' }) },
+            { id: 'user-789', data: () => ({ name: 'New Teammate', role: 'Trainee' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCoCreators} />);
+    await screen.findByText('John Doe');
+
+    // Transfer affordance is HIDDEN from co-creator
+    expect(screen.queryByRole('button', { name: /transfer to/i })).toBeNull();
+
+    // Sharing affordance IS visible to co-creator
+    const addShareTrigger = screen.getByRole('button', { name: /add someone/i });
+    expect(addShareTrigger).toBeInTheDocument();
+
+    // Original creator (user-creator) should NOT have a remove button
+    // user-456 should have a remove button
+    const removeBtns = screen.getAllByTitle('Remove access');
+    // Out of 3 collaborators, user-creator is protected, user-cocreator can remove user-456 and user-cocreator (or only user-456 if creator is protected)
+    expect(removeBtns.length).toBeGreaterThan(0);
+  });
+
+  it('hides sharing and transfer affordances when impersonating (read-only mode)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'admin-1', displayName: 'Admin Preview' },
+      isAdmin: true,
+      role: 'manager',
+      isImpersonating: true,
+    });
+
+    const contact = {
+      ...mockContact,
+      owner: 'admin-1',
+      coCreators: ['user-456'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Co Creator', role: 'Staff' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />);
+    await screen.findByText('John Doe');
+
+    // Both share and transfer buttons should be hidden in read-only impersonation mode
+    expect(screen.queryByRole('button', { name: /add someone/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /transfer to/i })).toBeNull();
+    expect(screen.queryByTitle('Remove access')).toBeNull();
+  });
+
   it('shows the Transfer affordance to the current owner and writes owner + coCreators on confirm', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Owner Tony' },

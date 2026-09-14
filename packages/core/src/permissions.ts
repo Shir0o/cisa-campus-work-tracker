@@ -131,6 +131,29 @@ export function canSeeContact(
   return added === staffId || contact.owner === staffId || (contact.coCreators || []).includes(staffId);
 }
 
+export function canManageCollaborators(
+  role: AppRole | string | null,
+  staffId: string | null | undefined,
+  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] } | null | undefined
+): boolean {
+  if (!contact || !staffId) return false;
+  if (role === 'admin') return true;
+  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
+  if (ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId) return true;
+  return (contact.coCreators || []).includes(staffId);
+}
+
+export function canTransferOwnership(
+  role: AppRole | string | null,
+  staffId: string | null | undefined,
+  contact: { addedBy?: string; createdBy?: string; owner?: string } | null | undefined
+): boolean {
+  if (!contact || !staffId) return false;
+  if (role === 'admin') return true;
+  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
+  return ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId;
+}
+
 export function visibleContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,

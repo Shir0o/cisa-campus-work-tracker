@@ -19,6 +19,17 @@ jest.mock('../../lib/data/contacts', () => ({
   moveContactStage: jest.fn(),
 }));
 
+jest.mock('../../lib/data/users', () => ({
+  subscribeUsers: jest.fn((cb) => {
+    cb([
+      { uid: 'user1', displayName: 'Staffer', email: 'staffer@example.com', role: 'trainee' },
+      { uid: 'u-collab', displayName: 'Partner Bob', email: 'bob@example.com', role: 'trainee' },
+      { uid: 'u-avail', displayName: 'Helper Alice', email: 'alice@example.com', role: 'trainee' },
+    ]);
+    return () => {};
+  }),
+}));
+
 jest.mock('../../lib/messaging', () => ({
   openCall: jest.fn(),
   openEmail: jest.fn(),
@@ -69,6 +80,25 @@ jest.mock('./EditContactSheet', () => {
   };
 });
 
+jest.mock('./AddCollaboratorSheet', () => {
+  const { View, Button } = require('react-native');
+  return {
+    AddCollaboratorSheet: ({ visible, onAdd, onClose }: any) =>
+      visible ? (
+        <View testID="add-collaborator-sheet">
+          <Button
+            title="Add Partner Bob"
+            onPress={() => {
+              onAdd('u-collab', 'Partner Bob');
+              onClose();
+            }}
+          />
+          <Button title="Close Sheet" onPress={onClose} />
+        </View>
+      ) : null,
+  };
+});
+
 describe('ContactScreen', () => {
   const mockContact = {
     id: 'contact1',
@@ -81,6 +111,8 @@ describe('ContactScreen', () => {
     notes: 'Met at club table',
     createdAt: '2026-08-01T12:00:00.000Z',
     createdByName: 'Staffer',
+    createdBy: 'user1',
+    coCreators: ['user1'],
   };
 
   const baseLoadedData = {
@@ -105,6 +137,8 @@ describe('ContactScreen', () => {
     postThreadMessage: jest.fn(),
     toggleReaction: jest.fn(),
     deleteInteraction: jest.fn(),
+    addCollaborator: jest.fn().mockResolvedValue(undefined),
+    removeCollaborator: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(() => {
@@ -338,6 +372,154 @@ describe('ContactScreen', () => {
 
       fireEvent.press(getByText('Edit details'));
       expect(getByTestId('edit-contact-sheet')).toBeTruthy();
+    });
+  });
+
+  describe('Collaborator Management & Impersonation', () => {
+    it('displays who else can see and add someone button when user can share', () => {
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: {
+          ...mockContact,
+          coCreators: ['user1', 'u-collab'],
+        },
+      });
+
+      const { getByText, getByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      // Expand details
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+
+      expect(getByText('Who else can see')).toBeTruthy();
+      expect(getByText('Partner Bob')).toBeTruthy();
+      expect(getByLabelText('Add someone…')).toBeTruthy();
+    });
+
+    it('opens AddCollaboratorSheet when pressing add someone and invokes addCollaborator', () => {
+      const mockAddCollaborator = jest.fn().mockResolvedValue(undefined);
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        addCollaborator: mockAddCollaborator,
+      });
+
+      const { getByText, getByLabelText, getByTestId, queryByTestId } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+      fireEvent.press(getByLabelText('Add someone…'));
+
+      expect(getByTestId('add-collaborator-sheet')).toBeTruthy();
+
+      fireEvent.press(getByText('Add Partner Bob'));
+      expect(mockAddCollaborator).toHaveBeenCalledWith('u-collab', 'Partner Bob');
+      expect(queryByTestId('add-collaborator-sheet')).toBeNull();
+    });
+
+    it('confirms and calls removeCollaborator when removing an added collaborator', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert');
+      const mockRemoveCollaborator = jest.fn().mockResolvedValue(undefined);
+
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: {
+          ...mockContact,
+          createdBy: 'user1',
+          coCreators: ['user1', 'u-collab'],
+        },
+        removeCollaborator: mockRemoveCollaborator,
+      });
+
+      const { getByText, getByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+
+      // The remove button has accessibilityLabel="Remove access"
+      const removeBtn = getByLabelText('Remove access');
+      fireEvent.press(removeBtn);
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Remove access',
+        'Remove view access for Partner Bob?',
+        expect.any(Array),
+      );
+
+      // Trigger the destructive remove action from the alert
+      const buttons = alertSpy.mock.calls[0][2] as any[];
+      const confirmAction = buttons.find((b) => b.text === 'Remove');
+      confirmAction.onPress();
+
+      expect(mockRemoveCollaborator).toHaveBeenCalledWith('u-collab', 'Partner Bob');
+      alertSpy.mockRestore();
+    });
+
+    it('does not allow removing the original creator', () => {
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: {
+          ...mockContact,
+          createdBy: 'user1',
+          coCreators: ['user1'], // only creator
+        },
+      });
+
+      const { getByText, queryByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+
+      // No remove button for original creator
+      expect(queryByLabelText('Remove access')).toBeNull();
+    });
+
+    it('disables sharing and editing when isImpersonating is true', () => {
+      (useAuth as jest.Mock).mockReturnValue({
+        uid: 'user1',
+        user: { displayName: 'Staffer' },
+        role: 'admin',
+        isImpersonating: true,
+      });
+
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: {
+          ...mockContact,
+          coCreators: ['user1', 'u-collab'],
+        },
+      });
+
+      const { getByText, queryByText, queryByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      // Top-row Edit button should be hidden in impersonation mode
+      expect(queryByText('Edit')).toBeNull();
+
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+
+      // Edit details button inside disclosure should be hidden
+      expect(queryByText('Edit details')).toBeNull();
+
+      // Add someone button should be hidden
+      expect(queryByLabelText('Add someone…')).toBeNull();
+
+      // Remove button for collaborators should be hidden
+      expect(queryByLabelText('Remove access')).toBeNull();
     });
   });
 });

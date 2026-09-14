@@ -44,6 +44,7 @@ interface AuthContextValue {
   role: AppRole | null;
   actualRole: AppRole | null;
   isOwner: boolean;
+  isImpersonating: boolean;
   ownerViewRole: AppRole | null;
   setOwnerViewRole: (role: AppRole | null) => void;
   impersonateTarget: ImpersonateTarget | null;
@@ -192,6 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return subscribePartners(applyPartners);
   }, []);
 
+  const isImpersonating = isOwner && (ownerViewRole !== null || impersonateTarget !== null);
+
   const value: AuthContextValue = {
     user,
     uid: effectiveUserId,
@@ -200,6 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role: effectiveRole,
     actualRole,
     isOwner,
+    isImpersonating,
     ownerViewRole,
     setOwnerViewRole,
     impersonateTarget,

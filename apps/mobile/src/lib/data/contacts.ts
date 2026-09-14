@@ -186,3 +186,47 @@ export async function deleteContact(contact: Contact): Promise<void> {
     handleFirestoreError(e, OperationType.DELETE, `contacts/${contact.id}`);
   }
 }
+
+export async function addContactCollaborator(
+  contact: Contact,
+  staffId: string,
+  staffName: string,
+  by: { uid?: string | null; name?: string | null } = {},
+): Promise<void> {
+  try {
+    await core.addContactCollaborator(db, contact.id, staffId, by);
+    void logActivity({
+      action: 'shared a person',
+      targetId: contact.id,
+      targetName: `${staffName} can now see ${(contact.name || '').split(' ')[0]}.`,
+      targetType: 'contact',
+      type: 'edit',
+      description: `Granted view access to ${staffName}`,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contact.id}`);
+    throw e;
+  }
+}
+
+export async function removeContactCollaborator(
+  contact: Contact,
+  staffId: string,
+  staffName: string,
+  by: { uid?: string | null; name?: string | null } = {},
+): Promise<void> {
+  try {
+    await core.removeContactCollaborator(db, contact.id, staffId, by);
+    void logActivity({
+      action: 'unshared a person',
+      targetId: contact.id,
+      targetName: `${staffName} no longer sees ${(contact.name || '').split(' ')[0]}.`,
+      targetType: 'contact',
+      type: 'edit',
+      description: `Removed view access for ${staffName}`,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contact.id}`);
+    throw e;
+  }
+}
