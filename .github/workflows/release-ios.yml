@@ -6,24 +6,33 @@ name: Release iOS
 # submits it to TestFlight. There is deliberately no --auto-submit anywhere: the
 # build lands in TestFlight and a human promotes it. See RELEASING.md.
 #
-# App Store Connect is not wired up yet — the ascAppId / appleTeamId /
-# ascApiKey* placeholders in apps/mobile/eas.json must be filled in first, or
-# this workflow will fail at the submit step. See RELEASING.md, section A.
+# Also dispatchable by hand so a failed release can be retried without
+# cutting a new version. See RELEASING.md.
 on:
   push:
     tags: ['v*']
+  # A tag is the only automatic trigger, which means a transient CI failure used
+  # to cost a whole new version. This lets a failed release be retried against
+  # the tag it was meant for. The workflow file comes from the branch this is
+  # dispatched on; the code comes from the tag given here.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and submit, e.g. v1.4.0'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-ios-${{ github.ref }}
+  group: release-ios-${{ github.event.inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   release:
     name: Build IPA and submit to TestFlight
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 90
     environment: mobile-release
     defaults:
@@ -32,9 +41,34 @@ jobs:
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
+      - name: Resolve the release tag
+        id: release
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing $tag"
+
       - uses: actions/checkout@v7
         with:
+          ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 0
+
+      # react-native's Podfile hard-fails below Xcode 16.1 ("React Native
+      # requires XCode >= 16.1"), and macos-14 ships 15.4. Pick the newest Xcode
+      # on the image and refuse to continue on one that is too old, so the
+      # failure is one line instead of a cryptic invalid-Podfile error.
+      - name: Select the newest installed Xcode
+        run: |
+          set -euo pipefail
+          XCODE_APP="$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE_APP"
+          VERSION="$(xcodebuild -version | awk 'NR==1 {print $2}')"
+          echo "Selected $XCODE_APP (Xcode $VERSION)"
+          if [ "$(printf '%s\n' 16.1 "$VERSION" | sort -V | head -1)" != "16.1" ]; then
+            echo "::error::Xcode $VERSION is below 16.1, which React Native 0.81 requires."
+            exit 1
+          fi
 
       - uses: actions/setup-node@v7
         with:
@@ -86,7 +120,7 @@ jobs:
 
       - name: Derive version and build number from the tag
         id: version
-        run: npx tsx scripts/mobile-version.ts --tag "${{ github.ref_name }}"
+        run: npx tsx scripts/mobile-version.ts --tag "${{ steps.release.outputs.tag }}"
         working-directory: .
 
       - name: Materialize EAS build credentials
@@ -130,7 +164,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "${{ github.ref_name }}" \
+          gh release upload "${{ steps.release.outputs.tag }}" \
             apps/mobile/artifacts/app-release.ipa \
             apps/mobile/artifacts/testflight-release-notes.txt \
             --clobber
