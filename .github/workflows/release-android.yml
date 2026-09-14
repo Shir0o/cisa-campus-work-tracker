@@ -41,6 +41,14 @@ jobs:
             package-lock.json
             apps/mobile/package-lock.json
 
+      # `eas build --local` runs Gradle, which needs a JDK. The runner image has
+      # one, but not a pinned one, and Expo SDK 54 / RN 0.81 expect 17. This
+      # mirrors mobile-e2e.yml, which pins the same version for the same reason.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Verify release secrets are present
         env:
           EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
