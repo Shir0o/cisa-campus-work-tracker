@@ -1120,9 +1120,6 @@ function GatheringExpansion({
     handleToggleCancelled,
     markAttendanceTaken,
     resolvedRosterFor,
-    parseISO,
-    isValid,
-    format,
     t,
   } = rest;
   const ev = events.find((e) => e.id === gathering.id);

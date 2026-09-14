@@ -266,7 +266,6 @@ export default function AttendanceMobile({
         <RosterSheet
           session={openSession}
           contacts={contacts}
-          here={here}
           cycleAttendance={cycleAttendance}
           onEditSession={onEditSession}
           onDeleteSession={onDeleteSession}
@@ -286,7 +285,6 @@ export default function AttendanceMobile({
 interface RosterSheetProps {
   session: Gathering;
   contacts: Contact[];
-  here: (gathering: Gathering, contactId: string) => boolean;
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
   onEditSession: (session: Gathering) => void;
   onDeleteSession: (id: string, name: string) => Promise<void>;
@@ -299,7 +297,6 @@ interface RosterSheetProps {
 function RosterSheet({
   session,
   contacts,
-  here,
   cycleAttendance,
   onEditSession,
   onDeleteSession,
