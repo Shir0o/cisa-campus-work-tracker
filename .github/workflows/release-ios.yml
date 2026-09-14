@@ -157,9 +157,14 @@ jobs:
       - name: Submit IPA to TestFlight
         run: |
           set -euo pipefail
+          # No --what-to-test. EAS gates its `changelog` parameter behind the
+          # Enterprise plan - "Changelog submission is currently available for
+          # Enterprise plan only" - and this project is on the free tier, so the
+          # flag fails the submission outright. The compiled notes ride on the
+          # GitHub Release instead, to paste while promoting, exactly as the
+          # Play notes do.
           npx eas-cli submit --platform ios --profile production \
             --path ./artifacts/app-release.ipa \
-            --what-to-test "$(cat ./artifacts/testflight-release-notes.txt)" \
             --non-interactive
 
       - name: Attach artefacts to the GitHub Release
