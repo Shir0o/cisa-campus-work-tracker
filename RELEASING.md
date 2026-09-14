@@ -102,7 +102,7 @@ credentials* action generates them first and will ask for your Apple login.
 | Secret | What it is |
 | --- | --- |
 | `RELEASE_PLEASE_TOKEN` | PAT with `contents:write` and `pull-requests:write`. **Mandatory** — tags created with the built-in `GITHUB_TOKEN` are suppressed by GitHub's recursion prevention and will never trigger the release workflows. |
-| `EXPO_TOKEN` | Expo access token. `eas build --local` still authenticates to EAS. |
+| `EXPO_TOKEN` | An EAS **programmatic access** token: expo.dev -> Account settings -> Access tokens. **Not** the `EXPO_ACCESS_TOKEN` in `apps/mobile/.env`, which is the push-notifications token the app reads at runtime - a different credential from a different page, and the one you already have lying around. Check with `EXPO_TOKEN=... npx eas-cli whoami`; it should print your username. |
 | `EAS_CREDENTIALS_B64` | `npx tsx scripts/pack-eas-credentials.ts` — a gzipped tar of `credentials.json` **and the keystore, `.p12` and `.mobileprovision` it points at**, base64'd. |
 | `PLAY_SERVICE_ACCOUNT_JSON_B64` | `base64 -i <service-account>.json` |
 | `ASC_API_KEY_P8_B64` | `base64 -i AuthKey_XXXX.p8` |
