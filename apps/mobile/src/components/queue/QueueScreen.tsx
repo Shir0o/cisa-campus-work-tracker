@@ -199,6 +199,13 @@ export function QueueScreen() {
   // "That's everything, Someone." is not something to say to anyone.
   const me = firstName(user?.displayName || 'friend');
 
+  // Ref for the feedback screenshot capture. The bottom sheet renders at the
+  // app-root BottomSheetModalProvider's position, not inline, so this captures
+  // the screen behind the sheet rather than the sheet itself. `collapsable`
+  // keeps the view natively backed on Android, without which captureRef has
+  // nothing to draw.
+  const captureRef = useRef<View>(null);
+
   // ── loading / error ──────────────────────────────────────────────────────
   if (data.loading) {
     return (
@@ -239,13 +246,6 @@ export function QueueScreen() {
   const waiting = queue.slice(at + 1);
   const upNext = waiting.slice(0, 3);
   const meta = queueMeta(queue.length, queueState.handledCount, at);
-
-  // Ref for the feedback screenshot capture. The bottom sheet renders at the
-  // app-root BottomSheetModalProvider's position, not inline, so this captures
-  // the screen behind the sheet rather than the sheet itself. `collapsable`
-  // keeps the view natively backed on Android, without which captureRef has
-  // nothing to draw.
-  const captureRef = useRef<View>(null);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>

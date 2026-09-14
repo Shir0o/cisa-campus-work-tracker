@@ -167,6 +167,24 @@ describe('buildQueue — card kinds', () => {
     expect(ids).toContain('ftmsg:normal-question');
   });
 
+  it('does NOT make a msg card for a thread message on a contact not visible to the user', () => {
+    // If a full-timer left a question or note on someone else's contact,
+    // it must not leak into this user's queue with contact: undefined.
+    const q = buildQueue(
+      input({
+        contacts: [contact({ id: 'c1' })],
+        threads: [
+          message({ id: 'visible-msg', contactId: 'c1' }),
+          message({ id: 'unrelated-msg', contactId: 'c2' }),
+        ],
+      }),
+    );
+
+    const ids = q.map((c) => c.id);
+    expect(ids).toContain('ftmsg:visible-msg');
+    expect(ids).not.toContain('ftmsg:unrelated-msg');
+  });
+
   it('makes a follow card for a to-do with a person on it and no imminent due date', () => {
     const q = buildQueue(
       input({
