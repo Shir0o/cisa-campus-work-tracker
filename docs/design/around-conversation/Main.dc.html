@@ -92,6 +92,12 @@
     .strip-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .strip-lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
       color:var(--text-mute)}
+    .strip-tabs{display:flex;gap:4px}
+    .stab{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;border:0;
+      background:transparent;color:var(--text-mute);
+      display:inline-flex;align-items:center;gap:5px}
+    .stab.on{background:var(--accent-soft);color:var(--on-surface)}
+    .strip-who{font-size:10.5px;font-weight:500;color:var(--text-mute)}
     .msgs{display:flex;flex-direction:column;gap:12px}
     .msg{display:flex;gap:10px;align-items:flex-start}
     .mav{width:24px;height:24px;flex:none;border-radius:999px;background:var(--accent-soft);
@@ -281,8 +287,11 @@
 
               <div class="strip">
                 <div class="strip-hd">
-                  <span class="strip-lab">Conversation</span>
-                  <span class="strip-lab" style="text-transform:none;letter-spacing:0;font-weight:500">Everyone tied to Mei</span>
+                  <div class="strip-tabs">
+                    <button class="stab on">Conversation <span class="cnt">3</span></button>
+                    <button class="stab">Full-timers <span class="cnt">2</span></button>
+                  </div>
+                  <span class="strip-who">Everyone tied to Mei</span>
                 </div>
                 <div class="msgs">
                   <div class="msg">
@@ -333,8 +342,12 @@
     <div class="ann">
       <h3>Messages above, composer below</h3>
       <p>The composer sits at the <strong>foot</strong> of the strip and the list grows toward it, so a posted message appears directly above where it was typed — the shortest possible distance between the act and its evidence.</p>
+      <h3>Both threads, as two tabs</h3>
+      <p>A contact has two: <strong>Conversation</strong>, open to everyone tied to them, and <strong>Full-timers</strong>, staff-only. The strip carries both, the same pair and the same order as the contact page. Around is Full-timer-only, so there is no role branch here — the second tab is always permitted on this page.</p>
+      <h3>The button names the tab it opens</h3>
+      <p><strong>Conversation · 3</strong> opens onto Conversation and its three messages; <strong>Full-timers · 2</strong> sits beside it. No new collective noun for the pair — the product does not have one, and inventing one here would be a fifth word for something already named twice.</p>
       <h3>Reuse, don't rebuild</h3>
-      <p>This is <code>Thread.tsx</code> in its existing <code>compact</code> variant, not a new renderer. Same mentions, same reactions, same kind picker the contact page uses.</p>
+      <p>This is <code>Thread.tsx</code> in its existing <code>compact</code> variant, not a new renderer. Same mentions, same reactions, same kind picker the contact page uses — and the same <code>scope</code> argument that already separates the two tabs there.</p>
       <h3>Unclamping is the fix for #965</h3>
       <p>"Some fields are hard to read because of length" is the two-line clamp. Opening the card releases it in the same click that reveals the conversation — you never leave the page to read a long note.</p>
       <h3>Still does not move</h3>
@@ -410,9 +423,12 @@
                 </div>
                 <div class="strip">
                   <div class="strip-hd">
-                    <span class="strip-lab">Conversation</span>
-                    <span class="strip-lab" style="text-transform:none;letter-spacing:0;font-weight:500">Everyone tied to Mei</span>
+                  <div class="strip-tabs">
+                    <button class="stab on">Conversation <span class="cnt">4</span></button>
+                    <button class="stab">Full-timers <span class="cnt">2</span></button>
                   </div>
+                  <span class="strip-who">Everyone tied to Mei</span>
+                </div>
                   <div class="msgs">
                     <div class="msg">
                       <div class="mav">DK</div>

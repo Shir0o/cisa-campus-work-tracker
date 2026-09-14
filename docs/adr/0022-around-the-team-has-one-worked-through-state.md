@@ -28,7 +28,9 @@ Underneath both sits a third thing. `Seen` and `Completed` are defined as indepe
 
 5. **Existing `seen` stamps are abandoned, never migrated.** They go inert and the existing staleness prune clears them. Promoting a glance to "worked through" would claim on a teammate's behalf that they had dealt with a person they had only scrolled past — the same false claim the completion-verb table already refuses to make elsewhere.
 
-6. **A card reads the person's Conversation in place.** The messages render on the card itself, collapsed by default, with the composer at the foot of them, so a post lands directly below where it was typed. This is what makes #966 whole: the confirmation that a message posted is the message, appearing.
+6. **A card reads the person's threads in place — both of them.** The messages render on the card itself, collapsed by default, with the composer at the foot of them, so a post lands directly below where it was typed. This is what makes #966 whole: the confirmation that a message posted is the message, appearing.
+
+   A contact has two staff threads, and the strip carries both as tabs in the order the contact page uses: **Conversation**, open to everyone tied to the contact, and **Full-timers**, staff-only (`scope: "team"`). Conversation opens first, because it is the thread the card's composer has always posted into. Around is Full-timer-only, so the second tab needs no role branch here — it is always permitted on this page. The composer writes into whichever tab is open, which is the single behavioural change: today the card can only ever write to Conversation.
 
 7. **The partition is untouched, again.** Cards render from the thread subscription the page already holds; `buildAttentionItems` and `partitionAttentionStacks` are not modified, so no stack moves between On you and Around. A message does not re-date, re-sort, or relocate its card either: Around's day headings mean *when the team touched this person*, and a page that reshuffled as you commented down it would be unusable. 0015 decision 6 stands exactly as written.
 

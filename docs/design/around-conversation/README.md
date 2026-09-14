@@ -13,20 +13,23 @@ Decision record: [`../../adr/0022-around-the-team-has-one-worked-through-state.m
 
 | File | What it covers |
 | --- | --- |
-| `Main.dc.html` | The card, collapsed → open → the instant after Post. The Comment button becomes `Conversation · 3`, opening releases the two-line clamp, and the posted message lands directly above the composer. |
+| `Main.dc.html` | The card, collapsed → open → the instant after Post. The Comment button becomes `Conversation · 3`, the strip carries both threads as tabs, opening releases the two-line clamp, and the posted message lands directly above the composer. |
 | `State.dc.html` | Seen and Completed merging into one **Reviewed**. The reviewed card treatment, "Mark all reviewed", and the pointer card catching up to the page's own count. |
 | `Page.dc.html` | `/around` at 1440 with one card open, so the 3-up grid reflow is visible and the one-open-at-a-time rule has a reason you can see. |
 | `Mobile.dc.html` | The same two states at 390. 44px targets, the action row stacked. |
 | `canvas.json` | Layout — artboard positions, sticky notes, launch view. |
 
-## Still open
+## Both threads, settled
 
-**Which thread does the strip show?** A contact has two: **Conversation**
-(everyone tied to them) and **Full-timers** (staff-only, `scope: "team"`).
-Around is Full-timer-only, so either is defensible. The canvas draws
-**Conversation only** — it is the thread the card's composer already posts into,
-so what you write is what you see — and the `open-question` sticky note states
-the alternative. Not yet decided.
+A contact has two staff threads: **Conversation** (everyone tied to them) and
+**Full-timers** (staff-only, `scope: "team"`). The strip carries **both**, as two
+tabs in the same order the contact page uses. Conversation opens first — it is
+the thread the card's composer already posts into.
+
+Around is Full-timer-only, so no role branch is needed on this page: the second
+tab is always permitted here. The composer posts into whichever tab is open,
+which is the one behaviour that differs from today — the card has only ever
+written to Conversation.
 
 ## The decisions behind the drawings
 

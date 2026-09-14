@@ -95,6 +95,12 @@
     .strip-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .strip-lab{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
       color:var(--text-mute)}
+    .strip-tabs{display:flex;gap:4px}
+    .stab{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;border:0;
+      background:transparent;color:var(--text-mute);
+      display:inline-flex;align-items:center;gap:5px}
+    .stab.on{background:var(--accent-soft);color:var(--on-surface)}
+    .strip-who{font-size:10.5px;font-weight:500;color:var(--text-mute)}
     .msgs{display:flex;flex-direction:column;gap:13px}
     .msg{display:flex;gap:10px;align-items:flex-start}
     .mav{width:24px;height:24px;flex:none;border-radius:999px;background:var(--accent-soft);
@@ -235,9 +241,12 @@
 
     <div class="strip">
       <div class="strip-hd">
-        <span class="strip-lab">Conversation</span>
-        <span class="strip-lab" style="text-transform:none;letter-spacing:0;font-weight:500">Everyone tied to Mei</span>
-      </div>
+                  <div class="strip-tabs">
+                    <button class="stab on">Conversation <span class="cnt">4</span></button>
+                    <button class="stab">Full-timers <span class="cnt">2</span></button>
+                  </div>
+                  <span class="strip-who">Everyone tied to Mei</span>
+                </div>
       <div class="msgs">
         <div class="msg">
           <div class="mav">DK</div>

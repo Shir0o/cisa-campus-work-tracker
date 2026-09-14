@@ -42,11 +42,11 @@
       "text": "Issues #965 and #966 landed on the same seam from opposite sides.\n\n#965: the card text is clipped, so you open the person — and the in-app back drops you at a bare /around with every filter reset, because state.from carries the pathname and not the search string.\n\n#966: \"I can't see the comments I posted.\" Reading the code, that is worse than a display gap. The page is mounted with no props, so the \"Posted\" toast has never once fired. markSeen then clears the accent dot. And the message itself never renders — thread items on untied contacts are dropped before they become anything.\n\nYou write something, the composer vanishes, the card gets dimmer, and nothing else happens."
     },
     {
-      "id": "open-question",
+      "id": "two-threads",
       "x": 620,
       "y": -520,
       "w": 480,
-      "text": "OPEN — one word from you.\n\nA contact has TWO staff threads:\n\n· Conversation — everyone tied to the contact (they added them, they are a co-creator, they are the owner, or they keep them on their own My Day).\n\n· Full-timers — staff only, scope: \"team\". Not visible to Trainees.\n\nAround is Full-timer-only, so the strip could legitimately show either or both.\n\nDrawn here: Conversation ONLY. It is the thread the card's composer already posts into, so what you write is what you see.\n\nThe alternative is a two-tab strip, or a merged stream with the Full-timers messages marked. Both add a control to a card that is trying to lose one — but if the Full-timers thread is where the real reasoning happens on people you are not carrying, showing only Conversation would hide the better half.\n\nSay which and I will redraw."
+      "text": "SETTLED — the strip carries both threads.\n\nA contact has two:\n\n· Conversation — everyone tied to the contact (they added them, they are a co-creator, they are the owner, or they keep them on their own My Day).\n\n· Full-timers — staff only, scope: \"team\". Not visible to Trainees.\n\nBoth appear as tabs in the strip, in the same order as the contact page. Conversation opens first: it is the thread the card's composer already posts into, so what you write is what you see.\n\nAround is Full-timer-only, so no role branch is needed on this page — the second tab is always permitted here. The composer posts into whichever tab is open, which is the one place this differs from today: the card has only ever written to Conversation."
     },
     {
       "id": "state-note",
