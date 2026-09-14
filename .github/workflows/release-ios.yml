@@ -148,7 +148,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          npx eas-cli build --local --platform ios --profile production --non-interactive --output ./artifacts/app-release.ipa
+          # See release-android.yml: a hang here would hide the failure's own log.
+          timeout --signal=TERM 2400 npx eas-cli build --local --platform ios --profile production --non-interactive --output ./artifacts/app-release.ipa
 
       - name: Compile TestFlight release notes
         run: npx tsx scripts/store-release-notes.ts --platform testflight --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/testflight-release-notes.txt
