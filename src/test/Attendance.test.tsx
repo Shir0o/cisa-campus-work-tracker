@@ -1,13 +1,17 @@
 import './useMediaQuery.mock';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { onSnapshot, deleteDoc, addDoc } from 'firebase/firestore';
 import Attendance from '../views/Attendance';
 import { useAuth, type AuthContextType } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import React from 'react';
 
 // Mock dependencies
+const { mockBatch } = vi.hoisted(() => ({
+  mockBatch: { update: vi.fn(), commit: vi.fn(() => Promise.resolve()) },
+}));
+
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
 }));
@@ -29,6 +33,7 @@ vi.mock('firebase/firestore', () => ({
     return vi.fn();
   }),
   updateDoc: vi.fn(() => Promise.resolve()),
+  writeBatch: vi.fn(() => mockBatch),
   addDoc: vi.fn(() => Promise.resolve({ id: 'new-event-id' })),
   deleteDoc: vi.fn(() => Promise.resolve()),
   deleteField: vi.fn(() => 'DELETE_FIELD'),
@@ -41,10 +46,6 @@ vi.mock('../lib/firebase', () => ({
   handleFirestoreError: vi.fn(),
   OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE', DELETE: 'DELETE' },
   logActivity: vi.fn(),
-}));
-
-vi.mock('../components/modals/SyncSheetModal', () => ({
-  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="sync-sheet-modal">Sync with Google Sheet</div> : null,
 }));
 
 vi.mock('../components/modals/AddEventModal', () => ({
@@ -280,7 +281,7 @@ describe('Attendance', () => {
     const bobBtn = screen.getByRole('button', { name: /Bob Lee/ });
     fireEvent.click(bobBtn);
 
-    expect(updateDoc).toHaveBeenCalled();
+    expect(mockBatch.update).toHaveBeenCalled();
   });
 
   it('allows exporting to CSV', async () => {
@@ -338,10 +339,15 @@ describe('Attendance', () => {
     const aliceBtn = screen.getByTitle('Tap to mark present');
     fireEvent.click(aliceBtn);
 
-    expect(updateDoc).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mockBatch.update).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'events', id: 'e1' }),
       expect.objectContaining({
-        attendance: expect.objectContaining({ e1: true }),
+        attendance: expect.objectContaining({ present: expect.arrayContaining(['c1']) }),
+      }),
+    );
+    expect(mockBatch.update).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts', id: 'c1' }),
+      expect.objectContaining({
         lastSeen: '2026-06-12',
         lastContactedDate: '2026-06-12',
         lastContactedBy: 'Test User',
@@ -367,19 +373,6 @@ describe('Attendance', () => {
     // The composer opens pre-filled to check on her, and can be committed.
     expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Check on Alice');
     fireEvent.click(screen.getByRole('button', { name: /add to-do/i }));
-  });
-
-  it('opens sync sheet modal', async () => {
-    render(<Attendance />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Sync sheet')).toBeInTheDocument();
-    });
-
-    const syncBtn = screen.getByText('Sync sheet');
-    fireEvent.click(syncBtn);
-
-    expect(screen.getByTestId('sync-sheet-modal')).toBeInTheDocument();
   });
 
   it('shows an upcoming one-off, faint-rendered under One-offs (Story 36)', async () => {
@@ -454,10 +447,10 @@ describe('Attendance', () => {
     const checkInBtn = screen.getByText('Charlie Brown').closest('button')!;
     fireEvent.click(checkInBtn);
 
-    expect(updateDoc).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mockBatch.update).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'events', id: 'e1' }),
       expect.objectContaining({
-        attendance: expect.objectContaining({ e1: true }),
+        attendance: expect.objectContaining({ present: expect.arrayContaining(['c3']) }),
       }),
     );
 

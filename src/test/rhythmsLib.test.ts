@@ -270,20 +270,18 @@ describe('rhythms lib', () => {
       );
     });
 
-    it('leaves recorded attendance, its stamp and a cancellation alone', async () => {
+    it('leaves recorded attendance and a cancellation alone', async () => {
       const past = makeGathering({
         id: 'e1',
         date: '2026-09-09',
         rhythmId: 'r1',
         cancelled: true,
-        attendanceTakenAt: '2026-09-09T20:00:00.000Z',
-        attendanceTakenBy: 'Tony Wang',
+        attendance: { present: ['c1'], absent: [] },
       });
       await deleteRhythm(makeRhythm(), [past], NOW);
       const patch = batchUpdate.mock.calls.find((c) => c[0].path === 'events/e1')?.[1] ?? {};
       expect(patch).not.toHaveProperty('cancelled');
-      expect(patch).not.toHaveProperty('attendanceTakenAt');
-      expect(patch).not.toHaveProperty('attendanceTakenBy');
+      expect(patch).not.toHaveProperty('attendance');
     });
 
     it('deletes a future occasion, which has nothing recorded to keep', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildGatheringViewModel, startOfWeekMonday, endOfWeekSunday, type ChipState } from '../lib/gatheringViewModel';
-import type { Contact, Gathering, Rhythm } from '../types';
+import type { Gathering, Rhythm } from '../types';
 
 // Fixed Wednesday 2026-09-09 so tests are deterministic. 09-09 is mid-week:
 // Mon 2026-09-07 → Sun 2026-09-13. Tuesday is the day before, Monday is two days before.
@@ -25,18 +25,6 @@ const baseRhythm = (overrides: Partial<Rhythm> & { id: string }): Rhythm => ({
   ...overrides,
 });
 
-const baseContact = (overrides: Partial<Contact> & { id: string }): Contact => ({
-  id: overrides.id,
-  name: 'Alex',
-  role: 'Student',
-  location: 'Campus',
-  email: 'alex@example.com',
-  phone: '123',
-  stage: 'Believer',
-  lastSeen: '2026-09-01',
-  initials: 'A',
-  ...overrides,
-});
 
 const localYmd = (d: Date): string => {
   const y = d.getFullYear();
@@ -45,11 +33,10 @@ const localYmd = (d: Date): string => {
   return `${y}-${m}-${day}`;
 };
 
-const build = (opts: { events?: Gathering[]; rhythms?: Rhythm[]; contacts?: Contact[]; now?: Date }) =>
+const build = (opts: { events?: Gathering[]; rhythms?: Rhythm[]; now?: Date }) =>
   buildGatheringViewModel({
     events: opts.events ?? [],
     rhythms: opts.rhythms ?? [],
-    contacts: opts.contacts ?? [],
     now: opts.now ?? NOW,
   });
 
@@ -100,14 +87,13 @@ describe('buildGatheringViewModel — this-week grouping', () => {
 });
 
 describe('buildGatheringViewModel — chip state', () => {
-  it('marks a past Gathering as taken when attendanceTakenAt is stamped', () => {
+  it('marks a past Gathering as taken when an attendance record exists', () => {
     const rhythm = baseRhythm({ id: 'r1' });
     const past = baseEvent({
       id: 'past-taken',
       date: '2026-09-02',
       rhythmId: 'r1',
-      attendanceTakenAt: '2026-09-02T20:00:00Z',
-      attendanceTakenBy: 'Alice',
+      attendance: { present: ['c1'], absent: [] },
     });
     const m = build({ events: [past], rhythms: [rhythm] });
     const row = m.rhythms.find((r) => r.id === 'r1')!;
@@ -139,9 +125,9 @@ describe('buildGatheringViewModel — chip state', () => {
     expect(row.chips[0].faint).toBe(true);
   });
 
-  it('does NOT mark a future Gathering as taken just because attendanceTakenAt exists', () => {
+  it('does NOT mark a future Gathering as taken just because a record exists', () => {
     const rhythm = baseRhythm({ id: 'r1' });
-    const future = baseEvent({ id: 'fut-stamped', date: '2026-10-07', rhythmId: 'r1', attendanceTakenAt: '2026-09-01T00:00:00Z' });
+    const future = baseEvent({ id: 'fut-stamped', date: '2026-10-07', rhythmId: 'r1', attendance: { present: ['c1'], absent: [] } });
     const m = build({ events: [future], rhythms: [rhythm] });
     const row = m.rhythms.find((r) => r.id === 'r1')!;
     expect(row.chips[0].state).toBe<ChipState>('ahead');
@@ -266,13 +252,10 @@ describe('buildGatheringViewModel — expected count & present count', () => {
     expect(row.chips[0].expectedCount).toBe(1);
   });
 
-  it('presentCount for a chip comes from Contact.attendance[eventId] === true', () => {
+  it('presentCount for a chip comes from the Gathering attendance record', () => {
     const rhythm = baseRhythm({ id: 'r1' });
-    const ev = baseEvent({ id: 'ev', date: '2026-09-09', rhythmId: 'r1' });
-    const c1 = baseContact({ id: 'c1', attendance: { ev: true } });
-    const c2 = baseContact({ id: 'c2', attendance: { ev: true } });
-    const c3 = baseContact({ id: 'c3', attendance: { ev: 'absent' } });
-    const m = build({ events: [ev], rhythms: [rhythm], contacts: [c1, c2, c3] });
+    const ev = baseEvent({ id: 'ev', date: '2026-09-09', rhythmId: 'r1', attendance: { present: ['c1', 'c2'], absent: ['c3'] } });
+    const m = build({ events: [ev], rhythms: [rhythm] });
     const row = m.rhythms.find((r) => r.id === 'r1')!;
     expect(row.chips[0].presentCount).toBe(2);
   });
@@ -374,10 +357,9 @@ describe('buildGatheringViewModel — occasions orphaned by a missing Rhythm', (
       date: '2026-09-02',
       rhythmId: 'deleted',
       roster: ['c1', 'c2'],
+      attendance: { present: ['c1'], absent: [] },
     });
-    const came = baseContact({ id: 'c1', attendance: { orphan: true } });
-    const missed = baseContact({ id: 'c2' });
-    const m = build({ events: [orphan], rhythms: [], contacts: [came, missed] });
+    const m = build({ events: [orphan], rhythms: [] });
     expect(m.oneOffs[0]).toMatchObject({ presentCount: 1, expectedCount: 2 });
   });
 

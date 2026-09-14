@@ -48,8 +48,8 @@ export function buildContactActivityPatch(stamp: ContactActivityStamp): ContactA
  * Determines whether an attendance status change represents a presence
  * event that should update the person's lastSeen and activity fields.
  */
-export function shouldTouchActivityForAttendance(status: boolean | 'late' | 'absent' | undefined): boolean {
-  return status === true || status === 'late';
+export function shouldTouchActivityForAttendance(status: 'present' | 'absent' | undefined): boolean {
+  return status === 'present';
 }
 
 /**

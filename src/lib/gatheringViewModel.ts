@@ -1,5 +1,5 @@
-import type { Contact, Gathering, Rhythm } from '../types';
-import { resolveRoster } from './attendanceRoster';
+import type { Gathering, Rhythm } from '../types';
+import { isAttendanceTaken, presentCount, resolveRoster } from './attendanceRoster';
 
 // ─── week bounds ───────────────────────────────────────────────────────────
 // Mon–Sun, in the viewer's local zone. Date-only strings (yyyy-MM-dd) are
@@ -48,9 +48,7 @@ const sortByDateDesc = <T extends { date: string }>(rows: T[]): T[] =>
   [...rows].sort((a, b) => b.date.localeCompare(a.date));
 
 // ─── chip state ────────────────────────────────────────────────────────────
-// Computed in this module from the Gathering's own stamp + the week bounds.
-// Deriving "taken" from a non-empty present list is explicitly rejected — it
-// would permanently mislabel a Gathering nobody attended.
+// Taken means the Gathering carries an attendance record, even an empty one.
 
 export type ChipState = 'taken' | 'happened-not-taken' | 'current-week' | 'ahead' | 'cancelled';
 
@@ -68,9 +66,6 @@ export interface Chip {
   presentCount: number;
   /** How many were expected — the resolved roster's size for this occasion. */
   expectedCount: number;
-  /** Who recorded attendance (if stamped). */
-  takenByName?: string;
-  takenAt?: string;
 }
 /** This-week band: one entry per date with one or more Gatherings. */
 export interface ThisWeekGroup {
@@ -112,8 +107,6 @@ export interface OneOffGathering {
   presentCount: number;
   expectedCount: number;
   cancelled: boolean;
-  takenByName?: string;
-  takenAt?: string;
 }
 
 /** Plain view model returned to the renderer. No grouping/ordering logic
@@ -143,7 +136,7 @@ const isStamped = (e: Gathering, nowMs: number): boolean => {
   // a future-dated Gathering with a stamp should still read as `ahead`.
   const dateMs = parseLocalDate(e.date)?.getTime();
   if (dateMs == null || dateMs > nowMs) return false;
-  return !!e.attendanceTakenAt;
+  return isAttendanceTaken(e);
 };
 
 const chipState = (e: Gathering, mondayMs: number, sundayMs: number, nowMs: number): ChipState => {
@@ -159,11 +152,7 @@ const chipState = (e: Gathering, mondayMs: number, sundayMs: number, nowMs: numb
   return isStamped(e, nowMs) ? 'taken' : 'happened-not-taken';
 };
 
-const presentCountFor = (e: Gathering, contacts: Contact[]): number =>
-  contacts.reduce(
-    (n, c) => (c.attendance?.[e.id] === true ? n + 1 : n),
-    0,
-  );
+const presentCountFor = (e: Gathering): number => presentCount(e);
 
 /** Pick the default selected chip: current-week first, then most-recent past,
  *  then earliest future. */
@@ -208,10 +197,9 @@ function rhythmSubtitle(rhythm: Rhythm): string {
 export function buildGatheringViewModel(input: {
   events: Gathering[];
   rhythms: Rhythm[];
-  contacts: Contact[];
   now: Date;
 }): GatheringViewModel {
-  const { events, rhythms, contacts, now } = input;
+  const { events, rhythms, now } = input;
   const nowMs = now.getTime();
   const monday = startOfWeekMonday(now);
   const sunday = endOfWeekSunday(now);
@@ -241,11 +229,9 @@ export function buildGatheringViewModel(input: {
       name: rhythm?.name ?? e.name,
       subtitle: location ?? (rhythm ? cadenceText(rhythm) : undefined),
       date: e.date,
-      presentCount: presentCountFor(e, contacts),
+      presentCount: presentCountFor(e),
       expectedCount: resolveRoster(e, rhythm, nowDate).length,
       cancelled: Boolean(e.cancelled),
-      takenByName: e.attendanceTakenAt ? e.attendanceTakenBy : undefined,
-      takenAt: e.attendanceTakenAt,
     };
   };
 
@@ -283,10 +269,8 @@ export function buildGatheringViewModel(input: {
         name: rhythm.name,
         state,
         faint: state === 'ahead',
-        presentCount: presentCountFor(e, contacts),
+        presentCount: presentCountFor(e),
         expectedCount: resolved.length,
-        takenByName: state === 'taken' ? e.attendanceTakenBy : undefined,
-        takenAt: state === 'taken' ? e.attendanceTakenAt : undefined,
       };
     });
     const selectedChipId = defaultSelectedChipId(chips, nowMs);

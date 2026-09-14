@@ -15,7 +15,6 @@ const contact = (over: any = {}) => ({
   role: 'Student',
   location: 'Miller Hall',
   phone: '+15551234',
-  attendance: {} as any,
   ...over,
 } as any);
 
@@ -93,7 +92,7 @@ describe('AttendanceMobile', () => {
   });
 
   it('renders past sessions with attended counts and opens the roster sheet', () => {
-    const here = vi.fn((c: any) => c.id === 'c1');
+    const here = vi.fn((_g: any, contactId: string) => contactId === 'c1');
     render(
       <AttendanceMobile
         {...baseProps}
@@ -118,7 +117,7 @@ describe('AttendanceMobile', () => {
     render(
       <AttendanceMobile
         {...baseProps}
-        sessions={[session()]}
+        sessions={[session({ attendance: { present: ['c1'], absent: [] } })]}
         contacts={[contact()]}
         here={here}
         cycleAttendance={cycleAttendance}
@@ -177,11 +176,11 @@ describe('AttendanceMobile', () => {
 
   it('cycles attendance for absent contacts in roster sheet', () => {
     const cycleAttendance = vi.fn().mockResolvedValue(undefined);
-    const absentContact = contact({ attendance: { s1: 'absent' } });
+    const absentContact = contact();
     render(
       <AttendanceMobile
         {...baseProps}
-        sessions={[session()]}
+        sessions={[session({ attendance: { present: [], absent: ['c1'] } })]}
         contacts={[absentContact]}
         here={vi.fn(() => false)}
         cycleAttendance={cycleAttendance}
@@ -194,11 +193,11 @@ describe('AttendanceMobile', () => {
 
   it('offers a make-a-to-do for an absent person in the roster sheet (issue #336)', () => {
     const onOpenTodo = vi.fn();
-    const absentContact = contact({ attendance: { s1: 'absent' } });
+    const absentContact = contact();
     render(
       <AttendanceMobile
         {...baseProps}
-        sessions={[session()]}
+        sessions={[session({ attendance: { present: [], absent: ['c1'] } })]}
         contacts={[absentContact]}
         here={vi.fn(() => false)}
         onOpenTodo={onOpenTodo}
