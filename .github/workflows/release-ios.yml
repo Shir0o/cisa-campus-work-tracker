@@ -43,6 +43,9 @@ jobs:
     steps:
       - name: Resolve the release tag
         id: release
+        # The job-level default working directory is apps/mobile, which does not
+        # exist until checkout has run. This step runs before it.
+        working-directory: .
         run: |
           set -euo pipefail
           tag="${{ github.event.inputs.tag || github.ref_name }}"
