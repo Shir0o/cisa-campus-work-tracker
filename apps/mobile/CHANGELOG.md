@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.2](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.1...v1.4.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **mobile,core:** fix trainee impersonation crash and scope queue messages ([#1006](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1006)) ([9553efe](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9553efecddbfbc5735458b3b73a02c6097ee53bf))
+* **mobile:** anchor the fastlane lane's paths to the project root ([#1008](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1008)) ([f45fcc1](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f45fcc179a4fc43452e1ee6160263aa2d18e3518))
+
 ## [1.4.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.0...v1.4.1) (2026-09-14)
 
 
