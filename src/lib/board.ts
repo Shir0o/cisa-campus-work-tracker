@@ -178,6 +178,7 @@ export interface BoardDoc {
   deletedAt?: unknown; // soft-delete marker — set means the page is in Trash
   pinned?: boolean; // pinned pages sort first in the Pages list
   pinnedOrder?: number; // order position among pinned pages when reordered
+  guestAccess?: GuestAccessConfig; // guest link capability; absent means not shared
 }
 
 // ── Audience / visibility (design Session 3) ──────────────────────────────────
@@ -647,3 +648,43 @@ export function searchBoardContent(
 }
 
 
+
+// -- Guest links (coordination docs) ------------------------------------------
+// A guest link is an unguessable secret capability for exactly one board doc.
+// Whoever holds the key can read that page - or, when permission is 'edit',
+// write it - with no account, no app, and no access to anything else. The key
+// is never derivable from the doc id; revoking it is deleting it.
+
+export type GuestPermission = 'view' | 'edit';
+
+export interface GuestAccessConfig {
+  enabled: boolean;
+  key: string; // 'sec_' + 256 bits of base64url - unguessable
+  permission: GuestPermission;
+  createdAt?: unknown;
+  createdBy?: string;
+}
+
+export const GUEST_KEY_PREFIX = 'sec_';
+
+/** 32 bytes of CSPRNG entropy, base64url-encoded and prefixed so a leaked key
+ * is recognisable in a URL, a log line, or a support screenshot. 256 bits is
+ * far beyond brute-forceable, which is the entire point of the key. */
+export function randomGuestKey(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return GUEST_KEY_PREFIX + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Build a fresh enabled config. Kept pure so permission toggling is testable
+ * without Firestore; the Firestore write lives in lib/data/board.ts. */
+export function createGuestAccess(permission: GuestPermission, createdBy?: string): GuestAccessConfig {
+  return { enabled: true, key: randomGuestKey(), permission, createdBy };
+}
+
+/** The public URL a Full-timer hands to an outside collaborator. */
+export function guestAccessUrl(origin: string, docId: string, key: string): string {
+  return `${origin.replace(/\/+$/, '')}/c/${encodeURIComponent(docId)}?key=${encodeURIComponent(key)}`;
+}

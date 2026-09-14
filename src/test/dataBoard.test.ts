@@ -31,6 +31,10 @@ import {
   pinBoardDoc,
   reorderPinnedBoardDocs,
   purgeExpiredTrash,
+  enableGuestAccess,
+  setGuestPermission,
+  regenerateGuestAccess,
+  revokeGuestAccess,
 } from '../lib/data/board';
 
 describe('isExpiredTrash', () => {
@@ -117,3 +121,63 @@ describe('purgeExpiredTrash', () => {
   });
 });
 
+
+describe('enableGuestAccess', () => {
+  it('mints a fresh enabled key at the requested permission', async () => {
+    (updateDoc as ReturnType<typeof vi.fn>).mockClear();
+    await enableGuestAccess({ id: 'doc-g1' }, 'view', 'u-admin');
+    expect(updateDoc).toHaveBeenCalledTimes(1);
+    const [ref, patch] = (updateDoc as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(ref).toEqual({ path: 'board_docs/doc-g1' });
+    expect(patch.updatedBy).toBe('u-admin');
+    expect(patch.updatedAt).toBe('mock-server-ts');
+    expect(patch.guestAccess.enabled).toBe(true);
+    expect(patch.guestAccess.permission).toBe('view');
+    expect(patch.guestAccess.createdBy).toBe('u-admin');
+    expect(patch.guestAccess.createdAt).toBe('mock-server-ts');
+    expect(patch.guestAccess.key).toMatch(/^sec_[A-Za-z0-9_-]{43}$/);
+  });
+});
+
+describe('setGuestPermission', () => {
+  it('updates only the permission so the existing key keeps working', async () => {
+    (updateDoc as ReturnType<typeof vi.fn>).mockClear();
+    await setGuestPermission({ id: 'doc-g2' }, 'edit', 'u-admin');
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'board_docs/doc-g2' },
+      { 'guestAccess.permission': 'edit', updatedAt: 'mock-server-ts', updatedBy: 'u-admin' },
+    );
+  });
+});
+
+describe('regenerateGuestAccess', () => {
+  it('replaces the key without touching anything else on the doc', async () => {
+    (updateDoc as ReturnType<typeof vi.fn>).mockClear();
+    await regenerateGuestAccess({ id: 'doc-g3' }, 'edit', 'u-admin');
+    const [, patch] = (updateDoc as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(patch.guestAccess.key).toMatch(/^sec_[A-Za-z0-9_-]{43}$/);
+    expect(patch.guestAccess.permission).toBe('edit');
+    expect(patch.md).toBeUndefined();
+    expect(patch.title).toBeUndefined();
+  });
+
+  it('mints a different key on every regeneration', async () => {
+    (updateDoc as ReturnType<typeof vi.fn>).mockClear();
+    await regenerateGuestAccess({ id: 'doc-g4' }, 'view');
+    await regenerateGuestAccess({ id: 'doc-g4' }, 'view');
+    const first = (updateDoc as ReturnType<typeof vi.fn>).mock.calls[0][1].guestAccess.key;
+    const second = (updateDoc as ReturnType<typeof vi.fn>).mock.calls[1][1].guestAccess.key;
+    expect(first).not.toBe(second);
+  });
+});
+
+describe('revokeGuestAccess', () => {
+  it('clears the config so no key remains on the doc', async () => {
+    (updateDoc as ReturnType<typeof vi.fn>).mockClear();
+    await revokeGuestAccess({ id: 'doc-g5' }, 'u-admin');
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'board_docs/doc-g5' },
+      { guestAccess: null, updatedAt: 'mock-server-ts', updatedBy: 'u-admin' },
+    );
+  });
+});

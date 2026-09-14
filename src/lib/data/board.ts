@@ -5,7 +5,7 @@
 import { doc, deleteDoc, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
 import { ref as dbRef, remove as dbRemove } from 'firebase/database';
 import { db, rtdb } from '../firebase';
-import type { BoardDoc } from '../board';
+import { createGuestAccess, type BoardDoc, type GuestPermission } from '../board';
 
 /** Soft-deletes a page (moves it to Trash) and best-effort cleans up its
  * live-collab RTDB node so it doesn't orphan. Recoverable via `restoreBoardDoc`. */
@@ -71,4 +71,64 @@ export function isExpiredTrash(deletedAt: unknown, now: number = Date.now()): bo
 export async function purgeExpiredTrash(docs: BoardDoc[]): Promise<void> {
   const expired = docs.filter((d) => isExpiredTrash(d.deletedAt));
   await Promise.allSettled(expired.map((d) => deleteBoardDoc(d)));
+}
+
+// -- Guest links --------------------------------------------------------------
+// The key *is* the capability, so these writes are the only way to mint, change,
+// or kill one. Revoking stores null rather than a disabled flag: there is no
+// key left on the doc for a stale client or a future rule to trust.
+
+async function writeGuestAccess(
+  boardDoc: Pick<BoardDoc, 'id'>,
+  permission: GuestPermission,
+  createdBy?: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'board_docs', boardDoc.id), {
+    guestAccess: { ...createGuestAccess(permission, createdBy), createdAt: serverTimestamp() },
+    updatedAt: serverTimestamp(),
+    updatedBy: createdBy,
+  });
+}
+
+/** Turns on sharing for a page at `permission`, minting a fresh key. */
+export async function enableGuestAccess(
+  boardDoc: Pick<BoardDoc, 'id'>,
+  permission: GuestPermission,
+  createdBy?: string,
+): Promise<void> {
+  await writeGuestAccess(boardDoc, permission, createdBy);
+}
+
+/** Switches view <-> edit in place, so the URL people already hold keeps working. */
+export async function setGuestPermission(
+  boardDoc: Pick<BoardDoc, 'id'>,
+  permission: GuestPermission,
+  updatedBy?: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'board_docs', boardDoc.id), {
+    'guestAccess.permission': permission,
+    updatedAt: serverTimestamp(),
+    updatedBy,
+  });
+}
+
+/** Replaces the key (a compromised link) without touching the page's content. */
+export async function regenerateGuestAccess(
+  boardDoc: Pick<BoardDoc, 'id'>,
+  permission: GuestPermission,
+  createdBy?: string,
+): Promise<void> {
+  await writeGuestAccess(boardDoc, permission, createdBy);
+}
+
+/** Cuts external access immediately, forever, with no key left behind. */
+export async function revokeGuestAccess(
+  boardDoc: Pick<BoardDoc, 'id'>,
+  updatedBy?: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'board_docs', boardDoc.id), {
+    guestAccess: null,
+    updatedAt: serverTimestamp(),
+    updatedBy,
+  });
 }

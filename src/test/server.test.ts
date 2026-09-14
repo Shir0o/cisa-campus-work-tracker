@@ -2165,3 +2165,120 @@ describe("Feedback GitHub URLs are not a request-forgery surface", () => {
     ]);
   });
 });
+
+describe('GET /api/guest-doc/:docId', () => {
+  const live = (permission: 'view' | 'edit', key = 'sec_live_key') => ({
+    date: '2026-09-14',
+    title: 'Wednesday care',
+    md: '# Agenda',
+    audience: 'team',
+    guestAccess: { enabled: true, key, permission, createdBy: 'u-admin' },
+  });
+
+  it('404s an unknown document with no detail', async () => {
+    const res = await request(app).get('/api/guest-doc/missing?key=sec_live_key');
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'unavailable' });
+  });
+
+  it('404s a doc that was never shared or was revoked', async () => {
+    seedDoc('board_docs', 'doc-plain', { date: '2026-09-14', title: 'Private', md: '# x' });
+    const noShare = await request(app).get('/api/guest-doc/doc-plain?key=sec_live_key');
+    expect(noShare.status).toBe(404);
+
+    seedDoc('board_docs', 'doc-off', { ...live('view'), guestAccess: { enabled: false, key: 'sec_live_key', permission: 'view' } });
+    const off = await request(app).get('/api/guest-doc/doc-off?key=sec_live_key');
+    expect(off.status).toBe(404);
+  });
+
+  it('404s a wrong, empty, or repeated key', async () => {
+    seedDoc('board_docs', 'doc-v', live('view'));
+    expect((await request(app).get('/api/guest-doc/doc-v?key=sec_wrong')).status).toBe(404);
+    expect((await request(app).get('/api/guest-doc/doc-v')).status).toBe(404);
+    expect((await request(app).get('/api/guest-doc/doc-v?key=sec_live_key&key=sec_other')).status).toBe(404);
+  });
+
+  it('serves only the public fields, and no collab token, for a view link', async () => {
+    mockCreateCustomToken.mockClear();
+    seedDoc('board_docs', 'doc-v2', { ...live('view'), facilitatorId: 'u-admin', createdByName: 'Admin' });
+    const res = await request(app).get('/api/guest-doc/doc-v2?key=sec_live_key');
+    expect(res.status).toBe(200);
+    expect(res.body.permission).toBe('view');
+    expect(res.body.collabToken).toBeUndefined();
+    expect(res.body.doc).toEqual({ id: 'doc-v2', title: 'Wednesday care', date: '2026-09-14', audience: 'team', md: '# Agenda' });
+    expect(res.body.doc.guestAccess).toBeUndefined();
+    expect(res.body.doc.createdByName).toBeUndefined();
+    expect(mockCreateCustomToken).not.toHaveBeenCalled();
+  });
+
+  it('coerces a missing audience to team and missing fields to safe defaults', async () => {
+    seedDoc('board_docs', 'doc-bare', { guestAccess: { enabled: true, key: 'sec_bare', permission: 'view' } });
+    const res = await request(app).get('/api/guest-doc/doc-bare?key=sec_bare');
+    expect(res.body.doc).toEqual({ id: 'doc-bare', title: '', date: '', audience: 'team', md: '' });
+  });
+
+  it('returns a doc-scoped collab token for an edit link', async () => {
+    seedDoc('board_docs', 'doc-e', live('edit'));
+    const res = await request(app).get('/api/guest-doc/doc-e?key=sec_live_key');
+    expect(res.status).toBe(200);
+    expect(res.body.permission).toBe('edit');
+    expect(res.body.collabToken).toBe('minted-token');
+    expect(mockCreateCustomToken).toHaveBeenCalledWith(
+      expect.stringMatching(/^guest_/),
+      { guest: true, guestDoc: 'doc-e' },
+    );
+  });
+
+  it('still serves an edit link when the collab token cannot be minted', async () => {
+    seedDoc('board_docs', 'doc-e2', live('edit'));
+    mockCreateCustomToken.mockRejectedValueOnce(new Error('no service account'));
+    const res = await request(app).get('/api/guest-doc/doc-e2?key=sec_live_key');
+    expect(res.status).toBe(200);
+    expect(res.body.collabToken).toBeUndefined();
+  });
+});
+
+describe('POST /api/guest-doc/:docId', () => {
+  const editDoc = () => ({
+    date: '2026-09-14',
+    title: 'Wednesday care',
+    md: '# Old',
+    audience: 'team',
+    guestAccess: { enabled: true, key: 'sec_edit_key', permission: 'edit' },
+  });
+
+  it('persists markdown for a valid edit key with attribution', async () => {
+    seedDoc('board_docs', 'doc-w1', editDoc());
+    const res = await request(app)
+      .post('/api/guest-doc/doc-w1')
+      .send({ key: 'sec_edit_key', md: '# New agenda', name: '  Pastor John  ' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true });
+    const saved = getCollection('board_docs')['doc-w1'];
+    expect(saved.md).toBe('# New agenda');
+    expect(saved.updatedBy).toBe('guest');
+    expect(saved.updatedByName).toBe('Pastor John');
+  });
+
+  it('rejects a wrong key, a view-only link, and a missing doc', async () => {
+    seedDoc('board_docs', 'doc-w2', editDoc());
+    expect((await request(app).post('/api/guest-doc/doc-w2').send({ key: 'sec_nope', md: '# x' })).status).toBe(404);
+    seedDoc('board_docs', 'doc-w3', { ...editDoc(), guestAccess: { enabled: true, key: 'sec_view_key', permission: 'view' } });
+    expect((await request(app).post('/api/guest-doc/doc-w3').send({ key: 'sec_view_key', md: '# x' })).status).toBe(404);
+    expect((await request(app).post('/api/guest-doc/doc-none').send({ key: 'sec_edit_key', md: '# x' })).status).toBe(404);
+    expect(getCollection('board_docs')['doc-w2'].md).toBe('# Old');
+  });
+
+  it('rejects a missing or oversized markdown body', async () => {
+    seedDoc('board_docs', 'doc-w4', editDoc());
+    expect((await request(app).post('/api/guest-doc/doc-w4').send({ key: 'sec_edit_key' })).status).toBe(400);
+    expect((await request(app).post('/api/guest-doc/doc-w4').send({ key: 'sec_edit_key', md: 'x'.repeat(100001) })).status).toBe(400);
+    expect(getCollection('board_docs')['doc-w4'].md).toBe('# Old');
+  });
+
+  it('falls back to a generic guest name', async () => {
+    seedDoc('board_docs', 'doc-w5', editDoc());
+    await request(app).post('/api/guest-doc/doc-w5').send({ key: 'sec_edit_key', md: '# New' });
+    expect(getCollection('board_docs')['doc-w5'].updatedByName).toBe('Guest');
+  });
+});

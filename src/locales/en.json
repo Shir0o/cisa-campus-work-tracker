@@ -999,6 +999,25 @@
     }
   },
   "coordination": {
+    "share": {
+      "button": "Share",
+      "button_title": "Share a guest link",
+      "title": "Share link",
+      "subtitle": "Anyone with the link can open this page without an account.",
+      "close": "Close",
+      "team_warning": "This page is Team only. Anyone with the link can read the pastoral notes on it.",
+      "can_view": "Can view",
+      "can_edit": "Can edit",
+      "link_label": "Guest link",
+      "copy": "Copy",
+      "copied": "Copied",
+      "regenerate": "Regenerate link",
+      "revoke": "Revoke link",
+      "off_body": "Sharing is off. Create a link to let outside collaborators view or edit this page.",
+      "enable": "Create guest link",
+      "save_failed": "Could not update the link. Try again.",
+      "copy_failed": "Copy failed. Select the link and copy it manually."
+    },
     "pages": "Pages",
     "done": "Done",
     "edit": "Edit",
@@ -1792,5 +1811,25 @@
     "italic": "Italic",
     "numbered_list": "Numbered list",
     "bullet_list": "Bullet list"
+  }
+,
+  "guest": {
+    "loading": "Loading the shared page...",
+    "unavailable_title": "Link expired or access revoked",
+    "unavailable_body": "Ask the person who shared the link for a new one.",
+    "shared_page": "Shared page",
+    "can_view": "Can view",
+    "can_edit": "Can edit",
+    "untitled": "Untitled page",
+    "empty_page": "This page is empty.",
+    "name_title": "What should we call you?",
+    "name_body": "Your name appears next to your cursor while you edit.",
+    "name_placeholder": "Your name",
+    "name_join": "Join",
+    "placeholder": "Write the page...",
+    "collaborating_as": "Collaborating as: {name}",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "save_failed": "Could not save"
   }
 }

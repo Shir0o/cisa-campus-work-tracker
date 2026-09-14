@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getDatabase, type Database } from 'firebase/database';
@@ -50,7 +50,7 @@ export const storage = getStorage(app);
 // Opt-in: only initialized when a database URL is configured (env or config),
 // so the app builds and runs even before RTDB is enabled on the project. When
 // it's null, The Board falls back to Firestore-only ("Tier 0") editing.
-const databaseURL =
+export const databaseURL =
   (import.meta.env.VITE_FIREBASE_DATABASE_URL as string | undefined) ||
   ((finalConfig as Record<string, unknown>).databaseURL as string | undefined) ||
   undefined;
@@ -155,3 +155,13 @@ async function testConnection() {
   }
 }
 testConnection();
+
+// A second, named Firebase app for a guest edit session. Guests get their own
+// scoped credential (see /api/guest-doc), and it must never become the main
+// app's session - AuthProvider would otherwise treat an outside collaborator as
+// a signed-in user. Keeping the app separate keeps the two auth stories apart.
+const GUEST_APP_NAME = 'cisa-guest-collab';
+
+export function guestFirebaseApp(): FirebaseApp {
+  return getApps().find((a) => a.name === GUEST_APP_NAME) ?? initializeApp(finalConfig, GUEST_APP_NAME);
+}

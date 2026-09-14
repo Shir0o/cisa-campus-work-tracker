@@ -70,6 +70,7 @@ const Questions = lazyWithRetry(() => import("./views/Questions"));
 const AroundTheTeam = lazyWithRetry(() => import("./views/AroundTheTeam"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
+const GuestCoordinationDoc = lazyWithRetry(() => import("./views/GuestCoordinationDoc"));
 const PublicStudyReader = lazyWithRetry(() => import("./views/PublicStudyReader"));
 const BibleStudyPresent = lazyWithRetry(() => import("./views/BibleStudyPresent"));
 const BibleStudyEditor = lazyWithRetry(() => import("./views/BibleStudyEditor"));
@@ -663,6 +664,16 @@ export default function App() {
                   element={
                     <React.Suspense fallback={null}>
                       <EmbedCoordinationDoc />
+                    </React.Suspense>
+                  }
+                />
+
+                {/* Guest surface: public, key-gated, no app chrome (issue #1023) */}
+                <Route
+                  path="/c/:docId"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <GuestCoordinationDoc />
                     </React.Suspense>
                   }
                 />
