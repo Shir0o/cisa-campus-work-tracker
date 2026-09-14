@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 21.0.2",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -24,28 +24,22 @@
     },
     "qa": {
       "environment": "production",
-      "distribution": "store",
-      "autoIncrement": true,
+      "distribution": "internal",
+      "credentialsSource": "local",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
         "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID": "qa-db",
         "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker-qa.pages.dev"
       }
     },
-    "testflight": {
-      "environment": "production",
-      "distribution": "store",
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev"
-      }
-    },
     "production": {
       "environment": "production",
       "developmentClient": false,
       "distribution": "store",
-      "autoIncrement": true,
+      "credentialsSource": "local",
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
         "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev"
@@ -53,7 +47,19 @@
     }
   },
   "submit": {
-    "production": {},
-    "qa": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID",
+        "ascApiKeyPath": "./asc-api-key.p8",
+        "ascApiKeyId": "REPLACE_WITH_ASC_KEY_ID",
+        "ascApiKeyIssuerId": "REPLACE_WITH_ASC_ISSUER_ID"
+      }
+    }
   }
 }

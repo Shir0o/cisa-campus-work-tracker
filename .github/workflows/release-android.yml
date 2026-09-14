@@ -1,0 +1,113 @@
+name: Release Android
+
+# Fires when release-please pushes a version tag (e.g. v1.4.0).
+#
+# Builds a signed AAB on the runner itself with `eas build --local`, so no EAS
+# cloud build minutes are consumed, then submits it to the Play Console internal
+# track as a draft — internal testers are NOT notified. Promotion to production
+# stays a manual Play Console click. See RELEASING.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build AAB and submit to Play internal
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: mobile-release
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Verify release secrets are present
+        env:
+          EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
+          PLAY_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for var in EXPO_TOKEN EAS_CREDENTIALS_B64 PLAY_SERVICE_ACCOUNT_JSON_B64; do
+            if [ -z "${!var:-}" ]; then missing+=("$var"); fi
+          done
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required GitHub secrets: ${missing[*]}"
+            echo "::error::See RELEASING.md for the one-time setup."
+            exit 1
+          fi
+          echo "All Android release secrets present."
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Install mobile dependencies
+        run: npm ci
+
+      - name: Derive version and build number from the tag
+        id: version
+        run: npx tsx scripts/mobile-version.ts --tag "${{ github.ref_name }}"
+        working-directory: .
+
+      - name: Materialize EAS build credentials
+        env:
+          EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$EAS_CREDENTIALS_B64" | base64 -d | tar xzf - -C .
+          chmod 600 credentials.json
+          echo "credentials.json and the files it points at materialized (contents not echoed)."
+
+      - name: Materialize Play service account
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON_B64" | base64 -d > play-service-account.json
+          chmod 600 play-service-account.json
+          echo "play-service-account.json materialized (contents not echoed)."
+
+      - name: Build signed AAB locally
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npx eas-cli build --local --platform android --profile production --non-interactive --output ./artifacts/app-release.aab
+
+      - name: Compile Play release notes
+        run: npx tsx scripts/store-release-notes.ts --platform play --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/play-release-notes.txt
+        working-directory: .
+
+      - name: Submit AAB to the Play internal track
+        run: npx eas-cli submit --platform android --profile production --path ./artifacts/app-release.aab --non-interactive
+
+      - name: Attach artefacts to the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ github.ref_name }}" \
+            apps/mobile/artifacts/app-release.aab \
+            apps/mobile/artifacts/play-release-notes.txt \
+            --clobber
+        working-directory: .

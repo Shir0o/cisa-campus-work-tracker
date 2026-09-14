@@ -1,0 +1,123 @@
+name: Release iOS
+
+# Fires when release-please pushes a version tag (e.g. v1.4.0).
+#
+# Builds a signed .ipa on the runner itself with `eas build --local`, then
+# submits it to TestFlight. There is deliberately no --auto-submit anywhere: the
+# build lands in TestFlight and a human promotes it. See RELEASING.md.
+#
+# App Store Connect is not wired up yet — the ascAppId / appleTeamId /
+# ascApiKey* placeholders in apps/mobile/eas.json must be filled in first, or
+# this workflow will fail at the submit step. See RELEASING.md, section A.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-ios-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build IPA and submit to TestFlight
+    runs-on: macos-14
+    timeout-minutes: 90
+    environment: mobile-release
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Verify release secrets are present
+        env:
+          EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
+          ASC_API_KEY_P8_B64: ${{ secrets.ASC_API_KEY_P8_B64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for var in EXPO_TOKEN EAS_CREDENTIALS_B64 ASC_API_KEY_P8_B64 ASC_KEY_ID ASC_ISSUER_ID; do
+            if [ -z "${!var:-}" ]; then missing+=("$var"); fi
+          done
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing required GitHub secrets: ${missing[*]}"
+            echo "::error::See RELEASING.md for the one-time setup."
+            exit 1
+          fi
+          echo "All iOS release secrets present."
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Install mobile dependencies
+        run: npm ci
+
+      - name: Derive version and build number from the tag
+        id: version
+        run: npx tsx scripts/mobile-version.ts --tag "${{ github.ref_name }}"
+        working-directory: .
+
+      - name: Materialize EAS build credentials
+        env:
+          EAS_CREDENTIALS_B64: ${{ secrets.EAS_CREDENTIALS_B64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$EAS_CREDENTIALS_B64" | base64 -d | tar xzf - -C .
+          chmod 600 credentials.json
+          echo "credentials.json and the files it points at materialized (contents not echoed)."
+
+      - name: Materialize App Store Connect API key
+        env:
+          ASC_API_KEY_P8_B64: ${{ secrets.ASC_API_KEY_P8_B64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ASC_API_KEY_P8_B64" | base64 -d > asc-api-key.p8
+          chmod 600 asc-api-key.p8
+          echo "asc-api-key.p8 materialized (contents not echoed)."
+
+      - name: Build signed IPA locally
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npx eas-cli build --local --platform ios --profile production --non-interactive --output ./artifacts/app-release.ipa
+
+      - name: Compile TestFlight release notes
+        run: npx tsx scripts/store-release-notes.ts --platform testflight --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/testflight-release-notes.txt
+        working-directory: .
+
+      - name: Submit IPA to TestFlight
+        run: |
+          set -euo pipefail
+          npx eas-cli submit --platform ios --profile production \
+            --path ./artifacts/app-release.ipa \
+            --what-to-test "$(cat ./artifacts/testflight-release-notes.txt)" \
+            --non-interactive
+
+      - name: Attach artefacts to the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ github.ref_name }}" \
+            apps/mobile/artifacts/app-release.ipa \
+            apps/mobile/artifacts/testflight-release-notes.txt \
+            --clobber
+        working-directory: .

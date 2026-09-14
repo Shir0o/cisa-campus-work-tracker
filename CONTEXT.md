@@ -176,6 +176,10 @@ _Avoid_: Tag, ping, callout
 An administrative action available to Full-timers in Settings that scrubs non-person test accounts (matching `reviewer*` or `cisa*` emails, or service/review account display names) and their associated traces (invitations, personal prayers, and interaction logs on contacts) across the system. It uses a two-phase dry-run scan and confirmation flow to prevent accidental data loss.
 _Avoid_: Reset database, wipe users, factory reset
 
+**Reviewer Account**:
+A seeded, non-person account a store reviewer signs in with, because the app is access-gated and has no self-registration. One of the `reviewer*` accounts that Test Account Purge scrubs, and the reason that purge must not run between creating the account and a submission.
+_Avoid_: Demo login, test user, guest account
+
 
 
 

@@ -1,0 +1,49 @@
+name: PR Title Lint
+
+# release-please reads PR TITLES, not commit messages: a squash-merge commit
+# takes the PR title as its subject. A free-form title therefore produces no
+# changelog entry and no version bump, silently. For example the merge commit
+# "Your notes: a Feedback Note becomes a conversation (#988)" carried no
+# conventional prefix, so release-please would skip it entirely.
+#
+# This lint is what makes that impossible to do by accident.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Validate conventional commit title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check PR title against conventional-commit prefixes
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Conventional commit prefixes that drive release-please bumps.
+          # Keep in sync with release-please-config.json changelog-sections.
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject must start with a lowercase letter, e.g.
+            `feat(mobile): add the weeks index` rather than
+            `feat(mobile): Add the weeks index`.
+            See RELEASING.md for the full list of prefixes.
