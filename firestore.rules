@@ -203,6 +203,22 @@ service cloud.firestore {
                            existing().get('owner', null) == null &&
                            (existing().get('createdBy', null) == request.auth.uid || existing().get('addedBy', null) == request.auth.uid)
                          )
+                       )) ||
+                       (incoming().diff(existing()).affectedKeys().hasOnly([
+                         'coCreators',
+                         'updatedAt', 'updatedBy', 'updatedByName'
+                       ]) && (
+                         isAdmin() ||
+                         existing().get('owner', null) == request.auth.uid ||
+                         (
+                           existing().get('owner', null) == null &&
+                           (existing().get('createdBy', null) == request.auth.uid || existing().get('addedBy', null) == request.auth.uid)
+                         ) ||
+                         (
+                           'coCreators' in existing() &&
+                           existing().coCreators is list &&
+                           request.auth.uid in existing().coCreators
+                         )
                        )));
       allow delete: if isValidId(contactId) && isManager();
 

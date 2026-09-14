@@ -205,7 +205,8 @@
   },
   "impersonate": {
     "seeing_as": "Estás viendo CISA como",
-    "saved_as_them": "Cualquier cosa que hagas aquí se guarda como ellos.",
+    "saved_as_them": "Vista previa de solo lectura. Las acciones están deshabilitadas mientras ves como ellos.",
+    "readonly_preview": "Vista previa de solo lectura",
     "someone_else": "Otra persona",
     "back_to_my_view": "Volver a mi vista"
   },
@@ -1503,6 +1504,12 @@
       "goes_by": "Se hace llamar",
       "known": "Conocido",
       "cared_for_by": "Cuidado por",
+      "who_else_can_see": "Quién más puede ver",
+      "just_owner_for_now": "Solo {name} por ahora.",
+      "add_someone": "Agregar a alguien…",
+      "add_someone_lower": "agregar a alguien",
+      "remove_access": "Quitar acceso",
+      "remove_access_confirm": "¿Quitar el acceso para {name}?",
       "looking_back": "Mirando atrás",
       "details_updated": "{name} actualizado",
       "discard_title": "¿Descartar cambios?",

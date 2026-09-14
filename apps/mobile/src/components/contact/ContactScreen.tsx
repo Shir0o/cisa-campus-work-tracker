@@ -12,6 +12,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
+  canManageCollaborators,
   composeKindsFor,
   contactCareLine,
   contactConnectedLine,
@@ -25,10 +26,12 @@ import {
   mergedContactThread,
   parseMs,
   prayerCardKicker,
+  roleLabel,
   splitContactPrayers,
   stageToneKey,
   storyRowLine,
   threadsFor,
+  type AppUser,
   type Contact,
   type Interaction,
   type PrayerRecord,
@@ -42,6 +45,7 @@ import type { JourneyStage } from '../../lib/useJourneyData';
 import { prayerCardId } from '../../lib/useFtHomeData';
 import { useQueueState } from '../../lib/queueState';
 import { moveContactStage } from '../../lib/data/contacts';
+import { subscribeUsers } from '../../lib/data/users';
 import {
   scheduleInteractionRemoval,
   cancelInteractionRemoval,
@@ -57,6 +61,7 @@ import { SkeletonList } from '../skeleton/SkeletonList';
 import { Snackbar } from '../ui';
 import { LogSheet } from '../log/LogSheet';
 import { MoveStepSheet } from '../journey/MoveStepSheet';
+import { AddCollaboratorSheet } from './AddCollaboratorSheet';
 import { ContactPrayerSheet } from './ContactPrayerSheet';
 import { EditContactSheet } from './EditContactSheet';
 import { ThreadCompose } from './ThreadCompose';
@@ -84,7 +89,7 @@ export function ContactScreen(props: ContactScreenProps) {
 function Person({ contactId, initialTab, initialInteractionId }: ContactScreenProps) {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const router = useRouter();
-  const { uid, user, role } = useAuth();
+  const { uid, user, role, isImpersonating } = useAuth();
   const { t } = useLanguage();
   const data = useContactDetailData(contactId);
   const queueState = useQueueState(uid ?? null);
@@ -92,14 +97,20 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const [tab, setTab] = useState<ContactV2Tab>(initialTab);
   const [openStoryId, setOpenStoryId] = useState<string | null>(initialInteractionId ?? null);
   const [showDetails, setShowDetails] = useState(false);
-  const [sheet, setSheet] = useState<'log' | 'pray' | 'edit' | null>(null);
+  const [sheet, setSheet] = useState<'log' | 'pray' | 'edit' | 'addCollaborator' | null>(null);
   const [moving, setMoving] = useState<Contact | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
   useEffect(() => subscribeInteractionRemovals(() => setPendingRemovalIds(getPendingRemovalIds())), []);
   const [removalSnack, setRemovalSnack] = useState<{ message: string; onAction: () => void } | null>(null);
 
-  const canWrite = role !== 'viewer';
+  const [teamMembers, setTeamMembers] = useState<AppUser[]>([]);
+  useEffect(() => {
+    return subscribeUsers(setTeamMembers);
+  }, []);
+
+  const canWrite = role !== 'viewer' && !isImpersonating;
+  const canShare = !isImpersonating && canManageCollaborators(role, uid, data.contact);
   const kinds = useMemo(() => composeKindsFor(!isTrainee(uid)), [uid]);
 
   // Newest first, and the newest is what the hero quotes.
@@ -329,8 +340,12 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 contact={contact}
                 careLine={contactCareLine(data.inYourCare, contact.createdByName)}
                 caregiverName={data.caregiverName}
+                teamMembers={teamMembers}
                 canEdit={canWrite}
+                canShare={canShare}
                 onEdit={() => setSheet('edit')}
+                onOpenAddCollaborator={() => setSheet('addCollaborator')}
+                onRemoveCollaborator={(staffId, staffName) => void data.removeCollaborator(staffId, staffName)}
               />
             )}
           </View>
@@ -427,6 +442,18 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         room={roomForRole(role)}
         onMove={handleMove}
         onClose={() => setMoving(null)}
+      />
+
+      {/* Add collaborator selection sheet. */}
+      <AddCollaboratorSheet
+        visible={sheet === 'addCollaborator'}
+        contact={contact}
+        teamMembers={teamMembers}
+        room={roomForRole(role)}
+        onAdd={(staffId, staffName) => {
+          void data.addCollaborator(staffId, staffName);
+        }}
+        onClose={() => setSheet(null)}
       />
 
       {/* Edit contact info, notes, and tags directly from mobile. */}
@@ -715,19 +742,47 @@ function Details({
   contact,
   careLine,
   caregiverName,
+  teamMembers,
   canEdit,
+  canShare,
   onEdit,
+  onOpenAddCollaborator,
+  onRemoveCollaborator,
 }: {
   contact: NonNullable<ReturnType<typeof useContactDetailData>['contact']>;
   careLine: string;
   caregiverName: string | null;
+  teamMembers: AppUser[];
   canEdit?: boolean;
+  canShare?: boolean;
   onEdit?: () => void;
+  onOpenAddCollaborator?: () => void;
+  onRemoveCollaborator?: (staffId: string, staffName: string) => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
   const knownMs = parseMs(contact.createdAt);
   const tags = contact.tags ?? [];
+
+  const coCreators = contact.coCreators || [];
+  const sharedWith = teamMembers.filter((m) => coCreators.includes(m.uid));
+  const creatorId = contact.createdBy || contact.addedBy;
+  const firstNameOnly = firstName(contact.name);
+
+  const confirmRemoveCollaborator = (member: AppUser) => {
+    Alert.alert(
+      t('mobile.contact.remove_access'),
+      t('mobile.contact.remove_access_confirm').replace('{name}', member.displayName || member.email),
+      [
+        { text: t('actions.cancel'), style: 'cancel' },
+        {
+          text: t('actions.remove'),
+          style: 'destructive',
+          onPress: () => onRemoveCollaborator?.(member.uid, member.displayName || member.email),
+        },
+      ],
+    );
+  };
 
   return (
     <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 14 }}>
@@ -761,6 +816,88 @@ function Details({
         label={t('mobile.contact.cared_for_by')}
         value={careLine === 'In your care' ? t('mobile.common.you') : caregiverName ?? contact.createdByName}
       />
+
+      {/* ── Who else can see ────────────────────────────────────────── */}
+      <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.card.line }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink3, marginBottom: 10 }}>
+          {t('mobile.contact.who_else_can_see')}
+        </Text>
+
+        {sharedWith.length === 0 && (
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink3, marginBottom: 6 }}>
+            {t('mobile.contact.just_owner_for_now').replace('{name}', firstNameOnly)}
+          </Text>
+        )}
+
+        <View style={{ gap: 8 }}>
+          {sharedWith.map((member) => (
+            <View
+              key={member.uid}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                minHeight: 44,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: radius.note,
+                backgroundColor: c.card.bg2,
+              }}
+            >
+              <PersonMark name={member.displayName || member.email} id={member.uid} size={30} radius={15} fontSize={11} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink }} numberOfLines={1}>
+                  {member.displayName || member.email}
+                </Text>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), color: c.card.ink3 }}>
+                  {roleLabel(member.role)}
+                </Text>
+              </View>
+              {canShare && member.uid !== creatorId && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('mobile.contact.remove_access')}
+                  hitSlop={8}
+                  onPress={() => confirmRemoveCollaborator(member)}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: radius.badge,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink3 }}>×</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </View>
+
+        {canShare && (
+          <Pressable
+            onPress={onOpenAddCollaborator}
+            accessibilityRole="button"
+            accessibilityLabel={t('mobile.contact.add_someone')}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 40,
+              marginTop: 10,
+              borderRadius: radius.note,
+              borderWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: c.card.border,
+              backgroundColor: 'transparent',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
+              + {t('mobile.contact.add_someone_lower')}
+            </Text>
+          </Pressable>
+        )}
+      </View>
 
       {canEdit && onEdit && (
         <Pressable

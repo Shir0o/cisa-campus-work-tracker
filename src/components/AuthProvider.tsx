@@ -27,6 +27,7 @@ export interface AuthContextType {
   isApproved: boolean;
   loading: boolean;
   isOwner: boolean;
+  isImpersonating: boolean;
   ownerViewRole: AppRole | null;
   setOwnerViewRole: (role: AppRole | null) => void;
   impersonateTarget: ImpersonateTarget | null;
@@ -66,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const isOwner = canSimulateRole(actualRole as AppRole, user?.email);
+  const isImpersonating = isOwner && (ownerViewRole !== null || impersonateTarget !== null);
 
   const setOwnerViewRole = (nextRole: AppRole | null) => {
     setOwnerViewRoleState(nextRole);
@@ -345,6 +347,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isApproved,
         loading,
         isOwner,
+        isImpersonating,
         ownerViewRole,
         setOwnerViewRole,
         impersonateTarget,

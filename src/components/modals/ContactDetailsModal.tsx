@@ -54,7 +54,7 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, canSeeHistory, hasMinRole } from "../../lib/permissions";
+import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canTransferOwnership } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
@@ -271,7 +271,7 @@ export default function ContactDetailsModal({
   initialTab,
   initialInteractionId,
 }: ContactDetailsModalProps) {
-  const { user, isAdmin, role, effectiveUserId } = useAuth();
+  const { user, isAdmin, role, effectiveUserId, isImpersonating } = useAuth();
   const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
@@ -591,7 +591,9 @@ export default function ContactDetailsModal({
   const coCreators = contact.coCreators || [];
   const sharedWith = teamMembers.filter((m) => coCreators.includes(m.id));
   const ownerId = contact.owner || contact.createdBy || contact.addedBy;
-  const canShare = role === "admin" || ownerId === currentUid;
+  const creatorId = contact.createdBy || contact.addedBy;
+  const canShare = !isImpersonating && canManageCollaborators(role, currentUid, contact);
+  const canTransfer = !isImpersonating && canTransferOwnership(role, currentUid, contact);
   const shareOptions = teamMembers.filter(
     (m) => m.id !== ownerId && !coCreators.includes(m.id)
   );
@@ -1971,7 +1973,7 @@ export default function ContactDetailsModal({
                             </div>
                           </div>
 
-                          {canShare && transferOptions.length > 0 && (
+                          {canTransfer && transferOptions.length > 0 && (
                             transferring ? (
                               <div className="flex items-center gap-2 mt-3">
                                 <select
@@ -2038,7 +2040,7 @@ export default function ContactDetailsModal({
                                 <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
                                 <span className="cd-share-name">{s.name}</span>
                                 <span className="cd-share-role">{s.role}</span>
-                                {canShare && (
+                                {canShare && s.id !== creatorId && (
                                   <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
                                 )}
                               </div>

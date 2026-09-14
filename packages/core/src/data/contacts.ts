@@ -3,6 +3,8 @@
 // app's src/views/Directory.tsx and apps/mobile/src/lib/useMyDayData.ts.
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   collectionGroup,
   deleteDoc,
@@ -280,6 +282,34 @@ export async function updateContactTags(
 ): Promise<void> {
   await updateDoc(doc(db, "contacts", contactId), {
     tags,
+    updatedAt: new Date().toISOString(),
+    updatedBy: by.uid ?? null,
+    updatedByName: by.name ?? null,
+  });
+}
+
+export async function addContactCollaborator(
+  db: Firestore,
+  contactId: string,
+  staffId: string,
+  by: { uid?: string | null; name?: string | null } = {},
+): Promise<void> {
+  await updateDoc(doc(db, "contacts", contactId), {
+    coCreators: arrayUnion(staffId),
+    updatedAt: new Date().toISOString(),
+    updatedBy: by.uid ?? null,
+    updatedByName: by.name ?? null,
+  });
+}
+
+export async function removeContactCollaborator(
+  db: Firestore,
+  contactId: string,
+  staffId: string,
+  by: { uid?: string | null; name?: string | null } = {},
+): Promise<void> {
+  await updateDoc(doc(db, "contacts", contactId), {
+    coCreators: arrayRemove(staffId),
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,

@@ -24,7 +24,12 @@ import { useAuth } from './AuthProvider';
 import { handleFirestoreError, logActivity, OperationType } from './firebase';
 import { useFullTimerNames } from './useFullTimerNames';
 import { resolveCaregiverName } from './caregiverName';
-import { subscribeContact, subscribeStages } from './data/contacts';
+import {
+  addContactCollaborator,
+  removeContactCollaborator,
+  subscribeContact,
+  subscribeStages,
+} from './data/contacts';
 import {
   addInteraction as addInteractionApi,
   deleteInteraction as deleteInteractionApi,
@@ -228,6 +233,16 @@ export function useContactDetailData(contactId: string) {
     toggleReaction: async (messageId: string, emoji: string) => {
       if (!uid) return;
       await toggleReactionApi(contactId, messageId, uid, emoji);
+    },
+
+    addCollaborator: async (staffId: string, staffName: string) => {
+      if (!contact) return;
+      await addContactCollaborator(contact, staffId, staffName, by);
+    },
+
+    removeCollaborator: async (staffId: string, staffName: string) => {
+      if (!contact) return;
+      await removeContactCollaborator(contact, staffId, staffName, by);
     },
   };
 }

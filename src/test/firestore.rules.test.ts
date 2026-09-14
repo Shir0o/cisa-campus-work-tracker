@@ -390,6 +390,78 @@ describeRules('Firestore Security Rules', () => {
         updatedByName: 'Operator One',
       }));
     });
+
+    it('lets an existing co-creator update coCreators to add or remove collaborators', async () => {
+      const db = getFirestore({ uid: 'operator2' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact_shared'), {
+          name: 'Shared Contact',
+          email: 'shared@example.com',
+          owner: 'operator1',
+          coCreators: ['operator2'],
+        });
+      });
+
+      // operator2 is in coCreators: should be able to add operator3 to coCreators
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_shared'), {
+        coCreators: ['operator2', 'operator3'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'operator2',
+        updatedByName: 'Operator Two',
+      }));
+    });
+
+    it('rejects a co-creator who tries to reassign the primary owner', async () => {
+      const db = getFirestore({ uid: 'operator2' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact_shared_2'), {
+          name: 'Shared Contact 2',
+          email: 'shared2@example.com',
+          owner: 'operator1',
+          coCreators: ['operator2'],
+        });
+      });
+
+      // operator2 is in coCreators, but NOT the owner: modifying owner must fail
+      await assertFails(updateDoc(doc(db, 'contacts', 'contact_shared_2'), {
+        owner: 'operator2',
+        coCreators: ['operator2'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'operator2',
+        updatedByName: 'Operator Two',
+      }));
+    });
+
+    it('rejects an outside teammate who is not owner or in coCreators from updating coCreators', async () => {
+      const db = getFirestore({ uid: 'operator3' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact_shared_3'), {
+          name: 'Shared Contact 3',
+          email: 'shared3@example.com',
+          owner: 'operator1',
+          coCreators: ['operator2'],
+        });
+      });
+
+      // operator3 is neither owner nor in coCreators: updating coCreators must fail
+      await assertFails(updateDoc(doc(db, 'contacts', 'contact_shared_3'), {
+        coCreators: ['operator2', 'operator3'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'operator3',
+        updatedByName: 'Operator Three',
+      }));
+    });
   });
 
   describe('Prayers', () => {

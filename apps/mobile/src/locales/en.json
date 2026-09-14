@@ -205,7 +205,8 @@
   },
   "impersonate": {
     "seeing_as": "You're seeing CISA as",
-    "saved_as_them": "Anything you do here is saved as them.",
+    "saved_as_them": "Read-only preview. Actions are disabled while viewing as them.",
+    "readonly_preview": "Read-only preview",
     "someone_else": "Someone else",
     "back_to_my_view": "Back to my view"
   },
@@ -1503,6 +1504,12 @@
       "goes_by": "Goes by",
       "known": "Known",
       "cared_for_by": "Cared for by",
+      "who_else_can_see": "Who else can see",
+      "just_owner_for_now": "Just {name} for now.",
+      "add_someone": "Add someone…",
+      "add_someone_lower": "add someone",
+      "remove_access": "Remove access",
+      "remove_access_confirm": "Remove view access for {name}?",
       "looking_back": "Looking back",
       "details_updated": "{name} updated",
       "discard_title": "Discard changes?",
