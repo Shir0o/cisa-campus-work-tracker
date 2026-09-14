@@ -39,6 +39,10 @@ async function load() {
   };
 }
 
+function norm(record?: { present: string[]; absent: string[] }): string {
+  if (record === undefined) return 'none';
+  return JSON.stringify([[...record.present].sort(), [...record.absent].sort()]);
+}
 async function main() {
   const { contacts, events } = await load();
   const plan = planAttendanceMigration(contacts as never, events as never);
@@ -56,7 +60,7 @@ async function main() {
     const current = new Map(events.map((e) => [e.id, (e as { attendance?: unknown }).attendance]));
     let mismatches = 0;
     for (const row of plan.expected) {
-      if (JSON.stringify(current.get(row.id)) !== JSON.stringify(row.attendance)) {
+      if (norm(current.get(row.id) as { present: string[]; absent: string[] } | undefined) !== norm(row.attendance)) {
         mismatches += 1;
         if (mismatches <= 20) console.log(`  mismatch ${row.id}`);
       }
