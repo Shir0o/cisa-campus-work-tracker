@@ -52,10 +52,7 @@
           },
           "android": {
             "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
-            "extraGradleProperties": {
-              "org.gradle.jvmargs": "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
-            }
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ],
@@ -66,7 +63,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#5c5595"
         }
-      ]
+      ],
+      "./plugins/withGradleJvmArgs"
     ],
     "experiments": {
       "typedRoutes": false
