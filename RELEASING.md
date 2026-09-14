@@ -15,7 +15,7 @@ Expo/EAS project rather than a Flutter one. The rationale is in
 2. `.github/workflows/release-please.yml` opens or updates a **release PR** that
    bumps `apps/mobile/package.json` and regenerates `apps/mobile/CHANGELOG.md`.
 3. You review and merge that PR.
-4. The merge pushes a tag (e.g. `v1.4.0`). Two workflows fire on it:
+4. The merge pushes a tag (e.g. `v1.4.2`). Two workflows fire on it:
    - `release-android.yml` — derives the version, builds a signed **AAB** with
      `eas build --local`, submits it to the Play internal track as a **draft**
      (testers are not notified), and attaches the AAB plus compiled notes to the
@@ -68,7 +68,8 @@ the console link is not itself the credential.
    create a **Team Key** with the **App Manager** role.
    - Download the `.p8` — you cannot download it twice.
    - Record the **Key ID** and the **Issuer ID**.
-4. Fill the **four** `REPLACE_WITH_*` placeholders in the
+4. Fill the **four** `REPLACE_WITH_*` placeholders (already done for this
+   app; they only change if the App Store Connect app is replaced) in the
    `submit.production.ios` block of `apps/mobile/eas.json`:
    `ascAppId`, `appleTeamId`, `ascApiKeyId`, `ascApiKeyIssuerId`.
    (`ascApiKeyPath` is already the literal `./asc-api-key.p8`, which the workflow
@@ -151,9 +152,34 @@ stores.
 
 Nothing to run. Merge the release PR.
 
-To re-run a failed release, re-run the failed job from the Actions tab. Apple
-will reject a reused `CFBundleVersion`, so if the IPA already reached App Store
-Connect you must cut a new tag rather than re-submit the same build number.
+### Re-running a failed release
+
+Both release workflows accept a `workflow_dispatch` with a `tag` input, so a
+failed release can be retried without cutting a new version:
+
+```bash
+gh workflow run "Release Android" --repo Shir0o/cisa-campus-work-tracker \
+  --ref main -f tag=v1.4.2
+```
+
+It takes the **workflow** from the ref you dispatch on, and the **code** from the
+**tag**. That distinction decides whether a retry can work at all:
+
+| What went wrong | Retry works? |
+| --- | --- |
+| A workflow or runner problem - missing JDK, too-old Xcode, transient 504, wrong secret | **Yes.** Re-dispatch. |
+| Anything in the built source - `app.json`, a config plugin, the Fastfile | **No.** The tag predates the fix, so the retry rebuilds the same broken code. Cut a new tag. |
+
+A retry must never ship unreleased `main`, so this is correct behaviour rather
+than a limitation to work around - but know it before spending 40 minutes on a
+re-dispatch that cannot succeed.
+
+Two hard stops force a new tag regardless:
+
+- **iOS** - App Store Connect rejects a reused `CFBundleVersion`. Once the IPA has
+  reached it, re-submitting that build number fails.
+- **Android** - Play rejects a version code already on the track. Once the AAB has
+  landed, `eas submit` for the same tag fails as a duplicate.
 
 ## Building locally
 
@@ -163,7 +189,7 @@ Both `eas build` (cloud) and `eas build --local` on your machine obey the same
 whatever number is stale in `app.json`:
 
 ```bash
-npx tsx scripts/mobile-version.ts --tag v1.4.0    # writes app.json
+npx tsx scripts/mobile-version.ts --tag v1.4.2    # writes app.json
 cd apps/mobile && npx eas-cli build --profile production --platform android
 ```
 
@@ -177,13 +203,19 @@ Notes are compiled from `content/whats-new/`, the single authored source per
 ADR 0008:
 
 ```bash
-npx tsx scripts/store-release-notes.ts --platform play --version 1.4.0
-npx tsx scripts/store-release-notes.ts --platform testflight --version 1.4.0
+npx tsx scripts/store-release-notes.ts --platform play --version 1.4.2
+npx tsx scripts/store-release-notes.ts --platform testflight --version 1.4.2
 ```
 
 Play is capped at 500 characters; the script enforces that.
 
-**TestFlight** does *not* receive them automatically either. `eas submit
+A patch release often has no manifest of its own - `v1.4.2` was CI fixes with
+nothing to announce. Both release workflows therefore try the exact version
+first, so a genuine mismatch is still visible in the log, then fall back to the
+most recent manifest with a `::warning::`. **Release notes can never block a
+release.**
+
+**TestFlight** does *not* receive them automatically. `eas submit
 --what-to-test` is gated behind the Expo **Enterprise** plan - on the free tier
 it fails the whole submission with *"Changelog submission is currently available
 for Enterprise plan only"*. The compiled notes ride on the GitHub Release; paste
@@ -212,15 +244,34 @@ pin is what forces bible-read's monkey-patch around `commit_edit`. Fastlane
 bundles `google-apis-androidpublisher_v3`, whose `commit_edit` accepts the
 keyword natively.
 
-## Known conflict
+## Known wart: `app.json`'s committed version
 
-The newest tag is `v1.3.8`, but `apps/mobile/app.json` said `1.0.1` and
-`content/whats-new` says `1.4.0`. The manifest baseline is `1.3.8`. Reconcile the
-whats-new version and confirm what the stores actually hold **before the first
-automated release** — App Store Connect rejects a `CFBundleShortVersionString` at
-or below the last approved build.
+`apps/mobile/app.json` still reads `1.0.1` while the tags are at `v1.4.2`. That
+is a consequence of the design, not drift:
+
+- release-please bumps `apps/mobile/package.json` (its version file) and pushes
+  the tag.
+- `scripts/mobile-version.ts` writes `expo.version`, `expo.ios.buildNumber` and
+  `expo.android.versionCode` into `app.json` **at build time**, so the committed
+  value is never the shipped one.
+
+**The tag is authoritative.** Do not read `app.json`'s version as the app's
+version, and never build without running the version script first - a local
+`eas build` would otherwise ship `1.0.1`, and App Store Connect rejects a
+`CFBundleShortVersionString` at or below the last approved build.
+
+Adding `app.json` to release-please's `extra-files` would keep the file honest,
+but extra-file paths inside a monorepo package resolve relative to the package
+directory in a way that is not worth guessing at. Left as a known wart.
 
 ## Not done yet
+
+- **The notes fallback lives in the workflow.** `release-android.yml` and
+  `release-ios.yml` each try the exact version then fall back to the most recent
+  manifest. The cleaner home is inside `scripts/store-release-notes.ts`, where
+  the logic belongs; it went into the workflow only because a script change is a
+  source change and would have needed another tag. Move it back on the next
+  source change.
 
 - **No OTA updates.** No profile sets a `channel`, so `expo-updates` cannot
   publish. Enabling it needs a channel per profile and a `runtimeVersion`
@@ -238,3 +289,9 @@ or below the last approved build.
 | `eas submit` fails complaining about `ascApiKey*` | `ascApiKeyPath`, `ascApiKeyId`, and `ascApiKeyIssuerId` must all be set. |
 | Play rejects the AAB as a duplicate version code | A local build ran without `scripts/mobile-version.ts`, shipping a stale number. |
 | `AutoIncrement option is not supported when using app.config.js` | The static `app.json` was replaced with a dynamic config. |
+| `React Native requires XCode >= 16.1` during pod install | The runner's Xcode is too old (`macos-14` ships 15.4). The iOS workflow moves to `macos-15` and asserts the version. |
+| `java.lang.OutOfMemoryError: Metaspace` from Gradle | Gradle fell back to its 512 MiB default. See `apps/mobile/plugins/withGradleJvmArgs.js`; `android.extraGradleProperties` in `app.json` does **not** exist and is ignored. |
+| `The service account is missing the necessary permissions` | `PLAY_SERVICE_ACCOUNT_JSON_B64` is not the Play Console release-manager account. The log's `Account Email` names the one in use. |
+| `No changelog at fastlane/metadata/...` from the fastlane lane | The lane's paths lost their project-root anchor. Fastlane runs a **lane body** from `<project>/fastlane` but an **action** from `<project>`. |
+| `Changelog submission is currently available for Enterprise plan only` | `--what-to-test` was added back to `eas submit`. It is Enterprise-gated and fails the whole submission. |
+| `timeout: command not found` in the iOS job | The macOS runner has no coreutils `timeout`. Use a step-level `timeout-minutes`. |
