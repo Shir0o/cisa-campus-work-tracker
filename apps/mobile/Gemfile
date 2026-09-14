@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+# fastlane, and only fastlane.
+#
+# Deliberately NOT `google-api-client ~> 0.53`, which bible-read pins. That
+# monolithic gem's `commit_edit` does not accept `changes_not_sent_for_review`,
+# which `supply` always passes - bible-read carries a monkey-patch to strip the
+# kwarg for exactly that reason. Fastlane 2.2xx bundles
+# `google-apis-androidpublisher_v3` instead, whose `commit_edit` accepts the
+# keyword natively. Do not add the pin.
+gem "fastlane", "~> 2.239"
