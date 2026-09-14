@@ -236,10 +236,13 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
           fts.has(m.from) &&
           m.scope !== "team" &&
           MSG_KINDS.includes(m.kind) &&
+          byId.has(m.contactId) &&
           !input.isRead("thread:" + m.id),
       )
       .sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));
     for (const m of mine) {
+      const c = byId.get(m.contactId);
+      if (!c) continue;
       const ftName = firstName(m.fromName ?? "The team");
       out.push({
         id: "ftmsg:" + m.id,
@@ -250,7 +253,7 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
         ago: daysAgoWords(m.at, now),
         title: `${ftName}: ${m.body.slice(0, 60)}`,
         msg: m,
-        contact: byId.get(m.contactId),
+        contact: c,
       });
     }
   }
