@@ -127,10 +127,12 @@ Three constraints shaped the answer:
   (`0.1.0` -> `1.3.8`), because release-please needs a version file to bump.
   Web and mobile therefore version independently — deliberate, but it is a new
   thing for a contributor to learn.
-- **`eas submit` cannot set Play release notes.** There is no option for it; the
-  compiled notes are attached to the GitHub Release and the operator pastes them
-  into the Play Console during promotion. TestFlight *is* automatic, via
-  `--what-to-test`.
+- **Play release notes need a second tool.** `eas submit` has no field for them,
+  so `release-android.yml` runs fastlane `supply` afterwards with
+  `skip_upload_aab: true` to attach the changelog to the version `eas submit`
+  already placed on the track. That means Ruby and a `Gemfile` in the Android
+  job for the sake of one metadata field. TestFlight needs none of it -
+  `--what-to-test` carries the notes.
 
 ### Reversibility
 

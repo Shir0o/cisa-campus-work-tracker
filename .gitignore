@@ -31,6 +31,10 @@ credentials.json
 # today, but by accident - this rule is the one that means it.
 apps/mobile/credentials/
 
+# Play changelogs are compiled per release from content/whats-new/ at build
+# time; the authored source is the manifest, not these.
+apps/mobile/fastlane/metadata/
+
 # local scratch / capture harnesses — never commit
 tmp/
 
