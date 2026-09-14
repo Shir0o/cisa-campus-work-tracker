@@ -1,6 +1,6 @@
 {
   "name": "cisa-campus-mobile",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "license": "Apache-2.0",
   "main": "expo-router/entry",
