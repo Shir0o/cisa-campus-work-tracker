@@ -118,15 +118,26 @@ jobs:
           chmod 600 play-service-account.json
           echo "play-service-account.json materialized (contents not echoed)."
 
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/mobile/package-lock.json') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Build signed AAB locally
+        # Bounded with a step timeout rather than the `timeout` command: macOS
+        # runners have no coreutils `timeout`, so that command broke the iOS
+        # job with exit code 127. A hang here also hides the failure's own log,
+        # because GitHub withholds a job's log until it finalises.
+        timeout-minutes: 45
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          # Bound the build. When Gradle failed here, eas-cli did not exit and
-          # the job sat until the 60-minute job timeout - and GitHub withholds a
-          # job's log until it finalises, so the failure could not be read for
-          # ~50 minutes. Fail in 40 instead of hanging.
-          timeout --signal=TERM 2700 npx eas-cli build --local --platform android --profile production --non-interactive --output ./artifacts/app-release.aab
+          npx eas-cli build --local --platform android --profile production --non-interactive --output ./artifacts/app-release.aab
 
       - name: Compile Play release notes
         run: npx tsx scripts/store-release-notes.ts --platform play --version "${{ steps.version.outputs.version }}" --out apps/mobile/artifacts/play-release-notes.txt
