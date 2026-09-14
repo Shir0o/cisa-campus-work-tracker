@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.0...v1.4.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **mobile:** actually raise Gradle JVM memory, and bound the build ([#1001](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1001)) ([6336115](https://github.com/Shir0o/cisa-campus-work-tracker/commit/63361159a839027296cdfd01288258a4f0dacf87))
+* **mobile:** give Gradle metaspace 2 GiB, not 1 ([#1003](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1003)) ([edb6cfb](https://github.com/Shir0o/cisa-campus-work-tracker/commit/edb6cfbb73e33e86a71fa4fa96b27defd2af1664))
+
 ## [1.4.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.3.8...v1.4.0) (2026-09-14)
 
 
