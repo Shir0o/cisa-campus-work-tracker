@@ -25,7 +25,7 @@
  *   BACKFILL_TERM="Fall 2026" npx tsx scripts/backfill-contact-visible-to.ts
  */
 
-import admin from 'firebase-admin';
+import { initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { readFileSync } from 'node:fs';
 import {
@@ -38,11 +38,8 @@ const projectId = process.env.FIREBASE_PROJECT_ID || cfg.projectId;
 const databaseId =
   process.env.FIRESTORE_DATABASE_ID || cfg.firestoreDatabaseId || '(default)';
 
-if (!admin.apps.length) {
-  admin.initializeApp({ projectId });
-}
-
-const db = getFirestore(admin.app(), databaseId);
+const app = initializeApp({ projectId });
+const db = getFirestore(app, databaseId);
 const contactsRef = db.collection('contacts');
 const commit = process.argv.includes('--commit');
 
