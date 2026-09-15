@@ -146,6 +146,18 @@ _Avoid_: Series, recurring event, schedule, repeat
 The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so a Gathering carries an attendance record whose existence is that fact, even when nobody was present.
 _Avoid_: Marked, complete, closed
 
+**Attendance Sync Intake**:
+The one-way, staged bridge from the `~/attd` room attendance app into CISA Tracker. A push is a pending import first, never a direct write: it carries the attd event and its recurrence, and every attendee mark, so a Full-timer can resolve names and dates before anything touches a Gathering.
+_Avoid_: Auto-sync, live sync, direct import
+
+**Attendee Alias**:
+A remembered link from an attd member id (and the name written that day) to one CISA Contact. It is why the same person does not need matching again each week; a confirmed match writes one, and exact name matching is only the fallback before a fuzzy suggestion or a walk-in.
+_Avoid_: Mapping, roster shortcut, dedupe key
+
+**Sync Token**:
+The pre-shared secret attd sends as `x-sync-token` on every push. It lives in `settings/integrations` and belongs to the team, not a signed-in person: it is exchanged once in attd Settings so a room-side phone never needs a Firebase login.
+_Avoid_: API key, password, bearer token
+
 **Cancelled**:
 A Gathering that was scheduled and did not happen — a snow day, a reading week, a Thanksgiving Thursday. Cancelling is a state the Gathering carries, never a deletion: a deleted week leaves no trace, so "we didn't meet" and "this week was never scheduled" collapse into the same silence. Nobody is counted absent for a cancelled week.
 _Avoid_: Skipped, deleted, off

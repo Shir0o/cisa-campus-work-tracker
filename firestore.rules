@@ -420,12 +420,39 @@ service cloud.firestore {
                (!('count' in data) || (data.count is int && data.count >= 1 && data.count <= 20));
       }
 
-      allow read: if true;
+      function isValidIntegrationsSettings(data) {
+        return data.keys().hasOnly(['attdSyncToken', 'attdSyncUrl', 'updatedAt', 'updatedBy']) &&
+               (!('attdSyncToken' in data) || data.attdSyncToken == null ||
+                 (data.attdSyncToken is string && data.attdSyncToken.size() <= 256)) &&
+               (!('attdSyncUrl' in data) || data.attdSyncUrl == null ||
+                 (data.attdSyncUrl is string && data.attdSyncUrl.size() <= 512));
+      }
+
+      allow create, update: if docId == 'integrations' && isAdmin() && isValidIntegrationsSettings(incoming());
+
+      allow read: if docId != 'integrations' || isAdmin();
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
       allow create, update: if docId == 'walking' && isAdmin() && isValidWalkingSettings(incoming());
       allow create, update: if docId == 'partners' && isAdmin() && isValidPartnerSettings(incoming());
       allow create, update: if docId == 'goal' && isAdmin() && isValidGoalSettings(incoming());
       allow delete: if false;
+    }
+
+    // 6d. Attendance Sync Intake - staged attd pushes, alias memory, and
+    // remembered attd event -> Rhythm mappings. Only Full-timers ever read or
+    // resolve these; the service writes the staged doc with the Admin SDK.
+    match /pending_attendance_imports/{importId} {
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow create, delete: if false;
+    }
+
+    match /attendee_aliases/{aliasId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /integrations_attd_event_mappings/{mappingId} {
+      allow read, write: if isAdmin();
     }
 
     // 7. Activities Collection

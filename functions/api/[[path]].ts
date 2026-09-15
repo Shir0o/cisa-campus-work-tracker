@@ -30,7 +30,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Twilio-Signature, X-Signature-Ed25519",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, X-Sync-Token, X-Twilio-Signature, X-Signature-Ed25519",
         "Access-Control-Max-Age": "86400",
       },
     });

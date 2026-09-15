@@ -1810,8 +1810,7 @@
     "italic": "Cursiva",
     "numbered_list": "Lista numerada",
     "bullet_list": "Lista con viñetas"
-  }
-,
+  },
   "guest": {
     "loading": "Cargando la página compartida...",
     "unavailable_title": "Enlace vencido o acceso revocado",
@@ -1830,5 +1829,43 @@
     "saving": "Guardando...",
     "saved": "Guardado",
     "save_failed": "No se pudo guardar"
+  },
+  "attendanceSync": {
+    "banner_title": "Sincronización de asistencia de Attendance Tracker pendiente de revisión",
+    "banner_count": "{n} borrador(es) en espera",
+    "review": "Revisar sincronización",
+    "modal_title": "Revisar sincronización de asistencia",
+    "close": "Cerrar revisión",
+    "rhythm": "Ritmo",
+    "choose_rhythm": "Elegir un Ritmo",
+    "gathering": "Reunión",
+    "create_occasion": "Crear una ocasión nueva el {date}",
+    "target_hint": "Al confirmar se aplican todas las marcas de attd a esta Reunión y se recuerdan las asignaciones para la próxima vez.",
+    "stat_present": "Presentes",
+    "stat_late": "Tarde",
+    "stat_absent": "Ausentes",
+    "stat_matched": "Emparejados",
+    "stat_walk_ins": "Nuevos espontáneos",
+    "stat_conflicts": "Conflictos",
+    "conflict_banner": "{n} marcas difieren de lo que CISA ya tiene.",
+    "accept_all": "Aceptar todo attd",
+    "attendees_title": "Asistentes",
+    "col_attd_name": "nombre en attd",
+    "col_status": "Estado",
+    "col_match": "Coincidencia CISA",
+    "col_conflict": "Conflicto",
+    "no_member_id": "Sin id de miembro attd",
+    "match_for": "Coincidencia para {name}",
+    "create_walk_in": "Crear espontáneo: {name}",
+    "cisa_mark": "CISA {mark}",
+    "attd_mark": "attd {mark}",
+    "keep_cisa": "Mantener CISA",
+    "accept_attd": "Aceptar attd",
+    "no_conflict": "Sin conflicto",
+    "discard": "Descartar borrador",
+    "confirm": "Confirmar sincronización",
+    "discard_failed": "No se pudo descartar este borrador.",
+    "choose_rhythm_error": "Elige un Ritmo antes de confirmar.",
+    "confirm_failed": "No se pudo confirmar esta sincronización."
   }
 }

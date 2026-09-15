@@ -17,6 +17,8 @@ import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
 import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
 import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/lib/feedbackKinds";
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
+import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
+import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();
 
@@ -2515,6 +2517,147 @@ ${JSON.stringify(contactsList)}`;
       res.status(500).json({ success: false, error: error.message || "Failed to send push notification" });
     }
   });
+
+  const asAttendanceRecord = (value: unknown): Record<string, unknown> | null => {
+    if (typeof value === 'object') {
+      if (value === null) return null;
+      return value as Record<string, unknown>;
+    }
+    return null;
+  };
+
+  function parseAttendanceSyncPayload(body: unknown): { payload?: AttdSyncPayload; error?: string } {
+    const data = asAttendanceRecord(body);
+    if (data === null) return { error: 'Request body must be a JSON object.' };
+    const attdEventId = typeof data.attdEventId === 'string' ? data.attdEventId.trim() : '';
+    if (attdEventId === '') return { error: 'attdEventId is required.' };
+    const eventName = typeof data.eventName === 'string' ? data.eventName.trim() : '';
+    if (eventName === '') return { error: 'eventName is required.' };
+    const sessionDate = typeof data.sessionDate === 'string' ? data.sessionDate.trim() : '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(sessionDate) === false) return { error: 'sessionDate must be yyyy-MM-dd.' };
+    const frequency = typeof data.frequency === 'string' ? data.frequency : 'Weekly';
+    const repeatingDays: string[] = [];
+    if (Array.isArray(data.repeatingDays)) {
+      for (const day of data.repeatingDays) {
+        if (typeof day === 'string') repeatingDays.push(day);
+      }
+    }
+    if (Array.isArray(data.records) === false) return { error: 'records must be an array.' };
+    const records: AttdSyncPayload['records'] = [];
+    for (const raw of data.records) {
+      const row = asAttendanceRecord(raw);
+      if (row === null) return { error: 'Each record must be an object.' };
+      const attendee = typeof row.attendee === 'string' ? row.attendee.trim() : '';
+      if (attendee === '') return { error: 'Each record needs an attendee name.' };
+      const rawStatus = row.status;
+      const validStatus = rawStatus === 'present' ? true : rawStatus === 'absent' ? true : rawStatus === 'late';
+      if (validStatus === false) return { error: 'Each record status must be present, absent, or late.' };
+      const status = rawStatus as AttdSyncPayload['records'][number]['status'];
+      const rawMemberId = typeof row.memberId === 'string' ? row.memberId.trim() : '';
+      const memberId = rawMemberId === '' ? null : rawMemberId;
+      const isLate = row.isLate === true;
+      const recordedAt = typeof row.recordedAt === 'string' ? row.recordedAt : undefined;
+      records.push({ memberId, attendee, status, isLate, recordedAt });
+    }
+    const eventTime = typeof data.eventTime === 'string' ? data.eventTime : undefined;
+    const payload: AttdSyncPayload = {
+      attdEventId,
+      eventName,
+      frequency,
+      repeatingDays,
+      eventTime,
+      sessionDate,
+      records,
+    };
+    return { payload };
+  }
+
+  function syncTokenFromSettings(settings: Record<string, unknown> | null): string {
+    if (settings === null) return '';
+    const candidates = [settings.attdSyncToken, settings.syncToken, settings.cisaSyncToken, settings.token];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string') {
+        const trimmed = candidate.trim();
+        if (trimmed !== '') return trimmed;
+      }
+    }
+    return '';
+  }
+
+  function syncTokensMatch(stored: string, provided: string): boolean {
+    if (stored === '' || provided === '') return false;
+    const left = Buffer.from(stored);
+    const right = Buffer.from(provided);
+    if (left.length === right.length) return crypto.timingSafeEqual(left, right);
+    return false;
+  }
+
+  const handleAttendanceSyncIntake = async (req: express.Request, res: express.Response) => {
+    try {
+      const provided = String(req.headers['x-sync-token'] ?? '');
+      const adminDb = getAdminDb();
+      const settingsSnap = await adminDb.collection('settings').doc('integrations').get();
+      const settings = settingsSnap.exists ? (settingsSnap.data() as Record<string, unknown>) : null;
+      if (syncTokensMatch(syncTokenFromSettings(settings), provided) === false) {
+        return res.status(401).json({ success: false, error: 'Invalid or missing x-sync-token.' });
+      }
+
+      const parsed = parseAttendanceSyncPayload(req.body);
+      if (parsed.error) return res.status(400).json({ success: false, error: parsed.error });
+      if (parsed.payload === undefined) return res.status(400).json({ success: false, error: 'Invalid payload.' });
+      const payload = parsed.payload;
+
+      const [contactsSnap, rhythmsSnap, mappingsSnap, aliasesSnap, eventsSnap] = await Promise.all([
+        adminDb.collection('contacts').get(),
+        adminDb.collection('rhythms').get(),
+        adminDb.collection('integrations_attd_event_mappings').get(),
+        adminDb.collection('attendee_aliases').get(),
+        adminDb.collection('events').where('date', '==', payload.sessionDate).get(),
+      ]);
+
+      const mapDocs = (snap: any) =>
+        snap.docs.map((entry: any) => ({ id: entry.id, ...(entry.data() as Record<string, unknown>) }));
+
+      const preview = buildAttendancePreview({
+        payload,
+        contacts: mapDocs(contactsSnap) as any,
+        rhythms: mapDocs(rhythmsSnap) as any,
+        mappings: mapDocs(mappingsSnap) as AttdEventMapping[],
+        aliases: mapDocs(aliasesSnap) as AttendeeAlias[],
+        gatherings: mapDocs(eventsSnap) as any,
+      });
+
+      const created = await adminDb.collection('pending_attendance_imports').add({
+        attdEventId: payload.attdEventId,
+        eventName: payload.eventName,
+        frequency: payload.frequency,
+        repeatingDays: payload.repeatingDays,
+        eventTime: payload.eventTime ?? null,
+        sessionDate: payload.sessionDate,
+        records: payload.records,
+        payload,
+        preview,
+        targetRhythmId: preview.rhythmId,
+        targetGatheringId: preview.gatheringId,
+        matchSource: preview.matchSource,
+        attendeeMatches: preview.attendees,
+        stats: preview.stats,
+        status: 'pending',
+        createdAt: FieldValue.serverTimestamp(),
+        createdBy: 'attd',
+      });
+
+      return res.status(201).json({ success: true, importId: created.id, preview });
+    } catch (error) {
+      console.error('POST /api/attendance-sync error:', error);
+      return res.status(500).json({ success: false, error: 'Could not stage attendance sync.' });
+    }
+  };
+
+  app.post(
+    ['/api/attendance-sync', '/api/attendance-sync/intake', '/api/attd/sync', '/api/integrations/attd/attendance'],
+    handleAttendanceSyncIntake,
+  );
 
   // Translation Endpoint: translates batched text strings to targetLang with Firestore L3 caching
   app.post("/api/translate", async (req, res) => {
