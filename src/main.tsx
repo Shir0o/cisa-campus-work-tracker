@@ -11,17 +11,11 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  window.addEventListener('vite:preloadError', (event) => {
-    // Prevent default error handling
-    event.preventDefault();
-    const pageHasAlreadyBeenReloaded =
-      window.sessionStorage?.getItem('cisa_dynamic_import_reloaded') === 'true';
-
-    if (!pageHasAlreadyBeenReloaded) {
-      window.sessionStorage?.setItem('cisa_dynamic_import_reloaded', 'true');
-      window.location.reload();
-    }
-  });
+  // NOTE: deliberately no `vite:preloadError` listener. Vite's preload helper
+  // rethrows the chunk error only when the event is *not* defaultPrevented, so
+  // calling preventDefault() here made every failed import resolve with
+  // `undefined` and hid the failure from `lazyWithRetry`. Reload-on-chunk-failure
+  // lives in `lazyWithRetry`, which owns the once-per-session guard.
 }
 
 createRoot(document.getElementById('root')!).render(

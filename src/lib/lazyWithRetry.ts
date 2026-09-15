@@ -31,6 +31,17 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
 
     try {
       const component = await componentImport();
+      // Vite's `__vitePreload` swallows the underlying error when a
+      // `vite:preloadError` listener calls preventDefault(), resolving the
+      // import with `undefined` instead of rejecting. Counting that as a
+      // success would clear the guard below on a load that actually failed,
+      // so the next failure reloads again — forever. Treat a module with no
+      // default export as the chunk failure it really is.
+      if (!component || typeof component.default === 'undefined') {
+        throw new TypeError(
+          'Failed to fetch dynamically imported module: the chunk resolved without a default export',
+        );
+      }
       if (typeof window !== 'undefined' && window.sessionStorage) {
         window.sessionStorage.removeItem('cisa_dynamic_import_reloaded');
       }
