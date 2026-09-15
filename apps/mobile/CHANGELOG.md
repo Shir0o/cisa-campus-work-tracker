@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.6.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.5.0...v1.6.0) (2026-09-15)
+
+
+### Features
+
+* **attendance:** move attendance onto the Gathering ([#958](https://github.com/Shir0o/cisa-campus-work-tracker/issues/958)) ([#1027](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1027)) ([f97da39](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f97da3987f8ab5dcbb08169964f808d6a577d13b))
+* **contact:** denormalise contact ties into visibleTo, and backfill ([#1024](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1024) phase 4, part 1/2) ([#1035](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1035)) ([5cbea6c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/5cbea6c9d70206d287cbae5b2803008cc5a6c404))
+* **release:** one authored record rendered as announcement + nudge ([#1021](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1021)) ([#1046](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1046)) ([0df0207](https://github.com/Shir0o/cisa-campus-work-tracker/commit/0df0207832f27ab7de827729950e41a64780a69e))
+
+
+### Bug Fixes
+
+* **contact:** enforce contact visibility on mobile, and cut team scope by effective role ([#1024](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1024)) ([#1031](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1031)) ([5049c98](https://github.com/Shir0o/cisa-campus-work-tracker/commit/5049c987ec30f12abe749dcb9cd44d3dbcfe000f))
+* **mobile:** derive the app version from the release tag, never commit it ([#1040](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1040)) ([#1057](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1057)) ([88232f6](https://github.com/Shir0o/cisa-campus-work-tracker/commit/88232f634f38530907b5ae2069dd1415443e7306))
+* **mobile:** don't re-dismiss a self-dismissed bottom sheet ([#1066](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1066)) ([4372612](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4372612c98f8cb46bbee121a35472110b5a15ab1))
+
 ## [1.5.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.2...v1.5.0) (2026-09-14)
 
 
