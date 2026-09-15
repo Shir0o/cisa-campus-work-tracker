@@ -6,9 +6,7 @@ describe('planContactVisibleToBackfill', () => {
     const rows = planContactVisibleToBackfill([
       { id: 'c1', createdBy: 'u1', owner: 'u2', coCreators: ['u3'] },
     ]);
-    expect(rows).toEqual([
-      { id: 'c1', from: [], to: ['u1', 'u2', 'u3'], addCoCreators: [] },
-    ]);
+    expect(rows).toEqual([{ id: 'c1', from: [], to: ['u1', 'u2', 'u3'] }]);
   });
 
   it('is idempotent: an already-correct list is skipped', () => {
@@ -32,33 +30,28 @@ describe('planContactVisibleToBackfill', () => {
     expect(rows[0].to).toEqual(['u1', 'u2']);
   });
 
-  it('drives the Gospel Partners reconciliation from the anchor', () => {
-    const rows = planContactVisibleToBackfill(
-      [{ id: 'c1', createdBy: 'trainee1', coCreators: ['trainee2'] }],
-      (uid) => (uid === 'trainee1' ? ['trainee2', 'trainee3'] : []),
-    );
+  it('mirrors only the ties a contact already has — never a Gospel Partner (#1039)', () => {
+    const rows = planContactVisibleToBackfill([
+      { id: 'c1', createdBy: 'trainee1', coCreators: ['trainee2'] },
+    ]);
     expect(rows).toEqual([
-      {
-        id: 'c1',
-        from: [],
-        to: ['trainee1', 'trainee2', 'trainee3'],
-        addCoCreators: ['trainee3'],
-      },
+      { id: 'c1', from: [], to: ['trainee1', 'trainee2'] },
     ]);
   });
 
-  it('plans the partner add even when visibleTo already lists the partner', () => {
-    const rows = planContactVisibleToBackfill(
-      [{ id: 'c1', createdBy: 'trainee1', visibleTo: ['trainee1', 'trainee2'] }],
-      () => ['trainee2'],
-    );
+  it('leaves a contact whose partner was never a tie alone', () => {
+    const rows = planContactVisibleToBackfill([
+      { id: 'c1', createdBy: 'trainee1', visibleTo: ['trainee1'] },
+    ]);
+    expect(rows).toEqual([]);
+  });
+
+  it('drops an access-list entry that no tie accounts for', () => {
+    const rows = planContactVisibleToBackfill([
+      { id: 'c1', createdBy: 'trainee1', visibleTo: ['trainee1', 'trainee2'] },
+    ]);
     expect(rows).toEqual([
-      {
-        id: 'c1',
-        from: ['trainee1', 'trainee2'],
-        to: ['trainee1', 'trainee2'],
-        addCoCreators: ['trainee2'],
-      },
+      { id: 'c1', from: ['trainee1', 'trainee2'], to: ['trainee1'] },
     ]);
   });
 });

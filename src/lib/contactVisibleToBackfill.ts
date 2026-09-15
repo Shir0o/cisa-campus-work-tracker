@@ -13,12 +13,15 @@
  * already equals the ties is skipped, so re-running the backfill after a
  * partial run finishes the job rather than restarting it.
  *
- * It also folds in the one-off Gospel Partners reconciliation: a person
- * brought in during a term is stamped into `coCreators` at creation, but
- * contacts created before that stamping existed were not. Given a
- * `partnersOf(uid)` lookup for the current term, a row can carry the partner
- * uids still missing from `coCreators` so the script adds them and recomputes
- * `visibleTo` in the same write (client and server then agree).
+ * It mirrors ties and nothing more. It used to also reconcile Gospel Partners
+ * -- stamping a Trainee's current partner into `coCreators` on every contact
+ * that Trainee had ever anchored -- and that was removed outright in #1039: a
+ * pairing that exists today is not evidence of collaboration that happened
+ * terms ago, and `settings/partners` rewrites a term's entry in place, so no
+ * term test can make a retroactive stamp correct. A partner tie is legitimate
+ * only when written at creation, from the pairing that was real then; the
+ * stamps already written are taken back by the repair planner in
+ * ./contactPartnerStampRepair.ts.
  */
 import { visibleToOf, type ContactTies } from './contactTies';
 
@@ -33,8 +36,6 @@ export interface BackfillRow {
   from: string[];
   /** The access list that should be written. */
   to: string[];
-  /** Current-term partners missing from `coCreators`, added in the same write. */
-  addCoCreators: string[];
 }
 
 const sameSet = (a: readonly string[], b: readonly string[]): boolean => {
@@ -45,28 +46,17 @@ const sameSet = (a: readonly string[], b: readonly string[]): boolean => {
 };
 
 /**
- * Build the list of contacts that need a `visibleTo` write. `partnersOf` is a
- * pure lookup of the current term's partners for a trainee uid; pass nothing
- * when only the access list should be recomputed.
+ * Build the list of contacts whose `visibleTo` disagrees with their ties.
  */
 export function planContactVisibleToBackfill(
   contacts: readonly ContactLike[],
-  partnersOf: (uid: string) => string[] = () => [],
 ): BackfillRow[] {
   const rows: BackfillRow[] = [];
   for (const contact of contacts) {
-    const existing = (contact.coCreators || []).filter(
-      (id): id is string => typeof id === 'string' && id.length > 0,
-    );
-    const anchor = contact.createdBy || contact.addedBy;
-    const addCoCreators = anchor
-      ? partnersOf(anchor).filter((uid) => !existing.includes(uid))
-      : [];
-    const coCreators = [...new Set([...existing, ...addCoCreators])];
-    const to = visibleToOf({ ...contact, coCreators });
+    const to = visibleToOf(contact);
     const from = Array.isArray(contact.visibleTo) ? contact.visibleTo : [];
-    if (addCoCreators.length > 0 || !sameSet(from, to)) {
-      rows.push({ id: contact.id, from, to, addCoCreators });
+    if (!sameSet(from, to)) {
+      rows.push({ id: contact.id, from, to });
     }
   }
   return rows;

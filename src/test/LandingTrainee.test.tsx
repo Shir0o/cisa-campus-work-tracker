@@ -20,14 +20,47 @@ vi.mock('../lib/seasons', () => ({
   useSeason: () => ({ activeId: 'fall', active: { label: 'Fall 2026' } }),
 }));
 
+// The contacts the database holds. The mock honours the reader scope the page
+// queries with (`visibleTo array-contains uid`), so a test can prove whose
+// people the page is actually looking at (#1039).
+const ALL_CONTACTS = [
+  {
+    id: 'c1',
+    name: 'Alex Student',
+    stage: 'Regular',
+    createdBy: 'u-trainee',
+    visibleTo: ['u-trainee'],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'c2',
+    name: 'Bobs Person',
+    stage: 'Regular',
+    createdBy: 'u-trainee-bob',
+    visibleTo: ['u-trainee-bob'],
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'c3',
+    name: 'Untied Person',
+    stage: 'Regular',
+    createdBy: 'u-someone-else',
+    visibleTo: ['u-trainee'],
+    createdAt: new Date().toISOString(),
+  },
+];
+
+// Readers whose contacts query is refused, so a test can drive the error path.
+const DENIED_READERS = new Set<string>();
+
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, ...parts) => ({ path: parts.join('/') })),
   doc: vi.fn((_db, ...parts) => ({ path: parts.join('/'), id: parts[parts.length - 1] })),
-  query: vi.fn((ref) => ref),
+  query: vi.fn((ref, ...constraints) => ({ ...ref, constraints: constraints.filter(Boolean) })),
   orderBy: vi.fn(),
-  where: vi.fn(),
+  where: vi.fn((field, op, value) => ({ field, op, value })),
   limit: vi.fn(),
-  onSnapshot: vi.fn((q, callback) => {
+  onSnapshot: vi.fn((q, callback, onError) => {
     if (typeof callback === 'function') {
       try {
         const path = q?.path || '';
@@ -45,20 +78,20 @@ vi.mock('firebase/firestore', () => ({
               },
             ],
           });
-        } else {
+        } else if (path.includes('contacts')) {
+          const reader = (q.constraints || []).find((c: any) => c?.field === 'visibleTo')?.value;
+          if (DENIED_READERS.has(reader)) {
+            if (typeof onError === 'function') onError(new Error('permission-denied'));
+            return () => {};
+          }
           callback({
-            docs: [
-              {
-                id: 'c1',
-                data: () => ({
-                  name: 'Alex Student',
-                  stage: 'Regular',
-                  createdBy: 'u-trainee',
-                  createdAt: new Date().toISOString(),
-                }),
-              },
-            ],
+            docs: ALL_CONTACTS.filter((c) => c.visibleTo.includes(reader)).map(({ id, ...data }) => ({
+              id,
+              data: () => data,
+            })),
           });
+        } else {
+          callback({ docs: [] });
         }
       } catch (e) {}
     }
@@ -246,6 +279,125 @@ describe('LandingTrainee component', () => {
 
     // Impersonated name is Bob Trainee -> greeting uses Bob
     expect(screen.getByText(/Bob\./i)).toBeInTheDocument();
+  });
+
+  it('cards only the people the reader has a tie to', async () => {
+    mockAuthValue = {
+      user: { uid: 'u-trainee', displayName: 'Trainee Sam' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee',
+      effectiveUserName: 'Trainee Sam',
+    };
+
+    render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Alex Student')).toBeInTheDocument();
+    // Readable but untied — the page cards what is yours to carry, not
+    // everything the rules let you read (#1039).
+    expect(screen.queryByText('Untied Person')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bobs Person')).not.toBeInTheDocument();
+  });
+
+  it('re-reads when the effective identity changes, so the preview shows this persona', async () => {
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee',
+      effectiveUserName: 'Trainee Sam',
+    };
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+    expect(await screen.findByText('Alex Student')).toBeInTheDocument();
+
+    // "See it as they do" steps to the next persona.
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee-bob',
+      effectiveUserName: 'Bob Trainee',
+    };
+    rerender(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Bobs Person')).toBeInTheDocument();
+    expect(screen.queryByText('Alex Student')).not.toBeInTheDocument();
+  });
+
+  it('clears a previous persona\'s load error when the identity changes', async () => {
+    DENIED_READERS.add('u-trainee-denied');
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee-denied',
+      effectiveUserName: 'Denied Trainee',
+    };
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+    expect(await screen.findByText(/your home/i)).toBeInTheDocument();
+
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee',
+      effectiveUserName: 'Trainee Sam',
+    };
+    rerender(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+
+    // One persona's refused read must not pin the error screen over the next.
+    expect(await screen.findByText('Alex Student')).toBeInTheDocument();
+    DENIED_READERS.delete('u-trainee-denied');
+  });
+
+  it('closes an open person when the identity changes', async () => {
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee',
+      effectiveUserName: 'Trainee Sam',
+    };
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+    fireEvent.click(await screen.findByText('Alex Student'));
+    expect(screen.getByRole('button', { name: /^Close$/i })).toBeInTheDocument();
+
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee-bob',
+      effectiveUserName: 'Bob Trainee',
+    };
+    rerender(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+
+    // The previous persona's person does not outlive the preview of them.
+    expect(await screen.findByText('Bobs Person')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Close$/i })).not.toBeInTheDocument();
   });
 
   it('passes myIds to traineeWaitingItems to scope waiting items to contacts in care', async () => {
