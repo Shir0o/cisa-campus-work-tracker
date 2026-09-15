@@ -437,6 +437,36 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
+  it('keeps a prayer added on the contact off the team prayer page (#1042)', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    clickAddPrayerMenu();
+
+    fireEvent.change(screen.getByPlaceholderText(/John's family back home/i), {
+      target: { value: 'Pray for upcoming exams.' },
+    });
+
+    await waitFor(() => {
+      const currentForm = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
+      expect(currentForm.querySelector('button[type="submit"]')).not.toBeDisabled();
+    });
+
+    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
+    fireEvent.click(form.querySelector('button[type="submit"]')!);
+
+    await waitFor(() => {
+      expect(firestore.addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          contactId: 'contact-abc',
+          // A burden typed on a contact's tab belongs to that contact; only
+          // burdens written on "On our hearts" belong on the team page.
+          teamPrayer: false,
+        })
+      );
+    });
+  });
+
   it('auto-unhides contact from the prayer list when a prayer is added (#565)', async () => {
     localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['contact-abc', 'other-contact']));
 
