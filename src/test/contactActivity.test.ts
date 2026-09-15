@@ -94,14 +94,12 @@ describe('contactActivity (#329)', () => {
   });
 
   describe('shouldTouchActivityForAttendance', () => {
-    it('returns true for present or late', () => {
-      expect(shouldTouchActivityForAttendance(true)).toBe(true);
-      expect(shouldTouchActivityForAttendance('late')).toBe(true);
+    it('returns true for present', () => {
+      expect(shouldTouchActivityForAttendance('present')).toBe(true);
     });
 
     it('returns false for absent or unmarked/undefined', () => {
       expect(shouldTouchActivityForAttendance('absent')).toBe(false);
-      expect(shouldTouchActivityForAttendance(false)).toBe(false);
       expect(shouldTouchActivityForAttendance(undefined)).toBe(false);
     });
   });

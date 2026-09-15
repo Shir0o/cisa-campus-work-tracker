@@ -30,7 +30,6 @@ export interface Contact {
   lastSeen: string;
   avatar?: string;
   initials: string;
-  attendance?: Record<string, boolean | 'absent' | 'late'>;
   notes?: string;
   tags?: string[];
   createdAt?: string;
@@ -210,6 +209,15 @@ export interface Rhythm {
   createdById: string;
 }
 
+/** Who was at one occasion. The field being present (even with both lists
+ *  empty) means attendance was taken; `undefined` means nobody has marked
+ *  it yet. Replaces the per-Contact attendance map and the attendance-
+ *  taken stamps (#958). Mirrors packages/core/src/types.ts. */
+export interface GatheringAttendance {
+  present: string[];
+  absent: string[];
+}
+
 // One occasion — a one-off gathering, or one occurrence of a Rhythm. Lives in
 // the `events` collection (kept — renaming buys nothing per the issue).
 // Mirrors packages/core/src/types.ts's `Gathering`.
@@ -238,15 +246,10 @@ export interface Gathering {
   /** A one-off's own expected roster. New writes for a Rhythm-linked occasion
    *  use `rosterOverride` instead. */
   roster?: string[];
-  /** ISO timestamp; stamped on the Gathering the first time attendance is
-   *  recorded for it. Absent on Gatherings created before this field
-   *  existed — those are read as "happened, but nobody marked it" until
-   *  someone does. Never stamped for a future-dated Gathering. */
-  attendanceTakenAt?: string;
-  /** Display name of the person who recorded attendance. */
-  attendanceTakenBy?: string;
-  /** uid of the same person, for join-free display. */
-  attendanceTakenById?: string;
+  /** Who was at this occasion, and who was deliberately marked absent.
+   *  The field being present (even empty) means attendance was taken.
+   *  Replaces the attendance-taken stamps (#958). */
+  attendance?: GatheringAttendance;
 }
 
 // Deprecated alias — kept only for modules this issue didn't touch. Remove

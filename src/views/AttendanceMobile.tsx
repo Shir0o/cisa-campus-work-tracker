@@ -34,7 +34,7 @@ interface AttendanceMobileProps {
   onEditSession: (session: Gathering) => void;
   onDeleteSession: (id: string, name: string) => Promise<void>;
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
-  here: (contact: Contact, eventId: string) => boolean;
+  here: (gathering: Gathering, contactId: string) => boolean;
   RsvpCountComponent: React.ComponentType<{ eventId: string }>;
   team?: TodoPerson[];
   onOpenTodo?: (contact: Contact, event: Gathering) => void;
@@ -145,7 +145,7 @@ export default function AttendanceMobile({
           ) : (
             sessions.map((s) => {
               const d = s.date ? new Date(s.date + 'T12:00:00') : null;
-              const attendedCount = contacts.filter((c) => here(c, s.id)).length;
+              const attendedCount = contacts.filter((c) => here(s, c.id)).length;
               return (
                 <button
                   key={s.id}
@@ -266,7 +266,6 @@ export default function AttendanceMobile({
         <RosterSheet
           session={openSession}
           contacts={contacts}
-          here={here}
           cycleAttendance={cycleAttendance}
           onEditSession={onEditSession}
           onDeleteSession={onDeleteSession}
@@ -286,7 +285,6 @@ export default function AttendanceMobile({
 interface RosterSheetProps {
   session: Gathering;
   contacts: Contact[];
-  here: (contact: Contact, eventId: string) => boolean;
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
   onEditSession: (session: Gathering) => void;
   onDeleteSession: (id: string, name: string) => Promise<void>;
@@ -299,7 +297,6 @@ interface RosterSheetProps {
 function RosterSheet({
   session,
   contacts,
-  here,
   cycleAttendance,
   onEditSession,
   onDeleteSession,
@@ -310,7 +307,7 @@ function RosterSheet({
 }: RosterSheetProps) {
   const { t } = useLanguage();
   const meta = session.cancelled ? t('attendance.cancelled', 'Cancelled') : (session.location || '');
-  const { present, absent } = getSessionRoster(session, contacts, here);
+  const { present, absent } = getSessionRoster(session, contacts);
 
   return (
     <div

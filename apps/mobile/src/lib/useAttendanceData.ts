@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   hasMinRole,
   here,
+  hydrateGatherings,
   sessionsNewestFirst,
   upcomingEventsForRsvp,
   whoWeMissed,
@@ -56,13 +57,13 @@ export function useAttendanceData(uid: string | null, displayName: string | null
 
   // The v2 screen shows every session, newest first — the design has no type
   // filter (that's desktop work).
-  const sessions = useMemo(() => sessionsNewestFirst(events), [events]);
+  const sessions = useMemo(() => sessionsNewestFirst(hydrateGatherings(events, contacts)), [events, contacts]);
   const missed = useMemo(() => whoWeMissed(contacts, sessions), [contacts, sessions]);
   const upcoming = useMemo(() => upcomingEventsForRsvp(events), [events]);
 
   // The web UI exposes the roster tap targets to every role that can reach
   // this screen (min role viewer), but Firestore rules require operator+ to
-  // write contacts.attendance — so a Community (viewer) tap would silently
+  // write the Gathering record, so a Community (viewer) tap would silently
   // fail. Gate the interaction client-side instead of reproducing that gap.
   const canTakeAttendance = hasMinRole(role, 'operator');
 
@@ -79,9 +80,10 @@ export function useAttendanceData(uid: string | null, displayName: string | null
     canTakeAttendance,
     here,
     cycleAttendance: (contact: Contact, eventId: string) => {
-      if (!canTakeAttendance) return Promise.resolve();
+      if (canTakeAttendance === false) return Promise.resolve();
       const event = events.find((e) => e.id === eventId);
-      return cycleAttendanceDoc(contact, eventId, event?.name, { uid, name: displayName });
+      if (event === undefined) return Promise.resolve();
+      return cycleAttendanceDoc(event, contact, { uid, name: displayName });
     },
   };
 }

@@ -38,9 +38,6 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
-vi.mock('../components/modals/SyncSheetModal', () => ({
-  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="sync-sheet-modal">Sync</div> : null,
-}));
 vi.mock('../components/modals/AddEventModal', () => ({
   default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="add-event-modal">Add</div> : null,
 }));
@@ -314,15 +311,13 @@ describe('Attendance — Rhythms + This-week wiring (issue #957)', () => {
       render(<Attendance />);
 
       fireEvent.click(await screen.findByText('Quiet Night'));
-      fireEvent.click(screen.getByRole('button', { name: 'We met — nobody came' }));
+      fireEvent.click(screen.getByRole('button', { name: 'We met, nobody came' }));
 
       await waitFor(() =>
         expect(updateDoc).toHaveBeenCalledWith(
           expect.objectContaining({ id: 'quiet' }),
           expect.objectContaining({
-            attendanceTakenBy: 'Test User',
-            attendanceTakenById: 'u-test',
-            attendanceTakenAt: expect.any(String),
+            attendance: { present: [], absent: [] },
           }),
         ),
       );
@@ -333,10 +328,9 @@ describe('Attendance — Rhythms + This-week wiring (issue #957)', () => {
 
       fireEvent.click(await screen.findByText('Recorded Night'));
 
-      expect(screen.getByText(/Attendance taken by/)).toBeInTheDocument();
-      expect(screen.getByText('Tony Wang')).toBeInTheDocument();
+      expect(screen.getByText(/Attendance recorded/)).toBeInTheDocument();
       // Already recorded — nothing left to declare.
-      expect(screen.queryByRole('button', { name: 'We met — nobody came' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
     });
 
     it('does not offer to close a Gathering that has not happened yet', async () => {
@@ -348,7 +342,7 @@ describe('Attendance — Rhythms + This-week wiring (issue #957)', () => {
       render(<Attendance />);
 
       await waitFor(() => expect(screen.getAllByText('Future Night').length).toBeGreaterThan(0));
-      expect(screen.queryByRole('button', { name: 'We met — nobody came' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'We met, nobody came' })).not.toBeInTheDocument();
     });
   });
 });

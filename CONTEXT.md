@@ -143,7 +143,7 @@ The standing arrangement behind a Gathering that repeats — the Wednesday Bible
 _Avoid_: Series, recurring event, schedule, repeat
 
 **Attendance taken**:
-The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so the record says explicitly that a person marked it and when.
+The fact that someone recorded who was at a Gathering — as distinct from a Gathering nobody has opened yet. Without it, "we held it and nobody came" and "nobody has got to this one" are the same empty answer, so a Gathering carries an attendance record whose existence is that fact, even when nobody was present.
 _Avoid_: Marked, complete, closed
 
 **Cancelled**:

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
   Download,
-  FileSpreadsheet,
   Mail,
   Trash2,
   CalendarDays,
@@ -16,11 +15,11 @@ import {
   Undo2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, deleteField } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, deleteField, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
 import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
-import { getSessionRoster, calculateMissedContacts, resolveRoster } from '../lib/attendanceRoster';
+import { getSessionRoster, calculateMissedContacts, resolveRoster, isContactPresent, explicitlyAbsent, cycleAttendanceStatus, applyAttendance, isAttendanceTaken, presentCount, hydrateGatherings, type GatheringAttendanceStatus } from '../lib/attendanceRoster';
 import { subscribeRhythms, uncancelGatheringDoc, cancelGatheringForRhythm } from '../lib/rhythms';
 import {
   buildGatheringViewModel,
@@ -39,7 +38,6 @@ import EditEventModal from '../components/modals/EditEventModal';
 import CreateRhythmModal from '../components/modals/CreateRhythmModal';
 import RhythmDrawer from '../components/modals/RhythmDrawer';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
-import SyncSheetModal from '../components/modals/SyncSheetModal';
 import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import type { TodoPerson } from '../lib/todos';
 import PageContainer from '../components/layout/PageContainer';
@@ -63,24 +61,6 @@ const isFutureEventDate = (s?: string | null): boolean => {
   return ms != null && ms > Date.now();
 };
 
-/** Stamp `attendanceTakenAt`/`By`/`ById` on the event the first time anyone
- *  records attendance for it. Subsequent edits leave the original stamp
- *  alone. Skips future-dated Gatherings (you can't have taken attendance for
- *  something that hasn't happened). Per ADR 0005, "attendance taken" is a
- *  fact on the Gathering, not a derivation from contact attendance.
- */
-async function stampAttendanceTaken(event: Gathering, by: { uid: string | null; name: string }): Promise<void> {
-  if (event.attendanceTakenAt || isFutureEventDate(event.date)) return;
-  try {
-    await updateDoc(doc(db, 'events', event.id), {
-      attendanceTakenAt: new Date().toISOString(),
-      attendanceTakenBy: by.name,
-      attendanceTakenById: by.uid,
-    });
-  } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `events/${event.id}`);
-  }
-}
 // Read-only "who's coming" count for an upcoming event, fed by member RSVPs.
 function RsvpCount({ eventId }: { eventId: string }) {
   const [count, setCount] = useState(0);
@@ -218,7 +198,7 @@ export default function Attendance() {
   const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [rawContacts, setRawContacts] = useState<Contact[]>([]);
-  const [events, setEvents] = useState<Gathering[]>([]);
+  const [rawEvents, setRawEvents] = useState<Gathering[]>([]);
   const [rhythms, setRhythms] = useState<Rhythm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -226,7 +206,6 @@ export default function Attendance() {
   const [isCreateRhythmOpen, setIsCreateRhythmOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Gathering | null>(null);
   const [drawerRhythmId, setDrawerRhythmId] = useState<string | null>(null);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [team, setTeam] = useState<TodoPerson[]>([]);
@@ -253,7 +232,7 @@ export default function Attendance() {
     const unsubscribeEvents = onSnapshot(
       qEvents,
       (snapshot) => {
-        setEvents(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Gathering[]);
+        setRawEvents(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Gathering[]);
         setTimeout(() => setLoading(false), 600);
       },
       (e) => onLoadError(e, 'events'),
@@ -293,6 +272,10 @@ export default function Attendance() {
     [role, staffId, rawContacts],
   );
 
+  // Bridge the pre-#958 per-Contact attendance maps onto Gatherings that have
+  // not been backfilled yet. A no-op after the migration.
+  const events = useMemo(() => hydrateGatherings(rawEvents, contacts), [rawEvents, contacts]);
+
   const rhythmsById = useMemo(() => new Map(rhythms.map((r) => [r.id, r])), [rhythms]);
 
   const handleExport = () => {
@@ -302,10 +285,9 @@ export default function Attendance() {
     const rows = contacts.map((c) => [
       c.name,
       c.role,
-      ...events.map((e) => {
-        const s = c.attendance?.[e.id];
-        return s === true ? t('attendance.present') : s === 'late' ? t('attendance.late') : s === 'absent' ? t('attendance.absent') : t('attendance.none');
-      }),
+      ...events.map((e) =>
+        isContactPresent(e, c.id) ? t('attendance.present') : explicitlyAbsent(e, c.id) ? t('attendance.absent') : t('attendance.none'),
+      ),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n');
@@ -337,60 +319,59 @@ export default function Attendance() {
     }
   };
 
-  // here = present
-  const here = (c: Contact, eventId: string) => {
-    const s = c.attendance?.[eventId];
-    return s === true;
-  };
+  // here = present, read from the Gathering.
+  const here = (gathering: Gathering, contactId: string) => isContactPresent(gathering, contactId);
 
   const markAttendanceTaken = async (event: Gathering) => {
-    await stampAttendanceTaken(event, {
-      uid: user?.uid || null,
-      name: user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user'),
-    });
+    if (isAttendanceTaken(event) || isFutureEventDate(event.date)) return;
+    try {
+      await updateDoc(doc(db, 'events', event.id), { attendance: { present: [], absent: [] } });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `events/${event.id}`);
+    }
   };
 
   const cycleAttendance = async (contact: Contact, eventId: string) => {
+    const event = events.find((e) => e.id === eventId);
+    if (event === undefined) return;
     try {
-      const current = contact.attendance?.[eventId];
-      const next: boolean | 'absent' = current === true ? 'absent' : true;
-
-      const newAttendance = { ...(contact.attendance || {}) };
-      newAttendance[eventId] = next;
-
-      const event = events.find((e) => e.id === eventId);
-      const label = (v: boolean | 'late' | 'absent' | undefined) =>
-        v === true ? t('attendance.present') : v === 'late' ? t('attendance.late') : v === 'absent' ? t('attendance.absent') : t('attendance.none');
+      let current: GatheringAttendanceStatus | undefined;
+      if (isContactPresent(event, contact.id)) current = 'present';
+      else if (explicitlyAbsent(event, contact.id)) current = 'absent';
+      const next = cycleAttendanceStatus(current);
+      const attendance = applyAttendance(event.attendance, contact.id, next);
+      const label = (v: GatheringAttendanceStatus | undefined) =>
+        v === 'present' ? t('attendance.present') : v === 'absent' ? t('attendance.absent') : t('attendance.none');
 
       const userName = user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user');
       const userUid = user?.uid || null;
-
-      const updateData: Record<string, unknown> = {
-        attendance: newAttendance,
+      const legacyMap = (contact as { attendance?: Record<string, boolean | 'absent' | 'late'> }).attendance ?? {};
+      const contactUpdate: Record<string, unknown> = {
+        attendance: { ...legacyMap, [eventId]: next === 'present' ? true : 'absent' },
         updatedAt: new Date().toISOString(),
         updatedBy: userUid,
         updatedByName: userName,
       };
 
-      if (shouldTouchActivityForAttendance(next) && event?.date) {
-        const activityPatch = buildContactActivityPatch({
+      if (shouldTouchActivityForAttendance(next) && event.date) {
+        Object.assign(contactUpdate, buildContactActivityPatch({
           date: event.date,
           by: { uid: userUid, name: userName },
           type: 'attendance',
-        });
-        Object.assign(updateData, activityPatch);
+        }));
       }
 
-      await updateDoc(doc(db, 'contacts', contact.id), updateData);
-      const wasUnmarked = current === undefined;
-      if (wasUnmarked && event) await stampAttendanceTaken(event, { uid: userUid, name: userName });
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'events', eventId), { attendance });
+      batch.update(doc(db, 'contacts', contact.id), contactUpdate);
+      await batch.commit();
       logActivity({
-        action: `updated attendance for "${event?.name || 'a gathering'}" to ${label(next)} for`,
+        action: `updated attendance for "${event.name || 'a gathering'}" to ${label(next)} for`,
         targetId: contact.id,
         targetName: contact.name,
         targetType: 'contact',
         type: 'edit',
-        description: `Attendance [${event?.name}]: ${label(current)} → ${label(next)}`,
+        description: `Attendance [${event.name}]: ${label(current)} to ${label(next)}`,
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
@@ -424,7 +405,9 @@ export default function Attendance() {
 
       const docRef = await addDoc(collection(db, 'contacts'), newContactData);
 
-      await stampAttendanceTaken(event, { uid: userUid, name: userName });
+      await updateDoc(doc(db, 'events', event.id), {
+        attendance: applyAttendance(event.attendance, docRef.id, 'present'),
+      });
       logActivity({
         action: 'added new contact via gathering walk-in',
         targetId: docRef.id,
@@ -543,16 +526,16 @@ export default function Attendance() {
   const avgPer = useMemo(() => {
     if (events.length === 0) return 0;
     let slots = 0;
-    contacts.forEach((c) => events.forEach((e) => { if (here(c, e.id)) slots++; }));
+    events.forEach((e) => { slots += presentCount(e); });
     return Math.round(slots / events.length);
-  }, [contacts, events]);
+  }, [events]);
 
   // The full view model: this-week band, Rhythm rows, and one-offs. The view
   // below is a renderer of this model and holds no grouping, week-bounding
   // or chip-state logic of its own.
   const viewModel = useMemo(
-    () => buildGatheringViewModel({ events, rhythms, contacts, now: new Date() }),
-    [events, rhythms, contacts],
+    () => buildGatheringViewModel({ events, rhythms, now: new Date() }),
+    [events, rhythms],
   );
 
   // Per-rhythm override: clicking a chip selects it; "back to current week"
@@ -695,12 +678,6 @@ export default function Attendance() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   <Plus className="w-4 h-4" /> {t('modals.log_gathering', 'Log a gathering')}
-                </button>
-                <button
-                  onClick={() => setIsSyncModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> {t('attendance.sync_sheet', 'Sync sheet')}
                 </button>
               </>
             )}
@@ -1021,7 +998,6 @@ export default function Attendance() {
       </motion.div>
       </PageContainer>
 
-      <SyncSheetModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} contacts={contacts} />
       <AddEventModal
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
@@ -1101,7 +1077,7 @@ interface GatheringRowProps {
   events: Gathering[];
   contacts: Contact[];
   resolvedRosterFor: (s: Gathering) => string[];
-  here: (c: Contact, eventId: string) => boolean;
+  here: (gathering: Gathering, contactId: string) => boolean;
   cycleAttendance: (c: Contact, eventId: string) => AsyncVoid;
   isAdmin: boolean;
   openContact: (c: Contact) => void;
@@ -1144,14 +1120,11 @@ function GatheringExpansion({
     handleToggleCancelled,
     markAttendanceTaken,
     resolvedRosterFor,
-    parseISO,
-    isValid,
-    format,
     t,
   } = rest;
   const ev = events.find((e) => e.id === gathering.id);
   if (!ev) return null;
-  const { present, absent, nonRoster } = getSessionRoster(ev, contacts, undefined, resolvedRosterFor(ev));
+  const { present, absent, nonRoster } = getSessionRoster(ev, contacts, resolvedRosterFor(ev));
   const queryText = walkInQuery[ev.id] || '';
   const filteredNonRoster = queryText.trim()
     ? nonRoster.filter((c) => c.name.toLowerCase().includes(queryText.trim().toLowerCase()))
@@ -1159,8 +1132,6 @@ function GatheringExpansion({
   const exactMatch = nonRoster.some(
     (c) => c.name.trim().toLowerCase() === queryText.trim().toLowerCase(),
   );
-  const takenAt = ev.attendanceTakenAt ? parseISO(ev.attendanceTakenAt) : null;
-  const takenOn = takenAt && isValid(takenAt) ? format(takenAt, 'MMM d') : '';
 
   return (
     <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-outline-variant/40 pt-4 space-y-4">
@@ -1207,26 +1178,22 @@ function GatheringExpansion({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs">
-            {ev.attendanceTakenAt ? (
+            {isAttendanceTaken(ev) ? (
               <span className="text-on-surface-variant">
-                {t('attendance.taken_by', 'Attendance taken by')}{' '}
-                <b className="text-on-surface font-medium">
-                  {ev.attendanceTakenBy || t('attendance.unknown_user')}
-                </b>
-                {takenOn ? ` · ${takenOn}` : ''}
+                {t('attendance.taken_label', 'Attendance recorded')}
               </span>
             ) : (
               <>
                 <span className="text-on-surface-variant italic">
                   {t('attendance.not_taken_yet', 'nobody has recorded this one yet')}
                 </span>
-                {!isFutureEventDate(ev.date) && (
+                {isFutureEventDate(ev.date) === false && (
                   <button
                     type="button"
                     onClick={() => markAttendanceTaken(ev)}
                     className="px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                   >
-                    {t('attendance.nobody_came', 'We met — nobody came')}
+                    {t('attendance.nobody_came', 'We met, nobody came')}
                   </button>
                 )}
               </>
@@ -1363,7 +1330,7 @@ function OneOffGatheringRow(
   if (!ev) return null;
   const isOpen = openId === ev.id;
   const d = parseISO(ev.date);
-  const { present } = getSessionRoster(ev, props.contacts, undefined, props.resolvedRosterFor(ev));
+  const { present } = getSessionRoster(ev, props.contacts, props.resolvedRosterFor(ev));
   return (
     <div className={cn('bg-surface rounded-2xl border border-outline-variant/60 overflow-hidden', faint && 'opacity-60')}>
       {/* The disclosure button and the row's actions are siblings: an action
@@ -1419,7 +1386,7 @@ function ThisWeekGatheringRow(
   const ev = events.find((e) => e.id === gathering.id);
   if (!ev) return null;
   const isOpen = openId === ev.id;
-  const { present } = getSessionRoster(ev, props.contacts, undefined, props.resolvedRosterFor(ev));
+  const { present } = getSessionRoster(ev, props.contacts, props.resolvedRosterFor(ev));
   return (
     <div className="bg-surface-variant/30 rounded-xl border border-outline-variant/30 overflow-hidden">
       <div className="flex items-center gap-1 pr-3">
@@ -1560,7 +1527,7 @@ function RhythmRowCard({
               key={chip.id}
               ref={isSelected ? selectedChipRef : undefined}
               onClick={(e) => { e.stopPropagation(); onSelectChip(chip.id); }}
-              title={`${chip.date}${chip.state === 'taken' && chip.takenByName ? ` · marked by ${chip.takenByName}` : ''}${chip.state === 'cancelled' ? ' · cancelled' : ''}`}
+              title={`${chip.date}${chip.state === 'cancelled' ? ' cancelled' : ''}`}
               className={cn(
                 'shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-medium transition-colors',
                 chipStyle(chip.state),

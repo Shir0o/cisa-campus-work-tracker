@@ -22,7 +22,6 @@ describe('attendanceRoster', () => {
     stage: 'Believer',
     lastSeen: '2026-06-01',
     initials: 'A',
-    attendance: { e1: true, e2: 'absent' },
   };
 
   const contactB: Contact = {
@@ -35,7 +34,6 @@ describe('attendanceRoster', () => {
     stage: 'Seeker',
     lastSeen: '2026-05-01',
     initials: 'B',
-    attendance: { e1: true },
   };
 
   const contactC: Contact = {
@@ -48,7 +46,6 @@ describe('attendanceRoster', () => {
     stage: 'Community',
     lastSeen: '2026-04-01',
     initials: 'C',
-    attendance: {},
   };
 
   const event1: Gathering = {
@@ -58,6 +55,7 @@ describe('attendanceRoster', () => {
     order: 1,
     createdAt: '2026-06-01',
     roster: ['c1'], // only Alice is on the roster
+    attendance: { present: ['c1', 'c2'], absent: [] },
   };
 
   const event2: Gathering = {
@@ -67,6 +65,7 @@ describe('attendanceRoster', () => {
     order: 2,
     createdAt: '2026-05-25',
     roster: ['c1', 'c2'], // Alice & Bob on roster
+    attendance: { present: [], absent: ['c1'] },
   };
 
   describe('getSessionRoster', () => {
