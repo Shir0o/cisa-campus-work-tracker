@@ -10,8 +10,9 @@
 // contact-edit functions) are untouched; the desktop site still uses them.
 import { useEffect, useMemo, useState } from 'react';
 import {
-  personalContactIdsOf,
+  feedVisibleThreads,
   isTrainee,
+  personalContactIdsOf,
   walkingRecipient,
   type Contact,
   type PrayerRecord,
@@ -46,7 +47,7 @@ import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
 
 export function useContactDetailData(contactId: string) {
-  const { uid, user } = useAuth();
+  const { uid, user, role } = useAuth();
   const by = { uid, name: user?.displayName || user?.email?.split('@')[0] || 'Unknown User', photoURL: user?.photoURL };
 
   const [contact, setContact] = useState<Contact | null>(null);
@@ -133,6 +134,13 @@ export function useContactDetailData(contactId: string) {
     [prefContactIds, contact, uid],
   );
 
+  // Team-scope discussion is Full-timer-only (#1024 phase 2). Cut it here on the
+  // reader's effective role, so every consumer of this hook sees one shape.
+  const visibleThreadMessages = useMemo(
+    () => feedVisibleThreads(threadMessages, role),
+    [threadMessages, role],
+  );
+
   const shownLoading = useMinLoading(loading);
 
   // Resolve the contact's "Cared for by" name. The display is bound to the
@@ -157,7 +165,7 @@ export function useContactDetailData(contactId: string) {
     interactionsLoading,
     prayers,
     prayersLoading,
-    threadMessages,
+    threadMessages: visibleThreadMessages,
     walkLabel,
     inYourCare,
     caregiverName,

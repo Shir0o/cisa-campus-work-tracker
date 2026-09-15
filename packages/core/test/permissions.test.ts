@@ -13,7 +13,9 @@ import {
   OWNER_EMAIL,
   canManageCollaborators,
   canTransferOwnership,
+  canSeeContact,
 } from '../src/permissions';
+import { applyPartners } from '../src/data/partners';
 
 describe('permissions', () => {
   it('maps internal roles to display labels', () => {
@@ -159,4 +161,67 @@ describe('permissions', () => {
   });
 });
 
+describe('canSeeContact', () => {
+  it('lets every role that sees all people read any contact', () => {
+    const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
+    expect(canSeeContact('admin', 'u1', contact)).toBe(true);
+    expect(canSeeContact('operator', 'u1', contact)).toBe(true);
+    expect(canSeeContact('viewer', 'u1', contact)).toBe(true);
+  });
 
+  it('restricts a trainee to the ties on the record', () => {
+    const other = { id: 'c1', createdBy: 'u2', coCreators: ['u3'] };
+    const own = { id: 'c2', createdBy: 'u1', coCreators: [] };
+    const co = { id: 'c3', createdBy: 'u2', coCreators: ['u1'] };
+
+    expect(canSeeContact('manager', 'u1', other)).toBe(false);
+    expect(canSeeContact('manager', 'u1', own)).toBe(true);
+    expect(canSeeContact('manager', 'u1', co)).toBe(true);
+    expect(canSeeContact('manager', undefined, own)).toBe(false);
+    expect(canSeeContact('manager', 'u1', null)).toBe(false);
+  });
+
+  // Mirrors the web app's copy in src/test/permissions.test.tsx so the two
+  // rules stay in step (#1024 phase 3).
+  it('widens a trainee to a current-term gospel partner, and only for that term', () => {
+    applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
+
+    const partnerCurrent = { id: 'c4', createdBy: 'u2', season: 'Fall 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', partnerCurrent)).toBe(true);
+
+    const partnerPast = { id: 'c5', createdBy: 'u2', season: 'Spring 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', partnerPast)).toBe(false);
+
+    // Pairings change in Settings: u1 now goes out with u3.
+    applyPartners({ 'Fall 2026': [['u1', 'u3']] }, new Date(2026, 8, 1));
+    const newPartner = { id: 'c6', createdBy: 'u3', season: 'Fall 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', newPartner)).toBe(true);
+    expect(canSeeContact('manager', 'u1', partnerCurrent)).toBe(false);
+
+    // Co-created with a past partner: the tie outlives the term.
+    const coCreated = { id: 'c7', createdBy: 'u2', season: 'Fall 2026', coCreators: ['u1'] };
+    expect(canSeeContact('manager', 'u1', coCreated)).toBe(true);
+
+    applyPartners({});
+  });
+
+  it('reads the term from tags when the record carries no season', () => {
+    applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
+
+    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', tags: ['Fall 2026'], coCreators: [] })).toBe(true);
+    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', tags: ['Spring 2026'], coCreators: [] })).toBe(false);
+    // No season and no tag: the dynamic widening does not apply.
+    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', coCreators: [] })).toBe(false);
+
+    applyPartners({});
+  });
+
+  it('widens on the partner as owner too, not only as adder', () => {
+    applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
+
+    expect(canSeeContact('manager', 'u1', { owner: 'u2', createdBy: 'someone', season: 'Fall 2026' })).toBe(true);
+    expect(canSeeContact('manager', 'u1', { owner: 'u3', createdBy: 'someone', season: 'Fall 2026' })).toBe(false);
+
+    applyPartners({});
+  });
+});

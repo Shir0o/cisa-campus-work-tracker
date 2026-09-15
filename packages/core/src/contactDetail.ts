@@ -212,6 +212,22 @@ export function mergedContactThread(messages: ThreadMessage[]): ThreadMessage[] 
   return [...messages].sort((a, b) => (parseMs(a.at) ?? 0) - (parseMs(b.at) ?? 0));
 }
 
+/** The messages a role may show on a person, or in any feed built from thread
+ * messages: team-scope discussion is Full-timer-only (#727). The cut is on the
+ * reader's EFFECTIVE role, so "See it as they do" hides it even though the
+ * underlying session is still a Full-timer's (#1024 phase 2).
+ *
+ * Mirrors the web app's copy in src/lib/attention.ts. The web app deliberately
+ * has no @cisa/core dependency, so the two are held in step by
+ * src/test/feedVisibleThreadsMirrorParity.test.ts rather than by a shared
+ * import. */
+export function feedVisibleThreads<T extends { scope?: 'team' | null }>(
+  threads: T[],
+  role?: string | null,
+): T[] {
+  return threads.filter((m) => m.scope !== 'team' || role === 'admin');
+}
+
 /** The kinds a viewer can post. The full-timer writes back, encourages and
  * nudges; the trainee notes and asks. Was `TRAINEE_KINDS`/`FULLTIMER_KINDS`,
  * local to the Material `AlongsideThreadView`. */

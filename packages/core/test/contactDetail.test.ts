@@ -11,6 +11,7 @@ import {
   splitContactPrayers,
   prayerCardKicker,
   mergedContactThread,
+  feedVisibleThreads,
   composeKindsFor,
 } from '../src/contactDetail';
 import { THREAD_KINDS } from '../src/threads';
@@ -347,6 +348,29 @@ describe('mergedContactThread', () => {
     const input = [message('m2', daysBefore(1)), message('m1', daysBefore(5))];
     mergedContactThread(input);
     expect(input.map((m) => m.id)).toEqual(['m2', 'm1']);
+  });
+});
+
+describe('feedVisibleThreads', () => {
+  const open = message('m-open', daysBefore(1));
+  const team: ThreadMessage = { ...message('m-team', daysBefore(2)), scope: 'team' };
+
+  it('keeps team-scope discussion only for the full-timer', () => {
+    expect(feedVisibleThreads([open, team], 'admin').map((m) => m.id)).toEqual(['m-open', 'm-team']);
+    for (const role of ['manager', 'operator', 'viewer', null, undefined] as const) {
+      expect(feedVisibleThreads([open, team], role).map((m) => m.id)).toEqual(['m-open']);
+    }
+  });
+
+  it('keeps every ordinary message, scoped or not', () => {
+    const scoped: ThreadMessage = { ...open, id: 'm-null', scope: null };
+    expect(feedVisibleThreads([open, scoped], 'manager').map((m) => m.id)).toEqual(['m-open', 'm-null']);
+  });
+
+  it('does not mutate its input', () => {
+    const input = [open, team];
+    feedVisibleThreads(input, 'manager');
+    expect(input.map((m) => m.id)).toEqual(['m-open', 'm-team']);
   });
 });
 

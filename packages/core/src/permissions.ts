@@ -1,3 +1,5 @@
+import { partnersOf, currentTermKey } from './data/partners';
+
 export type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
 export const ROLE_LEVEL: Record<AppRole, number> = {
@@ -122,13 +124,34 @@ export const seesAllPeople = (role: AppRole | string | null) => role !== 'manage
 export function canSeeContact(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] } | null | undefined
+  contact: {
+    addedBy?: string;
+    createdBy?: string;
+    owner?: string;
+    coCreators?: string[];
+    season?: string;
+    tags?: string[];
+  } | null | undefined
 ): boolean {
   if (!contact) return false;
   if (seesAllPeople(role)) return true;
   if (!staffId) return false;
   const added = contact.addedBy || contact.createdBy;
-  return added === staffId || contact.owner === staffId || (contact.coCreators || []).includes(staffId);
+  if (added === staffId || contact.owner === staffId || (contact.coCreators || []).includes(staffId)) {
+    return true;
+  }
+
+  // Gospel partners for the term: a trainee can see people their active partner
+  // added or owns, for that term only. Mirrors the web app's copy in
+  // src/lib/permissions.ts (#1024 phase 3) so both tell the same truth.
+  const partners = partnersOf(staffId);
+  if (partners.length && ((added && partners.includes(added)) || (contact.owner && partners.includes(contact.owner)))) {
+    const term = currentTermKey();
+    if (contact.season) return contact.season === term;
+    if (contact.tags && contact.tags.includes(term)) return true;
+  }
+
+  return false;
 }
 
 export function canManageCollaborators(

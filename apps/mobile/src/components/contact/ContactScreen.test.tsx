@@ -522,4 +522,110 @@ describe('ContactScreen', () => {
       expect(queryByLabelText('Remove access')).toBeNull();
     });
   });
+
+  // #1024: the person screen refuses a contact the reader has no tie to, and
+  // cuts team-scope Full-timer discussion on the reader's effective role. The
+  // two were pinned as a skipped repro in ContactScreen.visibility.test.tsx;
+  // they live here now that there is a fix behind them.
+  describe('Contact visibility (#1024)', () => {
+    // Amy was added, owned and co-created by Full-timers only. Enoch the
+    // trainee has no tie to her at all -- People already hides her from him.
+    const amy = {
+      ...mockContact,
+      id: 'amy',
+      name: 'Amy Nguyen',
+      stage: 'Interested',
+      createdBy: 'tony',
+      createdByName: 'Tony',
+      addedBy: 'tony',
+      owner: 'tony',
+      coCreators: ['tony', 'grace'],
+    };
+
+    const teamMessage: ThreadMessage = {
+      id: 'm-team',
+      interactionId: null,
+      scope: 'team',
+      from: 'tony',
+      fromName: 'Tony Wang',
+      kind: 'comment',
+      body: 'FULLTIMER-ONLY-DISCUSSION',
+      at: '2026-09-10T12:00:00.000Z',
+      reactions: [],
+    };
+    const openMessage: ThreadMessage = {
+      id: 'm-open',
+      interactionId: null,
+      from: 'grace',
+      fromName: 'Grace Lee',
+      kind: 'comment',
+      body: 'ORDINARY-COMMENT',
+      at: '2026-09-11T12:00:00.000Z',
+      reactions: [],
+    };
+
+    it.each([
+      ['A Full-timer using "See it as they do" on a trainee', true],
+      ['A trainee signed in for real', false],
+    ])('%s cannot open a person they have no tie to', (_label, isImpersonating) => {
+      (useAuth as jest.Mock).mockReturnValue({
+        uid: 'enoch',
+        user: { displayName: 'Enoch' },
+        role: 'manager',
+        isImpersonating,
+      });
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: amy,
+        threadMessages: [teamMessage, openMessage],
+      });
+
+      const { queryByText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="amy" initialTab="alongside" />
+        </ThemeProvider>,
+      );
+
+      expect(queryByText('Amy Nguyen')).toBeNull();
+      expect(queryByText("You're not on this person.")).toBeTruthy();
+      expect(queryByText('ORDINARY-COMMENT')).toBeNull();
+      expect(queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
+    });
+
+    it('hides team-scope discussion from a tied trainee, and keeps it for a full-timer', () => {
+      const mine = {
+        ...mockContact,
+        id: 'mine',
+        name: 'My Person',
+        createdBy: 'enoch',
+        addedBy: 'enoch',
+        owner: 'enoch',
+        coCreators: ['enoch'],
+      };
+
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'enoch', user: { displayName: 'Enoch' }, role: 'manager' });
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: mine,
+        threadMessages: [teamMessage, openMessage],
+      });
+
+      const asTrainee = render(
+        <ThemeProvider>
+          <ContactScreen contactId="mine" initialTab="alongside" />
+        </ThemeProvider>,
+      );
+      expect(asTrainee.getByText('My Person')).toBeTruthy();
+      expect(asTrainee.getByText('ORDINARY-COMMENT')).toBeTruthy();
+      expect(asTrainee.queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
+
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
+      const asFullTimer = render(
+        <ThemeProvider>
+          <ContactScreen contactId="mine" initialTab="alongside" />
+        </ThemeProvider>,
+      );
+      expect(asFullTimer.getByText('FULLTIMER-ONLY-DISCUSSION')).toBeTruthy();
+    });
+  });
 });

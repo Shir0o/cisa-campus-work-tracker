@@ -52,10 +52,28 @@ export function partnerUidsOf(groups: string[][], uid: string): string[] {
 // full-timer/trainee roster in ../walking.ts — creation paths read it
 // synchronously without an extra Firestore read.
 let CURRENT_GROUPS: string[][] = [];
+let CURRENT_TERM: string | null = null;
 
 /** Replace the module-level view from a settings/partners read. */
 export function applyPartners(byTerm: PartnersByTerm | undefined | null, now: Date = new Date()): void {
-  CURRENT_GROUPS = groupsForTerm(byTerm, partnersTermKey(now));
+  try {
+    CURRENT_TERM = partnersTermKey(now);
+  } catch {
+    CURRENT_TERM = null;
+  }
+  CURRENT_GROUPS = groupsForTerm(byTerm, CURRENT_TERM ?? partnersTermKey(now));
+}
+
+/** The active term key currently tracked by module-level gospel partner
+ *  settings. Mirrors the web app's copy in src/lib/partners.ts so
+ *  canSeeContact can widen to a current-term partner. */
+export function currentTermKey(): string {
+  if (CURRENT_TERM) return CURRENT_TERM;
+  try {
+    return partnersTermKey();
+  } catch {
+    return 'Fall 2026';
+  }
 }
 
 /** The trainees currently going out with `uid`, if any (current term). */
