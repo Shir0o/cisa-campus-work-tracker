@@ -31,6 +31,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { prefetchTranslations } from '../lib/translator';
 import { visibleContacts, seesAllPeople } from '../lib/permissions';
+import { contactVisibilityConstraints } from '../lib/contactQueries';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -206,7 +207,12 @@ export default function Directory() {
   };
 
   useEffect(() => {
-    const qContacts = query(collection(db, 'contacts'), orderBy('name', 'asc'));
+    // Trainees ask only for their ties; everyone else reads the whole roster.
+    const qContacts = query(
+      collection(db, 'contacts'),
+      ...contactVisibilityConstraints(role, effectiveUserId || user?.uid),
+      orderBy('name', 'asc'),
+    );
     const unsubscribeContacts = onSnapshot(qContacts, (snapshot) => {
       const contactData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -232,7 +238,7 @@ export default function Directory() {
       unsubscribeContacts();
       unsubscribeStages();
     };
-  }, []);
+  }, [role, effectiveUserId, user?.uid]);
 
   useEffect(() => {
     const ingest = (

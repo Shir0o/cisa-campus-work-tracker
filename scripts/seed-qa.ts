@@ -354,6 +354,12 @@ async function seed() {
   for (const [ci, c] of contacts.entries()) {
     const by = c.addedBy || c.owner;
     const gender = genderOf(c.pronouns);
+    const coCreators = c.coCreators ? c.coCreators.map(staffUid) : [];
+    const createdById = c.addedBy === 'community' ? cm : staffUid(by);
+    const addedById = c.addedBy ? (c.addedBy === 'community' ? cm : staffUid(c.addedBy)) : undefined;
+    const ownerId = staffUid(c.owner);
+    // Denormalised access list the Firestore rules read (#1024 phase 4).
+    const visibleTo = [...new Set([createdById, addedById, ownerId, ...coCreators].filter(Boolean))];
     await db.collection('contacts').doc(c.id).set(
       {
         name: c.name,
@@ -375,11 +381,12 @@ async function seed() {
         reviewed: c.reviewed ?? true,
         hasNewActivity: c.reviewed === false,
         attendance: ci < 16 ? attendanceFor(c, ci) : {},
-        createdBy: c.addedBy === 'community' ? cm : staffUid(by),
+        createdBy: createdById,
         createdByName: c.addedBy === 'community' ? 'Philip Nardi' : staffName(by),
-        owner: staffUid(c.owner),
-        ...(c.addedBy ? { addedBy: c.addedBy === 'community' ? cm : staffUid(c.addedBy) } : {}),
-        ...(c.coCreators ? { coCreators: c.coCreators.map(staffUid) } : {}),
+        owner: ownerId,
+        ...(addedById ? { addedBy: addedById } : {}),
+        ...(coCreators.length ? { coCreators } : {}),
+        visibleTo,
         createdAt: iso(c.joinedDays),
         updatedAt: iso(c.joinedDays),
       },

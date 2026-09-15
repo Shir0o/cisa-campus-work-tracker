@@ -298,6 +298,9 @@ export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
 export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
 export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
 
+export { visibleToOf } from './contactTies';
+export type { ContactTies } from './contactTies';
+
 export function canSeeContact(
   role: AppRole | string | null,
   staffId: string | null | undefined,

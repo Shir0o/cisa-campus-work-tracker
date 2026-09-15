@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { HelpCircle, Bell, Check } from "lucide-react";
 import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
 import { cn, relTime } from "../../lib/utils";
@@ -144,7 +144,9 @@ export default function LandingTrainee() {
 
   useEffect(() => {
     const unsubContacts = onSnapshot(
-      query(collection(db, "contacts")),
+      // Trainee-only surface: scope the read to the reader's own ties so the
+      // tightened rules (#1024 phase 4) accept the query.
+      query(collection(db, "contacts"), where("visibleTo", "array-contains", uid)),
       (snap) => {
         setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
         setLoading(false);

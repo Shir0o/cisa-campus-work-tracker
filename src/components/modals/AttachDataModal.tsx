@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
+import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { ChatAttachment } from '../../types';
 
@@ -34,7 +35,7 @@ interface AttachDataModalProps {
 type TabType = 'contact' | 'todo' | 'event' | 'interaction' | 'prayer' | 'note' | 'feedback';
 
 export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDataModalProps) {
-  const { role: userRole } = useAuth();
+  const { role: userRole, user: currentUser } = useAuth();
   const { t } = useLanguage();
   const isAdmin = userRole === 'admin';
 
@@ -73,7 +74,11 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
 
     try {
       if (activeTab === 'contact') {
-        const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
+        const q = query(
+          collection(db, 'contacts'),
+          ...contactVisibilityConstraints(userRole, currentUser?.uid),
+          orderBy('name', 'asc'),
+        );
         unsubscribe = onSnapshot(q, (snap) => {
           setItems(snap.docs.map(doc => ({
             id: doc.id,

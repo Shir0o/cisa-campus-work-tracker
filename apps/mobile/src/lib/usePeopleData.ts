@@ -46,6 +46,7 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
         setLoading(false);
       },
       (e) => onLoadError(e, 'contacts'),
+      { role, staffId: uid },
     );
     const unsubStages = subscribeStages(setStages, (e) => onLoadError(e, 'stages'));
     const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'));
@@ -60,7 +61,7 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
       unsubTouches();
       unsubPrefs();
     };
-  }, [uid]);
+  }, [uid, role]);
 
   const scopedContacts = useMemo(
     () => visibleContacts(role ?? null, uid, contacts),

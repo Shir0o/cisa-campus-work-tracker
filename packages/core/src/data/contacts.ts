@@ -15,20 +15,42 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
   type Firestore,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { isTrainee, fullTimerIds } from "../walking";
+import { seesAllPeople, visibleToOf, type AppRole } from "../permissions";
 import { stampPartners } from "./partners";
 import type { Touch } from "../myday";
 import type { Contact, Interaction, Stage } from "../types";
+
+/** Who is reading, for the role-dependent `visibleTo` list constraint. */
+export interface ContactReadScope {
+  role?: AppRole | string | null;
+  staffId?: string | null;
+}
+
+/**
+ * The query constraints a contact read needs under the tightened rules
+ * (#1024 phase 4). A reader who is scoped to their ties (a Trainee) must ask
+ * for `visibleTo array-contains <uid>` or Firestore rejects the whole list
+ * query; everyone who sees the whole roster reads unconstrained. Mirrors
+ * `seesAllPeople`, so the client never asks for less than the rules allow.
+ */
+export function contactReadConstraints(scope?: ContactReadScope): QueryConstraint[] {
+  if (!scope || seesAllPeople(scope.role ?? null) || !scope.staffId) return [];
+  return [where("visibleTo", "array-contains", scope.staffId)];
+}
 
 export function subscribeContacts(
   db: Firestore,
   cb: (contacts: Contact[]) => void,
   onError?: (e: unknown) => void,
+  scope?: ContactReadScope,
 ): () => void {
   return onSnapshot(
-    query(collection(db, "contacts")),
+    query(collection(db, "contacts"), ...contactReadConstraints(scope)),
     (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]),
     (e) => (onError ? onError(e) : console.error("contacts subscription error", e)),
   );
@@ -186,6 +208,9 @@ export async function addContact(
   // Gospel partners: a person either member of a pair brings in is shared with
   // the other from the moment they're added (stamped as a co-creator).
   stampPartners(data, by?.uid);
+  // Denormalise the ties into the access list the rules read, after partner
+  // stamping so a gospel partner's uid is included (#1024 phase 4).
+  data.visibleTo = visibleToOf(data);
   for (const key of Object.keys(data)) {
     if (data[key] === undefined) {
       delete data[key];
@@ -290,12 +315,15 @@ export async function updateContactTags(
 
 export async function addContactCollaborator(
   db: Firestore,
-  contactId: string,
+  contact: Pick<Contact, "id" | "createdBy" | "addedBy" | "owner" | "coCreators">,
   staffId: string,
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
-  await updateDoc(doc(db, "contacts", contactId), {
+  const coCreators = [...new Set([...(contact.coCreators || []), staffId])];
+  await updateDoc(doc(db, "contacts", contact.id), {
     coCreators: arrayUnion(staffId),
+    // Rewrite the access list in the same write as the tie it mirrors.
+    visibleTo: visibleToOf({ ...contact, coCreators }),
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,
@@ -304,12 +332,16 @@ export async function addContactCollaborator(
 
 export async function removeContactCollaborator(
   db: Firestore,
-  contactId: string,
+  contact: Pick<Contact, "id" | "createdBy" | "addedBy" | "owner" | "coCreators">,
   staffId: string,
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
-  await updateDoc(doc(db, "contacts", contactId), {
+  const coCreators = (contact.coCreators || []).filter((id) => id !== staffId);
+  await updateDoc(doc(db, "contacts", contact.id), {
     coCreators: arrayRemove(staffId),
+    // Removing a collaborator drops them from the access list unless a
+    // different tie (creator/adder/caregiver) still holds them (#1024).
+    visibleTo: visibleToOf({ ...contact, coCreators }),
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,

@@ -25,7 +25,7 @@ import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
 
 export function useChatThreadData(roomId: string) {
-  const { uid, user } = useAuth();
+  const { uid, role, user } = useAuth();
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -92,8 +92,8 @@ export function useChatThreadData(roomId: string) {
       setContacts([]);
       return;
     }
-    return subscribeContacts(setContacts, () => setContacts([]));
-  }, [uid, partnerEmail]);
+    return subscribeContacts(setContacts, () => setContacts([]), { role, staffId: uid });
+  }, [uid, role, partnerEmail]);
 
   const partnerContactId = useMemo(
     () => contactIdForEmail(contacts, partnerEmail),

@@ -12,6 +12,7 @@ import { getUserInitials } from "../utils";
 import { signUpYearValue, type SignUpFormState } from "../signup";
 import { getAutoSemesterAndSchoolYearTags } from "../seasons";
 import { normalizeTagList } from "../tags";
+import { visibleToOf } from "../permissions";
 
 /**
  * Writes the new lead to `contacts` with `stage: "Unassigned"` (so the
@@ -65,6 +66,9 @@ export async function submitSignUp(
     contactData.lastContactedBy = by.name ?? null;
     contactData.lastContactedDate = now.toISOString();
   }
+  // Unauthenticated sign-ups have no ties: an empty list keeps them readable
+  // by Full-timers and hides them from Trainees until someone is put on them.
+  contactData.visibleTo = visibleToOf({ createdBy: by?.uid ?? null });
 
   const docRef = await addDoc(collection(db, "contacts"), contactData);
 

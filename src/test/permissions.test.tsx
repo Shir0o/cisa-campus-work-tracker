@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
@@ -752,5 +752,18 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
       (h) => h !== '/settings' && h !== '/bible-study/read',
     );
     expect(new Set(adminHrefs)).toEqual(new Set(navHrefs));
+  });
+});
+
+describe('visibleToOf (web mirror)', () => {
+  it('collects every persisted tie, de-duplicated', () => {
+    expect(
+      visibleToOf({ createdBy: 'u1', addedBy: 'u2', owner: 'u1', coCreators: ['u3'] }),
+    ).toEqual(['u1', 'u2', 'u3']);
+  });
+
+  it('returns an empty list when there are no ties', () => {
+    expect(visibleToOf({})).toEqual([]);
+    expect(visibleToOf(null)).toEqual([]);
   });
 });

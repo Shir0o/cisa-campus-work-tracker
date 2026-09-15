@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import type { Contact, Stage, Touch } from '@cisa/core';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
+import { useAuth } from './AuthProvider';
 
 export interface LogSheetData {
   contacts: Contact[];
@@ -15,13 +16,14 @@ export interface LogSheetData {
 }
 
 export function useLogSheetData(active: boolean): LogSheetData {
+  const { uid, role } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
 
   useEffect(() => {
     if (!active) return;
-    const unsubContacts = subscribeContacts(setContacts);
+    const unsubContacts = subscribeContacts(setContacts, undefined, { role, staffId: uid });
     const unsubStages = subscribeStages(setStages);
     const unsubTouches = subscribeTouches(setTouches);
     return () => {
@@ -29,7 +31,7 @@ export function useLogSheetData(active: boolean): LogSheetData {
       unsubStages();
       unsubTouches();
     };
-  }, [active]);
+  }, [active, uid, role]);
 
   return { contacts, stages, touches };
 }

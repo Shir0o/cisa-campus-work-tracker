@@ -26,7 +26,7 @@ import {
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { addTodo } from '../lib/todos';
 import { addThreadMessage, subscribeAllThreads } from '../lib/threads';
-import { canLogOutreach } from '../lib/permissions';
+import { canLogOutreach, visibleToOf } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
@@ -632,6 +632,7 @@ function LogOutreachModal({
           createdByName: userName,
           hasNewActivity: true,
           attendance: {},
+          visibleTo: visibleToOf({ createdBy: me }),
         });
         if (canCreateTasks && r.spokeWith) {
           await addTodo(
