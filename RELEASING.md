@@ -184,18 +184,19 @@ Two hard stops force a new tag regardless:
 ## Building locally
 
 Both `eas build` (cloud) and `eas build --local` on your machine obey the same
-`appVersionSource: "local"` setting as CI. Because `eas build` has no
-`--build-number` flag, **run the version script first** or you will build
-whatever number is stale in `app.json`:
+`appVersionSource: "local"` setting as CI. The app config derives the version and
+both build numbers from the release tag when Expo reads it, so there is nothing
+to run first:
 
 ```bash
-npx tsx scripts/mobile-version.ts --tag v1.4.2    # writes app.json
 cd apps/mobile && npx eas-cli build --profile production --platform android
 ```
 
-Add `--dry-run` to inspect without writing. `autoIncrement` is deliberately
-off everywhere: with a local version source it edits `app.json` on disk, which
-would fight the tag and make two machines able to mint the same build number.
+The source is `RELEASE_TAG` if set, else the nearest git tag, else
+`apps/mobile/package.json`. `autoIncrement` is deliberately off everywhere: with
+a local version source it would try to edit the app config on disk, which fights
+the tag and would let two machines mint the same build number - and it is not
+supported with a dynamic config at all.
 
 ## Store release notes
 
@@ -253,25 +254,25 @@ sentence: **write the change once in `content/whats-new/`; add a `lines`
 sentence when it is worth a person's morning, and add `roles` when only some
 roles feel it.** There is no second file to write.
 
-## Known wart: `app.json`'s committed version
+## How the mobile version is derived
 
-`apps/mobile/app.json` still reads `1.0.1` while the tags are at `v1.4.2`. That
-is a consequence of the design, not drift:
+The tag is the single source of truth, and nothing version-like is committed.
+When Expo/EAS evaluates the app config (`apps/mobile/app.config.ts`), it supplies:
 
-- release-please bumps `apps/mobile/package.json` (its version file) and pushes
-  the tag.
-- `scripts/mobile-version.ts` writes `expo.version`, `expo.ios.buildNumber` and
-  `expo.android.versionCode` into `app.json` **at build time**, so the committed
-  value is never the shipped one.
+- `expo.version`, from the release tag;
+- `expo.ios.buildNumber` and `expo.android.versionCode`, from that version using
+  `major*10000 + minor*100 + patch`.
 
-**The tag is authoritative.** Do not read `app.json`'s version as the app's
-version, and never build without running the version script first - a local
-`eas build` would otherwise ship `1.0.1`, and App Store Connect rejects a
-`CFBundleShortVersionString` at or below the last approved build.
+The source, in priority order, is an explicit `RELEASE_TAG` (the release
+workflows pass the tag), else the nearest reachable git tag, else
+`apps/mobile/package.json`. `scripts/version-rules.ts` is the only place those
+rules live; `scripts/mobile-version.ts` uses them to print `version` and
+`build_number` for the release workflows' notes steps, and writes nothing.
 
-Adding `app.json` to release-please's `extra-files` would keep the file honest,
-but extra-file paths inside a monorepo package resolve relative to the package
-directory in a way that is not worth guessing at. Left as a known wart.
+A reader of `app.json` finds no version, which is the point - there is nothing
+committed to trust. `npm run check:version` asserts this: it fails if a version
+literal reappears, and warns - without failing - when `content/whats-new` lags
+the newest tag.
 
 ## Not done yet
 
@@ -293,8 +294,8 @@ directory in a way that is not worth guessing at. Left as a known wart.
 | Release workflow never runs after merging the release PR | `RELEASE_PLEASE_TOKEN` is unset, so the tag was created by `GITHUB_TOKEN` and suppressed. |
 | `Missing required GitHub secrets: …` | One of the secrets above is empty. |
 | `eas submit` fails complaining about `ascApiKey*` | `ascApiKeyPath`, `ascApiKeyId`, and `ascApiKeyIssuerId` must all be set. |
-| Play rejects the AAB as a duplicate version code | A local build ran without `scripts/mobile-version.ts`, shipping a stale number. |
-| `AutoIncrement option is not supported when using app.config.js` | The static `app.json` was replaced with a dynamic config. |
+| Play rejects the AAB as a duplicate version code | The build's tag was already released. Both stores reject a reused build number, so cut a new tag. |
+| `AutoIncrement option is not supported when using app.config.js` | The app config is dynamic. Keep `autoIncrement` off - it is not supported with a dynamic config. |
 | `React Native requires XCode >= 16.1` during pod install | The runner's Xcode is too old (`macos-14` ships 15.4). The iOS workflow moves to `macos-15` and asserts the version. |
 | `java.lang.OutOfMemoryError: Metaspace` from Gradle | Gradle fell back to its 512 MiB default. See `apps/mobile/plugins/withGradleJvmArgs.js`; `android.extraGradleProperties` in `app.json` does **not** exist and is ignored. |
 | `The service account is missing the necessary permissions` | `PLAY_SERVICE_ACCOUNT_JSON_B64` is not the Play Console release-manager account. The log's `Account Email` names the one in use. |
