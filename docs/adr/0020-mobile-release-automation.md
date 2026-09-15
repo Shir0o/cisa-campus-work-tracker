@@ -48,10 +48,12 @@ Three constraints shaped the answer:
    version. `include-component-in-tag: false` keeps tags as `v1.4.0`, matching
    bible-read.
 2. **The tag is the single source of truth for both version and build number.**
-   `scripts/mobile-version.ts` derives `major*10000 + minor*100 + patch` and
-   writes `expo.version`, `expo.ios.buildNumber`, and `expo.android.versionCode`
-   into `apps/mobile/app.json`. CI and a developer's machine run the same script,
-   so they cannot disagree.
+   `scripts/version-rules.ts` derives `major*10000 + minor*100 + patch` from a
+   tag, and the mobile app config applies it when Expo evaluates the config, so
+   nothing is committed. CI and a developer's machine derive from the same rule,
+   so they cannot disagree. (Amended by
+   [ADR 0024](0025-derived-mobile-app-version.md): the derivation is applied at
+   config evaluation rather than written into `app.json`.)
 3. **`autoIncrement` is removed from every profile.** With a local version
    source, `eas build` bumps the build number by *editing `app.json` on disk*
    (`bumpAppVersionAsync` → `updateAppJsonConfigAsync`, with
@@ -114,8 +116,8 @@ Three constraints shaped the answer:
 - One merged PR ships to both stores; the operator only promotes.
 - Nothing in CI consumes EAS build minutes, and GitHub runner minutes are free
   on a public repository.
-- `v1.4.0` on GitHub, `1.4.0` in `app.json`, `10400` on both stores, and the
-  whats-new manifest all agree by construction.
+- `v1.4.0` on GitHub, `1.4.0` in the evaluated app config, `10400` on both
+  stores, and the whats-new manifest all agree by construction.
 - Store release notes have one source of truth instead of two.
 
 ### Negative
@@ -144,14 +146,15 @@ Three constraints shaped the answer:
 - **Hard**: the Play upload key and the App Store Connect API key, once enrolled,
   retain store access until revoked by hand.
 
-## Known conflict
+## Known conflict (resolved)
 
 Three different versions were in flight when this ADR was written: the newest tag
 `v1.3.8`, `apps/mobile/app.json` at `1.0.1`, and `content/whats-new` at `1.4.0`.
-The manifest baseline is set to `1.3.8` — the newest tag — so the first automated
-release bumps from there. **Reconcile the whats-new version and confirm what the
-stores actually have before the first automated release**, or App Store Connect
-will reject a `CFBundleShortVersionString` at or below the last approved build.
+[ADR 0024](0025-derived-mobile-app-version.md) resolved this: the committed
+version is gone, `app.json` carries none, and the version is derived from the tag
+when the app config is evaluated. A whats-new manifest that lags the tag is now
+surfaced by `npm run check:version` as a warning, never a release blocker.
+
 
 **Partly resolved:** the two overlapping "what's new" systems were
 reconciled by [ADR 0024](0024-one-release-record-two-registers.md); the
@@ -163,7 +166,9 @@ release record is now the one authored source. Version truth (the tag vs
 - Workflows: [`release-please.yml`](../../.github/workflows/release-please.yml),
   [`release-android.yml`](../../.github/workflows/release-android.yml),
   [`release-ios.yml`](../../.github/workflows/release-ios.yml)
-- Version derivation: [`scripts/mobile-version.ts`](../../scripts/mobile-version.ts)
+- Version derivation: [`scripts/version-rules.ts`](../../scripts/version-rules.ts),
+  applied by [`apps/mobile/app.config.ts`](../../apps/mobile/app.config.ts)
+- Guard: [`scripts/check-version.ts`](../../scripts/check-version.ts)
 - Store notes: [`scripts/store-release-notes.ts`](../../scripts/store-release-notes.ts)
 - Operate it: [`RELEASING.md`](../../RELEASING.md)
 - Release-note source: [ADR 0008](0008-custom-whats-new-announcements.md)

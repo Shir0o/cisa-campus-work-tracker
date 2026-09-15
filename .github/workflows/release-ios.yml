@@ -145,6 +145,8 @@ jobs:
           echo "asc-api-key.p8 materialized (contents not echoed)."
 
       - name: Build signed IPA locally
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         # See release-android.yml. Uses a step timeout, not the `timeout`
         # command, which macOS does not ship.
         timeout-minutes: 45
