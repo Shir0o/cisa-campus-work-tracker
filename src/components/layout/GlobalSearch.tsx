@@ -32,6 +32,7 @@ import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../..
 import { useFrecency, rankByFrecency, Frecency } from '../../lib/frecency';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
+import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
 import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
@@ -121,12 +122,12 @@ export default function GlobalSearch() {
   useEffect(() => {
     if (!searchOpen || !auth.currentUser) return;
     const unsub = onSnapshot(
-      collection(db, 'contacts'),
+      query(collection(db, 'contacts'), ...contactVisibilityConstraints(role, currentUid)),
       (snap) => setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]),
       (err) => console.error('GlobalSearch contacts listener:', err),
     );
     return () => unsub();
-  }, [searchOpen]);
+  }, [searchOpen, role, currentUid]);
 
   useEffect(() => {
     if (!searchOpen || !isStaff) return;

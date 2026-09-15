@@ -2,14 +2,15 @@
 // around the shared @cisa/core logic (behind an injected `db`).
 import { collection, getDocs } from 'firebase/firestore';
 import * as core from '@cisa/core';
-import type { Contact, ContactEditFields, ContactNotifyPayload, NewContactInput, Stage, Touch } from '@cisa/core';
+import type { AppRole, Contact, ContactEditFields, ContactNotifyPayload, NewContactInput, Stage, Touch } from '@cisa/core';
 import { db, handleFirestoreError, logActivity, OperationType, sendNotification } from '../firebase';
 
 export function subscribeContacts(
   cb: (contacts: Contact[]) => void,
   onError?: (e: unknown) => void,
+  scope?: { role?: AppRole | string | null; staffId?: string | null },
 ): () => void {
-  return core.subscribeContacts(db, cb, onError);
+  return core.subscribeContacts(db, cb, onError, scope);
 }
 
 /** Live subscription to a single contact (Contact Detail screen). */
@@ -194,7 +195,7 @@ export async function addContactCollaborator(
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
   try {
-    await core.addContactCollaborator(db, contact.id, staffId, by);
+    await core.addContactCollaborator(db, contact, staffId, by);
     void logActivity({
       action: 'shared a person',
       targetId: contact.id,
@@ -216,7 +217,7 @@ export async function removeContactCollaborator(
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
   try {
-    await core.removeContactCollaborator(db, contact.id, staffId, by);
+    await core.removeContactCollaborator(db, contact, staffId, by);
     void logActivity({
       action: 'unshared a person',
       targetId: contact.id,

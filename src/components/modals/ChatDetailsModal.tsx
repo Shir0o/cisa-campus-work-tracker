@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, getDoc, doc, onSnapshot } from 'fire
 import { db } from '../../lib/firebase';
 import { AppUser, ChatRoom, Contact } from '../../types';
 import { useAuth } from '../AuthProvider';
+import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { inviteToGroup, leaveGroup, deleteChatRoom, canRemoveConvForEveryone } from '../../services/chat';
 import { ConvHides } from '../../lib/convHides';
@@ -82,6 +83,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
         // Query contact by email
         const contactsQuery = query(
           collection(db, 'contacts'),
+          ...contactVisibilityConstraints(userRole, currentUser?.uid),
           where('email', '==', otherUserEmail)
         );
         const contactSnap = await getDocs(contactsQuery);

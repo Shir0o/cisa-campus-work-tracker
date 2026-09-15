@@ -26,6 +26,7 @@ import { applyContactActivityToBatch } from '../../lib/contactActivity';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
 import { format } from 'date-fns';
@@ -66,7 +67,11 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
     if (initialContactId) {
       setSelectedContactIds(new Set([initialContactId]));
     }
-    const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
+    const q = query(
+      collection(db, 'contacts'),
+      ...contactVisibilityConstraints(role, user?.uid),
+      orderBy('name', 'asc'),
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Contact[];
       setContacts(data);

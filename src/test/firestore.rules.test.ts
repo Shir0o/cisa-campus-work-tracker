@@ -464,6 +464,130 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // Contact visibility: the tie enforced server-side (#1024 phase 4). The
+  // rule reads the denormalised `visibleTo` list; a Trainee must appear in it.
+  describe('Contact visibility (visibleTo)', () => {
+    const seedVisibleToUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+      });
+    };
+
+    it('lets a Trainee read each kind of tie, and refuses an untied person', async () => {
+      await seedVisibleToUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        const base = { name: 'Test', email: 'test@example.com' };
+        await setDoc(doc(fs, 'contacts/untied'), { ...base, visibleTo: [] });
+        await setDoc(doc(fs, 'contacts/created'), { ...base, createdBy: 'manager1', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/added'), { ...base, addedBy: 'manager1', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/cared'), { ...base, owner: 'manager1', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/shared'), {
+          ...base, owner: 'manager2', coCreators: ['manager1'], visibleTo: ['manager1', 'manager2'],
+        });
+        // A legacy doc that has not been backfilled must fail closed.
+        await setDoc(doc(fs, 'contacts/legacy'), { ...base, createdBy: 'manager1' });
+      });
+
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(getDoc(doc(trainee, 'contacts/untied')));
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/created')));
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/added')));
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/cared')));
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/shared')));
+      await assertFails(getDoc(doc(trainee, 'contacts/legacy')));
+
+      // A Full-timer reads anything, backfilled or not.
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDoc(doc(admin, 'contacts/untied')));
+      await assertSucceeds(getDoc(doc(admin, 'contacts/legacy')));
+    });
+
+    it('refuses a Trainee list query without the access constraint, allows it with one', async () => {
+      await seedVisibleToUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'contacts/mine'), { name: 'Mine', email: 'm@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/theirs'), { name: 'Theirs', email: 't@example.com', visibleTo: ['manager2'] });
+      });
+
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(getDocs(query(collection(trainee, 'contacts'))));
+
+      const scoped = await assertSucceeds(
+        getDocs(query(collection(trainee, 'contacts'), where('visibleTo', 'array-contains', 'manager1'))),
+      );
+      expect(scoped.docs.map((d) => d.id)).toEqual(['mine']);
+
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDocs(query(collection(admin, 'contacts'))));
+    });
+
+    it('rejects visibleTo as a ghost field outside the tie-maintenance branch', async () => {
+      await seedVisibleToUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'contacts/c1'), {
+          name: 'Test', email: 'test@example.com', owner: 'manager1', coCreators: [], visibleTo: ['manager1'],
+        });
+      });
+
+      const owner = getFirestore({ uid: 'manager1' });
+      // A profile edit may not smuggle a visibleTo change.
+      await assertFails(updateDoc(doc(owner, 'contacts/c1'), {
+        name: 'Renamed',
+        visibleTo: ['manager1', 'manager2'],
+      }));
+      // The tie-maintenance branch may rewrite it in lockstep with the ties.
+      await assertSucceeds(updateDoc(doc(owner, 'contacts/c1'), {
+        coCreators: ['manager2'],
+        visibleTo: ['manager1', 'manager2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets an existing co-creator rewrite coCreators and visibleTo together', async () => {
+      await seedVisibleToUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'contacts/c2'), {
+          name: 'Test', email: 'test@example.com', owner: 'manager1', coCreators: ['manager2'],
+          visibleTo: ['manager1', 'manager2'],
+        });
+      });
+
+      const coCreator = getFirestore({ uid: 'manager2' });
+      await assertSucceeds(updateDoc(doc(coCreator, 'contacts/c2'), {
+        coCreators: ['manager2'],
+        visibleTo: ['manager1', 'manager2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('gates a person\'s Alongside thread on read access to the person', async () => {
+      await seedVisibleToUsers();
+      const msg = (over: Record<string, unknown> = {}) => ({
+        from: 'manager1', fromName: 'Trainee', kind: 'comment', body: 'hello',
+        at: new Date().toISOString(), reactions: [], interactionId: null, ...over,
+      });
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
+        await setDoc(doc(fs, 'contacts/tied/threads/th1'), msg());
+        await setDoc(doc(fs, 'contacts/untied/threads/th2'), msg({ from: 'manager2' }));
+        await setDoc(doc(fs, 'contacts/tied/threads/th3'), msg({ from: 'admin1', scope: 'team' }));
+      });
+
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/tied/threads/th1')));
+      await assertFails(getDoc(doc(trainee, 'contacts/untied/threads/th2')));
+      // Team-scope Discussion stays Full-timer-only even on a readable person.
+      await assertFails(getDoc(doc(trainee, 'contacts/tied/threads/th3')));
+    });
+  });
+
   describe('Prayers', () => {
     it('lets an operator store up to 4 answeredPhotos on an answered prayer', async () => {
       const db = getFirestore({ uid: 'operator1' });

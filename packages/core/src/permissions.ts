@@ -121,6 +121,35 @@ export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
 export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
 export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
 
+/** The fields on a contact that grant a reader access, before they are
+ * denormalised into `visibleTo`. Kept as its own shape so the helper can be
+ * used by creation paths that have not yet written a `Contact` union. */
+export interface ContactTies {
+  createdBy?: string | null;
+  addedBy?: string | null;
+  owner?: string | null;
+  coCreators?: string[] | null;
+}
+
+/**
+ * The denormalised access list a contact should carry: every persisted tie,
+ * de-duplicated and with null/empty ids dropped. This is the single source of
+ * truth for `visibleTo` on both the client and (via the backfill) the server,
+ * so the rules and the app cannot drift on who is tied to a person (#1024
+ * phase 4).
+ */
+export function visibleToOf(contact: ContactTies | null | undefined): string[] {
+  if (!contact) return [];
+  const ids = [
+    contact.createdBy,
+    contact.addedBy,
+    contact.owner,
+    ...(contact.coCreators || []),
+  ];
+  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+}
+
+
 export function canSeeContact(
   role: AppRole | string | null,
   staffId: string | null | undefined,

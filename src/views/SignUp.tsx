@@ -17,6 +17,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useSeason, getAutoSemesterAndSchoolYearTags, SEASON_ORDER, SEASONS, seasonYear, SeasonId } from '../lib/seasons';
 import { normalizeTagList } from '../lib/tags';
 import { useAuth } from '../components/AuthProvider';
+import { visibleToOf } from '../lib/permissions';
 
 export const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
 
@@ -184,6 +185,12 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         contactData.lastContactedBy = auth.user.displayName || auth.user.email || null;
         contactData.lastContactedDate = now.toISOString();
       }
+      // Unauthenticated sign-ups have no ties: an empty list keeps them
+      // readable by Full-timers (who read the whole roster) and hides them
+      // from Trainees until someone is put on them (#1024 phase 4).
+      contactData.visibleTo = visibleToOf({
+        createdBy: contactData.createdBy as string | undefined,
+      });
 
       await addDoc(collection(db, 'contacts'), contactData);
 

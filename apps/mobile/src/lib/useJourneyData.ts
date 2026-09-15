@@ -60,6 +60,7 @@ export function useJourneyData(uid: string | null, role?: AppRole | string | nul
         setLoading(false);
       },
       (e) => onLoadError(e, 'contacts'),
+      { role, staffId: uid },
     );
     const unsubStages = subscribeStages(setStages, (e) => onLoadError(e, 'stages'));
     const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'));
@@ -73,7 +74,7 @@ export function useJourneyData(uid: string | null, role?: AppRole | string | nul
       unsubTouches();
       unsubPrefs();
     };
-  }, [uid]);
+  }, [uid, role]);
 
   const scopedContacts = useMemo(
     () => visibleContacts(role ?? null, uid, contacts),

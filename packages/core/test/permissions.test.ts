@@ -14,6 +14,7 @@ import {
   canManageCollaborators,
   canTransferOwnership,
   canSeeContact,
+  visibleToOf,
 } from '../src/permissions';
 import { applyPartners } from '../src/data/partners';
 
@@ -223,5 +224,39 @@ describe('canSeeContact', () => {
     expect(canSeeContact('manager', 'u1', { owner: 'u3', createdBy: 'someone', season: 'Fall 2026' })).toBe(false);
 
     applyPartners({});
+  });
+});
+
+describe('visibleToOf', () => {
+  it('collects creator, adder, caregiver and collaborators', () => {
+    expect(
+      visibleToOf({
+        createdBy: 'u1',
+        addedBy: 'u2',
+        owner: 'u3',
+        coCreators: ['u4', 'u5'],
+      }),
+    ).toEqual(['u1', 'u2', 'u3', 'u4', 'u5']);
+  });
+
+  it('de-duplicates and drops null/empty ids', () => {
+    expect(
+      visibleToOf({
+        createdBy: 'u1',
+        addedBy: null,
+        owner: 'u1',
+        coCreators: ['u1', 'u2', '', null as unknown as string],
+      }),
+    ).toEqual(['u1', 'u2']);
+  });
+
+  it('returns an empty list for a contact with no ties', () => {
+    expect(visibleToOf({})).toEqual([]);
+    expect(visibleToOf(null)).toEqual([]);
+    expect(visibleToOf(undefined)).toEqual([]);
+  });
+
+  it('is order-stable: ties come before collaborators', () => {
+    expect(visibleToOf({ coCreators: ['c'], owner: 'o' })).toEqual(['o', 'c']);
   });
 });

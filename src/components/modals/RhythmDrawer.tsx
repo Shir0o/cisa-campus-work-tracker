@@ -125,6 +125,9 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        // Created from a roster search with no persisted tie yet; a Trainee
+        // sees it only once someone owns or shares it (#1024 phase 4).
+        visibleTo: [],
       });
       setRoster((prev) => Array.from(new Set([...prev, docRef.id])));
       setRosterSearch('');

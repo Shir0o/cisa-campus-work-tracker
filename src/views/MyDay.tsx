@@ -30,6 +30,7 @@ import {
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
+import { contactVisibilityConstraints } from "../lib/contactQueries";
 import { useLayout } from "../App";
 import { Contact, PrayerRecord, Event, Stage, Interaction } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -543,7 +544,7 @@ export default function MyDay() {
 
   useEffect(() => {
     const unsubContacts = onSnapshot(
-      query(collection(db, "contacts")),
+      query(collection(db, "contacts"), ...contactVisibilityConstraints(role, uid)),
       (snap) => {
         setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
         setLoading(false);
@@ -630,7 +631,7 @@ export default function MyDay() {
       unsubInteractions();
       unsubThreads();
     };
-  }, []);
+  }, [role, uid]);
 
   // Tasks assigned to me, my preferences, and my personal prayers — depend on uid.
   useEffect(() => {

@@ -33,6 +33,7 @@ vi.mock('firebase/firestore', () => ({
     return vi.fn();
   }),
   query: vi.fn((ref) => ref),
+  where: vi.fn(() => ({})),
   orderBy: vi.fn(),
   limit: vi.fn(),
   doc: vi.fn((_db, path, id) => ({ path, id })),

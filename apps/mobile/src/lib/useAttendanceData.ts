@@ -41,7 +41,7 @@ export function useAttendanceData(uid: string | null, displayName: string | null
       setLoading(false);
       handleFirestoreError(e, OperationType.LIST, path, { rethrow: false });
     };
-    const unsubContacts = subscribeContacts(setContacts, (e) => onLoadError(e, 'contacts'));
+    const unsubContacts = subscribeContacts(setContacts, (e) => onLoadError(e, 'contacts'), { role, staffId: uid });
     const unsubEvents = subscribeEvents(
       (list) => {
         setEvents(list);
