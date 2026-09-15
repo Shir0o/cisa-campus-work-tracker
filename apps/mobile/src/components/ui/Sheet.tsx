@@ -106,6 +106,15 @@ export function Sheet({
   const animationConfigs = Platform.OS === 'web' ? timingConfigs : undefined;
   const ref = useRef<ElementRef<typeof BottomSheetModal>>(null);
   const everPresented = useRef(false);
+  // Set when the library itself has already dismissed the modal and called
+  // onDismiss. Its internal status is INITIAL by then, and dismissing again
+  // corrupts the modal so the next present() is ignored
+  // (gorhom/react-native-bottom-sheet#2669).
+  const dismissedBySheet = useRef(false);
+  const handleDismiss = useCallback(() => {
+    dismissedBySheet.current = true;
+    onClose();
+  }, [onClose]);
   // Measured so the scroll content's bottom padding always clears the footer,
   // instead of a hardcoded guess that drifts if a footer's content changes.
   const [footerHeight, setFooterHeight] = useState(0);
@@ -123,13 +132,16 @@ export function Sheet({
   // which is the same stall the backdrop above is written to survive.
   useEffect(() => {
     if (visible) {
+      dismissedBySheet.current = false;
       const t = setTimeout(() => {
         everPresented.current = true;
         ref.current?.present();
       }, 0);
       return () => clearTimeout(t);
     }
-    if (everPresented.current) ref.current?.dismiss();
+    if (everPresented.current && dismissedBySheet.current === false) {
+      ref.current?.dismiss();
+    }
     return undefined;
   }, [visible]);
 
@@ -159,7 +171,7 @@ export function Sheet({
   return (
     <BottomSheetModal
       ref={ref}
-      onDismiss={onClose}
+      onDismiss={handleDismiss}
       snapPoints={snapPoints}
       enableDynamicSizing={false}
       keyboardBehavior="interactive"
