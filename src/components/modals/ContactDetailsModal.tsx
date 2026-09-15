@@ -54,7 +54,7 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canTransferOwnership } from "../../lib/permissions";
+import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canTransferOwnership, visibleToOf } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
@@ -643,6 +643,8 @@ export default function ContactDetailsModal({
     const s = teamMembers.find((m) => m.id === staffId);
     await updateDoc(doc(db, "contacts", contact.id), {
       coCreators: arrayUnion(staffId),
+      // Keep the server-side access list in lockstep with the tie it mirrors.
+      visibleTo: visibleToOf({ ...contact, coCreators: [...(contact.coCreators || []), staffId] }),
     });
     contact.coCreators = [...(contact.coCreators || []), staffId];
     if (s) {
@@ -663,6 +665,10 @@ export default function ContactDetailsModal({
     const s = teamMembers.find((m) => m.id === staffId);
     await updateDoc(doc(db, "contacts", contact.id), {
       coCreators: arrayRemove(staffId),
+      visibleTo: visibleToOf({
+        ...contact,
+        coCreators: (contact.coCreators || []).filter((x) => x !== staffId),
+      }),
     });
     contact.coCreators = (contact.coCreators || []).filter((x) => x !== staffId);
     if (s) {
@@ -701,9 +707,16 @@ export default function ContactDetailsModal({
     // Drop the previous owner from coCreators in the same write so the audit
     // stays clean — a former owner should not be self-sharing the contact.
     const patch: Record<string, unknown> = { owner: newOwnerId };
+    const nextCoCreators =
+      previousOwnerId && previousOwnerId !== newOwnerId
+        ? (contact.coCreators || []).filter((id) => id !== previousOwnerId)
+        : contact.coCreators || [];
     if (previousOwnerId && previousOwnerId !== newOwnerId) {
       patch.coCreators = arrayRemove(previousOwnerId);
     }
+    // Care handover rewrites the access list in the same write: the new
+    // caregiver is added, and a former owner who held nothing else is dropped.
+    patch.visibleTo = visibleToOf({ ...contact, owner: newOwnerId, coCreators: nextCoCreators });
     await updateDoc(doc(db, 'contacts', contact.id), patch);
     contact.owner = newOwnerId;
     if (previousOwnerId && previousOwnerId !== newOwnerId) {

@@ -464,26 +464,54 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
-  describe('Prayers', () => {
-    it('lets an operator store up to 4 answeredPhotos on an answered prayer', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+  // Contact visibility: the tie enforced server-side (#1024 phase 4). The
+  // rule reads the denormalised `visibleTo` list; a Trainee must appear in it.
+  describe('Contact visibility (visibleTo)', () => {
+    const seedVisibleToUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+      });
+    };
+
+    it('rejects visibleTo as a ghost field outside the tie-maintenance branch', async () => {
+      await seedVisibleToUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'contacts/c1'), {
+          name: 'Test', email: 'test@example.com', owner: 'manager1', coCreators: [], visibleTo: ['manager1'],
+        });
       });
 
-      await assertSucceeds(setDoc(doc(db, 'prayers', 'prayer1'), {
-        contactId: 'contact1',
-        date: '2026-08-13T00:00:00.000Z',
-        burden: 'Peace for finals',
-        status: 'answered',
-        answer: 'God provided',
-        answeredAt: 'Aug 13',
-        answeredPhotos: [
-          { path: 'prayers/prayer1/1.jpg', url: 'https://example.test/1.jpg', name: 'a.jpg' },
-          { path: 'prayers/prayer1/2.jpg', url: 'https://example.test/2.jpg', name: 'b.jpg' },
-        ],
-        updatedAt: '2026-08-13T00:00:00.000Z',
+      const owner = getFirestore({ uid: 'manager1' });
+      // A profile edit may not smuggle a visibleTo change.
+      await assertFails(updateDoc(doc(owner, 'contacts/c1'), {
+        name: 'Renamed',
+        visibleTo: ['manager1', 'manager2'],
+      }));
+      // The tie-maintenance branch may rewrite it in lockstep with the ties.
+      await assertSucceeds(updateDoc(doc(owner, 'contacts/c1'), {
+        coCreators: ['manager2'],
+        visibleTo: ['manager1', 'manager2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets an existing co-creator rewrite coCreators and visibleTo together', async () => {
+      await seedVisibleToUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'contacts/c2'), {
+          name: 'Test', email: 'test@example.com', owner: 'manager1', coCreators: ['manager2'],
+          visibleTo: ['manager1', 'manager2'],
+        });
+      });
+
+      const coCreator = getFirestore({ uid: 'manager2' });
+      await assertSucceeds(updateDoc(doc(coCreator, 'contacts/c2'), {
+        coCreators: ['manager2'],
+        visibleTo: ['manager1', 'manager2'],
+        updatedAt: serverTimestamp(),
       }));
     });
 

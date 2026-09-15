@@ -29,7 +29,7 @@ import {
 } from '../lib/gatheringViewModel';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
-import { visibleContacts } from '../lib/permissions';
+import { visibleContacts, visibleToOf } from '../lib/permissions';
 import { Contact, Gathering, Rhythm } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -403,6 +403,8 @@ export default function Attendance() {
         updatedAt: new Date().toISOString(),
         createdBy: userUid,
       };
+      // The creator is a persisted tie, so seed the server-side access list.
+      newContactData.visibleTo = visibleToOf({ createdBy: userUid });
 
       const docRef = await addDoc(collection(db, 'contacts'), newContactData);
 

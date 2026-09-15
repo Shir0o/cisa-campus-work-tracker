@@ -19,7 +19,7 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { useCommand } from '../../lib/commands';
-import { pickableContacts, pickableStaff } from '../../lib/permissions';
+import { pickableContacts, pickableStaff, visibleToOf } from '../../lib/permissions';
 import { useSeason } from '../../lib/seasons';
 
 interface LogVisitModalProps {
@@ -155,7 +155,7 @@ export default function LogVisitModal({
         attendance: {},
       };
 
-      const docRef = await addDoc(collection(db, 'contacts'), contactData);
+      const docRef = await addDoc(collection(db, 'contacts'), { ...contactData, visibleTo: visibleToOf(contactData) });
       const newContactObj: Contact = {
         id: docRef.id,
         ...contactData,

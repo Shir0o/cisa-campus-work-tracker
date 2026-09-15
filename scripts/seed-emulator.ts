@@ -130,6 +130,7 @@ export async function seedEmulator() {
     createdByName: 'Full-timer Test User',
     owner: fulltimerUid || 'fulltimer-uid',
     coCreators: traineeUid ? [traineeUid] : [],
+    visibleTo: [fulltimerUid, traineeUid].filter(Boolean),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge: true });

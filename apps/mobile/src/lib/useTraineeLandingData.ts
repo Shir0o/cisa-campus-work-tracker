@@ -79,7 +79,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       handleFirestoreError(e, OperationType.LIST, path, { rethrow: false });
     };
     const unsubContacts = onSnapshot(
-      query(collection(db, 'contacts')),
+      query(collection(db, 'contacts'), where('visibleTo', 'array-contains', uid)),
       (snap) => {
         setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
         setLoading(false);
