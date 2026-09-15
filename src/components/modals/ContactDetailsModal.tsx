@@ -1067,6 +1067,10 @@ export default function ContactDetailsModal({
         date: now,
         burden,
         status: "pending",
+        // A burden typed on a contact's tab is that contact's, not the team's.
+        // `isTeamPrayer` treats an absent flag as team, so this must be
+        // explicit or the prayer surfaces on "On our hearts" (#1042).
+        teamPrayer: false,
         updatedAt: now,
         updatedBy: user?.uid || "",
         updatedByName:
