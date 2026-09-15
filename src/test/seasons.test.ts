@@ -68,6 +68,8 @@ describe('seasons — pure derivation', () => {
     const d = new Date(2026, 9, 1);
     expect(seasonTags('fall', false, d)).toEqual(['Fall 2026']);
     expect(seasonTags('fall', true, d)).toEqual(['Fall 2026', 'Club Rush']);
+    expect(seasonTags('fall', false, d, true)).toEqual(['Fall 2026', 'BFA']);
+    expect(seasonTags('fall', true, d, true)).toEqual(['Fall 2026', 'Club Rush', 'BFA']);
   });
 });
 
@@ -93,12 +95,13 @@ describe('useSeason — derived + override', () => {
   });
 
   it('honors an override + club-rush flag from the settings doc', () => {
-    hoisted.data = { override: 'spring', clubRush: true };
+    hoisted.data = { override: 'spring', clubRush: true, bfa: true };
     const { result } = renderHook(() => useSeason());
     expect(result.current.activeId).toBe('spring');
     expect(result.current.isAuto).toBe(false);
     expect(result.current.clubRush).toBe(true);
-    expect(result.current.tags).toEqual(['Spring 2026', 'Club Rush']);
+    expect(result.current.bfa).toBe(true);
+    expect(result.current.tags).toEqual(['Spring 2026', 'Club Rush', 'BFA']);
   });
 
   it('writes null override when set back to the auto season', () => {
@@ -113,6 +116,12 @@ describe('useSeason — derived + override', () => {
     const { result } = renderHook(() => useSeason());
     result.current.toggleClubRush();
     expect(setDoc).toHaveBeenCalledWith(expect.anything(), { clubRush: true }, { merge: true });
+  });
+
+  it('toggles BFA through the store', () => {
+    const { result } = renderHook(() => useSeason());
+    result.current.toggleBfa?.();
+    expect(setDoc).toHaveBeenCalledWith(expect.anything(), { bfa: true }, { merge: true });
   });
 
   it('resets an override back to the auto season', () => {

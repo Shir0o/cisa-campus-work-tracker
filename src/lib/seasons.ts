@@ -48,9 +48,10 @@ export function seasonLabel(id: SeasonId, d: Date = new Date()): string {
 }
 
 /** Cohort tags for a new contact — canonical full-year tags (e.g. "Fall 2026"). */
-export function seasonTags(activeId: SeasonId, clubRush: boolean, d: Date = new Date()): string[] {
+export function seasonTags(activeId: SeasonId, clubRush: boolean, d: Date = new Date(), bfa = false): string[] {
   const tags = [`${SEASONS[activeId].label} ${d.getFullYear()}`];
   if (clubRush) tags.push("Club Rush");
+  if (bfa) tags.push("BFA");
   return tags;
 }
 
@@ -103,11 +104,14 @@ export interface SeasonView {
   active: SeasonMeta;
   isAuto: boolean;
   clubRush: boolean;
+  /** BFA intake, the parallel of Club Rush (#1045). */
+  bfa?: boolean;
   label: string;
   tags: string[];
   setSeason: (id: SeasonId) => void;
   resetSeason: () => void;
   toggleClubRush: () => void;
+  toggleBfa?: () => void;
 }
 
 /**
@@ -126,6 +130,7 @@ export function useSeason(): SeasonView {
       : null;
   const activeId = override ?? autoId;
   const clubRush = !!settings.clubRush;
+  const bfa = !!settings.bfa;
 
   return {
     autoId,
@@ -133,10 +138,12 @@ export function useSeason(): SeasonView {
     active: SEASONS[activeId],
     isAuto: !override,
     clubRush,
+    bfa,
     label: seasonLabel(activeId),
-    tags: seasonTags(activeId, clubRush),
+    tags: seasonTags(activeId, clubRush, new Date(), bfa),
     setSeason: (id) => void saveSeasonSettings({ override: id === autoId ? null : id }),
     resetSeason: () => void saveSeasonSettings({ override: null }),
     toggleClubRush: () => void saveSeasonSettings({ clubRush: !clubRush }),
+    toggleBfa: () => void saveSeasonSettings({ bfa: !bfa }),
   };
 }
