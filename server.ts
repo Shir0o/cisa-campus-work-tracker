@@ -18,6 +18,7 @@ import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
 import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/lib/feedbackKinds";
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
+import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();
@@ -1465,8 +1466,11 @@ Analyze the input text carefully and extract the following:
           createdByName: opUserName,
           hasNewActivity: true,
         };
-
-        const docRef = await getAdminDb().collection("contacts").add(contactData);
+        // `createdBy` is a persisted tie, so the access list the rules read has
+        // to be derived and written in the same breath (#1024 phase 4).
+        const docRef = await getAdminDb()
+          .collection("contacts")
+          .add({ ...contactData, visibleTo: visibleToOf(contactData as ContactTies) });
 
         // Add interaction
         await getAdminDb()
@@ -1644,8 +1648,15 @@ Analyze the input text carefully and extract the following:
         owner: isRegisteredUser ? opUserId : null,
         hasNewActivity: true,
       };
+      // Derived from the ties actually persisted above, so this agrees exactly
+      // with what scripts/backfill-contact-visible-to.ts would compute
+      // (#1024 phase 4). An automation label like "external-automation" is no
+      // real teammate's uid, so it grants nobody access -- but it has to be in
+      // the list for the backfill not to keep re-planning this row.
       // Add directly to contacts collection using admin privileges
-      const docRef = await getAdminDb().collection("contacts").add(contactData);
+      const docRef = await getAdminDb()
+        .collection("contacts")
+        .add({ ...contactData, visibleTo: visibleToOf(contactData as ContactTies) });
 
       // Document formatted log message
       const fieldsLog = [
@@ -2245,8 +2256,12 @@ ${JSON.stringify(contactsList)}`;
             createdBy: uid,
             createdByName: userName.slice(0, 128),
           };
-
-          batch.set(newContactRef, newContactData);
+          // `createdBy` is a persisted tie; without the derived list the
+          // importer cannot see what they just imported (#1024 phase 4).
+          batch.set(newContactRef, {
+            ...newContactData,
+            visibleTo: visibleToOf(newContactData as ContactTies),
+          });
           tempIdToRealIdMap[contact.tempId] = newContactRef.id;
           cCount++;
         }

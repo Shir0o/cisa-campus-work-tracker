@@ -4,6 +4,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import type { Express } from "express";
+import { visibleToOf } from "../lib/contactTies";
 
 // ── Hoisted test doubles (created before the vi.mock factories) ─────────────
 const {
@@ -677,6 +678,60 @@ describe("POST /api/quick-add", () => {
     expect(Object.values(getCollection("notifications")).length).toBeGreaterThan(0);
   });
 
+  // #1024 phase 4: every server-side create stamps a tie, so it must stamp the
+  // derived `visibleTo` in the same write or the rules hide the new contact
+  // from the very person recorded as its creator/owner. `visibleTo` is defined
+  // as visibleToOf() over the ties actually persisted, so these assert that
+  // invariant rather than a hard-coded uid -- that is what the backfill and the
+  // rules both read.
+  it("stamps visibleTo on a contact a signed-in teammate creates from parsed text", async () => {
+    mockVerifyIdToken.mockResolvedValueOnce({ uid: "uid-ada", email: "ada@example.com", name: "Ada" });
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ name: "Vee Quinn", role: "Student" }),
+    });
+    const res = await request(app)
+      .post("/api/quick-add")
+      .set("Authorization", "Bearer token")
+      .send({ text: "Met Vee Quinn" });
+    expect(res.status).toBe(200);
+
+    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
+    expect(created.createdBy).toBe("uid-ada");
+    expect(created.owner).toBe("uid-ada");
+    expect(created.visibleTo).toEqual(["uid-ada"]);
+  });
+
+  it("stamps visibleTo from the persisted ties on an unauthenticated automation create", async () => {
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ name: "Vee Quinn", role: "Student" }),
+    });
+    const res = await request(app).post("/api/quick-add").send({ text: "Met Vee Quinn" });
+    expect(res.status).toBe(200);
+
+    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
+    // No real teammate is tied to it, so `owner` stays null and the list is
+    // just the recorded creator label -- it must still match visibleToOf() over
+    // what was written, or the backfill will keep re-planning this row.
+    expect(created.owner).toBeNull();
+    expect(created.visibleTo).toEqual(visibleToOf(created as Parameters<typeof visibleToOf>[0]));
+  });
+
+  it("stamps visibleTo on a contact auto-created by the interaction subcommand", async () => {
+    mockVerifyIdToken.mockResolvedValueOnce({ uid: "uid-ada", email: "ada@example.com", name: "Ada" });
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({ contactName: "Nia Fox", content: "Coffee chat", type: "Coffee" }),
+    });
+    const res = await request(app)
+      .post("/api/quick-add")
+      .set("Authorization", "Bearer token")
+      .send({ text: "!add interaction Coffee with Nia Fox" });
+    expect(res.status).toBe(200);
+
+    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
+    expect(created.createdBy).toBe("uid-ada");
+    expect(created.visibleTo).toEqual(["uid-ada"]);
+  });
+
   it("merges into an existing contact matched by email", async () => {
     seedDoc("contacts", "c-1", { name: "Jane Doe", email: "jane@example.com", phone: "", role: "Student", tags: ["Gospel"] });
     mockGenerateContent.mockResolvedValue({
@@ -971,6 +1026,20 @@ describe("POST /api/smart-import/commit", () => {
       interactionsCount: 1,
       discussionsCount: 1,
     });
+  });
+
+  // #1024 phase 4: the import stamps `createdBy`, so it owes the same write a
+  // derived `visibleTo` -- otherwise every imported contact is invisible to
+  // the person who imported it.
+  it("stamps visibleTo on the contacts it creates", async () => {
+    const res = await request(app)
+      .post("/api/smart-import/commit")
+      .send({ contacts: [{ tempId: "c1", name: "Alice", email: "alice@test.com" }] });
+    expect(res.status).toBe(200);
+
+    const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
+    expect(typeof created.createdBy).toBe("string");
+    expect(created.visibleTo).toEqual(visibleToOf(created as Parameters<typeof visibleToOf>[0]));
   });
 });
 

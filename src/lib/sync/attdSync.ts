@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { applyAttendance } from '../attendanceRoster';
+import { visibleToOf, type ContactTies } from '../contactTies';
 import type { Contact, Gathering, GatheringAttendance, Rhythm } from '../../types';
 import type {
   AttendancePreview,
@@ -162,6 +163,10 @@ export async function confirmAttendanceImport(input: ConfirmAttendanceImportInpu
           updatedBy: userId,
           updatedByName: userName,
         };
+        // `createdBy` is a persisted tie, so the denormalised access list the
+        // rules read has to be written in the same breath (#1024 phase 4) --
+        // otherwise the reviewer who just imported this walk-in cannot see them.
+        contactData.visibleTo = visibleToOf(contactData as ContactTies);
         if (targetEventId) {
           contactData.attendance = { [targetEventId]: mark === 'present' ? true : 'absent' };
         }

@@ -21,6 +21,7 @@
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { readFileSync } from "node:fs";
+import { visibleToOf } from "../src/lib/contactTies";
 
 const cfg = JSON.parse(readFileSync("firebase-applet-config.json", "utf8"));
 const creds = JSON.parse(readFileSync("e2e/.test-credentials.json", "utf8")) as Record<
@@ -63,6 +64,10 @@ async function seed() {
         stage: "first",
         createdBy: tr,
         createdByName: trName,
+        // The tie and its derived access list are written together, the same
+        // way every app creation path does it (#1024 phase 4) -- otherwise the
+        // seeded trainee cannot see their own demo contacts.
+        visibleTo: visibleToOf({ createdBy: tr }),
         reviewed: c.reviewed,
         createdAt: iso(c.joined),
         updatedAt: iso(c.joined),

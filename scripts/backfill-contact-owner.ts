@@ -52,6 +52,7 @@ async function planBackfill() {
     owner: d.get('owner'),
     createdBy: d.get('createdBy'),
     addedBy: d.get('addedBy'),
+    coCreators: d.get('coCreators'),
   }));
   plan = planContactOwnerBackfill(docs);
 }
@@ -61,7 +62,13 @@ async function applyBackfill() {
   let ops = 0;
   for (const row of plan) {
     try {
-      batch.update(contactsRef.doc(row.id), { owner: row.ownerTo });
+      // `owner` is a tie, so the derived access list the Firestore rules read
+      // goes in the same update (#1024 phase 4). Writing the tie alone leaves
+      // the contact invisible to the owner it was just given.
+      batch.update(contactsRef.doc(row.id), {
+        owner: row.ownerTo,
+        visibleTo: row.visibleToTo,
+      });
       ops += 1;
       totalChanged += 1;
     } catch (err) {
@@ -83,10 +90,10 @@ async function applyBackfill() {
 }
 
 function printCsv() {
-  console.log('id,ownerFrom,ownerTo');
+  console.log('id,ownerFrom,ownerTo,visibleToTo');
   for (const row of plan) {
     console.log(
-      [row.id, row.ownerFrom ?? '', row.ownerTo ?? '']
+      [row.id, row.ownerFrom ?? '', row.ownerTo ?? '', row.visibleToTo.join(' ')]
         .map((v) =>
           String(v).includes(',') ? `"${String(v).replace(/"/g, '""')}"` : v,
         )
