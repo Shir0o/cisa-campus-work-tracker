@@ -2282,3 +2282,86 @@ describe('POST /api/guest-doc/:docId', () => {
     expect(getCollection('board_docs')['doc-w5'].updatedByName).toBe('Guest');
   });
 });
+
+describe("POST /api/attendance-sync", () => {
+  const attdPayload = {
+    attdEventId: "attd-event-1",
+    eventName: "Wednesday Bible Study",
+    frequency: "Weekly",
+    repeatingDays: ["Wednesday"],
+    eventTime: "19:00",
+    sessionDate: "2026-09-16",
+    records: [
+      { memberId: "member-1", attendee: "Alex Chen", status: "present", isLate: false },
+      { attendee: "New Person", status: "late", isLate: true },
+    ],
+  };
+
+  it("rejects a missing or wrong x-sync-token", async () => {
+    seedDoc("settings", "integrations", { attdSyncToken: "team-secret" });
+    const missing = await request(app).post("/api/attendance-sync").send(attdPayload);
+    expect(missing.status).toBe(401);
+    const wrong = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "wrong-secret")
+      .send(attdPayload);
+    expect(wrong.status).toBe(401);
+  });
+
+  it("validates required payload fields", async () => {
+    seedDoc("settings", "integrations", { attdSyncToken: "team-secret" });
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "team-secret")
+      .send({ eventName: "Missing ids" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("attdEventId");
+  });
+
+  it("stages a pending import with the correlated preview", async () => {
+    seedDoc("settings", "integrations", { attdSyncToken: "team-secret" });
+    seedDoc("rhythms", "r1", {
+      name: "Wednesday Bible Study",
+      cadence: { type: "weekly", days: [3] },
+      roster: [],
+      termStart: "2026-09-01",
+      termEnd: "2026-12-31",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      createdById: "u1",
+    });
+    seedDoc("events", "e1", {
+      name: "Wednesday Bible Study",
+      date: "2026-09-16",
+      order: 0,
+      rhythmId: "r1",
+      createdAt: "2026-09-01T00:00:00.000Z",
+    });
+    seedDoc("contacts", "c1", {
+      name: "Alex Chen",
+      role: "Student",
+      location: "",
+      email: "",
+      phone: "",
+      stage: "Lead",
+      lastSeen: "",
+      initials: "AC",
+    });
+
+    const res = await request(app)
+      .post("/api/attendance-sync")
+      .set("x-sync-token", "team-secret")
+      .send(attdPayload);
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.preview.rhythmId).toBe("r1");
+    expect(res.body.preview.gatheringId).toBe("e1");
+    expect(res.body.preview.stats.total).toBe(2);
+    expect(res.body.preview.stats.matched).toBe(1);
+
+    const stored = Object.values(getCollection("pending_attendance_imports")) as Array<Record<string, unknown>>;
+    expect(stored).toHaveLength(1);
+    expect(stored[0].status).toBe("pending");
+    expect(stored[0].attdEventId).toBe("attd-event-1");
+  });
+});

@@ -1810,8 +1810,7 @@
     "italic": "Italic",
     "numbered_list": "Numbered list",
     "bullet_list": "Bullet list"
-  }
-,
+  },
   "guest": {
     "loading": "Loading the shared page...",
     "unavailable_title": "Link expired or access revoked",
@@ -1830,5 +1829,43 @@
     "saving": "Saving...",
     "saved": "Saved",
     "save_failed": "Could not save"
+  },
+  "attendanceSync": {
+    "banner_title": "Pending attendance sync from Attendance Tracker awaiting review",
+    "banner_count": "{n} draft(s) waiting",
+    "review": "Review sync",
+    "modal_title": "Review attendance sync",
+    "close": "Close review",
+    "rhythm": "Rhythm",
+    "choose_rhythm": "Choose a Rhythm",
+    "gathering": "Gathering",
+    "create_occasion": "Create a new occasion on {date}",
+    "target_hint": "Confirming applies every attd mark to this Gathering and remembers the event and attendee mappings for next time.",
+    "stat_present": "Present",
+    "stat_late": "Late",
+    "stat_absent": "Absent",
+    "stat_matched": "Matched",
+    "stat_walk_ins": "New walk-ins",
+    "stat_conflicts": "Conflicts",
+    "conflict_banner": "{n} marks differ from what CISA already has.",
+    "accept_all": "Accept all attd",
+    "attendees_title": "Attendees",
+    "col_attd_name": "attd name",
+    "col_status": "Status",
+    "col_match": "CISA match",
+    "col_conflict": "Conflict",
+    "no_member_id": "No attd member id",
+    "match_for": "Match for {name}",
+    "create_walk_in": "Create walk-in: {name}",
+    "cisa_mark": "CISA {mark}",
+    "attd_mark": "attd {mark}",
+    "keep_cisa": "Keep CISA",
+    "accept_attd": "Accept attd",
+    "no_conflict": "No conflict",
+    "discard": "Discard draft",
+    "confirm": "Confirm sync",
+    "discard_failed": "Could not discard this draft.",
+    "choose_rhythm_error": "Choose a Rhythm before confirming.",
+    "confirm_failed": "Could not confirm this sync."
   }
 }

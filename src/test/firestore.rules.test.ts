@@ -2787,4 +2787,46 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Attendance Sync Intake', () => {
+    const seedSyncUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'sync-ft'), { role: 'admin', approved: true });
+        await setDoc(doc(adminDb, 'users', 'sync-trainee'), { role: 'manager', approved: true });
+        await setDoc(doc(adminDb, 'pending_attendance_imports', 'p1'), { status: 'pending', attdEventId: 'e1' });
+        await setDoc(doc(adminDb, 'attendee_aliases', 'a1'), { contactId: 'c1', attdMemberId: 'm1' });
+        await setDoc(doc(adminDb, 'integrations_attd_event_mappings', 'e1'), { rhythmId: 'r1' });
+        await setDoc(doc(adminDb, 'settings', 'integrations'), { attdSyncToken: 'secret' });
+      });
+    };
+
+    it('lets a Full-timer read staged imports, aliases, and mappings but not a Trainee', async () => {
+      await seedSyncUsers();
+      const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
+      const traineeDb = getFirestore({ uid: 'sync-trainee', email: 'sync-trainee@test.com' });
+      await assertSucceeds(getDoc(doc(adminDb, 'pending_attendance_imports', 'p1')));
+      await assertSucceeds(getDoc(doc(adminDb, 'attendee_aliases', 'a1')));
+      await assertSucceeds(getDoc(doc(adminDb, 'integrations_attd_event_mappings', 'e1')));
+      await assertFails(getDoc(doc(traineeDb, 'pending_attendance_imports', 'p1')));
+      await assertFails(getDoc(doc(traineeDb, 'attendee_aliases', 'a1')));
+      await assertFails(getDoc(doc(traineeDb, 'integrations_attd_event_mappings', 'e1')));
+    });
+
+    it('keeps the sync token private to Full-timers', async () => {
+      await seedSyncUsers();
+      const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
+      const traineeDb = getFirestore({ uid: 'sync-trainee', email: 'sync-trainee@test.com' });
+      await assertSucceeds(getDoc(doc(adminDb, 'settings', 'integrations')));
+      await assertFails(getDoc(doc(traineeDb, 'settings', 'integrations')));
+    });
+
+    it('lets a Full-timer resolve an import in a client batch', async () => {
+      await seedSyncUsers();
+      const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
+      await assertSucceeds(updateDoc(doc(adminDb, 'pending_attendance_imports', 'p1'), { status: 'confirmed' }));
+      await assertSucceeds(setDoc(doc(adminDb, 'attendee_aliases', 'a2'), { contactId: 'c2', attdMemberId: 'm2' }));
+      await assertSucceeds(setDoc(doc(adminDb, 'integrations_attd_event_mappings', 'e2'), { rhythmId: 'r2' }));
+    });
+  });
+
 });

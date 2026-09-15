@@ -45,6 +45,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import AttendanceMobile from './AttendanceMobile';
+import AttendanceSyncPanel from '../components/AttendanceSyncPanel';
 import { useLanguage } from '../components/LanguageProvider';
 import { useCalendarSync, calStartOfDay, calAddDays, canSeeCalendarSync, type CalContextItem } from '../lib/calendar/calendarSync';
 
@@ -581,6 +582,14 @@ export default function Attendance() {
   if (isMobile) {
     return (
       <>
+        <AttendanceSyncPanel
+          isAdmin={isAdmin}
+          contacts={contacts}
+          rhythms={rhythms}
+          gatherings={events}
+          userId={effectiveUserId ?? user?.uid}
+          userName={user?.displayName ?? user?.email?.split('@')[0]}
+        />
         <AttendanceMobile
           contacts={contacts}
           events={events}
@@ -636,6 +645,14 @@ export default function Attendance() {
   return (
     <>
       <PageContainer variant="wide">
+      <AttendanceSyncPanel
+        isAdmin={isAdmin}
+        contacts={contacts}
+        rhythms={rhythms}
+        gatherings={events}
+        userId={effectiveUserId ?? user?.uid}
+        userName={user?.displayName ?? user?.email?.split('@')[0]}
+      />
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
