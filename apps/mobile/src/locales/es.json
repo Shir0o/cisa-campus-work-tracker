@@ -1475,6 +1475,8 @@
     },
     "contact": {
       "we_cant_find": "No podemos encontrar a esta persona.",
+      "no_access_title": "No puedes abrir este perfil",
+      "no_access_body": "No tienes v\u00ednculo con esta persona.",
       "move_a_step": "Mover de etapa",
       "text": "Texto",
       "call": "Llamar",

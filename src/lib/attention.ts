@@ -609,6 +609,12 @@ export function toWorkThroughCount(
  * and My Day both derive the feed's shape from these threads (#823) — they
  * must cut on exactly this predicate, or the two can disagree about whether
  * the personal column is lent and render it twice or not at all.
+ *
+ * Mirrors the shared core copy in packages/core/src/contactDetail.ts
+ * (#1024 phase 2). The web app deliberately has no @cisa/core dependency,
+ * so the two are held in step by
+ * src/test/feedVisibleThreadsMirrorParity.test.ts rather than by a shared
+ * import.
  */
 export function feedVisibleThreads(
   threads: ThreadMessageWithContact[],

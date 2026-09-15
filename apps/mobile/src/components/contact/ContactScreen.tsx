@@ -10,14 +10,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
   canManageCollaborators,
+  canSeeContact,
   composeKindsFor,
   contactCareLine,
   contactConnectedLine,
   countFor,
   daysSince,
+  feedVisibleThreads,
   firstName,
   hasMinRole,
   interactionSnippet,
@@ -125,7 +128,10 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
       .sort((a, b) => b - a)[0];
     return newest === undefined ? null : daysSince(newest);
   }, [story]);
-  const alongside = useMemo(() => mergedContactThread(data.threadMessages), [data.threadMessages]);
+  // Team-scope Discussion is Full-timer-only, cut on the reader's EFFECTIVE
+  // role so the preview hides it (#1024 phase 2).
+  const visibleThreads = useMemo(() => feedVisibleThreads(data.threadMessages, role), [data.threadMessages, role]);
+  const alongside = useMemo(() => mergedContactThread(visibleThreads), [visibleThreads]);
   const { open: openPrayers, closed: closedPrayers } = useMemo(
     () => splitContactPrayers(data.prayers),
     [data.prayers],
@@ -153,7 +159,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
     // Match the web gate: team-scoped discussion messages don't count toward
     // the warning (web's countFor filters them by default scope).
     const threadCount = countFor(
-      data.threadMessages.filter((m) => m.scope !== 'team'),
+      visibleThreads.filter((m) => m.scope !== 'team'),
       interaction.id,
     );
     const doRemove = () => {
@@ -203,6 +209,28 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   }
 
   const contact = data.contact;
+
+  // A reader with no tie to this person sees a locked state, not a blank
+  // screen. The route guard above answers a different question (may this role
+  // open person screens at all); this is the per-contact boundary, against the
+  // EFFECTIVE identity so "See it as they do" tells the truth (#1024 phase 1).
+  if (!canSeeContact(role, uid, contact)) {
+    return (
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+        <BackRow onBack={back} note="" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, gap: 8 }}>
+          <Ionicons name="lock-closed-outline" size={32} color={c.room.ink3} />
+          <Text style={{ fontFamily: font.extra, fontSize: fs(18), color: c.room.ink, textAlign: 'center' }}>
+            {t('mobile.contact.no_access_title')}
+          </Text>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2, textAlign: 'center' }}>
+            {t('mobile.contact.no_access_body')}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const first = firstName(contact.name);
   const lastTime = lastTimeLine(story[0]);
 
@@ -305,13 +333,13 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                   key={interaction.id}
                   interaction={interaction}
                   meUid={uid ?? ''}
-                  threadCount={countFor(data.threadMessages, interaction.id)}
+                  threadCount={countFor(visibleThreads, interaction.id)}
                   open={openStoryId === interaction.id}
                   onToggle={() => setOpenStoryId(openStoryId === interaction.id ? null : interaction.id)}
                   canRemove={canRemoveInteraction(interaction)}
                   onRemove={() => handleRemoveInteraction(interaction)}
                 >
-                  {threadsFor(data.threadMessages, interaction.id).map((m) => (
+                  {threadsFor(visibleThreads, interaction.id).map((m) => (
                     <ThreadMessageRow
                       key={m.id}
                       message={m}
