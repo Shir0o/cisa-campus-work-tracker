@@ -287,7 +287,9 @@ describe('PrayerListMobile', () => {
     renderWithRouter({
       entries: [{ contact: contact(), prayers: [prayer(), ...many] }],
     });
-    // newest earlier prayer shows as "Last week"; the fold covers the remaining 5
+    // The newest older prayer is surfaced for context, but it is not last
+    // week's, so it is labelled "Earlier"; the fold covers the remaining 5.
+    expect(screen.queryByText('Last week')).not.toBeInTheDocument();
     expect(screen.getByText(/Earlier — 5 prayers/)).toBeInTheDocument();
     fireEvent.click(screen.getByText(/Earlier — 5 prayers/));
     // 4 shown inline (EARLIER_CAP), the last older one noted

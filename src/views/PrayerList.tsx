@@ -64,6 +64,7 @@ function weekStartOf(date: Date) {
 }
 const THIS_WEEK_START = weekStartOf(new Date()).getTime();
 const THIS_WEEK_END = THIS_WEEK_START + 7 * DAY_MS;
+const LAST_WEEK_START = THIS_WEEK_START - 7 * DAY_MS;
 const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
 
 const EARLIER_CAP = 4;
@@ -397,10 +398,12 @@ export default function PrayerList() {
     });
   };
 
-  // Most recent prayer dated before this week — the one "last week" surfaces.
-  const lastBeforeThisWeek = (ps: PrayerRecord[]) =>
+  // The newest prayer actually dated in last week — the one the "Last week"
+  // slot and the "still needs an update" count are about. A prayer older than
+  // last week is not last week's, so it does not count here (#1041).
+  const lastWeekItem = (ps: PrayerRecord[]) =>
     ps
-      .filter((p) => prayerMs(p) < THIS_WEEK_START)
+      .filter((p) => prayerMs(p) >= LAST_WEEK_START && prayerMs(p) < THIS_WEEK_START)
       .sort((a, b) => prayerMs(b) - prayerMs(a))[0] || null;
 
   // Burdens someone kept to themselves in the phone's log sheet never reach
@@ -467,7 +470,7 @@ export default function PrayerList() {
   }, [teamPrayers]);
 
   const awaiting = useMemo(
-    () => entries.filter((e) => lastBeforeThisWeek(e.prayers)?.status === 'pending').length,
+    () => entries.filter((e) => lastWeekItem(e.prayers)?.status === 'pending').length,
     [entries],
   );
 
@@ -797,7 +800,11 @@ function PrayerThread({
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
   const weekItem = sorted.find((p) => prayerMs(p) >= THIS_WEEK_START && prayerMs(p) < THIS_WEEK_END) || null;
   const rest = sorted.filter((p) => p !== weekItem);
+  // The most recent prior prayer is always surfaced for context. Whether it
+  // may wear the "Last week" label depends on it actually falling in last week
+  // (#1041).
   const lastItem = rest[0] || null;
+  const lastItemIsLastWeek = !!lastItem && prayerMs(lastItem) >= LAST_WEEK_START && prayerMs(lastItem) < THIS_WEEK_START;
   const earlier = rest.slice(1);
 
   const ongoingCount = prayers.filter((p) => p.status === 'ongoing').length;
@@ -969,7 +976,7 @@ function PrayerThread({
           <PrayerItem
             prayer={lastItem}
             variant="last"
-            label={t('prayers.last_week')}
+            label={lastItemIsLastWeek ? t('prayers.last_week') : t('prayers.earlier')}
             nudge={needsMark ? t('prayers.needs_update') : undefined}
             needsMark={needsMark}
             onUpdateStatus={onUpdateStatus}

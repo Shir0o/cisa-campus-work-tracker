@@ -45,6 +45,7 @@ const THIS_WEEK_START = (() => {
   return x.getTime();
 })();
 const THIS_WEEK_END = THIS_WEEK_START + 7 * 24 * 3600 * 1000;
+const LAST_WEEK_START = THIS_WEEK_START - 7 * 24 * 3600 * 1000;
 const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
 const EARLIER_CAP = 4;
 
@@ -355,7 +356,11 @@ function PrayerThreadCard({
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
   const weekItem = sorted.find((p) => prayerMs(p) >= THIS_WEEK_START && prayerMs(p) < THIS_WEEK_END) || null;
   const rest = sorted.filter((p) => p !== weekItem);
+  // The most recent prior prayer is always surfaced for context. Whether it
+  // may wear the "Last week" label depends on it actually falling in last week
+  // (#1041).
   const lastItem = rest[0] || null;
+  const lastItemIsLastWeek = !!lastItem && prayerMs(lastItem) >= LAST_WEEK_START && prayerMs(lastItem) < THIS_WEEK_START;
   const earlier = rest.slice(1);
 
   const ongoingCount = prayers.filter((p) => p.status === 'ongoing').length;
@@ -496,7 +501,7 @@ function PrayerThreadCard({
           <PrayerItemMobile
             prayer={lastItem}
             variant="last"
-            label={t('prayers.last_week')}
+            label={lastItemIsLastWeek ? t('prayers.last_week') : t('prayers.earlier')}
             nudge={needsMark ? t('prayers.needs_update') : undefined}
             needsMark={needsMark}
             onUpdateStatus={onUpdateStatus}

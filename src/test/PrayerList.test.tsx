@@ -518,6 +518,63 @@ describe('PrayerList', () => {
     expect(screen.queryByText('Earlier 1')).not.toBeInTheDocument();
   });
 
+  it('labels a surfaced prior prayer honestly when last week was not logged (#1041)', async () => {
+    // Nothing logged last week: the newest prior prayer is a fortnight back,
+    // and it is still surfaced for context — just not as "Last week".
+    const stalePrayers = [
+      { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
+      { id: 'p_e1', data: () => ({ contactId: 'c1', burden: 'A fortnight back', date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e2', data: () => ({ contactId: 'c1', burden: 'Three weeks back', date: new Date(Date.now() - 22 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: stalePrayers, size: 3 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('This week burden')).toBeInTheDocument();
+    });
+
+    // The fortnight-old burden stays visible (it is not folded away), but it
+    // does not wear the "Last week" label; only the third prayer is folded.
+    expect(screen.getByText('A fortnight back')).toBeInTheDocument();
+    expect(screen.queryByText('Last week')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Earlier — 1 prayer/i })).toBeInTheDocument();
+  });
+
+  it('still labels a prayer from last week "Last week" (#1041)', async () => {
+    const prayersWithLastWeek = [
+      { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: prayersWithLastWeek, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('This week burden')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Last week')).toBeInTheDocument();
+  });
+
   // #709 — an opened fold used to print a full prayer per entry: date row,
   // burden, and the whole Mark chip row, four times over, with no gap between
   // them. Each earlier prayer is now one summary line you open in place.
