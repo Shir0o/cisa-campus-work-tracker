@@ -95,7 +95,17 @@ let plan: RepairPlan = { rows: [], writes: [], askGroups: [] };
 async function planRepair() {
   const partnersSnap = await db.doc('settings/partners').get();
   if (!partnersSnap.exists) {
-    throw new Error('settings/partners does not exist - nothing to judge stamps against.');
+    // Refusing is the only safe answer: the whole three-way sort is anchored on
+    // this document's createTime/updateTime, and without them every stamp would
+    // have to be guessed at. A database with no arrangement also has no
+    // backfill-invented ties to take back, so there is nothing to repair.
+    throw new Error(
+      'settings/partners does not exist in this database - nothing to judge stamps against.\n' +
+        '  Gospel Partners have never been arranged here, so the backfill stamped nothing ' +
+        'and there is nothing to repair.\n' +
+        '  To rehearse the repair against a database, arrange pairs in Settings there first ' +
+        '(twice, spaced apart, so createTime and updateTime differ and the "ask" window is real).',
+    );
   }
   const createTime = partnersSnap.createTime?.toDate().toISOString();
   const updateTime = partnersSnap.updateTime?.toDate().toISOString();
