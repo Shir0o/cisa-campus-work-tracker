@@ -266,6 +266,8 @@ export type Event = Gathering;
 export interface SeasonSettings {
   override?: string | null;
   clubRush?: boolean;
+  /** BFA intake — a second cohort tag alongside Club Rush (#1045). */
+  bfa?: boolean;
 }
 
 // Team-wide gospel partners (one doc: settings/partners). The map is keyed by

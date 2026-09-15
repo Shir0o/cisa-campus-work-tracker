@@ -47,6 +47,7 @@ vi.mock('../components/AuthProvider', () => ({
 const mockSetSeason = vi.fn();
 const mockResetSeason = vi.fn();
 const mockToggleClubRush = vi.fn();
+const mockToggleBfa = vi.fn();
 
 const seasonState = vi.hoisted(() => ({ isAuto: true, clubRush: false }));
 
@@ -70,6 +71,7 @@ vi.mock('../lib/seasons', () => ({
     setSeason: mockSetSeason,
     resetSeason: mockResetSeason,
     toggleClubRush: mockToggleClubRush,
+    toggleBfa: mockToggleBfa,
   }),
   getAutoSemesterAndSchoolYearTags: () => ['Summer 2026', '2026-27'],
 }));
@@ -127,6 +129,8 @@ describe('SignUp View', () => {
     render(<SignUp role="admin" />);
     expect(screen.getByText(/Tagging sign-ups for/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Club rush/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /BFA/i }));
+    expect(mockToggleBfa).toHaveBeenCalled();
   });
 
   it('hides staff preview strip for student or community roles', () => {

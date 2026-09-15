@@ -518,6 +518,15 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
           <span className="su-admin-knob" />
           Club rush
         </button>
+        <button
+          type="button"
+          className={cn('su-admin-toggle', season.bfa && 'on')}
+          onClick={() => season.toggleBfa?.()}
+          title="Tag these sign-ups for BFA"
+        >
+          <span className="su-admin-knob" />
+          BFA
+        </button>
       </div>
     </div>
   );
