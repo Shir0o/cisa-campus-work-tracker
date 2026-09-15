@@ -244,6 +244,15 @@ pin is what forces bible-read's monkey-patch around `commit_edit`. Fastlane
 bundles `google-apis-androidpublisher_v3`, whose `commit_edit` accepts the
 keyword natively.
 
+## Where a change goes
+
+A release record carries both registers: the announcement (overview and
+bullets, which also compile into the store notes) and the **Release Nudge**
+(optional `roles`, and three or four plain `lines`). The rule is one
+sentence: **write the change once in `content/whats-new/`; add a `lines`
+sentence when it is worth a person's morning, and add `roles` when only some
+roles feel it.** There is no second file to write.
+
 ## Known wart: `app.json`'s committed version
 
 `apps/mobile/app.json` still reads `1.0.1` while the tags are at `v1.4.2`. That
@@ -276,9 +285,6 @@ directory in a way that is not worth guessing at. Left as a known wart.
 - **No OTA updates.** No profile sets a `channel`, so `expo-updates` cannot
   publish. Enabling it needs a channel per profile and a `runtimeVersion`
   decision.
-- **Two overlapping “what's new” systems.** `content/whats-new/*.md` (ADR 0008)
-  and `packages/core/src/releases.ts` (#546) both tell users what changed. Store
-  notes are compiled from the former. They have not been reconciled.
 
 ## Troubleshooting
 

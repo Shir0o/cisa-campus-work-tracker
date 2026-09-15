@@ -1,47 +1,39 @@
-// WHAT CHANGED SINCE YOU LAST OPENED THIS (#546) — the phone's room.
+// THE RELEASE NUDGE (issue #1021) - the phone's automatic surface.
 //
-// The app's own sheet language (the design's `.m2-sheet`), so it arrives the
-// way everything else on the phone arrives: a cream paper sheet, a grab
-// handle, one primary way out ("Carry on"), hardware-back as the same one way
-// out, and the version quiet at the foot rather than in the headline. The
-// gate (`useRelease`) lives in src/lib/releases.ts; the phone passes whether
-// the on-campus window is open so a sheet that interrupts the two hours you're
-// actually on campus is worse than a sheet you never see.
+// It appears ONCE per release, for a role the release speaks to, and is held
+// back while the on-campus window is open: a sheet that interrupts the two
+// hours you are actually on campus is worse than a sheet you never see. The
+// record and the gate live in @cisa/core (whatsNew.ts); lib/releases.ts is the
+// phone store. The on-demand record is the separate M2WhatsNew sheet.
 import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { releaseDateWords, releaseFor, type AppRole } from '@cisa/core';
-import { markReleaseSeen, useRelease } from '../../lib/releases';
+import { releaseDateWords, type AppRole } from '@cisa/core';
+import { markReleaseSeen, useReleaseNudge } from '../../lib/releases';
 import { useV2Theme } from '../../theme/v2';
 
 const TITLE = 'A few things are different';
 const SUB = 'Since you last opened this. Everything else is where you left it.';
+const CTA = 'Carry on';
 
 export function M2Release({
   role,
   inWindow,
-  forceOpen,
-  onClose,
 }: {
   role: AppRole | null | undefined;
   inWindow?: boolean;
-  forceOpen?: boolean;
-  onClose?: () => void;
 }) {
   const { c, font, fs } = useV2Theme();
   const insets = useSafeAreaInsets();
-  const relAuto = useRelease(role, inWindow);
-  const rel = forceOpen ? (relAuto ?? releaseFor(role)) : relAuto;
+  const rel = useReleaseNudge(role, inWindow);
   const [gone, setGone] = React.useState(false);
 
   const close = () => {
-    if (rel) void markReleaseSeen(rel.version);
+    if (rel) void markReleaseSeen(rel.id);
     setGone(true);
-    onClose?.();
   };
 
-  const live = forceOpen ? !gone : (!!rel && !gone);
-  if (!live || !rel) return null;
+  if (rel === null || gone) return null;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close}>
@@ -78,7 +70,7 @@ export function M2Release({
         </Text>
 
         <View style={{ marginVertical: 12 }}>
-          {rel.lines.map((l, i) => (
+          {rel.lines?.map((l, i) => (
             <View
               key={i}
               style={{
@@ -105,11 +97,11 @@ export function M2Release({
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.semi, fontSize: fs(14), color: c.card.onPrimary }}>Carry on</Text>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(14), color: c.card.onPrimary }}>{CTA}</Text>
         </Pressable>
 
         <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.ink3, marginTop: 12, textAlign: 'center' }}>
-          Version {rel.version} · {releaseDateWords(rel.date)}
+          Version {rel.version} ({releaseDateWords(rel.date)})
         </Text>
       </View>
     </Modal>

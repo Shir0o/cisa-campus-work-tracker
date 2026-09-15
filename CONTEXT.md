@@ -228,8 +228,12 @@ The number of **Around the team** cards not yet **Reviewed**. It is what the pag
 _Avoid_: Unseen, unread, new, backlog, inbox count
 
 **What's New Announcement**:
-An in-app modal presented to users upon launching an updated web PWA or mobile build, highlighting user-facing changes and improvements for that release. Backed by markdown manifests in `content/whats-new/` compiled into static manifests, tracking the latest seen release ID locally on each device, and always re-accessible via Settings.
+The full account of what changed in a release, written to be browsed on demand and compiled into the store listings. It is the release record; a reader may also meet it as a **Release Nudge**.
 _Avoid_: Release popup, changelog blast, splash alert
+
+**Release Nudge**:
+The once-per-version prompt telling one person what is different for them since their last visit — the same release record as the **What's New Announcement**, but role-targeted, in plain sentences, and held back while the on-campus window is open.
+_Avoid_: Release notes, changelog, what's new sheet, release sheet
 
 
 **Attention Feed**:

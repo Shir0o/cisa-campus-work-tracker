@@ -43,7 +43,7 @@ const WHATS_NEW_STORAGE_KEY = 'cisa.whats_new.last_seen_id';
  * stored "last seen" release id is older than the latest one. Playwright starts
  * every test on a fresh profile, so nothing is stored and it opens on each load
  * and swallows clicks — which is what turned the nightly e2e suite red once it
- * shipped. `shouldShowWhatsNew` compares ids as strings, so a sentinel that
+ * shipped. `shouldShowAnnouncement` compares ids as strings, so a sentinel that
  * sorts above every dated id keeps it shut for future releases too.
  *
  * This runs as an init script, before app code, so the popup never mounts —

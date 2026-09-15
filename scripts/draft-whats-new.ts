@@ -1,3 +1,7 @@
+// THE single drafting entry point for a release record (issue #1021).
+// It writes one markdown file in content/whats-new/: the announcement
+// bullets plus a starting set of Release Nudge `lines` a human edits.
+// The retired draft-release-notes.ts used to draft the nudge separately.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';

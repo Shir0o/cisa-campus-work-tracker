@@ -153,6 +153,11 @@ release bumps from there. **Reconcile the whats-new version and confirm what the
 stores actually have before the first automated release**, or App Store Connect
 will reject a `CFBundleShortVersionString` at or below the last approved build.
 
+**Partly resolved:** the two overlapping "what's new" systems were
+reconciled by [ADR 0024](0024-one-release-record-two-registers.md); the
+release record is now the one authored source. Version truth (the tag vs
+`app.json` vs the record) is owned by issue #1020.
+
 ## References
 
 - Workflows: [`release-please.yml`](../../.github/workflows/release-please.yml),

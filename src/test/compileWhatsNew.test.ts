@@ -108,5 +108,49 @@ date: "2026-09-03"
     expect(draft).toContain('Allow owner transfer when owner is unset');
     // chores should be omitted from user-facing release notes by default
     expect(draft).not.toContain('bump vite');
+    expect(draft).toContain('lines:');
+    expect(draft).toContain('Push notification support.');
+  });
+
+  it('parses the personal layer (roles + lines) for the Release Nudge', () => {
+    const md = `---
+id: 2026-09-05-v1.5.0
+version: 1.5.0
+title: "Nudge"
+date: "2026-09-05"
+platforms:
+  - web
+  - mobile
+roles:
+  - admin
+  - manager
+lines:
+  - The queue tells you who is waiting.
+  - Prayers sort by who has gone quiet.
+---
+
+- A bulletin
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.roles).toEqual(['admin', 'manager']);
+    expect(release.lines).toEqual([
+      'The queue tells you who is waiting.',
+      'Prayers sort by who has gone quiet.',
+    ]);
+  });
+
+  it('leaves the personal layer absent when a release is quiet', () => {
+    const md = `---
+id: 2026-09-06-v1.5.1
+version: 1.5.1
+title: "Quiet"
+date: "2026-09-06"
+---
+
+- A quiet patch
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.roles).toBeUndefined();
+    expect(release.lines).toBeUndefined();
   });
 });

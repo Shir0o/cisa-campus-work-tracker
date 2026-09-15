@@ -13,6 +13,10 @@ export interface WhatsNewRelease {
   title: string;
   date: string;
   platforms: PlatformTarget[];
+  /** Roles the Release Nudge speaks to. Omit for everyone; [] reaches nobody. */
+  roles?: string[];
+  /** The Release Nudge's 3-4 plain sentences. Empty or absent = quiet release. */
+  lines?: string[];
   overview?: string;
   items: WhatsNewItem[];
 }
@@ -71,6 +75,8 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
   const platforms: PlatformTarget[] = Array.isArray(frontmatter.platforms) && frontmatter.platforms.length > 0
     ? (frontmatter.platforms as PlatformTarget[])
     : ['web', 'mobile'];
+  const parsedRoles = Array.isArray(frontmatter.roles) ? (frontmatter.roles as string[]) : undefined;
+  const parsedLines = Array.isArray(frontmatter.lines) ? (frontmatter.lines as string[]) : undefined;
 
   // Parse body: extract overview and bullet items
   const lines = bodyStr.split('\n');
@@ -146,6 +152,8 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     title,
     date,
     platforms,
+    ...(parsedRoles ? { roles: parsedRoles } : {}),
+    ...(parsedLines ? { lines: parsedLines } : {}),
     overview: overviewLines.length > 0 ? overviewLines.join('\n') : undefined,
     items,
   };
@@ -176,6 +184,7 @@ export function parseGitCommitsToDraft(
   const title = meta.title || `Release ${meta.version}`;
 
   const bullets: string[] = [];
+  const nudgeLines: string[] = [];
   for (const line of commitLines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
@@ -190,14 +199,19 @@ export function parseGitCommitsToDraft(
       desc = desc.charAt(0).toUpperCase() + desc.slice(1);
       const tag = scope === 'mobile' ? '[Mobile] ' : scope === 'web' ? '[Web] ' : '';
       bullets.push(`- ${tag}${desc}`);
+      nudgeLines.push(`${desc.replace(/\.+$/, '')}.`);
     } else if (fixMatch) {
       const scope = fixMatch[1]?.toLowerCase();
       let desc = fixMatch[2].replace(/\s*\([^)]*#\d+[^)]*\)/g, '').trim();
       desc = desc.charAt(0).toUpperCase() + desc.slice(1);
       const tag = scope === 'mobile' ? '[Mobile] ' : scope === 'web' ? '[Web] ' : '';
       bullets.push(`- ${tag}${desc}`);
+      nudgeLines.push(`${desc.replace(/\.+$/, '')}.`);
     }
   }
+
+  // The Release Nudge's starting sentences: a human edits these before shipping.
+  const nudge = nudgeLines.slice(0, 4);
 
   return `---
 id: ${id}
@@ -207,6 +221,14 @@ date: "${meta.date}"
 platforms:
   - web
   - mobile
+# Optional: the roles this Release Nudge speaks to (omit for everyone)
+# roles:
+#   - admin
+#   - manager
+#   - operator
+#   - viewer
+lines:
+${nudge.length > 0 ? nudge.map((l) => `  - ${l}`).join('\n') : '  - '}
 ---
 
 # Overview
