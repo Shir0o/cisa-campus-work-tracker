@@ -49,6 +49,20 @@ service cloud.firestore {
       );
     }
 
+    // Contact visibility (#1024 phase 4). Mirrors the client's `seesAllPeople`:
+    // Full-timers, Students and Community read the whole roster; only Trainees
+    // are scoped to the denormalised access list on the contact. `visibleTo`
+    // holds every persisted tie -- creator, adder, caregiver and collaborators.
+    function seesAllContacts() {
+      return isAdmin() || hasRole('operator') || hasRole('viewer');
+    }
+    function contactVisibleTo(data) {
+      return data.get('visibleTo', []);
+    }
+    function canReadContact(data) {
+      return isApprovedUser() &&
+             (seesAllContacts() || request.auth.uid in contactVisibleTo(data));
+    }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
@@ -170,7 +184,10 @@ service cloud.firestore {
                 (data.visibleTo is list && data.visibleTo.size() <= 200));
       }
 
-      allow read: if isApprovedUser();
+      // Read the tie server-side: a Trainee must appear in `visibleTo`, and
+      // because the rule is per-document their list query must itself carry
+      // `where('visibleTo', 'array-contains', <uid>)` (#1024 phase 4).
+      allow read: if canReadContact(resource.data);
       // Anti-abuse Note: Without App Check or an authenticated backend function,
       // this allows unauthenticated creates. Mitigated partially by client-side 
       // honeypot and math captcha on the public form. Acceptable for low-traffic.
@@ -290,7 +307,10 @@ service cloud.firestore {
                  (data.interactionId == null || (data.interactionId is string && data.interactionId.size() <= 128));
         }
 
-        allow read: if isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin());
+        // Reading a person's Alongside thread requires being able to read the
+        // person. The collection-group rule above still governs the inbox read.
+        allow read: if canReadContact(get(/databases/$(database)/documents/contacts/$(contactId)).data) &&
+                       (resource.data.get('scope', '') != 'team' || isAdmin());
         allow create: if isValidId(threadId) && isApprovedUser() && isOperator() &&
                         isValidThread(incoming()) &&
                         (incoming().get('scope', '') != 'team' || isAdmin()) &&
