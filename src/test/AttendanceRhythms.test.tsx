@@ -536,8 +536,12 @@ describe('Attendance — the chip strip opens on the selected week (issue 982)',
     // written as a non-default value by the effect.
     expect(strip.scrollLeft).not.toBeUndefined();
     // The fourth Rhythm chip strip (Thursday) has its selection further along.
-    const strips = [...container.querySelectorAll('div.overflow-x-auto')] as HTMLElement[];
-    expect(strips.some((el) => el.scrollLeft !== 0)).toBe(true);
+    // Centring happens in an effect once the rows have data, so wait for the
+    // write rather than reading scrollLeft on the first paint (issue 1060).
+    await waitFor(() => {
+      const strips = [...container.querySelectorAll('div.overflow-x-auto')] as HTMLElement[];
+      expect(strips.some((el) => el.scrollLeft !== 0)).toBe(true);
+    });
   });
 
   it('marks the strip as continuing past its edge, so a clipped term does not read as a short one', async () => {
