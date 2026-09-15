@@ -122,34 +122,51 @@ export default function LandingTrainee() {
   const uid = effectiveUserId || user?.uid;
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
 
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  // Stamped with the reader it was read for, so a persona switch discards the
+  // previous identity's people during render rather than showing them until the
+  // new subscription lands (#1039).
+  const [contactsRead, setContactsRead] = useState<{ reader: string; list: Contact[] } | null>(null);
+  const contacts = useMemo(
+    () => (contactsRead?.reader === uid ? contactsRead.list : []),
+    [contactsRead, uid],
+  );
   const [stages, setStages] = useState<Stage[]>([]);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [personalPrayers, setPersonalPrayers] = useState<PersonalPrayer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const loading = contactsRead?.reader !== uid;
+  const [errorRead, setErrorRead] = useState<{ reader: string; label: string } | null>(null);
+  const error = errorRead?.reader === uid ? errorRead.label : null;
 
   const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selection, setSelection] = useState<{ reader: string; contact: Contact } | null>(null);
+  const selectedContact = selection?.reader === uid ? selection.contact : null;
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<"thread" | undefined>(undefined);
   const [initialInteractionId, setInitialInteractionId] = useState<string | null>(null);
   const inbox = useInboxReads();
 
-  const onLoadError = (e: unknown, path: string) => {
-    setError("your home");
-    setLoading(false);
-    handleFirestoreError(e, OperationType.LIST, path);
-  };
-
+  // Keyed on the reader, not on mount: "See it as they do" swaps the effective
+  // identity while the page stays up, and a subscription opened once would keep
+  // showing the previous persona's people (#1039). No identity yet means no
+  // query at all, rather than one carrying an undefined uid.
   useEffect(() => {
+    if (!uid) return;
+    // Stamped with the reader, like the read itself: a refused read belongs to
+    // the persona it was refused for and must not pin the error screen over the
+    // next one (#1039).
+    const onLoadError = (e: unknown, path: string) => {
+      setErrorRead({ reader: uid, label: "your home" });
+      handleFirestoreError(e, OperationType.LIST, path);
+    };
     const unsubContacts = onSnapshot(
       // Trainee-only surface: scope the read to the reader's own ties so the
       // tightened rules (#1024 phase 4) accept the query.
       query(collection(db, "contacts"), where("visibleTo", "array-contains", uid)),
       (snap) => {
-        setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
-        setLoading(false);
+        setContactsRead({
+          reader: uid,
+          list: snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[],
+        });
       },
       (e) => onLoadError(e, "contacts"),
     );
@@ -168,7 +185,7 @@ export default function LandingTrainee() {
       unsubStages();
       unsubPrayers();
     };
-  }, []);
+  }, [uid]);
 
   useEffect(() => {
     if (!uid) return;
@@ -256,8 +273,8 @@ export default function LandingTrainee() {
     c: Contact | undefined | null,
     opts?: { tab?: "thread"; interactionId?: string | null },
   ) => {
-    if (!c) return;
-    setSelectedContact(c);
+    if (!c || !uid) return;
+    setSelection({ reader: uid, contact: c });
     setInitialTab(opts?.tab);
     setInitialInteractionId(opts?.interactionId ?? null);
     setIsDetailsModalOpen(true);
@@ -271,7 +288,7 @@ export default function LandingTrainee() {
         isOpen
         onClose={() => {
           setIsDetailsModalOpen(false);
-          setSelectedContact(null);
+          setSelection(null);
           setInitialInteractionId(null);
         }}
         contact={selectedContact}
