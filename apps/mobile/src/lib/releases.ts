@@ -1,80 +1,84 @@
-// WHAT CHANGED SINCE YOU LAST OPENED THIS (#546) — mobile store.
+// THE RELEASE NUDGE, phone store (issue #1021).
 //
-// The pure gate + authored notes live in @cisa/core (packages/core/src/releases.ts);
-// this file is only the phone's storage half: AsyncStorage instead of the web
-// mirror's localStorage, using the SAME `cisa.release.v1` key so a person who
-// signs in on both keeps one last-seen memory per device.
+// The record and the pure gates live in @cisa/core
+// (packages/core/src/whatsNew.ts); this file is only the phone's storage half.
+// One per-device "last seen release" id under `cisa.whats_new.last_seen_id`,
+// the same key the web announcement writes. A device carrying the retired
+// `cisa.release.v1` key is seeded from it once, so upgrading never re-shows a
+// release the reader has already dealt with.
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  RELEASE_LS_KEY,
-  RELEASES,
+  getWhatsNewForPlatform,
+  latestRelease,
   releaseShow,
+  SEEN_RELEASE_STORAGE_KEY,
   type AppRole,
-  type Release,
+  type PlatformTarget,
+  type WhatsNewManifest,
+  type WhatsNewRelease,
 } from '@cisa/core';
+import manifestJson from '../../assets/whats-new.json';
+
+export const SEEN_RELEASE_KEY = SEEN_RELEASE_STORAGE_KEY;
+const LEGACY_SEEN_KEY = 'cisa.release.v1';
+
+const manifest = manifestJson as unknown as WhatsNewManifest;
 
 type Listener = () => void;
 
 const subs = new Set<Listener>();
 let seen: string | null = null;
 
-const seed = (): string | null => {
-  // A machine with no record has never been updated, so upstream would stamp
-  // the version it just installed and say nothing. Here — the same traceSeed
-  // trick as the web mirror — a fresh install is stamped one release back so
-  // the newest release reads once on a clean slate instead of being invisible.
-  const prev = RELEASES[1];
-  return prev ? prev.version : null;
-};
-
-/** Reads the store (async), seeding a fresh machine. Call once at app boot —
- *  idempotent, so re-reading after a launch keeps whatever was last stored. */
-export async function initReleaseStore(): Promise<void> {
+/** The retired key stored `{ version, at }`; accept a raw id too. */
+function readLegacy(raw: string | null): string | null {
+  if (raw === null || raw.length === 0) return null;
   try {
-    const raw = await AsyncStorage.getItem(RELEASE_LS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.version === 'string') {
-        seen = parsed.version;
-        return;
-      }
-    }
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.version === 'string') return parsed.version;
   } catch {
-    // Fall through to the seed — a broken record is the same as none.
+    // Not JSON - fall through and treat it as a raw id.
   }
-  seen = seed();
-  try {
-    if (seen) {
-      await AsyncStorage.setItem(
-        RELEASE_LS_KEY,
-        JSON.stringify({ version: seen, at: new Date().toISOString() }),
-      );
-    }
-  } catch {
-    // Non-fatal — the sheet simply shows this visit.
-  }
+  return raw;
 }
 
-export function seenVersion(): string | null {
+/** Reads the store (async), seeding from the retired key. Call once at boot. */
+export async function initReleaseStore(): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(SEEN_RELEASE_KEY);
+    if (raw === null || raw.length === 0) {
+      const legacy = readLegacy(await AsyncStorage.getItem(LEGACY_SEEN_KEY));
+      if (legacy) {
+        seen = legacy;
+        await AsyncStorage.setItem(SEEN_RELEASE_KEY, legacy);
+        return;
+      }
+    } else {
+      seen = raw;
+      return;
+    }
+  } catch {
+    // A broken record is the same as none.
+  }
+  seen = null;
+}
+
+export function seenReleaseId(): string | null {
   return seen;
 }
 
-export async function markReleaseSeen(version: string): Promise<void> {
-  seen = version;
+export async function markReleaseSeen(id: string): Promise<void> {
+  seen = id;
   try {
-    await AsyncStorage.setItem(
-      RELEASE_LS_KEY,
-      JSON.stringify({ version, at: new Date().toISOString() }),
-    );
+    await AsyncStorage.setItem(SEEN_RELEASE_KEY, id);
   } catch {
-    // Non-fatal — the sheet simply shows again next launch.
+    // Non-fatal - the nudge simply shows again next launch.
   }
   subs.forEach((fn) => {
     try {
       fn();
     } catch {
-      /* a broken listener shouldn't stop the others */
+      /* a broken listener should not stop the others */
     }
   });
 }
@@ -86,9 +90,18 @@ export function subscribeReleases(fn: Listener): () => void {
   };
 }
 
-/** Live gate for a component: re-renders when the seen version changes. */
-export function useRelease(role: AppRole | null | undefined, inWindow = false): Release | null {
+/** Live auto-gate for the nudge sheet: re-renders when the seen id changes. */
+export function useReleaseNudge(
+  role: AppRole | null | undefined,
+  inWindow = false,
+): WhatsNewRelease | null {
   const [, force] = useState(0);
   useEffect(() => subscribeReleases(() => force((n) => n + 1)), []);
-  return releaseShow(role, inWindow, seen);
+  return releaseShow(manifest, role, inWindow, seen);
+}
+
+/** The full announcement record, for the on-demand "What's New" surface. */
+export function latestAnnouncement(platform: PlatformTarget = 'mobile'): WhatsNewRelease | null {
+  const latest = latestRelease(manifest);
+  return latest === null ? null : getWhatsNewForPlatform(latest, platform);
 }

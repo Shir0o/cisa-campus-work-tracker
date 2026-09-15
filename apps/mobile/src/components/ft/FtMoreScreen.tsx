@@ -17,6 +17,7 @@ import { Room } from '../v2/Widget';
 import { useImpersonateSheet } from '../impersonate/ImpersonateLayer';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { M2Release } from '../release/M2Release';
+import { M2WhatsNew } from '../release/M2WhatsNew';
 import { ThisWeeksStudyRow } from '../bibleStudy/ThisWeeksStudyRow';
 
 export function FtMoreScreen() {
@@ -234,11 +235,8 @@ function FtMore() {
       </ScrollView>
       </View>
       <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} targetRef={captureRef} />
-      <M2Release
-        role={role}
-        forceOpen={whatsNewOpen}
-        onClose={() => setWhatsNewOpen(false)}
-      />
+      <M2Release role={role} />
+      <M2WhatsNew visible={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
     </SafeAreaView>
   );
 }

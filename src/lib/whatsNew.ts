@@ -1,6 +1,12 @@
+// WHAT'S NEW (issue #1021) - the web mirror.
+//
+// The record's types and the announcement gate live canonically in
+// packages/core/src/whatsNew.ts (which the phone imports). The web app
+// deliberately has no @cisa/core dependency, so this is a standalone copy
+// (mirroring src/lib/asks.ts). src/lib/whatsNew.test.ts asserts the two
+// agree, so the copies cannot drift.
 import type {
   PlatformTarget,
-  WhatsNewItem,
   WhatsNewManifest,
   WhatsNewRelease,
 } from '../scripts/compile-whats-new';
@@ -30,7 +36,7 @@ export function getWhatsNewForPlatform(
   };
 }
 
-export function shouldShowWhatsNew(
+export function shouldShowAnnouncement(
   manifest: WhatsNewManifest,
   lastSeenId: string | null,
   platform: PlatformTarget
@@ -65,7 +71,7 @@ export function createWhatsNewState(
       return storage.getItem();
     },
     shouldShow(manifest: WhatsNewManifest): boolean {
-      return shouldShowWhatsNew(manifest, storage.getItem(), platform);
+      return shouldShowAnnouncement(manifest, storage.getItem(), platform);
     },
     markSeen(releaseId: string): void {
       storage.setItem(releaseId);

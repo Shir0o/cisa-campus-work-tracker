@@ -1,17 +1,19 @@
 import { describe, expect, it, beforeEach, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { render, fireEvent } from '@testing-library/react-native';
-import { RELEASES } from '@cisa/core';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { M2Release } from './M2Release';
-import { initReleaseStore, markReleaseSeen } from '../../lib/releases';
+import { initReleaseStore, markReleaseSeen, latestAnnouncement, SEEN_RELEASE_KEY } from '../../lib/releases';
 
-// The v2 theme imports ThemeProvider → AuthProvider → firebase; M2Release only
+// The v2 theme imports ThemeProvider -> AuthProvider -> firebase; M2Release only
 // needs the theme tokens, so break the chain at AuthProvider like other v2
 // component tests do.
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: 'user1', user: null, role: 'admin' }),
 }));
+
+const newest = latestAnnouncement('mobile');
+const newestId = newest === null ? 'missing' : newest.id;
 
 const renderRelease = (props: Parameters<typeof M2Release>[0]) =>
   render(
@@ -26,35 +28,25 @@ beforeEach(async () => {
 });
 
 describe('M2Release', () => {
-  it('shows nothing when there is no release to show', async () => {
-    await markReleaseSeen(RELEASES[0].version);
+  it('shows nothing once the newest release has been seen', async () => {
+    await markReleaseSeen(newestId);
     const tree = renderRelease({ role: 'admin', inWindow: false });
     expect(tree.queryByText('A few things are different')).toBeNull();
   });
 
-  it('shows the sheet once for an unseen release and stamps it on dismiss', async () => {
+  it('shows the nudge once and stamps the release id on dismiss', async () => {
     const tree = renderRelease({ role: 'admin', inWindow: false });
     expect(tree.getByText('A few things are different')).toBeTruthy();
     expect(tree.getByText('Carry on')).toBeTruthy();
 
-    fireEvent.press(tree.getByText('Carry on'));
-    expect(tree.queryByText('A few things are different')).toBeNull();
-    const stored = JSON.parse((await AsyncStorage.getItem('cisa.release.v1')) ?? '{}');
-    expect(stored.version).toBe(RELEASES[0].version);
+    await act(async () => {
+      fireEvent.press(tree.getByText('Carry on'));
+    });
+    expect(await AsyncStorage.getItem(SEEN_RELEASE_KEY)).toBe(newestId);
   });
 
-  it('holds the sheet back while the on-campus window is open', async () => {
+  it('holds the nudge back while the on-campus window is open', () => {
     const tree = renderRelease({ role: 'admin', inWindow: true });
     expect(tree.queryByText('A few things are different')).toBeNull();
-  });
-
-  it('opens on-demand when forceOpen is true even if already seen', async () => {
-    await markReleaseSeen(RELEASES[0].version);
-    const onClose = jest.fn();
-    const tree = renderRelease({ role: 'admin', forceOpen: true, onClose });
-    expect(tree.getByText('A few things are different')).toBeTruthy();
-
-    fireEvent.press(tree.getByText('Carry on'));
-    expect(onClose).toHaveBeenCalled();
   });
 });

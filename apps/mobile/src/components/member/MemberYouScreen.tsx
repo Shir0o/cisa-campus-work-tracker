@@ -20,6 +20,7 @@ import { MemberBack, MemberFoot, MemberHead, MemberRoom, MemberScreen } from './
 import { InviteSheet } from './InviteSheet';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { M2Release } from '../release/M2Release';
+import { M2WhatsNew } from '../release/M2WhatsNew';
 import { ThisWeeksStudyRow } from '../bibleStudy/ThisWeeksStudyRow';
 
 const LOOKS: { key: 'light' | 'dark' | 'system'; label: string }[] = [
@@ -370,11 +371,8 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         onClose={() => setFeedbackOpen(false)}
         targetRef={captureRef}
       />
-      <M2Release
-        role={appRole}
-        forceOpen={whatsNewOpen}
-        onClose={() => setWhatsNewOpen(false)}
-      />
+      <M2Release role={appRole} />
+      <M2WhatsNew visible={whatsNewOpen} onClose={() => setWhatsNewOpen(false)} />
     </>
   );
 }

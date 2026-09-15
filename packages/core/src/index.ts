@@ -6,7 +6,7 @@ export * from './walking';
 export * from './threads';
 export * from './asks';
 export * from './goal';
-export * from './releases';
+export * from './whatsNew';
 export * from './inbox';
 export * from './board';
 export * from './seasons';

@@ -37,7 +37,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import WhatsNewModal from "./components/WhatsNewModal";
 import whatsNewManifest from "./generated/whats-new.json";
-import { shouldShowWhatsNew, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
+import { shouldShowAnnouncement, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
 import type { WhatsNewManifest } from "./scripts/compile-whats-new";
 import { NotificationPermissionBanner } from "./components/notifications/NotificationPermissionBanner";
 import { canAccessRoute, defaultRouteForRole, fallbackRouteFor, AppRole } from "./lib/permissions";
@@ -361,7 +361,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isWhatsNewOpen, setIsWhatsNewOpen] = React.useState(() => {
     try {
       const lastSeen = typeof window !== 'undefined' ? localStorage.getItem(WHATS_NEW_STORAGE_KEY) : null;
-      return shouldShowWhatsNew(whatsNewManifest as WhatsNewManifest, lastSeen, 'web');
+      return shouldShowAnnouncement(whatsNewManifest as WhatsNewManifest, lastSeen, 'web');
     } catch {
       return false;
     }

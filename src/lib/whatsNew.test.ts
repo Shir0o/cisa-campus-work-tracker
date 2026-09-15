@@ -1,11 +1,15 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
-  shouldShowWhatsNew,
-  markWhatsNewSeen,
+  WHATS_NEW_STORAGE_KEY,
+  shouldShowAnnouncement,
   getWhatsNewForPlatform,
   createWhatsNewState,
 } from './whatsNew';
 import type { WhatsNewManifest, WhatsNewRelease } from '../scripts/compile-whats-new';
+import {
+  SEEN_RELEASE_STORAGE_KEY,
+  shouldShowAnnouncement as coreShouldShowAnnouncement,
+} from '../../packages/core/src/whatsNew';
 
 describe('whatsNew Service', () => {
   const sampleManifest: WhatsNewManifest = {
@@ -55,16 +59,16 @@ describe('whatsNew Service', () => {
 
   it('determines if popup should show based on lastSeenId and platform', () => {
     // Never seen before: should show
-    expect(shouldShowWhatsNew(sampleManifest, null, 'web')).toBe(true);
+    expect(shouldShowAnnouncement(sampleManifest, null, 'web')).toBe(true);
 
     // Seen older release: should show
-    expect(shouldShowWhatsNew(sampleManifest, '2026-08-01-v1.3.0', 'web')).toBe(true);
+    expect(shouldShowAnnouncement(sampleManifest, '2026-08-01-v1.3.0', 'web')).toBe(true);
 
     // Seen latest release: should NOT show
-    expect(shouldShowWhatsNew(sampleManifest, '2026-09-03-v1.4.0', 'web')).toBe(false);
+    expect(shouldShowAnnouncement(sampleManifest, '2026-09-03-v1.4.0', 'web')).toBe(false);
 
     // Seen something newer than manifest: should NOT show
-    expect(shouldShowWhatsNew(sampleManifest, '2026-10-01-v1.5.0', 'web')).toBe(false);
+    expect(shouldShowAnnouncement(sampleManifest, '2026-10-01-v1.5.0', 'web')).toBe(false);
   });
 
   it('manages storage through the adapter correctly', () => {
@@ -105,5 +109,18 @@ describe('whatsNew Service', () => {
       { text: 'Web feature', platforms: ['web'], category: 'feature' },
       { text: 'Shared ui update', platforms: ['web', 'mobile'], category: 'ui' },
     ]);
+  });
+
+  it('uses the same seen key as @cisa/core', () => {
+    expect(WHATS_NEW_STORAGE_KEY).toBe(SEEN_RELEASE_STORAGE_KEY);
+  });
+
+  it('agrees with the @cisa/core mirror on the announcement gate', () => {
+    const asCore = sampleManifest as unknown as Parameters<typeof coreShouldShowAnnouncement>[0];
+    for (const seen of [null, '2026-08-01-v1.3.0', '2026-09-03-v1.4.0', '2026-10-01-v1.5.0']) {
+      expect(shouldShowAnnouncement(sampleManifest, seen, 'web')).toBe(
+        coreShouldShowAnnouncement(asCore, seen, 'web'),
+      );
+    }
   });
 });
