@@ -7,7 +7,10 @@ service cloud.firestore {
     }
 
     // --- PRIMITIVES & HELPERS ---
-    function isSignedIn() { return request.auth != null; }
+    // A guest-link credential (see /api/guest-doc) is scoped to one RTDB board
+    // node. It must never unlock Firestore, so outside RTDB a guest is signed out.
+    function isGuest() { return request.auth != null && request.auth.token.guest == true; }
+    function isSignedIn() { return request.auth != null && !isGuest(); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function emailVerified() { return request.auth.token.email_verified == true; }

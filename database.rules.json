@@ -5,14 +5,14 @@
 
     "board_docs_rtdb": {
       "$docId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (auth.token.guest != true || auth.token.guestDoc == $docId)",
+        ".write": "auth != null && (auth.token.guest != true || auth.token.guestDoc == $docId)"
       }
     },
     "bible_study_meetings_rtdb": {
       "$meetingId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && auth.token.guest != true",
+        ".write": "auth != null && auth.token.guest != true"
       }
     }
   }

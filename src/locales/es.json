@@ -999,6 +999,25 @@
     }
   },
   "coordination": {
+    "share": {
+      "button": "Compartir",
+      "button_title": "Compartir un enlace de invitado",
+      "title": "Compartir enlace",
+      "subtitle": "Cualquiera con el enlace puede abrir esta página sin cuenta.",
+      "close": "Cerrar",
+      "team_warning": "Esta página es solo para el Equipo. Cualquiera con el enlace puede leer las notas pastorales.",
+      "can_view": "Puede ver",
+      "can_edit": "Puede editar",
+      "link_label": "Enlace de invitado",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "regenerate": "Regenerar enlace",
+      "revoke": "Revocar enlace",
+      "off_body": "Compartir está desactivado. Crea un enlace para que colaboradores externos vean o editen esta página.",
+      "enable": "Crear enlace de invitado",
+      "save_failed": "No se pudo actualizar el enlace. Inténtalo de nuevo.",
+      "copy_failed": "No se pudo copiar. Selecciona el enlace y cópialo manualmente."
+    },
     "pages": "Páginas",
     "done": "Hecho",
     "edit": "Editar",
@@ -1792,5 +1811,25 @@
     "italic": "Cursiva",
     "numbered_list": "Lista numerada",
     "bullet_list": "Lista con viñetas"
+  }
+,
+  "guest": {
+    "loading": "Cargando la página compartida...",
+    "unavailable_title": "Enlace vencido o acceso revocado",
+    "unavailable_body": "Pídele a la persona que compartió el enlace uno nuevo.",
+    "shared_page": "Página compartida",
+    "can_view": "Puede ver",
+    "can_edit": "Puede editar",
+    "untitled": "Página sin título",
+    "empty_page": "Esta página está vacía.",
+    "name_title": "¿Cómo te llamas?",
+    "name_body": "Tu nombre aparece junto a tu cursor mientras editas.",
+    "name_placeholder": "Tu nombre",
+    "name_join": "Unirse",
+    "placeholder": "Escribe la página...",
+    "collaborating_as": "Colaborando como: {name}",
+    "saving": "Guardando...",
+    "saved": "Guardado",
+    "save_failed": "No se pudo guardar"
   }
 }

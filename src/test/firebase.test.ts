@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import { signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
 import { connectFirestoreEmulator } from 'firebase/firestore';
 
 // 1. Mock firebase configuration files
@@ -33,6 +34,7 @@ const mockAuth = {
 // 3. Mock firebase libraries
 vi.mock('firebase/app', () => ({
   initializeApp: vi.fn(() => ({})),
+  getApps: vi.fn(() => []),
 }));
 
 vi.mock('firebase/auth', () => ({
@@ -269,5 +271,25 @@ describe('Firebase Service Helpers', () => {
       await (window as any).__e2eSignIn('test@example.com', 'secret');
       expect(signInWithEmailAndPassword).toHaveBeenCalledWith(mockAuth, 'test@example.com', 'secret');
     });
+  });
+});
+
+describe('guestFirebaseApp', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('mints a named guest app and reuses an existing one', async () => {
+    const mod = await import('../lib/firebase');
+    (initializeApp as any).mockClear();
+
+    (getApps as any).mockReturnValueOnce([]);
+    expect(mod.guestFirebaseApp()).toBeTruthy();
+    expect(initializeApp).toHaveBeenCalledWith(expect.anything(), 'cisa-guest-collab');
+
+    const existing = { name: 'cisa-guest-collab' };
+    (getApps as any).mockReturnValueOnce([existing]);
+    expect(mod.guestFirebaseApp()).toBe(existing);
+    expect(initializeApp).toHaveBeenCalledTimes(1);
   });
 });

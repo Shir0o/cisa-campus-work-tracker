@@ -30,6 +30,7 @@ import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import CoordinationNotesMobile from './CoordinationNotesMobile';
+import ShareDocModal from '../components/modals/ShareDocModal';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   DndContext,
@@ -79,6 +80,7 @@ import {
   Globe,
   RotateCw,
   Link2,
+  Share2,
   Pin,
   GripVertical,
   Archive,
@@ -2571,6 +2573,10 @@ export function DocEditor({
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
   const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
   const [isEditingInSpanish, setIsEditingInSpanish] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  // The header button doubles as the sharing indicator: accented + dotted when a
+  // live guest link exists, so a Full-timer can see the page is shared at a glance.
+  const guestLinkActive = d.guestAccess?.enabled === true && Boolean(d.guestAccess.key);
 
   // This component is remounted (key={doc.id}) per page, so a fresh Y.Doc +
   // awareness live for exactly one page's lifetime.
@@ -3157,6 +3163,21 @@ export function DocEditor({
         </div>
         <div className="flex items-center gap-2.5">
           <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            title={t("coordination.share.button_title")}
+            aria-label={t("coordination.share.button_title")}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+              guestLinkActive
+                ? "border-stage-accent/40 bg-stage-accent/10 text-stage-accent"
+                : "border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent",
+            )}
+          >
+            <Share2 className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{t("coordination.share.button")}</span>
+            {guestLinkActive && <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" aria-hidden />}
+          </button>
+          <button
             onClick={() => onPromote(d)}
             title={t('coordination.keep_note_title')}
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
@@ -3510,6 +3531,8 @@ export function DocEditor({
           onInsert={insertLink}
         />
       )}
+
+      {shareOpen && <ShareDocModal doc={d} currentUserId={meUid} onClose={() => setShareOpen(false)} />}
     </div>
   );
 }

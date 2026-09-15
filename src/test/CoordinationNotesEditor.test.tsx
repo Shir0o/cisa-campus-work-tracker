@@ -532,4 +532,16 @@ describe('CoordinationNotes — live editor behavior', () => {
       expect(h.chain.toggleStrike).toHaveBeenCalled();
     });
   });
+
+  describe('Share link', () => {
+    it('opens the guest share dialog from the editor header', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Share a guest link' }));
+
+      expect(screen.getByRole('dialog', { name: 'Share link' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create guest link' })).toBeInTheDocument();
+    });
+  });
 });

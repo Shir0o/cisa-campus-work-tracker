@@ -2347,6 +2347,111 @@ ${JSON.stringify(contactsList)}`;
     }
   });
 
+  // -- Guest links for coordination docs --------------------------------------
+  // A guest link is a secret key on one board_docs page. These are the only
+  // unauthenticated reads/writes in the app, so they are deliberately narrow:
+  // the key must match the page's stored capability, and the payload is a fixed
+  // public subset - never contacts, threads, or the user directory.
+  const guestLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests" },
+  });
+
+  const MAX_GUEST_MD = 100000;
+
+  // Compare via fixed-length digests so a wrong key cannot be probed by length
+  // or by timing. Returns false for anything that is not a non-empty string.
+  function guestKeyMatches(stored: unknown, provided: unknown): boolean {
+    if (typeof stored !== "string" || typeof provided !== "string") return false;
+    if (stored.length === 0 || provided.length === 0) return false;
+    const a = crypto.createHash("sha256").update(stored).digest();
+    const b = crypto.createHash("sha256").update(provided).digest();
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  // Shared server-side capability check for the read and write endpoints.
+  async function loadGuestDoc(docId: string, key: unknown) {
+    const snap = await getAdminDb().collection("board_docs").doc(docId).get();
+    if (!snap.exists) return null;
+    const data = snap.data() || {};
+    const guest = data.guestAccess;
+    if (!guest || guest.enabled !== true || !guestKeyMatches(guest.key, key)) return null;
+    const permission = guest.permission === "edit" ? "edit" : "view";
+    return { data, permission };
+  }
+
+  // Read: only the public fields a guest page renders, plus (for an edit link) a
+  // scoped custom token that bounds RTDB collaboration to this one doc.
+  app.get("/api/guest-doc/:docId", guestLimiter, async (req, res) => {
+    try {
+      const docId = String(req.params.docId);
+      const found = await loadGuestDoc(docId, req.query.key);
+      if (!found) {
+        res.status(404).json({ error: "unavailable" });
+        return;
+      }
+      const { data, permission } = found;
+      const doc = {
+        id: docId,
+        title: typeof data.title === "string" ? data.title : "",
+        date: typeof data.date === "string" ? data.date : "",
+        audience: data.audience === "trainees" || data.audience === "everyone" ? data.audience : "team",
+        md: typeof data.md === "string" ? data.md : "",
+      };
+      let collabToken: string | undefined;
+      if (permission === "edit") {
+        try {
+          collabToken = await getAdminAuth().createCustomToken(`guest_${crypto.randomUUID()}`, {
+            guest: true,
+            guestDoc: docId,
+          });
+        } catch (e) {
+          // Editing still works through the save endpoint; only live sync degrades.
+          console.error("Guest collab token mint failed: ", e);
+        }
+      }
+      res.set("Cache-Control", "no-store");
+      res.status(200).json({ doc, permission, collabToken });
+    } catch (error: any) {
+      console.error("GET /api/guest-doc error: ", error);
+      res.status(500).json({ error: "unavailable" });
+    }
+  });
+
+  // Write: edit links can persist the page's markdown. The live Yjs session over
+  // RTDB is the fast path; this is the durable copy for when no Full-timer has
+  // the page open. Only `md` (and attribution) is writable - never audience,
+  // title, or the guest config itself.
+  app.post("/api/guest-doc/:docId", guestLimiter, async (req, res) => {
+    try {
+      const docId = String(req.params.docId);
+      const found = await loadGuestDoc(docId, req.body?.key);
+      if (!found || found.permission !== "edit") {
+        res.status(404).json({ error: "unavailable" });
+        return;
+      }
+      const md = req.body?.md;
+      if (typeof md !== "string" || md.length > MAX_GUEST_MD) {
+        res.status(400).json({ error: "Invalid markdown" });
+        return;
+      }
+      const rawName = typeof req.body?.name === "string" ? req.body.name.trim().slice(0, 80) : "";
+      await getAdminDb().collection("board_docs").doc(docId).update({
+        md,
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: "guest",
+        updatedByName: rawName || "Guest",
+      });
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("POST /api/guest-doc error: ", error);
+      res.status(500).json({ error: "unavailable" });
+    }
+  });
+
   // Remote Push Dispatch: sends an Expo push notification to target user's registered pushToken
   app.post("/api/send-push", async (req, res) => {
     try {

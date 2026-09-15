@@ -152,6 +152,19 @@ export const byDateAsc = (a: BoardSession, b: BoardSession) => a.date.localeComp
 // markdown lives in Firestore as the durable, searchable record; live editing
 // rides on a Yjs CRDT over RTDB. status/group/weekday labels are derived.
 
+// Guest links (coordination docs) - types only on the mobile side. The web app
+// owns key generation and the /c/:docId guest surface; the phone only has to
+// keep the shared BoardDoc shape in sync.
+export type GuestPermission = 'view' | 'edit';
+
+export interface GuestAccessConfig {
+  enabled: boolean;
+  key: string;
+  permission: GuestPermission;
+  createdAt?: unknown;
+  createdBy?: string;
+}
+
 // board_docs/{id}
 export interface BoardDoc {
   id: string;
@@ -171,6 +184,7 @@ export interface BoardDoc {
   deletedAt?: unknown; // soft-delete marker — set means the page is in Trash
   pinned?: boolean; // pinned pages sort first in the Pages list
   pinnedOrder?: number; // order position among pinned pages when reordered
+  guestAccess?: GuestAccessConfig; // guest link capability; absent means not shared
 }
 
 // A soft-deleted page (see `deletedAt`) is hidden from the main Pages list
