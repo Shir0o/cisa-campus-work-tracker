@@ -146,6 +146,33 @@ describe('attdSync', () => {
     expect(importUpdates[0][1].status).toBe('confirmed');
   });
 
+  // #1024 phase 4: a walk-in contact created here carries `createdBy` as its
+  // only tie, so it must carry the derived `visibleTo` in the same write --
+  // otherwise the rules hide the new person from the reviewer who just made
+  // them.
+  it('stamps visibleTo on the walk-in contacts it creates', async () => {
+    await confirmAttendanceImport({
+      importId: 'import-1',
+      preview: pending.preview,
+      decisions: [
+        { rowIndex: 0, memberId: null, attdName: 'New Person', status: 'present', isLate: false, contactId: null, contactName: null, keepCisa: false },
+      ],
+      contacts: [],
+      rhythms: [study],
+      gatherings: [week],
+      targetRhythmId: 'r1',
+      targetGatheringId: 'g1',
+      createGathering: false,
+      userId: 'u-admin',
+      userName: 'Admin',
+    });
+
+    const contactSets = hoisted.batch.set.mock.calls.filter((call) => call[0].path === 'contacts');
+    expect(contactSets).toHaveLength(1);
+    expect(contactSets[0][1].createdBy).toBe('u-admin');
+    expect(contactSets[0][1].visibleTo).toEqual(['u-admin']);
+  });
+
   it('creates a new occasion when the reviewer asks for one', async () => {
     await confirmAttendanceImport({
       importId: 'import-1',
