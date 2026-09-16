@@ -65,14 +65,12 @@ import type { WhatsNewManifest } from '../scripts/compile-whats-new';
 import {
   subscribePartners,
   savePartners,
-  groupsForTerm,
   partnersTermKey,
-  addToGroup,
-  removeFromGroups,
-  dropGroup,
-  carryOverPartners,
-  clearTerm,
-  type PartnersByTerm,
+  pairingsByTerm,
+  rePair,
+  endPairing,
+  dayKey,
+  type PartnerPairing,
 } from '../lib/partners';
 import { TEAMS, teamLabelKey, isKnownTeam, saveUserTeam } from '../lib/teams';
 import { isRealPerson } from '../lib/permissions';
@@ -1932,11 +1930,14 @@ function CarePick({
 
 function PartnersSection({ users }: { users: AppUser[] }) {
   const { t } = useLanguage();
-  const [byTerm, setByTerm] = useState<PartnersByTerm>({});
-  const [picking, setPicking] = useState<number | 'new' | null>(null);
+  const [pairings, setPairings] = useState<PartnerPairing[]>([]);
+  const [picking, setPicking] = useState<'new' | null>(null);
   const [first, setFirst] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(dayKey());
+  const [endingId, setEndingId] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState(dayKey());
 
-  useEffect(() => subscribePartners(setByTerm), []);
+  useEffect(() => subscribePartners(setPairings), []);
 
   const term = partnersTermKey();
   const trainees = useMemo(() => users.filter((u) => u.role === 'manager' && isRealPerson(u)), [users]);
@@ -1945,16 +1946,17 @@ function PartnersSection({ users }: { users: AppUser[] }) {
     for (const u of users) m[u.uid] = u;
     return m;
   }, [users]);
-  const groups = groupsForTerm(byTerm, term);
-  const partnered = useMemo(() => new Set(groups.flat()), [groups]);
-  const free = useMemo(() => trainees.filter((tr) => !partnered.has(tr.uid)), [trainees, partnered]);
-  const older = useMemo(
-    () => Object.keys(byTerm).filter((k) => k !== term && groupsForTerm(byTerm, k).length > 0),
+  const byTerm = useMemo(() => pairingsByTerm(pairings), [pairings]);
+  const current = useMemo(() => byTerm[term] ?? [], [byTerm, term]);
+  const history = useMemo(
+    () => Object.entries(byTerm).filter(([k, arr]) => k !== term && arr.length > 0),
     [byTerm, term],
   );
+  const openMembers = useMemo(() => new Set(current.filter((p) => !p.endDate).flatMap((p) => p.members)), [current]);
+  const free = useMemo(() => trainees.filter((tr) => !openMembers.has(tr.uid)), [trainees, openMembers]);
 
-  const commit = (next: PartnersByTerm) => {
-    setByTerm(next);
+  const commit = (next: PartnerPairing[]) => {
+    setPairings(next);
     void savePartners(next);
   };
 
@@ -1963,29 +1965,52 @@ function PartnersSection({ users }: { users: AppUser[] }) {
     setFirst(null);
   };
 
+  const pickSecond = (uid: string) => {
+    const members = [first!, uid];
+    const already = current.some((p) => !p.endDate && members.every((m) => p.members.includes(m)));
+    if (already) {
+      closePicking();
+      return;
+    }
+    const next = rePair(pairings, members, startDate);
+    if (next.length === pairings.length) {
+      alert(t('settings.pairs_overlap', "That overlaps a pairing that's already ended or already covers that date."));
+    } else {
+      commit(next);
+    }
+    closePicking();
+  };
+
   const newPair = first ? (
     <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
       <div className="font-serif text-base text-on-surface mb-1">
         {t('settings.pairs_who_with', 'Who goes out with {name}?').replace('{name}', byId[first]?.displayName || 'Unnamed')}
       </div>
       <CarePick
-        people={free.filter((s) => s.uid !== first)}
+        people={trainees.filter((s) => s.uid !== first)}
         empty={t('settings.pairs_nobody_free', 'Every trainee is already partnered this term.')}
         cancelLabel={t('settings.pairs_never_mind', 'Never mind')}
-        onPick={(uid) => {
-          commit(addToGroup(byTerm, term, uid, first));
-          closePicking();
-        }}
+        onPick={pickSecond}
         onCancel={closePicking}
       />
     </div>
   ) : (
     <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+      <label className="block mb-3">
+        <span className="text-[13px] font-medium text-on-surface-variant">{t('settings.pairs_start_date', 'Started on')}</span>
+        <input
+          type="date"
+          value={startDate}
+          max={dayKey()}
+          onChange={(e) => setStartDate(e.target.value || dayKey())}
+          className="mt-1 w-full rounded-xl border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface"
+        />
+      </label>
       <div className="font-serif text-base text-on-surface mb-1">
         {t('settings.pairs_first_of_two', "Who's the first of the two?")}
       </div>
       <CarePick
-        people={free}
+        people={trainees}
         empty={t('settings.pairs_nobody_free', 'Every trainee is already partnered this term.')}
         cancelLabel={t('settings.pairs_never_mind', 'Never mind')}
         onPick={(id) => setFirst(id)}
@@ -2000,74 +2025,75 @@ function PartnersSection({ users }: { users: AppUser[] }) {
         title={t('settings.pairs_title', 'Going out together')}
         sub={t(
           'settings.pairs_sub',
-          'The two trainees who go out as one, this term. A person either of them brings in is shared with the other automatically.',
+          "The trainees who go out as one, kept as dated stretches of time. Set who's paired and when it began or ended — the earlier arrangements stay readable.",
         )}
       />
       <div className="flex flex-col gap-3 max-w-2xl">
-        {groups.map((g, i) => {
-          const people = g.map((id) => byId[id]).filter(Boolean);
+        {current.map((p) => {
+          const people = p.members.map((id) => byId[id]).filter(Boolean);
+          const open = !p.endDate;
           return (
-            <div key={i} className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+            <div key={p.id} className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
               <div className="flex items-start gap-3">
                 <div className="flex -space-x-2">
-                  {people.slice(0, 3).map((p) => (
-                    <Avatar key={p.uid} name={p.displayName} photoURL={p.photoURL} size="md" />
+                  {people.slice(0, 3).map((person) => (
+                    <Avatar key={person.uid} name={person.displayName} photoURL={person.photoURL} size="md" />
                   ))}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-serif text-base text-on-surface leading-tight truncate">{pairNames(g, byId)}</div>
+                  <div className="font-serif text-base text-on-surface leading-tight truncate">{pairNames(p.members, byId)}</div>
                   <div className="text-[13px] text-on-surface-variant mt-0.5">
-                    {people.length > 2
-                      ? t('settings.pairs_going_as_one', '{n} going out as one').replace('{n}', String(people.length))
-                      : t('settings.pairs_partners_term', 'Partners this term')}
+                    {open
+                      ? t('settings.pairs_since', 'Since {date}').replace('{date}', p.startDate)
+                      : t('settings.pairs_range', '{start} to {end}')
+                          .replace('{start}', p.startDate)
+                          .replace('{end}', p.endDate || '')}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => commit(dropGroup(byTerm, term, i))}
-                  className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
-                >
-                  {t('settings.pairs_not_partners', "They're not partners")}
-                </button>
+                {open && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEndingId(p.id);
+                      setEndDate(dayKey());
+                    }}
+                    className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                  >
+                    {t('settings.pairs_end', 'End')}
+                  </button>
+                )}
               </div>
 
-              <div className="mt-4 flex flex-col gap-1.5">
-                {people.map((p) => (
-                  <div key={p.uid} className="flex items-center gap-2.5">
-                    <Avatar name={p.displayName} photoURL={p.photoURL} size="sm" />
-                    <span className="text-sm text-on-surface truncate">{p.displayName || 'Unnamed'}</span>
-                    <span className="text-[12px] text-on-surface-variant">{t('settings.pairs_trainee', 'Trainee')}</span>
-                    <button
-                      type="button"
-                      onClick={() => commit(removeFromGroups(byTerm, term, p.uid))}
-                      aria-label={t('settings.pairs_remove_person', 'Take {name} out of this pair').replace('{name}', p.displayName || '')}
-                      className="ml-auto shrink-0 w-7 h-7 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {picking === i ? (
-                <CarePick
-                  people={free}
-                  empty={t('settings.pairs_nobody_free', 'Every trainee is already partnered this term.')}
-                  cancelLabel={t('settings.pairs_never_mind', 'Never mind')}
-                  onPick={(id) => {
-                    commit(addToGroup(byTerm, term, id, g[0]));
-                    setPicking(null);
-                  }}
-                  onCancel={() => setPicking(null)}
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setPicking(i)}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> {t('settings.pairs_someone_alongside', 'Someone alongside them')}
-                </button>
+              {p.id === endingId && (
+                <div className="mt-3 flex items-end gap-2">
+                  <label className="flex-1">
+                    <span className="text-[12px] text-on-surface-variant">{t('settings.pairs_ended_on', 'Ended on')}</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      min={p.startDate}
+                      onChange={(e) => setEndDate(e.target.value || dayKey())}
+                      className="mt-1 w-full rounded-xl border border-outline-variant/40 bg-surface px-3 py-2 text-sm text-on-surface"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      commit(endPairing(pairings, p.id, endDate));
+                      setEndingId(null);
+                    }}
+                    className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                  >
+                    {t('settings.pairs_confirm_end', 'End pairing')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEndingId(null)}
+                    className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-medium text-on-surface-variant hover:bg-surface transition-colors cursor-pointer"
+                  >
+                    {t('settings.pairs_never_mind', 'Never mind')}
+                  </button>
+                </div>
               )}
             </div>
           );
@@ -2078,7 +2104,10 @@ function PartnersSection({ users }: { users: AppUser[] }) {
         ) : (
           <button
             type="button"
-            onClick={() => setPicking('new')}
+            onClick={() => {
+              setPicking('new');
+              setStartDate(dayKey());
+            }}
             className="inline-flex items-center gap-2 self-start rounded-2xl border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" /> {t('settings.pairs_two_together', 'Two trainees going out together')}
@@ -2094,37 +2123,26 @@ function PartnersSection({ users }: { users: AppUser[] }) {
           </p>
         )}
 
-        <div className="rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5">
-          <p className="text-[13px] text-on-surface-variant leading-relaxed">
-            {t(
-              'settings.pairs_note',
-              "A person either partner brings in is shared with the other from the moment they're added — neither of them has to remember to. You set the pairs; they live inside them. It's per term, so it doesn't quietly follow anyone into next semester, and it only reaches people added from now on.",
-            )}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {older.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => commit(carryOverPartners(byTerm, k, term))}
-                className="rounded-full border border-outline-variant/40 px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
-              >
-                {t('settings.pairs_bring_over', 'Bring over {term}').replace('{term}', k)}
-              </button>
+        {history.length > 0 && (
+          <div className="rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5">
+            <div className="font-serif text-base text-on-surface mb-3">{t('settings.pairs_history', 'Earlier arrangements')}</div>
+            {history.map(([k, arr]) => (
+              <div key={k} className="mb-3 last:mb-0">
+                <div className="text-[13px] font-medium text-on-surface-variant">{k}</div>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {arr.map((p) => (
+                    <li key={p.id} className="text-[13px] text-on-surface-variant">
+                      {pairNames(p.members, byId)}{' '}
+                      {p.endDate
+                        ? t('settings.pairs_range_short', '{start}–{end}').replace('{start}', p.startDate).replace('{end}', p.endDate)
+                        : t('settings.pairs_from', 'from {start}').replace('{start}', p.startDate)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(t('settings.pairs_clear_confirm', "Clear this term's pairs? This can't be undone."))) {
-                  commit(clearTerm(byTerm, term));
-                }
-              }}
-              className="rounded-full border border-outline-variant/40 px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
-            >
-              {t('settings.pairs_clear', "Start this term's pairs over")}
-            </button>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

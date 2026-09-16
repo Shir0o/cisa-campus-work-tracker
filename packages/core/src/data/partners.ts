@@ -123,9 +123,9 @@ export function cleanPairings(raw: readonly PartnerPairing[] | undefined | null)
   for (const p of raw || []) {
     const members = uniqIds(p?.members);
     if (members.length < 2 || !isDayKey(p?.startDate)) continue;
-    const endDate = isDayKey(p?.endDate) ? p.endDate : null;
+    const endDate = isDayKey(p?.endDate) ? p.endDate : undefined;
     if (endDate && endDate < p.startDate) continue;
-    out.push({ id: p.id || pairingId(members, p.startDate), members, startDate: p.startDate, endDate });
+    out.push({ id: p.id || pairingId(members, p.startDate), members, startDate: p.startDate, ...(endDate ? { endDate } : {}) });
   }
   return out;
 }
@@ -198,7 +198,7 @@ export function migrateByTermToPairings(
     for (const members of cleanPartnerGroups(groups)) {
       const startDate = bounds?.start ?? today;
       const endDate = term === current ? null : bounds?.end ?? startDate;
-      out.push({ id: pairingId(members, startDate), members, startDate, endDate });
+      out.push({ id: pairingId(members, startDate), members, startDate, ...(endDate ? { endDate } : {}) });
     }
   }
   return out;
@@ -219,7 +219,7 @@ export function openPairing(
   const cleanMembers = uniqIds(members);
   if (cleanMembers.length < 2 || !isDayKey(startDate)) return next;
   if (findOverlap(next, cleanMembers, startDate, endDate)) return next;
-  return [...next, { id: pairingId(cleanMembers, startDate), members: cleanMembers, startDate, endDate }];
+  return [...next, { id: pairingId(cleanMembers, startDate), members: cleanMembers, startDate, ...(endDate ? { endDate } : {}) }];
 }
 
 /** Close an open pairing on `endDate` (today by default), inclusive. An already
@@ -249,9 +249,11 @@ export function rePair(
   const next = cleanPairings(pairings);
   const wanted = uniqIds(members);
   if (wanted.length < 2 || !isDayKey(startDate)) return next;
-  const candidate: PartnerPairing = { id: pairingId(wanted, startDate), members: wanted, startDate, endDate: null };
+  const candidate: PartnerPairing = { id: pairingId(wanted, startDate), members: wanted, startDate };
   const shared = next.filter((p) => sharesMember(p, candidate));
-  const closable = shared.filter((p) => !p.endDate && p.startDate < startDate);
+  const closable = shared.filter((p) => {
+    return !p.endDate && p.startDate < startDate;
+  });
   const unclosable = shared.filter((p) => !closable.includes(p));
   if (unclosable.some((p) => pairingsOverlap(p, candidate))) return next;
   const before = shiftDay(startDate, -1);
@@ -280,7 +282,7 @@ export function applyPartners(
     CURRENT_TERM = null;
   }
   CURRENT_DAY = dayKey(now);
-  CURRENT_PAIRINGS = Array.isArray(input) ? cleanPairings(input) : migrateByTermToPairings(input, now);
+  CURRENT_PAIRINGS = Array.isArray(input) ? cleanPairings(input) : migrateByTermToPairings(input as PartnersByTerm, now);
 }
 
 /** The active term key currently tracked by module-level gospel partner

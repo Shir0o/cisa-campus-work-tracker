@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Settings from '../views/Settings';
 import { useAuth } from '../components/AuthProvider';
-import { partnersTermKey } from '../lib/partners';
+import { dayKey, pairingId, type PartnerPairing } from '../lib/partners';
 import { FirstRunStore } from '../lib/firstRun';
 import React from 'react';
 
@@ -335,14 +335,14 @@ describe('Settings', () => {
       },
     ];
 
-    const partnersMock = (byTerm: Record<string, string[][]>) => {
+    const partnersMock = (pairings: PartnerPairing[]) => {
       vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
         if (ref?.path === 'users') {
           callback({ docs: adminTraineeUsers });
         } else if (ref?.path === 'invitations') {
           callback({ docs: [] });
         } else if (ref?.path === 'settings/partners') {
-          callback({ data: () => ({ byTerm }) });
+          callback({ data: () => ({ pairings }) });
         } else {
           callback({ docs: [] });
         }
@@ -351,22 +351,20 @@ describe('Settings', () => {
     };
 
     it('renders the existing pair and the add-pair button for a full-timer', async () => {
-      const term = partnersTermKey();
       setupManagerAuth();
-      partnersMock({ [term]: [['u-trainee', 'u-trainee2']] });
+      partnersMock([{ id: 'p1', members: ['u-trainee', 'u-trainee2'], startDate: dayKey() }]);
       render(<Settings />);
 
       await waitFor(() => {
         expect(screen.getByText('Going out together')).toBeInTheDocument();
       });
       expect(screen.getByText('Trainee User and Trainee Two')).toBeInTheDocument();
-      expect(screen.getByText('Partners this term')).toBeInTheDocument();
       expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
     });
 
     it('hides the section from a trainee', async () => {
       setupManagerAuth({ isAdmin: false, role: 'manager' });
-      partnersMock({});
+      partnersMock([]);
       render(<Settings />);
 
       await waitFor(() => {
@@ -376,9 +374,8 @@ describe('Settings', () => {
     });
 
     it('pairs two trainees and writes the arrangement', async () => {
-      const term = partnersTermKey();
       setupManagerAuth();
-      partnersMock({});
+      partnersMock([]);
       render(<Settings />);
 
       await waitFor(() => {
@@ -391,17 +388,18 @@ describe('Settings', () => {
       expect(screen.getByText('Who goes out with Trainee User?')).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: /Trainee Two/ }));
-      expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        { byTerm: { [term]: [{ members: ['u-trainee', 'u-trainee2'] }] } },
-        { merge: true },
-      );
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          { pairings: [{ id: pairingId(['u-trainee', 'u-trainee2'], dayKey()), members: ['u-trainee', 'u-trainee2'], startDate: dayKey() }] },
+          { merge: true },
+        );
+      });
     });
 
     it('shows who is going out on their own this term', async () => {
-      const term = partnersTermKey();
       setupManagerAuth();
-      partnersMock({ [term]: [['u-trainee', 'u-trainee2']] });
+      partnersMock([{ id: 'p1', members: ['u-trainee', 'u-trainee2'], startDate: dayKey() }]);
       render(<Settings />);
 
       await waitFor(() => {
