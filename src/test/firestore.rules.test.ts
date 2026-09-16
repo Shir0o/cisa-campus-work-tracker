@@ -660,6 +660,84 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // The founders list is written once at creation (#1049) and backfilled for
+  // older contacts (#1050). It is immutable: any update that touches it is a
+  // ghost field for everyone except a Full-timer's genuine-mistake correction,
+  // which must rewrite `visibleTo` in lockstep so the founding set and the
+  // access it grants never drift (#1055).
+  describe('Founders are immutable except a Full-timer (#1055)', () => {
+    const seed = async (contactId: string, contact: Record<string, unknown>) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'contacts', contactId), {
+          name: 'Test', email: 'test@example.com', ...contact,
+        });
+      });
+    };
+
+    it('lets a Trainee read a contact they founded, and refuses an untied person', async () => {
+      await seed('c_founded', { createdBy: 'admin1', founders: ['manager1'], visibleTo: ['admin1', 'manager1'] });
+      await seed('c_untied_founder', { createdBy: 'admin1', founders: ['manager1'], visibleTo: ['admin1'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      // A founder is mirrored into `visibleTo`, so the denormalised list lets
+      // them read even though a Trainee is otherwise scoped to the list.
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/c_founded')));
+      // A Trainee who is in `founders` but not in `visibleTo` still fails
+      // closed — the list, not the list-writer, is the source of truth.
+      await assertFails(getDoc(doc(trainee, 'contacts/c_untied_founder')));
+    });
+
+    it('rejects a non-Full-timer who adds, changes or removes a founder', async () => {
+      await seed('c_immutable', {
+        createdBy: 'admin1', founders: ['admin1'], coCreators: ['manager1'],
+        visibleTo: ['admin1', 'manager1'],
+      });
+      const coCreator = getFirestore({ uid: 'manager1' });
+      // A co-creator may not add someone to the founders set.
+      await assertFails(updateDoc(doc(coCreator, 'contacts/c_immutable'), {
+        founders: arrayUnion('manager2'),
+        visibleTo: ['admin1', 'manager1', 'manager2'],
+        updatedAt: serverTimestamp(),
+      }));
+      // A co-creator may not remove someone from the founders set.
+      await assertFails(updateDoc(doc(coCreator, 'contacts/c_immutable'), {
+        founders: arrayRemove('admin1'),
+        visibleTo: ['manager1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets a Full-timer correct the founders list, rewriting visibleTo in lockstep', async () => {
+      await seed('c_correct', {
+        createdBy: 'admin1', founders: ['admin1', 'manager1'],
+        visibleTo: ['admin1', 'manager1'],
+      });
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_correct'), {
+        founders: arrayRemove('manager1'),
+        visibleTo: ['admin1'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'admin1',
+        updatedByName: 'Admin One',
+      }));
+    });
+
+    it('rejects the removed caregiver field on a contact as a ghost field (#1055)', async () => {
+      await seed('c_no_caregiver', {
+        createdBy: 'admin1', founders: ['admin1'], visibleTo: ['admin1'],
+      });
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertFails(updateDoc(doc(admin, 'contacts/c_no_caregiver'), {
+        caregiver: 'manager1',
+        visibleTo: ['admin1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+  });
+
   describe('Prayers', () => {
     it('lets an operator store up to 4 answeredPhotos on an answered prayer', async () => {
       const db = getFirestore({ uid: 'operator1' });

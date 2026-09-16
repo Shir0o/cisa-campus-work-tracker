@@ -9,7 +9,7 @@ service cloud.firestore {
     // --- PRIMITIVES & HELPERS ---
     // A guest-link credential (see /api/guest-doc) is scoped to one RTDB board
     // node. It must never unlock Firestore, so outside RTDB a guest is signed out.
-    function isGuest() { return request.auth != null && request.auth.token.guest == true; }
+    function isGuest() { return request.auth != null && request.auth.token.get('guest', false) == true; }
     function isSignedIn() { return request.auth != null && !isGuest(); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
@@ -271,13 +271,33 @@ service cloud.firestore {
                            request.auth.uid in existing().coCreators
                          )
                        ) && (
-                         existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()).size() <= 1 &&
-                         incoming().get('coCreators', []).toSet().difference(existing().get('coCreators', []).toSet()).isEmpty() &&
-                         incoming().get('carers', []).toSet().difference(existing().get('carers', []).toSet()).isEmpty() &&
-                         existing().get('carers', []).toSet().difference(incoming().get('carers', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet())) &&
-                         incoming().get('visibleTo', []).toSet().difference(existing().get('visibleTo', []).toSet()).isEmpty() &&
-                         existing().get('visibleTo', []).toSet().difference(incoming().get('visibleTo', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()))
-                       )));
+existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()).size() <= 1 &&
+                          incoming().get('coCreators', []).toSet().difference(existing().get('coCreators', []).toSet()).isEmpty() &&
+                          incoming().get('carers', []).toSet().difference(existing().get('carers', []).toSet()).isEmpty() &&
+                          existing().get('carers', []).toSet().difference(incoming().get('carers', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet())) &&
+                          incoming().get('visibleTo', []).toSet().difference(existing().get('visibleTo', []).toSet()).isEmpty() &&
+                          existing().get('visibleTo', []).toSet().difference(incoming().get('visibleTo', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()))
+                        )) ||
+                       // #1055: the founders list is immutable after creation —
+                       // written once at #1049/#1050 from the pairing. It is
+                       // rejected as a ghost field for everyone except a
+                       // Full-timer's genuine-mistake correction (the documented
+                       // exception). A Full-timer may add, change or remove the
+                       // founding set, and must rewrite visibleTo in lockstep so
+                       // a corrected founding set and the access it grants never
+                       // drift. They may also drop the carer tie that only that
+                       // founder's reach held (removing a founder alongside their
+                       // sheep). Only an admin reaches this branch — it fires only
+                       // when `founders` is itself among the affected keys, so a
+                       // non-admin write touching founders is rejected as a ghost
+                       // field and founders never moves for anyone else.
+                       (incoming().diff(existing()).affectedKeys().hasOnly([
+                         'founders', 'visibleTo',
+                         'coCreators', 'carers',
+                         'updatedAt', 'updatedBy', 'updatedByName'
+                       ]) &&
+                       isAdmin() &&
+                       incoming().diff(existing()).affectedKeys().hasAny(['founders'])));
       allow delete: if isValidId(contactId) && isManager();
 
       // Interactions
