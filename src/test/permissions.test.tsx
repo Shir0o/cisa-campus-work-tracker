@@ -386,6 +386,13 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
     expect(canSeeContact('manager', 'u1', null)).toBe(false);
   });
 
+  it('canSeeContact lets a founder see the person even when they are neither creator nor collaborator (#1049)', () => {
+    const founded = { id: 'c1', createdBy: 'u2', founders: ['u2', 'u1'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', founded)).toBe(true);
+    const notFounder = { id: 'c2', createdBy: 'u2', founders: ['u2', 'u3'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', notFounder)).toBe(false);
+  });
+
   it('canSeeContact allows trainees to see current term contacts created by active gospel partners', () => {
     // u1 and u2 are paired in the active term ("Fall 2026")
     applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
@@ -758,8 +765,8 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
 describe('visibleToOf (web mirror)', () => {
   it('collects every persisted tie, de-duplicated', () => {
     expect(
-      visibleToOf({ createdBy: 'u1', addedBy: 'u2', owner: 'u1', coCreators: ['u3'] }),
-    ).toEqual(['u1', 'u2', 'u3']);
+      visibleToOf({ createdBy: 'u1', addedBy: 'u2', owner: 'u1', coCreators: ['u3'], founders: ['u1', 'u4'] }),
+    ).toEqual(['u1', 'u2', 'u3', 'u4']);
   });
 
   it('returns an empty list when there are no ties', () => {

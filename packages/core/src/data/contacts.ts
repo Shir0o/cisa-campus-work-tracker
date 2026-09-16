@@ -21,7 +21,7 @@ import {
 } from "firebase/firestore";
 import { isTrainee, fullTimerIds } from "../walking";
 import { seesAllPeople, visibleToOf, type AppRole } from "../permissions";
-import { stampPartners } from "./partners";
+import { stampFounders, stampPartners } from "./partners";
 import type { Touch } from "../myday";
 import type { Contact, Interaction, Stage } from "../types";
 
@@ -208,6 +208,9 @@ export async function addContact(
   // Gospel partners: a person either member of a pair brings in is shared with
   // the other from the moment they're added (stamped as a co-creator).
   stampPartners(data, by?.uid);
+  // Founding set (#1049): whoever logged the person plus everyone they were
+  // partnered with at that instant. Written once here and never rewritten.
+  stampFounders(data, by?.uid);
   // Denormalise the ties into the access list the rules read, after partner
   // stamping so a gospel partner's uid is included (#1024 phase 4).
   data.visibleTo = visibleToOf(data);

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Briefcase, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
-import { stampPartners } from '../../lib/partners';
+import { stampFounders, stampPartners } from '../../lib/partners';
 import { visibleToOf } from '../../lib/permissions';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
@@ -160,6 +160,9 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       // Gospel partners: a person either member of a pair brings in is shared
       // with the other from the moment they're added (stamped as a co-creator).
       stampPartners(contactData, user?.uid);
+      // Founding set (#1049): whoever logged the person plus everyone they were
+      // partnered with at that instant. Written once here and never rewritten.
+      stampFounders(contactData, user?.uid);
       // Denormalise the ties into the access list the rules read (#1024 phase 4).
       const contactWithTies = { ...contactData, visibleTo: visibleToOf(contactData) };
 

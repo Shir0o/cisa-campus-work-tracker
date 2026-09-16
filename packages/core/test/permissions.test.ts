@@ -182,6 +182,13 @@ describe('canSeeContact', () => {
     expect(canSeeContact('manager', 'u1', null)).toBe(false);
   });
 
+  it('lets a founder see the person even when they are neither creator nor collaborator (#1049)', () => {
+    const founded = { id: 'c1', createdBy: 'u2', founders: ['u2', 'u1'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', founded)).toBe(true);
+    const notFounder = { id: 'c2', createdBy: 'u2', founders: ['u2', 'u3'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', notFounder)).toBe(false);
+  });
+
   // Mirrors the web app's copy in src/test/permissions.test.tsx so the two
   // rules stay in step (#1024 phase 3).
   it('widens a trainee to a current-term gospel partner, and only for that term', () => {
@@ -228,15 +235,16 @@ describe('canSeeContact', () => {
 });
 
 describe('visibleToOf', () => {
-  it('collects creator, adder, caregiver and collaborators', () => {
+  it('collects creator, adder, caregiver, collaborators and founders', () => {
     expect(
       visibleToOf({
         createdBy: 'u1',
         addedBy: 'u2',
         owner: 'u3',
         coCreators: ['u4', 'u5'],
+        founders: ['u1', 'u6'],
       }),
-    ).toEqual(['u1', 'u2', 'u3', 'u4', 'u5']);
+    ).toEqual(['u1', 'u2', 'u3', 'u4', 'u5', 'u6']);
   });
 
   it('de-duplicates and drops null/empty ids', () => {
@@ -246,8 +254,9 @@ describe('visibleToOf', () => {
         addedBy: null,
         owner: 'u1',
         coCreators: ['u1', 'u2', '', null as unknown as string],
+        founders: ['u1', 'u3'],
       }),
-    ).toEqual(['u1', 'u2']);
+    ).toEqual(['u1', 'u2', 'u3']);
   });
 
   it('returns an empty list for a contact with no ties', () => {

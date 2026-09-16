@@ -304,13 +304,18 @@ export type { ContactTies } from './contactTies';
 export function canSeeContact(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; season?: string; tags?: string[] } | null | undefined
+  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; season?: string; tags?: string[] } | null | undefined
 ): boolean {
   if (!contact) return false;
   if (seesAllPeople(role)) return true;
   if (!staffId) return false;
   const added = contact.addedBy || contact.createdBy;
-  if (added === staffId || contact.owner === staffId || (contact.coCreators || []).includes(staffId)) {
+  if (
+    added === staffId ||
+    contact.owner === staffId ||
+    (contact.coCreators || []).includes(staffId) ||
+    (contact.founders || []).includes(staffId)
+  ) {
     return true;
   }
 
@@ -353,7 +358,7 @@ export function canTransferOwnership(
   return ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId;
 }
 
-export function visibleContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] }>(
+export function visibleContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[] }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[]
@@ -362,7 +367,7 @@ export function visibleContacts<T extends { addedBy?: string; createdBy?: string
   return list.filter((c) => canSeeContact(role, staffId, c));
 }
 
-export function journeyContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; season?: string }>(
+export function journeyContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; season?: string }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[],
