@@ -56,7 +56,7 @@ import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canTransferOwnership, visibleToOf } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
-import { carerNamesOf } from '../../lib/carers';
+import { carerNamesOf, carersAfterCollaboratorRemoval, reachWithoutCarers } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
@@ -664,14 +664,21 @@ export default function ContactDetailsModal({
   const removeShare = async (staffId: string) => {
     if (!contact) return;
     const s = teamMembers.find((m) => m.id === staffId);
-    await updateDoc(doc(db, "contacts", contact.id), {
+    const nextCoCreators = (contact.coCreators || []).filter((x) => x !== staffId);
+    // Undoing a share also drops the carer tie that reached them, so a removed
+    // collaborator cannot hold the person through their sheep (#1052). A
+    // founder who took the person on keeps the tie — founding is permanent.
+    const nextCarers = carersAfterCollaboratorRemoval({ ...contact, coCreators: nextCoCreators }, staffId);
+    const patch: Record<string, unknown> = {
       coCreators: arrayRemove(staffId),
-      visibleTo: visibleToOf({
-        ...contact,
-        coCreators: (contact.coCreators || []).filter((x) => x !== staffId),
-      }),
-    });
-    contact.coCreators = (contact.coCreators || []).filter((x) => x !== staffId);
+      visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, carers: nextCarers }),
+    };
+    if ((contact.carers || []).includes(staffId) && !nextCarers.includes(staffId)) {
+      patch.carers = arrayRemove(staffId);
+    }
+    await updateDoc(doc(db, "contacts", contact.id), patch);
+    contact.coCreators = nextCoCreators;
+    contact.carers = nextCarers;
     if (s) {
       await logActivity({
         action: "unshared a person",
@@ -715,15 +722,44 @@ export default function ContactDetailsModal({
     if (previousOwnerId && previousOwnerId !== newOwnerId) {
       patch.coCreators = arrayRemove(previousOwnerId);
     }
+    // #1052: the handover also drops the previous owner's carer tie — a former
+    // owner cannot hold the person through their sheep. A founder who took the
+    // person on keeps the tie (founding is permanent).
+    const nextCarers =
+      previousOwnerId && previousOwnerId !== newOwnerId
+        ? (contact.carers || []).filter(
+            (uid) =>
+              uid !== previousOwnerId ||
+              reachWithoutCarers({
+                ...contact,
+                owner: newOwnerId,
+                coCreators: nextCoCreators,
+              }).includes(uid),
+          )
+        : contact.carers || [];
+    if (
+      previousOwnerId &&
+      previousOwnerId !== newOwnerId &&
+      (contact.carers || []).includes(previousOwnerId) &&
+      !nextCarers.includes(previousOwnerId)
+    ) {
+      patch.carers = arrayRemove(previousOwnerId);
+    }
     // Care handover rewrites the access list in the same write: the new
     // caregiver is added, and a former owner who held nothing else is dropped.
-    patch.visibleTo = visibleToOf({ ...contact, owner: newOwnerId, coCreators: nextCoCreators });
+    patch.visibleTo = visibleToOf({
+      ...contact,
+      owner: newOwnerId,
+      coCreators: nextCoCreators,
+      carers: nextCarers,
+    });
     await updateDoc(doc(db, 'contacts', contact.id), patch);
     contact.owner = newOwnerId;
     if (previousOwnerId && previousOwnerId !== newOwnerId) {
       contact.coCreators = (contact.coCreators || []).filter(
         (id) => id !== previousOwnerId,
       );
+      contact.carers = nextCarers;
     }
     await logActivity({
       action: 'transferred a person',
