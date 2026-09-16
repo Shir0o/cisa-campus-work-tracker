@@ -393,6 +393,7 @@ describe('PrayerListMobile', () => {
       role: 'Student',
       year: 'Junior',
       owner: 'u-mei',
+      carers: ['u-mei'],
       createdByName: 'Tony Wang',
     });
     const team = [

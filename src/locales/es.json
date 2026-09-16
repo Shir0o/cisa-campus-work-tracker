@@ -1403,6 +1403,7 @@
       "where_is_now": "¿Dónde está {name} ahora?",
       "move_to_fitting_step": "Muévelos al paso que encaja hoy.",
       "cared_for_by": "Cuidado por",
+      "no_one_cares": "Todavía nadie los ha tomado a su cargo",
       "who_else_can_see": "Quién más puede verlos",
       "remove_access": "Quitar acceso",
       "just_owner_for_now": "Solo {name} por ahora.",

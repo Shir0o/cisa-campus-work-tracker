@@ -8,6 +8,7 @@ const h = vi.hoisted(() => ({
   listeners: {} as Record<string, ((snap: any) => void)[]>,
   mockContacts: {} as Record<string, any>,
   mockStages: [] as any[],
+  mockUsers: [] as any[],
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -39,6 +40,13 @@ vi.mock('firebase/firestore', () => ({
           data: () => s,
         })),
       });
+    } else if (ref.col === 'users') {
+      onNext({
+        docs: h.mockUsers.map((u) => ({
+          id: u.id,
+          data: () => u,
+        })),
+      });
     }
 
     return () => {
@@ -59,9 +67,11 @@ describe('ContactPill', () => {
         year: 'Junior',
         major: 'Computer Science',
         createdByName: 'Tony Wang',
+        carers: ['user-tony'],
         lastContactedDate: new Date().toISOString(),
       },
     };
+    h.mockUsers = [{ id: 'user-tony', name: 'Tony Wang' }];
     h.mockStages = [
       { id: 's1', label: 'Interested', color: 'bg-stage-amber-soft text-stage-amber' },
       { id: 's2', label: 'Believer', color: 'bg-stage-teal-soft text-stage-teal' },
@@ -125,6 +135,19 @@ describe('ContactPill', () => {
       vi.advanceTimersByTime(200);
     });
     expect(screen.queryByText('Junior · Computer Science')).not.toBeInTheDocument();
+  });
+
+  it('shows no "Cared for by" line when nobody has taken the person on (#1051)', () => {
+    h.mockContacts['c1'] = {
+      ...h.mockContacts['c1'],
+      carers: [],
+      createdByName: 'Tony Wang',
+    };
+    render(<ContactPill contactId="c1" />);
+
+    const pillBtn = screen.getByRole('button', { name: /Grace Hopper/i });
+    fireEvent.mouseEnter(pillBtn);
+    expect(screen.queryByText(/Cared for by/i)).not.toBeInTheDocument();
   });
 
   it('handles focus and blur for preview card', () => {

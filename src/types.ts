@@ -58,6 +58,9 @@ export interface Contact {
    *  partnered with at that instant, read from the dated pairing history. Written
    *  once at creation and never rewritten. */
   founders?: string[];
+  /** The people holding this person in their sheep (#1051): everyone who has
+   *  taken them on. Several people can hold the same person at once. */
+  carers?: string[];
   /** Denormalised access list: every persisted tie (creator, adder, caregiver,
    *  collaborators). Firestore rules read this to enforce contact visibility
    *  server-side (#1024 phase 4). Maintained alongside the ties themselves. */

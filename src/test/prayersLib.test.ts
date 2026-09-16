@@ -5,7 +5,7 @@ import {
   isTeamPrayer,
   updatePrayerStatus,
   getContactGrade,
-  getContactCaregiver,
+  getContactCarers,
   getContactAddedBy,
   isContactBrother,
   isContactSister,
@@ -97,20 +97,24 @@ describe('isTeamPrayer', () => {
   });
 });
 
-describe('getContactCaregiver & getContactAddedBy', () => {
+describe('getContactCarers & getContactAddedBy', () => {
   const team = [
     { uid: 'u1', name: 'Mei Tanaka' },
     { uid: 'u2', name: 'Tony Wang' },
   ];
 
-  it('resolves caregiver from owner in team', () => {
-    expect(getContactCaregiver({ owner: 'u1' }, team)).toBe('Mei Tanaka');
+  it('names every carer holding the person in their sheep (#1051)', () => {
+    expect(getContactCarers({ carers: ['u1', 'u2'] }, team)).toEqual(['Mei Tanaka', 'Tony Wang']);
   });
 
-  it('resolves caregiver falling back to createdByName or addedBy when owner is missing', () => {
-    expect(getContactCaregiver({ createdByName: 'Tony Wang' }, team)).toBe('Tony Wang');
-    expect(getContactCaregiver({ addedBy: 'u2' }, team)).toBe('Tony Wang');
-    expect(getContactCaregiver({}, team)).toBeUndefined();
+  it('names nobody when nobody has taken the person on', () => {
+    expect(getContactCarers({}, team)).toEqual([]);
+    expect(getContactCarers({ carers: [] }, team)).toEqual([]);
+    expect(getContactCarers({ owner: 'u1' }, team)).toEqual([]);
+  });
+
+  it('drops a carer whose name cannot be resolved', () => {
+    expect(getContactCarers({ carers: ['u1', 'u-ghost'] }, team)).toEqual(['Mei Tanaka']);
   });
 
   it('resolves addedBy from createdByName first, then addedBy uid in team', () => {

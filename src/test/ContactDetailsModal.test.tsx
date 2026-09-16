@@ -1436,14 +1436,14 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('shows "Cared for by" reading from owner, not from createdByName', async () => {
+  it('shows "Cared for by" naming every carer, and nothing when nobody has taken them on (#1051)', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Owner Tony' },
       isAdmin: false,
       role: 'operator',
     });
 
-    const contactWithBoth = {
+    const contactWithOwnerOnly = {
       ...mockContact,
       owner: 'user-789',
       createdBy: 'user-123',
@@ -1456,6 +1456,8 @@ describe('ContactDetailsModal Component', () => {
         successCallback({
           docs: [
             { id: 'user-789', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
+            { id: 'user-123', data: () => ({ name: 'Owner Tony', role: 'Trainee' }) },
+            { id: 'user-456', data: () => ({ name: 'Sami Lee', role: 'Trainee' }) },
           ],
         });
       } else {
@@ -1464,11 +1466,27 @@ describe('ContactDetailsModal Component', () => {
       return vi.fn();
     });
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithBoth} />);
+    // A person nobody has taken on shows no carer at all — the owner is no
+    // longer what "Cared for by" claims.
+    const first = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithOwnerOnly} />,
+    );
     await screen.findByText('John Doe');
+    expect(screen.queryAllByText(/Mei Tanaka/i).length).toBe(0);
+    expect(screen.getByText(/No one has taken them on yet/i)).toBeInTheDocument();
+    first.unmount();
 
-    // The aside's "Cared for by" should name the owner (Mei), not the creator.
-    expect(screen.getAllByText(/Mei Tanaka/i).length).toBeGreaterThan(0);
+    // Both carers are shown.
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...contactWithOwnerOnly, carers: ['user-123', 'user-456'] }}
+      />,
+    );
+    await screen.findByText('John Doe');
+    expect(screen.getAllByText(/Owner Tony/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Sami Lee/i).length).toBeGreaterThan(0);
   });
 
   it('deletes contact when Delete Contact button is clicked', async () => {
@@ -1900,11 +1918,14 @@ describe('ContactDetailsModal Component', () => {
     const contactWithAddedBy = {
       ...mockContact,
       addedBy: 'adder-1',
+      carers: ['adder-1'],
       createdBy: undefined,
       createdByName: undefined,
     };
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithAddedBy} />);
 
+    // The carer row and the head's "Cared for by" line both resolve via the
+    // users snapshot (as does the "Added by" provenance), all naming Grace.
     expect(await screen.findAllByText(/Grace Hopper/)).toHaveLength(3);
   });
 

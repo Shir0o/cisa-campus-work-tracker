@@ -45,6 +45,8 @@ vi.mock('firebase/firestore', () => ({
   collectionGroup: vi.fn((_db: unknown, group: string) => ({ path: group })),
   doc: vi.fn(),
   updateDoc: vi.fn(() => Promise.resolve()),
+  arrayUnion: vi.fn((...args: unknown[]) => ({ __op: 'arrayUnion', args })),
+  arrayRemove: vi.fn((...args: unknown[]) => ({ __op: 'arrayRemove', args })),
   deleteDoc: vi.fn(() => Promise.resolve()),
   getDoc: vi.fn(),
   setDoc: vi.fn(),
@@ -489,6 +491,31 @@ describe('MyDay', () => {
       'u-test',
       expect.objectContaining({ personalContactIds: expect.any(Array) }),
     );
+  });
+
+  it('records the reader on the contact when they take a person into their sheep (#1051)', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          contactDoc('c-keep', { name: 'Mara Vale', initials: 'MV', stage: 'Regular', createdBy: 'someone-else' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Your contacts/i })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Your contacts/i }));
+    await waitFor(() => expect(screen.getByText('Mara Vale')).toBeInTheDocument());
+    const checkboxes = await screen.findAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    // The preference write keeps the home page behaving as before; the contact
+    // write makes the carer tie persist, folding it into the access list.
+    const patch = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>;
+    expect(patch).toEqual({
+      carers: { __op: 'arrayUnion', args: ['u-test'] },
+      visibleTo: ['someone-else', 'u-test'],
+    });
   });
 
   it('sorts the desktop contacts picker with personal contacts first alphabetically', async () => {

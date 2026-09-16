@@ -242,6 +242,30 @@ service cloud.firestore {
                            existing().coCreators is list &&
                            request.auth.uid in existing().coCreators
                          )
+                       )) ||
+// #1051: a reader takes a person into (or out of) their
+                       // sheep. The caller may only flip their own carer
+                       // membership, may only move themselves in the access
+                       // list, and must already see the person — taking on
+                       // never grants reach. An admin may correct anyone.
+                       (incoming().diff(existing()).affectedKeys().hasOnly([
+                         'carers', 'visibleTo',
+                         'updatedAt', 'updatedBy', 'updatedByName'
+                       ]) && (
+                         isAdmin() ||
+                         (
+                           request.auth.uid in existing().get('visibleTo', []) &&
+                           existing().get('visibleTo', []).toSet().difference(incoming().get('visibleTo', []).toSet()).hasOnly([request.auth.uid]) &&
+                           incoming().get('visibleTo', []).toSet().difference(existing().get('visibleTo', []).toSet()).hasOnly([request.auth.uid]) &&
+                           (
+                             // taking on: the caller joins the carers, everyone else unchanged
+                             (request.auth.uid in incoming().get('carers', []) &&
+                              incoming().get('carers', []).toSet().difference(existing().get('carers', []).toSet()).hasOnly([request.auth.uid])) ||
+                             // giving up: the caller leaves the carers, everyone else unchanged
+                             (request.auth.uid in existing().get('carers', []) &&
+                              existing().get('carers', []).toSet().difference(incoming().get('carers', []).toSet()).hasOnly([request.auth.uid]))
+                           )
+                         )
                        )));
       allow delete: if isValidId(contactId) && isManager();
 

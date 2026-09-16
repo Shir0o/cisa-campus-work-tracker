@@ -189,6 +189,14 @@ describe('canSeeContact', () => {
     expect(canSeeContact('manager', 'u1', notFounder)).toBe(false);
   });
 
+  it('lets a carer see the person they hold in their sheep (#1051)', () => {
+    const cared = { id: 'c1', createdBy: 'u2', carers: ['u1', 'u3'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', cared)).toBe(true);
+    expect(canSeeContact('manager', 'u3', cared)).toBe(true);
+    const notCarer = { id: 'c2', createdBy: 'u2', carers: ['u3'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', notCarer)).toBe(false);
+  });
+
   // Mirrors the web app's copy in src/test/permissions.test.tsx so the two
   // rules stay in step (#1024 phase 3).
   it('widens a trainee to a current-term gospel partner, and only for that term', () => {
@@ -247,6 +255,16 @@ describe('visibleToOf', () => {
     ).toEqual(['u1', 'u2', 'u3', 'u4', 'u5', 'u6']);
   });
 
+  it('includes carers — the people holding this person in their sheep (#1051)', () => {
+    expect(
+      visibleToOf({
+        createdBy: 'u1',
+        coCreators: ['u2'],
+        carers: ['u3', 'u4'],
+      }),
+    ).toEqual(['u1', 'u2', 'u3', 'u4']);
+  });
+
   it('de-duplicates and drops null/empty ids', () => {
     expect(
       visibleToOf({
@@ -255,8 +273,9 @@ describe('visibleToOf', () => {
         owner: 'u1',
         coCreators: ['u1', 'u2', '', null as unknown as string],
         founders: ['u1', 'u3'],
+        carers: ['u1', 'u4'],
       }),
-    ).toEqual(['u1', 'u2', 'u3']);
+    ).toEqual(['u1', 'u2', 'u3', 'u4']);
   });
 
   it('returns an empty list for a contact with no ties', () => {

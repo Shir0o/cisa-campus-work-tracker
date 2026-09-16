@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db, handleFirestoreError, logActivity, OperationType } from "./firebase";
+import { carerNamesOf } from "./carers";
 import { PrayerRecord } from "../types";
 
 // Start carrying something for a contact. Mirrors PrayerList.tsx's
@@ -103,26 +104,22 @@ export function getContactGrade(contact: { year?: string; tags?: string[] }): st
 }
 
 /**
- * Resolves the display name of the team member caring for the contact.
- * Binds to `owner` primarily, falling back to `createdByName` / `addedBy`
- * if `owner` is unset.
+ * The display names of everyone holding this contact in their sheep (#1051).
+ * "Cared for by" reads from the carers tie — the people who have taken the
+ * person on — and names zero, one or several of them. The old `owner` field is
+ * still written and read (the care handover), it is just no longer what this
+ * line claims.
  */
-export function getContactCaregiver(
-  contact: { owner?: string | null; createdByName?: string | null; addedBy?: string | null },
+export function getContactCarers(
+  contact: { carers?: string[] | null; owner?: string | null },
   team?: { uid?: string; id?: string; name?: string }[],
-): string | undefined {
-  if (contact.owner?.trim()) {
-    const found = team?.find((m) => (m.uid || m.id) === contact.owner);
-    if (found?.name?.trim()) return found.name.trim();
-    return contact.owner.trim();
+): string[] {
+  const nameByUid: Record<string, string> = {};
+  for (const m of team || []) {
+    const uid = m.uid || m.id;
+    if (uid && m.name?.trim()) nameByUid[uid] = m.name.trim();
   }
-  if (contact.createdByName?.trim()) return contact.createdByName.trim();
-  if (contact.addedBy?.trim()) {
-    const found = team?.find((m) => (m.uid || m.id) === contact.addedBy);
-    if (found?.name?.trim()) return found.name.trim();
-    return contact.addedBy.trim();
-  }
-  return undefined;
+  return carerNamesOf(contact.carers, nameByUid);
 }
 
 /**
