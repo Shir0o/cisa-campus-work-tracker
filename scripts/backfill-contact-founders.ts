@@ -110,7 +110,6 @@ async function planBackfill() {
     id: d.id,
     createdBy: d.get('createdBy'),
     addedBy: d.get('addedBy'),
-    owner: d.get('owner'),
     coCreators: d.get('coCreators'),
     founders: d.get('founders'),
     visibleTo: d.get('visibleTo'),

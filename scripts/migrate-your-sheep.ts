@@ -68,7 +68,6 @@ async function buildPlan() {
     id: d.id,
     createdBy: d.get('createdBy'),
     addedBy: d.get('addedBy'),
-    owner: d.get('owner'),
     coCreators: d.get('coCreators'),
     founders: d.get('founders'),
     carers: d.get('carers'),

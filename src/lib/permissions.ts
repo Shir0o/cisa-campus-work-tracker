@@ -304,7 +304,7 @@ export type { ContactTies } from './contactTies';
 export function canSeeContact(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string; tags?: string[] } | null | undefined
+  contact: { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string; tags?: string[] } | null | undefined
 ): boolean {
   if (!contact) return false;
   if (seesAllPeople(role)) return true;
@@ -312,7 +312,6 @@ export function canSeeContact(
   const added = contact.addedBy || contact.createdBy;
   if (
     added === staffId ||
-    contact.owner === staffId ||
     (contact.coCreators || []).includes(staffId) ||
     (contact.founders || []).includes(staffId) ||
     (contact.carers || []).includes(staffId)
@@ -321,9 +320,9 @@ export function canSeeContact(
   }
 
   // Gospel partners for the term: trainees can dynamically view contacts created
-  // or owned by their active partner(s) during the current term.
+  // by their active partner(s) during the current term.
   const partners = partnersOf(staffId);
-  if (partners.length && (added && partners.includes(added) || contact.owner && partners.includes(contact.owner))) {
+  if (partners.length && added && partners.includes(added)) {
     const term = currentTermKey();
     if (contact.season) {
       return contact.season === term;
@@ -339,27 +338,16 @@ export function canSeeContact(
 export function canManageCollaborators(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] } | null | undefined
+  contact: { addedBy?: string; createdBy?: string; coCreators?: string[] } | null | undefined
 ): boolean {
   if (!contact || !staffId) return false;
   if (role === 'admin') return true;
-  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
+  const ownerId = contact.createdBy || contact.addedBy;
   if (ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId) return true;
   return (contact.coCreators || []).includes(staffId);
 }
 
-export function canTransferOwnership(
-  role: AppRole | string | null,
-  staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string } | null | undefined
-): boolean {
-  if (!contact || !staffId) return false;
-  if (role === 'admin') return true;
-  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
-  return ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId;
-}
-
-export function visibleContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; carers?: string[] }>(
+export function visibleContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[] }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[]
@@ -368,7 +356,7 @@ export function visibleContacts<T extends { addedBy?: string; createdBy?: string
   return list.filter((c) => canSeeContact(role, staffId, c));
 }
 
-export function journeyContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string }>(
+export function journeyContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[],

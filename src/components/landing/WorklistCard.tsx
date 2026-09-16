@@ -200,7 +200,6 @@ function CardComposer({
         stakeholders: {
           createdBy: contact.createdBy ?? null,
           coCreators: contact.coCreators ?? null,
-          owner: contact.owner ?? null,
         },
       },
     );

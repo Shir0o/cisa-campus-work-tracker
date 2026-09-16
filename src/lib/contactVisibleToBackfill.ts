@@ -3,8 +3,8 @@
  * (issue #1024 phase 4).
  *
  * Contacts carry a denormalised access list -- `visibleTo` -- holding every
- * persisted tie: creator, adder, caregiver (`owner`) and collaborators
- * (`coCreators`). The Firestore rules read it to enforce contact visibility
+ * persisted tie: creator, adder, collaborators (`coCreators`), founders and
+ * carers. The Firestore rules read it to enforce contact visibility
  * server-side, so every existing contact must be stamped before the read rule
  * tightens.
  *

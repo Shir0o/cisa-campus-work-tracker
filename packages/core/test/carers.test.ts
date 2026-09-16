@@ -29,14 +29,13 @@ describe('reachWithoutCarers (#1052)', () => {
   const base = {
     createdBy: 'u1',
     addedBy: 'u2',
-    owner: 'u3',
     coCreators: ['u4', 'u5'],
     founders: ['u6'],
     carers: ['u7', 'u8'],
   };
 
   it('lists every tie that grants reach except the carer tie', () => {
-    expect(reachWithoutCarers(base)).toEqual(['u1', 'u2', 'u3', 'u4', 'u5', 'u6']);
+    expect(reachWithoutCarers(base)).toEqual(['u1', 'u2', 'u4', 'u5', 'u6']);
   });
 
   it('returns an empty list for a contact with no ties', () => {
@@ -49,7 +48,6 @@ describe('carersAfterCollaboratorRemoval (#1052)', () => {
   it('drops a carer whose reach came only from the collaborator tie being removed', () => {
     const contact = {
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u3'],
@@ -60,7 +58,6 @@ describe('carersAfterCollaboratorRemoval (#1052)', () => {
   it('keeps a founder who has taken the person on — founding is permanent', () => {
     const contact = {
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u3'],
       carers: ['u3'],
@@ -71,7 +68,6 @@ describe('carersAfterCollaboratorRemoval (#1052)', () => {
   it('keeps a carer still held by another tie after the collaborator removal', () => {
     const contact = {
       createdBy: 'u3',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u3'],
@@ -82,7 +78,6 @@ describe('carersAfterCollaboratorRemoval (#1052)', () => {
   it('leaves every other carer untouched', () => {
     const contact = {
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u3', 'u4'],
@@ -93,7 +88,6 @@ describe('carersAfterCollaboratorRemoval (#1052)', () => {
   it('returns the carers unchanged when the removed uid holds no carer tie', () => {
     const contact = {
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u4'],

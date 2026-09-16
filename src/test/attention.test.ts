@@ -26,7 +26,6 @@ describe("partitionAttentionStacks (#595)", () => {
       id: "c_owned",
       name: "Alex Johnson",
       createdBy: "u3",
-      owner: "u1", // owned by current user
       createdAt: new Date().toISOString(),
       stage: "Freshman Contact",
     } as Contact,
@@ -34,7 +33,6 @@ describe("partitionAttentionStacks (#595)", () => {
       id: "c_team",
       name: "Emerson Ahn",
       createdBy: "u2",
-      owner: "u2", // owned by someone else
       createdAt: new Date().toISOString(),
       stage: "Student",
     } as Contact,
@@ -210,8 +208,8 @@ describe("buildAttentionItems — the ties, not the role", () => {
   const contacts: Contact[] = [
     { id: "c_mine", name: "Elena Vargas", createdBy: "t1", stage: "Student" } as Contact,
     { id: "c_partner", name: "Tomas Nguyen", createdBy: "t2", coCreators: ["t1"], stage: "Student" } as Contact,
-    { id: "c_assigned", name: "Priya Kaur", createdBy: "t2", owner: "t1", stage: "Student" } as Contact,
-    { id: "c_stranger", name: "Maya Osei", createdBy: "t2", owner: "t2", stage: "Student" } as Contact,
+    { id: "c_assigned", name: "Priya Kaur", createdBy: "t2", carers: ["t1"], stage: "Student" } as Contact,
+    { id: "c_stranger", name: "Maya Osei", createdBy: "t2", stage: "Student" } as Contact,
   ];
 
   const msg = (over: Partial<ThreadMessageWithContact>): ThreadMessageWithContact =>
@@ -244,7 +242,7 @@ describe("buildAttentionItems — the ties, not the role", () => {
     expect(items.map((i) => i.id)).toContain("thread:a");
   });
 
-  it("gives a Trainee messages on their gospel partner's contacts and on ones assigned to them", () => {
+  it("gives a Trainee messages on their gospel partner's contacts and on ones they hold in their sheep", () => {
     const items = trainee([
       msg({ id: "b", contactId: "c_partner" }),
       msg({ id: "c", contactId: "c_assigned" }),
@@ -335,12 +333,11 @@ describe("attentionPhrase — the words fit what happened", () => {
 });
 
 describe("isTiedTo", () => {
-  const c = { createdBy: "t1", coCreators: ["t2"], owner: "t3" };
+  const c = { createdBy: "t1", coCreators: ["t2"] };
 
-  it("is true for the adder, the gospel partner and the assigned caregiver", () => {
+  it("is true for the adder, the gospel partner and a co-creator", () => {
     expect(isTiedTo(c, "t1")).toBe(true);
     expect(isTiedTo(c, "t2")).toBe(true);
-    expect(isTiedTo(c, "t3")).toBe(true);
   });
 
   it("is false for someone with no tie", () => {

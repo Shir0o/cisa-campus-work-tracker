@@ -697,7 +697,6 @@ describe("POST /api/quick-add", () => {
 
     const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
     expect(created.createdBy).toBe("uid-ada");
-    expect(created.owner).toBe("uid-ada");
     expect(created.visibleTo).toEqual(["uid-ada"]);
   });
 
@@ -709,10 +708,9 @@ describe("POST /api/quick-add", () => {
     expect(res.status).toBe(200);
 
     const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
-    // No real teammate is tied to it, so `owner` stays null and the list is
-    // just the recorded creator label -- it must still match visibleToOf() over
-    // what was written, or the backfill will keep re-planning this row.
-    expect(created.owner).toBeNull();
+    // No real teammate is tied to it, so the access list is just the recorded
+    // creator label -- it must still match visibleToOf() over what was written,
+    // or the backfill will keep re-planning this row.
     expect(created.visibleTo).toEqual(visibleToOf(created as Parameters<typeof visibleToOf>[0]));
   });
 
@@ -938,7 +936,7 @@ describe("POST /api/webhook/groupme", () => {
   });
 
 
-  it("attributes createdBy, createdByName, and owner to matching user if GroupMe sender matches a team user", async () => {
+  it("attributes createdBy and createdByName to matching user if GroupMe sender matches a team user", async () => {
     seedDoc("users", "user-sam-uid", {
       displayName: "Sam Wilson",
       email: "sam@campus.edu",
@@ -954,7 +952,6 @@ describe("POST /api/webhook/groupme", () => {
     expect(createdContact).toBeDefined();
     expect(createdContact.createdBy).toBe("user-sam-uid");
     expect(createdContact.createdByName).toBe("Sam Wilson");
-    expect(createdContact.owner).toBe("user-sam-uid");
   });
 
   it("tags a new GroupMe-added contact with the current semester", async () => {

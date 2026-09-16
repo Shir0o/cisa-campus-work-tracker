@@ -269,201 +269,108 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
-    it('lets the current owner transfer the contact by updating owner + coCreators', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+  it("the caregiver field is gone — updating owner is rejected for everyone, admin included (#1053)", async () => {
+    const db = getFirestore({ uid: "admin1" });
 
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
-          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
-        });
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users", "admin1"), { role: "admin", approved: true });
+      await setDoc(doc(context.firestore(), "contacts", "contact1"), {
+        name: "Test", email: "test@example.com", coCreators: [],
       });
-
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
-        owner: 'operator2',
-        coCreators: [],
-        updatedAt: serverTimestamp(),
-        updatedBy: 'operator1',
-        updatedByName: 'Operator One',
-      }));
     });
 
-    it('lets the creator transfer a contact when owner is not yet set (fallback to createdBy)', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+    // Writing the removed field matches no allowed affectedKeys branch, so it
+    // is denied even to an admin.
+    await assertFails(updateDoc(doc(db, "contacts", "contact1"), {
+      owner: "operator2",
+      coCreators: [],
+      updatedAt: serverTimestamp(),
+    }));
+  });
 
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact_no_owner'), {
-          name: 'Legacy Contact', email: 'legacy@example.com', createdBy: 'operator1', coCreators: [],
-        });
+  it("rejects a co-creator who tries to write the removed owner field (#1053)", async () => {
+    const db = getFirestore({ uid: "operator2" });
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users", "operator1"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "users", "operator2"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "contacts", "contact_shared"), {
+        name: "Shared Contact", email: "shared@example.com", createdBy: "operator1", coCreators: ["operator2"],
       });
-
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_no_owner'), {
-        owner: 'operator2',
-        coCreators: [],
-      }));
     });
 
-    it('lets the creator transfer a contact when owner is not yet set (fallback to addedBy)', async () => {
-      const db = getFirestore({ uid: 'operator1' });
+    await assertFails(updateDoc(doc(db, "contacts", "contact_shared"), {
+      owner: "operator2",
+      coCreators: ["operator2"],
+      updatedAt: serverTimestamp(),
+    }));
+  });
 
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact_added_by'), {
-          name: 'Legacy Contact 2', email: 'legacy2@example.com', addedBy: 'operator1', coCreators: [],
-        });
+  it("lets a creator share the contact via coCreators", async () => {
+    const db = getFirestore({ uid: "operator1" });
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users", "operator1"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "contacts", "contact1"), {
+        name: "Test", email: "test@example.com", createdBy: "operator1", coCreators: [],
       });
-
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_added_by'), {
-        owner: 'operator2',
-        coCreators: [],
-      }));
     });
 
-    it('rejects a non-creator non-owner non-admin from transferring contact without owner', async () => {
-      const db = getFirestore({ uid: 'operator3' });
+    await assertSucceeds(updateDoc(doc(db, "contacts", "contact1"), {
+      coCreators: ["operator2"],
+      updatedAt: serverTimestamp(),
+      updatedBy: "operator1",
+      updatedByName: "Operator One",
+    }));
+  });
 
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact_no_owner'), {
-          name: 'Legacy Contact', email: 'legacy@example.com', createdBy: 'operator1', coCreators: [],
-        });
+  it("lets an existing co-creator update coCreators to add or remove collaborators", async () => {
+    const db = getFirestore({ uid: "operator2" });
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users", "operator1"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "users", "operator2"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "users", "operator3"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "contacts", "contact_shared"), {
+        name: "Shared Contact",
+        email: "shared@example.com",
+        createdBy: "operator1",
+        coCreators: ["operator2"],
       });
-
-      await assertFails(updateDoc(doc(db, 'contacts', 'contact_no_owner'), {
-        owner: 'operator3',
-        coCreators: [],
-      }));
     });
 
-    it('rejects a non-owner non-admin from updating owner', async () => {
-      const db = getFirestore({ uid: 'operator3' });
+    // operator2 is in coCreators: should be able to add operator3 to coCreators
+    await assertSucceeds(updateDoc(doc(db, "contacts", "contact_shared"), {
+      coCreators: ["operator2", "operator3"],
+      updatedAt: serverTimestamp(),
+      updatedBy: "operator2",
+      updatedByName: "Operator Two",
+    }));
+  });
 
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
-          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
-        });
+  it("rejects an outside teammate who is not creator or in coCreators from updating coCreators", async () => {
+    const db = getFirestore({ uid: "operator3" });
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users", "operator1"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "users", "operator2"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "users", "operator3"), { role: "operator", approved: true });
+      await setDoc(doc(context.firestore(), "contacts", "contact_shared_3"), {
+        name: "Shared Contact 3",
+        email: "shared3@example.com",
+        createdBy: "operator1",
+        coCreators: ["operator2"],
       });
-
-      await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), {
-        owner: 'operator3',
-        updatedAt: serverTimestamp(),
-        updatedBy: 'operator3',
-        updatedByName: 'Operator Three',
-      }));
     });
 
-    it('lets an admin reassign owner regardless of the current owner', async () => {
-      const db = getFirestore({ uid: 'admin1' });
-
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
-          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
-        });
-      });
-
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
-        owner: 'operator2',
-        updatedAt: serverTimestamp(),
-        updatedBy: 'admin1',
-        updatedByName: 'Admin One',
-      }));
-    });
-
-    it('lets the current owner share the contact via coCreators', async () => {
-      const db = getFirestore({ uid: 'operator1' });
-
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
-          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
-        });
-      });
-
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
-        coCreators: ['operator2'],
-        updatedAt: serverTimestamp(),
-        updatedBy: 'operator1',
-        updatedByName: 'Operator One',
-      }));
-    });
-
-    it('lets an existing co-creator update coCreators to add or remove collaborators', async () => {
-      const db = getFirestore({ uid: 'operator2' });
-
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact_shared'), {
-          name: 'Shared Contact',
-          email: 'shared@example.com',
-          owner: 'operator1',
-          coCreators: ['operator2'],
-        });
-      });
-
-      // operator2 is in coCreators: should be able to add operator3 to coCreators
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_shared'), {
-        coCreators: ['operator2', 'operator3'],
-        updatedAt: serverTimestamp(),
-        updatedBy: 'operator2',
-        updatedByName: 'Operator Two',
-      }));
-    });
-
-    it('rejects a co-creator who tries to reassign the primary owner', async () => {
-      const db = getFirestore({ uid: 'operator2' });
-
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact_shared_2'), {
-          name: 'Shared Contact 2',
-          email: 'shared2@example.com',
-          owner: 'operator1',
-          coCreators: ['operator2'],
-        });
-      });
-
-      // operator2 is in coCreators, but NOT the owner: modifying owner must fail
-      await assertFails(updateDoc(doc(db, 'contacts', 'contact_shared_2'), {
-        owner: 'operator2',
-        coCreators: ['operator2'],
-        updatedAt: serverTimestamp(),
-        updatedBy: 'operator2',
-        updatedByName: 'Operator Two',
-      }));
-    });
-
-    it('rejects an outside teammate who is not owner or in coCreators from updating coCreators', async () => {
-      const db = getFirestore({ uid: 'operator3' });
-
-      await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact_shared_3'), {
-          name: 'Shared Contact 3',
-          email: 'shared3@example.com',
-          owner: 'operator1',
-          coCreators: ['operator2'],
-        });
-      });
-
-      // operator3 is neither owner nor in coCreators: updating coCreators must fail
-      await assertFails(updateDoc(doc(db, 'contacts', 'contact_shared_3'), {
-        coCreators: ['operator2', 'operator3'],
-        updatedAt: serverTimestamp(),
-        updatedBy: 'operator3',
-        updatedByName: 'Operator Three',
-      }));
-    });
+    // operator3 is neither creator nor in coCreators: updating coCreators must fail
+    await assertFails(updateDoc(doc(db, "contacts", "contact_shared_3"), {
+      coCreators: ["operator2", "operator3"],
+      updatedAt: serverTimestamp(),
+      updatedBy: "operator3",
+      updatedByName: "Operator Three",
+    }));
+  });
   });
 
   describe('Your sheep carers (#1051)', () => {
@@ -627,42 +534,6 @@ describeRules('Firestore Security Rules', () => {
         updatedAt: serverTimestamp(),
       }));
     });
-
-    it('a care handover may drop the previous owner\'s carer tie in the same write', async () => {
-      await seed('c_handover_carer', {
-        createdBy: 'operator1',
-        owner: 'operator2',
-        coCreators: ['operator2', 'operator3'],
-        carers: ['operator2'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
-      });
-      const db = getFirestore({ uid: 'operator2' });
-      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_handover_carer'), {
-        owner: 'operator3',
-        coCreators: arrayRemove('operator2'),
-        carers: arrayRemove('operator2'),
-        visibleTo: ['operator1', 'operator3'],
-        updatedAt: serverTimestamp(),
-      }));
-    });
-
-    it('a care handover refuses to grant a carer tie to anyone', async () => {
-      await seed('c_handover_selfgrant', {
-        createdBy: 'operator1',
-        owner: 'operator2',
-        coCreators: ['operator2', 'operator3'],
-        carers: ['operator2'],
-        visibleTo: ['operator1', 'operator2', 'operator3'],
-      });
-      const db = getFirestore({ uid: 'operator2' });
-      await assertFails(updateDoc(doc(db, 'contacts', 'c_handover_selfgrant'), {
-        owner: 'operator3',
-        coCreators: arrayRemove('operator2'),
-        carers: arrayUnion('operator3'),
-        visibleTo: ['operator1', 'operator2', 'operator3'],
-        updatedAt: serverTimestamp(),
-      }));
-    });
   });
 
   // Contact visibility: the tie enforced server-side (#1024 phase 4). The
@@ -685,9 +556,9 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(fs, 'contacts/untied'), { ...base, visibleTo: [] });
         await setDoc(doc(fs, 'contacts/created'), { ...base, createdBy: 'manager1', visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/added'), { ...base, addedBy: 'manager1', visibleTo: ['manager1'] });
-        await setDoc(doc(fs, 'contacts/cared'), { ...base, owner: 'manager1', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/cared'), { ...base, carers: ['manager1'], visibleTo: ['manager1'] });
         await setDoc(doc(fs, 'contacts/shared'), {
-          ...base, owner: 'manager2', coCreators: ['manager1'], visibleTo: ['manager1', 'manager2'],
+          ...base, coCreators: ['manager1'], visibleTo: ['manager1', 'manager2'],
         });
         // A legacy doc that has not been backfilled must fail closed.
         await setDoc(doc(fs, 'contacts/legacy'), { ...base, createdBy: 'manager1' });
@@ -731,7 +602,7 @@ describeRules('Firestore Security Rules', () => {
       await seedVisibleToUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'contacts/c1'), {
-          name: 'Test', email: 'test@example.com', owner: 'manager1', coCreators: [], visibleTo: ['manager1'],
+          name: 'Test', email: 'test@example.com', createdBy: 'manager1', coCreators: [], visibleTo: ['manager1'],
         });
       });
 
@@ -753,7 +624,7 @@ describeRules('Firestore Security Rules', () => {
       await seedVisibleToUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'contacts/c2'), {
-          name: 'Test', email: 'test@example.com', owner: 'manager1', coCreators: ['manager2'],
+          name: 'Test', email: 'test@example.com', createdBy: 'manager1', coCreators: ['manager2'],
           visibleTo: ['manager1', 'manager2'],
         });
       });

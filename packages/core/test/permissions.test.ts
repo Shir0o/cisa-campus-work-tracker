@@ -12,7 +12,6 @@ import {
   getEffectiveRole,
   OWNER_EMAIL,
   canManageCollaborators,
-  canTransferOwnership,
   canSeeContact,
   visibleToOf,
 } from '../src/permissions';
@@ -118,18 +117,14 @@ describe('permissions', () => {
     expect(getEffectiveRole('other@example.com', 'manager', 'admin')).toBe('manager');
   });
 
-  it('canManageCollaborators allows admin, owner, creator, and coCreators', () => {
+  it('canManageCollaborators allows admin, creator, and coCreators', () => {
     const contact = {
-      owner: 'u-owner',
       createdBy: 'u-creator',
       coCreators: ['u-partner1', 'u-partner2'],
     };
 
     // Admin can always manage
     expect(canManageCollaborators('admin', 'u-random', contact)).toBe(true);
-
-    // Primary owner can manage
-    expect(canManageCollaborators('manager', 'u-owner', contact)).toBe(true);
 
     // Creator can manage
     expect(canManageCollaborators('manager', 'u-creator', contact)).toBe(true);
@@ -142,23 +137,7 @@ describe('permissions', () => {
     expect(canManageCollaborators('manager', 'u-random', contact)).toBe(false);
     expect(canManageCollaborators('operator', 'u-random', contact)).toBe(false);
     expect(canManageCollaborators('manager', null, contact)).toBe(false);
-    expect(canManageCollaborators('manager', 'u-owner', null)).toBe(false);
-  });
-
-  it('canTransferOwnership only allows admin, owner, or creator', () => {
-    const contact = {
-      owner: 'u-owner',
-      createdBy: 'u-creator',
-      coCreators: ['u-partner1'],
-    };
-
-    expect(canTransferOwnership('admin', 'u-random', contact)).toBe(true);
-    expect(canTransferOwnership('manager', 'u-owner', contact)).toBe(true);
-    expect(canTransferOwnership('manager', 'u-creator', contact)).toBe(true);
-
-    // Co-creator CANNOT transfer ownership
-    expect(canTransferOwnership('manager', 'u-partner1', contact)).toBe(false);
-    expect(canTransferOwnership('manager', 'u-random', contact)).toBe(false);
+    expect(canManageCollaborators('manager', 'u-creator', null)).toBe(false);
   });
 });
 
@@ -231,28 +210,18 @@ describe('canSeeContact', () => {
 
     applyPartners({});
   });
-
-  it('widens on the partner as owner too, not only as adder', () => {
-    applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
-
-    expect(canSeeContact('manager', 'u1', { owner: 'u2', createdBy: 'someone', season: 'Fall 2026' })).toBe(true);
-    expect(canSeeContact('manager', 'u1', { owner: 'u3', createdBy: 'someone', season: 'Fall 2026' })).toBe(false);
-
-    applyPartners({});
-  });
 });
 
 describe('visibleToOf', () => {
-  it('collects creator, adder, caregiver, collaborators and founders', () => {
+  it('collects creator, adder, collaborators, founders and carers', () => {
     expect(
       visibleToOf({
         createdBy: 'u1',
         addedBy: 'u2',
-        owner: 'u3',
         coCreators: ['u4', 'u5'],
         founders: ['u1', 'u6'],
       }),
-    ).toEqual(['u1', 'u2', 'u3', 'u4', 'u5', 'u6']);
+    ).toEqual(['u1', 'u2', 'u4', 'u5', 'u6']);
   });
 
   it('includes carers — the people holding this person in their sheep (#1051)', () => {
@@ -270,7 +239,6 @@ describe('visibleToOf', () => {
       visibleToOf({
         createdBy: 'u1',
         addedBy: null,
-        owner: 'u1',
         coCreators: ['u1', 'u2', '', null as unknown as string],
         founders: ['u1', 'u3'],
         carers: ['u1', 'u4'],
@@ -285,6 +253,6 @@ describe('visibleToOf', () => {
   });
 
   it('is order-stable: ties come before collaborators', () => {
-    expect(visibleToOf({ coCreators: ['c'], owner: 'o' })).toEqual(['o', 'c']);
+    expect(visibleToOf({ coCreators: ['c'], createdBy: 'o' })).toEqual(['o', 'c']);
   });
 });

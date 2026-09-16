@@ -118,7 +118,6 @@ async function planRepair() {
     id: d.id,
     createdBy: d.get('createdBy'),
     addedBy: d.get('addedBy'),
-    owner: d.get('owner'),
     coCreators: d.get('coCreators'),
     visibleTo: d.get('visibleTo'),
     createdAt: d.get('createdAt'),
@@ -141,7 +140,7 @@ async function applyRepair() {
       // Both fields move by removal, not by absolute value: a collaborator
       // somebody added between the dry run and this commit then survives in
       // both lists rather than being erased from one of them (#1039 story 21).
-      // The candidates are never the creator, adder or caregiver, so dropping
+      // The candidates are never the creator or adder, so dropping
       // the tie drops the only thing putting them on the access list -- which is
       // exactly row.visibleToTo when the document has not moved.
       batch.update(contactsRef.doc(row.id), {

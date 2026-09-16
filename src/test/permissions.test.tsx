@@ -773,7 +773,7 @@ describe('groupedNavFor() — rail destination groups (#662)', () => {
 describe('visibleToOf (web mirror)', () => {
   it('collects every persisted tie, de-duplicated', () => {
     expect(
-      visibleToOf({ createdBy: 'u1', addedBy: 'u2', owner: 'u1', coCreators: ['u3'], founders: ['u1', 'u4'], carers: ['u1', 'u5'] }),
+      visibleToOf({ createdBy: 'u1', addedBy: 'u2', coCreators: ['u3'], founders: ['u1', 'u4'], carers: ['u1', 'u5'] }),
     ).toEqual(['u1', 'u2', 'u3', 'u4', 'u5']);
   });
 

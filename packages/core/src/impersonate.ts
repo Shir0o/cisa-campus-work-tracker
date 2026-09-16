@@ -117,7 +117,7 @@ export function impPersonaTarget(k: string): ImpersonateTarget | null {
   };
 }
 
-export function impContactTarget(c: { id: string; name: string; year?: string; major?: string; owner?: string }): ImpersonateTarget {
+export function impContactTarget(c: { id: string; name: string; year?: string; major?: string }): ImpersonateTarget {
   const cleanName = cleanCisaName(c.name);
   const sub = [c.year, c.major].filter(Boolean).join(' · ');
   const initials = impInits(cleanName);
@@ -136,7 +136,7 @@ export function impContactTarget(c: { id: string; name: string; year?: string; m
       role: 'Student',
       roleShort: 'Student',
       subtitle: sub || 'Student',
-      caredById: c.owner || 'u1',
+      caredById: 'u1',
       contactId: c.id,
     },
   };

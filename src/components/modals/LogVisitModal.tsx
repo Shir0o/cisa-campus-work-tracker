@@ -151,7 +151,6 @@ export default function LogVisitModal({
         serverCreatedAt: serverTimestamp(),
         createdBy: me,
         createdByName: myName,
-        owner: me,
         hasNewActivity: true,
         attendance: {},
       };

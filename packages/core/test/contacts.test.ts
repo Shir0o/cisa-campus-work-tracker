@@ -38,8 +38,8 @@ beforeEach(() => {
   firestoreMock.updateDoc.mockResolvedValue(undefined);
 });
 
-describe('addContact — owner stamp', () => {
-  it('stamps the actor as owner when by.uid is provided', async () => {
+describe('addContact — creator stamp', () => {
+  it('stamps the actor as creator when by.uid is provided', async () => {
     await addContact(
       {} as never,
       baseInput,
@@ -47,12 +47,12 @@ describe('addContact — owner stamp', () => {
     );
 
     const written = firestoreMock.addDoc.mock.calls[0][1] as Record<string, unknown>;
-    expect(written.owner).toBe('staff-1');
+    expect(written.owner).toBeUndefined();
     expect(written.createdBy).toBe('staff-1');
     expect(written.createdByName).toBe('Staff One');
   });
 
-  it('stamps owner as null when no actor uid is given (anon intake)', async () => {
+  it('stamps creator as null when no actor uid is given (anon intake)', async () => {
     await addContact(
       {} as never,
       baseInput,
@@ -60,19 +60,15 @@ describe('addContact — owner stamp', () => {
     );
 
     const written = firestoreMock.addDoc.mock.calls[0][1] as Record<string, unknown>;
-    expect(written.owner).toBeNull();
+    expect(written.owner).toBeUndefined();
     expect(written.createdBy).toBeNull();
   });
 
-  it('does not invent an owner when the caller omitted the by field entirely', async () => {
+  it('does not write an owner field when the caller omitted the by field entirely', async () => {
     await addContact({} as never, baseInput);
 
     const written = firestoreMock.addDoc.mock.calls[0][1] as Record<string, unknown>;
-    // Undefined values are stripped by addContact before writing, so the key
-    // either is absent or is explicitly null. Either way: not the placeholder
-    // string 'undefined' and not someone else's uid.
-    expect(written.owner == null || written.owner === undefined).toBe(true);
-    expect(written.owner).not.toBe('undefined');
+    expect(written.owner).toBeUndefined();
   });
 
   it('returns the new document id', async () => {
@@ -119,7 +115,6 @@ describe('setContactCarer (#1051)', () => {
   const contact = {
     id: 'c1',
     createdBy: 'u1',
-    owner: 'u1',
     coCreators: ['u2'],
     founders: ['u1'],
     carers: ['u3'],
@@ -181,7 +176,6 @@ describe('removeContactCollaborator (#1052)', () => {
     const contact = {
       id: 'c1',
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u3'],
@@ -205,7 +199,6 @@ describe('removeContactCollaborator (#1052)', () => {
     const contact = {
       id: 'c1',
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u3'],
       carers: ['u3'],
@@ -227,7 +220,6 @@ describe('removeContactCollaborator (#1052)', () => {
     const contact = {
       id: 'c1',
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u3', 'u4'],
@@ -251,7 +243,6 @@ describe('removeContactCollaborator (#1052)', () => {
     const contact = {
       id: 'c1',
       createdBy: 'u1',
-      owner: 'u1',
       coCreators: ['u2', 'u3'],
       founders: ['u1'],
       carers: ['u4'],

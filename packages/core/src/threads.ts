@@ -86,13 +86,12 @@ export const THREAD_NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: stri
 };
 
 /** Everyone tied to a contact: they added them, they are the adder's gospel
- *  partner, or they are the assigned caregiver (#813). The fourth tie —
- *  teammates keeping this person on their own My Day — is private to each of
- *  them and is resolved on their own feed, never fanned out from a write. */
+ *  partner, or they are a co-creator. The fourth tie — teammates keeping this
+ *  person on their own My Day — is private to each of them and is resolved on
+ *  their own feed, never fanned out from a write. */
 export interface ThreadStakeholders {
   createdBy?: string | null;
   coCreators?: string[] | null;
-  owner?: string | null;
 }
 
 /** The uids on the contact document, deduped, minus the poster. */
@@ -103,7 +102,6 @@ export function stakeholderUidsOf(
   if (!stakeholders) return [];
   const all = [
     stakeholders.createdBy,
-    stakeholders.owner,
     ...(stakeholders.coCreators || []),
   ].filter((id): id is string => !!id);
   return [...new Set(all)].filter((id) => id !== from);

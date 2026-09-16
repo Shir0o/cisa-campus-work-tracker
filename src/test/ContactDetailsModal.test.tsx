@@ -1259,7 +1259,7 @@ describe('ContactDetailsModal Component', () => {
     expect(patch.carers).toBeUndefined();
   });
 
-  it('allows a co-creator to manage collaborators, but hides transfer and protects creator from removal', async () => {
+  it('allows a co-creator to manage collaborators, but never transfer, and protects creator from removal', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-cocreator', displayName: 'Trainee Partner' },
       isAdmin: false,
@@ -1270,7 +1270,6 @@ describe('ContactDetailsModal Component', () => {
     const contactWithCoCreators = {
       ...mockContact,
       createdBy: 'user-creator',
-      owner: 'user-owner',
       coCreators: ['user-cocreator', 'user-creator', 'user-456'],
     };
 
@@ -1293,7 +1292,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCoCreators} />);
     await screen.findByText('John Doe');
 
-    // Transfer affordance is HIDDEN from co-creator
+    // The Transfer affordance is gone entirely (#1053) — nobody reassigns care.
     expect(screen.queryByRole('button', { name: /transfer to/i })).toBeNull();
 
     // Sharing affordance IS visible to co-creator
@@ -1307,7 +1306,7 @@ describe('ContactDetailsModal Component', () => {
     expect(removeBtns.length).toBeGreaterThan(0);
   });
 
-  it('hides sharing and transfer affordances when impersonating (read-only mode)', async () => {
+  it('hides sharing affordances when impersonating (read-only mode)', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'admin-1', displayName: 'Admin Preview' },
       isAdmin: true,
@@ -1317,7 +1316,7 @@ describe('ContactDetailsModal Component', () => {
 
     const contact = {
       ...mockContact,
-      owner: 'admin-1',
+      carers: ['admin-1'],
       coCreators: ['user-456'],
     };
 
@@ -1343,209 +1342,18 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.queryByTitle('Remove access')).toBeNull();
   });
 
-  it('shows the Transfer affordance to the current owner and writes owner + coCreators on confirm', async () => {
+  it("never offers a care transfer — the caregiver field and the transfer machinery are gone (#1053)", async () => {
     (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Owner Tony' },
-      isAdmin: false,
-      role: 'operator',
-    });
-
-    const contactOwned = {
-      ...mockContact,
-      owner: 'user-123',
-      coCreators: [],
-    };
-
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path?.includes('users') || q?.type === 'users') {
-        successCallback({
-          docs: [
-            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
-            { id: 'user-789', data: () => ({ name: 'Rio Park', role: 'Trainee' }) },
-          ],
-        });
-      } else {
-        successCallback({ docs: [] });
-      }
-      return vi.fn();
-    });
-
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactOwned} />);
-    await screen.findByText('John Doe');
-
-    const transferTrigger = screen.getByRole('button', { name: /transfer to/i });
-    fireEvent.click(transferTrigger);
-
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'user-456' } });
-
-    // App-styled confirmation dialogue is displayed
-    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
-    expect(confirmDialog).toBeInTheDocument();
-    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          owner: 'user-456',
-          coCreators: firestore.arrayRemove('user-123'),
-        })
-      );
-    });
-
-    await waitFor(() => {
-      expect(logActivity).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'transferred a person',
-          targetId: 'contact-abc',
-        })
-      );
-    });
-  });
-
-  it('a care handover also drops the previous owner from their sheep (#1052)', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Owner Tony' },
-      isAdmin: false,
-      role: 'operator',
-    });
-
-    // The previous owner had taken John Doe into their sheep: the handover
-    // must drop their carer tie in the same write.
-    const contactOwned = {
-      ...mockContact,
-      owner: 'user-123',
-      coCreators: ['user-123', 'user-456'],
-      carers: ['user-123'],
-    };
-
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path?.includes('users') || q?.type === 'users') {
-        successCallback({
-          docs: [
-            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
-          ],
-        });
-      } else {
-        successCallback({ docs: [] });
-      }
-      return vi.fn();
-    });
-
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactOwned} />);
-    await screen.findByText('John Doe');
-
-    fireEvent.click(screen.getByRole('button', { name: /transfer to/i }));
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'user-456' } });
-    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
-    fireEvent.click(within(confirmDialog).getByRole('button', { name: /transfer to/i }));
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          owner: 'user-456',
-          coCreators: firestore.arrayRemove('user-123'),
-          carers: firestore.arrayRemove('user-123'),
-        })
-      );
-    });
-  });
-
-  it('a founder previous owner keeps their sheep after a care handover (#1052)', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Owner Tony' },
-      isAdmin: false,
-      role: 'operator',
-    });
-
-    // user-123 founded the contact and took John Doe into their sheep: the
-    // handover must not reach their carer tie.
-    const contactOwned = {
-      ...mockContact,
-      owner: 'user-123',
-      coCreators: ['user-123', 'user-456'],
-      carers: ['user-123'],
-      founders: ['user-123'],
-    };
-
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path?.includes('users') || q?.type === 'users') {
-        successCallback({
-          docs: [
-            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
-          ],
-        });
-      } else {
-        successCallback({ docs: [] });
-      }
-      return vi.fn();
-    });
-
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactOwned} />);
-    await screen.findByText('John Doe');
-
-    fireEvent.click(screen.getByRole('button', { name: /transfer to/i }));
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'user-456' } });
-    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
-    fireEvent.click(within(confirmDialog).getByRole('button', { name: /transfer to/i }));
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          owner: 'user-456',
-          coCreators: firestore.arrayRemove('user-123'),
-        })
-      );
-    });
-    const patch = (firestore.updateDoc as any).mock.calls.at(-1)?.[1] ?? {};
-    expect(patch.carers).toBeUndefined();
-  });
-
-  it('hides the Transfer affordance from viewers who are neither owner nor admin', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-other', displayName: 'Other User' },
-      isAdmin: false,
-      role: 'operator',
-    });
-
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path?.includes('users') || q?.type === 'users') {
-        successCallback({
-          docs: [
-            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
-          ],
-        });
-      } else {
-        successCallback({ docs: [] });
-      }
-      return vi.fn();
-    });
-
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, owner: 'user-123', coCreators: [] }} />);
-    await screen.findByText('John Doe');
-
-    expect(screen.queryByRole('button', { name: /transfer to/i })).toBeNull();
-  });
-
-  it('lets an admin transfer a contact they do not own', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'admin-1', displayName: 'Admin Ana' },
+      user: { uid: "user-123", displayName: "Owner Tony" },
       isAdmin: true,
-      role: 'admin',
+      role: "admin",
     });
 
     (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path?.includes('users') || q?.type === 'users') {
+      if (q?.path?.includes("users") || q?.type === "users") {
         successCallback({
           docs: [
-            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
-            { id: 'user-789', data: () => ({ name: 'Rio Park', role: 'Trainee' }) },
+            { id: "user-456", data: () => ({ name: "Mei Tanaka", role: "Staff" }) },
           ],
         });
       } else {
@@ -1554,79 +1362,12 @@ describe('ContactDetailsModal Component', () => {
       return vi.fn();
     });
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, owner: 'user-123', coCreators: [] }} />);
-    await screen.findByText('John Doe');
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, coCreators: [] }} />);
+    await screen.findByText("John Doe");
 
-    const transferTrigger = screen.getByRole('button', { name: /transfer to/i });
-    fireEvent.click(transferTrigger);
-
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'user-456' } });
-
-    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
-    expect(confirmDialog).toBeInTheDocument();
-    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ owner: 'user-456' })
-      );
-    });
-  });
-
-  it('allows owner transfer when contact has no explicit owner field and user is creator', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'creator-1', displayName: 'Creator User' },
-      isAdmin: false,
-      role: 'operator',
-      effectiveUserId: 'creator-1',
-    });
-
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path?.includes('users') || q?.type === 'users') {
-        successCallback({
-          docs: [
-            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
-            { id: 'user-789', data: () => ({ name: 'Rio Park', role: 'Trainee' }) },
-          ],
-        });
-      } else {
-        successCallback({ docs: [] });
-      }
-      return vi.fn();
-    });
-
-    const contactWithoutOwner = {
-      ...mockContact,
-      owner: undefined,
-      createdBy: 'creator-1',
-      coCreators: [],
-    };
-
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithoutOwner as any} />);
-    await screen.findByText('John Doe');
-
-    const transferTrigger = screen.getByRole('button', { name: /transfer to/i });
-    fireEvent.click(transferTrigger);
-
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'user-456' } });
-
-    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
-    expect(confirmDialog).toBeInTheDocument();
-    const confirmBtn = within(confirmDialog).getByRole('button', { name: /transfer to/i });
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          owner: 'user-456',
-        })
-      );
-    });
+    // No owner, no transfer: the only affordance under "Cared for by" is gone.
+    expect(screen.queryByRole("button", { name: /transfer to/i })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: /transfer to/i })).toBeNull();
   });
 
   it('shows "Cared for by" naming every carer, and nothing when nobody has taken them on (#1051)', async () => {

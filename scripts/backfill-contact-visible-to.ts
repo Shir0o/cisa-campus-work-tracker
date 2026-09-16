@@ -1,6 +1,6 @@
 /**
  * One-time backfill: stamp every contact's denormalised `visibleTo` access
- * list from its persisted ties (creator, adder, caregiver, collaborators).
+ * list from its persisted ties (creator, adder, collaborators, founders, carers).
  *
  * Issue #1024 phase 4. The Firestore rules read `visibleTo` to enforce
  * contact visibility server-side, and the read rule must not tighten until
@@ -61,7 +61,6 @@ async function planBackfill() {
     id: d.id,
     createdBy: d.get('createdBy'),
     addedBy: d.get('addedBy'),
-    owner: d.get('owner'),
     coCreators: d.get('coCreators'),
     visibleTo: d.get('visibleTo'),
   }));

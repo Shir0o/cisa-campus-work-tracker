@@ -1629,7 +1629,6 @@ Analyze the input text carefully and extract the following:
       }
 
       // Creating new contact
-      const isRegisteredUser = opUserId && !opUserId.startsWith("system-") && !opUserId.startsWith("groupme-") && !opUserId.startsWith("sms-") && opUserId !== "external-automation";
       const contactData = {
         name: parsed.name,
         role: parsed.role || "Student",
@@ -1645,7 +1644,6 @@ Analyze the input text carefully and extract the following:
         serverCreatedAt: FieldValue.serverTimestamp(),
         createdBy: opUserId,
         createdByName: opUserName,
-        owner: isRegisteredUser ? opUserId : null,
         hasNewActivity: true,
       };
       // Derived from the ties actually persisted above, so this agrees exactly

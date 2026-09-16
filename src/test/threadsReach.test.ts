@@ -4,18 +4,18 @@ import { stakeholderUidsOf, isOpenAsk, daysOpen, THREAD_KINDS } from "../lib/thr
 // #813 — who a message on a contact reaches, and when a follow-up ask is done.
 
 describe("stakeholderUidsOf — everyone tied to the contact", () => {
-  it("includes the assigned caregiver, which the notify path used to miss", () => {
-    const uids = stakeholderUidsOf({ createdBy: "t1", coCreators: ["t2"], owner: "t3" }, "ft1");
+  it("includes the creator and co-creators, which the notify path used to miss", () => {
+    const uids = stakeholderUidsOf({ createdBy: "t1", coCreators: ["t2", "t3"] }, "ft1");
     expect(uids).toEqual(expect.arrayContaining(["t1", "t2", "t3"]));
   });
 
   it("never tells the poster about their own message", () => {
-    expect(stakeholderUidsOf({ createdBy: "t1", owner: "t1" }, "t1")).toEqual([]);
+    expect(stakeholderUidsOf({ createdBy: "t1", coCreators: ["t1"] }, "t1")).toEqual([]);
   });
 
   it("dedupes someone who holds two ties at once", () => {
-    // The adder is very often also the owner; they must be notified once.
-    expect(stakeholderUidsOf({ createdBy: "t1", owner: "t1", coCreators: ["t1"] }, "ft1")).toEqual(["t1"]);
+    // The adder is very often also a co-creator; they must be notified once.
+    expect(stakeholderUidsOf({ createdBy: "t1", coCreators: ["t1"] }, "ft1")).toEqual(["t1"]);
   });
 
   it("is empty when the caller passed no stakeholders", () => {
@@ -24,7 +24,7 @@ describe("stakeholderUidsOf — everyone tied to the contact", () => {
   });
 
   it("ignores empty and missing ids rather than notifying nobody-shaped uids", () => {
-    expect(stakeholderUidsOf({ createdBy: "", coCreators: [""], owner: null }, "ft1")).toEqual([]);
+    expect(stakeholderUidsOf({ createdBy: "", coCreators: [""] }, "ft1")).toEqual([]);
   });
 });
 

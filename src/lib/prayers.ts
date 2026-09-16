@@ -106,12 +106,10 @@ export function getContactGrade(contact: { year?: string; tags?: string[] }): st
 /**
  * The display names of everyone holding this contact in their sheep (#1051).
  * "Cared for by" reads from the carers tie — the people who have taken the
- * person on — and names zero, one or several of them. The old `owner` field is
- * still written and read (the care handover), it is just no longer what this
- * line claims.
+ * person on — and names zero, one or several of them.
  */
 export function getContactCarers(
-  contact: { carers?: string[] | null; owner?: string | null },
+  contact: { carers?: string[] | null },
   team?: { uid?: string; id?: string; name?: string }[],
 ): string[] {
   const nameByUid: Record<string, string> = {};

@@ -106,13 +106,12 @@ describe('planContactPartnerStampRepair', () => {
     expect(plan.writes).toEqual([]);
   });
 
-  it('never removes the creator, the adder or the caregiver', () => {
+  it('never removes the creator or the adder', () => {
     const plan = planContactPartnerStampRepair(
       [
         contact({
           createdBy: 'sam',
           addedBy: 'bob',
-          owner: 'bob',
           coCreators: ['sam', 'bob'],
           createdAt: '2026-08-15T00:00:00.000Z',
         }),
@@ -136,9 +135,8 @@ describe('planContactPartnerStampRepair', () => {
       [
         contact({
           createdBy: 'sam',
-          owner: 'ft',
           coCreators: ['bob', 'friend'],
-          visibleTo: ['sam', 'ft', 'bob', 'friend'],
+          visibleTo: ['sam', 'bob', 'friend'],
           createdAt: '2026-08-15T00:00:00.000Z',
         }),
       ],
@@ -149,8 +147,8 @@ describe('planContactPartnerStampRepair', () => {
         id: 'c1',
         removeCoCreators: ['bob'],
         coCreatorsTo: ['friend'],
-        visibleToFrom: ['sam', 'ft', 'bob', 'friend'],
-        visibleToTo: ['sam', 'ft', 'friend'],
+        visibleToFrom: ['sam', 'bob', 'friend'],
+        visibleToTo: ['sam', 'friend'],
       },
     ]);
   });
