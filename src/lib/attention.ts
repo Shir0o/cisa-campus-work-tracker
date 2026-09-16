@@ -8,14 +8,15 @@ import { InboxState } from "./inboxState";
 export type AttentionKind = "contact" | "interaction" | "thread" | "task" | "notification";
 
 /** Everyone tied to a contact (#813): they added them, they are the adder's
- *  gospel partner, or they are the assigned caregiver — the same three ties
- *  `canSeeContact` has always used — plus the fourth, private one: teammates
- *  keeping this person on their own My Day. That fourth tie is indexed by
- *  person rather than by contact, so it cannot be resolved by whoever is
- *  posting; it is resolved here, on the reader's own screen, from preferences
- *  they already have loaded. */
+ *  gospel partner, they are a co-creator, they founded the person (#1049), or
+ *  they hold the person in their sheep (#1051) — the same ties `canSeeContact`
+ *  has always used — plus the fourth, private one: teammates keeping this
+ *  person on their own My Day. That fourth tie is indexed by person rather than
+ *  by contact, so it cannot be resolved by whoever is posting; it is resolved
+ *  here, on the reader's own screen, from preferences they already have
+ *  loaded. */
 export function isTiedTo(
-  contact: Pick<Contact, "createdBy" | "addedBy" | "owner" | "coCreators"> | undefined,
+  contact: Pick<Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> | undefined,
   uid: string,
   personalContactIds?: Set<string> | null,
   contactId?: string | null,
@@ -25,8 +26,9 @@ export function isTiedTo(
   return (
     contact.createdBy === uid ||
     contact.addedBy === uid ||
-    contact.owner === uid ||
-    (contact.coCreators || []).includes(uid)
+    (contact.coCreators || []).includes(uid) ||
+    (contact.founders || []).includes(uid) ||
+    (contact.carers || []).includes(uid)
   );
 }
 

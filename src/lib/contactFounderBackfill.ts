@@ -44,7 +44,6 @@ export interface FounderBackfillContact {
   founders?: string[] | null;
   visibleTo?: string[] | null;
   coCreators?: string[] | null;
-  owner?: string | null;
   createdAt?: string | null;
 }
 

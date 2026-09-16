@@ -128,7 +128,6 @@ export async function seedEmulator() {
     notes: 'Met at campus orientation.',
     createdBy: fulltimerUid || 'fulltimer-uid',
     createdByName: 'Full-timer Test User',
-    owner: fulltimerUid || 'fulltimer-uid',
     coCreators: traineeUid ? [traineeUid] : [],
     visibleTo: [fulltimerUid, traineeUid].filter(Boolean),
     createdAt: new Date().toISOString(),

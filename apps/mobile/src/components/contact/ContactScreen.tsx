@@ -366,7 +366,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
             {showDetails && (
               <Details
                 contact={contact}
-                caregiverNames={data.caregiverNames}
+                carerNames={data.carerNames}
                 teamMembers={teamMembers}
                 canEdit={canWrite}
                 canShare={canShare}
@@ -767,7 +767,7 @@ function PrayerCard({
 /** Story's one disclosure (`.m2c-det`) — everything the old Overview tab held. */
 function Details({
   contact,
-  caregiverNames = [],
+  carerNames = [],
   teamMembers,
   canEdit,
   canShare,
@@ -776,7 +776,7 @@ function Details({
   onRemoveCollaborator,
 }: {
   contact: NonNullable<ReturnType<typeof useContactDetailData>['contact']>;
-  caregiverNames: string[];
+  carerNames: string[];
   teamMembers: AppUser[];
   canEdit?: boolean;
   canShare?: boolean;
@@ -837,8 +837,8 @@ function Details({
       {/* #730: the "How we met" and "Address" rows are gone — the fields
           have been retired from the app. */}
       <DetailRow label={t('mobile.contact.part_of')} value={contact.role} />
-      {caregiverNames.length > 0 && (
-        <DetailRow label={t('mobile.contact.cared_for_by')} value={caregiverNames.join(', ')} />
+      {carerNames.length > 0 && (
+        <DetailRow label={t('mobile.contact.cared_for_by')} value={carerNames.join(', ')} />
       )}
 
       {/* ── Who else can see ────────────────────────────────────────── */}

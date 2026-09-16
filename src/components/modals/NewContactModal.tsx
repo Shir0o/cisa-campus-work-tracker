@@ -149,12 +149,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         serverCreatedAt: serverTimestamp(),
         createdBy: user?.uid,
         createdByName: user?.displayName || 'Tony Wang',
-        // "Cared for by" on the contact detail page binds to `owner` — the
-        // mutable field that says who currently has pastoral responsibility
-        // for the contact. Stamp it from whoever is adding the contact so
-        // the aside isn't empty for new contacts; it can be reassigned later
-        // from the contact page (gated by the firestore rules on `owner`).
-        owner: user?.uid ?? null,
         attendance: {}
       };
       // Gospel partners: a person either member of a pair brings in is shared

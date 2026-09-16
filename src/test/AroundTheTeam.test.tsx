@@ -59,7 +59,6 @@ vi.mock('firebase/firestore', async (importOriginal) => {
               data: () => ({
                 name: 'Kofi Mensah',
                 createdBy: 'mei',
-                owner: 'mei',
                 createdAt: new Date().toISOString(),
               }),
             },
@@ -91,14 +90,13 @@ const contact = (over: Partial<Contact>): Contact =>
     id: 'kofi',
     name: 'Kofi Mensah',
     createdBy: 'mei',
-    owner: 'mei',
     createdAt: new Date().toISOString(),
     ...over,
   }) as Contact;
 
 const contacts: Contact[] = [
   contact({}),
-  contact({ id: 'aisha', name: 'Aisha Rahman', createdBy: 'grace', owner: 'grace' }),
+  contact({ id: 'aisha', name: 'Aisha Rahman', createdBy: 'grace' }),
 ];
 
 const interactions: Interaction[] = [
@@ -307,7 +305,7 @@ describe('Around the team page (#943)', () => {
         <AroundTheTeam
           contacts={[
             contact({ id: 'old', name: 'Old Person', createdAt: old }),
-            contact({ id: 'today', name: 'Today Person', createdBy: 'grace', owner: 'grace', createdAt: new Date().toISOString() }),
+            contact({ id: 'today', name: 'Today Person', createdBy: 'grace', createdAt: new Date().toISOString() }),
           ]}
           interactions={[
             {
@@ -913,7 +911,7 @@ describe('Around the team — the conversation in place, and one state (#1012)',
       <MemoryRouter initialEntries={['/around']}>
         <AroundTheTeam
           contacts={[
-            contact({ id: 'aisha', name: 'Aisha Rahman', createdBy: 'grace', owner: 'grace' }),
+            contact({ id: 'aisha', name: 'Aisha Rahman', createdBy: 'grace' }),
             contact({ id: 'old', name: 'Old Person', createdAt: older }),
           ]}
           interactions={[]}

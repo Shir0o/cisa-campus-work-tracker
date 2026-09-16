@@ -110,7 +110,6 @@ describe('getContactCarers & getContactAddedBy', () => {
   it('names nobody when nobody has taken the person on', () => {
     expect(getContactCarers({}, team)).toEqual([]);
     expect(getContactCarers({ carers: [] }, team)).toEqual([]);
-    expect(getContactCarers({ owner: 'u1' }, team)).toEqual([]);
   });
 
   it('drops a carer whose name cannot be resolved', () => {

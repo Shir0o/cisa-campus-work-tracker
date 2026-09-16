@@ -31,7 +31,7 @@
  *
  * Only `remove` is ever written. `ask` rows are reported and grouped by pair,
  * because one answer -- when were these two put together? -- collapses every
- * row in the group. `createdBy`, `addedBy` and `owner` are never candidates, so
+ * row in the group. `createdBy` and `addedBy` are never candidates, so
  * the repair can only ever narrow a partner stamp.
  *
  * Pure and dependency-free on purpose, like ./contactVisibleToBackfill.ts: the
@@ -194,10 +194,10 @@ export function planContactPartnerStampRepair(
     if (!anchor) continue;
 
     // Only a current partner of the anchor can have been stamped by the
-    // backfill. A tie that is also the creator, adder or caregiver stands on
-    // its own and is never a candidate.
+    // backfill. A tie that is also the creator or adder stands on its own and
+    // is never a candidate.
     const untouchable = new Set(
-      [contact.createdBy, contact.addedBy, contact.owner].filter(isId),
+      [contact.createdBy, contact.addedBy].filter(isId),
     );
     const partners = new Set(partnersOf(currentPartners, anchor));
     const existing = ids(contact.coCreators);

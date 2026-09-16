@@ -90,7 +90,7 @@ An alert delivered to the notification bell in the top navigation bar (and optio
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:
-Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, role/affiliation, first impressions/notes, and tags). Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet, while caregiver assignments follow gospel partner ownership rules.
+Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, role/affiliation, first impressions/notes, and tags). Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet.
 _Avoid_: Admin edit form, contact manager modal
 
 **Edit a teammate**:
@@ -208,11 +208,11 @@ The staff thread on a contact, open to everyone tied to that person, where a Ful
 _Avoid_: Follow-up, Thread, Comments, Walking together
 
 **Tied to a contact**:
-The four relationships that make someone a recipient of what is written on a person: they added them, they are the adder's gospel partner (`coCreators`), they are the assigned caregiver (`owner`), or they keep that person on their own My Day. The first three live on the contact document and can be resolved by whoever is posting; the fourth is private to each teammate and is resolved on the reader's own screen instead. Everything written in a **Conversation** reaches all four unless an `@mention` narrows it to one person.
+The relationships that make someone a recipient of what is written on a person: they added them, they are the adder's gospel partner (`coCreators`), they founded the person (`founders`), or they hold the person in their sheep (`carers`). These live on the contact document and can be resolved by whoever is posting. Everything written in a **Conversation** reaches them unless an `@mention` narrows it to one person.
 _Avoid_: Stakeholder, watcher, subscriber, assigned
 
 **Co-creator**:
-A teammate listed in a contact's `coCreators` (such as a gospel partner or collaborator) who shares visibility and management of that contact's collaborator list (`Who else can see`). Co-creators can add and remove collaborators on web and mobile, while pastoral caregiver transfer (`owner`) remains reserved for the primary owner or a Full-timer.
+A teammate listed in a contact's `coCreators` (such as a gospel partner or collaborator) who shares visibility and management of that contact's collaborator list (`Who else can see`). Co-creators can add and remove collaborators on web and mobile.
 _Avoid_: Secondary owner, delegate, guest collaborator
 
 **Seen / Completed**:

@@ -197,12 +197,6 @@ export async function addContact(
     serverCreatedAt: serverTimestamp(),
     createdBy: by?.uid ?? null,
     createdByName: by?.name ?? null,
-    // "Cared for by" on the contact detail page binds to `owner` — the
-    // mutable field that says who currently has pastoral responsibility for
-    // the contact. It defaults to whoever adds the contact (falling back to
-    // `null` for the anon sign-up path) and can be reassigned later from the
-    // contact page (gated by the firestore rules on `owner` + `coCreators`).
-    owner: by?.uid ?? null,
     hasNewActivity: true,
     attendance: {},
   };
@@ -319,7 +313,7 @@ export async function updateContactTags(
 
 export async function addContactCollaborator(
   db: Firestore,
-  contact: Pick<Contact, "id" | "createdBy" | "addedBy" | "owner" | "coCreators">,
+  contact: Pick<Contact, "id" | "createdBy" | "addedBy" | "coCreators">,
   staffId: string,
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
@@ -338,7 +332,7 @@ export async function removeContactCollaborator(
   db: Firestore,
   contact: Pick<
     Contact,
-    "id" | "createdBy" | "addedBy" | "owner" | "coCreators" | "founders" | "carers"
+    "id" | "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"
   >,
   staffId: string,
   by: { uid?: string | null; name?: string | null } = {},
@@ -380,7 +374,7 @@ export async function setContactCarer(
   db: Firestore,
   contact: Pick<
     Contact,
-    "id" | "createdBy" | "addedBy" | "owner" | "coCreators" | "founders" | "carers"
+    "id" | "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"
   >,
   uid: string,
   takingOn: boolean,

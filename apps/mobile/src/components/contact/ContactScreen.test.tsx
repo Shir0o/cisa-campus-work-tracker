@@ -131,7 +131,7 @@ describe('ContactScreen', () => {
     threadMessages: [] as ThreadMessage[],
     walkLabel: 'Alongside',
     inYourCare: true,
-    caregiverNames: [],
+    carerNames: [],
     addInteraction: jest.fn(),
     addPrayer: jest.fn(),
     markPrayerAnswered: jest.fn(),
@@ -539,7 +539,6 @@ describe('ContactScreen', () => {
       createdBy: 'tony',
       createdByName: 'Tony',
       addedBy: 'tony',
-      owner: 'tony',
       coCreators: ['tony', 'grace'],
     };
 
@@ -600,7 +599,6 @@ describe('ContactScreen', () => {
         name: 'My Person',
         createdBy: 'enoch',
         addedBy: 'enoch',
-        owner: 'enoch',
         coCreators: ['enoch'],
       };
 

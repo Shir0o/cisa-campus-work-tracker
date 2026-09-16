@@ -144,11 +144,9 @@ export function useContactDetailData(contactId: string) {
   const shownLoading = useMinLoading(loading);
 
   // "Cared for by" derives from the carers tie (#1051) — everyone holding this
-  // person in their sheep — resolved against the team roster. The `owner` field
-  // is still written and read (the care handover); it is just no longer what
-  // this row claims.
+  // person in their sheep — resolved against the team roster.
   const fullTimerNames = useFullTimerNames();
-  const caregiverNames = carerNamesOf(contact?.carers ?? null, fullTimerNames);
+  const carerNames = carerNamesOf(contact?.carers ?? null, fullTimerNames);
 
   return {
     contact,
@@ -162,7 +160,7 @@ export function useContactDetailData(contactId: string) {
     threadMessages: visibleThreadMessages,
     walkLabel,
     inYourCare,
-    caregiverNames,
+    carerNames,
 
     addInteraction: async (input: { content: string; dateTime: string; type: string }) => {
       if (!contact || !uid) return;
@@ -226,7 +224,6 @@ export function useContactDetailData(contactId: string) {
           stakeholders: {
             createdBy: contact.createdBy || contact.addedBy,
             coCreators: contact.coCreators,
-            owner: contact.owner,
           },
         },
       );

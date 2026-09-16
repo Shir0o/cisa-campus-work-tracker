@@ -507,7 +507,7 @@ describe('MyDayMobile', () => {
 
     render(
       <MyDayMobile
-        contacts={[{ id: 'c1', name: 'Mara', createdBy: 'u1', owner: 'u1' } as any]}
+        contacts={[{ id: 'c1', name: 'Mara', createdBy: 'u1' } as any]}
         events={[]}
         prayers={[]}
         stages={[]}
@@ -546,7 +546,7 @@ describe('MyDayMobile', () => {
 
     render(
       <MyDayMobile
-        contacts={[{ id: 'c1', name: 'Mara', createdBy: 'u1', owner: 'u1' } as any]}
+        contacts={[{ id: 'c1', name: 'Mara', createdBy: 'u1' } as any]}
         events={[]}
         prayers={[]}
         stages={[]}

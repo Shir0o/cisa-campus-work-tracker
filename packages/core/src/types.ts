@@ -43,7 +43,6 @@ export interface Contact {
    * residence-hall concept on the header line (#356). */
   metVia?: string;
   addedBy?: string;
-  owner?: string;
   coCreators?: string[];
   /** The founding set (#1049): whoever logged the person plus everyone they were
    *  partnered with at that instant, read from the dated pairing history. Written
@@ -52,9 +51,10 @@ export interface Contact {
   /** The people holding this person in their sheep (#1051): everyone who has
    *  taken them on. Several people can hold the same person at once. */
   carers?: string[];
-  /** Denormalised access list: every persisted tie (creator, adder, caregiver,
-   *  collaborators). Firestore rules read this to enforce contact visibility
-   *  server-side (#1024 phase 4). Maintained alongside the ties themselves. */
+  /** Denormalised access list: every persisted tie (creator, adder,
+   *  collaborators, founders, carers). Firestore rules read this to enforce
+   *  contact visibility server-side (#1024 phase 4). Maintained alongside the
+   *  ties themselves. */
   visibleTo?: string[];
   season?: string;
   prayerRequest?: string;

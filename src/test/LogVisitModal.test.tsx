@@ -318,7 +318,6 @@ describe('LogVisitModal', () => {
       stage: 'Contact',
       createdBy: 'u1',
       createdByName: 'Mei Tanaka',
-      owner: 'u1',
     });
     expect(data.tags).toContain('Fall 2026');
     expect(data.tags).toContain('visit');

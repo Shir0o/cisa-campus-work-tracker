@@ -62,7 +62,6 @@ describe("the worklist card, through On you (#813, #943)", () => {
       createdBy: "u3",
       createdAt: new Date().toISOString(),
       stage: "Freshman Contact",
-      owner: "u3",
       ...over,
     }) as Contact;
 
@@ -114,7 +113,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
   it("groups new people ahead of everything else", () => {
     render(
       <OnYouCard
-        contacts={[contact(), contact({ id: "c2", name: "Bo Chen", owner: "u1" })]}
+        contacts={[contact(), contact({ id: "c2", name: "Bo Chen", carers: ["u1"] })]}
         interactions={[]}
         threads={[{ ...question, id: "t2", contactId: "c2" }]}
         staffNameMap={{ u3: "Zion" }}
@@ -198,7 +197,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
   describe("the verb fits the item", () => {
     // `mine` is created by u1, so it contributes no "somebody added them" item
     // of its own — the card is about the thread and nothing else.
-    const mine = contact({ createdBy: "u1", owner: "u1" });
+    const mine = contact({ createdBy: "u1" });
 
     const cases: Array<[string, ThreadMessageWithContact[], string]> = [
       ["a question is Answered", [question], "Answered"],
@@ -236,7 +235,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
     it("a contact nobody has written about is Reviewed", () => {
       render(
         <OnYouCard
-          contacts={[contact({ owner: "u1" })]}
+          contacts={[contact({ carers: ["u1"] })]}
           interactions={[]}
           threads={[]}
           staffNameMap={{ u3: "Zion" }}
@@ -262,7 +261,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
   it("closes the follow-up ask for everyone when 'I followed up' is pressed", () => {
     render(
       <OnYouCard
-        contacts={[contact({ createdBy: "u1", owner: "u1" })]}
+        contacts={[contact({ createdBy: "u1" })]}
         interactions={[]}
         threads={[{ ...question, id: "t_nudge", kind: "nudge", body: "Could someone text Alex?" }]}
         staffNameMap={{ u3: "Zion" }}
@@ -281,7 +280,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
   it("an encouragement is summarised, never a card", () => {
     render(
       <OnYouCard
-        contacts={[contact({ owner: "u1" })]}
+        contacts={[contact({ carers: ["u1"] })]}
         interactions={[]}
         threads={[
           { ...question, id: "t_enc", kind: "encouragement", body: "Praying for you both!", fromName: "Zion Park" },
@@ -324,7 +323,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
       id: `c_owned_${i}`,
       name: `Person ${i}`,
       createdBy: "u3",
-      owner: uid,
+      carers: ["u1"],
       createdAt: new Date().toISOString(),
     })) as Contact[];
 

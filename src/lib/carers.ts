@@ -31,7 +31,6 @@ export function reachWithoutCarers(contact: ContactTies | null | undefined): str
   const ids = [
     contact.createdBy,
     contact.addedBy,
-    contact.owner,
     ...(contact.coCreators || []),
     ...(contact.founders || []),
   ];
@@ -41,7 +40,7 @@ export function reachWithoutCarers(contact: ContactTies | null | undefined): str
 /** The carer ties that survive removing `removedUid` from the contact's
  *  collaborators (#1052). A carer whose reach came only from the collaborator
  *  tie is dropped with it; a carer still held by another tie — a founder, a
- *  creator, an owner — keeps the person. */
+ *  creator — keeps the person. */
 export function carersAfterCollaboratorRemoval(
   contact: ContactTies | null | undefined,
   removedUid: string,

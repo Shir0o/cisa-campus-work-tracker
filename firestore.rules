@@ -52,7 +52,8 @@ service cloud.firestore {
     // Contact visibility (#1024 phase 4). Mirrors the client's `seesAllPeople`:
     // Full-timers, Students and Community read the whole roster; only Trainees
     // are scoped to the denormalised access list on the contact. `visibleTo`
-    // holds every persisted tie -- creator, adder, caregiver and collaborators.
+    // holds every persisted tie -- creator, adder, collaborators, founders,
+    // and carers.
     function seesAllContacts() {
       return isAdmin() || hasRole('operator') || hasRole('viewer');
     }
@@ -204,10 +205,6 @@ service cloud.firestore {
       // batch and ContactDetailsModal.handleAddInteraction).
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
                       isValidContact(incoming()) &&
-                      // Owner transfer / share: only the current owner or an admin
-                      // may rewrite who cares for this contact or who else can see
-                      // it. Mirror of the `asks` rule that gates by
-                      // `existing().owner == request.auth.uid || isAdmin()`.
                       (incoming().diff(existing()).affectedKeys().hasOnly([
                         'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
                         'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
@@ -217,31 +214,12 @@ service cloud.firestore {
                         'updatedAt', 'updatedBy', 'updatedByName'
                       ]) ||
                        (incoming().diff(existing()).affectedKeys().hasOnly([
-                         'owner', 'coCreators', 'carers', 'visibleTo',
-                         'updatedAt', 'updatedBy', 'updatedByName'
-                       ]) && (
-                         isAdmin() ||
-                         existing().get('owner', null) == request.auth.uid ||
-                         (
-                           existing().get('owner', null) == null &&
-                           (existing().get('createdBy', null) == request.auth.uid || existing().get('addedBy', null) == request.auth.uid)
-                         )
-                       ) && (
-                         // #1052: a care handover may drop the previous owner's
-                         // carer tie in the same write — never grant one.
-                         incoming().get('carers', []).toSet().difference(existing().get('carers', []).toSet()).isEmpty() &&
-                         existing().get('carers', []).toSet().difference(incoming().get('carers', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()))
-                       )) ||
-                       (incoming().diff(existing()).affectedKeys().hasOnly([
                          'coCreators', 'visibleTo',
                          'updatedAt', 'updatedBy', 'updatedByName'
                        ]) && (
                          isAdmin() ||
-                         existing().get('owner', null) == request.auth.uid ||
-                         (
-                           existing().get('owner', null) == null &&
-                           (existing().get('createdBy', null) == request.auth.uid || existing().get('addedBy', null) == request.auth.uid)
-                         ) ||
+                         existing().get('createdBy', null) == request.auth.uid ||
+                         existing().get('addedBy', null) == request.auth.uid ||
                          (
                            'coCreators' in existing() &&
                            existing().coCreators is list &&
@@ -285,11 +263,8 @@ service cloud.firestore {
                          'updatedAt', 'updatedBy', 'updatedByName'
                        ]) && (
                          isAdmin() ||
-                         existing().get('owner', null) == request.auth.uid ||
-                         (
-                           existing().get('owner', null) == null &&
-                           (existing().get('createdBy', null) == request.auth.uid || existing().get('addedBy', null) == request.auth.uid)
-                         ) ||
+                         existing().get('createdBy', null) == request.auth.uid ||
+                         existing().get('addedBy', null) == request.auth.uid ||
                          (
                            'coCreators' in existing() &&
                            existing().coCreators is list &&

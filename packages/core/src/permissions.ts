@@ -127,7 +127,6 @@ export const seesAllPeople = (role: AppRole | string | null) => role !== 'manage
 export interface ContactTies {
   createdBy?: string | null;
   addedBy?: string | null;
-  owner?: string | null;
   coCreators?: string[] | null;
   founders?: string[] | null;
   carers?: string[] | null;
@@ -147,7 +146,6 @@ export function visibleToOf(contact: ContactTies | null | undefined): string[] {
   const ids = [
     contact.createdBy,
     contact.addedBy,
-    contact.owner,
     ...(contact.coCreators || []),
     ...(contact.founders || []),
     ...(contact.carers || []),
@@ -162,7 +160,6 @@ export function canSeeContact(
   contact: {
     addedBy?: string;
     createdBy?: string;
-    owner?: string;
     coCreators?: string[];
     founders?: string[];
     carers?: string[];
@@ -176,7 +173,6 @@ export function canSeeContact(
   const added = contact.addedBy || contact.createdBy;
   if (
     added === staffId ||
-    contact.owner === staffId ||
     (contact.coCreators || []).includes(staffId) ||
     (contact.founders || []).includes(staffId) ||
     (contact.carers || []).includes(staffId)
@@ -185,10 +181,10 @@ export function canSeeContact(
   }
 
   // Gospel partners for the term: a trainee can see people their active partner
-  // added or owns, for that term only. Mirrors the web app's copy in
+  // added, for that term only. Mirrors the web app's copy in
   // src/lib/permissions.ts (#1024 phase 3) so both tell the same truth.
   const partners = partnersOf(staffId);
-  if (partners.length && ((added && partners.includes(added)) || (contact.owner && partners.includes(contact.owner)))) {
+  if (partners.length && (added && partners.includes(added))) {
     const term = currentTermKey();
     if (contact.season) return contact.season === term;
     if (contact.tags && contact.tags.includes(term)) return true;
@@ -200,27 +196,16 @@ export function canSeeContact(
 export function canManageCollaborators(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] } | null | undefined
+  contact: { addedBy?: string; createdBy?: string; coCreators?: string[] } | null | undefined
 ): boolean {
   if (!contact || !staffId) return false;
   if (role === 'admin') return true;
-  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
+  const ownerId = contact.createdBy || contact.addedBy;
   if (ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId) return true;
   return (contact.coCreators || []).includes(staffId);
 }
 
-export function canTransferOwnership(
-  role: AppRole | string | null,
-  staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; owner?: string } | null | undefined
-): boolean {
-  if (!contact || !staffId) return false;
-  if (role === 'admin') return true;
-  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
-  return ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId;
-}
-
-export function visibleContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; carers?: string[] }>(
+export function visibleContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[] }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[]
@@ -229,7 +214,7 @@ export function visibleContacts<T extends { addedBy?: string; createdBy?: string
   return list.filter((c) => canSeeContact(role, staffId, c));
 }
 
-export function journeyContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string }>(
+export function journeyContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[],

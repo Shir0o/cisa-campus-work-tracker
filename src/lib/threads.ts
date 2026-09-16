@@ -203,13 +203,12 @@ const TEAM_NOTIFY_TITLE = (who: string, contact: string) =>
   `${who} posted in the Full-timers thread on ${contact}`;
 
 /** Everyone tied to a contact: they added them, they are the adder's gospel
- *  partner, or they are the assigned caregiver. The fourth tie — teammates
- *  keeping this person on their own My Day — is private to each of them and is
- *  resolved on their own feed instead, never fanned out from here (#813). */
+ *  partner, or they are a co-creator. The fourth tie — teammates keeping this
+ *  person on their own My Day — is private to each of them and is resolved on
+ *  their own feed instead, never fanned out from here (#813). */
 export interface ThreadStakeholders {
   createdBy?: string | null;
   coCreators?: string[] | null;
-  owner?: string | null;
 }
 
 /** The uids on the contact document, deduped, minus the poster. */
@@ -220,7 +219,6 @@ export function stakeholderUidsOf(
   if (!stakeholders) return [];
   const all = [
     stakeholders.createdBy,
-    stakeholders.owner,
     ...(stakeholders.coCreators || []),
   ].filter((id): id is string => !!id);
   return [...new Set(all)].filter((id) => id !== from);
@@ -325,8 +323,7 @@ export async function addThreadMessage(
       }
     }
 
-    // Everyone tied to the contact: creator, gospel partners, and the assigned
-    // caregiver. `owner` was a tie everywhere in the product except here.
+    // Everyone tied to the contact: creator, gospel partners, and co-creators.
     for (const sUid of stakeholderUidsOf(notify?.stakeholders, input.from)) {
       if (notifiedUserIds.has(sUid) || !isAllowedRecipient(sUid)) continue;
       notifiedUserIds.add(sUid);

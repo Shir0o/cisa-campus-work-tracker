@@ -4,7 +4,6 @@
 export interface ContactTies {
   createdBy?: string | null;
   addedBy?: string | null;
-  owner?: string | null;
   coCreators?: string[] | null;
   founders?: string[] | null;
   carers?: string[] | null;
@@ -27,7 +26,6 @@ export function visibleToOf(contact: ContactTies | null | undefined): string[] {
   const ids = [
     contact.createdBy,
     contact.addedBy,
-    contact.owner,
     ...(contact.coCreators || []),
     ...(contact.founders || []),
     ...(contact.carers || []),

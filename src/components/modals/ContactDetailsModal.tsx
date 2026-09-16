@@ -23,7 +23,6 @@ import {
   Instagram,
   Check,
   Tag,
-  ArrowRightLeft,
   MoreHorizontal,
 } from "lucide-react";
 import {
@@ -54,9 +53,9 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canTransferOwnership, visibleToOf } from "../../lib/permissions";
+import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, visibleToOf } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
-import { carerNamesOf, carersAfterCollaboratorRemoval, reachWithoutCarers } from '../../lib/carers';
+import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
@@ -288,11 +287,6 @@ export default function ContactDetailsModal({
 
   // True while the mobile "Where is {name} now?" stage sheet is open (#677).
   const [movingStage, setMovingStage] = useState(false);
-  // True while the aside's Transfer affordance is open. The owner/admin
-  // gates this affordance via `canShare`, so the picker only lists teammates
-  // who are not already the current owner.
-  const [transferring, setTransferring] = useState(false);
-  const [pendingTransferOwner, setPendingTransferOwner] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
@@ -591,17 +585,11 @@ export default function ContactDetailsModal({
 
   const coCreators = contact.coCreators || [];
   const sharedWith = teamMembers.filter((m) => coCreators.includes(m.id));
-  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
   const creatorId = contact.createdBy || contact.addedBy;
   const canShare = !isImpersonating && canManageCollaborators(role, currentUid, contact);
-  const canTransfer = !isImpersonating && canTransferOwnership(role, currentUid, contact);
   const shareOptions = teamMembers.filter(
-    (m) => m.id !== ownerId && !coCreators.includes(m.id)
+    (m) => m.id !== creatorId && !coCreators.includes(m.id)
   );
-  // Transfer candidates: every teammate except the current owner. The admin
-  // should be able to hand a contact to a gospel partner already listed as
-  // a co-creator, so we don't filter coCreators out of this list.
-  const transferOptions = teamMembers.filter((m) => m.id !== ownerId);
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith("visit_") &&
     (currentUid === interaction.userId || hasMinRole(role, "manager"));
@@ -690,93 +678,6 @@ export default function ContactDetailsModal({
       });
     }
   };
-
-  // "Cared for by" on the aside reads from `owner` — the mutable field that
-  // says who currently has pastoral responsibility for this contact. Hand it
-  // off to another teammate and the audit log will say so. The firestore
-  // rules gate this by `isAdmin() || existing().owner == request.auth.uid`.
-  const handleSelectTransferTarget = (newOwnerId: string) => {
-    if (!contact || !canShare) return;
-    if (newOwnerId === ownerId) {
-      setTransferring(false);
-      return;
-    }
-    setPendingTransferOwner(newOwnerId);
-  };
-
-  const confirmTransferOwner = async () => {
-    if (!contact || !pendingTransferOwner) return;
-    const newOwnerId = pendingTransferOwner;
-    const newOwner = teamMembers.find((m) => m.id === newOwnerId);
-    const previousOwnerId = ownerId;
-    const previousOwner = teamMembers.find((m) => m.id === previousOwnerId);
-    const recipientName = newOwner?.name || newOwnerId;
-
-    // Drop the previous owner from coCreators in the same write so the audit
-    // stays clean — a former owner should not be self-sharing the contact.
-    const patch: Record<string, unknown> = { owner: newOwnerId };
-    const nextCoCreators =
-      previousOwnerId && previousOwnerId !== newOwnerId
-        ? (contact.coCreators || []).filter((id) => id !== previousOwnerId)
-        : contact.coCreators || [];
-    if (previousOwnerId && previousOwnerId !== newOwnerId) {
-      patch.coCreators = arrayRemove(previousOwnerId);
-    }
-    // #1052: the handover also drops the previous owner's carer tie — a former
-    // owner cannot hold the person through their sheep. A founder who took the
-    // person on keeps the tie (founding is permanent).
-    const nextCarers =
-      previousOwnerId && previousOwnerId !== newOwnerId
-        ? (contact.carers || []).filter(
-            (uid) =>
-              uid !== previousOwnerId ||
-              reachWithoutCarers({
-                ...contact,
-                owner: newOwnerId,
-                coCreators: nextCoCreators,
-              }).includes(uid),
-          )
-        : contact.carers || [];
-    if (
-      previousOwnerId &&
-      previousOwnerId !== newOwnerId &&
-      (contact.carers || []).includes(previousOwnerId) &&
-      !nextCarers.includes(previousOwnerId)
-    ) {
-      patch.carers = arrayRemove(previousOwnerId);
-    }
-    // Care handover rewrites the access list in the same write: the new
-    // caregiver is added, and a former owner who held nothing else is dropped.
-    patch.visibleTo = visibleToOf({
-      ...contact,
-      owner: newOwnerId,
-      coCreators: nextCoCreators,
-      carers: nextCarers,
-    });
-    await updateDoc(doc(db, 'contacts', contact.id), patch);
-    contact.owner = newOwnerId;
-    if (previousOwnerId && previousOwnerId !== newOwnerId) {
-      contact.coCreators = (contact.coCreators || []).filter(
-        (id) => id !== previousOwnerId,
-      );
-      contact.carers = nextCarers;
-    }
-    await logActivity({
-      action: 'transferred a person',
-      targetId: contact.id,
-      targetName: t('modals.contactDetails.transfer_done')
-        .replace('{recipient}', recipientName)
-        .replace('{name}', contact.name.split(' ')[0] || contact.name),
-      targetType: 'contact',
-      type: 'edit',
-      description: previousOwner?.name
-        ? `From ${previousOwner.name} to ${recipientName}`
-        : `To ${recipientName}`,
-    });
-    setPendingTransferOwner(null);
-    setTransferring(false);
-  };
-
 
   const handlePhoneBlur = () => {
     if (!formData.phone) {
@@ -1278,9 +1179,7 @@ export default function ContactDetailsModal({
     : t('modals.contactDetails.not_connected_yet');
   const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
   // "Cared for by" derives from the carers tie (#1051) — everyone holding this
-  // person in their sheep — and names zero, one or several people. The `owner`
-  // field is still written and read exactly as before (the transfer control
-  // below manages it); it is just no longer what this line claims.
+  // person in their sheep — and names zero, one or several people.
   const carerNames = carerNamesOf(
     currentContact?.carers,
     Object.fromEntries(teamMembers.map((m) => [m.id, m.name])),
@@ -2040,36 +1939,6 @@ export default function ContactDetailsModal({
                             </div>
                           )}
 
-                          {canTransfer && transferOptions.length > 0 && (
-                            transferring ? (
-                              <div className="flex items-center gap-2 mt-3">
-                                <select
-                                  className="cd-share-sel flex-1"
-                                  autoFocus
-                                  defaultValue=""
-                                  onChange={(e) => e.target.value && handleSelectTransferTarget(e.target.value)}
-                                >
-                                  <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
-                                  {transferOptions.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => setTransferring(false)}
-                                  className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setTransferring(true)}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start mt-2"
-                              >
-                                <ArrowRightLeft className="w-3 h-3" /> {t('modals.contactDetails.transfer_to')}
-                              </button>
-                            )
-                          )}
                           {(addedByName || sinceBy) && (
                             <div className="cd-whowho">
                               {addedByName && (
@@ -2592,7 +2461,6 @@ export default function ContactDetailsModal({
                                             contactStakeholders={{
                                               createdBy: contact.createdBy || contact.addedBy,
                                               coCreators: contact.coCreators,
-                                              owner: contact.owner,
                                             }}
                                           />
                                         </div>
@@ -2627,7 +2495,6 @@ export default function ContactDetailsModal({
                         contactStakeholders={{
                           createdBy: contact.createdBy || contact.addedBy,
                           coCreators: contact.coCreators,
-                          owner: contact.owner,
                         }}
                       />
 
@@ -2831,7 +2698,6 @@ export default function ContactDetailsModal({
                         contactStakeholders={{
                           createdBy: contact.createdBy || contact.addedBy,
                           coCreators: contact.coCreators,
-                          owner: contact.owner,
                         }}
                       />
 
@@ -2923,52 +2789,6 @@ export default function ContactDetailsModal({
                 ) : (
                   t('modals.contactDetails.delete_contact')
                 )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transfer Ownership Confirmation Dialog */}
-      {pendingTransferOwner && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t('modals.contactDetails.transfer_to')}
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-scrim/55 backdrop-blur-sm animate-in fade-in duration-200"
-        >
-          <div className="relative w-full max-w-sm bg-surface rounded-3xl border border-outline-variant shadow-2xl p-6 flex flex-col gap-4 text-on-surface animate-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-primary/10 text-accent shrink-0">
-                <ArrowRightLeft className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-serif text-base font-semibold text-on-surface">
-                  {t('modals.contactDetails.transfer_to')}
-                </h3>
-              </div>
-            </div>
-
-            <p className="text-sm text-on-surface-variant leading-relaxed">
-              {t('modals.contactDetails.transfer_confirm')
-                .replace('{name}', contact?.name?.split(' ')[0] || contact?.name || '')
-                .replace('{recipient}', teamMembers.find((m) => m.id === pendingTransferOwner)?.name || pendingTransferOwner)}
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-outline-variant/50">
-              <button
-                type="button"
-                onClick={() => setPendingTransferOwner(null)}
-                className="px-4 py-2 rounded-full text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-              >
-                {t('common.cancel') || 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={confirmTransferOwner}
-                className="px-5 py-2 rounded-full text-xs font-semibold bg-primary text-on-primary hover:opacity-90 active:scale-[0.98] transition-all"
-              >
-                {t('modals.contactDetails.transfer_to')}
               </button>
             </div>
           </div>

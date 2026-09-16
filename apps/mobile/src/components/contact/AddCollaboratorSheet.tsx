@@ -39,7 +39,7 @@ function AddCollaboratorSheetBody({
   const candidates = useMemo(() => {
     if (!contact) return [];
     const coCreators = contact.coCreators || [];
-    const ownerId = contact.owner || contact.createdBy || contact.addedBy;
+    const ownerId = contact.createdBy || contact.addedBy;
     return teamMembers.filter((m) => m.uid !== ownerId && !coCreators.includes(m.uid));
   }, [contact, teamMembers]);
 
