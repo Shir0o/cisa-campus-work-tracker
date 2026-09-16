@@ -105,8 +105,8 @@ Result at the reported viewport: **220 × 435 → 422 × 779**. Height +92%, wid
 - **The contact's details are one click away instead of always on screen.**
   On Interactions, Prayer, Discussion or History you can no longer glance right
   for a phone number. This is the change's real cost and it was taken knowingly:
-  320px of permanent width is a steep price for glance-ability, and the fact
-  people actually graze on — who owns this person — is promoted into the head.
+320px of permanent width is a steep price for glance-ability, and the fact
+   people actually graze on — who is tied to this person — is promoted into the head.
 
 - **Overview changes job.** It was "catch me up on this person" (notes, last
   three conversations, open prayers). It becomes the record — notes, open
