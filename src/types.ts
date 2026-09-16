@@ -278,8 +278,16 @@ export interface PartnerGroupDoc {
   members: string[];
 }
 
+export interface PartnerPairingDoc {
+  id: string;
+  members: string[];
+  startDate: string;
+  endDate?: string;
+}
+
 export interface PartnersSettings {
   byTerm?: Record<string, PartnerGroupDoc[] | string[][]>;
+  pairings?: PartnerPairingDoc[];
 }
 
 export interface PrayerRecord {
