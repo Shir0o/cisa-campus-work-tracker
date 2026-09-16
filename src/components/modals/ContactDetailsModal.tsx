@@ -53,7 +53,7 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, visibleToOf } from "../../lib/permissions";
+import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canRemoveContactMember, visibleToOf } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
@@ -583,12 +583,12 @@ export default function ContactDetailsModal({
   const walkLabel = t('modals.contactDetails.follow_up');
   const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
 
+  const founders = contact.founders || [];
   const coCreators = contact.coCreators || [];
-  const sharedWith = teamMembers.filter((m) => coCreators.includes(m.id));
-  const creatorId = contact.createdBy || contact.addedBy;
+  const sharedWith = teamMembers.filter((m) => founders.includes(m.id) || coCreators.includes(m.id));
   const canShare = !isImpersonating && canManageCollaborators(role, currentUid, contact);
   const shareOptions = teamMembers.filter(
-    (m) => m.id !== creatorId && !coCreators.includes(m.id)
+    (m) => !founders.includes(m.id) && !coCreators.includes(m.id)
   );
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith("visit_") &&
@@ -652,20 +652,30 @@ export default function ContactDetailsModal({
   const removeShare = async (staffId: string) => {
     if (!contact) return;
     const s = teamMembers.find((m) => m.id === staffId);
+    const isFounder = (contact.founders || []).includes(staffId);
     const nextCoCreators = (contact.coCreators || []).filter((x) => x !== staffId);
+    const nextFounders = isFounder
+      ? (contact.founders || []).filter((x) => x !== staffId)
+      : contact.founders || [];
     // Undoing a share also drops the carer tie that reached them, so a removed
-    // collaborator cannot hold the person through their sheep (#1052). A
-    // founder who took the person on keeps the tie — founding is permanent.
-    const nextCarers = carersAfterCollaboratorRemoval({ ...contact, coCreators: nextCoCreators }, staffId);
+    // collaborator cannot hold the person through their sheep (#1052). Removing
+    // a founder (a Full-timer's genuine-mistake correction) takes them out of
+    // the founding set too, and with it the carer tie that only that reach held.
+    const nextCarers = carersAfterCollaboratorRemoval(
+      { ...contact, coCreators: nextCoCreators, founders: nextFounders },
+      staffId,
+    );
     const patch: Record<string, unknown> = {
       coCreators: arrayRemove(staffId),
-      visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, carers: nextCarers }),
+      visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, founders: nextFounders, carers: nextCarers }),
     };
+    if (isFounder) patch.founders = arrayRemove(staffId);
     if ((contact.carers || []).includes(staffId) && !nextCarers.includes(staffId)) {
       patch.carers = arrayRemove(staffId);
     }
     await updateDoc(doc(db, "contacts", contact.id), patch);
     contact.coCreators = nextCoCreators;
+    if (isFounder) contact.founders = nextFounders;
     contact.carers = nextCarers;
     if (s) {
       await logActivity({
@@ -1971,16 +1981,21 @@ export default function ContactDetailsModal({
                                 {t('modals.contactDetails.just_owner_for_now').replace('{name', firstName)}
                               </span>
                             )}
-                            {sharedWith.map((s) => (
-                              <div key={s.id} className="cd-share-row">
-                                <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
-                                <span className="cd-share-name">{s.name}</span>
-                                <span className="cd-share-role">{s.role}</span>
-                                {canShare && s.id !== creatorId && (
-                                  <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
-                                )}
-                              </div>
-                            ))}
+                            {sharedWith.map((s) => {
+                              const isFounder = founders.includes(s.id);
+                              const canRemove =
+                                canShare && canRemoveContactMember(role, currentUid, contact, s.id);
+                              return (
+                                <div key={s.id} className="cd-share-row">
+                                  <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
+                                  <span className="cd-share-name">{s.name}</span>
+                                  <span className="cd-share-role">{isFounder ? t('modals.contactDetails.founder') : s.role}</span>
+                                  {canRemove && (
+                                    <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
+                                  )}
+                                </div>
+                              );
+                            })}
                             {canShare && shareOptions.length > 0 && (
                               sharing ? (
                                 <div className="flex items-center gap-2">

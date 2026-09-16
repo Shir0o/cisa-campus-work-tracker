@@ -338,11 +338,17 @@ export async function removeContactCollaborator(
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
   const nextCoCreators = (contact.coCreators || []).filter((id) => id !== staffId);
+  // #1054: removing a founder (the Full-timer's genuine-mistake correction)
+  // takes them out of the founding set too. The caller decides who may remove
+  // whom; this just writes what was asked.
+  const isFounder = (contact.founders || []).includes(staffId);
+  const nextFounders = isFounder
+    ? (contact.founders || []).filter((id) => id !== staffId)
+    : contact.founders || [];
   // Removing a collaborator also drops the carer tie that reached them, so a
   // removed collaborator cannot hold the person through their sheep (#1052).
-  // A founder who took the person on keeps the tie — founding is permanent.
   const nextCarers = carersAfterCollaboratorRemoval(
-    { ...contact, coCreators: nextCoCreators },
+    { ...contact, coCreators: nextCoCreators, founders: nextFounders },
     staffId,
   );
   const patch: {
@@ -351,14 +357,16 @@ export async function removeContactCollaborator(
     updatedAt: string;
     updatedBy: string | null;
     updatedByName: string | null;
+    founders?: ReturnType<typeof arrayRemove>;
     carers?: ReturnType<typeof arrayRemove>;
   } = {
     coCreators: arrayRemove(staffId),
-    visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, carers: nextCarers }),
+    visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, founders: nextFounders, carers: nextCarers }),
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,
   };
+  if (isFounder) patch.founders = arrayRemove(staffId);
   if ((contact.carers || []).includes(staffId) && !nextCarers.includes(staffId)) {
     patch.carers = arrayRemove(staffId);
   }

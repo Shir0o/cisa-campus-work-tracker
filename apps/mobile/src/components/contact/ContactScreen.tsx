@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
   canManageCollaborators,
+  canRemoveContactMember,
   canSeeContact,
   composeKindsFor,
   contactCareLine,
@@ -368,6 +369,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 contact={contact}
                 carerNames={data.carerNames}
                 teamMembers={teamMembers}
+                uid={uid ?? null}
+                role={role}
                 canEdit={canWrite}
                 canShare={canShare}
                 onEdit={() => setSheet('edit')}
@@ -769,6 +772,8 @@ function Details({
   contact,
   carerNames = [],
   teamMembers,
+  uid,
+  role,
   canEdit,
   canShare,
   onEdit,
@@ -778,6 +783,8 @@ function Details({
   contact: NonNullable<ReturnType<typeof useContactDetailData>['contact']>;
   carerNames: string[];
   teamMembers: AppUser[];
+  uid?: string | null;
+  role: string | null;
   canEdit?: boolean;
   canShare?: boolean;
   onEdit?: () => void;
@@ -789,9 +796,9 @@ function Details({
   const knownMs = parseMs(contact.createdAt);
   const tags = contact.tags ?? [];
 
+  const founders = contact.founders || [];
   const coCreators = contact.coCreators || [];
-  const sharedWith = teamMembers.filter((m) => coCreators.includes(m.uid));
-  const creatorId = contact.createdBy || contact.addedBy;
+  const sharedWith = teamMembers.filter((m) => founders.includes(m.uid) || coCreators.includes(m.uid));
   const firstNameOnly = firstName(contact.name);
 
   const confirmRemoveCollaborator = (member: AppUser) => {
@@ -874,10 +881,10 @@ function Details({
                   {member.displayName || member.email}
                 </Text>
                 <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), color: c.card.ink3 }}>
-                  {roleLabel(member.role)}
+                  {founders.includes(member.uid) ? t('mobile.contact.founder') : roleLabel(member.role)}
                 </Text>
               </View>
-              {canShare && member.uid !== creatorId && (
+              {canShare && canRemoveContactMember(role, uid, contact, member.uid) && (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('mobile.contact.remove_access')}

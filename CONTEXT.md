@@ -7,7 +7,7 @@ The canonical name of the product — the web app, mobile app, and user-facing c
 _Avoid_: Traker, CampusHub, OutreachPro
 
 **Gospel Partners**:
-Two (or three) trainees paired together for a term/semester who go out together on campus. When a new partnership is formed, trainees can view contacts created by their current partner for the active term, while permanently retaining visibility of contacts they previously co-created with past partners.
+Two (or three) trainees paired together for a term/semester who go out together on campus. A person either member brings in is founded by both of them: the founding set is written on the contact at creation (`founders`), so each partner sees the person from the moment they are logged and keeps them after the pairing ends, and neither can be removed by the other. Only a Full-timer may remove a founder, for the genuine-mistake case.
 _Avoid_: Companion, buddy, accountability partner
 
 **Full-timer**:
@@ -208,11 +208,11 @@ The staff thread on a contact, open to everyone tied to that person, where a Ful
 _Avoid_: Follow-up, Thread, Comments, Walking together
 
 **Tied to a contact**:
-The relationships that make someone a recipient of what is written on a person: they added them, they are the adder's gospel partner (`coCreators`), they founded the person (`founders`), or they hold the person in their sheep (`carers`). These live on the contact document and can be resolved by whoever is posting. Everything written in a **Conversation** reaches them unless an `@mention` narrows it to one person.
+The relationships that make someone a recipient of what is written on a person: they added them, they founded the person (`founders`), they were deliberately added as a collaborator (`coCreators`), or they hold the person in their sheep (`carers`). These live on the contact document and can be resolved by whoever is posting. Everything written in a **Conversation** reaches them unless an `@mention` narrows it to one person.
 _Avoid_: Stakeholder, watcher, subscriber, assigned
 
 **Co-creator**:
-A teammate listed in a contact's `coCreators` (such as a gospel partner or collaborator) who shares visibility and management of that contact's collaborator list (`Who else can see`). Co-creators can add and remove collaborators on web and mobile.
+A teammate deliberately added to a contact's `coCreators` who shares visibility and management of that contact's collaborator list (`Who else can see`). Co-creators can add and remove collaborators on web and mobile; the founding set (`founders`) has the same rights. A deliberately added collaborator can be removed by anyone with sharing rights; a founder only by a Full-timer.
 _Avoid_: Secondary owner, delegate, guest collaborator
 
 **Seen / Completed**:

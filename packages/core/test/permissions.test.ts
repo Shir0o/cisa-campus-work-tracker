@@ -12,6 +12,7 @@ import {
   getEffectiveRole,
   OWNER_EMAIL,
   canManageCollaborators,
+  canRemoveContactMember,
   canSeeContact,
   visibleToOf,
 } from '../src/permissions';
@@ -117,21 +118,27 @@ describe('permissions', () => {
     expect(getEffectiveRole('other@example.com', 'manager', 'admin')).toBe('manager');
   });
 
-  it('canManageCollaborators allows admin, creator, and coCreators', () => {
+  it('canManageCollaborators allows admin, founders, and coCreators — never the creator alone (#1054)', () => {
     const contact = {
       createdBy: 'u-creator',
-      coCreators: ['u-partner1', 'u-partner2'],
+      founders: ['u-creator', 'u-founder'],
+      coCreators: ['u-collab'],
     };
 
     // Admin can always manage
     expect(canManageCollaborators('admin', 'u-random', contact)).toBe(true);
 
-    // Creator can manage
+    // A founder can manage, whether or not they typed the name in
+    expect(canManageCollaborators('manager', 'u-founder', contact)).toBe(true);
     expect(canManageCollaborators('manager', 'u-creator', contact)).toBe(true);
 
     // Co-creators can manage
-    expect(canManageCollaborators('manager', 'u-partner1', contact)).toBe(true);
-    expect(canManageCollaborators('operator', 'u-partner2', contact)).toBe(true);
+    expect(canManageCollaborators('manager', 'u-collab', contact)).toBe(true);
+    expect(canManageCollaborators('operator', 'u-collab', contact)).toBe(true);
+
+    // Who typed the name is not consulted for permission: a creator who is not
+    // a founder (should not exist, but if it does) gains nothing from creation.
+    expect(canManageCollaborators('manager', 'u-creator', { coCreators: [] })).toBe(false);
 
     // Non-collaborator cannot manage
     expect(canManageCollaborators('manager', 'u-random', contact)).toBe(false);
@@ -176,39 +183,63 @@ describe('canSeeContact', () => {
     expect(canSeeContact('manager', 'u1', notCarer)).toBe(false);
   });
 
-  // Mirrors the web app's copy in src/test/permissions.test.tsx so the two
-  // rules stay in step (#1024 phase 3).
-  it('widens a trainee to a current-term gospel partner, and only for that term', () => {
+  // #1054: the dynamic current-term widening is retired. Founders are written
+  // at creation, so the widening has nothing left to add — and a current
+  // partner who is not a founder of *this* person cannot see them.
+  it('no longer widens a trainee to a current-term partner who is not a founder (#1054)', () => {
     applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
 
-    const partnerCurrent = { id: 'c4', createdBy: 'u2', season: 'Fall 2026', coCreators: [] };
-    expect(canSeeContact('manager', 'u1', partnerCurrent)).toBe(true);
-
-    const partnerPast = { id: 'c5', createdBy: 'u2', season: 'Spring 2026', coCreators: [] };
-    expect(canSeeContact('manager', 'u1', partnerPast)).toBe(false);
-
-    // Pairings change in Settings: u1 now goes out with u3.
-    applyPartners({ 'Fall 2026': [['u1', 'u3']] }, new Date(2026, 8, 1));
-    const newPartner = { id: 'c6', createdBy: 'u3', season: 'Fall 2026', coCreators: [] };
-    expect(canSeeContact('manager', 'u1', newPartner)).toBe(true);
-    expect(canSeeContact('manager', 'u1', partnerCurrent)).toBe(false);
-
-    // Co-created with a past partner: the tie outlives the term.
-    const coCreated = { id: 'c7', createdBy: 'u2', season: 'Fall 2026', coCreators: ['u1'] };
-    expect(canSeeContact('manager', 'u1', coCreated)).toBe(true);
+    const partnerContact = { id: 'c4', createdBy: 'u2', season: 'Fall 2026', coCreators: [] };
+    expect(canSeeContact('manager', 'u1', partnerContact)).toBe(false);
 
     applyPartners({});
   });
 
-  it('reads the term from tags when the record carries no season', () => {
+  it('a founder sees the person whatever the term (#1054)', () => {
     applyPartners({ 'Fall 2026': [['u1', 'u2']] }, new Date(2026, 8, 1));
 
-    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', tags: ['Fall 2026'], coCreators: [] })).toBe(true);
-    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', tags: ['Spring 2026'], coCreators: [] })).toBe(false);
-    // No season and no tag: the dynamic widening does not apply.
-    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', coCreators: [] })).toBe(false);
+    const founded = { id: 'c4', createdBy: 'u2', season: 'Spring 2026', founders: ['u2', 'u1'], coCreators: [] };
+    expect(canSeeContact('manager', 'u1', founded)).toBe(true);
+    // The person's partner writes no season either; the founder tie is the rule.
+    expect(canSeeContact('manager', 'u1', { createdBy: 'u2', founders: ['u2', 'u1'], coCreators: [] })).toBe(true);
 
     applyPartners({});
+  });
+});
+
+describe('canRemoveContactMember (#1054)', () => {
+  const contact = {
+    createdBy: 'u-creator',
+    founders: ['u-creator', 'u-founder'],
+    coCreators: ['u-founder', 'u-collab'],
+  };
+
+  it('only a Full-timer can remove a founder', () => {
+    expect(canRemoveContactMember('admin', 'u-ft', contact, 'u-founder')).toBe(true);
+    // Another founder cannot remove a founder.
+    expect(canRemoveContactMember('manager', 'u-creator', contact, 'u-founder')).toBe(false);
+    // A collaborator cannot remove a founder.
+    expect(canRemoveContactMember('manager', 'u-collab', contact, 'u-founder')).toBe(false);
+    expect(canRemoveContactMember('manager', 'u-other', contact, 'u-creator')).toBe(false);
+  });
+
+  it('a deliberately added collaborator is removable by anyone with sharing rights', () => {
+    expect(canRemoveContactMember('manager', 'u-founder', contact, 'u-collab')).toBe(true);
+    expect(canRemoveContactMember('manager', 'u-creator', contact, 'u-collab')).toBe(true);
+    expect(canRemoveContactMember('manager', 'u-collab', contact, 'u-collab')).toBe(true);
+    expect(canRemoveContactMember('admin', 'u-ft', contact, 'u-collab')).toBe(true);
+  });
+
+  it('a reader with no sharing rights cannot remove a collaborator', () => {
+    expect(canRemoveContactMember('manager', 'u-other', contact, 'u-collab')).toBe(false);
+    // A creator who is not a founder gains nothing from creation alone.
+    expect(canRemoveContactMember('manager', 'u-creator', { coCreators: [] }, 'u-collab')).toBe(false);
+  });
+
+  it('guards nulls', () => {
+    expect(canRemoveContactMember('manager', null, contact, 'u-collab')).toBe(false);
+    expect(canRemoveContactMember('manager', 'u-founder', null, 'u-collab')).toBe(false);
+    expect(canRemoveContactMember('manager', 'u-founder', contact, null)).toBe(false);
   });
 });
 

@@ -1,4 +1,5 @@
-import { partnersOf, currentTermKey } from './partners';
+export { visibleToOf } from './contactTies';
+export type { ContactTies } from './contactTies';
 
 export type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -298,53 +299,47 @@ export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
 export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
 export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
 
-export { visibleToOf } from './contactTies';
-export type { ContactTies } from './contactTies';
-
 export function canSeeContact(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string; tags?: string[] } | null | undefined
+  contact: { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[] } | null | undefined
 ): boolean {
   if (!contact) return false;
   if (seesAllPeople(role)) return true;
   if (!staffId) return false;
   const added = contact.addedBy || contact.createdBy;
-  if (
+  return (
     added === staffId ||
     (contact.coCreators || []).includes(staffId) ||
     (contact.founders || []).includes(staffId) ||
     (contact.carers || []).includes(staffId)
-  ) {
-    return true;
-  }
-
-  // Gospel partners for the term: trainees can dynamically view contacts created
-  // by their active partner(s) during the current term.
-  const partners = partnersOf(staffId);
-  if (partners.length && added && partners.includes(added)) {
-    const term = currentTermKey();
-    if (contact.season) {
-      return contact.season === term;
-    }
-    if (contact.tags && contact.tags.includes(term)) {
-      return true;
-    }
-  }
-
-  return false;
+  );
 }
 
 export function canManageCollaborators(
   role: AppRole | string | null,
   staffId: string | null | undefined,
-  contact: { addedBy?: string; createdBy?: string; coCreators?: string[] } | null | undefined
+  contact: { founders?: string[]; coCreators?: string[] } | null | undefined
 ): boolean {
   if (!contact || !staffId) return false;
   if (role === 'admin') return true;
-  const ownerId = contact.createdBy || contact.addedBy;
-  if (ownerId === staffId || contact.createdBy === staffId || contact.addedBy === staffId) return true;
-  return (contact.coCreators || []).includes(staffId);
+  return (contact.founders || []).includes(staffId) || (contact.coCreators || []).includes(staffId);
+}
+
+/** Whether `actorId` may remove `targetUid` from a contact's access list
+ *  (#1054). A founder is removable only by a Full-timer — the genuine-mistake
+ *  correction — while a deliberately added collaborator stays removable by
+ *  anyone with sharing rights. Nothing consults the creator. */
+export function canRemoveContactMember(
+  role: AppRole | string | null,
+  actorId: string | null | undefined,
+  contact: { founders?: string[]; coCreators?: string[] } | null | undefined,
+  targetUid: string | null | undefined,
+): boolean {
+  if (!contact || !actorId || !targetUid) return false;
+  if (role === 'admin') return true;
+  if ((contact.founders || []).includes(targetUid)) return false;
+  return canManageCollaborators(role, actorId, contact);
 }
 
 export function visibleContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[] }>(
