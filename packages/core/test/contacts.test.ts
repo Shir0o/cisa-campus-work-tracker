@@ -9,6 +9,7 @@ const firestoreMock = vi.hoisted(() => ({
 vi.mock('firebase/firestore', () => firestoreMock);
 
 import { addContact, type NewContactInput } from '../src/data/contacts';
+import { applyPartners } from '../src/data/partners';
 
 const DOC_REF = { id: 'c-new' };
 
@@ -75,5 +76,35 @@ describe('addContact — owner stamp', () => {
       { uid: 'staff-1', name: 'Staff One' },
     );
     expect(id).toBe('c-new');
+  });
+});
+
+describe('addContact — founding set (#1049)', () => {
+  it('stamps the creator plus every live pairing member as founders, and folds them into visibleTo', async () => {
+    applyPartners([{ id: 'p1', members: ['staff-1', 'staff-2'], startDate: '2026-08-01' }], new Date(2026, 8, 1));
+    await addContact(
+      {} as never,
+      baseInput,
+      { uid: 'staff-1', name: 'Staff One' },
+    );
+
+    const written = firestoreMock.addDoc.mock.calls[0][1] as Record<string, unknown>;
+    expect(written.founders).toEqual(['staff-1', 'staff-2']);
+    expect(written.visibleTo).toContain('staff-1');
+    expect(written.visibleTo).toContain('staff-2');
+    applyPartners([]);
+  });
+
+  it('stamps only the creator as founder when there is no live pairing', async () => {
+    applyPartners([]);
+    await addContact(
+      {} as never,
+      baseInput,
+      { uid: 'staff-1', name: 'Staff One' },
+    );
+
+    const written = firestoreMock.addDoc.mock.calls[0][1] as Record<string, unknown>;
+    expect(written.founders).toEqual(['staff-1']);
+    expect(written.visibleTo).toEqual(['staff-1']);
   });
 });

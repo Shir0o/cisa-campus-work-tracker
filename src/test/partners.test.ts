@@ -21,6 +21,8 @@ import {
   currentTermKey,
   partnersOf,
   stampPartners,
+  foundingSet,
+  stampFounders,
   serializePairings,
   serializeByTerm,
   deserializeByTerm,
@@ -251,6 +253,42 @@ describe("applyPartners / partnersOf / stampPartners", () => {
     expect(stampPartners({ name: "Mira" }, "solo")).toEqual({ name: "Mira" });
     expect(stampPartners({ name: "Mira" }, null)).toEqual({ name: "Mira" });
     expect(stampPartners({ name: "Mira" }, undefined)).toEqual({ name: "Mira" });
+  });
+});
+
+describe("founding set (#1049)", () => {
+  it("foundingSet names the creator plus every live pairing member on a covered day", () => {
+    const pairings = [P("1", ["a", "b"], "2026-08-01", "2026-09-15"), P("2", ["a", "c"], "2026-09-16")];
+    expect(foundingSet(pairings, "a", "2026-09-01")).toEqual(["a", "b"]);
+    expect(foundingSet(pairings, "b", "2026-09-01")).toEqual(["b", "a"]);
+    // Re-pairing mid-term: the arrangement live on the day is the only one named.
+    expect(foundingSet(pairings, "a", "2026-09-20")).toEqual(["a", "c"]);
+  });
+
+  it("foundingSet has exactly one member when there is no live pairing that day", () => {
+    const pairings = [P("1", ["a", "b"], "2026-08-01", "2026-09-15")];
+    expect(foundingSet(pairings, "a", "2026-09-20")).toEqual(["a"]);
+    expect(foundingSet([], "a", "2026-09-20")).toEqual(["a"]);
+  });
+
+  it("foundingSet returns an empty list without a creator", () => {
+    expect(foundingSet([P("1", ["a", "b"], "2026-08-01")], undefined, "2026-09-01")).toEqual([]);
+    expect(foundingSet([P("1", ["a", "b"], "2026-08-01")], null, "2026-09-01")).toEqual([]);
+  });
+
+  it("stampFounders writes the founding set at creation, even for a solo creator", () => {
+    applyPartners([P("1", ["a", "b"], "2026-08-01")], new Date(2026, 8, 1));
+    const contact = stampFounders<{ name: string; founders?: string[] }>({ name: "Mira" }, "a");
+    expect(contact.founders).toEqual(["a", "b"]);
+    // A creator with no live pairing still carries themselves as the sole founder.
+    const solo = stampFounders<{ name: string; founders?: string[] }>({ name: "Mira" }, "solo");
+    expect(solo.founders).toEqual(["solo"]);
+  });
+
+  it("stampFounders is a no-op without a creator uid", () => {
+    applyPartners([P("1", ["a", "b"], "2026-08-01")], new Date(2026, 8, 1));
+    expect(stampFounders({ name: "Mira" }, null)).toEqual({ name: "Mira" });
+    expect(stampFounders({ name: "Mira" }, undefined)).toEqual({ name: "Mira" });
   });
 });
 

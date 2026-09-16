@@ -170,6 +170,19 @@ export function partnersAt(
   return hit ? hit.members.filter((id) => id !== uid) : [];
 }
 
+/** The founding set of a contact created by `uid` on `day`: the creator plus
+ *  everyone they were partnered with at that instant, read from the dated
+ *  history. Exactly the creator when no pairing covered the day, and empty when
+ *  there is no creator to found anything (#1049). */
+export function foundingSet(
+  pairings: readonly PartnerPairing[] | undefined | null,
+  uid: string | null | undefined,
+  day: string = dayKey(),
+): string[] {
+  if (!uid) return [];
+  return [uid, ...partnersAt(pairings, uid, day)];
+}
+
 /** Pairings grouped by the term each began in, for the Settings history. */
 export function pairingsByTerm(
   pairings: readonly PartnerPairing[] | undefined | null,
@@ -311,6 +324,18 @@ export function stampPartners<T extends object>(data: T, byUid?: string | null):
   if (!withMe.length) return data;
   const record = data as T & { coCreators?: string[] };
   record.coCreators = [...new Set([...(record.coCreators || []), ...withMe])];
+  return data;
+}
+
+/** Stamp the founding set (#1049) on a brand-new contact: whoever logged it plus
+ *  everyone they were partnered with at that moment, read from the dated history
+ *  on the day of the last apply. Written once, here, at creation — no code path
+ *  may add a founder to an existing contact. A creator with no live pairing
+ *  still carries exactly themselves. */
+export function stampFounders<T extends object>(data: T, byUid?: string | null): T {
+  if (!byUid) return data;
+  const record = data as T & { founders?: string[] };
+  record.founders = foundingSet(CURRENT_PAIRINGS, byUid, CURRENT_DAY || dayKey());
   return data;
 }
 

@@ -20,6 +20,7 @@ import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { useCommand } from '../../lib/commands';
 import { pickableContacts, pickableStaff, visibleToOf } from '../../lib/permissions';
+import { stampFounders } from '../../lib/partners';
 import { useSeason } from '../../lib/seasons';
 
 interface LogVisitModalProps {
@@ -154,6 +155,9 @@ export default function LogVisitModal({
         hasNewActivity: true,
         attendance: {},
       };
+      // Founding set (#1049): whoever logged the person plus everyone they were
+      // partnered with at that instant. Written once here and never rewritten.
+      stampFounders(contactData, me);
 
       const docRef = await addDoc(collection(db, 'contacts'), { ...contactData, visibleTo: visibleToOf(contactData) });
       const newContactObj: Contact = {

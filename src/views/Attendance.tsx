@@ -30,6 +30,7 @@ import {
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { visibleContacts, visibleToOf } from '../lib/permissions';
+import { stampFounders } from '../lib/partners';
 import { Contact, Gathering, Rhythm } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -403,8 +404,15 @@ export default function Attendance() {
         updatedAt: new Date().toISOString(),
         createdBy: userUid,
       };
-      // The creator is a persisted tie, so seed the server-side access list.
-      newContactData.visibleTo = visibleToOf({ createdBy: userUid });
+      // Founding set (#1049): whoever logged the person plus everyone they were
+      // partnered with at that instant. Written once here and never rewritten.
+      stampFounders(newContactData, userUid);
+      // The creator (and the founders, if any) are the persisted ties, so seed
+      // the server-side access list.
+      newContactData.visibleTo = visibleToOf({
+        createdBy: userUid,
+        founders: newContactData.founders as string[] | undefined,
+      });
 
       const docRef = await addDoc(collection(db, 'contacts'), newContactData);
 
