@@ -22,6 +22,7 @@ import {
 import { isTrainee, fullTimerIds } from "../walking";
 import { seesAllPeople, visibleToOf, type AppRole } from "../permissions";
 import { stampFounders, stampPartners } from "./partners";
+import { carersAfterCollaboratorRemoval } from "../carers";
 import type { Touch } from "../myday";
 import type { Contact, Interaction, Stage } from "../types";
 
@@ -335,20 +336,39 @@ export async function addContactCollaborator(
 
 export async function removeContactCollaborator(
   db: Firestore,
-  contact: Pick<Contact, "id" | "createdBy" | "addedBy" | "owner" | "coCreators">,
+  contact: Pick<
+    Contact,
+    "id" | "createdBy" | "addedBy" | "owner" | "coCreators" | "founders" | "carers"
+  >,
   staffId: string,
   by: { uid?: string | null; name?: string | null } = {},
 ): Promise<void> {
-  const coCreators = (contact.coCreators || []).filter((id) => id !== staffId);
-  await updateDoc(doc(db, "contacts", contact.id), {
+  const nextCoCreators = (contact.coCreators || []).filter((id) => id !== staffId);
+  // Removing a collaborator also drops the carer tie that reached them, so a
+  // removed collaborator cannot hold the person through their sheep (#1052).
+  // A founder who took the person on keeps the tie — founding is permanent.
+  const nextCarers = carersAfterCollaboratorRemoval(
+    { ...contact, coCreators: nextCoCreators },
+    staffId,
+  );
+  const patch: {
+    coCreators: ReturnType<typeof arrayRemove>;
+    visibleTo: string[];
+    updatedAt: string;
+    updatedBy: string | null;
+    updatedByName: string | null;
+    carers?: ReturnType<typeof arrayRemove>;
+  } = {
     coCreators: arrayRemove(staffId),
-    // Removing a collaborator drops them from the access list unless a
-    // different tie (creator/adder/caregiver) still holds them (#1024).
-    visibleTo: visibleToOf({ ...contact, coCreators }),
+    visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, carers: nextCarers }),
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,
-  });
+  };
+  if ((contact.carers || []).includes(staffId) && !nextCarers.includes(staffId)) {
+    patch.carers = arrayRemove(staffId);
+  }
+  await updateDoc(doc(db, "contacts", contact.id), patch);
 }
 
 /** Take a person into — or out of — the reader's sheep (#1051). The reader is

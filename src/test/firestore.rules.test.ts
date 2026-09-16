@@ -13,6 +13,8 @@ import {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  arrayRemove,
+  arrayUnion,
   collectionGroup,
   query,
   where,
@@ -531,6 +533,133 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_give_up'), {
         carers: [],
         visibleTo: ['operator1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+  });
+
+  describe('Sheep carers end with the tie that granted them (#1052)', () => {
+    const seed = async (contactId: string, contact: Record<string, unknown>) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts', contactId), {
+          name: 'Test', email: 'test@example.com', ...contact,
+        });
+      });
+    };
+
+    it('removing a collaborator also drops their carer tie and access in the same write', async () => {
+      await seed('c_rm_carer_collab', {
+        createdBy: 'operator1',
+        coCreators: ['operator2', 'operator3'],
+        carers: ['operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_rm_carer_collab'), {
+        coCreators: arrayRemove('operator3'),
+        carers: arrayRemove('operator3'),
+        visibleTo: ['operator1', 'operator2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets a collaborator be removed with no carer tie to drop', async () => {
+      await seed('c_rm_plain', {
+        createdBy: 'operator1',
+        coCreators: ['operator2', 'operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_rm_plain'), {
+        coCreators: arrayRemove('operator3'),
+        visibleTo: ['operator1', 'operator2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses to grant a carer tie while removing a collaborator', async () => {
+      await seed('c_rm_selfgrant', {
+        createdBy: 'operator1',
+        coCreators: ['operator2', 'operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_rm_selfgrant'), {
+        coCreators: arrayRemove('operator3'),
+        carers: arrayUnion('operator2'),
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses to drop a carer tie that is not the removed collaborator\'s', async () => {
+      await seed('c_rm_wrong_carer', {
+        createdBy: 'operator1',
+        coCreators: ['operator2', 'operator3'],
+        carers: ['operator2', 'operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_rm_wrong_carer'), {
+        coCreators: arrayRemove('operator3'),
+        carers: arrayRemove('operator2'),
+        visibleTo: ['operator1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses to revoke access for anyone but the removed collaborator', async () => {
+      await seed('c_rm_extra_revoke', {
+        createdBy: 'operator1',
+        coCreators: ['operator2', 'operator3'],
+        carers: ['operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_rm_extra_revoke'), {
+        coCreators: arrayRemove('operator3'),
+        carers: arrayRemove('operator3'),
+        visibleTo: ['operator1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('a care handover may drop the previous owner\'s carer tie in the same write', async () => {
+      await seed('c_handover_carer', {
+        createdBy: 'operator1',
+        owner: 'operator2',
+        coCreators: ['operator2', 'operator3'],
+        carers: ['operator2'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_handover_carer'), {
+        owner: 'operator3',
+        coCreators: arrayRemove('operator2'),
+        carers: arrayRemove('operator2'),
+        visibleTo: ['operator1', 'operator3'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('a care handover refuses to grant a carer tie to anyone', async () => {
+      await seed('c_handover_selfgrant', {
+        createdBy: 'operator1',
+        owner: 'operator2',
+        coCreators: ['operator2', 'operator3'],
+        carers: ['operator2'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_handover_selfgrant'), {
+        owner: 'operator3',
+        coCreators: arrayRemove('operator2'),
+        carers: arrayUnion('operator3'),
+        visibleTo: ['operator1', 'operator2', 'operator3'],
         updatedAt: serverTimestamp(),
       }));
     });

@@ -1168,6 +1168,97 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
+  it('dropping a share also drops the removed collaborator from their sheep (#1052)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    // user-456 was a collaborator who had taken John Doe into their sheep.
+    const contactWithCarerCollab = {
+      ...mockContact,
+      coCreators: ['user-456'],
+      carers: ['user-456'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Co Creator', role: 'Staff' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCarerCollab} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByTitle('Remove access'));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          coCreators: firestore.arrayRemove('user-456'),
+          carers: firestore.arrayRemove('user-456'),
+          visibleTo: [],
+        })
+      );
+    });
+  });
+
+  it('a founder who took the person on keeps their sheep when the share is dropped (#1052)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    // user-456 is a founder AND took John Doe into their sheep: the share
+    // removal must not reach their carer tie.
+    const contactWithFounderCarer = {
+      ...mockContact,
+      coCreators: ['user-456'],
+      carers: ['user-456'],
+      founders: ['user-456'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Co Creator', role: 'Staff' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithFounderCarer} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByTitle('Remove access'));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          coCreators: firestore.arrayRemove('user-456'),
+          visibleTo: ['user-456'],
+        })
+      );
+    });
+    const patch = (firestore.updateDoc as any).mock.calls.at(-1)?.[1] ?? {};
+    expect(patch.carers).toBeUndefined();
+  });
+
   it('allows a co-creator to manage collaborators, but hides transfer and protects creator from removal', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-cocreator', displayName: 'Trainee Partner' },
@@ -1312,6 +1403,108 @@ describe('ContactDetailsModal Component', () => {
         })
       );
     });
+  });
+
+  it('a care handover also drops the previous owner from their sheep (#1052)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Owner Tony' },
+      isAdmin: false,
+      role: 'operator',
+    });
+
+    // The previous owner had taken John Doe into their sheep: the handover
+    // must drop their carer tie in the same write.
+    const contactOwned = {
+      ...mockContact,
+      owner: 'user-123',
+      coCreators: ['user-123', 'user-456'],
+      carers: ['user-123'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactOwned} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByRole('button', { name: /transfer to/i }));
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'user-456' } });
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: /transfer to/i }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: 'user-456',
+          coCreators: firestore.arrayRemove('user-123'),
+          carers: firestore.arrayRemove('user-123'),
+        })
+      );
+    });
+  });
+
+  it('a founder previous owner keeps their sheep after a care handover (#1052)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Owner Tony' },
+      isAdmin: false,
+      role: 'operator',
+    });
+
+    // user-123 founded the contact and took John Doe into their sheep: the
+    // handover must not reach their carer tie.
+    const contactOwned = {
+      ...mockContact,
+      owner: 'user-123',
+      coCreators: ['user-123', 'user-456'],
+      carers: ['user-123'],
+      founders: ['user-123'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Mei Tanaka', role: 'Staff' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactOwned} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByRole('button', { name: /transfer to/i }));
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'user-456' } });
+    const confirmDialog = await screen.findByRole('dialog', { name: /transfer to/i });
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: /transfer to/i }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          owner: 'user-456',
+          coCreators: firestore.arrayRemove('user-123'),
+        })
+      );
+    });
+    const patch = (firestore.updateDoc as any).mock.calls.at(-1)?.[1] ?? {};
+    expect(patch.carers).toBeUndefined();
   });
 
   it('hides the Transfer affordance from viewers who are neither owner nor admin', async () => {

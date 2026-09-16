@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { carerNamesOf } from '../src/carers';
+import { carerNamesOf, carersAfterCollaboratorRemoval, reachWithoutCarers } from '../src/carers';
 
 describe('carerNamesOf (#1051)', () => {
   it('resolves carer uids to display names', () => {
@@ -22,5 +22,87 @@ describe('carerNamesOf (#1051)', () => {
 
   it('de-duplicates repeated names', () => {
     expect(carerNamesOf(['u1', 'u1'], { u1: 'Ana' })).toEqual(['Ana']);
+  });
+});
+
+describe('reachWithoutCarers (#1052)', () => {
+  const base = {
+    createdBy: 'u1',
+    addedBy: 'u2',
+    owner: 'u3',
+    coCreators: ['u4', 'u5'],
+    founders: ['u6'],
+    carers: ['u7', 'u8'],
+  };
+
+  it('lists every tie that grants reach except the carer tie', () => {
+    expect(reachWithoutCarers(base)).toEqual(['u1', 'u2', 'u3', 'u4', 'u5', 'u6']);
+  });
+
+  it('returns an empty list for a contact with no ties', () => {
+    expect(reachWithoutCarers(null)).toEqual([]);
+    expect(reachWithoutCarers({})).toEqual([]);
+  });
+});
+
+describe('carersAfterCollaboratorRemoval (#1052)', () => {
+  it('drops a carer whose reach came only from the collaborator tie being removed', () => {
+    const contact = {
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u3'],
+    };
+    expect(carersAfterCollaboratorRemoval(contact, 'u3')).toEqual([]);
+  });
+
+  it('keeps a founder who has taken the person on — founding is permanent', () => {
+    const contact = {
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u3'],
+      carers: ['u3'],
+    };
+    expect(carersAfterCollaboratorRemoval(contact, 'u3')).toEqual(['u3']);
+  });
+
+  it('keeps a carer still held by another tie after the collaborator removal', () => {
+    const contact = {
+      createdBy: 'u3',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u3'],
+    };
+    expect(carersAfterCollaboratorRemoval(contact, 'u3')).toEqual(['u3']);
+  });
+
+  it('leaves every other carer untouched', () => {
+    const contact = {
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u3', 'u4'],
+    };
+    expect(carersAfterCollaboratorRemoval(contact, 'u3')).toEqual(['u4']);
+  });
+
+  it('returns the carers unchanged when the removed uid holds no carer tie', () => {
+    const contact = {
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u4'],
+    };
+    expect(carersAfterCollaboratorRemoval(contact, 'u3')).toEqual(['u4']);
+  });
+
+  it('is empty when nobody holds the person', () => {
+    expect(carersAfterCollaboratorRemoval({ createdBy: 'u1', coCreators: ['u2'] }, 'u2')).toEqual([]);
+    expect(carersAfterCollaboratorRemoval(undefined, 'u2')).toEqual([]);
   });
 });

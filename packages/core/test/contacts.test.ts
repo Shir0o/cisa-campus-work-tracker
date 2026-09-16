@@ -12,7 +12,7 @@ const firestoreMock = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { addContact, setContactCarer, type NewContactInput } from '../src/data/contacts';
+import { addContact, removeContactCollaborator, setContactCarer, type NewContactInput } from '../src/data/contacts';
 import { applyPartners } from '../src/data/partners';
 
 const DOC_REF = { id: 'c-new' };
@@ -173,5 +173,93 @@ describe('setContactCarer (#1051)', () => {
         visibleTo: ['u1', 'u2', 'u3', 'u4'],
       },
     );
+  });
+});
+
+describe('removeContactCollaborator (#1052)', () => {
+  it('drops the removed collaborator from carers and the access list in the same write', async () => {
+    const contact = {
+      id: 'c1',
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u3'],
+    };
+    await removeContactCollaborator({} as never, contact, 'u3');
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      {
+        coCreators: { __op: 'arrayRemove', args: ['u3'] },
+        carers: { __op: 'arrayRemove', args: ['u3'] },
+        visibleTo: ['u1', 'u2'],
+        updatedAt: expect.any(String),
+        updatedBy: null,
+        updatedByName: null,
+      },
+    );
+  });
+
+  it('keeps a founder-carer tie — founding is permanent — and never touches carers', async () => {
+    const contact = {
+      id: 'c1',
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u3'],
+      carers: ['u3'],
+    };
+    await removeContactCollaborator({} as never, contact, 'u3');
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      expect.objectContaining({
+        coCreators: { __op: 'arrayRemove', args: ['u3'] },
+        visibleTo: ['u1', 'u2', 'u3'],
+      }),
+    );
+    const patch = firestoreMock.updateDoc.mock.calls[0][1] as Record<string, unknown>;
+    expect(patch.carers).toBeUndefined();
+  });
+
+  it('leaves a carer who is not the removed collaborator untouched', async () => {
+    const contact = {
+      id: 'c1',
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u3', 'u4'],
+    };
+    await removeContactCollaborator({} as never, contact, 'u3');
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      {
+        coCreators: { __op: 'arrayRemove', args: ['u3'] },
+        carers: { __op: 'arrayRemove', args: ['u3'] },
+        visibleTo: ['u1', 'u2', 'u4'],
+        updatedAt: expect.any(String),
+        updatedBy: null,
+        updatedByName: null,
+      },
+    );
+  });
+
+  it('does not touch carers when the removed collaborator never took the person on', async () => {
+    const contact = {
+      id: 'c1',
+      createdBy: 'u1',
+      owner: 'u1',
+      coCreators: ['u2', 'u3'],
+      founders: ['u1'],
+      carers: ['u4'],
+    };
+    await removeContactCollaborator({} as never, contact, 'u3');
+
+    const patch = firestoreMock.updateDoc.mock.calls[0][1] as Record<string, unknown>;
+    expect(patch.carers).toBeUndefined();
+    expect(patch.visibleTo).toEqual(['u1', 'u2', 'u4']);
   });
 });
