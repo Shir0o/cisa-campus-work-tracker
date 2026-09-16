@@ -43,3 +43,29 @@ We adopt three aligned decisions:
   - Full-timer admins auditing other roles via "See it as their view" cannot accidentally perform unintended mutations under a simulated identity.
 - **Cons**:
   - Admins wishing to test actual mutation permissions for non-admin roles must use authentic test account credentials (or emulator test suites) rather than the lightweight client-side preview.
+
+## Amendment: the contact has no owner, and co-creators are co-equal founders (#1048, #1049, #1053, #1054)
+
+The original decision was written against a contact that carried a single
+pastoral caregiver (`owner`). That field is gone and there is nothing to
+transfer, and "co-creator" no longer means a guest on someone else's contact.
+
+- **There is no `owner` and no care transfer.** The `owner`/caregiver field
+  and its reassignment rule were removed (#1053). A contact is shared through
+  the persisted ties `createdBy`/`addedBy`, `founders`, `coCreators` and
+  `carers`, and the sharing rules read those ties directly rather than through
+  a protected owner assignment (#1051, #1055).
+- **Co-creators are co-equal founders, not guests.** A person brought in by a
+  Gospel Partners pair is founded by both of them: the founding set
+  (`founders`) is written on the contact at creation (#1048, #1049), so each
+  partner is a co-equal creator of the contact rather than a guest on the
+  other's. Decision 1's collaborator management therefore extends to the
+  founding set as well — a founder can add and remove deliberately added
+  collaborators (`coCreators`), exactly as a co-creator can.
+- **Removal is asymmetric and deliberate.** A deliberately added collaborator
+  (`coCreators`) can be removed by anyone with sharing rights; a founder only
+  by a Full-timer, for the genuine-mistake case (#1054).
+- **Decision 1's sharing-rule split survives in new form.** Firestore rules now
+  gate changes to `founders`, `coCreators` and `carers` by those same ties
+  rather than by `owner`, so the client and the rules still state the same
+  rule (#1055).

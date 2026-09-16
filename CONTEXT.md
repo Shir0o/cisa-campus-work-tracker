@@ -212,8 +212,11 @@ The relationships that make someone a recipient of what is written on a person: 
 _Avoid_: Stakeholder, watcher, subscriber, assigned
 
 **Co-creator**:
-A teammate deliberately added to a contact's `coCreators` who shares visibility and management of that contact's collaborator list (`Who else can see`). Co-creators can add and remove collaborators on web and mobile; the founding set (`founders`) has the same rights. A deliberately added collaborator can be removed by anyone with sharing rights; a founder only by a Full-timer.
-_Avoid_: Secondary owner, delegate, guest collaborator
+A teammate who co-creates a contact with you — the person either of you brings in is founded by both, and the founding set (`founders`) is written on the contact at creation, so each of you is a co-equal creator of that person, not a guest on the other's contact. Co-creators can add and remove deliberately added collaborators (`coCreators`) on web and mobile, and a founder can be removed only by a Full-timer, for the genuine-mistake case. Distinct from a deliberately added collaborator, whom anyone with sharing rights can remove.
+_Avoid_: Guest, guest collaborator, delegate
+
+**Cared for by**:
+The people who hold a person in **Your sheep** — derived from the contact's `carers` tie, and so naming zero, one, or several people at once. It is not an owner and nothing transfers: whoever carries the person simply shows up here. Shown on the contact's Overview and promoted into the contact-detail head (ADR 0006).
 
 **Seen / Completed**:
 The two independent things a person records about an item in **On you**. **Seen** is passive — you opened the contact — and shows as the unread dot. **Completed** is deliberate: *Reviewed* for something you only had to look at, *I followed up* or *Answered* for something you owed someone, *Got it* for information. The count is the number **not completed**, so opening things never makes the number fall. Both are per person and stored server-side, so they agree across someone's phone and laptop. **Around the team** keeps only the deliberate half — see **Reviewed**.
