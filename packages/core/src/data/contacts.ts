@@ -351,6 +351,29 @@ export async function removeContactCollaborator(
   });
 }
 
+/** Take a person into — or out of — the reader's sheep (#1051). The reader is
+ *  recorded on the contact as a carer, and the access list is rewritten in the
+ *  same write so the carer tie is something the rules can see. Giving a person
+ *  up removes the reader from the access list only when no other tie holds
+ *  them. */
+export async function setContactCarer(
+  db: Firestore,
+  contact: Pick<
+    Contact,
+    "id" | "createdBy" | "addedBy" | "owner" | "coCreators" | "founders" | "carers"
+  >,
+  uid: string,
+  takingOn: boolean,
+): Promise<void> {
+  const nextCarers = takingOn
+    ? [...new Set([...(contact.carers || []), uid])]
+    : (contact.carers || []).filter((id) => id !== uid);
+  await updateDoc(doc(db, "contacts", contact.id), {
+    carers: takingOn ? arrayUnion(uid) : arrayRemove(uid),
+    visibleTo: visibleToOf({ ...contact, carers: nextCarers }),
+  });
+}
+
 /** Delete a contact (Contact Detail's Delete action). Subcollection counts
  * for the audit log are gathered by the caller before calling this, since
  * fetching them is a platform-agnostic read best composed at the call site. */

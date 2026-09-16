@@ -7,6 +7,7 @@ import { Contact, Stage } from '../../types';
 import { cn, getUserInitials } from '../../lib/utils';
 import { StageChip } from '../landing/primitives';
 import { parseMs, daysSince } from '../landing/helpers';
+import { carerNamesOf } from '../../lib/carers';
 
 export interface ContactPillProps {
   contactId: string;
@@ -29,6 +30,8 @@ export default function ContactPill({
   const [stages, setStages] = useState<Stage[]>([]);
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  // uid → name, for resolving the carers tie on the preview (#1051).
+  const [roster, setRoster] = useState<Record<string, string>>({});
 
   const btnRef = useRef<HTMLButtonElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -70,6 +73,25 @@ export default function ContactPill({
         );
       },
       (err) => console.error('ContactPill stages listener error:', err)
+    );
+    return () => unsub();
+  }, []);
+
+  // Subscribe to the team roster so the carers tie can be shown by name.
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, 'users'),
+      (snap: any) => {
+        const docs = snap?.docs || [];
+        const map: Record<string, string> = {};
+        for (const d of docs) {
+          const data = typeof d.data === 'function' ? d.data() : d.data || {};
+          const name = data?.name || data?.displayName || data?.email || '';
+          if (name) map[d.id] = name;
+        }
+        setRoster(map);
+      },
+      (err) => console.error('ContactPill roster listener error:', err)
     );
     return () => unsub();
   }, []);
@@ -170,7 +192,8 @@ export default function ContactPill({
     fallbackSubtitle ||
     'no details yet';
 
-  const caregiver = currentContact.createdByName || currentContact.lastContactedBy || currentContact.owner || null;
+  // Who holds this person in their sheep — the "Cared for by" names (#1051).
+  const carerNames = carerNamesOf(currentContact.carers, roster);
 
   const previewCard = (
     <div
@@ -193,9 +216,9 @@ export default function ContactPill({
         <span className="text-xs text-on-surface-variant">{seenText}</span>
       </div>
 
-      {caregiver && (
+      {carerNames.length > 0 && (
         <div className="text-xs text-on-surface-variant/80">
-          Cared for by <span className="font-medium text-on-surface">{caregiver}</span>
+          Cared for by <span className="font-medium text-on-surface">{carerNames.join(', ')}</span>
         </div>
       )}
 

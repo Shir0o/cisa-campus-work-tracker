@@ -1050,6 +1050,7 @@ describe('PrayerList', () => {
                 role: 'Student',
                 year: 'Junior',
                 owner: 'u-mei',
+                carers: ['u-mei'],
                 createdByName: 'Tony Wang',
               }),
             },

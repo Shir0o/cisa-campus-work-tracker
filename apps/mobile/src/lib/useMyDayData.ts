@@ -23,6 +23,7 @@ import {
   staleLeaderOf,
   thisWeekEvents,
   isFullTimer,
+  setContactCarer,
   type Contact,
   type Event,
   type InboxItem,
@@ -277,9 +278,17 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
     togglePersonalContact: (id: string) => {
       if (!uid) return;
       const next = new Set(personalContactIds);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const takingOn = !next.has(id);
+      if (takingOn) next.add(id);
+      else next.delete(id);
       saveUserPreferences(uid, { personalContactIds: [...next] });
+      // #1051: taking a person into Your sheep also records the reader on the
+      // contact itself, as a carer, so the tie is something the rules can see
+      // and "Cared for by" can name them. The preference write above keeps the
+      // home page behaving exactly as before; this write makes the tie persist.
+      const contact = contacts.find((c) => c.id === id);
+      if (!contact) return;
+      void setContactCarer(db, contact, uid, takingOn);
     },
 
     // "From the team" inbox actions

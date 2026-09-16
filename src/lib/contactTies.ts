@@ -7,6 +7,7 @@ export interface ContactTies {
   owner?: string | null;
   coCreators?: string[] | null;
   founders?: string[] | null;
+  carers?: string[] | null;
 }
 
 /**
@@ -15,7 +16,8 @@ export interface ContactTies {
  * truth for `visibleTo` on both the client and (via the backfill) the server,
  * so the rules and the app cannot drift on who is tied to a person (#1024
  * phase 4). Founders join the list so a person brought in by a pair reaches
- * both of them from the moment the contact is written (#1049).
+ * both of them from the moment the contact is written (#1049), and carers join
+ * so a person's tie to their sheep is something the rules can see (#1051).
  *
  * Pure and dependency-free on purpose: the backfill script imports it without
  * pulling the client Firebase SDK into a Node admin process.
@@ -28,6 +30,7 @@ export function visibleToOf(contact: ContactTies | null | undefined): string[] {
     contact.owner,
     ...(contact.coCreators || []),
     ...(contact.founders || []),
+    ...(contact.carers || []),
   ];
   return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))];
 }

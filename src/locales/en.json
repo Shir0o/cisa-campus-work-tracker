@@ -1403,6 +1403,7 @@
       "where_is_now": "Where is {name} now?",
       "move_to_fitting_step": "Move them to the step that fits today.",
       "cared_for_by": "Cared for by",
+      "no_one_cares": "No one has taken them on yet",
       "who_else_can_see": "Who else can see them",
       "remove_access": "Remove access",
       "just_owner_for_now": "Just {name} for now.",

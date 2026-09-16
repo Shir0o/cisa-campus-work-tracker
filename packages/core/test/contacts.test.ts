@@ -4,11 +4,15 @@ const firestoreMock = vi.hoisted(() => ({
   collection: vi.fn(),
   addDoc: vi.fn(),
   serverTimestamp: vi.fn(() => ({ __serverTimestamp: true })),
+  doc: vi.fn(),
+  updateDoc: vi.fn(),
+  arrayUnion: vi.fn((...args: unknown[]) => ({ __op: 'arrayUnion', args })),
+  arrayRemove: vi.fn((...args: unknown[]) => ({ __op: 'arrayRemove', args })),
 }));
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { addContact, type NewContactInput } from '../src/data/contacts';
+import { addContact, setContactCarer, type NewContactInput } from '../src/data/contacts';
 import { applyPartners } from '../src/data/partners';
 
 const DOC_REF = { id: 'c-new' };
@@ -30,6 +34,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   firestoreMock.collection.mockReturnValue({ __collection: 'contacts' });
   firestoreMock.addDoc.mockResolvedValue(DOC_REF);
+  firestoreMock.doc.mockReturnValue({ __doc: 'contacts/c1' });
+  firestoreMock.updateDoc.mockResolvedValue(undefined);
 });
 
 describe('addContact — owner stamp', () => {
@@ -106,5 +112,66 @@ describe('addContact — founding set (#1049)', () => {
     const written = firestoreMock.addDoc.mock.calls[0][1] as Record<string, unknown>;
     expect(written.founders).toEqual(['staff-1']);
     expect(written.visibleTo).toEqual(['staff-1']);
+  });
+});
+
+describe('setContactCarer (#1051)', () => {
+  const contact = {
+    id: 'c1',
+    createdBy: 'u1',
+    owner: 'u1',
+    coCreators: ['u2'],
+    founders: ['u1'],
+    carers: ['u3'],
+  };
+
+  it('records the reader as a carer when they take the person on', async () => {
+    await setContactCarer({} as never, contact, 'u4', true);
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      {
+        carers: { __op: 'arrayUnion', args: ['u4'] },
+        visibleTo: ['u1', 'u2', 'u3', 'u4'],
+      },
+    );
+  });
+
+  it('removes the reader from carers when they give the person up', async () => {
+    await setContactCarer({} as never, contact, 'u3', false);
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      {
+        carers: { __op: 'arrayRemove', args: ['u3'] },
+        visibleTo: ['u1', 'u2'],
+      },
+    );
+  });
+
+  it('leaves a reader in the access list when another tie still holds them', async () => {
+    const withOtherTie = { ...contact, coCreators: ['u2', 'u3'], carers: ['u3'] };
+    await setContactCarer({} as never, withOtherTie, 'u3', false);
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      {
+        carers: { __op: 'arrayRemove', args: ['u3'] },
+        visibleTo: ['u1', 'u2', 'u3'],
+      },
+    );
+  });
+
+  it('taking on twice is idempotent for the access list', async () => {
+    const already = { ...contact, carers: ['u3', 'u4'] };
+    await setContactCarer({} as never, already, 'u4', true);
+
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(
+      { __doc: 'contacts/c1' },
+      {
+        carers: { __op: 'arrayUnion', args: ['u4'] },
+        visibleTo: ['u1', 'u2', 'u3', 'u4'],
+      },
+    );
   });
 });

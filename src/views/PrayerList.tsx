@@ -18,7 +18,7 @@ import {
   isContactBrother,
   isContactSister,
   getContactGrade,
-  getContactCaregiver,
+  getContactCarers,
   getContactAddedBy,
   sortPrayerEntries,
   isContactStale,
@@ -794,7 +794,7 @@ function PrayerThread({
   const isStale = isContactStale(contact);
   const daysSinceInteraction = getDaysSinceLastInteraction(contact);
 
-  const caregiver = getContactCaregiver(contact, team);
+  const carers = getContactCarers(contact, team);
   const addedBy = getContactAddedBy(contact, team);
 
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
@@ -847,7 +847,7 @@ function PrayerThread({
               {[
                 contact.role,
                 getContactGrade(contact),
-                caregiver ? t('prayers.cared_for_by_name', `Cared for by ${caregiver}`).replace('{name}', caregiver) : undefined,
+                carers.length ? t('prayers.cared_for_by_name', `Cared for by ${carers.join(', ')}`).replace('{name}', carers.join(', ')) : undefined,
                 addedBy ? t('prayers.added_by_name', `Added by ${addedBy}`).replace('{name}', addedBy) : undefined,
               ].filter(Boolean).join(' · ') || t('directory.unassigned')}
             </div>

@@ -19,6 +19,8 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { format, isValid } from "date-fns";
 import {
+  arrayRemove,
+  arrayUnion,
   collection,
   onSnapshot,
   query,
@@ -26,11 +28,14 @@ import {
   limit,
   where,
   collectionGroup,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
 import { contactVisibilityConstraints } from "../lib/contactQueries";
+import { visibleToOf } from "../lib/permissions";
 import { useLayout } from "../App";
 import { Contact, PrayerRecord, Event, Stage, Interaction } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -802,9 +807,23 @@ export default function MyDay() {
   const togglePersonalContact = (id: string) => {
     if (!uid) return;
     const next = new Set(personalContactIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    const takingOn = !next.has(id);
+    if (takingOn) next.add(id);
+    else next.delete(id);
     saveUserPreferences(uid, { personalContactIds: [...next] });
+    // #1051: taking a person into Your sheep also records the reader on the
+    // contact itself, as a carer, so the tie is something the rules can see and
+    // "Cared for by" can name them. The preference write above keeps the home
+    // page behaving exactly as before; this write makes the tie persist.
+    const contact = contacts.find((c) => c.id === id);
+    if (!contact) return;
+    const nextCarers = takingOn
+      ? [...new Set([...(contact.carers || []), uid])]
+      : (contact.carers || []).filter((carer) => carer !== uid);
+    void updateDoc(doc(db, "contacts", id), {
+      carers: takingOn ? arrayUnion(uid) : arrayRemove(uid),
+      visibleTo: visibleToOf({ ...contact, carers: nextCarers }),
+    });
   };
 
   const jumpToSource = (docId: string) =>

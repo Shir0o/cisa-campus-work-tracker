@@ -56,6 +56,7 @@ import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canTransferOwnership, visibleToOf } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
+import { carerNamesOf } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
@@ -1240,14 +1241,15 @@ export default function ContactDetailsModal({
     ? t('modals.contactDetails.last_connected').replace('{date}', lastConnectedDate)
     : t('modals.contactDetails.not_connected_yet');
   const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
-  // "Cared for by" binds to `owner` only. The legacy fallback to
-  // `createdByName` stays so contacts whose `owner` hasn't been backfilled
-  // yet still show a real name — once the backfill script runs, the
-  // fallback becomes unreachable in production and the field is purely
-  // `owner`. `addedByName` below renders "Added by" separately.
-  const ownerInfo = teamMembers.find((m) => m.id === ownerId);
-  const ownerName = ownerInfo?.name || (contact.owner ? null : contact.createdByName) || "—";
-  const ownerRole = ownerInfo?.role || "";
+  // "Cared for by" derives from the carers tie (#1051) — everyone holding this
+  // person in their sheep — and names zero, one or several people. The `owner`
+  // field is still written and read exactly as before (the transfer control
+  // below manages it); it is just no longer what this line claims.
+  const carerNames = carerNamesOf(
+    currentContact?.carers,
+    Object.fromEntries(teamMembers.map((m) => [m.id, m.name])),
+  );
+  const carerMembers = teamMembers.filter((m) => (currentContact?.carers || []).includes(m.id));
   const addedByName =
     contact.createdByName ||
     (contact.addedBy ? teamMembers.find((m) => m.id === contact.addedBy)?.name : null);
@@ -1445,8 +1447,12 @@ export default function ContactDetailsModal({
                   {!isEditing && (
                     <div className="cd-head-sub">
                       <span>{sinceText}</span>
-                      <span className="sep">·</span>
-                      <span>{t('modals.contactDetails.cared_for_by')} <b>{ownerName}</b></span>
+                      {carerNames.length > 0 && (
+                        <>
+                          <span className="sep">·</span>
+                          <span>{t('modals.contactDetails.cared_for_by')} <b>{carerNames.join(', ')}</b></span>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1980,15 +1986,23 @@ export default function ContactDetailsModal({
                           <div className="cd-sec-head">
                             <h3 className="cd-sec-title">{t('modals.contactDetails.cared_for_by')}</h3>
                           </div>
-                          <div className="cd-owner">
-                            <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
-                              {ownerInfo?.initials || "?"}
+                          {carerMembers.length > 0 ? (
+                            carerMembers.map((m) => (
+                              <div className="cd-owner" key={m.id}>
+                                <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
+                                  {m.initials || "?"}
+                                </div>
+                                <div>
+                                  <div className="cd-owner-name">{m.name}</div>
+                                  {m.role && <div className="cd-owner-role">{m.role}</div>}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-on-surface-variant">
+                              {t('modals.contactDetails.no_one_cares', 'No one has taken them on yet')}
                             </div>
-                            <div>
-                              <div className="cd-owner-name">{ownerName}</div>
-                              {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
-                            </div>
-                          </div>
+                          )}
 
                           {canTransfer && transferOptions.length > 0 && (
                             transferring ? (

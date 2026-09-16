@@ -464,6 +464,78 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Your sheep carers (#1051)', () => {
+    const seed = async (contactId: string, contact: Record<string, unknown>) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts', contactId), {
+          name: 'Test', email: 'test@example.com', ...contact,
+        });
+      });
+    };
+
+    it('lets a reader who already sees the person take them into their sheep', async () => {
+      await seed('c_take_on', { createdBy: 'operator1', visibleTo: ['operator1', 'operator2'] });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_take_on'), {
+        carers: ['operator2'],
+        visibleTo: ['operator1', 'operator2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses taking on a person the reader cannot already see', async () => {
+      await seed('c_no_reach', { createdBy: 'operator1', visibleTo: ['operator1'] });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_no_reach'), {
+        carers: ['operator2'],
+        visibleTo: ['operator1', 'operator2'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses adding someone else as a carer', async () => {
+      await seed('c_other', { createdBy: 'operator1', visibleTo: ['operator1', 'operator2'] });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_other'), {
+        carers: ['operator2', 'operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('refuses removing someone else from the carers', async () => {
+      await seed('c_drop_other', {
+        createdBy: 'operator1',
+        carers: ['operator2', 'operator3'],
+        visibleTo: ['operator1', 'operator2', 'operator3'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_drop_other'), {
+        carers: [],
+        visibleTo: ['operator1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets a carer give the person up', async () => {
+      await seed('c_give_up', {
+        createdBy: 'operator1',
+        carers: ['operator2'],
+        visibleTo: ['operator1', 'operator2'],
+      });
+      const db = getFirestore({ uid: 'operator2' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_give_up'), {
+        carers: [],
+        visibleTo: ['operator1'],
+        updatedAt: serverTimestamp(),
+      }));
+    });
+  });
+
   // Contact visibility: the tie enforced server-side (#1024 phase 4). The
   // rule reads the denormalised `visibleTo` list; a Trainee must appear in it.
   describe('Contact visibility (visibleTo)', () => {

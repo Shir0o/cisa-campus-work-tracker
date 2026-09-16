@@ -14,6 +14,7 @@ import {
   isTrainee,
   personalContactIdsOf,
   walkingRecipient,
+  carerNamesOf,
   type Contact,
   type PrayerRecord,
   type Stage,
@@ -24,7 +25,6 @@ import {
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, logActivity, OperationType } from './firebase';
 import { useFullTimerNames } from './useFullTimerNames';
-import { resolveCaregiverName } from './caregiverName';
 import {
   addContactCollaborator,
   removeContactCollaborator,
@@ -143,18 +143,12 @@ export function useContactDetailData(contactId: string) {
 
   const shownLoading = useMinLoading(loading);
 
-  // Resolve the contact's "Cared for by" name. The display is bound to the
-  // mutable `owner` field, not `createdBy` — when a contact is handed off,
-  // the name shown here should change. The full-timer roster is the source
-  // of uid → name; if the owner isn't in the roster (deleted user, anon
-  // sign-up), fall back to the immutable `createdByName` so the row never
-  // shows nothing.
+  // "Cared for by" derives from the carers tie (#1051) — everyone holding this
+  // person in their sheep — resolved against the team roster. The `owner` field
+  // is still written and read (the care handover); it is just no longer what
+  // this row claims.
   const fullTimerNames = useFullTimerNames();
-  const caregiverName = resolveCaregiverName(
-    contact?.owner ?? null,
-    contact?.createdByName ?? null,
-    fullTimerNames,
-  );
+  const caregiverNames = carerNamesOf(contact?.carers ?? null, fullTimerNames);
 
   return {
     contact,
@@ -168,7 +162,7 @@ export function useContactDetailData(contactId: string) {
     threadMessages: visibleThreadMessages,
     walkLabel,
     inYourCare,
-    caregiverName,
+    caregiverNames,
 
     addInteraction: async (input: { content: string; dateTime: string; type: string }) => {
       if (!contact || !uid) return;

@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { ChevronRight, Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
-import { getContactGrade, getContactCaregiver, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
+import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useLayout } from '../App';
@@ -350,7 +350,7 @@ function PrayerThreadCard({
 
   const daysSinceInteraction = getDaysSinceLastInteraction(contact);
 
-  const caregiver = getContactCaregiver(contact, team);
+  const carers = getContactCarers(contact, team);
   const addedBy = getContactAddedBy(contact, team);
 
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
@@ -386,7 +386,7 @@ function PrayerThreadCard({
               {[
                 contact.role,
                 getContactGrade(contact),
-                caregiver ? t('prayers.cared_for_by_name', `Cared for by ${caregiver}`).replace('{name}', caregiver) : undefined,
+                carers.length ? t('prayers.cared_for_by_name', `Cared for by ${carers.join(', ')}`).replace('{name}', carers.join(', ')) : undefined,
                 addedBy ? t('prayers.added_by_name', `Added by ${addedBy}`).replace('{name}', addedBy) : undefined,
               ].filter(Boolean).join(' · ')}
             </div>
