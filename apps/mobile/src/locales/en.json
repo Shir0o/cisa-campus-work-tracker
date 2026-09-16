@@ -1511,6 +1511,7 @@
       "add_someone": "Add someone…",
       "add_someone_lower": "add someone",
       "remove_access": "Remove access",
+      "founder": "Gospel partner",
       "remove_access_confirm": "Remove view access for {name}?",
       "looking_back": "Looking back",
       "details_updated": "{name} updated",

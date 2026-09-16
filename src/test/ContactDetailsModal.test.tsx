@@ -1212,15 +1212,16 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('a founder who took the person on keeps their sheep when the share is dropped (#1052)', async () => {
+  it('a Full-timer removing a founder drops their carer tie too (#1054)', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Admin User' },
       isAdmin: true,
       role: 'admin',
     });
 
-    // user-456 is a founder AND took John Doe into their sheep: the share
-    // removal must not reach their carer tie.
+    // user-456 is a founder who took John Doe into their sheep: the Full-timer's
+    // genuine-mistake correction removes the founder entirely, so the carer tie
+    // that only that reach held goes with it.
     const contactWithFounderCarer = {
       ...mockContact,
       coCreators: ['user-456'],
@@ -1251,12 +1252,12 @@ describe('ContactDetailsModal Component', () => {
         expect.anything(),
         expect.objectContaining({
           coCreators: firestore.arrayRemove('user-456'),
-          visibleTo: ['user-456'],
+          founders: firestore.arrayRemove('user-456'),
+          carers: firestore.arrayRemove('user-456'),
+          visibleTo: [],
         })
       );
     });
-    const patch = (firestore.updateDoc as any).mock.calls.at(-1)?.[1] ?? {};
-    expect(patch.carers).toBeUndefined();
   });
 
   it('allows a co-creator to manage collaborators, but never transfer, and protects creator from removal', async () => {
@@ -1270,6 +1271,7 @@ describe('ContactDetailsModal Component', () => {
     const contactWithCoCreators = {
       ...mockContact,
       createdBy: 'user-creator',
+      founders: ['user-creator'],
       coCreators: ['user-cocreator', 'user-creator', 'user-456'],
     };
 
@@ -1304,6 +1306,89 @@ describe('ContactDetailsModal Component', () => {
     const removeBtns = screen.getAllByTitle('Remove access');
     // Out of 3 collaborators, user-creator is protected, user-cocreator can remove user-456 and user-cocreator (or only user-456 if creator is protected)
     expect(removeBtns.length).toBeGreaterThan(0);
+  });
+
+  it('shows founders distinctly from added collaborators and offers remove controls only where they apply (#1054)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-founder', displayName: 'Rina Adeyemi' },
+      isAdmin: false,
+      role: 'manager',
+    });
+
+    const contact = {
+      ...mockContact,
+      createdBy: 'user-founder',
+      founders: ['user-founder', 'user-partner'],
+      coCreators: ['user-collab'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-founder', data: () => ({ name: 'Rina Adeyemi', role: 'Trainee' }) },
+            { id: 'user-partner', data: () => ({ name: 'Sam Whitfield', role: 'Trainee' }) },
+            { id: 'user-collab', data: () => ({ name: 'Helper Alice', role: 'Trainee' }) },
+            { id: 'user-avail', data: () => ({ name: 'New Teammate', role: 'Trainee' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />);
+    await screen.findByText('John Doe');
+
+    // Founders are named as such; the deliberately added collaborator is not.
+    expect(screen.getAllByText('Gospel partner')).toHaveLength(2);
+    expect(screen.getByText('Helper Alice')).toBeInTheDocument();
+
+    // A founder sees the add-someone affordance.
+    expect(screen.getByRole('button', { name: /add someone/i })).toBeInTheDocument();
+
+    // A founder offers no remove control on a peer founder, but the added
+    // collaborator is removable by anyone with sharing rights.
+    const removeBtns = screen.getAllByTitle('Remove access');
+    expect(removeBtns).toHaveLength(1);
+    expect(removeBtns[0].closest('.cd-share-row')).toHaveTextContent('Helper Alice');
+  });
+
+  it('only a Full-timer sees the remove control on a founder (#1054)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-ft', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    const contact = {
+      ...mockContact,
+      createdBy: 'user-founder',
+      founders: ['user-founder', 'user-partner'],
+      coCreators: ['user-collab'],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-founder', data: () => ({ name: 'Rina Adeyemi', role: 'Trainee' }) },
+            { id: 'user-partner', data: () => ({ name: 'Sam Whitfield', role: 'Trainee' }) },
+            { id: 'user-collab', data: () => ({ name: 'Helper Alice', role: 'Trainee' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />);
+    await screen.findByText('John Doe');
+
+    // A Full-timer may remove anyone: both founders and the added collaborator.
+    expect(screen.getAllByTitle('Remove access')).toHaveLength(3);
   });
 
   it('hides sharing affordances when impersonating (read-only mode)', async () => {

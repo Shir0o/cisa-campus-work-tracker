@@ -195,7 +195,7 @@ describe('removeContactCollaborator (#1052)', () => {
     );
   });
 
-  it('keeps a founder-carer tie — founding is permanent — and never touches carers', async () => {
+  it('removing a founder (the Full-timer correction) takes them out of the founding set and drops the carer tie (#1054)', async () => {
     const contact = {
       id: 'c1',
       createdBy: 'u1',
@@ -209,11 +209,14 @@ describe('removeContactCollaborator (#1052)', () => {
       { __doc: 'contacts/c1' },
       expect.objectContaining({
         coCreators: { __op: 'arrayRemove', args: ['u3'] },
-        visibleTo: ['u1', 'u2', 'u3'],
+        founders: { __op: 'arrayRemove', args: ['u3'] },
+        carers: { __op: 'arrayRemove', args: ['u3'] },
+        visibleTo: ['u1', 'u2'],
       }),
     );
     const patch = firestoreMock.updateDoc.mock.calls[0][1] as Record<string, unknown>;
-    expect(patch.carers).toBeUndefined();
+    expect(patch.founders).toEqual({ __op: 'arrayRemove', args: ['u3'] });
+    expect(patch.carers).toEqual({ __op: 'arrayRemove', args: ['u3'] });
   });
 
   it('leaves a carer who is not the removed collaborator untouched', async () => {

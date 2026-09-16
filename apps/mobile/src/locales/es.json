@@ -1511,6 +1511,7 @@
       "add_someone": "Agregar a alguien…",
       "add_someone_lower": "agregar a alguien",
       "remove_access": "Quitar acceso",
+      "founder": "Compañero de evangelio",
       "remove_access_confirm": "¿Quitar el acceso para {name}?",
       "looking_back": "Mirando atrás",
       "details_updated": "{name} actualizado",

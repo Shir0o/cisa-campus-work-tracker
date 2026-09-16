@@ -112,6 +112,7 @@ describe('ContactScreen', () => {
     createdAt: '2026-08-01T12:00:00.000Z',
     createdByName: 'Staffer',
     createdBy: 'user1',
+    founders: ['user1'],
     coCreators: ['user1'],
   };
 
@@ -484,6 +485,62 @@ describe('ContactScreen', () => {
 
       // No remove button for original creator
       expect(queryByLabelText('Remove access')).toBeNull();
+    });
+
+    it('shows founders distinctly from added collaborators and offers remove controls only where they apply (#1054)', () => {
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: {
+          ...mockContact,
+          createdBy: 'user1',
+          founders: ['user1', 'u-collab'],
+          coCreators: ['u-collab', 'u-avail'],
+        },
+      });
+
+      const { getByText, getByLabelText, queryByLabelText, getAllByLabelText, getAllByText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+
+      // Founders are named as gospel partners; the added collaborator is not.
+      expect(getAllByText('Gospel partner').length).toBe(2);
+      expect(getByText('Helper Alice')).toBeTruthy();
+
+      // user1 (a founder) sees the add-someone affordance.
+      expect(getByLabelText('Add someone…')).toBeTruthy();
+
+      // A founder offers no remove control on a peer founder, but the added
+      // collaborator (Helper Alice) is removable by anyone with sharing rights.
+      const removeBtns = getAllByLabelText('Remove access');
+      expect(removeBtns.length).toBe(1);
+    });
+
+    it('only a Full-timer sees the remove control on a founder (#1054)', () => {
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'user-ft', user: { displayName: 'Full-timer' }, role: 'admin' });
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: {
+          ...mockContact,
+          createdBy: 'user1',
+          founders: ['user1', 'u-collab'],
+          coCreators: ['u-collab', 'u-avail'],
+        },
+      });
+
+      const { getByText, getAllByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="story" />
+        </ThemeProvider>,
+      );
+
+      fireEvent.press(getByText('Details, notes, how to reach them'));
+
+      // A Full-timer may remove anyone: both founders and the added collaborator.
+      expect(getAllByLabelText('Remove access').length).toBe(3);
     });
 
     it('disables sharing and editing when isImpersonating is true', () => {
