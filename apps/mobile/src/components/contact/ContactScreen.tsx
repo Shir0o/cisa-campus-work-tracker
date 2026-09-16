@@ -767,7 +767,7 @@ function PrayerCard({
 /** Story's one disclosure (`.m2c-det`) — everything the old Overview tab held. */
 function Details({
   contact,
-  caregiverNames,
+  caregiverNames = [],
   teamMembers,
   canEdit,
   canShare,

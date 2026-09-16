@@ -131,6 +131,7 @@ describe('ContactScreen', () => {
     threadMessages: [] as ThreadMessage[],
     walkLabel: 'Alongside',
     inYourCare: true,
+    caregiverNames: [],
     addInteraction: jest.fn(),
     addPrayer: jest.fn(),
     markPrayerAnswered: jest.fn(),
