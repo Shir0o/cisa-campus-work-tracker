@@ -44,9 +44,14 @@ describe('planTagCombining', () => {
 });
 
 describe('getEffectiveContactTags', () => {
-  it('injects new tag for contacts created within 7 days', () => {
+  it('injects new tag for contacts created within 5 days', () => {
     const recent = new Date(Date.now() - 2 * 86_400_000).toISOString();
     expect(getEffectiveContactTags(['Lead'], recent)).toEqual(['new', 'Lead']);
+  });
+
+  it('injects new tag for contacts created exactly 5 days ago', () => {
+    const boundary = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    expect(getEffectiveContactTags(['Lead'], boundary)).toEqual(['new', 'Lead']);
   });
 
   it('does not duplicate existing new tag', () => {
@@ -54,8 +59,8 @@ describe('getEffectiveContactTags', () => {
     expect(getEffectiveContactTags(['new', 'Lead'], recent)).toEqual(['new', 'Lead']);
   });
 
-  it('does not inject new tag for contacts older than 7 days', () => {
-    const older = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  it('does not inject new tag for contacts older than 5 days', () => {
+    const older = new Date(Date.now() - 6 * 86_400_000).toISOString();
     expect(getEffectiveContactTags(['Lead'], older)).toEqual(['Lead']);
   });
 });

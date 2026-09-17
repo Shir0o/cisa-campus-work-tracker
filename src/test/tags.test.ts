@@ -114,9 +114,14 @@ describe('tagToneKey and tagStyle', () => {
 });
 
 describe('getEffectiveContactTags', () => {
-  it('injects new tag when contact was created within 7 days', () => {
+  it('injects new tag when contact was created within 5 days', () => {
     const recently = new Date(Date.now() - 2 * 86_400_000).toISOString();
     expect(getEffectiveContactTags(['Freshman'], recently)).toEqual(['new', 'Freshman']);
+  });
+
+  it('injects new tag when contact was created exactly 5 days ago', () => {
+    const boundary = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    expect(getEffectiveContactTags(['Freshman'], boundary)).toEqual(['new', 'Freshman']);
   });
 
   it('does not duplicate new tag if already present', () => {
@@ -124,8 +129,8 @@ describe('getEffectiveContactTags', () => {
     expect(getEffectiveContactTags(['New', 'Senior'], recently)).toEqual(['New', 'Senior']);
   });
 
-  it('does not inject new tag when contact was created more than 7 days ago', () => {
-    const older = new Date(Date.now() - 10 * 86_400_000).toISOString();
+  it('does not inject new tag when contact was created more than 5 days ago', () => {
+    const older = new Date(Date.now() - 6 * 86_400_000).toISOString();
     expect(getEffectiveContactTags(['Freshman'], older)).toEqual(['Freshman']);
   });
 });
