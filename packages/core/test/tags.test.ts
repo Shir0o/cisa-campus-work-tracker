@@ -67,4 +67,9 @@ describe('TAG_SUGGESTIONS', () => {
     expect(TAG_SUGGESTIONS).toContain('Interested');
     expect(TAG_SUGGESTIONS).toContain('Open');
   });
+
+  it('includes Club Rush and BFA', () => {
+    expect(TAG_SUGGESTIONS).toContain('Club Rush');
+    expect(TAG_SUGGESTIONS).toContain('BFA');
+  });
 });

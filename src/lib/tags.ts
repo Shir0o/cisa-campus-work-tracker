@@ -89,6 +89,7 @@ export const TAG_SUGGESTIONS = [
   'Senior',
   'Graduate',
   'Club Rush',
+  'BFA',
 ];
 
 export type TagToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
@@ -105,7 +106,7 @@ export function tagToneKey(tag: string): TagToneKey {
   if (t.includes('junior') || t.includes('3rd')) return 'plum';
   if (t.includes('senior') || t.includes('4th') || t.includes('grad')) return 'ochre';
   if (t.includes('lead') || t.includes('trainee') || t.includes('staff')) return 'rose';
-  if (t.includes('club') || t.includes('rush') || t.includes('outreach')) return 'clay';
+  if (t.includes('club') || t.includes('rush') || t.includes('outreach') || t === 'bfa') return 'clay';
 
   let hash = 0;
   for (let i = 0; i < t.length; i++) {

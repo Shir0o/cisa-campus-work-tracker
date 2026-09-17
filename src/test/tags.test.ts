@@ -94,6 +94,16 @@ describe('tagToneKey and tagStyle', () => {
     expect(tagToneKey('new')).toBe('teal');
   });
 
+  it('includes Club Rush and BFA in TAG_SUGGESTIONS', () => {
+    expect(TAG_SUGGESTIONS).toContain('Club Rush');
+    expect(TAG_SUGGESTIONS).toContain('BFA');
+  });
+
+  it('returns the clay outreach tone for Club Rush and BFA', () => {
+    expect(tagToneKey('Club Rush')).toBe('clay');
+    expect(tagToneKey('BFA')).toBe('clay');
+  });
+
   it('returns a CSS variable style with tone variables', () => {
     const style = tagStyle('Saved');
     expect(style).toEqual({
