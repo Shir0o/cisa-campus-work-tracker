@@ -877,6 +877,41 @@ describe('Directory', () => {
     expect(await screen.findByText('No duplicate or overlapping tags found.')).toBeInTheDocument();
   });
 
+  it('renders Combine contacts button for admin and opens CombineContactsModal', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User' },
+      role: 'admin',
+      effectiveUserId: 'u-admin',
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const combineContactsBtn = screen.getByRole('button', { name: /combine contacts/i });
+    expect(combineContactsBtn).toBeInTheDocument();
+
+    fireEvent.click(combineContactsBtn);
+    expect(await screen.findByText(/No duplicate contacts found/i)).toBeInTheDocument();
+  });
+
+  it('does not render Combine contacts button for non-admin', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-trainee', displayName: 'Trainee User' },
+      role: 'manager',
+      isAdmin: false,
+      effectiveUserId: 'trainee-123',
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /combine contacts/i })).not.toBeInTheDocument();
+  });
+
   it('retains search and filters across an open-then-close contact detail cycle (#1067)', async () => {
     const { unmount } = render(<Directory />);
     await waitFor(() => {

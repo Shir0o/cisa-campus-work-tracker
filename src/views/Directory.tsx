@@ -11,6 +11,7 @@ import {
   Plus,
   Sparkles,
   Combine,
+  Users,
   ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -38,6 +39,7 @@ import { DataLoadError } from '../components/ui/DataLoadError';
 import Select from '../components/ui/Select';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
+import CombineContactsModal from '../components/modals/CombineContactsModal';
 import TagGenderModal from '../components/modals/TagGenderModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
@@ -320,6 +322,7 @@ export default function Directory() {
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
   const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
+  const [isCombineContactsOpen, setIsCombineContactsOpen] = useState(false);
   const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
@@ -706,6 +709,15 @@ export default function Directory() {
         </div>
         {/* Desktop actions (sm and up): three-across secondary actions + primary Add someone */}
         <div className="hidden sm:flex flex-wrap items-center gap-2 shrink-0">
+          {role === 'admin' && (
+            <button
+              onClick={() => setIsCombineContactsOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
+              title={t('directory.combine_contacts', 'Combine contacts')}
+            >
+              <Users className="w-4 h-4" /> {t('directory.combine_contacts', 'Combine contacts')}
+            </button>
+          )}
           <button
             onClick={() => setIsCombineTagsOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
@@ -770,6 +782,20 @@ export default function Directory() {
                   role="menu"
                   className="absolute right-0 top-[calc(100%+8px)] w-48 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant p-1.5 space-y-0.5 z-30"
                 >
+                  {role === 'admin' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderMoreOpen(false);
+                        setIsCombineContactsOpen(true);
+                      }}
+                      role="menuitem"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
+                    >
+                      <Users className="w-4 h-4 text-on-surface-variant shrink-0" />
+                      <span>{t('directory.combine_contacts', 'Combine contacts')}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -1167,6 +1193,14 @@ export default function Directory() {
         <CombineTagsModal
           contacts={userContacts}
           onClose={() => setIsCombineTagsOpen(false)}
+        />
+      )}
+
+      {/* ── Combine Contacts Modal (dry-run) ── */}
+      {isCombineContactsOpen && (
+        <CombineContactsModal
+          contacts={contacts}
+          onClose={() => setIsCombineContactsOpen(false)}
         />
       )}
 
