@@ -2575,7 +2575,7 @@ describeRules('Firestore Security Rules', () => {
 
     it('SP1: Anyone (even unauthenticated) can read settings/partners', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
-        await setDoc(doc(context.firestore(), 'settings', 'partners'), { byTerm: {} });
+        await setDoc(doc(context.firestore(), 'settings', 'partners'), { pairings: [] });
       });
       const db = getFirestore(); // unauthenticated
       await assertSucceeds(getDoc(doc(db, 'settings', 'partners')));
@@ -2587,14 +2587,14 @@ describeRules('Firestore Security Rules', () => {
       });
       const db = getFirestore({ uid: 'admin1' });
       await assertSucceeds(
-        setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [{ members: ['trainee1', 'trainee2'] }] } }),
+        setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }),
       );
     });
 
     it('SP3: Manager cannot write settings/partners', async () => {
       await seedRoles();
       const db = getFirestore({ uid: 'manager1' });
-      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [{ members: ['trainee1', 'trainee2'] }] } }));
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }));
     });
 
     it('SP4: Rejects stray keys on settings/partners', async () => {
@@ -2602,7 +2602,21 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
       });
       const db = getFirestore({ uid: 'admin1' });
-      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: {}, evil: true }));
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [], evil: true }));
+    });
+
+    it('SP5: Rejects the legacy byTerm shape and malformed pairings', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      // The legacy byTerm shape holds nested arrays, which Firestore cannot store.
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }));
+      // A pairing needs at least two members and a date.
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1'], startDate: '2026-09-01' }] }));
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'] }] }));
+      // The documented canonical shape is accepted.
+      await assertSucceeds(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }));
     });
   });
 

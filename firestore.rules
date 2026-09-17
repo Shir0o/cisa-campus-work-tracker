@@ -533,8 +533,19 @@ service cloud.firestore {
       }
 
       function isValidPartnerSettings(data) {
-        return data.keys().hasOnly(['byTerm']) &&
-               data.byTerm is map;
+        return data.keys().hasOnly(['pairings']) &&
+               data.pairings is list &&
+               data.pairings.size() <= 100 &&
+               data.pairings.all(p =>
+                 p is map &&
+                 p.keys().hasOnly(['id', 'members', 'startDate', 'endDate']) &&
+                 p.id is string && p.id.size() > 0 && p.id.size() <= 64 &&
+                 p.members is list && p.members.size() >= 2 && p.members.size() <= 8 &&
+                 p.members.all(m => m is string && m.size() > 0 && m.size() <= 128) &&
+                 p.startDate is string && p.startDate.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+                 (!('endDate' in p) || p.endDate == null ||
+                   (p.endDate is string && p.endDate.matches('^\\d{4}-\\d{2}-\\d{2}$')))
+               );
       }
 
       function isValidGoalSettings(data) {
