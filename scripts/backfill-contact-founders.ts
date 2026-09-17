@@ -13,9 +13,31 @@
  * different — a mid-term re-pairing destroyed that term's earlier arrangement,
  * so the settings document cannot answer them. Those are resolved ONLY from the
  * pairing-start dates a Full-timer supplied in #1039's question pass, passed in
- * as a JSON file; a current-term contact the answers do not place is listed as
- * unresolved and never written, because a wrong founder is a permanent,
- * un-removable tie.
+ * as the --answers JSON file.
+ *
+ * READ THIS BEFORE PASSING --answers: the file is taken as the COMPLETE
+ * live-term arrangement. Every live-term pairing must be in it, because an
+ * anchor no supplied pairing places is recorded as having founded the contact
+ * ALONE (`current-term-alone`) — a pairing you leave out is not flagged, it is
+ * silently written as "alone", and founders are permanent and removable only by
+ * a Full-timer. Passing --answers is an assertion that the arrangement is
+ * complete; that assertion is what makes the live term decidable at all.
+ *
+ * With no usable --answers, nothing asserts the live term and every live-term
+ * contact is listed as `current-term-unresolved` instead — silence is not
+ * evidence of "alone".
+ *
+ * A founder must also be a person, so this script reads the `users` collection
+ * in the same run and passes the roster of known uids to the planner. An anchor
+ * absent from it — a GroupMe webhook's sender id such as `groupme-43626384`, or
+ * a creator whose account was since deleted — is listed under
+ * `anchor-not-a-user`, never stamped: a founder is immutable except to a
+ * Full-timer, and a founder no one's uid matches would cement a contact no
+ * Trainee can reach. The run ABORTS if the roster comes back empty, rather than
+ * classify every contact against a roster it failed to read.
+ *
+ * Contacts with no anchor and contacts with no usable creation date stay
+ * unresolved by design, as before.
  *
  * The judgment lives in src/lib/contactFounderBackfill.ts, a pure planner; this
  * script only fetches the documents and applies the writes. Each write sets
@@ -30,7 +52,8 @@
  *   FIRESTORE_DATABASE_ID=qa-db npx tsx scripts/backfill-contact-founders.ts
  *
  *   # The #1039 pairing-start answers, as [{ "members": ["x","z"],
- *   # "startDate": "2026-09-10" }].
+ *   # "startDate": "2026-09-10" }] - and taken as the COMPLETE live-term
+ *   # arrangement, so a pairing missing from it becomes "founded alone".
  *   npx tsx scripts/backfill-contact-founders.ts --answers /path/to/answers.json
  *
  *   # Dry run - print the report, write nothing.
@@ -69,9 +92,10 @@ const commit = process.argv.includes('--commit');
 console.log('Target: projects/' + projectId + '/databases/' + databaseId);
 console.log('Live term: ' + termKeyOf(new Date()));
 
-/** Read the --answers file (the #1039 pairing-start answers). Missing or empty
- *  is allowed: past-term contacts still classify; current-term contacts fall to
- *  unresolved and are listed rather than guessed. */
+/** Read the --answers file (the #1039 pairing-start answers), which is taken as
+ *  the COMPLETE live-term arrangement. Missing or empty is allowed: past-term
+ *  contacts still classify; current-term contacts fall to unresolved and are
+ *  listed rather than guessed. */
 function readAnswers(): SuppliedPairing[] {
   const index = process.argv.indexOf('--answers');
   if (index < 0 || !process.argv[index + 1]) {
@@ -96,12 +120,38 @@ async function planBackfill() {
   const pairings = pairingsFromSettings(partnersSnap.data() ?? null);
   const supplied = readAnswers();
 
+  // The roster of real people. An anchor absent from it cannot be a founder.
+  // An empty read is a failed read, not an empty app: abort rather than let the
+  // planner skip the check (it reads an empty roster as "not supplied").
+  const usersSnap = await db.collection('users').get();
+  const knownUserIds = usersSnap.docs.map((d) => d.id);
+  if (knownUserIds.length === 0) {
+    throw new Error(
+      'The users collection came back empty - refusing to judge founders against a roster that failed to read.',
+    );
+  }
+  console.log('Roster: ' + knownUserIds.length + ' known user(s); an anchor absent from it is listed, not stamped.');
+
   if (supplied.length === 0) {
     console.log(
       'No --answers supplied: every contact in the live term will be listed as unresolved.',
     );
   } else {
     console.log('Resolving the live term from ' + supplied.length + ' pairing-start answer(s).');
+    console.log(
+      'PREMISE: those answers are taken as the COMPLETE arrangement for ' +
+        termKeyOf(new Date()) + '.',
+    );
+    console.log(
+      '  An anchor no supplied pairing places founded its contact ALONE ' +
+        '(reason "current-term-alone").',
+    );
+    console.log(
+      '  A real pairing missing from the answers is therefore recorded SILENTLY as founded alone,',
+    );
+    console.log(
+      '  and founders are permanent - only a Full-timer can remove one. Check the file before --commit.',
+    );
   }
 
   const snap = await contactsRef.get();
@@ -116,7 +166,7 @@ async function planBackfill() {
     createdAt: d.get('createdAt'),
   }));
 
-  plan = planContactFounderBackfill(docs, pairings, supplied);
+  plan = planContactFounderBackfill(docs, pairings, supplied, knownUserIds);
 }
 
 async function applyBackfill() {
