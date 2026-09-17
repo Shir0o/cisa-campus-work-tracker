@@ -176,7 +176,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
             const v = block.verse;
             return (
               <p key={bIdx} data-block-kind="verse" className="m-0 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface">
-                <strong className="font-semibold text-[var(--t-sage)]">{block.ref}</strong>
+                <strong className="font-semibold text-[var(--accent)]">{block.ref}</strong>
                 {v && (
                   <>
                     {' '}
