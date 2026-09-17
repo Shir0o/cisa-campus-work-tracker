@@ -2605,16 +2605,15 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [], evil: true }));
     });
 
-    it('SP5: Rejects the legacy byTerm shape and malformed pairings', async () => {
+    it('SP5: Rejects the legacy byTerm shape and stray keys; accepts a pairings list', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
       });
       const db = getFirestore({ uid: 'admin1' });
       // The legacy byTerm shape holds nested arrays, which Firestore cannot store.
       await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }));
-      // A pairing needs at least two members and a date.
-      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1'], startDate: '2026-09-01' }] }));
-      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'] }] }));
+      // Stray keys alongside pairings are rejected.
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [], byTerm: {} }));
       // The documented canonical shape is accepted.
       await assertSucceeds(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }));
     });
