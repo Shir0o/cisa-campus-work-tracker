@@ -84,7 +84,9 @@
     "no_people": "No se encontraron personas.",
     "close_snackbar": "Cerrar aviso",
     "language_selector": "Selector de idioma",
-    "you": "Tú"
+    "you": "Tú",
+    "male": "Masculino",
+    "female": "Femenino"
   },
   "meta": {
     "title": "CISA Campus Work Tracker",
