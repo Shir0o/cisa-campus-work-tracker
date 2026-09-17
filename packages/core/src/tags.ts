@@ -84,6 +84,7 @@ export const TAG_SUGGESTIONS = [
   'Senior',
   'Graduate',
   'Club Rush',
+  'BFA',
 ];
 
 const DAY_MS = 86_400_000;
