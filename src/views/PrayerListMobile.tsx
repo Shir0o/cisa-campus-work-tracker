@@ -476,7 +476,7 @@ function PrayerThreadCard({
             onClearPrayer={onClearPrayer}
           />
         ) : (
-          <TimelineRowMobile dot={<span className={cn(DOT_TONE.pending, DOT_HALO_CURRENT)} />}>
+          <TimelineRowMobile dot={<span className={cn(DOT_TONE.pending, DOT_HALO_CURRENT)} />} contentClassName="-mt-[5.5px]">
             <SectionEyebrow label={t('prayers.this_week')} current />
             {isOperator ? (
               <AddThisWeekMobile
@@ -568,13 +568,13 @@ function PrayerThreadCard({
 }
 
 // One row on the spine: a 16px dot column, then the content.
-function TimelineRowMobile({ dot, children }: { dot: React.ReactNode; children: React.ReactNode }) {
+function TimelineRowMobile({ dot, children, contentClassName }: { dot: React.ReactNode; children: React.ReactNode; contentClassName?: string }) {
   return (
     <div className="flex gap-3.5">
       <div className="w-4 shrink-0 flex justify-center pt-1" aria-hidden>
         {dot}
       </div>
-      <div className="flex-1 min-w-0">{children}</div>
+      <div className={cn('flex-1 min-w-0', contentClassName)}>{children}</div>
     </div>
   );
 }
