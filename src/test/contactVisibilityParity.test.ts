@@ -43,9 +43,18 @@ import {
 const ROLES = ['admin', 'manager', 'operator', 'viewer', 'unknown', null] as const;
 const READERS = ['creator', 'adder', 'cocreator', 'founder', 'carer', 'stranger', '', null, undefined] as const;
 
+interface TieShape {
+  createdBy?: string;
+  addedBy?: string;
+  coCreators?: string[];
+  founders?: string[];
+  carers?: string[];
+  season?: string;
+}
+
 // One contact per tie shape, so every predicate is asked about every way a
 // person can (and cannot) be reached.
-const CONTACTS: Record<string, Record<string, unknown>> = {
+const CONTACTS: Record<string, TieShape> = {
   createdOnly: { createdBy: 'creator' },
   addedOnly: { addedBy: 'adder' },
   coCreated: { createdBy: 'creator', coCreators: ['cocreator'] },
@@ -64,7 +73,7 @@ const CONTACTS: Record<string, Record<string, unknown>> = {
   dirty: { createdBy: '', addedBy: 'adder', coCreators: ['', 'cocreator', 'cocreator'], founders: [] },
 };
 
-const each = (fn: (label: string, contact: Record<string, unknown>) => void) => {
+const each = (fn: (label: string, contact: TieShape) => void) => {
   for (const [label, contact] of Object.entries(CONTACTS)) fn(label, contact);
 };
 
@@ -140,7 +149,7 @@ describe('carers: web and core mirrors agree (#1047)', () => {
 
   it('names the same carers', () => {
     each((label, contact) => {
-      const carers = (contact.carers as string[] | undefined) ?? null;
+      const carers = contact.carers ?? null;
       expect(webCarerNames(carers, names), label).toEqual(coreCarerNames(carers, names));
     });
     expect(webCarerNames(null, names)).toEqual(coreCarerNames(null, names));
