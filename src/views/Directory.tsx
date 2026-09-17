@@ -46,6 +46,7 @@ import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
+import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads } from '../lib/threads';
 import { Translate } from '../components/Translate';
 
@@ -425,12 +426,14 @@ export default function Directory() {
       result = result.filter(c => {
         const ms = parseMs(c.createdAt);
         if (ms == null) return false;
-        // Preset check
+        // Preset check — same calendar-day semantics as every other
+        // time-grouping surface (the shared DateBucket vocabulary), so
+        // "Added today" matches Around-the-team's "Today" heading (#1072).
         if (filterAddedWhen !== 'all') {
-          const d = daysSince(ms);
-          if (filterAddedWhen === 'today' && d !== 0) return false;
-          if (filterAddedWhen === 'week' && d > 7) return false;
-          if (filterAddedWhen === 'month' && d > 30) return false;
+          const bucket = bucketFor(ms);
+          if (filterAddedWhen === 'today' && bucket !== 'today') return false;
+          if (filterAddedWhen === 'week' && !(bucket === 'today' || bucket === 'yesterday' || bucket === 'thisWeek')) return false;
+          if (filterAddedWhen === 'month' && !(bucket === 'today' || bucket === 'yesterday' || bucket === 'thisWeek' || bucket === 'lastWeek' || bucket === 'thisMonth')) return false;
         }
         // Custom range check
         if (customRange.from) {
