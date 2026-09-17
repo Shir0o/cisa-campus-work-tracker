@@ -229,6 +229,11 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
   // from any full-timer and name the writer (#549).
   if (input.fullTimers && input.fullTimers.length > 0) {
     const fts = new Set(input.fullTimers);
+    // The queue only surfaces the trainee's OWN people — created by or
+    // co-created by them (traineeMyPeople), the same predicate the quiet/
+    // follow cards and the "what's waiting" feed use. A contact they merely
+    // share `visibleTo` with (founder/carer) must not leak a card (#1087).
+    const myContactIds = new Set(traineeMyPeople(input.contacts, input.uid).map((p) => p.contact.id));
     const mine = input.threads
       .filter(
         (m) =>
@@ -237,6 +242,7 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
           m.scope !== "team" &&
           MSG_KINDS.includes(m.kind) &&
           byId.has(m.contactId) &&
+          myContactIds.has(m.contactId) &&
           !input.isRead("thread:" + m.id),
       )
       .sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));

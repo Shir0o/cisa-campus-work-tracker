@@ -185,6 +185,50 @@ describe('buildQueue — card kinds', () => {
     expect(ids).not.toContain('ftmsg:unrelated-msg');
   });
 
+  it('does NOT make a msg card for a full-timer message on a contact I can see but do not own', () => {
+    // A contact tied to me via `visibleTo` (founder/carer) but not created or
+    // co-created by me must not leak a card — the queue only surfaces my own
+    // people (#1087).
+    const q = buildQueue(
+      input({
+        contacts: [
+          contact({ id: 'mine', createdBy: 'me' }),
+          contact({ id: 'visible-not-mine', createdBy: 'other' }),
+        ],
+        threads: [
+          message({ id: 'mine-msg', contactId: 'mine' }),
+          message({ id: 'leak-msg', contactId: 'visible-not-mine' }),
+        ],
+      }),
+    );
+
+    const ids = q.map((c) => c.id);
+    expect(ids).toContain('ftmsg:mine-msg');
+    expect(ids).not.toContain('ftmsg:leak-msg');
+  });
+
+  it('makes a msg card for a co-created contact, but not for a founder-only contact', () => {
+    // "Own people" for the queue is the same predicate as the rest of the
+    // trainee feed (traineeMyPeople): createdBy or coCreator (#1044). A
+    // pair-widened founder tie alone is not enough to surface a card.
+    const q = buildQueue(
+      input({
+        contacts: [
+          contact({ id: 'co-created', createdBy: 'other', coCreators: ['me'] }),
+          contact({ id: 'founder-only', createdBy: 'other', founders: ['me'] }),
+        ],
+        threads: [
+          message({ id: 'co-created-msg', contactId: 'co-created' }),
+          message({ id: 'founder-only-msg', contactId: 'founder-only' }),
+        ],
+      }),
+    );
+
+    const ids = q.map((c) => c.id);
+    expect(ids).toContain('ftmsg:co-created-msg');
+    expect(ids).not.toContain('ftmsg:founder-only-msg');
+  });
+
   it('makes a follow card for a to-do with a person on it and no imminent due date', () => {
     const q = buildQueue(
       input({
