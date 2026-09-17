@@ -5,6 +5,7 @@ import Directory from '../views/Directory';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import { logActivity, handleFirestoreError } from '../lib/firebase';
+import { __resetDirectoryFilters } from '../lib/directoryFilters';
 import React from 'react';
 
 // Mock writeBatch operations
@@ -107,6 +108,7 @@ const mockContacts = [
 describe('Directory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetDirectoryFilters();
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
         callback({ docs: mockContacts, size: 3 });
@@ -120,6 +122,7 @@ describe('Directory', () => {
 
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
+      effectiveUserId: 'u-test',
     });
 
     (useLayout as any).mockReturnValue({
@@ -826,6 +829,60 @@ describe('Directory', () => {
     const newCombineItem = await screen.findByRole('menuitem', { name: /combine tags/i });
     fireEvent.click(newCombineItem);
     expect(await screen.findByText('No duplicate or overlapping tags found.')).toBeInTheDocument();
+  });
+
+  it('retains search and filters across an open-then-close contact detail cycle (#1067)', async () => {
+    const { unmount } = render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Apply a search query plus a stage filter.
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Bob' } });
+
+    fireEvent.click(screen.getByText('Filters'));
+    const stageSelect = screen.getByText('Stage').parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(stageSelect, { target: { value: 'Regular' } });
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+
+    // Simulate navigating into a contact detail (the directory unmounts)...
+    unmount();
+
+    // ...and back (the directory remounts): the exact selections are restored.
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+    const restoredInput = screen.getByPlaceholderText(/Find someone by name/i) as HTMLInputElement;
+    expect(restoredInput.value).toBe('Bob');
+  });
+
+  it('lets Clear all reset every filter so nothing is restored on return (#1067)', async () => {
+    const { unmount } = render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Alice' } });
+    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Filters'));
+    fireEvent.click(screen.getByText('Clear all'));
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+
+    // Return from the contact detail: filters must NOT come back.
+    unmount();
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    const restoredInput = screen.getByPlaceholderText(/Find someone by name/i) as HTMLInputElement;
+    expect(restoredInput.value).toBe('');
   });
 });
 

@@ -42,6 +42,7 @@ import TagGenderModal from '../components/modals/TagGenderModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
+import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { subscribeAllThreads } from '../lib/threads';
 import { Translate } from '../components/Translate';
@@ -150,11 +151,19 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 export default function Directory() {
   const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
   const { user, role, effectiveUserId } = useAuth();
+
+  // Restore any filter state retained across a contact-detail navigation. The
+  // detail route swaps the view for the directory (unmounting it), so filters
+  // live in a per-user module store — the same spirit as usePreserveScroll — and
+  // are read back here on remount. A fresh page load finds the store empty, so
+  // a first visit always starts clean.
+  const restoredFilters = effectiveUserId ? readDirectoryFilters(effectiveUserId) : DEFAULT_DIRECTORY_FILTERS;
+
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(restoredFilters.searchQuery);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [headerMoreOpen, setHeaderMoreOpen] = useState(false);
   const headerMoreRef = useRef<HTMLDivElement>(null);
@@ -298,12 +307,12 @@ export default function Directory() {
     return map;
   }, [touches]);
 
-  const [filterStage, setFilterStage] = useState<string>('All');
-  const [filterRole, setFilterRole] = useState<string>('All');
-  const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>('All');
-  const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>('all');
-  const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [filterStage, setFilterStage] = useState<string>(restoredFilters.filterStage);
+  const [filterRole, setFilterRole] = useState<string>(restoredFilters.filterRole);
+  const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
+  const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
+  const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
+  const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
   const [bulkStage, setBulkStage] = useState('');
@@ -334,6 +343,21 @@ export default function Directory() {
       }
     }
   };
+
+  // Retain the filter state per user so a remounted directory (returning from a
+  // contact detail page) restores the same selections the user left behind.
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    writeDirectoryFilters(effectiveUserId, {
+      searchQuery,
+      filterStage,
+      filterRole,
+      filterSpiritualBackground,
+      filterAddedWhen,
+      customRange,
+      selectedTags,
+    });
+  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterAddedWhen, customRange, selectedTags]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
