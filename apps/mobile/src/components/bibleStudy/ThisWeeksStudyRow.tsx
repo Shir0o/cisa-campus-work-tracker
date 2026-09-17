@@ -17,7 +17,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
-import { subscribeEntryPoints, type EntryPoint } from '../../lib/data/bibleStudy';
+import { subscribeEntryPoints, subscribePublishedStudyMeetings, type EntryPoint } from '../../lib/data/bibleStudy';
 import { useV2Theme } from '../../theme/v2';
 import { useLanguage } from '../../lib/LanguageProvider';
 
@@ -34,6 +34,8 @@ const QR_INK = '#0A0A0B'; // colour-token-ignore: maximum-contrast code ink agai
 const QR_CAPTION = '#6B6B6B'; // colour-token-ignore: quiet caption on the fixed white ground
 const QR_URL = '#9B9B9B'; // colour-token-ignore: quietest line on the fixed white ground
 const entryPointUrl = (slug: string) => `${PUBLIC_APP_URL}/s/${slug}`;
+/** A permanent link pinned to one week (ADR 0011 §6) — what Copy hands out. */
+const staffPermalinkUrl = (studyId: string, date: string) => `${PUBLIC_APP_URL}/study/${studyId}/${date}`;
 
 /**
  * `list` is the tiled row used by the full-timer's More tab and the member's
@@ -63,8 +65,26 @@ export function ThisWeeksStudyRow({
   const [entryPoints, setEntryPoints] = useState<EntryPoint[]>([]);
   const [qrFor, setQrFor] = useState<EntryPoint | null>(null);
   const [copied, setCopied] = useState(false);
+  // The newest published week of each Entry point's study — what `/s/:slug`
+  // resolves to — so Copy pins the link to this week rather than handing out
+  // the always-latest code. Unresolved (between terms, nothing published yet)
+  // falls back to the code URL, which owns those empty states on web.
+  const [weeks, setWeeks] = useState<Record<string, { studyId: string; date: string }>>({});
 
   useEffect(() => subscribeEntryPoints(setEntryPoints), []);
+
+  useEffect(() => {
+    const unsubs = entryPoints.flatMap((ep) => {
+      if (!ep.activeStudyId) return [];
+      const unsub = subscribePublishedStudyMeetings(ep.activeStudyId, (ms) => {
+        const newest = ms[0]; // published, ordered by date desc
+        if (!newest) return;
+        setWeeks((cur) => ({ ...cur, [ep.slug]: { studyId: newest.studyId, date: newest.date } }));
+      });
+      return [unsub];
+    });
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [entryPoints]);
 
   useEffect(() => {
     if (!copied) return;
@@ -87,6 +107,14 @@ export function ThisWeeksStudyRow({
   const open = (ep: EntryPoint) => {
     onNavigate?.();
     return WebBrowser.openBrowserAsync(entryPointUrl(ep.slug));
+  };
+
+  // Copy hands out a permanent link pinned to the week on screen; the code URL
+  // is only the fallback before the study has published a week. The QR stays
+  // the standing invitation either way.
+  const copyUrl = (ep: EntryPoint) => {
+    const week = weeks[ep.slug];
+    return week ? staffPermalinkUrl(week.studyId, week.date) : entryPointUrl(ep.slug);
   };
 
   return (
@@ -125,7 +153,7 @@ export function ThisWeeksStudyRow({
 
           <Pressable
             onPress={async () => {
-              await Clipboard.setStringAsync(entryPointUrl(ep.slug));
+              await Clipboard.setStringAsync(copyUrl(ep));
               setCopied(true);
             }}
             accessibilityRole="button"

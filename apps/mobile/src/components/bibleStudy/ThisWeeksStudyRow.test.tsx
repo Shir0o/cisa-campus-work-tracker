@@ -2,10 +2,11 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { ThisWeeksStudyRow } from './ThisWeeksStudyRow';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { subscribeEntryPoints } from '../../lib/data/bibleStudy';
+import { subscribeEntryPoints, subscribePublishedStudyMeetings } from '../../lib/data/bibleStudy';
 
 jest.mock('../../lib/data/bibleStudy', () => ({
   subscribeEntryPoints: jest.fn(),
+  subscribePublishedStudyMeetings: jest.fn(() => () => {}),
 }));
 
 // ThemeProvider reads the signed-in user's appearance preference, which reaches
@@ -43,10 +44,19 @@ const THURSDAY = {
 };
 
 const URL = 'https://cisa-campus-work-tracker.pages.dev/s/cisa-wednesday';
+const PERMALINK = 'https://cisa-campus-work-tracker.pages.dev/study/romans-fall26/2026-10-14';
+const WEEK = { id: 'romans-fall26-2026-10-14', studyId: 'romans-fall26', date: '2026-10-14', published: true };
 
 function mockEntryPoints(entryPoints: unknown[]) {
   (subscribeEntryPoints as jest.Mock).mockImplementation((cb: (eps: unknown[]) => void) => {
     cb(entryPoints);
+    return () => {};
+  });
+}
+
+function mockWeek(week: unknown | null) {
+  (subscribePublishedStudyMeetings as jest.Mock).mockImplementation((_studyId: string, cb: (ms: unknown[]) => void) => {
+    cb(week ? [week] : []);
     return () => {};
   });
 }
@@ -71,8 +81,18 @@ describe("This week's study — mobile row (#946)", () => {
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(URL);
   });
 
-  it('copies the same URL a student would scan', async () => {
+  it('copies a permanent link pinned to this week, not the always-latest entry point', async () => {
     mockEntryPoints([WEDNESDAY]);
+    mockWeek(WEEK);
+    const { getByLabelText } = renderRow();
+
+    fireEvent.press(getByLabelText('Copy link'));
+    await waitFor(() => expect(mockSetStringAsync).toHaveBeenCalledWith(PERMALINK));
+  });
+
+  it('falls back to the entry point URL before the study has published a week', async () => {
+    mockEntryPoints([WEDNESDAY]);
+    mockWeek(null);
     const { getByLabelText } = renderRow();
 
     fireEvent.press(getByLabelText('Copy link'));

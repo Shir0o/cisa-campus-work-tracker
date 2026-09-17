@@ -4,7 +4,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { db } from '../lib/firebase';
 import { subscribeEntryPoints } from '../lib/data/bibleStudy';
-import { entryPointUrl } from '../lib/publicUrl';
+import { staffPermalinkUrl } from '../lib/publicUrl';
 import type { EntryPoint } from '../lib/bibleStudy';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import StudyEmptyState from '../components/bibleStudy/StudyEmptyState';
@@ -120,9 +120,12 @@ export default function BibleStudyRead() {
   });
 
   const copyLink = async () => {
-    if (!entryPoint) return;
+    if (!meeting) return;
     try {
-      await navigator.clipboard.writeText(entryPointUrl(entryPoint.slug));
+      // A permanent link pinned to the week on screen, not the Entry point's
+      // "always the newest" URL: a shared link must still open this study
+      // after the next week publishes (ADR 0011 §6 — the per-week permalink).
+      await navigator.clipboard.writeText(staffPermalinkUrl(meeting.studyId, meeting.date));
       setCopied(true);
     } catch {
       // Clipboard denied or unavailable (an insecure origin, a locked-down
