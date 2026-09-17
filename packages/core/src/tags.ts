@@ -101,7 +101,7 @@ const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY
 
 /**
  * Returns effective tags for a contact, normalizing user-assigned tags and
- * dynamically injecting 'new' if the contact was added within the last 7 days.
+ * dynamically injecting 'new' if the contact was added within the last 5 days.
  */
 export function getEffectiveContactTags(
   tags?: string[] | null,
@@ -109,7 +109,7 @@ export function getEffectiveContactTags(
 ): string[] {
   const normalized = normalizeTagList(tags);
   const ms = parseMs(createdAt);
-  if (ms != null && daysSince(ms) <= 7) {
+  if (ms != null && daysSince(ms) <= 5) {
     if (!normalized.some((t) => t.toLowerCase() === 'new')) {
       return ['new', ...normalized];
     }
