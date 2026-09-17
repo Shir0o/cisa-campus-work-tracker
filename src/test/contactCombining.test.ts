@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   findCandidateDuplicates,
-  planContactCombining,
-  mergeContactProfiles,
+  combineContactProfiles,
 } from '../lib/contactCombining';
 import type { Contact } from '../types';
 
@@ -59,7 +58,7 @@ describe('findCandidateDuplicates', () => {
   });
 });
 
-describe('mergeContactProfiles', () => {
+describe('combineContactProfiles', () => {
   it('unions relationship sets and preserves survivor scalar details while backfilling missing', () => {
     const survivor: Partial<Contact> = {
       id: 'c1',
@@ -90,7 +89,7 @@ describe('mergeContactProfiles', () => {
       spiritualBackground: 'Christian',
     };
 
-    const merged = mergeContactProfiles(survivor as Contact, duplicate as Contact);
+    const merged = combineContactProfiles(survivor as Contact, duplicate as Contact);
 
     expect(merged.name).toBe('Bob Original');
     expect(merged.major).toBe('Computer Science');

@@ -6,10 +6,6 @@ export interface DuplicatePair {
   reason: string;
 }
 
-export interface CandidateCombinePlan {
-  pairs: DuplicatePair[];
-}
-
 /**
  * Normalizes email for matching.
  */
@@ -32,21 +28,6 @@ export function normalizeName(name?: string | null): string {
 }
 
 /**
- * Checks if needle matches haystack on word boundary.
- */
-function isWordBoundaryMatch(haystack: string, needle: string): boolean {
-  if (!needle || !haystack) return false;
-  let idx = haystack.indexOf(needle);
-  while (idx !== -1) {
-    const prev = idx === 0 ? ' ' : haystack[idx - 1];
-    const next = idx + needle.length === haystack.length ? ' ' : haystack[idx + needle.length];
-    if (!/[a-z0-9]/.test(prev) && !/[a-z0-9]/.test(next)) return true;
-    idx = haystack.indexOf(needle, idx + 1);
-  }
-  return false;
-}
-
-/**
  * Detects whether two contacts are potential duplicates.
  * Returns match reason or null.
  */
@@ -65,13 +46,8 @@ export function checkDuplicateMatch(a: Contact, b: Contact): string | null {
 
   const nameA = normalizeName(a.name);
   const nameB = normalizeName(b.name);
-  if (nameA && nameB) {
-    if (nameA === nameB) {
-      return 'Matching name';
-    }
-    if (isWordBoundaryMatch(nameA, nameB) || isWordBoundaryMatch(nameB, nameA)) {
-      return 'Matching name';
-    }
+  if (nameA && nameB && nameA === nameB) {
+    return 'Matching name';
   }
 
   return null;
@@ -121,21 +97,12 @@ export function findCandidateDuplicates(contacts: Contact[]): DuplicatePair[] {
 }
 
 /**
- * Plans combining for a list of contacts.
- */
-export function planContactCombining(contacts: Contact[]): CandidateCombinePlan {
-  return {
-    pairs: findCandidateDuplicates(contacts),
-  };
-}
-
-/**
- * Merges profile attributes of duplicate into survivor.
+ * Combines profile attributes of duplicate into survivor.
  * - Union sets for relationship ties (founders, carers, coCreators, visibleTo, tags)
  * - Retains survivor values, backfilling missing scalar fields from duplicate
  * - Concatenates non-empty notes
  */
-export function mergeContactProfiles(survivor: Contact, duplicate: Contact): Contact {
+export function combineContactProfiles(survivor: Contact, duplicate: Contact): Contact {
   const unionArray = (arrA?: string[] | null, arrB?: string[] | null): string[] => {
     const set = new Set<string>();
     (arrA ?? []).forEach((item) => item && set.add(item));
@@ -154,7 +121,7 @@ export function mergeContactProfiles(survivor: Contact, duplicate: Contact): Con
     }
   }
 
-  const merged: Contact = {
+  const combined: Contact = {
     ...survivor,
     role: survivor.role || duplicate.role || 'Student',
     location: survivor.location || duplicate.location || '',
@@ -178,5 +145,5 @@ export function mergeContactProfiles(survivor: Contact, duplicate: Contact): Con
     visibleTo: unionArray(survivor.visibleTo, duplicate.visibleTo),
   };
 
-  return merged;
+  return combined;
 }

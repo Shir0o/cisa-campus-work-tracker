@@ -4,7 +4,7 @@ import { X, Check, Users, ArrowRightLeft, Trash2, AlertCircle } from 'lucide-rea
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import {
   findCandidateDuplicates,
-  mergeContactProfiles,
+  combineContactProfiles,
   type DuplicatePair,
 } from '../../lib/contactCombining';
 import { useAuth } from '../AuthProvider';
@@ -65,32 +65,32 @@ export default function CombineContactsModal({
         user?.displayName || user?.email?.split('@')[0] || t('modals.unknown_user', 'Unknown User');
 
       for (const pair of pairs) {
-        const merged = mergeContactProfiles(pair.survivor, pair.duplicate);
+        const combined = combineContactProfiles(pair.survivor, pair.duplicate);
 
         // 1. Update survivor record with merged attributes
         const survivorRef = doc(db, 'contacts', pair.survivor.id);
         batch.update(survivorRef, {
-          name: merged.name,
-          role: merged.role,
-          location: merged.location,
-          email: merged.email,
-          phone: merged.phone,
-          stage: merged.stage,
-          notes: merged.notes,
-          spiritualBackground: merged.spiritualBackground,
-          pronouns: merged.pronouns,
-          gender: merged.gender,
-          year: merged.year,
-          major: merged.major,
-          instagram: merged.instagram,
-          howHeard: merged.howHeard,
-          metVia: merged.metVia,
-          prayerRequest: merged.prayerRequest,
-          tags: merged.tags,
-          founders: merged.founders,
-          carers: merged.carers,
-          coCreators: merged.coCreators,
-          visibleTo: merged.visibleTo,
+          name: combined.name,
+          role: combined.role,
+          location: combined.location,
+          email: combined.email,
+          phone: combined.phone,
+          stage: combined.stage,
+          notes: combined.notes,
+          spiritualBackground: combined.spiritualBackground,
+          pronouns: combined.pronouns,
+          gender: combined.gender,
+          year: combined.year,
+          major: combined.major,
+          instagram: combined.instagram,
+          howHeard: combined.howHeard,
+          metVia: combined.metVia,
+          prayerRequest: combined.prayerRequest,
+          tags: combined.tags,
+          founders: combined.founders,
+          carers: combined.carers,
+          coCreators: combined.coCreators,
+          visibleTo: combined.visibleTo,
           updatedAt: now,
           updatedBy: user?.uid,
           updatedByName,
@@ -128,7 +128,7 @@ export default function CombineContactsModal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-2xl bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant max-h-[85vh] flex flex-col">
+      <div className="relative w-full max-w-2xl bg-surface-container-high rounded-xl shadow-2xl overflow-hidden border border-outline-variant max-h-[85vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-outline-variant flex items-start justify-between gap-4">
           <div>
@@ -170,7 +170,7 @@ export default function CombineContactsModal({
               <p className="text-sm text-on-surface-variant mb-4">
                 {t(
                   'modals.duplicate_pairs_found',
-                  `Found ${pairs.length} candidate duplicate ${pairs.length === 1 ? 'pair' : 'pairs'}. The survivor record is kept and enriched; the duplicate is merged and removed.`
+                  `Found ${pairs.length} candidate duplicate ${pairs.length === 1 ? 'pair' : 'pairs'}. The survivor record is kept and enriched; the duplicate is combined and removed.`
                 )}
               </p>
 
@@ -178,7 +178,7 @@ export default function CombineContactsModal({
                 {pairs.map((pair, idx) => (
                   <div
                     key={`${pair.survivor.id}-${pair.duplicate.id}`}
-                    className="rounded-2xl border border-outline-variant/60 bg-surface p-4 flex flex-col gap-3"
+                    className="rounded-lg border border-outline-variant/60 bg-surface p-4 flex flex-col gap-3"
                   >
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-accent">
                       <span className="flex items-center gap-1">
@@ -198,7 +198,7 @@ export default function CombineContactsModal({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                       {/* Survivor Box */}
-                      <div className="p-3 rounded-xl border border-primary/40 bg-primary/5">
+                      <div className="p-3 rounded-md border border-primary/40 bg-primary/5">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-medium text-primary uppercase">
                             {t('modals.survivor', 'Survivor (Kept)')}
@@ -216,7 +216,7 @@ export default function CombineContactsModal({
                       </div>
 
                       {/* Duplicate Box */}
-                      <div className="p-3 rounded-xl border border-outline-variant bg-surface-variant/40">
+                      <div className="p-3 rounded-md border border-outline-variant bg-surface-variant/40">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-medium text-on-surface-variant uppercase">
                             {t('modals.duplicate', 'Duplicate (Absorbed)')}
