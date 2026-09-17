@@ -955,7 +955,7 @@ function PrayerThread({
             onClearPrayer={onClearPrayer}
           />
         ) : (
-          <TimelineRow dot={<span className={cn(DOT_TONE.pending, DOT_HALO_CURRENT)} />} contentClassName="pt-px">
+          <TimelineRow dot={<span className={cn(DOT_TONE.pending, DOT_HALO_CURRENT)} />} contentClassName="-mt-[4.5px]">
             <SectionEyebrow label={t('prayers.this_week')} current />
             {isOperator ? (
               <AddThisWeek
