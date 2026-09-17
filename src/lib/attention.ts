@@ -142,9 +142,12 @@ export function buildAttentionItems(params: {
     !!contactId && isTiedTo(contactById.get(contactId), uid, personalContactIds, contactId);
 
   if (isFullTimerView) {
-    // 1. Team-added contacts (except full-timer's own)
+    // 1. Team-added contacts (except full-timer's own), plus creator-less
+    // contacts — a public sign-up writes nobody as creator (#1071), and a
+    // person nobody claimed is every Full-timer's to pick up. Trainees stay
+    // out: they get no card here, and they are not tied to the person yet.
     for (const c of contacts) {
-      if (c.createdBy && c.createdBy !== uid) {
+      if (!c.createdBy || c.createdBy !== uid) {
         items.push({
           id: "contact:" + c.id,
           type: "contact",
