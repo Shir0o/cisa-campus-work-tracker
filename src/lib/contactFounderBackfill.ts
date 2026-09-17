@@ -43,6 +43,23 @@
  * as alone off an absent file would be a guess, and a wrong founder here is a
  * permanent, un-removable tie.
  *
+ * A founder must also be a PERSON. The anchor is checked against the roster of
+ * known user ids (the `users` collection, whose document id is the uid) before
+ * any term reasoning: contacts imported by the GroupMe webhook carry a sender
+ * id such as `groupme-43626384` in `createdBy`, and a creator whose account was
+ * since deleted is gone from the roster too. Neither can be a founder — a uid
+ * is what `settings/partners` pairs, what `visibleTo` is read against and what
+ * a Full-timer would have to remove — so such a contact is LISTED under
+ * `anchor-not-a-user` rather than stamped with a string no one can ever match.
+ * The check runs before the term split, so it covers past-term contacts too.
+ *
+ * An EMPTY roster means "no roster was supplied", not "nobody exists", and the
+ * check is skipped. The alternative — no roster, therefore nothing is a person,
+ * therefore every contact is unresolved — turns a caller that simply forgot the
+ * argument into a zero-write run that reads like a finished migration. The
+ * script instead refuses to run at all when the `users` read comes back empty,
+ * which fails loudly at the layer that can tell the difference.
+ *
  * Only resolved contacts produce a write, and each write recomputes `visibleTo`
  * from the surviving ties in the same operation (#1044: the access list and the
  * founders it mirrors must not be left disagreeing). The planner is idempotent:
@@ -84,6 +101,9 @@ export type FounderBackfillOutcome = 'resolved' | 'unresolved';
 
 export type FounderBackfillReason =
   | 'no-anchor'
+  /** The anchor is not in the roster of known users (a GroupMe import id, or a
+   *  since-deleted account) — it cannot be a founder. */
+  | 'anchor-not-a-user'
   | 'no-creation-date'
   | 'current-term-paired'
   /** No supplied pairing places the anchor, and the answers are complete: alone. */
@@ -170,10 +190,15 @@ export function planContactFounderBackfill(
   contacts: readonly FounderBackfillContact[],
   pairings: readonly PartnerPairing[],
   suppliedPairings: readonly SuppliedPairing[],
+  /** Every known user id (the `users` collection's document ids). An anchor
+   *  absent from a NON-EMPTY roster is not a person and is listed, never
+   *  stamped. An empty roster means "not supplied" and skips the check. */
+  knownUserIds: readonly string[],
   now: Date = new Date(),
 ): FounderBackfillPlan {
   const currentTerm = termKeyOf(now);
   const supplied = suppliedToPairings(suppliedPairings);
+  const roster = new Set(uniqIds(knownUserIds));
 
   const rows: FounderBackfillRow[] = [];
   const writes: FounderBackfillWrite[] = [];
@@ -186,6 +211,12 @@ export function planContactFounderBackfill(
 
     if (!anchor) {
       rows.push({ contactId: contact.id, anchor, createdAt: day || '', founders: [], outcome: 'unresolved', reason: 'no-anchor' });
+      continue;
+    }
+    if (roster.size > 0 && !roster.has(anchor)) {
+      // Not a person: a GroupMe import id, or an account since deleted. A
+      // founder must be a uid someone can actually be, so this is listed.
+      rows.push({ contactId: contact.id, anchor, createdAt: day || '', founders: [], outcome: 'unresolved', reason: 'anchor-not-a-user' });
       continue;
     }
     if (!day) {

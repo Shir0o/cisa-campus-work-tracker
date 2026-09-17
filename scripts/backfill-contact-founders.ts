@@ -25,8 +25,19 @@
  *
  * With no usable --answers, nothing asserts the live term and every live-term
  * contact is listed as `current-term-unresolved` instead — silence is not
- * evidence of "alone". Contacts with no anchor, no usable creation date, or a
- * non-uid anchor (e.g. a GroupMe id) stay unresolved by design in either case.
+ * evidence of "alone".
+ *
+ * A founder must also be a person, so this script reads the `users` collection
+ * in the same run and passes the roster of known uids to the planner. An anchor
+ * absent from it — a GroupMe webhook's sender id such as `groupme-43626384`, or
+ * a creator whose account was since deleted — is listed under
+ * `anchor-not-a-user`, never stamped: a founder is immutable except to a
+ * Full-timer, and a founder no one's uid matches would cement a contact no
+ * Trainee can reach. The run ABORTS if the roster comes back empty, rather than
+ * classify every contact against a roster it failed to read.
+ *
+ * Contacts with no anchor and contacts with no usable creation date stay
+ * unresolved by design, as before.
  *
  * The judgment lives in src/lib/contactFounderBackfill.ts, a pure planner; this
  * script only fetches the documents and applies the writes. Each write sets
@@ -109,6 +120,18 @@ async function planBackfill() {
   const pairings = pairingsFromSettings(partnersSnap.data() ?? null);
   const supplied = readAnswers();
 
+  // The roster of real people. An anchor absent from it cannot be a founder.
+  // An empty read is a failed read, not an empty app: abort rather than let the
+  // planner skip the check (it reads an empty roster as "not supplied").
+  const usersSnap = await db.collection('users').get();
+  const knownUserIds = usersSnap.docs.map((d) => d.id);
+  if (knownUserIds.length === 0) {
+    throw new Error(
+      'The users collection came back empty - refusing to judge founders against a roster that failed to read.',
+    );
+  }
+  console.log('Roster: ' + knownUserIds.length + ' known user(s); an anchor absent from it is listed, not stamped.');
+
   if (supplied.length === 0) {
     console.log(
       'No --answers supplied: every contact in the live term will be listed as unresolved.',
@@ -143,7 +166,7 @@ async function planBackfill() {
     createdAt: d.get('createdAt'),
   }));
 
-  plan = planContactFounderBackfill(docs, pairings, supplied);
+  plan = planContactFounderBackfill(docs, pairings, supplied, knownUserIds);
 }
 
 async function applyBackfill() {

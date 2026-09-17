@@ -18,6 +18,10 @@ const S = (members: string[], startDate: string): SuppliedPairing => ({ members,
 // supplied pairing-start answers from #1039; earlier terms by the dated history.
 const NOW = new Date(2026, 8, 15);
 
+// The `users` roster: every anchor these tests expect to be a real person. An
+// anchor outside it is not one, and cannot be stamped as a founder.
+const ROSTER = ['a', 'b', 'c', 'd', 'x', 'y'];
+
 const contact = (over: Partial<Parameters<typeof planContactFounderBackfill>[0][number]> = {}) => ({
   id: 'c1',
   createdBy: 'a',
@@ -31,6 +35,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-06-15T12:00:00.000Z' })],
       [P('1', ['a', 'b'], '2026-06-01')],
       [],
+      ROSTER,
       NOW,
     );
     expect(plan.rows).toEqual([
@@ -58,6 +63,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-06-15T12:00:00.000Z' })],
       [P('1', ['a', 'b'], '2026-06-01', '2026-06-10')],
       [],
+      ROSTER,
       NOW,
     );
     expect(plan.rows[0].founders).toEqual(['a']);
@@ -77,6 +83,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-12T12:00:00.000Z' })],
       [],
       [S(['a', 'b'], '2026-09-10')],
+      ROSTER,
       NOW,
     );
     expect(plan.rows[0].founders).toEqual(['a', 'b']);
@@ -91,6 +98,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
       [P('1', ['a', 'b'], '2026-08-01')],
       [S(['x', 'y'], '2026-08-01')],
+      ROSTER,
       NOW,
     );
     expect(plan.rows).toEqual([
@@ -120,6 +128,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
       [],
       [S(['a', 'b'], '2026-08-01'), S(['x', 'y'], '2026-08-01')],
+      ROSTER,
       NOW,
     );
     expect(plan.rows[0]).toEqual({
@@ -140,6 +149,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
       [],
       [S(['a', 'b'], '2026-09-10')],
+      ROSTER,
       NOW,
     );
     expect(plan.rows[0].founders).toEqual(['a']);
@@ -153,6 +163,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
       [P('1', ['a', 'b'], '2026-08-01')],
       [],
+      ROSTER,
       NOW,
     );
     expect(plan.rows).toEqual([
@@ -174,6 +185,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
       [],
       [S(['a'], '2026-08-01'), S(['a', 'b'], 'not-a-date')],
+      ROSTER,
       NOW,
     );
     expect(plan.rows[0].outcome).toBe('unresolved');
@@ -191,6 +203,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       ],
       [P('1', ['a', 'b'], '2026-06-01')],
       [S(['c', 'd'], '2026-08-01')],
+      ROSTER,
       NOW,
     );
     expect(plan.rows.map((r) => [r.contactId, r.founders, r.reason])).toEqual([
@@ -205,6 +218,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: null, createdAt: '2026-06-15T12:00:00.000Z' })],
       [],
       [],
+      ROSTER,
       NOW,
     );
     expect(plan.rows).toEqual([
@@ -225,6 +239,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       [contact({ id: 'c1', createdBy: 'a', createdAt: null })],
       [],
       [],
+      ROSTER,
       NOW,
     );
     expect(plan.rows).toEqual([
@@ -253,6 +268,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       ],
       [P('1', ['a', 'b'], '2026-06-01')],
       [],
+      ROSTER,
       NOW,
     );
     expect(plan.writes[0]).toEqual({
@@ -265,7 +281,7 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
 
   it('is idempotent: a contact that already carries founders is skipped on a re-run', () => {
     const already = contact({ id: 'c1', createdBy: 'a', createdAt: '2026-06-15T12:00:00.000Z', founders: ['a', 'b'] });
-    const plan = planContactFounderBackfill([already], [P('1', ['a', 'b'], '2026-06-01')], [], NOW);
+    const plan = planContactFounderBackfill([already], [P('1', ['a', 'b'], '2026-06-01')], [], ROSTER, NOW);
     expect(plan.rows).toEqual([]);
     expect(plan.writes).toEqual([]);
   });
@@ -276,27 +292,95 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
     const contacts = [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })];
     const answers = [S(['x', 'y'], '2026-08-01')];
 
-    const first = planContactFounderBackfill(contacts, [], answers, NOW);
+    const first = planContactFounderBackfill(contacts, [], answers, ROSTER, NOW);
     expect(first.writes).toHaveLength(1);
 
     const after = contacts.map((c) => ({ ...c, founders: first.writes[0].foundersTo }));
-    const second = planContactFounderBackfill(after, [], answers, NOW);
+    const second = planContactFounderBackfill(after, [], answers, ROSTER, NOW);
     expect(second.rows).toEqual([]);
     expect(second.writes).toEqual([]);
   });
 
-  it('leaves a non-uid anchor to the same rules as any other (#1050 scope)', () => {
-    // A GroupMe-style anchor has never been special-cased here, and this change
-    // does not start: settings/partners stores member uids, so no pairing can
-    // ever place one. It is founded alone - which is exactly what a past-term
-    // GroupMe contact already gets today (past-term-alone).
+  it('lists an anchor absent from the roster as unresolved, writing nothing', () => {
+    // Production case: contact "Manny" carries createdBy "groupme-43626384", a
+    // GroupMe webhook sender id, created inside the live term with a usable
+    // date. Answers are supplied, so the alone branch would otherwise stamp it
+    // permanently with a string no one's uid can ever match.
     const plan = planContactFounderBackfill(
-      [contact({ id: 'c1', createdBy: 'groupme-43626384', createdAt: '2026-09-05T12:00:00.000Z' })],
+      [contact({ id: 'c1', createdBy: 'groupme-43626384', createdAt: '2026-08-19T12:00:00.000Z' })],
       [],
       [S(['a', 'b'], '2026-08-01')],
+      ROSTER,
       NOW,
     );
-    expect(plan.rows[0].founders).toEqual(['groupme-43626384']);
-    expect(plan.rows[0].reason).toBe('current-term-alone');
+    expect(plan.rows).toEqual([
+      {
+        contactId: 'c1',
+        anchor: 'groupme-43626384',
+        createdAt: '2026-08-19',
+        founders: [],
+        outcome: 'unresolved',
+        reason: 'anchor-not-a-user',
+      },
+    ]);
+    expect(plan.writes).toEqual([]);
+  });
+
+  it('guards a past-term anchor absent from the roster too', () => {
+    // The check runs before the term split, so a since-deleted account does not
+    // slip through on the past-term side either.
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'deleted-account', createdAt: '2026-06-15T12:00:00.000Z' })],
+      [P('1', ['deleted-account', 'b'], '2026-06-01')],
+      [],
+      ROSTER,
+      NOW,
+    );
+    expect(plan.rows[0].outcome).toBe('unresolved');
+    expect(plan.rows[0].reason).toBe('anchor-not-a-user');
+    expect(plan.writes).toEqual([]);
+  });
+
+  it('still resolves an anchor the roster does contain', () => {
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-08-19T12:00:00.000Z' })],
+      [],
+      [S(['a', 'b'], '2026-08-01')],
+      ROSTER,
+      NOW,
+    );
+    expect(plan.rows[0].founders).toEqual(['a', 'b']);
+    expect(plan.rows[0].outcome).toBe('resolved');
+    expect(plan.rows[0].reason).toBe('current-term-paired');
+  });
+
+  it('skips the roster check when no roster is supplied, rather than unresolving everything', () => {
+    // An empty roster means "not supplied", not "nobody exists". Reading it the
+    // other way would turn a caller that forgot the argument into a zero-write
+    // run that looks like a finished migration. The SCRIPT is what refuses to
+    // proceed when the users read comes back empty (it can tell the difference).
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-06-15T12:00:00.000Z' })],
+      [P('1', ['a', 'b'], '2026-06-01')],
+      [],
+      [],
+      NOW,
+    );
+    expect(plan.rows[0].outcome).toBe('resolved');
+    expect(plan.rows[0].reason).toBe('past-term-paired');
+    expect(plan.writes).toHaveLength(1);
+  });
+
+  it('reports no-anchor ahead of the roster check when there is no anchor at all', () => {
+    // An empty anchor is not "a person missing from the roster" - it is nobody,
+    // and the more precise reason is the one worth reading.
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: null, addedBy: null, createdAt: '2026-08-19T12:00:00.000Z' })],
+      [],
+      [S(['a', 'b'], '2026-08-01')],
+      ROSTER,
+      NOW,
+    );
+    expect(plan.rows[0].reason).toBe('no-anchor');
   });
 });
