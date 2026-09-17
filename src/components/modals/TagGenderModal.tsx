@@ -124,7 +124,7 @@ export default function TagGenderModal({
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-medium text-on-surface">{row.name}</p>
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                        {row.gender === 'M' ? (t('common.brother') || 'Brother (M)') : (t('common.sister') || 'Sister (F)')}
+                        {row.gender === 'M' ? t('common.male', 'Male') : t('common.female', 'Female')}
                       </span>
                     </div>
                     <p className="text-sm text-on-surface-variant mt-1">

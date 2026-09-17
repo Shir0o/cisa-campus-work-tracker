@@ -64,6 +64,25 @@ const untaggedContacts: Contact[] = [
   },
 ];
 
+const mixedGenderContacts: Contact[] = [
+  ...untaggedContacts,
+  {
+    id: 'c3',
+    name: 'John Doe',
+    email: '',
+    phone: '',
+    role: 'Student',
+    stage: 'Lead',
+    location: '',
+    lastSeen: '',
+    initials: 'J',
+    spiritualBackground: '',
+    gender: 'M',
+    tags: ['Freshman'],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockCommit.mockResolvedValue(undefined);
@@ -81,6 +100,14 @@ describe('TagGenderModal', () => {
 
     expect(screen.getByText('All contacts already have M/F tags.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nothing to tag/i })).toBeDisabled();
+  });
+
+  it('labels the gender pill as male/female instead of the raw common.brother/sister key', () => {
+    render(<TagGenderModal contacts={mixedGenderContacts} onClose={vi.fn()} />);
+
+    expect(screen.getByText('Female')).toBeInTheDocument();
+    expect(screen.getByText('Male')).toBeInTheDocument();
+    expect(screen.queryByText(/common\.(brother|sister)/)).not.toBeInTheDocument();
   });
 
   it('shows a dry-run preview and applies the M/F tags after confirmation', async () => {
