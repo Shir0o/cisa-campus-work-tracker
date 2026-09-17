@@ -42,6 +42,22 @@ service cloud.firestore {
     function isOperator() { return isManager() || hasRole('operator'); }
     function isViewer() { return isOperator() || hasRole('viewer'); }
 
+    // Approved AND operator-or-above, resolved from one user-document read.
+    // Composing isApprovedUser() && isOperator() re-walks isSuperAdmin, exists
+    // and getStoredUser up to eight times between them; that preamble consumed
+    // almost the entire 1000-expression budget the rules engine allows per
+    // request, leaving the contact tie branches unable to evaluate at all — a
+    // legitimate collaborator removal was denied in production, not merely in
+    // the emulator (#1052 follow-up).
+    function isApprovedOperator() {
+      return isSuperAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getStoredUser().approved == true &&
+        getStoredUser().role in ['admin', 'manager', 'operator']
+      );
+    }
+
     function isApprovedUser() {
       return isSignedIn() && (
         isSuperAdmin() || 
@@ -203,101 +219,130 @@ service cloud.firestore {
       // them on every edit. The lastContactedBy/ById/Date trio is likewise
       // client-stamped whenever an interaction is logged (LogInteractionModal's
       // batch and ContactDetailsModal.handleAddInteraction).
-      allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
-                      isValidContact(incoming()) &&
-                      (incoming().diff(existing()).affectedKeys().hasOnly([
-                        'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
-                        'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
-                        'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
-                        'lastSeen', 'avatar', 'hasNewActivity',
-                        'lastContactedBy', 'lastContactedById', 'lastContactedDate',
-                        'updatedAt', 'updatedBy', 'updatedByName'
-                      ]) ||
-                       (incoming().diff(existing()).affectedKeys().hasOnly([
-                         'coCreators', 'visibleTo',
-                         'updatedAt', 'updatedBy', 'updatedByName'
-                       ]) && (
-                         isAdmin() ||
-                         existing().get('createdBy', null) == request.auth.uid ||
-                         existing().get('addedBy', null) == request.auth.uid ||
-                         (
-                           'coCreators' in existing() &&
-                           existing().coCreators is list &&
-                           request.auth.uid in existing().coCreators
-                         )
-                       )) ||
-// #1051: a reader takes a person into (or out of) their
-                       // sheep. The caller may only flip their own carer
-                       // membership, may only move themselves in the access
-                       // list, and must already see the person — taking on
-                       // never grants reach. An admin may correct anyone.
-                       (incoming().diff(existing()).affectedKeys().hasOnly([
-                         'carers', 'visibleTo',
-                         'updatedAt', 'updatedBy', 'updatedByName'
-                       ]) && (
-                         isAdmin() ||
-                         (
-                           request.auth.uid in existing().get('visibleTo', []) &&
-                           existing().get('visibleTo', []).toSet().difference(incoming().get('visibleTo', []).toSet()).hasOnly([request.auth.uid]) &&
-                           incoming().get('visibleTo', []).toSet().difference(existing().get('visibleTo', []).toSet()).hasOnly([request.auth.uid]) &&
-                           (
-                             // taking on: the caller joins the carers, everyone else unchanged
-                             (request.auth.uid in incoming().get('carers', []) &&
-                              incoming().get('carers', []).toSet().difference(existing().get('carers', []).toSet()).hasOnly([request.auth.uid])) ||
-                             // giving up: the caller leaves the carers, everyone else unchanged
-                             (request.auth.uid in existing().get('carers', []) &&
-                              existing().get('carers', []).toSet().difference(incoming().get('carers', []).toSet()).hasOnly([request.auth.uid]))
-                           )
-                         )
-                       )) ||
-// #1052: removing a collaborator also drops the carer tie
-                       // that reached them — an undone share takes the sheep
-                       // tie with it, in the same write. Removal-only: the
-                       // write drops at most one collaborator, may drop only
-                       // their carer tie, and never adds anyone to the access
-                       // list. A founder who took the person on keeps the tie —
-                       // that write never touches carers and stays on the
-                       // collaborator branch above.
-                       (incoming().diff(existing()).affectedKeys().hasOnly([
-                         'coCreators', 'carers', 'visibleTo',
-                         'updatedAt', 'updatedBy', 'updatedByName'
-                       ]) && (
-                         isAdmin() ||
-                         existing().get('createdBy', null) == request.auth.uid ||
-                         existing().get('addedBy', null) == request.auth.uid ||
-                         (
-                           'coCreators' in existing() &&
-                           existing().coCreators is list &&
-                           request.auth.uid in existing().coCreators
-                         )
-                       ) && (
-existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()).size() <= 1 &&
-                          incoming().get('coCreators', []).toSet().difference(existing().get('coCreators', []).toSet()).isEmpty() &&
-                          incoming().get('carers', []).toSet().difference(existing().get('carers', []).toSet()).isEmpty() &&
-                          existing().get('carers', []).toSet().difference(incoming().get('carers', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet())) &&
-                          incoming().get('visibleTo', []).toSet().difference(existing().get('visibleTo', []).toSet()).isEmpty() &&
-                          existing().get('visibleTo', []).toSet().difference(incoming().get('visibleTo', []).toSet()).isSubsetOf(existing().get('coCreators', []).toSet().difference(incoming().get('coCreators', []).toSet()))
-                        )) ||
-                       // #1055: the founders list is immutable after creation —
-                       // written once at #1049/#1050 from the pairing. It is
-                       // rejected as a ghost field for everyone except a
-                       // Full-timer's genuine-mistake correction (the documented
-                       // exception). A Full-timer may add, change or remove the
-                       // founding set, and must rewrite visibleTo in lockstep so
-                       // a corrected founding set and the access it grants never
-                       // drift. They may also drop the carer tie that only that
-                       // founder's reach held (removing a founder alongside their
-                       // sheep). Only an admin reaches this branch — it fires only
-                       // when `founders` is itself among the affected keys, so a
-                       // non-admin write touching founders is rejected as a ghost
-                       // field and founders never moves for anyone else.
-                       (incoming().diff(existing()).affectedKeys().hasOnly([
-                         'founders', 'visibleTo',
-                         'coCreators', 'carers',
-                         'updatedAt', 'updatedBy', 'updatedByName'
-                       ]) &&
-                       isAdmin() &&
-                       incoming().diff(existing()).affectedKeys().hasAny(['founders'])));
+      // Every branch below needs the same handful of expensive sub-expressions:
+      // the affected-key set, and the before/after views of coCreators, carers
+      // and visibleTo. Recomputing `incoming().diff(existing()).affectedKeys()`
+      // and the coCreators set difference once per branch is what pushed a
+      // legitimate collaborator removal (#1052) past the rules engine's ceiling
+      // of 1000 expression evaluations — the write was denied in production,
+      // not merely in the emulator. `let` bindings are evaluated at most once,
+      // so the whole decision now costs roughly one branch's worth.
+      // A rules function may declare at most ten variables, so the two branches
+      // that need the before/after views of every tie get one each.
+      function flipsOnlyOwnSheep() {
+        let inc = incoming();
+        let ex = existing();
+        let uid = request.auth.uid;
+        let exCarers = ex.get('carers', []).toSet();
+        let incCarers = inc.get('carers', []).toSet();
+        let exSeen = ex.get('visibleTo', []).toSet();
+        let incSeen = inc.get('visibleTo', []).toSet();
+        return isAdmin() || (
+          uid in ex.get('visibleTo', []) &&
+          exSeen.difference(incSeen).hasOnly([uid]) &&
+          incSeen.difference(exSeen).hasOnly([uid]) &&
+          (
+            // taking on: the caller joins the carers, everyone else unchanged
+            (uid in inc.get('carers', []) && incCarers.difference(exCarers).hasOnly([uid])) ||
+            // giving up: the caller leaves the carers, everyone else unchanged
+            (uid in ex.get('carers', []) && exCarers.difference(incCarers).hasOnly([uid]))
+          )
+        );
+      }
+
+      function dropsOnlyOneCollaborator() {
+        let inc = incoming();
+        let ex = existing();
+        let exCo = ex.get('coCreators', []).toSet();
+        let incCo = inc.get('coCreators', []).toSet();
+        let exCarers = ex.get('carers', []).toSet();
+        let incCarers = inc.get('carers', []).toSet();
+        let exSeen = ex.get('visibleTo', []).toSet();
+        let incSeen = inc.get('visibleTo', []).toSet();
+        let coDropped = exCo.difference(incCo);
+        return coDropped.size() <= 1 &&
+               incCo.difference(exCo).size() == 0 &&
+               incCarers.difference(exCarers).size() == 0 &&
+               exCarers.difference(incCarers).hasOnly(coDropped) &&
+               incSeen.difference(exSeen).size() == 0 &&
+               exSeen.difference(incSeen).hasOnly(coDropped);
+      }
+
+      function canUpdateContact() {
+        let ex = existing();
+        let uid = request.auth.uid;
+        let keys = incoming().diff(ex).affectedKeys();
+        // Only the current holder of the share may rewrite who else can see a
+        // person: an admin, whoever brought them in, or an existing co-creator.
+        let mayShare = isAdmin() ||
+                       ex.get('createdBy', null) == uid ||
+                       ex.get('addedBy', null) == uid ||
+                       uid in ex.get('coCreators', []);
+        return
+          // Operators edit the typed profile fields; unknown keys are rejected
+          // (ghost-field injection). affectedKeys() only inspects the changed
+          // keys, so a contact carrying legacy/extra fields stays editable as
+          // long as the edit itself touches only known fields. Creation-audit
+          // fields (createdAt/createdBy/createdByName/serverCreatedAt) are
+          // deliberately omitted so updates cannot rewrite who/when a contact
+          // was created; the updatedAt/updatedBy/updatedByName trio stays
+          // because the client stamps it on every edit, as does the
+          // lastContactedBy/ById/Date trio whenever an interaction is logged.
+          keys.hasOnly([
+            'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
+            'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
+            'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
+            'lastSeen', 'avatar', 'hasNewActivity',
+            'lastContactedBy', 'lastContactedById', 'lastContactedDate',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) ||
+
+          // Share / unshare: the access list moves in lockstep with the tie it
+          // mirrors, so neither can be rewritten as a lone ghost field.
+          (keys.hasOnly([
+            'coCreators', 'visibleTo',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) && mayShare) ||
+
+          // #1051: a reader takes a person into (or out of) their sheep. The
+          // caller may only flip their own carer membership, may only move
+          // themselves in the access list, and must already see the person —
+          // taking on never grants reach. An admin may correct anyone.
+          (keys.hasOnly([
+            'carers', 'visibleTo',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) && flipsOnlyOwnSheep()) ||
+
+          // #1052: removing a collaborator also drops the carer tie that
+          // reached them — an undone share takes the sheep tie with it, in the
+          // same write. Removal-only: the write drops at most one collaborator,
+          // may drop only their carer tie, and never adds anyone to the access
+          // list. A founder who took the person on keeps the tie — that write
+          // never touches carers and stays on the share branch above.
+          (keys.hasOnly([
+            'coCreators', 'carers', 'visibleTo',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) && mayShare && dropsOnlyOneCollaborator()) ||
+
+          // #1055: the founders list is immutable after creation — written once
+          // at #1049/#1050 from the pairing. It is rejected as a ghost field for
+          // everyone except a Full-timer's genuine-mistake correction (the
+          // documented exception). A Full-timer may add, change or remove the
+          // founding set, and must rewrite visibleTo in lockstep so a corrected
+          // founding set and the access it grants never drift. They may also
+          // drop the carer tie that only that founder's reach held. Only an
+          // admin reaches this branch — it fires only when `founders` is itself
+          // among the affected keys, so a non-admin write touching founders is
+          // rejected as a ghost field and founders never moves for anyone else.
+          (keys.hasOnly([
+            'founders', 'visibleTo',
+            'coCreators', 'carers',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) && isAdmin() && keys.hasAny(['founders']));
+      }
+
+      allow update: if isValidId(contactId) && isApprovedOperator() &&
+                      isValidContact(incoming()) && canUpdateContact();
       allow delete: if isValidId(contactId) && isManager();
 
       // Interactions
