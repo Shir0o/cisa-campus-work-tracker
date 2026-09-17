@@ -347,6 +347,52 @@ describe('Directory', () => {
     expect(screen.getByText('Old User')).toBeInTheDocument();
   });
 
+  it('buckets Added today by calendar day, so yesterday evening is not today (#1072)', async () => {
+    // Pin system time to midday so "yesterday 23:00" is less than 24 hours ago
+    // (which would have matched the old rolling window) yet falls on the
+    // previous calendar day.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-17T12:00:00'));
+    try {
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'contacts') {
+          callback({
+            docs: [
+              { id: 'c-today', data: () => ({ name: 'Today User', role: 'Student', stage: 'Lead', createdAt: '2026-08-17T08:00:00', tags: [] }) },
+              { id: 'c-yesterday', data: () => ({ name: 'Yesterday User', role: 'Student', stage: 'Lead', createdAt: '2026-08-16T23:00:00', tags: [] }) },
+            ],
+            size: 2,
+          });
+        } else if (ref?.path === 'stages') {
+          callback({ docs: mockStages, size: 2 });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+
+      render(<Directory />);
+      await waitFor(() => {
+        expect(screen.getByText('Today User')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Filters'));
+      const addedSelect = screen.getByText('Added').parentElement?.querySelector('select') as HTMLSelectElement;
+
+      // Yesterday evening is on the previous calendar day, so it must NOT match
+      // "Added today" even though it is under 24 hours old.
+      fireEvent.change(addedSelect, { target: { value: 'today' } });
+      expect(screen.getByText('Today User')).toBeInTheDocument();
+      expect(screen.queryByText('Yesterday User')).not.toBeInTheDocument();
+
+      // It should instead surface under "Added this week".
+      fireEvent.change(addedSelect, { target: { value: 'week' } });
+      expect(screen.getByText('Yesterday User')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('renders dynamic new tag for contacts created within past week and allows filtering by new tag', async () => {
     const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
     const fortyDaysAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
