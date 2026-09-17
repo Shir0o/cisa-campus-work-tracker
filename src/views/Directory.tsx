@@ -41,7 +41,9 @@ import CombineTagsModal from '../components/modals/CombineTagsModal';
 import TagGenderModal from '../components/modals/TagGenderModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
-import { UserEntityState } from '../lib/userEntityState';
+import { followUpContact } from '../lib/followUp';
+import { UndoSnackbar } from '../components/UndoSnackbar';
+import { useUndoSnack } from '../hooks/useUndoSnack';
 import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { subscribeAllThreads } from '../lib/threads';
@@ -321,6 +323,7 @@ export default function Directory() {
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
   // Auto-dismiss toast.
   useEffect(() => {
     if (!toast) return;
@@ -1143,8 +1146,8 @@ export default function Directory() {
                       onOpen: () => setSelectedContact(contact),
                       onFollowUp: () => {
                         if (!user?.uid) return;
-                        UserEntityState.markDone(user.uid, `contact:${contact.id}`);
-                        UserEntityState.markDone(user.uid, contact.id);
+                        const undo = followUpContact(user.uid, contact.id);
+                        showUndoSnack(t('whatsNew.snack_followed_up').replace('{name}', contact.name), undo);
                       },
                       hide: ['todo', 'share'],
                     })}
@@ -1307,6 +1310,7 @@ export default function Directory() {
           </motion.div>
         )}
       </AnimatePresence>
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </motion.div>
     </PageContainer>
   );

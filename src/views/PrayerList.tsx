@@ -40,7 +40,7 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import PrayerListMobile from './PrayerListMobile';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
-import { UserEntityState } from '../lib/userEntityState';
+import { followUpContact } from '../lib/followUp';
 import { Translate } from '../components/Translate';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useUndoSnack } from '../hooks/useUndoSnack';
@@ -788,6 +788,7 @@ function PrayerThread({
   onClearPrayer?: (prayer: PrayerRecord) => void;
 }) {
   const { t } = useLanguage();
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
   const { openLogInteraction } = useLayout();
    const [showEarlier, setShowEarlier] = useState(false);
 
@@ -877,8 +878,8 @@ function PrayerThread({
                 },
                 onFollowUp: () => {
                   if (!meUid) return;
-                  UserEntityState.markDone(meUid, `contact:${contact.id}`);
-                  UserEntityState.markDone(meUid, contact.id);
+                  const undo = followUpContact(meUid, contact.id);
+                  showUndoSnack(t('whatsNew.snack_followed_up').replace('{name}', contact.name), undo);
                 },
                 hide: ['share'],
               }),
@@ -1037,6 +1038,7 @@ function PrayerThread({
           </>
         )}
       </div>
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </motion.article>
   );
 }

@@ -39,7 +39,9 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
-import { UserEntityState } from '../lib/userEntityState';
+import { followUpContact } from '../lib/followUp';
+import { UndoSnackbar } from '../components/UndoSnackbar';
+import { useUndoSnack } from '../hooks/useUndoSnack';
 
 // ── types (the web app has no @cisa/core dependency — own copy) ────────────
 interface OutreachName {
@@ -283,6 +285,7 @@ function PendingRow({
   userById: (id?: string | null) => AppUser | undefined;
 }) {
   const { t } = useLanguage();
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
   const { o, n, days } = item;
   const who = userById(n.spokeWith);
   const mine = n.takenBy ? n.takenBy === me : n.spokeWith === me;
@@ -332,8 +335,8 @@ function PendingRow({
             onMakeTodo: isAdmin && !n.takenBy ? () => onTake(o, n) : undefined,
             onFollowUp: contact
               ? () => {
-                  UserEntityState.markDone(me, `contact:${contact.id}`);
-                  UserEntityState.markDone(me, contact.id);
+                  const undo = followUpContact(me, contact.id);
+                  showUndoSnack(t('whatsNew.snack_followed_up').replace('{name}', contact.name), undo);
                 }
               : undefined,
             hide: ['share', ...(contact ? [] : ['open'])],
@@ -357,6 +360,7 @@ function PendingRow({
           </button>
         )}
       </div>
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </div>
   );
 }
