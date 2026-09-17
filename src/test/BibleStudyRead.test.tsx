@@ -137,7 +137,7 @@ describe("This week's study (#946)", () => {
     );
   });
 
-  it('copies the durable entry point URL, not the app route', async () => {
+  it('copies a permanent link pinned to the week being read, not the always-latest entry point', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
     mockChain({ entryPoints: [WEDNESDAY] });
@@ -146,7 +146,12 @@ describe("This week's study (#946)", () => {
     await screen.findByText('Alive to God');
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
-    expect(writeText.mock.calls[0][0]).toMatch(/\/s\/cisa-wednesday$/);
+    // The entry point URL always resolves to the newest published week, so a
+    // copied link would drift a week later. The share link is pinned to the
+    // week on screen: it still opens this study after the next week publishes.
+    expect(writeText.mock.calls[0][0]).toBe(
+      `https://cisa-campus-work-tracker.pages.dev/study/romans-fall26/${today}`,
+    );
   });
 
   it('shows the between-terms state rather than an empty page', async () => {

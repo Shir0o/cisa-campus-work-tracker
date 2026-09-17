@@ -6,6 +6,7 @@ import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 
 jest.mock('../../lib/data/bibleStudy', () => ({
   subscribeEntryPoints: jest.fn(() => () => {}),
+  subscribePublishedStudyMeetings: jest.fn(() => () => {}),
 }));
 
 jest.mock('../../lib/AuthProvider', () => ({
