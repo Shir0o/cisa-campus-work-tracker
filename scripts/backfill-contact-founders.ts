@@ -13,9 +13,20 @@
  * different — a mid-term re-pairing destroyed that term's earlier arrangement,
  * so the settings document cannot answer them. Those are resolved ONLY from the
  * pairing-start dates a Full-timer supplied in #1039's question pass, passed in
- * as a JSON file; a current-term contact the answers do not place is listed as
- * unresolved and never written, because a wrong founder is a permanent,
- * un-removable tie.
+ * as the --answers JSON file.
+ *
+ * READ THIS BEFORE PASSING --answers: the file is taken as the COMPLETE
+ * live-term arrangement. Every live-term pairing must be in it, because an
+ * anchor no supplied pairing places is recorded as having founded the contact
+ * ALONE (`current-term-alone`) — a pairing you leave out is not flagged, it is
+ * silently written as "alone", and founders are permanent and removable only by
+ * a Full-timer. Passing --answers is an assertion that the arrangement is
+ * complete; that assertion is what makes the live term decidable at all.
+ *
+ * With no usable --answers, nothing asserts the live term and every live-term
+ * contact is listed as `current-term-unresolved` instead — silence is not
+ * evidence of "alone". Contacts with no anchor, no usable creation date, or a
+ * non-uid anchor (e.g. a GroupMe id) stay unresolved by design in either case.
  *
  * The judgment lives in src/lib/contactFounderBackfill.ts, a pure planner; this
  * script only fetches the documents and applies the writes. Each write sets
@@ -30,7 +41,8 @@
  *   FIRESTORE_DATABASE_ID=qa-db npx tsx scripts/backfill-contact-founders.ts
  *
  *   # The #1039 pairing-start answers, as [{ "members": ["x","z"],
- *   # "startDate": "2026-09-10" }].
+ *   # "startDate": "2026-09-10" }] - and taken as the COMPLETE live-term
+ *   # arrangement, so a pairing missing from it becomes "founded alone".
  *   npx tsx scripts/backfill-contact-founders.ts --answers /path/to/answers.json
  *
  *   # Dry run - print the report, write nothing.
@@ -69,9 +81,10 @@ const commit = process.argv.includes('--commit');
 console.log('Target: projects/' + projectId + '/databases/' + databaseId);
 console.log('Live term: ' + termKeyOf(new Date()));
 
-/** Read the --answers file (the #1039 pairing-start answers). Missing or empty
- *  is allowed: past-term contacts still classify; current-term contacts fall to
- *  unresolved and are listed rather than guessed. */
+/** Read the --answers file (the #1039 pairing-start answers), which is taken as
+ *  the COMPLETE live-term arrangement. Missing or empty is allowed: past-term
+ *  contacts still classify; current-term contacts fall to unresolved and are
+ *  listed rather than guessed. */
 function readAnswers(): SuppliedPairing[] {
   const index = process.argv.indexOf('--answers');
   if (index < 0 || !process.argv[index + 1]) {
@@ -102,6 +115,20 @@ async function planBackfill() {
     );
   } else {
     console.log('Resolving the live term from ' + supplied.length + ' pairing-start answer(s).');
+    console.log(
+      'PREMISE: those answers are taken as the COMPLETE arrangement for ' +
+        termKeyOf(new Date()) + '.',
+    );
+    console.log(
+      '  An anchor no supplied pairing places founded its contact ALONE ' +
+        '(reason "current-term-alone").',
+    );
+    console.log(
+      '  A real pairing missing from the answers is therefore recorded SILENTLY as founded alone,',
+    );
+    console.log(
+      '  and founders are permanent - only a Full-timer can remove one. Check the file before --commit.',
+    );
   }
 
   const snap = await contactsRef.get();

@@ -84,13 +84,75 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
     expect(plan.rows[0].reason).toBe('current-term-paired');
   });
 
-  it('lists a current-term contact the supplied answers cannot place as unresolved, writing nothing', () => {
-    // The current term's pre-re-pairing arrangement was destroyed, so "alone"
-    // cannot be asserted from a bare settings read. Never guess.
+  it('resolves a current-term contact no supplied pairing places as founded alone', () => {
+    // The answers are the COMPLETE live-term arrangement, so an anchor they do
+    // not place was not paired - not an open question (#1050).
     const plan = planContactFounderBackfill(
       [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
       [P('1', ['a', 'b'], '2026-08-01')],
+      [S(['x', 'y'], '2026-08-01')],
+      NOW,
+    );
+    expect(plan.rows).toEqual([
+      {
+        contactId: 'c1',
+        anchor: 'a',
+        createdAt: '2026-09-05',
+        founders: ['a'],
+        outcome: 'resolved',
+        reason: 'current-term-alone',
+      },
+    ]);
+    expect(plan.writes).toEqual([
+      {
+        id: 'c1',
+        foundersTo: ['a'],
+        visibleToFrom: [],
+        visibleToTo: ['a'],
+      },
+    ]);
+  });
+
+  it('resolves a current-term contact a supplied pairing does place to creator plus partner', () => {
+    // The completeness premise must not swallow the pairings that ARE supplied:
+    // an anchor the answers place still carries its partner.
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
+      [],
+      [S(['a', 'b'], '2026-08-01'), S(['x', 'y'], '2026-08-01')],
+      NOW,
+    );
+    expect(plan.rows[0]).toEqual({
+      contactId: 'c1',
+      anchor: 'a',
+      createdAt: '2026-09-05',
+      founders: ['a', 'b'],
+      outcome: 'resolved',
+      reason: 'current-term-paired',
+    });
+    expect(plan.writes[0].foundersTo).toEqual(['a', 'b']);
+  });
+
+  it('still falls outside a supplied pairing that had not started on the creation day', () => {
+    // "Complete" means the set of pairings, not that every pairing covers every
+    // day: a contact made before its anchor's pairing began is founded alone.
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
+      [],
       [S(['a', 'b'], '2026-09-10')],
+      NOW,
+    );
+    expect(plan.rows[0].founders).toEqual(['a']);
+    expect(plan.rows[0].reason).toBe('current-term-alone');
+  });
+
+  it('leaves current-term contacts unresolved when no answers are supplied at all', () => {
+    // Nothing asserts the live term, and the mid-term re-pairing destroyed the
+    // arrangement (#1039), so "alone" cannot be concluded from silence.
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
+      [P('1', ['a', 'b'], '2026-08-01')],
+      [],
       NOW,
     );
     expect(plan.rows).toEqual([
@@ -104,6 +166,38 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
       },
     ]);
     expect(plan.writes).toEqual([]);
+  });
+
+  it('treats an answers file with no usable record as no answers at all', () => {
+    // A file of junk asserts nothing, so it must not license "founded alone".
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })],
+      [],
+      [S(['a'], '2026-08-01'), S(['a', 'b'], 'not-a-date')],
+      NOW,
+    );
+    expect(plan.rows[0].outcome).toBe('unresolved');
+    expect(plan.rows[0].reason).toBe('current-term-unresolved');
+    expect(plan.writes).toEqual([]);
+  });
+
+  it('leaves past-term classification untouched when live-term answers are supplied', () => {
+    // The completeness premise governs the live term only: a past term still
+    // reads from its own surviving dated history.
+    const plan = planContactFounderBackfill(
+      [
+        contact({ id: 'past-paired', createdBy: 'a', createdAt: '2026-06-15T12:00:00.000Z' }),
+        contact({ id: 'past-alone', createdBy: 'c', createdAt: '2026-06-15T12:00:00.000Z' }),
+      ],
+      [P('1', ['a', 'b'], '2026-06-01')],
+      [S(['c', 'd'], '2026-08-01')],
+      NOW,
+    );
+    expect(plan.rows.map((r) => [r.contactId, r.founders, r.reason])).toEqual([
+      ['past-paired', ['a', 'b'], 'past-term-paired'],
+      // 'c' is paired in the LIVE term only - that must not reach June.
+      ['past-alone', ['c'], 'past-term-alone'],
+    ]);
   });
 
   it('lists a contact with no anchor as unresolved and writes nothing', () => {
@@ -174,5 +268,35 @@ describe('planContactFounderBackfill (#1050 migration)', () => {
     const plan = planContactFounderBackfill([already], [P('1', ['a', 'b'], '2026-06-01')], [], NOW);
     expect(plan.rows).toEqual([]);
     expect(plan.writes).toEqual([]);
+  });
+
+  it('is idempotent across the new alone branch: the second run has nothing left to do', () => {
+    // A contact resolved as founded alone carries founders: [anchor] - an array,
+    // so the re-run skips it rather than stamping it again.
+    const contacts = [contact({ id: 'c1', createdBy: 'a', createdAt: '2026-09-05T12:00:00.000Z' })];
+    const answers = [S(['x', 'y'], '2026-08-01')];
+
+    const first = planContactFounderBackfill(contacts, [], answers, NOW);
+    expect(first.writes).toHaveLength(1);
+
+    const after = contacts.map((c) => ({ ...c, founders: first.writes[0].foundersTo }));
+    const second = planContactFounderBackfill(after, [], answers, NOW);
+    expect(second.rows).toEqual([]);
+    expect(second.writes).toEqual([]);
+  });
+
+  it('leaves a non-uid anchor to the same rules as any other (#1050 scope)', () => {
+    // A GroupMe-style anchor has never been special-cased here, and this change
+    // does not start: settings/partners stores member uids, so no pairing can
+    // ever place one. It is founded alone - which is exactly what a past-term
+    // GroupMe contact already gets today (past-term-alone).
+    const plan = planContactFounderBackfill(
+      [contact({ id: 'c1', createdBy: 'groupme-43626384', createdAt: '2026-09-05T12:00:00.000Z' })],
+      [],
+      [S(['a', 'b'], '2026-08-01')],
+      NOW,
+    );
+    expect(plan.rows[0].founders).toEqual(['groupme-43626384']);
+    expect(plan.rows[0].reason).toBe('current-term-alone');
   });
 });

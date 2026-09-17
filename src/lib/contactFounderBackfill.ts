@@ -16,9 +16,32 @@
  * `byTerm` entry in place and destroyed the arrangement that preceded it, so the
  * settings document cannot say who was live when that contact was made (#1039).
  * Those contacts are resolved ONLY from the pairing-start dates a Full-timer
- * supplied in #1039's question pass — and a current-term contact the supplied
- * answers do not place is LISTED as unresolved rather than guessed, because a
- * wrong founder here is a permanent, un-removable tie.
+ * supplied in #1039's question pass.
+ *
+ * THE PREMISE THAT MAKES THE LIVE TERM DECIDABLE: the supplied answers are
+ * taken as the COMPLETE live-term arrangement. Once any answer is supplied,
+ * every live-term pairing is assumed to be in the file, so an anchor no
+ * supplied pairing places on the contact's creation day founded that contact
+ * ALONE (`current-term-alone`) — it is not treated as an open question. The
+ * consequence is blunt and worth stating out loud: a real pairing MISSING from
+ * the answers file is silently recorded as "founded alone", and because
+ * founders are permanent and removable only by a Full-timer, that omission is
+ * expensive to undo. Whoever supplies the answers is asserting completeness.
+ *
+ * This premise is what turned #1050's first production dry run (2 resolved, 93
+ * unresolved) into a decidable migration. It holds for Fall 2026 because the
+ * Full-timer confirmed all five recorded pairs ran the whole term; the one
+ * trainee outside them is paired with someone who never joined the app and so
+ * has no uid to stamp (`settings/partners` stores member uids); and the
+ * remaining anchors are Full-timers, who are never paired at all — Gospel
+ * Partners are trainees only (CONTEXT.md; the Settings pairing UI offers only
+ * trainees).
+ *
+ * The premise needs an assertion to rest on, so it is NOT assumed for free:
+ * when no usable answers are supplied at all, nobody has asserted anything and
+ * every live-term contact stays `current-term-unresolved`. Resolving them all
+ * as alone off an absent file would be a guess, and a wrong founder here is a
+ * permanent, un-removable tie.
  *
  * Only resolved contacts produce a write, and each write recomputes `visibleTo`
  * from the surviving ties in the same operation (#1044: the access list and the
@@ -49,7 +72,9 @@ export interface FounderBackfillContact {
 
 /** A pairing-start answer from #1039's question pass: these two went out
  *  together from this day. Authoritative for the live term, whose byTerm entry
- *  a mid-term re-pairing may have destroyed. */
+ *  a mid-term re-pairing may have destroyed. Supplying any answer asserts that
+ *  the set is COMPLETE for the live term — see the premise in this file's
+ *  header: an anchor no answer places is recorded as having founded alone. */
 export interface SuppliedPairing {
   members: string[];
   startDate: string;
@@ -61,6 +86,9 @@ export type FounderBackfillReason =
   | 'no-anchor'
   | 'no-creation-date'
   | 'current-term-paired'
+  /** No supplied pairing places the anchor, and the answers are complete: alone. */
+  | 'current-term-alone'
+  /** No usable answers were supplied at all — nothing asserts the live term. */
   | 'current-term-unresolved'
   | 'past-term-paired'
   | 'past-term-alone';
@@ -172,14 +200,18 @@ export function planContactFounderBackfill(
     if (inCurrentTerm) {
       // The live term's byTerm entry may have been destroyed by a mid-term
       // re-pairing, so only the Full-timer's supplied start dates may decide.
-      // An anchor the answers do not place is listed, never guessed.
-      const partners = impliedFounders(supplied, anchor, day).slice(1);
-      if (partners.length === 0) {
+      if (supplied.length === 0) {
+        // Nothing was asserted about the live term, so nothing can be
+        // concluded from silence — including "alone". List it.
         rows.push({ contactId: contact.id, anchor, createdAt: day, founders: [], outcome: 'unresolved', reason: 'current-term-unresolved' });
         continue;
       }
+      // Answers were supplied, so they are the COMPLETE live-term arrangement
+      // (see the premise in this file's header). An anchor none of them places
+      // on this day founded this contact alone.
+      const partners = impliedFounders(supplied, anchor, day).slice(1);
       founders = [anchor, ...partners];
-      reason = 'current-term-paired';
+      reason = partners.length > 0 ? 'current-term-paired' : 'current-term-alone';
     } else {
       const implied = impliedFounders(pairings, anchor, day);
       founders = implied;
