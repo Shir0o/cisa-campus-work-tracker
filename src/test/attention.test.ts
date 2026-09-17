@@ -304,6 +304,54 @@ describe("buildAttentionItems — the ties, not the role", () => {
   });
 });
 
+// ── #1071: creator-less sign-up contacts are the team's to pick up ──────────
+// A public sign-up writes a contact with no ties and `visibleTo: []`. It is
+// readable by Full-timers (who read the whole roster) but no one is tied to
+// it, so neither `c.createdBy && c.createdBy !== uid` nor `isTiedTo` ever
+// surfaced it. The feeds treat a creator-less contact as team work: it becomes
+// a card for every Full-timer, and stays out of a Trainee's feed until someone
+// is put on them (#1024 phase 4 preserved).
+
+describe("buildAttentionItems — creator-less sign-up contacts (#1071)", () => {
+  const signup = (over: Partial<Contact> = {}): Contact =>
+    ({ id: "c_signup", name: "New Student", stage: "Unassigned", ...over }) as Contact;
+
+  it("surfaces a creator-less contact to a Full-timer as a team-added card", () => {
+    const items = buildAttentionItems({ role: "admin", uid: "ft1", contacts: [signup()] });
+    const card = items.find((i) => i.type === "contact" && i.contactId === "c_signup");
+    expect(card).toBeDefined();
+    expect(card?.by).toBeUndefined();
+  });
+
+  it("routes the sign-up card to Around the team, not My Day's On you", () => {
+    const c = signup();
+    const rawItems = buildAttentionItems({ role: "admin", uid: "ft1", contacts: [c] });
+    const stacks = attentionStacksFor(rawItems, "ft1");
+    const { onYou, aroundTeam } = partitionAttentionStacks(stacks, [c], "ft1", "admin");
+    expect(aroundTeam.some((s) => s.contactId === "c_signup")).toBe(true);
+    expect(onYou.some((s) => s.contactId === "c_signup")).toBe(false);
+  });
+
+  it("keeps the sign-up away from a Trainee until someone is tied to them", () => {
+    const items = buildAttentionItems({ role: "manager", uid: "t1", contacts: [signup()] });
+    expect(items.some((i) => i.type === "contact" && i.contactId === "c_signup")).toBe(false);
+  });
+
+  it("still hides the contacts a Full-timer added themselves", () => {
+    const items = buildAttentionItems({
+      role: "admin",
+      uid: "ft1",
+      contacts: [signup({ id: "c_own", createdBy: "ft1" })],
+    });
+    expect(items.some((i) => i.type === "contact" && i.contactId === "c_own")).toBe(false);
+  });
+
+  it("reads the sign-up card as someone adding them", () => {
+    const card = { id: "contact:c_signup", type: "contact", at: "", by: null, contactId: "c_signup" } as AttentionItem;
+    expect(attentionPhrase(card)).toBe("Someone added them");
+  });
+});
+
 describe("attentionPhrase — the words fit what happened", () => {
   const base = (over: Partial<AttentionItem>): AttentionItem =>
     ({ id: "x", type: "thread", at: "", byName: "David Oduya", ...over }) as AttentionItem;
