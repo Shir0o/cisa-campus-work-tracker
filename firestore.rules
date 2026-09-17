@@ -533,8 +533,8 @@ service cloud.firestore {
       }
 
       function isValidPartnerSettings(data) {
-        return data.keys().hasOnly(['byTerm']) &&
-               data.byTerm is map;
+        return data.keys().hasOnly(['pairings']) &&
+               data.pairings is list;
       }
 
       function isValidGoalSettings(data) {

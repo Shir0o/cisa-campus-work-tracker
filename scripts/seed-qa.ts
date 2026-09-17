@@ -51,21 +51,20 @@
  * removed first so the QA db always holds exactly one coherent dataset.
  */
 
-import admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { readFileSync, existsSync } from 'node:fs';
 
 const cfg = JSON.parse(readFileSync('firebase-applet-config.json', 'utf8'));
 const projectId = process.env.FIREBASE_PROJECT_ID || cfg.projectId;
 const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'qa-db';
 
-if (!admin.apps.length) {
-  admin.initializeApp({ projectId });
-}
+const app = initializeApp({ projectId });
 
-const auth = admin.auth();
-const db = getFirestore(admin.app(), firestoreDatabaseId);
-const ts = admin.firestore.FieldValue.serverTimestamp();
+const auth = getAuth(app);
+const db = getFirestore(app, firestoreDatabaseId);
+const ts = FieldValue.serverTimestamp();
 
 const ACCOUNT_KEYS = ['fulltimer', 'trainee', 'student', 'community', 'reviewer'] as const;
 const CREDS_PATH = 'e2e/.test-credentials.json';
@@ -238,7 +237,7 @@ async function seed() {
     activities: ['qa-act-'],
   };
   const matchesAny = (id: string, prefixes: string[]) => prefixes.some((p) => id.startsWith(p));
-  const deleteSubcollections = async (ref: admin.firestore.DocumentReference, subs: string[]) => {
+  const deleteSubcollections = async (ref: DocumentReference, subs: string[]) => {
     for (const sub of subs) {
       const snap = await ref.collection(sub).get();
       await Promise.all(snap.docs.map((s) => s.ref.delete()));
