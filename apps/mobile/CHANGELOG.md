@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.6.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.5.0...v1.6.0) (2026-09-17)
+
+
+### Features
+
+* **attendance:** move attendance onto the Gathering ([#958](https://github.com/Shir0o/cisa-campus-work-tracker/issues/958)) ([#1027](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1027)) ([f97da39](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f97da3987f8ab5dcbb08169964f808d6a577d13b))
+* **bible-study:** copy a permanent per-week link, not just the latest ([#1098](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1098)) ([cd590f2](https://github.com/Shir0o/cisa-campus-work-tracker/commit/cd590f2e653f467c131adc7d9c498def2e7a6538))
+* **contact:** denormalise contact ties into visibleTo, and backfill ([#1024](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1024) phase 4, part 1/2) ([#1035](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1035)) ([5cbea6c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/5cbea6c9d70206d287cbae5b2803008cc5a6c404))
+* **contacts:** founders are co-equal and the current-term widening retires ([#1054](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1054)) ([#1084](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1084)) ([e1f9647](https://github.com/Shir0o/cisa-campus-work-tracker/commit/e1f96471f877dbbc0aa805f5f32339487f6ae832))
+* **contacts:** remove the contact caregiver field and care transfer ([#1053](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1053)) ([#1083](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1083)) ([21133ef](https://github.com/Shir0o/cisa-campus-work-tracker/commit/21133ef511cc93bf7b8de104bb7b11f827bbb783))
+* **partners:** dated pairing model — types + interval logic ([#1048](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1048)) ([#1078](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1078)) ([b924e3c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/b924e3cbdefd49aa13819c1bf37e9f7b04c541ac))
+* **release:** one authored record rendered as announcement + nudge ([#1021](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1021)) ([#1046](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1046)) ([0df0207](https://github.com/Shir0o/cisa-campus-work-tracker/commit/0df0207832f27ab7de827729950e41a64780a69e))
+* **sheep:** cared for by reads who has taken a person on — your sheep becomes a contact tie ([#1051](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1051)) ([#1081](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1081)) ([cd37271](https://github.com/Shir0o/cisa-campus-work-tracker/commit/cd37271abf21b99739f85f02170c805a07ec9238))
+
+
+### Bug Fixes
+
+* **contact:** enforce contact visibility on mobile, and cut team scope by effective role ([#1024](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1024)) ([#1031](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1031)) ([5049c98](https://github.com/Shir0o/cisa-campus-work-tracker/commit/5049c987ec30f12abe749dcb9cd44d3dbcfe000f))
+* **mobile:** derive the app version from the release tag, never commit it ([#1040](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1040)) ([#1057](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1057)) ([88232f6](https://github.com/Shir0o/cisa-campus-work-tracker/commit/88232f634f38530907b5ae2069dd1415443e7306))
+* **mobile:** don't re-dismiss a self-dismissed bottom sheet ([#1066](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1066)) ([4372612](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4372612c98f8cb46bbee121a35472110b5a15ab1))
+
 ## [1.5.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.4.2...v1.5.0) (2026-09-14)
 
 
