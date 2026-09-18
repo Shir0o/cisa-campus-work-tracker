@@ -8,6 +8,7 @@ import {
   clearTranslationCache,
   computeTranslationHash,
   subscribeTranslation,
+  isAlreadySpanish,
 } from "../lib/translator";
 
 describe("translator client", () => {
@@ -230,5 +231,55 @@ describe("translator client", () => {
     await prefetchTranslations(["", "   "]);
     await prefetchTranslations(["Hello"], "en");
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("classifies clearly Spanish text as already Spanish", () => {
+    expect(isAlreadySpanish("Oración por mi familia esta semana")).toBe(true);
+    expect(isAlreadySpanish("¡Hola! ¿Cómo estás?")).toBe(true);
+    expect(isAlreadySpanish("El estudio bíblico fue muy bueno esta mañana")).toBe(true);
+    expect(isAlreadySpanish("Por favor, ora por mí y por mi hermano")).toBe(true);
+  });
+
+  it("does not classify English text as already Spanish", () => {
+    expect(isAlreadySpanish("Prayer for my family this week")).toBe(false);
+    expect(isAlreadySpanish("The bible study was really good this morning")).toBe(false);
+    expect(isAlreadySpanish("Please pray for me and my brother")).toBe(false);
+  });
+
+  it("is not confident about short or mixed text", () => {
+    expect(isAlreadySpanish("Jordan")).toBe(false);
+    expect(isAlreadySpanish("El and the are common words in both")).toBe(false);
+    expect(isAlreadySpanish("")).toBe(false);
+  });
+
+  it("returns already-Spanish content as-is without calling the API", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const text = "Oración por mi familia esta semana";
+    await expect(translateText(text, "es")).resolves.toBe(text);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(getCachedTranslation(text, "es")).toBe(text);
+  });
+
+  it("still translates English content toward Spanish", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "es",
+        translations: [{ original: "Prayer for finals", translated: "Oración por los exámenes finales", hash: "h1", cached: false }],
+      }),
+    } as any);
+
+    const result = await translateText("Prayer for finals", "es");
+    expect(result).toBe("Oración por los exámenes finales");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefetchTranslations skips the API for already-Spanish text", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const text = "Por favor, ora por mí";
+    await prefetchTranslations([text], "es");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(getCachedTranslation(text, "es")).toBe(text);
   });
 });

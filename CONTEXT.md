@@ -263,3 +263,11 @@ _Avoid_: Public link, bare "share link", anonymous edit, Google Docs sync
 The administrative action on the directory (`/directory`) that finds candidate duplicate people (by matching email, phone, or name) and consolidates them into a single surviving record with a dry-run preview before committing. Combines relationship ties (`founders`, `carers`, `coCreators`, `visibleTo`, and `tags`) as union sets, preserves survivor profile details while backfilling missing values, migrates all subcollections and external references, and deletes the absorbed duplicate with a permanent Activity Log record (ADR 0026). Restricted strictly to Full-timers.
 _Avoid_: Merge contacts, dedupe, deduplicate contacts
 
+**Content language**:
+The language a piece of user-authored content — a prayer burden, an interaction summary, a contact note, a chat message, a coordination doc — was written in. Content is stored verbatim in the author's language with no language tag. The app's translation only ever moves English-authored content toward Spanish, and content already in Spanish is shown as-is rather than translated.
+_Avoid_: Source language, input language, locale
+
+**Reading translation**:
+The read-time transform that lets a Spanish-mode reader read English-authored content: English text is translated toward Spanish when a Spanish-mode reader views it. It runs only in that direction — an English-mode reader never receives a translation, and content already written in Spanish is returned unchanged rather than re-translated. The model is English-canonical for now (ADR 0027).
+_Avoid_: Auto-translate, localization, on-the-fly translation
+

@@ -1,0 +1,5 @@
+# English-Canonical Reading Translation (en→es only, skip already-Spanish)
+
+User-authored content (prayers, interactions, notes, messages, coordination docs) is stored verbatim in the author's language, and the app translates it at read time **only toward Spanish**: a Spanish-mode reader gets English-authored content translated to Spanish, while an English-mode reader never receives a translation. Because content may be authored in Spanish, the client detects whether text is already Spanish and, when it is, shows it as-is rather than re-translating it through Gemini. Content that is neither confidently English nor Spanish is left in its authored form.
+
+This is English-canonical: English is treated as the assumed authoring language and Spanish as a read-only target. Full language-agnostic matching (translating toward whatever each reader speaks, including es→en) was considered and deferred so the scope stays small; it remains the future direction if the team adopts more languages.
