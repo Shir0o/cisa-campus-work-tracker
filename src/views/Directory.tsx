@@ -686,8 +686,8 @@ export default function Directory() {
       animate={{ opacity: 1, y: 0 }}
     >
       {/* ── Header: serif title + prose summary ── */}
-      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div className="flex-1 min-w-0">
+      <header className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end justify-between gap-4">
+        <div className="flex-1 min-w-64">
           <h1 className="font-serif page-title text-on-surface">{t('directory.title')}</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
             <b className="text-on-surface font-semibold">
