@@ -2521,6 +2521,12 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'other'), { clubRush: true }));
     });
 
+    it('SS6: Manager can set the bfa intake flag (mirrors toggleBfa write)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(setDoc(doc(db, 'settings', 'season'), { bfa: true }));
+    });
+
     it('SW1: Admin can write settings/walking pairs', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
