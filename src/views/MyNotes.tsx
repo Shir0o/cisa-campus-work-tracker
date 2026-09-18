@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Loader2, Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe } from 'lucide-react';
+import { Send, Loader2, Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe, Pencil } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { kindMeta, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
@@ -231,6 +231,10 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'feedback', noteId, 'replies'), orderBy('createdAt', 'asc'));
@@ -290,6 +294,40 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
     }
   }, [draft, sending, user, noteId, t]);
 
+  const saveEdit = useCallback(async () => {
+    const body = editDraft.trim();
+    if (!body || editing || !user || !editingId) return;
+
+    setEditing(true);
+    setEditError(null);
+    try {
+      let token: string | null = null;
+      try {
+        if (typeof user.getIdToken === 'function') token = await user.getIdToken();
+      } catch (tokenErr) {
+        console.error('Failed to get Firebase ID token:', tokenErr);
+      }
+
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch('/api/feedback/reply/edit', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ id: noteId, replyId: editingId, body }),
+      });
+      if (!response.ok) throw new Error(`Server returned ${response.status} ${response.statusText}`);
+
+      setEditingId(null);
+      setEditDraft('');
+    } catch (error) {
+      console.error('Failed to edit a follow-up:', error);
+      setEditError(t('feedback.edit_failed'));
+    } finally {
+      setEditing(false);
+    }
+  }, [editDraft, editing, editingId, user, noteId, t]);
+
   return (
     <div className="space-y-3 pt-3">
       {threadError && (
@@ -307,6 +345,9 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
         // On the owner's own Notes a relayed comment is stored raw with the
         // restatement beside it, so the submitter's view has something to show.
         const shown = asSubmitter ? reply.launderedBody || reply.body : reply.body;
+        // Only the reply's author may rewrite it — and a relayed reply belongs
+        // to the issue, not to the app (server-side, this is enforced again).
+        const editable = !!user && reply.authorId === user.uid && !reply.relayed;
         return (
           <div
             key={reply.id}
@@ -317,7 +358,73 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
             <div className="font-semibold text-on-surface-variant">
               {mine ? t('feedback.you') : reply.authorName || t('feedback.the_team')}
             </div>
-            <p className="text-on-surface whitespace-pre-wrap leading-relaxed">{shown}</p>
+            {editingId === reply.id ? (
+              <div className="space-y-2">
+                <textarea
+                  rows={3}
+                  maxLength={5000}
+                  value={editDraft}
+                  disabled={editing}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  aria-label={t('feedback.edit_follow_up')}
+                  className="w-full bg-surface border border-outline-variant rounded-sm p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
+                />
+
+                {/* An edit rewrites the public comment too. */}
+                <p className="flex items-start gap-1.5 text-[11px] text-on-surface-variant/80 leading-relaxed">
+                  <Globe className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span>{t('feedback.reply_is_public')}</span>
+                </p>
+
+                {editError && (
+                  <p role="alert" className="text-[11px] text-stage-amber">
+                    {editError}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingId(null);
+                      setEditDraft('');
+                      setEditError(null);
+                    }}
+                    disabled={editing}
+                    className="py-1.5 px-4 border border-outline-variant text-on-surface-variant font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors disabled:opacity-50"
+                  >
+                    {t('actions.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    disabled={editing || !editDraft.trim()}
+                    className="py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
+                  >
+                    {editing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{t('actions.save')}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <p className="text-on-surface whitespace-pre-wrap leading-relaxed flex-1">{shown}</p>
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingId(reply.id);
+                      setEditDraft(reply.body);
+                      setEditError(null);
+                    }}
+                    aria-label={t('feedback.edit')}
+                    className="text-on-surface-variant hover:text-accent transition-colors shrink-0 mt-0.5 cursor-pointer"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         );
       })}

@@ -471,6 +471,51 @@ export async function createApp() {
   }
 
   /**
+   * The marker a Follow-up carries when posted onto its public issue. A
+   * reporter stays unnamed (ADR 0018); an in-app team reply names the
+   * Full-timer who wrote it. Shared by create and edit so the mirror's prefix
+   * can never drift between the two paths.
+   */
+  function replyPrefix(authorRole: "submitter" | "team", authorName?: string) {
+    return authorRole === "submitter"
+      ? "**Reporter replied:**"
+      : `**${authorName || "The team"} replied from the app:**`;
+  }
+
+  /**
+   * Rewrites a Follow-up's mirrored comment in place. Fail-open like posting:
+   * an unreachable or unlinked GitHub leaves the app's own copy authoritative,
+   * and the caller reports whether the mirror actually moved.
+   */
+  async function editIssueComment(
+    issueUrl: string | undefined,
+    commentId: number,
+    body: string,
+  ): Promise<boolean> {
+    const token = process.env.GITHUB_TOKEN;
+    if (!issueUrl || !token) return false;
+    const parsed = parseIssueUrl(issueUrl);
+    if (!parsed) return false;
+
+    try {
+      const { owner, repo } = parsed;
+      const response = await githubApiFetch(
+        ["repos", owner, repo, "issues", "comments", String(commentId)],
+        { method: "PATCH", headers: githubHeaders(token), body: JSON.stringify({ body }) },
+      );
+      if (!response) return false;
+      if (!response.ok) {
+        console.error("GitHub API error editing comment: %s - %s", response.status, await response.text());
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error(`Failed to edit a comment on ${issueUrl}:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Fans a notification out to the Full-timers, with the author excluded —
    * the stakeholder + self-exclusion shape of ADR 0007. Every other
    * notification write on this server targets one known uid, so the role query
@@ -837,9 +882,7 @@ export async function createApp() {
 
       // Mirror up. A reporter stays unnamed on the public issue (ADR 0018) —
       // the issue already carries a reporter:<first>-<last-initial> label.
-      const prefix = authorRole === "submitter"
-        ? "**Reporter replied:**"
-        : `**${authorName || "The team"} replied from the app:**`;
+      const prefix = replyPrefix(authorRole, authorName);
       const githubCommentId = await postIssueComment(note.githubIssueUrl, `${prefix}\n\n${text}`);
 
       await writeFollowUp(db, id, {
@@ -885,6 +928,58 @@ export async function createApp() {
       res.status(200).json({ success: true, mirroredToGitHub: githubCommentId !== null });
     } catch (error: any) {
       console.error("Error in POST /api/feedback/reply: ", error);
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+  });
+
+  // Endpoint: edit a Follow-up on a Feedback Note (ADR 0019). Only the reply's
+  // author may rewrite it — Full-timers get no blanket edit rights, and a
+  // relayed reply belongs to the issue, not to any app user. The edit mirrors
+  // onto the comment posted when the reply was created, so the app and the
+  // public issue do not diverge; an edit never touches status, outcome, or the
+  // awaiting-reply flag, and never fires notifications.
+  app.post("/api/feedback/reply/edit", feedbackWriteLimiter, async (req, res) => {
+    try {
+      let decoded: any;
+      try {
+        decoded = await authenticateFirebaseUser(req);
+      } catch (authErr: any) {
+        console.error("Firebase ID token verification failed:", authErr);
+        return res.status(401).json({ error: "Unauthorized: " + (authErr.message || String(authErr)) });
+      }
+
+      const { id, replyId, body } = req.body;
+      if (!id || !replyId || typeof body !== "string" || !body.trim()) {
+        return res.status(400).json({ error: "Missing required 'id', 'replyId', and 'body' parameters." });
+      }
+      const text = body.trim().slice(0, 5000);
+
+      const db = getAdminDb();
+      const replyRef = db.collection("feedback").doc(id).collection("replies").doc(replyId);
+      const replySnap = await replyRef.get();
+      if (!replySnap.exists) {
+        return res.status(404).json({ error: `Reply "${replyId}" not found on feedback "${id}".` });
+      }
+
+      const reply = replySnap.data()!;
+      if (reply.relayed || reply.authorRole !== "submitter" || reply.authorId !== decoded.uid) {
+        return res.status(403).json({ error: "Forbidden: only the reply's author may edit it." });
+      }
+
+      const noteSnap = await db.collection("feedback").doc(id).get();
+      const note = noteSnap.exists ? noteSnap.data()! : {};
+
+      const prefix = replyPrefix(reply.authorRole, reply.authorName);
+      let mirrored = false;
+      if (typeof reply.githubCommentId === "number") {
+        mirrored = await editIssueComment(note.githubIssueUrl, reply.githubCommentId, `${prefix}\n\n${text}`);
+      }
+
+      await replyRef.update({ body: text });
+
+      res.status(200).json({ success: true, mirroredToGitHub: mirrored });
+    } catch (error: any) {
+      console.error("Error in POST /api/feedback/reply/edit: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });
