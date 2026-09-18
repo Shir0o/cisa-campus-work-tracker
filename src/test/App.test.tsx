@@ -32,7 +32,23 @@ vi.mock('../views/OutreachBoard', () => ({ default: () => <div data-testid="boar
 vi.mock('../views/Directory', () => ({ default: () => <div data-testid="directory-view">Directory View</div> }));
 vi.mock('../views/History', () => ({ default: () => <div data-testid="history-view">History View</div> }));
 vi.mock('../views/PrayerList', () => ({ default: () => <div data-testid="prayer-view">PrayerList View</div> }));
-vi.mock('../views/Settings', () => ({ default: () => <div data-testid="settings-view">Settings View</div> }));
+vi.mock('../views/Settings', () => {
+  // Stateful stand-in for the Settings view: owns an open modal in local state
+  // (mirroring the real view's `showPurgeModal`) so the shell-switch regression
+  // test can assert that view state survives a breakpoint cross (#1129).
+  const SettingsView = () => {
+    const [open, setOpen] = React.useState(false);
+    return (
+      <div data-testid="settings-view">
+        <button data-testid="open-settings-modal" onClick={() => setOpen((o) => !o)}>
+          Toggle modal
+        </button>
+        {open ? <div data-testid="settings-modal">open</div> : null}
+      </div>
+    );
+  };
+  return { default: SettingsView };
+});
 vi.mock('../views/SignUp', () => ({ default: () => <div data-testid="signup-view">SignUp View</div> }));
 vi.mock('../views/FeedbackList', () => ({ default: () => <div data-testid="feedback-list-view">FeedbackList View</div> }));
 vi.mock('../views/MyNotes', () => ({ default: () => <div data-testid="my-notes-view">MyNotes View</div> }));
@@ -499,5 +515,67 @@ describe('App Component', () => {
       expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
     });
     expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+  });
+
+  it('preserves an open modal when the viewport crosses the shell breakpoint (#1129)', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/settings');
+
+    // Start wide (>=1024px) so the rail shell is active.
+    let wide = true;
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      get matches() {
+        return wide;
+      },
+      media: q,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-view')).toBeInTheDocument();
+    });
+
+    // Sanity: the wide viewport starts in the rail shell (TopNav is only in
+    // the top-bar shell).
+    expect(screen.queryByTestId('mock-topnav')).not.toBeInTheDocument();
+
+    // Open a modal owned by the routed view's local state.
+    fireEvent.click(screen.getByTestId('open-settings-modal'));
+    expect(screen.getByTestId('settings-modal')).toBeInTheDocument();
+
+    // Simulate opening a docked devtools: the viewport drops below the 1024px
+    // breakpoint, which swaps the rail shell for the top-bar shell.
+    act(() => {
+      wide = false;
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    // Prove the shell actually switched shells.
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-topnav')).toBeInTheDocument();
+    });
+
+    // The routed view's local state (the open modal) must survive the switch.
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-modal')).toBeInTheDocument();
+    });
+
+    // And crossing back up must also preserve it.
+    act(() => {
+      wide = true;
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('settings-modal')).toBeInTheDocument();
+    });
   });
 });

@@ -485,60 +485,32 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
-        {useRail ? (
-          // ── Rail shell: rail on the left, chrome strip + content + banners on the right.
-          //    The track pads all four sides so the rail floats with a gutter
-          //    of page colour around it — the gutter is what makes the slab
-          //    read as an object rather than a wall (ADR 0003).
-          <div className="flex-1 flex h-screen min-w-0 p-4 gap-4">
-            <NavRail onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
-            <div className="flex-1 flex flex-col min-h-0 min-w-0">
+        {/* Single shell wrapper. The chrome inside it varies with the viewport
+            (rail vs top-bar), but the wrapper and the inner content column are
+            always present at the same tree position, so the routed <main>
+            (and any modal or state it owns) survives a rail/top-bar switch
+            across the 1024px breakpoint instead of being remounted (#1129). */}
+        <div
+          className={cn(
+            "flex-1 min-w-0 h-screen",
+            useRail ? "flex gap-4 p-4" : "flex flex-col transition-all duration-300",
+          )}
+        >
+          {useRail && <NavRail onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />}
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+            {useRail ? (
               <NavChromeStrip onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
-              {/* In rail mode the impersonation/owner-view banner sits at the
-                  top of the content column rather than full-bleed above the
-                  bar (there is no bar). */}
+            ) : (
               <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
-              <main
-                className={cn(
-                  "flex-1 w-full min-h-0",
-                  isMessagesPage
-                    ? "flex flex-col overflow-hidden"
-                    : selectedContact && contactId
-                      ? "overflow-hidden"
-                      : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
-                )}
-              >
-                {selectedContact && contactId ? (
-                  <ContactDetailsModal
-                    isOpen
-                    onClose={() => openSelectedContact(null)}
-                    contact={selectedContact}
-                    initialTab={initialTab}
-                  />
-                ) : (
-                  <React.Suspense
-                    fallback={
-                      <div className="p-8 space-y-6">
-                        <Skeleton className="h-10 w-64" />
-                        <Skeleton className="h-96 w-full rounded-3xl" />
-                      </div>
-                    }
-                  >
-                    <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
-                  </React.Suspense>
-                )}
-              </main>
-            </div>
-          </div>
-        ) : (
-          // ── Top-bar shell (or any viewport below lg): existing layout, unchanged.
-          <div
-            className={cn(
-              "flex-1 flex flex-col h-screen transition-all duration-300 min-w-0",
             )}
-          >
-            <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
-            <TopNav onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
+            {useRail ? (
+              /* In rail mode the impersonation/owner-view banner sits at the
+                 top of the content column rather than full-bleed above the
+                 bar (there is no bar). */
+              <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
+            ) : (
+              <TopNav onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
+            )}
             <main
               className={cn(
                 "flex-1 w-full min-h-0",
@@ -570,7 +542,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               )}
             </main>
           </div>
-        )}
+        </div>
 
         <MobileNav />
 
