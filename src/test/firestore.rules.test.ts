@@ -2616,8 +2616,8 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
       });
       const db = getFirestore({ uid: 'admin1' });
-      // The legacy byTerm shape holds nested arrays, which Firestore cannot store.
-      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }));
+      // The legacy byTerm shape without pairings is rejected by isValidPartnerSettings.
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': ['trainee1', 'trainee2'] } }));
       // Stray keys alongside pairings are rejected.
       await assertFails(setDoc(doc(db, 'settings', 'partners'), { pairings: [], byTerm: {} }));
       // The documented canonical shape is accepted.
