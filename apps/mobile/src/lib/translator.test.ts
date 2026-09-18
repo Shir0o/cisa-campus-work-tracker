@@ -9,6 +9,7 @@ import {
   clearTranslationCache,
   computeTranslationHash,
   subscribeTranslation,
+  isAlreadySpanish,
 } from './translator';
 
 describe('mobile translator client', () => {
@@ -224,6 +225,59 @@ describe('mobile translator client', () => {
     expect(await translateMarkdown('', 'es')).toBe('');
     expect(await translateMarkdown('   ', 'es')).toBe('   ');
     expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it('classifies clearly Spanish text as already Spanish', () => {
+    expect(isAlreadySpanish('Oración por mi familia esta semana')).toBe(true);
+    expect(isAlreadySpanish('¡Hola! ¿Cómo estás?')).toBe(true);
+    expect(isAlreadySpanish('El estudio bíblico fue muy bueno esta mañana')).toBe(true);
+    expect(isAlreadySpanish('Por favor, ora por mí y por mi hermano')).toBe(true);
+  });
+
+  it('does not classify English text as already Spanish', () => {
+    expect(isAlreadySpanish('Prayer for my family this week')).toBe(false);
+    expect(isAlreadySpanish('The bible study was really good this morning')).toBe(false);
+    expect(isAlreadySpanish('Please pray for me and my brother')).toBe(false);
+  });
+
+  it('is not confident about short or mixed text', () => {
+    expect(isAlreadySpanish('Jordan')).toBe(false);
+    expect(isAlreadySpanish('El and the are common words in both')).toBe(false);
+    expect(isAlreadySpanish('')).toBe(false);
+  });
+
+  it('returns already-Spanish content as-is without calling the API', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    const text = 'Oración por mi familia esta semana';
+    await expect(translateText(text, 'es')).resolves.toBe(text);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(getCachedTranslation(text, 'es')).toBe(text);
+    fetchSpy.mockRestore();
+  });
+
+  it('still translates English content toward Spanish', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: 'es',
+        translations: [{ original: 'Prayer on mobile', translated: 'Oración en el móvil', hash: 'h1', cached: false }],
+      }),
+    } as any);
+
+    const result = await translateText('Prayer on mobile', 'es');
+    expect(result).toBe('Oración en el móvil');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fetchMock.mockRestore();
+  });
+
+  it('prefetchTranslations skips the API for already-Spanish text', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    const text = 'Por favor, ora por mí';
+    await prefetchTranslations([text], 'es');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(getCachedTranslation(text, 'es')).toBe(text);
     fetchSpy.mockRestore();
   });
 });

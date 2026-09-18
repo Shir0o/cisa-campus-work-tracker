@@ -5,6 +5,49 @@ import { splitMarkdownByH1, joinMarkdownSections } from '@cisa/core';
 
 export type AppLanguage = 'en' | 'es';
 
+// ── Already-Spanish detection (ADR 0027) ──────────────────────────────────────
+// Mirror of the web translator's heuristic. Reading translation only ever moves
+// English-authored content toward Spanish; a Spanish-mode reader who meets
+// content already written in Spanish sees it as-is rather than re-translated.
+
+const SPANISH_MARKERS = new Set([
+  'el', 'la', 'los', 'las', 'de', 'que', 'y', 'en', 'es', 'un', 'una',
+  'por', 'para', 'con', 'no', 'se', 'su', 'lo', 'al', 'del',
+  'más', 'qué', 'cómo', 'está', 'están', 'pero', 'como', 'cuando', 'donde', 'también',
+  'mi', 'mí', 'esta', 'este', 'ora', 'oración', 'orar', 'favor',
+  'dios', 'iglesia', 'estudio', 'bíblico', 'familia', 'semana',
+  'hermano', 'hermana', 'bueno', 'buena', 'gracias', 'señor', 'amor', 'vida',
+]);
+
+const ENGLISH_MARKERS = new Set([
+  'the', 'and', 'of', 'to', 'a', 'in', 'is', 'that', 'for', 'it', 'on', 'with',
+  'this', 'we', 'you', 'are', 'have', 'has', 'was', 'were', 'will', 'would',
+  'can', 'could', 'should', 'please', 'pray', 'prayer', 'thanks', 'thank',
+  'god', 'church', 'family', 'week', 'brother', 'sister', 'good', 'morning',
+  'study', 'bible', 'me', 'and', 'but', 'so', 'not',
+]);
+
+export function isAlreadySpanish(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  const words = trimmed.toLowerCase().match(/[a-zñáéíóúü]+/g) ?? [];
+  let spanish = 0;
+  let english = 0;
+  for (const word of words) {
+    if (SPANISH_MARKERS.has(word)) spanish++;
+    if (ENGLISH_MARKERS.has(word)) english++;
+  }
+
+  const accentSignal = /[¿¡]|[áéíóúü]|ñ/.test(trimmed);
+
+  if (spanish === 0 && english === 0) {
+    return accentSignal && words.length >= 2;
+  }
+
+  return (spanish > english && spanish >= 2) || (accentSignal && spanish > 0);
+}
+
 // ── Pure SHA-256 implementation (synchronous, matches server hash) ──
 function sha256Sync(ascii: string): string {
   function rightRotate(value: number, amount: number) {
@@ -318,6 +361,11 @@ export function translateText(text: string, targetLang: string = 'es'): Promise<
   const cached = getCachedTranslation(text, targetLang);
   if (cached !== null) {
     return Promise.resolve(cached);
+  }
+
+  if (targetLang === 'es' && isAlreadySpanish(text)) {
+    setCachedTranslation(text, text, 'es');
+    return Promise.resolve(text);
   }
 
   const hash = computeTranslationHash(targetLang, text);
