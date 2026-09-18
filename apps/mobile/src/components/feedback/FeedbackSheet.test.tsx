@@ -41,6 +41,11 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
+jest.mock('expo-router', () => {
+  const push = jest.fn();
+  return { useRouter: () => ({ push }) };
+});
+
 const renderSheet = (targetRef?: any) =>
   render(
     <ThemeProvider>
@@ -123,5 +128,15 @@ describe('FeedbackSheet', () => {
 
     const body = await submit(getByPlaceholderText, getByText);
     expect(body.screenshot).toBe('');
+  });
+
+  it('offers "See your notes" after a submit, linking into the read-back view', async () => {
+    const { getByPlaceholderText, getByText } = renderSheet({ current: {} });
+
+    await submit(getByPlaceholderText, getByText);
+
+    fireEvent.press(getByText('See your notes'));
+    const { useRouter } = require('expo-router');
+    expect(useRouter().push).toHaveBeenCalledWith('/your-notes');
   });
 });

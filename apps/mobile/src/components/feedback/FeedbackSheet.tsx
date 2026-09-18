@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
+import { useRouter } from 'expo-router';
 import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
@@ -32,6 +33,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
   const { user } = useAuth();
   const { t } = useLanguage();
   const { c, font, radius, fs } = useV2Theme();
+  const router = useRouter();
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
   const [screenshot, setScreenshot] = useState<string>('');
@@ -182,6 +184,25 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
             <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.card.ink2, textAlign: 'center', marginBottom: 20 }}>
               {t('feedback.saved_body', 'Thank you for taking the time to share your thoughts with the team.').replace('{name}', user?.displayName ?? 'there')}
             </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                handleClose();
+                router.push('/your-notes');
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: c.card.inverse,
+                paddingVertical: 11,
+                paddingHorizontal: 24,
+                borderRadius: radius.button,
+                opacity: pressed ? 0.75 : 1,
+                marginBottom: 10,
+              })}
+            >
+              <Text style={{ fontFamily: font.bold, color: c.card.onInverse, fontSize: fs(14) }}>
+                {t('feedback.see_your_notes', 'See your notes')}
+              </Text>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={handleClose}

@@ -102,6 +102,28 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
           </View>
 
           <View>
+            <Sech label={t('mobile.member.your_notes')} />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/your-notes')}
+              style={({ pressed }) => ({
+                backgroundColor: c.widget.tile,
+                borderRadius: radius.tile,
+                padding: 18,
+                opacity: pressed ? 0.85 : 1,
+                ...c.widget.shadow,
+              })}
+            >
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                {t('feedback.your_notes', 'Your notes')}
+              </Text>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}>
+                {t('mobile.member.your_notes_sub')}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View>
             <Sech label={role === 'student' ? t('mobile.member.who_to_reach') : t('mobile.member.your_link_to_team')} />
             <View style={{ gap: 10 }}>
               {fullTimers.length === 0 && (
