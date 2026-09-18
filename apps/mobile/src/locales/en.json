@@ -229,7 +229,22 @@
     "characters": "characters",
     "go_home": "Go home",
     "saved_body": "Thank you for taking the time, {name}. Your note has been saved and our administrators will read it soon.",
-    "goes_to_team": "Your note goes straight to the team."
+    "goes_to_team": "Your note goes straight to the team.",
+    "your_notes": "Your notes",
+    "your_notes_intro": "What came of the notes you left, and the follow-ups.",
+    "see_your_notes": "See your notes",
+    "no_notes_yet": "You haven't left a note yet",
+    "no_notes_yet_hint": "Tap the note button whenever something is on your mind.",
+    "follow_ups": "Follow-ups",
+    "no_follow_ups": "No follow-ups yet.",
+    "no_news_yet": "No news yet",
+    "follow_ups_load_failed": "Couldn't load the follow-ups.",
+    "you": "You",
+    "the_team": "The team",
+    "reply_is_public": "Replies are posted to a public issue tracker.",
+    "follow_up_placeholder": "Write a follow-up…",
+    "edit_placeholder": "Edit your follow-up…",
+    "edit": "Edit"
   },
   "feedbackList": {
     "access_denied": "Access Denied",
@@ -1471,7 +1486,9 @@
       "account_session": "Account & Session",
       "log_out": "Log out",
       "messages": "Messages",
-      "nothing_yet": "Nothing yet."
+      "nothing_yet": "Nothing yet.",
+      "your_notes": "Your notes",
+      "your_notes_sub": "What came of your notes, and the follow-ups."
     },
     "contact": {
       "we_cant_find": "We can't find this person.",

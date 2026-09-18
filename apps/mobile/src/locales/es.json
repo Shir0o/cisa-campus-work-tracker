@@ -229,7 +229,22 @@
     "characters": "caracteres",
     "go_home": "Ir al inicio",
     "saved_body": "Gracias por tomarte el tiempo, {name}. Tu nota se ha guardado y nuestros administradores la leerán pronto.",
-    "goes_to_team": "Tu nota va directamente al equipo."
+    "goes_to_team": "Tu nota va directamente al equipo.",
+    "your_notes": "Your notes",
+    "your_notes_intro": "What came of the notes you left, and the follow-ups.",
+    "see_your_notes": "See your notes",
+    "no_notes_yet": "You haven't left a note yet",
+    "no_notes_yet_hint": "Tap the note button whenever something is on your mind.",
+    "follow_ups": "Follow-ups",
+    "no_follow_ups": "No follow-ups yet.",
+    "no_news_yet": "No news yet",
+    "follow_ups_load_failed": "Couldn't load the follow-ups.",
+    "you": "You",
+    "the_team": "The team",
+    "reply_is_public": "Replies are posted to a public issue tracker.",
+    "follow_up_placeholder": "Write a follow-up…",
+    "edit_placeholder": "Edit your follow-up…",
+    "edit": "Edit"
   },
   "feedbackList": {
     "access_denied": "Acceso denegado",
@@ -1471,12 +1486,14 @@
       "account_session": "Cuenta y sesión",
       "log_out": "Cerrar sesión",
       "messages": "Mensajes",
-      "nothing_yet": "Aún no hay nada."
+      "nothing_yet": "Aún no hay nada.",
+      "your_notes": "Your notes",
+      "your_notes_sub": "What came of your notes, and the follow-ups."
     },
     "contact": {
       "we_cant_find": "No podemos encontrar a esta persona.",
       "no_access_title": "No puedes abrir este perfil",
-      "no_access_body": "No tienes v\u00ednculo con esta persona.",
+      "no_access_body": "No tienes vínculo con esta persona.",
       "move_a_step": "Mover de etapa",
       "text": "Texto",
       "call": "Llamar",
