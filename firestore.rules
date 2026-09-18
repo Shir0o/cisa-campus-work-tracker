@@ -521,10 +521,11 @@ service cloud.firestore {
     // managers may change them.
     match /settings/{docId} {
       function isValidSeasonSettings(data) {
-        return data.keys().hasOnly(['override', 'clubRush']) &&
+        return data.keys().hasOnly(['override', 'clubRush', 'bfa']) &&
                (!('override' in data) || data.override == null ||
                  (data.override is string && data.override.size() <= 32)) &&
-               (!('clubRush' in data) || data.clubRush is bool);
+               (!('clubRush' in data) || data.clubRush is bool) &&
+               (!('bfa' in data) || data.bfa is bool);
       }
 
       function isValidWalkingSettings(data) {
