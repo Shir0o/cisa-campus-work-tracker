@@ -137,6 +137,27 @@ describe('Directory', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('lets the header actions wrap below the summary on narrow widths (#1128)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const header = screen.getByText('People').closest('header') as HTMLElement;
+    expect(header).not.toBeNull();
+
+    // The header must be allowed to wrap so the action buttons can reflow onto
+    // their own row instead of reserving the full row width on narrow laptop
+    // screens, which crushed the summary text against the left edge.
+    expect(header.className).toContain('flex-wrap');
+
+    // The summary keeps a readable minimum width rather than shrinking to 0,
+    // which is what allowed the button group to steal its row.
+    const summary = header.firstElementChild as HTMLElement;
+    expect(summary.className).not.toContain('min-w-0');
+    expect(summary.className).toMatch(/min-w-/);
+  });
+
   it('renders contacts directory title, stats, and contact cards', async () => {
     render(<Directory />);
 
