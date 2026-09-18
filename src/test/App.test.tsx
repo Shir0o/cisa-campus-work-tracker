@@ -183,6 +183,19 @@ describe('App Component', () => {
     expect(screen.getByText('Sign in with Google')).toBeInTheDocument();
   });
 
+  it('pads the sign-in view for the top safe-area and grows instead of clipping the card (#1122)', () => {
+    render(<App />);
+    const view = screen.getByTestId('sign-in-view');
+    // Respects the standalone-PWA status bar so there is no gap above the card.
+    expect(view.className).toMatch(/safe-area-inset-top/);
+    // Keeps the card centered, but sized against a growing min-height (never a
+    // fixed viewport height) so a card taller than the viewport scrolls rather
+    // than clipping its top out of reach.
+    expect(view.className).toMatch(/justify-center/);
+    expect(view.className).toMatch(/min-h-screen/);
+    expect(view.className).not.toMatch(/(?<!-)h-screen\b|h-dvh|min-h-dvh/);
+  });
+
   it('calls signIn on Google sign in click', () => {
     render(<App />);
     const googleBtn = screen.getByRole('button', { name: /Sign in with Google/i });
