@@ -85,6 +85,43 @@ describe('testAccountPurge', () => {
       expect(plan.contactsCreatedByTestAccounts[0].id).toBe('c-test');
       expect(plan.totalDeletionsCount).toBe(6); // 2 users + 1 invite + 1 prayer + 1 interaction + 1 test contact
     });
+
+    it('detects interactions authored via createdById (server Quick Add path) as test traces', async () => {
+      const mockUsers = [
+        { id: 'u-cisa', data: () => ({ email: 'cisa-ft@gmail.com', displayName: 'Cisa FT' }) },
+      ];
+
+      const mockContacts = [
+        { id: 'c-edgar', data: () => ({ name: 'Edgar', createdBy: 'u-cisa' }) },
+      ];
+
+      const mockInteractions = [
+        { id: 'i-quick-add', data: () => ({ createdById: 'u-cisa', content: 'Quick add interaction' }) },
+        { id: 'i-real-user', data: () => ({ userId: 'u-real', content: 'Real interaction' }) },
+        { id: 'i-real-created', data: () => ({ createdById: 'u-real', content: 'Real interaction' }) },
+      ];
+
+      const mockGetDocs = vi.fn((q: any) => {
+        const path = q?.path || q?._path || '';
+        if (path === 'users') return Promise.resolve({ docs: mockUsers });
+        if (path === 'invitations') return Promise.resolve({ docs: [] });
+        if (path === 'contacts') return Promise.resolve({ docs: mockContacts });
+        if (path === 'contacts/c-edgar/interactions') return Promise.resolve({ docs: mockInteractions });
+        return Promise.resolve({ docs: [] });
+      });
+
+      const mockCollection = vi.fn((_db: any, path: string) => ({ path }));
+
+      const plan = await scanTestAccountTraces({} as Firestore, {
+        getDocs: mockGetDocs as any,
+        collection: mockCollection as any,
+      });
+
+      expect(plan.interactions.map((i) => i.id)).toContain('i-quick-add');
+      expect(plan.interactions.map((i) => i.id)).not.toContain('i-real-user');
+      expect(plan.interactions.map((i) => i.id)).not.toContain('i-real-created');
+      expect(plan.totalDeletionsCount).toBe(3); // 1 test user + 1 interaction + 1 test contact
+    });
   });
 
   describe('purgeTestAccountTraces', () => {
