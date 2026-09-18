@@ -9,7 +9,15 @@ import {
 } from '../../lib/contactCombining';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
+import { parseMs } from '../landing/helpers';
 import type { Contact } from '../../types';
+
+// Normalize createdAt (ISO string, Firestore Timestamp, or numeric ms) to
+// yyyy-mm-dd for the "Created" labels (issue #1130).
+const createdAtLabel = (createdAt?: string): string | null => {
+  const ms = parseMs(createdAt);
+  return ms == null ? null : new Date(ms).toISOString().slice(0, 10);
+};
 
 interface CombineContactsModalProps {
   contacts: Contact[];
@@ -210,7 +218,7 @@ export default function CombineContactsModal({
                         </p>
                         {pair.survivor.createdAt && (
                           <p className="text-[11px] text-on-surface-variant/70 mt-1">
-                            {t('modals.created', 'Created')}: {pair.survivor.createdAt.slice(0, 10)}
+                            {t('modals.created', 'Created')}: {createdAtLabel(pair.survivor.createdAt)}
                           </p>
                         )}
                       </div>
@@ -237,7 +245,7 @@ export default function CombineContactsModal({
                         </p>
                         {pair.duplicate.createdAt && (
                           <p className="text-[11px] text-on-surface-variant/70 mt-1">
-                            {t('modals.created', 'Created')}: {pair.duplicate.createdAt.slice(0, 10)}
+                            {t('modals.created', 'Created')}: {createdAtLabel(pair.duplicate.createdAt)}
                           </p>
                         )}
                       </div>
