@@ -246,5 +246,84 @@ describe('MyNotes — your own notes and their follow-ups', () => {
       expect(screen.getByText('You')).toBeInTheDocument();
       expect(screen.getByText('Tony Wang')).toBeInTheDocument();
     });
+
+    it('offers to edit only the author\'s own submitter replies', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
+        { id: 'r2', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
+        { id: 'r3', authorRole: 'submitter', authorId: 'u2', authorName: 'Somebody Else', body: 'Not mine.', createdAt: '2026-09-04T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      expect(screen.getAllByRole('button', { name: /edit/i })).toHaveLength(1);
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
+    });
+
+    it('never offers to edit a relayed reply, even on the author\'s own note', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'team', authorName: 'Tony Wang', body: 'Superseded by #917.', launderedBody: 'Handled.', relayed: true, createdAt: '2026-09-02T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
+    });
+
+    it('saves an edit through the server route, which is the only write path', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+      const editor = screen.getByRole('textbox', { name: /edit your follow-up/i });
+      await userEvent.clear(editor);
+      await userEvent.type(editor, 'Changed my question');
+      await userEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/feedback/reply/edit',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ id: 'n1', replyId: 'r1', body: 'Changed my question' }),
+          })
+        );
+      });
+      expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument();
+    });
+
+    it('cancel leaves the reply untouched and never calls the server', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+      const editor = screen.getByRole('textbox', { name: /edit your follow-up/i });
+      await userEvent.clear(editor);
+      await userEvent.type(editor, 'Should not persist');
+      await userEvent.click(screen.getByRole('button', { name: /^Cancel$/i }));
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(screen.getByText('Any news?')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument();
+    });
+
+    it('surfaces a failure instead of losing the edit silently', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+      await userEvent.clear(screen.getByRole('textbox', { name: /edit your follow-up/i }));
+      await userEvent.type(screen.getByRole('textbox', { name: /edit your follow-up/i }), 'Changed');
+      await userEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/didn't save/i);
+      });
+    });
   });
 });

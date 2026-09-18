@@ -1886,6 +1886,173 @@ describe("POST /api/feedback/reply", () => {
   });
 });
 
+describe("POST /api/feedback/reply/edit", () => {
+  const issueUrl = "https://github.com/a/b/issues/7";
+
+  const seedReply = (over: Record<string, any> = {}) => {
+    seedDoc("feedback", "fb-1", {
+      userId: "user-ada",
+      userName: "Ada Student",
+      status: "in_progress",
+      githubIssueUrl: issueUrl,
+    });
+    seedDoc("feedback/fb-1/replies", "r1", {
+      authorRole: "submitter",
+      authorId: "user-ada",
+      authorName: "Ada Student",
+      body: "Which screen is it on?",
+      createdAt: { __mockServerTimestamp: true },
+      ...over,
+    });
+  };
+
+  const edit = (body: Record<string, any>) =>
+    request(app).post("/api/feedback/reply/edit").set("Authorization", "Bearer t").send(body);
+
+  it("refuses a request with no Firebase token", async () => {
+    seedReply();
+    const res = await request(app)
+      .post("/api/feedback/reply/edit")
+      .send({ id: "fb-1", replyId: "r1", body: "Changed" });
+    expect(res.status).toBe(401);
+  });
+
+  it("requires a reply id and a body", async () => {
+    seedReply();
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "   " });
+    expect(res.status).toBe(400);
+    const noReplyId = await edit({ id: "fb-1", body: "Changed" });
+    expect(noReplyId.status).toBe(400);
+  });
+
+  it("404s when the reply does not exist", async () => {
+    seedReply();
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    const res = await edit({ id: "fb-1", replyId: "nope", body: "Changed" });
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses anyone who is not the reply's author, Full-timers included", async () => {
+    seedReply();
+    seedDoc("users", "user-bob", { role: "viewer", approved: true, email: "bob@test.com" });
+    seedDoc("users", "ft-1", { role: "admin", approved: true, email: "ft1@test.com" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-bob", email: "bob@test.com", name: "Bob" });
+    const stranger = await edit({ id: "fb-1", replyId: "r1", body: "Nosy edit" });
+    expect(stranger.status).toBe(403);
+
+    mockVerifyIdToken.mockResolvedValue({ uid: "ft-1", email: "ft1@test.com", name: "Tony Wang" });
+    const fullTimer = await edit({ id: "fb-1", replyId: "r1", body: "Admin edit" });
+    expect(fullTimer.status).toBe(403);
+  });
+
+  it("refuses to edit a relayed reply — it belongs to the issue, not the app", async () => {
+    seedReply({ relayed: true, authorId: undefined });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "Changed" });
+    expect(res.status).toBe(403);
+  });
+
+  it("refuses to edit a team reply, even the one the Full-timer wrote in-app", async () => {
+    seedReply({ authorRole: "team", authorId: "ft-1", authorName: "Tony Wang" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "ft-1", email: "ft1@test.com", name: "Tony Wang" });
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "Admin edit" });
+    expect(res.status).toBe(403);
+  });
+
+  it("lets the author replace their follow-up's text in place, preserving the rest", async () => {
+    seedReply({ githubCommentId: 4242 });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "Which screen — the roster?" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mirroredToGitHub).toBe(false);
+    const reply: any = getCollection("feedback/fb-1/replies")["r1"];
+    expect(reply.body).toBe("Which screen — the roster?");
+    expect(reply).toMatchObject({
+      authorRole: "submitter",
+      authorId: "user-ada",
+      authorName: "Ada Student",
+      githubCommentId: 4242,
+    });
+  });
+
+  it("mirrors the edit onto the GitHub comment, keeping the reporter prefix", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+    seedReply({ githubCommentId: 4242 });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "Changed my question" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mirroredToGitHub).toBe(true);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe("https://api.github.com/repos/a/b/issues/comments/4242");
+    expect((init as RequestInit).method).toBe("PATCH");
+    const posted = JSON.parse((init as RequestInit).body as string).body;
+    expect(posted).toContain("**Reporter replied:**");
+    expect(posted).toContain("Changed my question");
+    expect(posted).not.toContain("Which screen is it on?");
+    expect(getCollection("feedback/fb-1/replies")["r1"].body).toBe("Changed my question");
+  });
+
+  it("updates in place, without touching GitHub, when the reply was never mirrored", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+    seedReply();
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "Local edit" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mirroredToGitHub).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getCollection("feedback/fb-1/replies")["r1"].body).toBe("Local edit");
+  });
+
+  it("still updates the note when GitHub is unreachable", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "ghp_test");
+    seedReply({ githubCommentId: 4242 });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+    fetchMock.mockRejectedValue(new Error("network down"));
+
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "Optimistic edit" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.mirroredToGitHub).toBe(false);
+    expect(getCollection("feedback/fb-1/replies")["r1"].body).toBe("Optimistic edit");
+  });
+
+  it("never touches status, outcome, or awaitingReply — an edit is not a reopen", async () => {
+    seedReply({ githubCommentId: 4242 });
+    seedDoc("feedback", "fb-1", {
+      userId: "user-ada",
+      status: "resolved",
+      outcome: "shipped",
+      awaitingReply: false,
+      githubIssueUrl: issueUrl,
+    });
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+
+    await edit({ id: "fb-1", replyId: "r1", body: "Reworded" });
+
+    expect(getCollection("feedback")["fb-1"].status).toBe("resolved");
+    expect(getCollection("feedback")["fb-1"].outcome).toBe("shipped");
+    expect(getCollection("feedback")["fb-1"].awaitingReply).toBe(false);
+  });
+
+  it("caps the new body at 5000 characters", async () => {
+    seedReply();
+    mockVerifyIdToken.mockResolvedValue({ uid: "user-ada", email: "ada@test.com", name: "Ada Student" });
+
+    const res = await edit({ id: "fb-1", replyId: "r1", body: "x".repeat(6000) });
+
+    expect(res.status).toBe(200);
+    expect(getCollection("feedback/fb-1/replies")["r1"].body).toHaveLength(5000);
+  });
+});
+
 describe("POST /api/webhook/github — issue_comment relay", () => {
   const issueUrl = "https://github.com/a/b/issues/7";
   const payload = (over: Record<string, any> = {}) => ({
