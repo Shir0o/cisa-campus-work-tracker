@@ -118,7 +118,8 @@ export async function scanTestAccountTraces(
       const intSnap = await fetchDocs(col(db, `contacts/${c.id}/interactions`));
       intSnap.docs.forEach((iDoc) => {
         const iData = iDoc.data();
-        if (iData.userId && testUserIds.has(iData.userId)) {
+        const authorId = iData.userId ?? iData.createdById;
+        if (authorId && testUserIds.has(authorId)) {
           interactions.push({
             id: iDoc.id,
             path: iDoc.ref?.path || `contacts/${c.id}/interactions/${iDoc.id}`,
