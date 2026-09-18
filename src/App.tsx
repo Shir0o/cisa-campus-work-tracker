@@ -249,7 +249,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
+      <div
+        data-testid="sign-in-view"
+        className="min-h-screen flex flex-col items-center justify-center bg-background px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
+      >
         <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant">
           <h2 className="text-3xl font-regular mb-4">Welcome to CISA Campus Work Tracker</h2>
           <p className="text-on-surface-variant mb-8">
