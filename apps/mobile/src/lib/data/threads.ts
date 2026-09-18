@@ -33,6 +33,15 @@ export async function toggleReaction(contactId: string, messageId: string, by: s
   }
 }
 
+/** Delete a single thread message — the author or an admin (per firestore.rules). */
+export async function deleteThreadMessage(contactId: string, messageId: string): Promise<void> {
+  try {
+    await core.deleteThreadMessage(db, contactId, messageId);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `contacts/${contactId}/threads/${messageId}`);
+  }
+}
+
 /** Post a new message to a contact; pings everyone tied to it, plus the phone
  *  of anyone who has one registered — held to one push per contact per person
  *  per hour by the server, so a back-and-forth does not buzz a Trainee eight

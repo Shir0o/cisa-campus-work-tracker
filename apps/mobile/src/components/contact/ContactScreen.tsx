@@ -114,6 +114,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   }, []);
 
   const canWrite = role !== 'viewer' && !isImpersonating;
+  const isAdmin = role === 'admin';
   const canShare = !isImpersonating && canManageCollaborators(role, uid, data.contact);
   const kinds = useMemo(() => composeKindsFor(!isTrainee(uid)), [uid]);
 
@@ -348,6 +349,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                       nested
                       canReact={canWrite}
                       onToggleReaction={data.toggleReaction}
+                      canDelete={uid === m.from || isAdmin}
+                      onDelete={(messageId) => void data.deleteThreadMessage(m)}
                     />
                   ))}
                   {canWrite && <ThreadCompose kinds={kinds} onPost={post(interaction.id)} />}
@@ -436,6 +439,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 }
                 canReact={canWrite}
                 onToggleReaction={data.toggleReaction}
+                canDelete={uid === m.from || isAdmin}
+                onDelete={(messageId) => void data.deleteThreadMessage(m)}
               />
             ))}
             {canWrite && <ThreadCompose kinds={kinds} onPost={post(null)} minHeight={104} onRoom />}

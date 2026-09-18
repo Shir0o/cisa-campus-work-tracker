@@ -2413,6 +2413,52 @@ describeRules('Firestore Security Rules', () => {
       }
     });
 
+    // #1126 — a viewer may delete their own message; an admin may delete any.
+    // Managers (Trainees) may not delete someone else's message.
+    describe('deleting a message', () => {
+      it('lets the author delete their own message', async () => {
+        await seedThreadUsers();
+        await seedMsg('del1', { from: 'operator1' });
+        const db = getFirestore({ uid: 'operator1' });
+        await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del1')));
+      });
+
+      it('lets an admin delete anyone else\'s message', async () => {
+        await seedThreadUsers();
+        await seedMsg('del2', { from: 'operator1' });
+        const db = getFirestore({ uid: 'admin1' });
+        await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del2')));
+      });
+
+      it('lets an admin delete a team-scope Full-timers message', async () => {
+        await seedThreadUsers();
+        await seedMsg('del3', { from: 'operator1', scope: 'team' });
+        const db = getFirestore({ uid: 'admin1' });
+        await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del3')));
+      });
+
+      it('refuses another operator deleting a colleague\'s message', async () => {
+        await seedThreadUsers();
+        await seedMsg('del4', { from: 'operator1' });
+        const db = getFirestore({ uid: 'operator2' });
+        await assertFails(deleteDoc(doc(db, 'contacts/contact1/threads/del4')));
+      });
+
+      it('refuses a manager (Trainee) deleting a colleague\'s message', async () => {
+        await seedThreadUsers();
+        await seedMsg('del5', { from: 'operator1' });
+        const db = getFirestore({ uid: 'manager1' });
+        await assertFails(deleteDoc(doc(db, 'contacts/contact1/threads/del5')));
+      });
+
+      it('lets a manager (Trainee) delete their own message', async () => {
+        await seedThreadUsers();
+        await seedMsg('del6', { from: 'manager1' });
+        const db = getFirestore({ uid: 'manager1' });
+        await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del6')));
+      });
+    });
+
     // `reviewed` was deleted in #813 — four readers, no writer outside the seed
     // scripts — so nothing may write it any more.
     it('no longer lets anyone write the retired `reviewed` flag', async () => {

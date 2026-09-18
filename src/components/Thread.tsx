@@ -1,11 +1,12 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
 import { useCommand } from "../lib/commands";
 import { useAuth } from "./AuthProvider";
 import {
   THREAD_REACTIONS,
   addThreadMessage,
+  deleteThreadMessage,
   repliesOf,
   threadsFor,
   toggleReaction,
@@ -97,6 +98,8 @@ interface ThrRowProps {
 
 function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel }: ThrRowProps) {
   const mine = m.from === meStaffId;
+  const { isAdmin } = useAuth();
+  const canDelete = mine || isAdmin;
 
   const reactions = m.reactions || [];
   const tally: Record<string, number> = {};
@@ -168,6 +171,16 @@ function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel
                 </button>
               ))}
             </span>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => deleteThreadMessage(contactId, m.id)}
+              aria-label="Delete message"
+              title="Delete message"
+              className="w-6 h-6 grid place-items-center rounded-full text-on-surface-variant/60 hover:text-error hover:bg-surface-container-high transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
 

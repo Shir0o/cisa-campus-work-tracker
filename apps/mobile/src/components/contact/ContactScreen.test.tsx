@@ -138,6 +138,7 @@ describe('ContactScreen', () => {
     markPrayerAnswered: jest.fn(),
     postThreadMessage: jest.fn(),
     toggleReaction: jest.fn(),
+    deleteThreadMessage: jest.fn(),
     deleteInteraction: jest.fn(),
     addCollaborator: jest.fn().mockResolvedValue(undefined),
     removeCollaborator: jest.fn().mockResolvedValue(undefined),
@@ -682,6 +683,68 @@ describe('ContactScreen', () => {
         </ThemeProvider>,
       );
       expect(asFullTimer.getByText('FULLTIMER-ONLY-DISCUSSION')).toBeTruthy();
+    });
+  });
+
+  describe('deleting a thread message (#1126)', () => {
+    const mine: ThreadMessage = {
+      id: 'm-mine',
+      interactionId: null,
+      from: 'user1',
+      fromName: 'Staffer',
+      kind: 'comment',
+      body: 'MINE',
+      at: '2026-09-10T12:00:00.000Z',
+      reactions: [],
+    };
+    const theirs: ThreadMessage = {
+      id: 'm-theirs',
+      interactionId: null,
+      from: 'grace',
+      fromName: 'Grace Lee',
+      kind: 'comment',
+      body: 'THEIRS',
+      at: '2026-09-11T12:00:00.000Z',
+      reactions: [],
+    };
+
+    it('shows a delete affordance on the viewer\'s own message and deletes it', () => {
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'trainee' });
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: mockContact,
+        threadMessages: [mine, theirs],
+      });
+
+      const { getAllByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="alongside" />
+        </ThemeProvider>,
+      );
+
+      // Only the viewer's own message (MINE) is deletable — theirs is not.
+      const deletes = getAllByLabelText('Delete message');
+      expect(deletes).toHaveLength(1);
+      fireEvent.press(deletes[0]);
+      expect(baseLoadedData.deleteThreadMessage).toHaveBeenCalledWith(mine);
+    });
+
+    it('lets an admin delete anyone\'s message', () => {
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: mockContact,
+        threadMessages: [mine, theirs],
+      });
+
+      const { getAllByLabelText } = render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="alongside" />
+        </ThemeProvider>,
+      );
+
+      const deletes = getAllByLabelText('Delete message');
+      expect(deletes).toHaveLength(2);
     });
   });
 });

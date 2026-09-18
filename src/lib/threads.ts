@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   collectionGroup,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -424,6 +425,23 @@ export function daysOpen(m: Pick<ThreadMessage, "at">, now: number = Date.now())
   const t = new Date(m.at).getTime();
   if (Number.isNaN(t)) return 0;
   return Math.max(0, Math.floor((now - t) / 86_400_000));
+}
+
+/** Delete a single thread message. The Firestore rule permits only the author
+ *  or an admin (see firestore.rules), so this mirrors the rule's own gate. */
+export async function deleteThreadMessage(
+  contactId: string,
+  messageId: string,
+): Promise<void> {
+  try {
+    await deleteDoc(ref(contactId, messageId));
+  } catch (e) {
+    handleFirestoreError(
+      e,
+      OperationType.DELETE,
+      `contacts/${contactId}/threads/${messageId}`,
+    );
+  }
 }
 
 /** Toggle the current user's reaction (by + emoji) on a message. */

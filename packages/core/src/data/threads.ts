@@ -7,6 +7,7 @@ import {
   addDoc,
   collection,
   collectionGroup,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -55,6 +56,16 @@ export function subscribeThreads(
       ),
     (e) => (onError ? onError(e) : console.error("threads subscription error", e)),
   );
+}
+
+/** Delete a single thread message. The Firestore rule permits only the author
+ *  or an admin (see firestore.rules), so this mirrors the rule's own gate. */
+export async function deleteThreadMessage(
+  db: Firestore,
+  contactId: string,
+  messageId: string,
+): Promise<void> {
+  await deleteDoc(msgRef(db, contactId, messageId));
 }
 
 /** Toggle `by`'s reaction (emoji) on a message. */
