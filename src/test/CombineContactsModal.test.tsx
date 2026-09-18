@@ -98,6 +98,31 @@ describe('CombineContactsModal', () => {
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
   });
 
+  it('renders "Created" yyyy-mm-dd from string createdAt', () => {
+    render(<CombineContactsModal contacts={testContacts} onClose={vi.fn()} />);
+    expect(screen.getByText('Created: 2026-01-01')).toBeInTheDocument();
+    expect(screen.getByText('Created: 2026-02-01')).toBeInTheDocument();
+  });
+
+  it('renders "Created" yyyy-mm-dd from a Firestore Timestamp-shaped createdAt without crashing', () => {
+    const timestampContact: Contact = {
+      ...testContacts[0],
+      createdAt: { seconds: 1700000000, nanoseconds: 0 } as unknown as string,
+    };
+    render(<CombineContactsModal contacts={[timestampContact, testContacts[1]]} onClose={vi.fn()} />);
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.getByText('Created: 2023-11-14')).toBeInTheDocument();
+  });
+
+  it('renders "Created" yyyy-mm-dd from a numeric ms createdAt', () => {
+    const numericContact: Contact = {
+      ...testContacts[0],
+      createdAt: new Date('2025-06-15T00:00:00.000Z').getTime() as unknown as string,
+    };
+    render(<CombineContactsModal contacts={[numericContact, testContacts[1]]} onClose={vi.fn()} />);
+    expect(screen.getByText('Created: 2025-06-15')).toBeInTheDocument();
+  });
+
   it('applies batch changes and deletes duplicate on confirmation', async () => {
     const onClose = vi.fn();
     render(<CombineContactsModal contacts={testContacts} onClose={onClose} />);
