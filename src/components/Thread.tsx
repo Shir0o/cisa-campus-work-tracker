@@ -94,12 +94,15 @@ interface ThrRowProps {
    *  without hunting for it (#1012). */
   justPosted?: boolean;
   justPostedLabel?: string;
+  /** #1126 — hide the delete affordance on a parent that still has replies, so
+   *  deleting it cannot orphan them (they must be removed leaf-first). */
+  disableDelete?: boolean;
 }
 
-function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel }: ThrRowProps) {
+function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel, disableDelete }: ThrRowProps) {
   const mine = m.from === meStaffId;
   const { isAdmin } = useAuth();
-  const canDelete = mine || isAdmin;
+  const canDelete = (mine || isAdmin) && !disableDelete;
 
   const reactions = m.reactions || [];
   const tally: Record<string, number> = {};
@@ -331,6 +334,7 @@ function ThreadMsg({
         contactId={contactId}
         justPosted={!!highlightIds?.has(m.id)}
         justPostedLabel={highlightLabel}
+        disableDelete={replies.length > 0}
       >
         <button
           onClick={() => setReplying(!replying)}

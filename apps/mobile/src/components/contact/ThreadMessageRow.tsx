@@ -37,7 +37,7 @@ export function ThreadMessageRow({
   onToggleReaction: (messageId: string, emoji: string) => void;
   /** #1126 — a viewer may delete their own message; an admin may delete any. */
   canDelete: boolean;
-  onDelete: (messageId: string) => void;
+  onDelete: (message: ThreadMessage) => void;
 }) {
   const { c, font, fs } = useV2Theme();
   const mine = message.from === meUid;
@@ -73,7 +73,7 @@ export function ThreadMessageRow({
         </Text>
         {canDelete && (
           <Pressable
-            onPress={() => onDelete(message.id)}
+            onPress={() => onDelete(message)}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Delete message"

@@ -40,6 +40,7 @@ import {
   type Interaction,
   type PrayerRecord,
   type ThreadKind,
+  type ThreadMessage,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
@@ -156,6 +157,9 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
     void data.postThreadMessage({ interactionId, ...input });
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith('visit_') && (uid === interaction.userId || hasMinRole(role, 'manager'));
+  // #1126 — a viewer may delete their own message; an admin may delete any.
+  const canDeleteMessage = (message: ThreadMessage) => uid === message.from || isAdmin;
+  const deleteMessage = (message: ThreadMessage) => void data.deleteThreadMessage(message);
 
   const handleRemoveInteraction = (interaction: Interaction) => {
     // Match the web gate: team-scoped discussion messages don't count toward
@@ -349,8 +353,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                       nested
                       canReact={canWrite}
                       onToggleReaction={data.toggleReaction}
-                      canDelete={uid === m.from || isAdmin}
-                      onDelete={(messageId) => void data.deleteThreadMessage(m)}
+                      canDelete={canDeleteMessage(m)}
+                      onDelete={deleteMessage}
                     />
                   ))}
                   {canWrite && <ThreadCompose kinds={kinds} onPost={post(interaction.id)} />}
@@ -439,8 +443,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 }
                 canReact={canWrite}
                 onToggleReaction={data.toggleReaction}
-                canDelete={uid === m.from || isAdmin}
-                onDelete={(messageId) => void data.deleteThreadMessage(m)}
+                canDelete={canDeleteMessage(m)}
+                onDelete={deleteMessage}
               />
             ))}
             {canWrite && <ThreadCompose kinds={kinds} onPost={post(null)} minHeight={104} onRoom />}

@@ -129,6 +129,15 @@ describe("Thread", () => {
     expect(screen.getByRole("button", { name: "Delete message" })).toBeInTheDocument();
   });
 
+  it("hides the delete affordance on a parent that still has replies, so it cannot orphan them", () => {
+    hoisted.messages = [
+      message({ id: "p", from: "u1", fromName: "Tony Wang", body: "parent" }),
+      message({ id: "r", from: "u3", fromName: "Zion Park", body: "reply", parentId: "p" }),
+    ];
+    render(<Thread contactId="C-1" meStaffId="u1" />);
+    expect(screen.queryByRole("button", { name: "Delete message" })).toBeNull();
+  });
+
   it("renders an empty state when there are no messages", () => {
     render(<Thread contactId="C-1" meStaffId="u1" />);
     expect(
