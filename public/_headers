@@ -1,0 +1,30 @@
+# HTTP response headers for the Cloudflare Pages deployment -- issue #1121.
+#
+# robots.txt already asks crawlers not to crawl, but Disallow is advisory and
+# does not stop Google indexing a URL it learns about elsewhere -- and a
+# disallowed page is never fetched, so the meta noindex inside index.html is
+# never read either. X-Robots-Tag is the enforcing half of that pair: it rides
+# on the response, so a permalink someone pastes into a public channel still
+# stays out of the index. The two must agree; securityHeaders.test.ts asserts
+# they do.
+#
+# Cloudflare parses this file and applies it to STATIC ASSET responses only.
+# Pages Functions -- /api/* and the /__/auth/* helper proxy -- are untouched,
+# which is what keeps that proxy byte-transparent (functions/__/auth/[[path]].ts)
+# and is why X-Frame-Options can be DENY: the one same-origin iframe the app
+# loads is Firebase's auth helper, served by the Function, not from here.
+#
+# Deliberately absent:
+#   Content-Security-Policy    -- has to be built against the live Firebase,
+#                                 Cloud Run and Gemini origins and tested there;
+#                                 a guessed policy breaks sign-in silently.
+#   Cross-Origin-Opener-Policy -- `same-origin` breaks signInWithPopup, which is
+#                                 how Google sign-in works here (AuthProvider).
+
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
