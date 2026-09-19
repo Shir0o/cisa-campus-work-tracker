@@ -111,7 +111,7 @@ describe('AuthProvider', () => {
     });
   });
 
-  it('signs out and alerts an uninvited user who has no admin claim', async () => {
+  it('keeps an uninvited user signed in but unapproved (no alert, no users doc)', async () => {
     const mockUser = {
       uid: 'uninvited-uid',
       email: 'uninvited@example.com',
@@ -140,11 +140,14 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => {
-      expect(signOut).toHaveBeenCalled();
-      expect(window.alert).toHaveBeenCalledWith(
-        "Access Denied: Your account has not been added by an administrator yet."
-      );
-      expect(screen.getByText('Not logged in')).toBeInTheDocument();
+      // The user stays signed in but is never approved: the app renders the
+      // "Access Restricted" screen (via ProtectedRoute) instead of a jarring
+      // browser alert, and no users doc is created for an uninvited identity.
+      expect(signOut).not.toHaveBeenCalled();
+      expect(window.alert).not.toHaveBeenCalled();
+      expect(setDoc).not.toHaveBeenCalled();
+      expect(screen.getByText('User: uninvited@example.com')).toBeInTheDocument();
+      expect(screen.getByText('isApproved: false')).toBeInTheDocument();
     });
   });
 
