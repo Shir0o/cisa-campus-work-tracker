@@ -41,7 +41,7 @@ import {
   subscribeContactPrayers,
   updatePrayerStatus,
 } from './data/prayers';
-import { addThreadMessage, deleteThreadMessage as deleteThreadMessageApi, subscribeThreads, toggleReaction as toggleReactionApi } from './data/threads';
+import { addThreadMessage, deleteThreadMessage as deleteThreadMessageApi, subscribeThreads } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
@@ -227,11 +227,6 @@ export function useContactDetailData(contactId: string) {
           },
         },
       );
-    },
-
-    toggleReaction: async (messageId: string, emoji: string) => {
-      if (!uid) return;
-      await toggleReactionApi(contactId, messageId, uid, emoji);
     },
 
     deleteThreadMessage: async (message: ThreadMessage) => {

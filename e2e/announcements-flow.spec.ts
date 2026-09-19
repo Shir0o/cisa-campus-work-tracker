@@ -8,7 +8,7 @@ import { signInAs } from './helpers/auth';
  *  - Full-timer (admin): Announcement creation wizard (audience preset -> compose -> review -> send),
  *    pinned announcement, broadcasting to all members, viewing read receipts.
  *  - Trainee (manager): Rail sectioning (Announcements separated from Conversations),
- *    post card presentation (Full-timer badge, reactions, acknowledgement "Got it"),
+ *    post card presentation (Full-timer badge, acknowledgement "Got it"),
  *    guidance bar (top-level composer hidden for non-fulltimers), and thread replies.
  */
 test.describe('Announcements UI/UX Rework (#743)', () => {

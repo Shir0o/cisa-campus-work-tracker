@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Thread from "../components/Thread";
-import { addThreadMessage, deleteThreadMessage, toggleReaction } from "../lib/threads";
+import { addThreadMessage, deleteThreadMessage } from "../lib/threads";
 import { isTrainee } from "../lib/walking";
 
 const hoisted = vi.hoisted(() => ({ messages: [] as any[], isAdmin: false }));
@@ -21,7 +21,6 @@ vi.mock("../lib/threads", () => {
   const norm = (v: any) => v ?? null;
   return {
     THREAD_KINDS,
-    THREAD_REACTIONS: ["❤️"],
     threadsFor: (msgs: any[], iid: any = null, scope: any = null) =>
       msgs.filter((m) => norm(m.interactionId) === norm(iid) && norm(m.scope) === norm(scope) && !m.parentId),
     countFor: (msgs: any[], iid: any = null, scope: any = null) =>
@@ -30,7 +29,6 @@ vi.mock("../lib/threads", () => {
     useThreads: () => hoisted.messages,
     addThreadMessage: vi.fn(() => Promise.resolve()),
     deleteThreadMessage: vi.fn(() => Promise.resolve()),
-    toggleReaction: vi.fn(() => Promise.resolve()),
   };
 });
 
@@ -54,7 +52,6 @@ const message = (over: any) => ({
   kind: "note",
   body: "body",
   at: new Date().toISOString(),
-  reactions: [],
   ...over,
 });
 
@@ -95,16 +92,6 @@ describe("Thread", () => {
       },
       { to: null, contactName: undefined },
     );
-  });
-
-  it("toggles a reaction on a message", async () => {
-    hoisted.messages = [message({ id: "a", from: "u3", reactions: [] })];
-    render(<Thread contactId="C-1" meStaffId="u1" />);
-    const addButtons = screen.getAllByTitle("Add reaction");
-    expect(addButtons).toHaveLength(1);
-    expect(addButtons[0]).toHaveTextContent("❤️");
-    await userEvent.click(addButtons[0]);
-    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
   });
 
   // #1126 — a viewer may delete their own message; an admin may delete any.
@@ -148,18 +135,6 @@ describe("Thread", () => {
   it("renders the compact empty state for the inline per-interaction variant", () => {
     render(<Thread contactId="C-1" interactionId="I-1" meStaffId="u1" compact />);
     expect(screen.getByText("No comments on this interaction yet.")).toBeInTheDocument();
-  });
-
-  it("shows reaction tallies and toggles the viewer's existing reaction", async () => {
-    hoisted.messages = [
-      message({ id: "a", from: "u3", reactions: [{ by: "u1", emoji: "❤️" }] }),
-    ];
-    render(<Thread contactId="C-1" meStaffId="u1" />);
-    const tallyButton = screen.getByTitle("React");
-    expect(tallyButton).toHaveTextContent("❤️");
-    expect(tallyButton).toHaveTextContent("1");
-    await userEvent.click(tallyButton);
-    expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
   });
 
   it("posts with ⌘↵ from the textarea", async () => {

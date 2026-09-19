@@ -1,6 +1,6 @@
 // Mobile v2 — one message in a person's thread. The design's `M2ThreadMsg`
 // (views/mobile/contact.jsx `.m2c-msg`): who · what kind · how long ago, the
-// words, then the four reactions.
+// words.
 //
 // A `nudge` keeps its own tint, as it does everywhere else in the app — it's a
 // follow-up someone is waiting on, not a remark.
@@ -8,7 +8,6 @@ import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   THREAD_KINDS,
-  THREAD_REACTIONS,
   firstName,
   relTime,
   type ThreadMessage,
@@ -21,8 +20,6 @@ export function ThreadMessageRow({
   meUid,
   about,
   nested,
-  canReact,
-  onToggleReaction,
   canDelete,
   onDelete,
 }: {
@@ -33,8 +30,6 @@ export function ThreadMessageRow({
   about?: string | null;
   /** Inside an expanded Story conversation, where the card is already white. */
   nested?: boolean;
-  canReact: boolean;
-  onToggleReaction: (messageId: string, emoji: string) => void;
   /** #1126 — a viewer may delete their own message; an admin may delete any. */
   canDelete: boolean;
   onDelete: (message: ThreadMessage) => void;
@@ -93,39 +88,6 @@ export function ThreadMessageRow({
       <Text style={{ fontFamily: font.medium, fontSize: fs(15), lineHeight: fs(22.5), color: c.card.said, marginTop: 11 }}>
         {message.body}
       </Text>
-
-      <View style={{ flexDirection: 'row', gap: 7, marginTop: 14 }}>
-        {THREAD_REACTIONS.map((emoji) => {
-          const on = (message.reactions ?? []).some((r) => r.by === meUid && r.emoji === emoji);
-          const count = (message.reactions ?? []).filter((r) => r.emoji === emoji).length;
-          return (
-            <Pressable
-              key={emoji}
-              onPress={() => canReact && onToggleReaction(message.id, emoji)}
-              disabled={!canReact}
-              style={({ pressed }) => ({
-                minWidth: 44,
-                height: 38,
-                paddingHorizontal: 8,
-                borderRadius: 12,
-                borderWidth: 1.5,
-                borderColor: on ? c.card.reactOnBorder : c.card.line,
-                backgroundColor: on ? c.card.reactOnBg : c.card.react,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ fontSize: fs(15) }}>{emoji}</Text>
-              {count > 1 && (
-                <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.card.ink2 }}>{count}</Text>
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
     </View>
   );
 }

@@ -652,7 +652,6 @@ describe('Around the team — the conversation in place, and one state (#1012)',
       kind: 'comment',
       body: 'She said she would come Thursday.',
       at: now,
-      reactions: [],
       ...over,
     }) as ThreadMessageWithContact;
 

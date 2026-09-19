@@ -18,7 +18,6 @@ import {
   addAskReply,
   deleteAsk,
   deleteAskReply,
-  toggleAskReaction,
   AskMessage,
 } from '../lib/asks';
 import * as firestore from 'firebase/firestore';
@@ -41,7 +40,6 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn(),
   getDocs: vi.fn(),
   writeBatch: vi.fn(),
-  runTransaction: vi.fn(),
 }));
 
 describe('src/lib/asks.ts full coverage', () => {
@@ -59,7 +57,6 @@ describe('src/lib/asks.ts full coverage', () => {
       kind: 'question',
       body: 'Question 1',
       at: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
-      reactions: [{ by: 'u1', emoji: '👍' }],
     },
     {
       id: 'r1',
@@ -70,7 +67,6 @@ describe('src/lib/asks.ts full coverage', () => {
       kind: 'comment',
       body: 'Answer from Mei',
       at: new Date(Date.now() - 86400000 * 2).toISOString(),
-      reactions: [],
     },
     {
       id: 'q2',
@@ -83,7 +79,6 @@ describe('src/lib/asks.ts full coverage', () => {
       kind: 'question',
       body: 'Question 2 in person',
       at: new Date().toISOString(), // today
-      reactions: [],
     },
     {
       id: 'q3',
@@ -94,7 +89,6 @@ describe('src/lib/asks.ts full coverage', () => {
       kind: 'question',
       body: 'Question 3',
       at: new Date(Date.now() - 86400000).toISOString(), // yesterday
-      reactions: [],
     },
   ];
 
@@ -299,53 +293,6 @@ describe('src/lib/asks.ts full coverage', () => {
     expect(firebaseLib.handleFirestoreError).toHaveBeenCalled();
   });
 
-  it('toggles ask reaction through transaction', async () => {
-    let transactionRunner: any;
-    (firestore.runTransaction as any).mockImplementation((_db: any, fn: any) => {
-      transactionRunner = fn;
-      return fn({
-        get: vi.fn().mockResolvedValue({
-          exists: () => true,
-          data: () => ({ reactions: [{ by: 'u1', emoji: '👍' }] }),
-        }),
-        update: vi.fn(),
-      });
-    });
-
-    // Remove existing reaction
-    await toggleAskReaction('q1', 'u1', '👍');
-    expect(firestore.runTransaction).toHaveBeenCalled();
-
-    // Add new reaction
-    (firestore.runTransaction as any).mockImplementation((_db: any, fn: any) => {
-      return fn({
-        get: vi.fn().mockResolvedValue({
-          exists: () => true,
-          data: () => ({ reactions: [] }),
-        }),
-        update: vi.fn(),
-      });
-    });
-    await toggleAskReaction('q1', 'u2', '❤️');
-    expect(firestore.runTransaction).toHaveBeenCalled();
-
-    // Non-existent doc
-    (firestore.runTransaction as any).mockImplementation((_db: any, fn: any) => {
-      return fn({
-        get: vi.fn().mockResolvedValue({
-          exists: () => false,
-        }),
-        update: vi.fn(),
-      });
-    });
-    await toggleAskReaction('q1', 'u2', '❤️');
-
-    // Error in transaction
-    (firestore.runTransaction as any).mockRejectedValueOnce(new Error('tx fail'));
-    await toggleAskReaction('q1', 'u2', '❤️');
-    expect(firebaseLib.handleFirestoreError).toHaveBeenCalled();
-  });
-
   it('correctly reports askOrigin across different viewers and origin types', () => {
     const direct: AskMessage = {
       id: 'd1',
@@ -356,7 +303,6 @@ describe('src/lib/asks.ts full coverage', () => {
       kind: 'question',
       body: 'Direct question',
       at: new Date().toISOString(),
-      reactions: [],
     };
 
     // Viewed by other

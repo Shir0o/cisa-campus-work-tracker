@@ -38,7 +38,6 @@ const mockMessages = [
     kind: "question",
     body: "How do you start a conversation at the club table?",
     at: "2026-08-01T10:00:00.000Z",
-    reactions: [],
   },
   {
     id: "q2",
@@ -51,7 +50,6 @@ const mockMessages = [
     kind: "question",
     body: "Question recorded in person",
     at: "2026-08-02T10:00:00.000Z",
-    reactions: [],
   },
   {
     id: "q3",
@@ -62,7 +60,6 @@ const mockMessages = [
     kind: "question",
     body: "What do we do about the club table flyers?",
     at: "2026-08-03T10:00:00.000Z",
-    reactions: [],
   },
   {
     id: "q1r1",
@@ -73,7 +70,6 @@ const mockMessages = [
     kind: "comment",
     body: "Ask what they're studying first.",
     at: "2026-08-01T11:00:00.000Z",
-    reactions: [],
   },
 ];
 

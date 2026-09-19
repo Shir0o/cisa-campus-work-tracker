@@ -21,7 +21,6 @@ const threads: ThreadMessageWithContact[] = [
     kind: 'note',
     body: 'An ordinary note.',
     at: '2026-09-01T00:00:00.000Z',
-    reactions: [],
   },
   {
     id: 'team',
@@ -33,7 +32,6 @@ const threads: ThreadMessageWithContact[] = [
     kind: 'comment',
     body: 'Full-timer-only discussion.',
     at: '2026-09-02T00:00:00.000Z',
-    reactions: [],
   },
   {
     id: 'interaction',
@@ -45,7 +43,6 @@ const threads: ThreadMessageWithContact[] = [
     kind: 'comment',
     body: 'A note on one conversation.',
     at: '2026-09-03T00:00:00.000Z',
-    reactions: [],
   },
 ];
 

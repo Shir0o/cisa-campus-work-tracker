@@ -137,7 +137,6 @@ describe('ContactScreen', () => {
     addPrayer: jest.fn(),
     markPrayerAnswered: jest.fn(),
     postThreadMessage: jest.fn(),
-    toggleReaction: jest.fn(),
     deleteThreadMessage: jest.fn(),
     deleteInteraction: jest.fn(),
     addCollaborator: jest.fn().mockResolvedValue(undefined),
@@ -289,7 +288,7 @@ describe('ContactScreen', () => {
     it('asks for confirmation when the interaction has thread messages', () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       const { getByText } = renderStory({
-        threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z', reactions: [] }] as ThreadMessage[],
+        threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' }] as ThreadMessage[],
       });
 
       fireEvent.press(getByText('Remove'));
@@ -307,7 +306,7 @@ describe('ContactScreen', () => {
         buttons?.[1]?.onPress?.();
       });
       const { queryByText, getByText } = renderStory({
-        threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z', reactions: [] }] as ThreadMessage[],
+        threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' }] as ThreadMessage[],
       });
 
       fireEvent.press(getByText('Remove'));
@@ -609,7 +608,6 @@ describe('ContactScreen', () => {
       kind: 'comment',
       body: 'FULLTIMER-ONLY-DISCUSSION',
       at: '2026-09-10T12:00:00.000Z',
-      reactions: [],
     };
     const openMessage: ThreadMessage = {
       id: 'm-open',
@@ -619,7 +617,6 @@ describe('ContactScreen', () => {
       kind: 'comment',
       body: 'ORDINARY-COMMENT',
       at: '2026-09-11T12:00:00.000Z',
-      reactions: [],
     };
 
     it.each([
@@ -695,7 +692,6 @@ describe('ContactScreen', () => {
       kind: 'comment',
       body: 'MINE',
       at: '2026-09-10T12:00:00.000Z',
-      reactions: [],
     };
     const theirs: ThreadMessage = {
       id: 'm-theirs',
@@ -705,7 +701,6 @@ describe('ContactScreen', () => {
       kind: 'comment',
       body: 'THEIRS',
       at: '2026-09-11T12:00:00.000Z',
-      reactions: [],
     };
 
     it('shows a delete affordance on the viewer\'s own message and deletes it', () => {

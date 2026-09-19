@@ -641,7 +641,7 @@ describeRules('Firestore Security Rules', () => {
       await seedVisibleToUsers();
       const msg = (over: Record<string, unknown> = {}) => ({
         from: 'manager1', fromName: 'Trainee', kind: 'comment', body: 'hello',
-        at: new Date().toISOString(), reactions: [], interactionId: null, ...over,
+        at: new Date().toISOString(), interactionId: null, ...over,
       });
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const fs = context.firestore();
@@ -1750,10 +1750,10 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
     });
 
-    // ── message-level acts: react, pin, take back for everyone ──────────────
-    // A sent message is immutable except for `reactions` / `pinned` / `deleted`
-    // (the Field Notes design's desktop thread). Anyone in the room can react
-    // and pin; only the author or a Full-timer can leave the `deleted`
+    // ── message-level acts: pin, take back for everyone ────────────────────────
+    // A sent message is immutable except for `pinned` / `deleted`
+    // (the Field Notes design's desktop thread). Anyone in the room can pin;
+    // only the author or a Full-timer can leave the `deleted`
     // tombstone, and a tombstone stays.
     const seedMsg = async (roomId: string, msgId: string, senderId: string, over: Record<string, unknown> = {}) => {
       await testEnv.withSecurityRulesDisabled(async (c) => {
@@ -1765,15 +1765,10 @@ describeRules('Firestore Security Rules', () => {
       });
     };
 
-    it('MSG1: any room member can react to or pin a message', async () => {
+    it('MSG1: any room member can pin a message', async () => {
       await seedMemberUsers();
       await seedRoom('room1', 'group');
       await seedMsg('room1', 'm1', 'ft1');
-      await assertSucceeds(
-        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          reactions: [{ by: 'student1', emoji: '🙏' }],
-        }),
-      );
       await assertSucceeds(
         updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
           pinned: true,
@@ -1822,7 +1817,7 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
-    it('MSG4: a tombstone stays — no undelete, and no reacting to a gone message', async () => {
+    it('MSG4: a tombstone stays — no undelete, and no pinning a gone message', async () => {
       await seedMemberUsers();
       await seedRoom('room1', 'group');
       await seedMsg('room1', 'm1', 'ft1', { deleted: { by: 'ft1', at: new Date().toISOString() } });
@@ -1833,23 +1828,17 @@ describeRules('Firestore Security Rules', () => {
       );
       await assertFails(
         updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
-          reactions: [{ by: 'student1', emoji: '🙏' }],
+          pinned: true,
         }),
       );
     });
 
-    it('MSG4b: a tombstone write cannot also change reactions or pinned — the acts are separate', async () => {
+    it('MSG4b: a tombstone write cannot also change pinned — the acts are separate', async () => {
       await seedMemberUsers();
       await seedRoom('room1', 'group');
       await seedMsg('room1', 'm1', 'ft1');
-      // The author may tombstone, but not in the same write as a reaction/pin
-      // change — a gone message can't be reacted to or pinned, even mid-write.
-      await assertFails(
-        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
-          deleted: { by: 'ft1', at: new Date().toISOString() },
-          reactions: [{ by: 'ft1', emoji: '🙏' }],
-        }),
-      );
+      // The author may tombstone, but not in the same write as a pin change —
+      // a gone message can't be pinned, even mid-write.
       await assertFails(
         updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
           deleted: { by: 'ft1', at: new Date().toISOString() },
@@ -1912,13 +1901,13 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
-    it('MSG5: a non-member cannot react to or pin a message', async () => {
+    it('MSG5: a non-member cannot pin a message', async () => {
       await seedMemberUsers();
       await seedRoom('room1', 'group');
       await seedMsg('room1', 'm1', 'ft1');
       await assertFails(
         updateDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/m1'), {
-          reactions: [{ by: 'student2', emoji: '🙏' }],
+          pinned: true,
         }),
       );
     });
@@ -1999,7 +1988,6 @@ describeRules('Firestore Security Rules', () => {
       kind: 'question',
       body: 'How do I start a conversation at the club table?',
       at: new Date().toISOString(),
-      reactions: [],
       ...over,
     });
     const seedAsk = async (id: string, over: Record<string, unknown> = {}) => {
@@ -2080,7 +2068,6 @@ describeRules('Firestore Security Rules', () => {
           kind: 'comment',
           body: 'Three tries, spread out.',
           at: new Date().toISOString(),
-          reactions: [],
         }),
       );
     });
@@ -2118,11 +2105,11 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDocs(query(collection(student, 'asks'), where('owner', '==', 'student1'))));
     });
 
-    it('ASK7: a full-timer toggles a reaction on an answer', async () => {
+    it('ASK7: reaction writes are rejected — the reactions field is gone', async () => {
       await seedAskUsers();
       await seedAsk('ask9');
       const db = getFirestore({ uid: 'ft1' });
-      await assertSucceeds(
+      await assertFails(
         updateDoc(doc(db, 'asks', 'ask9'), {
           reactions: [{ by: 'ft1', emoji: '🙏' }],
         }),
@@ -2207,7 +2194,6 @@ describeRules('Firestore Security Rules', () => {
       kind: 'comment',
       body: 'walking with you',
       at: new Date().toISOString(),
-      reactions: [],
       interactionId: null,
       ...over,
     });
@@ -2309,7 +2295,7 @@ describeRules('Firestore Security Rules', () => {
       });
     });
 
-    it('lets the author create a message (from == uid, empty reactions)', async () => {
+    it('lets the author create a message (from == uid)', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'operator1' });
       await assertSucceeds(setDoc(doc(db, 'contacts/contact1/threads/th1'), newMsg()));
@@ -2321,20 +2307,17 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th2'), newMsg({ from: 'operator2' })));
     });
 
-    it('rejects creating with pre-seeded reactions or an oversized body', async () => {
+    it('rejects creating with an oversized body', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'operator1' });
-      await assertFails(
-        setDoc(doc(db, 'contacts/contact1/threads/th3'), newMsg({ reactions: [{ by: 'operator1', emoji: '🙏' }] })),
-      );
       await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th4'), newMsg({ body: 'a'.repeat(6000) })));
     });
 
-    it('lets any approved operator toggle the reactions array', async () => {
+    it('rejects reaction writes — the reactions field is gone', async () => {
       await seedThreadUsers();
       await seedMsg('th10');
       const db = getFirestore({ uid: 'operator2' });
-      await assertSucceeds(
+      await assertFails(
         updateDoc(doc(db, 'contacts/contact1/threads/th10'), { reactions: [{ by: 'operator2', emoji: '🙏' }] }),
       );
     });

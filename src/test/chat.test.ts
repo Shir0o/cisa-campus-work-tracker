@@ -45,7 +45,6 @@ import {
   sendMessage,
   inviteToGroup,
   leaveGroup,
-  reactToMessage,
   togglePinMessage,
   removeMessageForEveryone,
   deleteChatRoom,
@@ -551,22 +550,6 @@ describe('chat.ts services', () => {
         senderName: 'System',
         timestamp: 'SERVER_TS',
         type: 'system'
-      });
-    });
-  });
-
-  describe('reactToMessage', () => {
-    it('adds a reaction the user has not given yet', async () => {
-      await reactToMessage('r1', 'm1', 'u1', '🙏', []);
-      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
-        reactions: [{ by: 'u1', emoji: '🙏' }],
-      });
-    });
-
-    it('removes a reaction the user already gave (toggle off)', async () => {
-      await reactToMessage('r1', 'm1', 'u1', '🙏', [{ by: 'u1', emoji: '🙏' }, { by: 'u2', emoji: '❤️' }]);
-      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
-        reactions: [{ by: 'u2', emoji: '❤️' }],
       });
     });
   });

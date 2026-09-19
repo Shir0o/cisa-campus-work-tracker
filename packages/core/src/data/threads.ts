@@ -1,7 +1,7 @@
 // "Walking together" thread reads/writes — shared Firestore logic behind an
 // injected `db`. Covers both the team-wide feed My Day's inbox uses
 // (subscribeAllThreads, addThreadMessage) and the per-contact
-// subscription/reaction toggle the Contact Detail screen's <Thread> view
+// subscription the Contact Detail screen's <Thread> view
 // needs. Mirrors the web app's src/lib/threads.ts.
 import {
   addDoc,
@@ -12,7 +12,6 @@ import {
   onSnapshot,
   orderBy,
   query,
-  runTransaction,
   type Firestore,
 } from "firebase/firestore";
 import {
@@ -22,7 +21,6 @@ import {
   type ThreadKind,
   type ThreadMessage,
   type ThreadMessageWithContact,
-  type ThreadReaction,
 } from "../threads";
 
 const col = (db: Firestore, contactId: string) => collection(db, "contacts", contactId, "threads");
@@ -50,7 +48,6 @@ export function subscribeThreads(
             kind: (data.kind as ThreadKind) ?? "comment",
             body: data.body ?? "",
             at: data.at ?? new Date().toISOString(),
-            reactions: Array.isArray(data.reactions) ? data.reactions : [],
           };
         }),
       ),
@@ -66,26 +63,6 @@ export async function deleteThreadMessage(
   messageId: string,
 ): Promise<void> {
   await deleteDoc(msgRef(db, contactId, messageId));
-}
-
-/** Toggle `by`'s reaction (emoji) on a message. */
-export async function toggleReaction(
-  db: Firestore,
-  contactId: string,
-  messageId: string,
-  by: string,
-  emoji: string,
-): Promise<void> {
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(msgRef(db, contactId, messageId));
-    if (!snap.exists()) return;
-    const reactions = (snap.data().reactions as ThreadReaction[]) ?? [];
-    const has = reactions.some((r) => r.by === by && r.emoji === emoji);
-    const next = has
-      ? reactions.filter((r) => !(r.by === by && r.emoji === emoji))
-      : [...reactions, { by, emoji }];
-    tx.update(msgRef(db, contactId, messageId), { reactions: next });
-  });
 }
 
 /** Live subscription to every thread message across all contacts, tagged with contactId. */
@@ -109,7 +86,6 @@ export function subscribeAllThreads(
             kind: (data.kind as ThreadKind) ?? "comment",
             body: data.body ?? "",
             at: data.at ?? new Date().toISOString(),
-            reactions: Array.isArray(data.reactions) ? data.reactions : [],
           };
         }),
       ),
@@ -149,7 +125,6 @@ export async function addThreadMessage(
     kind: input.kind,
     body,
     at: new Date().toISOString(),
-    reactions: [] as ThreadReaction[],
   });
   if (!onNotify) return;
 

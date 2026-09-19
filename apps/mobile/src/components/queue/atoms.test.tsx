@@ -1,7 +1,7 @@
 // atoms tests — the small pieces every v2 focus card is built from
 // (components/queue/atoms.tsx). Behavioral seams: what renders, what fires on
 // press, and the optional bits that change what shows (ago on a ToneBadge, sub
-// on a WhoBlock, detail on an AboutChip, a mine-highlighted reaction).
+// on a WhoBlock, detail on an AboutChip).
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -15,7 +15,6 @@ import {
   PersonMark,
   PrimaryButton,
   Quote,
-  Reactions,
   Said,
   SecondaryButton,
   ToneBadge,
@@ -138,19 +137,6 @@ describe('AboutChip', () => {
       </ThemeProvider>,
     );
     expect(queryByText('· Sophomore')).toBeNull();
-  });
-});
-
-describe('Reactions', () => {
-  it('renders every option and reports the picked emoji', () => {
-    const onPick = jest.fn();
-    const { getByText } = renderV2(<Reactions options={['🙏', '❤️']} mine={['🙏']} onPick={onPick} />);
-
-    expect(getByText('🙏')).toBeTruthy();
-    expect(getByText('❤️')).toBeTruthy();
-
-    fireEvent.press(getByText('❤️'));
-    expect(onPick).toHaveBeenCalledWith('❤️');
   });
 });
 

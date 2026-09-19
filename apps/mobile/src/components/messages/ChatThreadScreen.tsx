@@ -2,13 +2,12 @@
 // (views/mobile/screens2.jsx): bubbles, mine on the right, a sender chip where
 // more than two people are talking, and a way into the person's page from a DM.
 //
-// Reactions and the "kept" pin exist in the shared schema now
-// (`packages/core` — `ChatMessage.reactions`/`pinned`, with `firestore.rules`
-// allowing those field-level updates), and the desktop web app ports them, but
-// this screen deliberately stays as the design's core thread: the design's
-// per-message reactions and pin strip live on the desktop messages page, and
-// the mobile port keeps M2Thread minimal. When the mobile app grows them, they
-// can read `message.reactions`/`message.pinned` off the same docs.
+// The "kept" pin exists in the shared schema now (`packages/core` —
+// `ChatMessage.pinned`, with `firestore.rules` allowing that field-level
+// update), and the desktop web app ports it, but this screen deliberately stays
+// as the design's core thread: the design's pin strip lives on the desktop
+// messages page, and the mobile port keeps M2Thread minimal. When the mobile
+// app grows them, it can read `message.pinned` off the same docs.
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,

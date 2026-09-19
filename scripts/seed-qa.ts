@@ -446,13 +446,13 @@ async function seed() {
   }
 
   const threads = [
-    { id: 'TH-1', contactId: 'C-0167', interactionId: null, from: 'u1', kind: 'encouragement', body: 'Zion — this is a beautiful first contact. You asked her the realest question of the semester and just listened. Keep going.', at: iso(1), reactions: [{ by: 'u3', emoji: '🙏' }] },
-    { id: 'TH-2', contactId: 'C-0167', interactionId: 'I-9004', from: 'u3', kind: 'question', body: 'She asked me why God lets suffering happen and I froze a little. How would you have answered in the moment — or is freezing okay?', at: iso(0, 20), reactions: [] },
-    { id: 'TH-3', contactId: 'C-0167', interactionId: 'I-9004', from: 'u1', kind: 'comment', body: 'Freezing is honest — don\'t rush to fix it. Next time try: “I don\'t have a clean answer, but I\'d love to sit in that with you.” Then keep showing up. Slow is faithful.', at: iso(0, 16), reactions: [{ by: 'u3', emoji: '❤️' }] },
-    { id: 'TH-4', contactId: 'C-0171', interactionId: null, from: 'u1', kind: 'nudge', body: 'Don\'t forget the Thursday coffee with Rio — want me to come along, or you\'ve got it?', at: iso(0, 6), reactions: [] },
-    { id: 'TH-5', contactId: 'C-0234', interactionId: null, from: 'u3', kind: 'note', body: 'Kofi mentioned his roommate keeps asking him about God. Feels like there might be two people to reach here, not one.', at: iso(0, 3), reactions: [] },
-    { id: 'TH-T1', contactId: 'C-0167', interactionId: null, from: 'u1', kind: 'comment', scope: 'team', body: "Between us: Lila's questions are further along than her Sunday attendance suggests. I don't want to rush her into a leader track, but she's ready for a real study.", at: iso(1, 6), reactions: [] },
-    { id: 'TH-T2', contactId: 'C-0167', interactionId: null, from: 'u2', kind: 'comment', scope: 'team', body: "Agreed. Her roommate situation is the pressure point — if that blows up she'll go quiet for a month. Worth one of us checking in mid-week rather than waiting for the gathering.", at: iso(1, 2), reactions: [{ by: 'u1', emoji: '🙏' }] },
+    { id: 'TH-1', contactId: 'C-0167', interactionId: null, from: 'u1', kind: 'encouragement', body: 'Zion — this is a beautiful first contact. You asked her the realest question of the semester and just listened. Keep going.', at: iso(1) },
+    { id: 'TH-2', contactId: 'C-0167', interactionId: 'I-9004', from: 'u3', kind: 'question', body: 'She asked me why God lets suffering happen and I froze a little. How would you have answered in the moment — or is freezing okay?', at: iso(0, 20) },
+    { id: 'TH-3', contactId: 'C-0167', interactionId: 'I-9004', from: 'u1', kind: 'comment', body: 'Freezing is honest — don\'t rush to fix it. Next time try: “I don\'t have a clean answer, but I\'d love to sit in that with you.” Then keep showing up. Slow is faithful.', at: iso(0, 16) },
+    { id: 'TH-4', contactId: 'C-0171', interactionId: null, from: 'u1', kind: 'nudge', body: 'Don\'t forget the Thursday coffee with Rio — want me to come along, or you\'ve got it?', at: iso(0, 6) },
+    { id: 'TH-5', contactId: 'C-0234', interactionId: null, from: 'u3', kind: 'note', body: 'Kofi mentioned his roommate keeps asking him about God. Feels like there might be two people to reach here, not one.', at: iso(0, 3) },
+    { id: 'TH-T1', contactId: 'C-0167', interactionId: null, from: 'u1', kind: 'comment', scope: 'team', body: "Between us: Lila's questions are further along than her Sunday attendance suggests. I don't want to rush her into a leader track, but she's ready for a real study.", at: iso(1, 6) },
+    { id: 'TH-T2', contactId: 'C-0167', interactionId: null, from: 'u2', kind: 'comment', scope: 'team', body: "Agreed. Her roommate situation is the pressure point — if that blows up she'll go quiet for a month. Worth one of us checking in mid-week rather than waiting for the gathering.", at: iso(1, 2) },
   ] as const;
   for (const t of threads) {
     const { contactId, id, from, ...data } = t;
@@ -462,7 +462,6 @@ async function seed() {
         fromName: staffName(from),
         ...data,
         interactionId: data.interactionId,
-        reactions: data.reactions.map((r) => ({ by: staffUid(r.by), emoji: r.emoji })),
       },
       { merge: true },
     );
@@ -830,8 +829,8 @@ Set the rhythm for the week. Quieter outreach week with midterms landing — lea
     { roomId: 'M-4', id: 'm-4-4', from: 'u4', text: 'Good flag, thank you. I\'ll keep an eye out for him at small group.', daysAgo: 2 },
     { roomId: 'M-4', id: 'm-4-5', from: 'u3', text: 'Org fair follow-ups are trickling in — 3 new signups this week, all pretty cold contacts so go slow', hoursAgo: 10 },
     { roomId: 'M-4', id: 'm-4-6', from: 'u1', text: 'Great work this week, all of you. Truly.', hoursAgo: 3 },
-    { roomId: 'M-5', id: 'm-5-1', from: 'u1', text: 'Retreat sign-ups close this Sunday — if you\'ve got students on the fence, now\'s the week to ask them in person. Link\'s in the usual spot.', daysAgo: 2, reactions: [{ by: 'u2', emoji: '🙏' }, { by: 'u4', emoji: '🙌' }] },
-    { roomId: 'M-6', id: 'm-6-1', from: 'u1', text: 'This Friday, 7:00 in the Lower Common Room — worship, a short talk, and dinner after. Bring a friend, we\'d love to meet them 💛', daysAgo: 1, reactions: [{ by: 'student', emoji: '🙏' }, { by: 'u3', emoji: '❤️' }, { by: 'community', emoji: '🙌' }] },
+    { roomId: 'M-5', id: 'm-5-1', from: 'u1', text: 'Retreat sign-ups close this Sunday — if you\'ve got students on the fence, now\'s the week to ask them in person. Link\'s in the usual spot.', daysAgo: 2 },
+    { roomId: 'M-6', id: 'm-6-1', from: 'u1', text: 'This Friday, 7:00 in the Lower Common Room — worship, a short talk, and dinner after. Bring a friend, we\'d love to meet them 💛', daysAgo: 1 },
     { roomId: 'M-7', id: 'm-7-1', from: 'community', text: 'Hi Zion! We\'d love to have a few students over for dinner again this month — any faces you think would enjoy it?', daysAgo: 5 },
     { roomId: 'M-7', id: 'm-7-2', from: 'u3', text: 'This means so much, thank you. I\'ll ask Kofi and Rio — both pretty new and could use a warm table.', daysAgo: 4 },
     { roomId: 'M-7', id: 'm-7-3', from: 'community', text: 'Wonderful. Does the 14th work? We\'ll do the usual 6:30.', daysAgo: 1 },
@@ -840,7 +839,7 @@ Set the rhythm for the week. Quieter outreach week with midterms landing — lea
     { roomId: 'M-8', id: 'm-8-3', from: 'student', text: 'makes sense, thank you!', daysAgo: 2 },
   ];
   for (const m of messages) {
-    const { roomId, id, from, text, reactions = [] } = m;
+    const { roomId, id, from, text } = m;
     await db.collection('chatRooms').doc(roomId).collection('messages').doc(id).set(
       {
         roomId,
@@ -851,7 +850,6 @@ Set the rhythm for the week. Quieter outreach week with midterms landing — lea
         timestamp: 'hoursAgo' in m ? iso(0, m.hoursAgo as number) : iso(m.daysAgo as number),
         type: 'text',
         attachments: [],
-        reactions: reactions.map((r) => ({ by: uidOf(r.by), emoji: r.emoji })),
       },
       { merge: true },
     );

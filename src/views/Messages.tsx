@@ -44,7 +44,6 @@ import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
 import {
   sendMessage,
-  reactToMessage,
   togglePinMessage,
   removeMessageForEveryone,
   deleteChatRoom,
@@ -67,9 +66,6 @@ import { Translate } from '../components/Translate';
 import { useTranslate } from '../hooks/useTranslate';
 import { MsgThreadPane } from '../components/messages/MsgThreadPane';
 import { convTopLevel, convReplyCount, convRepliers, convLastReply } from '../services/chat';
-
-// The Field Notes design's quick reactions (views/messages.jsx).
-const QUICK_REACTS = ["🙏", "❤️", "🌱", "👍", "🙌"];
 
 /** Can this viewer take the message back for everyone? Its author, or a
  *  Full-timer — the same gate firestore.rules applies to the `deleted` field. */
@@ -962,9 +958,6 @@ export default function Messages() {
                   const isMe = msg.senderId === effectiveUid;
                   const isSys = msg.type === 'system';
                   const gone = !!msg.deleted;
-                  const tally: Record<string, number> = {};
-                  (msg.reactions || []).forEach((r) => { tally[r.emoji] = (tally[r.emoji] || 0) + 1; });
-                  const mineReacted = (emoji: string) => (msg.reactions || []).some((r) => r.by === effectiveUid && r.emoji === emoji);
                   const canAll = canRemoveForEveryone(msg, effectiveUid, isAdmin);
                   const menuOpen = menuFor === msg.id;
 
@@ -1075,19 +1068,6 @@ export default function Messages() {
                               ? t('modals.you_said_got_it', 'You said got it')
                               : t('modals.got_it', 'Got it')}
                           </button>
-
-                          {/* Quick Reactions */}
-                          {QUICK_REACTS.slice(0, 4).map((e) => (
-                            <button
-                              key={e}
-                              type="button"
-                              className={cn("react", mineReacted(e) && "on")}
-                              onClick={() => effectiveUid && reactToMessage(activeRoomId!, msg.id, effectiveUid, e, msg.reactions || [])}
-                            >
-                              <span>{e}</span>
-                              {tally[e] ? <span className="n">{tally[e]}</span> : null}
-                            </button>
-                          ))}
 
                           {/* Reply in thread */}
                           <button
@@ -1215,16 +1195,9 @@ export default function Messages() {
                             </div>
                           )}
 
-                          {/* hover tools: quick react + pin + ⋯ menu */}
+                          {/* hover tools: pin + ⋯ menu */}
                           {!gone && (
                             <div className="msgb-tools">
-                              <span className="msgb-react-pick">
-                                {QUICK_REACTS.filter((e) => !tally[e]).slice(0, 3).map((e) => (
-                                  <button key={e} className="msgb-react-add" title="React" onClick={() => effectiveUid && reactToMessage(activeRoomId!, msg.id, effectiveUid, e, msg.reactions || [])}>
-                                    {e}
-                                  </button>
-                                ))}
-                              </span>
                               <button className="msgb-pin-btn" title={msg.pinned ? "Unpin" : "Pin"} onClick={() => togglePinMessage(activeRoomId!, msg.id, !msg.pinned)}>
                                 <Pin className="w-3 h-3" />
                               </button>
@@ -1313,19 +1286,6 @@ export default function Messages() {
                           <span className="msgb-when">
                             {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
                           </span>
-                          {!gone && Object.keys(tally).length > 0 && (
-                            <span className="msgb-reacts">
-                              {Object.keys(tally).map((e) => (
-                                <button
-                                  key={e}
-                                  className={cn("msgb-react", mineReacted(e) && "on")}
-                                  onClick={() => effectiveUid && reactToMessage(activeRoomId!, msg.id, effectiveUid, e, msg.reactions || [])}
-                                >
-                                  <span>{e}</span><span className="msgb-react-n">{tally[e]}</span>
-                                </button>
-                              ))}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1440,7 +1400,6 @@ export default function Messages() {
             effectiveUid={effectiveUid}
             isAdmin={isAdmin}
             onClose={() => setThreadOf(null)}
-            onReact={(mid, e, cur) => effectiveUid && reactToMessage(activeRoom.id, mid, effectiveUid, e, cur)}
             onPin={(mid, pin) => togglePinMessage(activeRoom.id, mid, pin)}
             onRemoveAll={(msg) => handleRemoveAll(msg)}
             onHide={(mid) => effectiveUid && MessageHides.hide(effectiveUid, mid)}

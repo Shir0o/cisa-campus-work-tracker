@@ -73,10 +73,7 @@ import type { TeamMemberLike } from "../Thread";
 const EMPTY_MESSAGES: ThreadMessage[] = [];
 
 const IBX_ENCOURAGE: Record<string, string> = {
-  "🙏": "Praying for you both! Let me know if you need anything.",
   "❤️": "Love seeing this! Praying for your next step with them.",
-  "🌱": "Such encouraging news. Let's keep watering those seeds!",
-  "✅": "Awesome follow up! Let me know if I can support you here.",
 };
 
 const NODE: Record<string, { cls: string; Icon: typeof Users }> = {

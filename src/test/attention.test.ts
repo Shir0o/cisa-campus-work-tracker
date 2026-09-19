@@ -60,7 +60,6 @@ describe("partitionAttentionStacks (#595)", () => {
       body: "How should we follow up with Alex?",
       at: new Date().toISOString(),
       interactionId: null,
-      reactions: [],
     },
   ];
 
@@ -124,7 +123,6 @@ describe("partitionAttentionStacks (#595)", () => {
       body: "Hey @Tony Wang can you take a look?",
       at: new Date().toISOString(),
       interactionId: null,
-      reactions: [],
       mentionedUserIds: ["u1"],
     };
 
@@ -222,7 +220,6 @@ describe("buildAttentionItems — the ties, not the role", () => {
       body: "hello",
       at: new Date().toISOString(),
       interactionId: null,
-      reactions: [],
       ...over,
     }) as ThreadMessageWithContact;
 

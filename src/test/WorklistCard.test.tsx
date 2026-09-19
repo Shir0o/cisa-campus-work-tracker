@@ -89,7 +89,6 @@ describe("the worklist card, through On you (#813, #943)", () => {
     body: "How should we follow up with Alex?",
     at: new Date().toISOString(),
     interactionId: null,
-    reactions: [],
   };
 
   const card = (props: Partial<React.ComponentProps<typeof OnYouCard>> = {}) =>

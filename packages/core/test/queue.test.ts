@@ -56,7 +56,6 @@ const message = (overrides: Partial<ThreadMessageWithContact> = {}): ThreadMessa
   kind: 'question',
   body: 'How did coffee go with Rio?',
   at: iso(-1),
-  reactions: [],
   ...overrides,
 });
 

@@ -198,7 +198,6 @@ const message = (id: string, at: string, interactionId: string | null = null): T
   kind: 'note',
   body: 'Worth following up.',
   at,
-  reactions: [],
 });
 
 describe('contactCareLine', () => {

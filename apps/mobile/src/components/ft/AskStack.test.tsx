@@ -35,7 +35,6 @@ const stack: AskStackData = {
       kind: 'question',
       body: 'How do you start a conversation at the club table?',
       at: '2026-08-01T10:00:00Z',
-      reactions: [],
     },
   ],
 };
