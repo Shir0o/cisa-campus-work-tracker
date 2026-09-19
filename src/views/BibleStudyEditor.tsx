@@ -490,7 +490,7 @@ export default function BibleStudyEditor() {
       </div>
 
       {/* 3-Pane Body */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[200px_minmax(400px,1fr)_minmax(380px,422px)] gap-4 pt-4 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)_minmax(0,422px)] gap-4 pt-4 overflow-hidden">
         {/* Left Pane: Sections Gutter */}
         <div className="hidden lg:flex flex-col min-h-0 bg-surface border border-outline-variant rounded-2xl p-3">
           <div className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant px-2 py-1 mb-2">
