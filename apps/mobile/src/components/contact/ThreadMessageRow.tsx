@@ -5,6 +5,7 @@
 // A `nudge` keeps its own tint, as it does everywhere else in the app — it's a
 // follow-up someone is waiting on, not a remark.
 import { Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   THREAD_KINDS,
   THREAD_REACTIONS,
@@ -22,6 +23,8 @@ export function ThreadMessageRow({
   nested,
   canReact,
   onToggleReaction,
+  canDelete,
+  onDelete,
 }: {
   message: ThreadMessage;
   meUid: string;
@@ -32,6 +35,9 @@ export function ThreadMessageRow({
   nested?: boolean;
   canReact: boolean;
   onToggleReaction: (messageId: string, emoji: string) => void;
+  /** #1126 — a viewer may delete their own message; an admin may delete any. */
+  canDelete: boolean;
+  onDelete: (message: ThreadMessage) => void;
 }) {
   const { c, font, fs } = useV2Theme();
   const mine = message.from === meUid;
@@ -65,6 +71,17 @@ export function ThreadMessageRow({
         <Text style={{ marginLeft: 'auto', fontFamily: font.semi, fontSize: fs(11.5), color: c.card.ink3 }}>
           {relTime(message.at)}
         </Text>
+        {canDelete && (
+          <Pressable
+            onPress={() => onDelete(message)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Delete message"
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 2 })}
+          >
+            <Ionicons name="trash-outline" size={16} color={c.card.ink3} />
+          </Pressable>
+        )}
       </View>
 
       {!!about && (

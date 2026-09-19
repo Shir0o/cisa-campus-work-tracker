@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { addDoc, onSnapshot, runTransaction } from "firebase/firestore";
+import { addDoc, deleteDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import {
   THREAD_KINDS,
   THREAD_REACTIONS,
@@ -8,6 +8,7 @@ import {
   repliesOf,
   countFor,
   addThreadMessage,
+  deleteThreadMessage,
   toggleReaction,
   subscribeThreads,
   subscribeAllThreads,
@@ -22,6 +23,7 @@ vi.mock("firebase/firestore", () => ({
   addDoc: vi.fn(() => Promise.resolve({ id: "new-msg-id" })),
   collection: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
   collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
+  deleteDoc: vi.fn(() => Promise.resolve()),
   doc: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
   onSnapshot: vi.fn(),
   orderBy: vi.fn((field, dir) => ({ field, dir })),
@@ -33,7 +35,7 @@ vi.mock("../lib/firebase", () => ({
   db: {},
   handleFirestoreError: vi.fn(),
   sendNotification: vi.fn(),
-  OperationType: { CREATE: "CREATE", UPDATE: "UPDATE", LIST: "LIST" },
+  OperationType: { CREATE: "CREATE", UPDATE: "UPDATE", DELETE: "DELETE", LIST: "LIST" },
 }));
 
 const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
@@ -368,6 +370,26 @@ describe("toggleReaction", () => {
     expect(handleFirestoreError).toHaveBeenCalledWith(
       expect.any(Error),
       "UPDATE",
+      "contacts/C-1/threads/M-1",
+    );
+  });
+});
+
+describe("deleteThreadMessage", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("deletes the message document at contacts/{contactId}/threads/{messageId}", async () => {
+    await deleteThreadMessage("C-1", "M-1");
+    expect(deleteDoc).toHaveBeenCalledWith({ path: "contacts/C-1/threads/M-1" });
+  });
+
+  it("funnels deleteThreadMessage failures through handleFirestoreError", async () => {
+    const { handleFirestoreError } = await import("../lib/firebase");
+    vi.mocked(deleteDoc).mockRejectedValueOnce(new Error("delete denied"));
+    await deleteThreadMessage("C-1", "M-1");
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "DELETE",
       "contacts/C-1/threads/M-1",
     );
   });

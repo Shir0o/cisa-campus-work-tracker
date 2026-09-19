@@ -453,7 +453,7 @@ service cloud.firestore {
                           isCloseOfAsk(existing(), incoming())
                         )
                       );
-        allow delete: if isValidId(threadId) && isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isManager() || existing().from == request.auth.uid);
+        allow delete: if isValidId(threadId) && isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isAdmin() || existing().from == request.auth.uid);
       }
     }
 

@@ -3,10 +3,10 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Thread from "../components/Thread";
-import { addThreadMessage, toggleReaction } from "../lib/threads";
+import { addThreadMessage, deleteThreadMessage, toggleReaction } from "../lib/threads";
 import { isTrainee } from "../lib/walking";
 
-const hoisted = vi.hoisted(() => ({ messages: [] as any[] }));
+const hoisted = vi.hoisted(() => ({ messages: [] as any[], isAdmin: false }));
 
 // Mock the threads lib: keep faithful kind/reaction config + filtering, but
 // drive the message list and spy on writes.
@@ -29,6 +29,7 @@ vi.mock("../lib/threads", () => {
     repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
     useThreads: () => hoisted.messages,
     addThreadMessage: vi.fn(() => Promise.resolve()),
+    deleteThreadMessage: vi.fn(() => Promise.resolve()),
     toggleReaction: vi.fn(() => Promise.resolve()),
   };
 });
@@ -39,7 +40,10 @@ vi.mock("../lib/walking", () => ({
 }));
 
 vi.mock("../components/AuthProvider", () => ({
-  useAuth: () => ({ user: { uid: "u1", displayName: "Tony Wang" } }),
+  useAuth: () => ({
+    user: { uid: "u1", displayName: "Tony Wang" },
+    isAdmin: hoisted.isAdmin,
+  }),
 }));
 
 const message = (over: any) => ({
@@ -58,6 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(isTrainee).mockReturnValue(false);
   hoisted.messages = [];
+  hoisted.isAdmin = false;
 });
 
 describe("Thread", () => {
@@ -100,6 +105,37 @@ describe("Thread", () => {
     expect(addButtons[0]).toHaveTextContent("❤️");
     await userEvent.click(addButtons[0]);
     expect(toggleReaction).toHaveBeenCalledWith("C-1", "a", "u1", "❤️");
+  });
+
+  // #1126 — a viewer may delete their own message; an admin may delete any.
+  it("shows a delete affordance on the viewer's own message and deletes it", async () => {
+    hoisted.messages = [message({ id: "a", from: "u1", fromName: "Tony Wang", body: "my note" })];
+    render(<Thread contactId="C-1" meStaffId="u1" />);
+    const del = screen.getByRole("button", { name: "Delete message" });
+    await userEvent.click(del);
+    expect(deleteThreadMessage).toHaveBeenCalledWith("C-1", "a");
+  });
+
+  it("hides the delete affordance on others' messages for a non-admin", () => {
+    hoisted.messages = [message({ id: "b", from: "u3", fromName: "Zion Park", body: "theirs" })];
+    render(<Thread contactId="C-1" meStaffId="u1" />);
+    expect(screen.queryByRole("button", { name: "Delete message" })).toBeNull();
+  });
+
+  it("shows the delete affordance on others' messages for an admin", () => {
+    hoisted.isAdmin = true;
+    hoisted.messages = [message({ id: "b", from: "u3", fromName: "Zion Park", body: "theirs" })];
+    render(<Thread contactId="C-1" meStaffId="u1" />);
+    expect(screen.getByRole("button", { name: "Delete message" })).toBeInTheDocument();
+  });
+
+  it("hides the delete affordance on a parent that still has replies, so it cannot orphan them", () => {
+    hoisted.messages = [
+      message({ id: "p", from: "u1", fromName: "Tony Wang", body: "parent" }),
+      message({ id: "r", from: "u3", fromName: "Zion Park", body: "reply", parentId: "p" }),
+    ];
+    render(<Thread contactId="C-1" meStaffId="u1" />);
+    expect(screen.queryByRole("button", { name: "Delete message" })).toBeNull();
   });
 
   it("renders an empty state when there are no messages", () => {
