@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.6.0...v1.7.0) (2026-09-19)
+
+
+### Features
+
+* delete a single conversation thread message (author or admin) ([#1126](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1126)) ([#1138](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1138)) ([320ac0a](https://github.com/Shir0o/cisa-campus-work-tracker/commit/320ac0a9b51f512b23bd8b27c45afddbd4d1688f))
+* **mobile:** add Your notes read-back view ([#1137](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1137)) ([688d381](https://github.com/Shir0o/cisa-campus-work-tracker/commit/688d38154ca668e577ee92cae48068d6ff374565))
+* remove emoji reactions everywhere, keep heart-only encourage ([#1107](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1107)) ([#1141](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1141)) ([d023efc](https://github.com/Shir0o/cisa-campus-work-tracker/commit/d023efc5942065da88aa9efe14ab14799de11259))
+* **translator:** show already-Spanish content as-is, en→es only ([#1043](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1043)) ([#1111](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1111)) ([60a3972](https://github.com/Shir0o/cisa-campus-work-tracker/commit/60a3972304186b5bfe697fcd6f47acf7a1d39869))
+
 ## [1.6.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.5.0...v1.6.0) (2026-09-17)
 
 
