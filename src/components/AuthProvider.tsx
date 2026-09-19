@@ -164,12 +164,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const inviteData = inviteDoc.data();
               initialRole = inviteData.role;
               initialApproved = inviteData.approved;
-            } else if (!isAdminClaim && userEmail !== 'yilongwang05@gmail.com') {
-              // Uninvited user attempting to log in
-              await signOut(auth);
-              setUser(null);
+            } else if (!isAdminClaim && !isAppOwner(userEmail)) {
+              // Uninvited user attempting to log in: keep them signed in but
+              // unapproved so the app renders the "Access Restricted" screen
+              // (via ProtectedRoute) instead of a jarring browser alert, and
+              // never provision a users doc for an identity the admin didn't
+              // invite. No onSnapshot is set up, so isApproved stays false.
               setLoading(false);
-              alert("Access Denied: Your account has not been added by an administrator yet.");
               return;
             }
 
