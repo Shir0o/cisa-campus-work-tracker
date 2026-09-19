@@ -26,7 +26,6 @@ jest.mock('../../lib/useDayGoal', () => ({
 
 jest.mock('../../lib/data/threads', () => ({
   addThreadMessage: jest.fn(),
-  toggleReaction: jest.fn(),
 }));
 
 jest.mock('../../lib/data/inboxReads', () => ({

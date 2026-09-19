@@ -4,12 +4,10 @@ import { cn, relTime } from "../lib/utils";
 import { useCommand } from "../lib/commands";
 import { useAuth } from "./AuthProvider";
 import {
-  THREAD_REACTIONS,
   addThreadMessage,
   deleteThreadMessage,
   repliesOf,
   threadsFor,
-  toggleReaction,
   useThreads,
   type ThreadMessage,
   type ThreadStakeholders,
@@ -104,13 +102,6 @@ function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel
   const { isAdmin } = useAuth();
   const canDelete = (mine || isAdmin) && !disableDelete;
 
-  const reactions = m.reactions || [];
-  const tally: Record<string, number> = {};
-  for (const r of reactions) tally[r.emoji] = (tally[r.emoji] || 0) + 1;
-  const reactedByMe = (emoji: string) =>
-    reactions.some((r) => r.emoji === emoji && r.by === meStaffId);
-  const unused = THREAD_REACTIONS.filter((e) => !tally[e]);
-
   return (
     <div className={cn("flex gap-3", mine && "flex-row-reverse")}>
       <div
@@ -145,36 +136,6 @@ function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel
         </div>
 
         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-          {Object.keys(tally).map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => toggleReaction(contactId, m.id, meStaffId, emoji)}
-              title="React"
-              className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors",
-                reactedByMe(emoji)
-                  ? "border-accent-line bg-primary/10 text-accent"
-                  : "border-outline-variant/50 text-on-surface-variant hover:border-outline-variant",
-              )}
-            >
-              <span>{emoji}</span>
-              <span className="font-semibold tabular-nums">{tally[emoji]}</span>
-            </button>
-          ))}
-          {unused.length > 0 && (
-            <span className="inline-flex items-center gap-0.5 opacity-60 hover:opacity-100 transition-opacity">
-              {unused.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => toggleReaction(contactId, m.id, meStaffId, emoji)}
-                  title="Add reaction"
-                  className="w-6 h-6 grid place-items-center rounded-full text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </span>
-          )}
           {canDelete && (
             <button
               onClick={() => deleteThreadMessage(contactId, m.id)}
@@ -537,7 +498,6 @@ export default function Thread({
         kind,
         body,
         at: new Date().toISOString(),
-        reactions: [],
         ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
       },
       landed,

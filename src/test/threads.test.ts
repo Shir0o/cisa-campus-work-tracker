@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { addDoc, deleteDoc, onSnapshot, runTransaction } from "firebase/firestore";
+import { addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import {
   THREAD_KINDS,
-  THREAD_REACTIONS,
   threadsFor,
   repliesOf,
   countFor,
   addThreadMessage,
   deleteThreadMessage,
-  toggleReaction,
   subscribeThreads,
   subscribeAllThreads,
   useThreads,
@@ -28,7 +26,6 @@ vi.mock("firebase/firestore", () => ({
   onSnapshot: vi.fn(),
   orderBy: vi.fn((field, dir) => ({ field, dir })),
   query: vi.fn((ref) => ref),
-  runTransaction: vi.fn(),
 }));
 
 vi.mock("../lib/firebase", () => ({
@@ -46,11 +43,10 @@ const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
   kind: "comment",
   body: "b",
   at: "2020-01-01T00:00:00.000Z",
-  reactions: [],
   ...over,
 });
 
-describe("THREAD_KINDS / reactions config", () => {
+describe("THREAD_KINDS", () => {
   it("defines all five kinds with the nudge as a warn tone", () => {
     expect(Object.keys(THREAD_KINDS).sort()).toEqual([
       "comment",
@@ -61,10 +57,6 @@ describe("THREAD_KINDS / reactions config", () => {
     ]);
     expect(THREAD_KINDS.nudge.tone).toBe("warn");
     expect(THREAD_KINDS.question.tone).toBe("amber");
-  });
-
-  it("offers the heart reaction", () => {
-    expect(THREAD_REACTIONS).toEqual(["❤️"]);
   });
 });
 
@@ -89,7 +81,7 @@ describe("threadsFor / countFor", () => {
 describe("addThreadMessage", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("writes a trimmed message with empty reactions and an ISO timestamp", async () => {
+  it("writes a trimmed message with an ISO timestamp", async () => {
     await addThreadMessage("C-1", {
       interactionId: null,
       from: "u1",
@@ -109,7 +101,6 @@ describe("addThreadMessage", () => {
       kind: "comment",
       body: "hello",
       interactionId: null,
-      reactions: [],
     });
     expect(typeof data.at).toBe("string");
     expect(Number.isNaN(Date.parse(data.at as string))).toBe(false);
@@ -302,7 +293,6 @@ describe("subscribeAllThreads", () => {
               body: "q",
               at: "2021-01-01T00:00:00.000Z",
               interactionId: "i9",
-              reactions: [],
             }),
           },
           { id: "m2", ref: { parent: { parent: null } }, data: () => ({}) },
@@ -316,62 +306,7 @@ describe("subscribeAllThreads", () => {
     const messages = cb.mock.calls[0][0] as (ThreadMessage & { contactId: string })[];
     expect(messages[0]).toMatchObject({ id: "m1", contactId: "c1", interactionId: "i9", kind: "question" });
     // malformed doc → empty contactId + safe field defaults
-    expect(messages[1]).toMatchObject({ id: "m2", contactId: "", kind: "comment", from: "", reactions: [] });
-  });
-});
-
-describe("toggleReaction", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  const runWith = (existingReactions: { by: string; emoji: string }[]) => {
-    const update = vi.fn();
-    vi.mocked(runTransaction).mockImplementation((async (_db: unknown, fn: any) =>
-      fn({
-        get: async () => ({
-          exists: () => true,
-          data: () => ({ reactions: existingReactions }),
-        }),
-        update,
-      })) as any);
-    return update;
-  };
-
-  it("adds the reaction when absent", async () => {
-    const update = runWith([]);
-    await toggleReaction("C-1", "M-1", "u1", "🙏");
-    expect(update).toHaveBeenCalledWith({ path: "contacts/C-1/threads/M-1" }, {
-      reactions: [{ by: "u1", emoji: "🙏" }],
-    });
-  });
-
-  it("removes the reaction when already present (toggle off)", async () => {
-    const update = runWith([{ by: "u1", emoji: "🙏" }]);
-    await toggleReaction("C-1", "M-1", "u1", "🙏");
-    expect(update).toHaveBeenCalledWith({ path: "contacts/C-1/threads/M-1" }, {
-      reactions: [],
-    });
-  });
-
-  it("does nothing when the message does not exist", async () => {
-    const update = vi.fn();
-    vi.mocked(runTransaction).mockImplementation((async (_db: unknown, fn: any) =>
-      fn({
-        get: async () => ({ exists: () => false }),
-        update,
-      })) as any);
-    await toggleReaction("C-1", "M-1", "u1", "🙏");
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it("funnels toggleReaction failures through handleFirestoreError", async () => {
-    const { handleFirestoreError } = await import("../lib/firebase");
-    vi.mocked(runTransaction).mockRejectedValueOnce(new Error("tx denied"));
-    await toggleReaction("C-1", "M-1", "u1", "🙏");
-    expect(handleFirestoreError).toHaveBeenCalledWith(
-      expect.any(Error),
-      "UPDATE",
-      "contacts/C-1/threads/M-1",
-    );
+    expect(messages[1]).toMatchObject({ id: "m2", contactId: "", kind: "comment", from: "" });
   });
 });
 
@@ -411,7 +346,6 @@ describe("subscribeThreads", () => {
               body: "hi",
               at: "2021-01-01T00:00:00.000Z",
               interactionId: null,
-              reactions: [{ by: "u3", emoji: "🙏" }],
             }),
           },
           { id: "m2", data: () => ({}) },
@@ -426,10 +360,9 @@ describe("subscribeThreads", () => {
     expect(messages[0]).toMatchObject({
       id: "m1",
       kind: "note",
-      reactions: [{ by: "u3", emoji: "🙏" }],
     });
     // malformed doc gets safe defaults
-    expect(messages[1]).toMatchObject({ id: "m2", kind: "comment", from: "", reactions: [] });
+    expect(messages[1]).toMatchObject({ id: "m2", kind: "comment", from: "" });
   });
 
   it("passes subscribeThreads errors to the caller handler", () => {

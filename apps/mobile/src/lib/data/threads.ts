@@ -24,15 +24,6 @@ export function subscribeThreads(
   return core.subscribeThreads(db, contactId, cb, onError);
 }
 
-/** Toggle `by`'s reaction on a thread message. */
-export async function toggleReaction(contactId: string, messageId: string, by: string, emoji: string): Promise<void> {
-  try {
-    await core.toggleReaction(db, contactId, messageId, by, emoji);
-  } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/threads/${messageId}`);
-  }
-}
-
 /** Delete a single thread message — the author or an admin (per firestore.rules). */
 export async function deleteThreadMessage(contactId: string, messageId: string): Promise<void> {
   try {

@@ -10,7 +10,6 @@ import {
   onSnapshot,
   query,
   where,
-  runTransaction,
   doc,
   deleteDoc,
   type Firestore,
@@ -31,7 +30,6 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
   kind: (data.kind as AskKind) ?? "question",
   body: data.body ?? "",
   at: data.at ?? new Date().toISOString(),
-  reactions: Array.isArray(data.reactions) ? data.reactions : [],
 });
 
 export interface SubscribeAsksOptions {
@@ -111,7 +109,6 @@ export async function addAsk(
     kind: "question" as AskKind,
     body: input.body.trim(),
     at: new Date().toISOString(),
-    reactions: [],
   });
 }
 
@@ -138,10 +135,8 @@ export async function addAskFor(
     kind: "question" as AskKind,
     body: input.body.trim(),
     at: new Date().toISOString(),
-    reactions: [],
   });
 }
-
 
 /** Answer a question. `notifyTo`, when set (the asker's uid), calls `onNotify`
  *  with the bell payload — the first full-timer to reply takes it off every
@@ -164,7 +159,6 @@ export async function addAskReply(
     kind: "comment" as AskKind,
     body,
     at: new Date().toISOString(),
-    reactions: [],
   });
   if (notifyTo && onNotify) {
     const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
@@ -176,25 +170,6 @@ export async function addAskReply(
       targetId: parentId,
     });
   }
-}
-
-/** Toggle `by`'s reaction (emoji) on a message. */
-export async function toggleAskReaction(
-  db: Firestore,
-  messageId: string,
-  by: string,
-  emoji: string,
-): Promise<void> {
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref(db, messageId));
-    if (!snap.exists()) return;
-    const reactions = (snap.data().reactions as AskMessage["reactions"]) ?? [];
-    const has = reactions.some((r) => r.by === by && r.emoji === emoji);
-    const next = has
-      ? reactions.filter((r) => !(r.by === by && r.emoji === emoji))
-      : [...reactions, { by, emoji }];
-    tx.update(ref(db, messageId), { reactions: next });
-  });
 }
 
 /** Delete a single reply on a question, leaving the question itself in place

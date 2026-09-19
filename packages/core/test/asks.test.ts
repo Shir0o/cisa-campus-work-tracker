@@ -29,7 +29,6 @@ function msg(p: Partial<AskMessage>): AskMessage {
     kind: 'question',
     body: '?',
     at: daysAgo(1),
-    reactions: [],
     ...p,
   };
 }

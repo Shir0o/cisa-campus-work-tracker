@@ -22,9 +22,7 @@ vi.mock('../lib/threads', () => ({
   countFor: (msgs: any[]) => msgs.length,
   repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
   addThreadMessage: vi.fn(() => Promise.resolve()),
-  toggleReaction: vi.fn(() => Promise.resolve()),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
-  THREAD_REACTIONS: ["❤️"],
 }));
 
 // Mock Auth
@@ -262,8 +260,8 @@ describe('ContactDetailsModal Component', () => {
       role: 'admin',
     });
     hoisted.messages = [
-      { id: 'm1', from: 'u3', fromName: 'Zion Park', kind: 'note', body: 'first', at: new Date().toISOString(), reactions: [], scope: 'team' },
-      { id: 'm2', from: 'u1', fromName: 'Admin One', kind: 'note', body: 'second', at: new Date().toISOString(), reactions: [], scope: 'team' },
+      { id: 'm1', from: 'u3', fromName: 'Zion Park', kind: 'note', body: 'first', at: new Date().toISOString(), scope: 'team' },
+      { id: 'm2', from: 'u1', fromName: 'Admin One', kind: 'note', body: 'second', at: new Date().toISOString(), scope: 'team' },
     ];
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
@@ -2492,7 +2490,7 @@ describe('removing interactions (#650)', () => {
 
   it('asks for confirmation when the interaction has thread messages', async () => {
     hoisted.messages = [
-      { id: 'm1', interactionId: 'int-1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z', reactions: [] },
+      { id: 'm1', interactionId: 'int-1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' },
     ];
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderWithInteractions(interactionDoc('int-1'));

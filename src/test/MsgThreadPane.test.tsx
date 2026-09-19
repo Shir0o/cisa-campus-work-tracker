@@ -36,7 +36,6 @@ describe('MsgThreadPane (#563)', () => {
     text: 'Hello @Bob, check this out!',
     timestamp: '2026-08-25T10:00:00Z',
     type: 'text',
-    reactions: [{ emoji: '👍', by: 'u2' }],
     attachments: [
       { id: 'c1', type: 'contact', name: 'John Doe', subtitle: 'Student' },
       { id: 't1', type: 'todo', name: 'Follow up prayer' },
@@ -58,7 +57,6 @@ describe('MsgThreadPane (#563)', () => {
     text: 'Looks awesome @Alice!',
     timestamp: '2026-08-25T10:05:00Z',
     type: 'text',
-    reactions: [{ emoji: '❤️', by: 'u1' }],
   };
 
   const deletedReply: ChatMessage = {
@@ -82,7 +80,6 @@ describe('MsgThreadPane (#563)', () => {
     effectiveUid: 'u1',
     isAdmin: true,
     onClose: vi.fn(),
-    onReact: vi.fn(),
     onPin: vi.fn(),
     onRemoveAll: vi.fn(),
     onHide: vi.fn(),
@@ -156,14 +153,8 @@ describe('MsgThreadPane (#563)', () => {
     });
   });
 
-  it('handles reactions and pinning', () => {
+  it('handles pinning', () => {
     render(<MsgThreadPane {...defaultProps} />);
-
-    const reactButtons = screen.getAllByTitle('React');
-    if (reactButtons.length > 0) {
-      fireEvent.click(reactButtons[0]);
-      expect(defaultProps.onReact).toHaveBeenCalled();
-    }
 
     const pinButtons = screen.getAllByTitle(/Pin/);
     if (pinButtons.length > 0) {

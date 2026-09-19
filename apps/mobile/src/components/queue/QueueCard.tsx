@@ -4,7 +4,6 @@
 import React from 'react';
 import { View } from 'react-native';
 import {
-  THREAD_REACTIONS,
   agoPhrase,
   daysAgoWords,
   firstName,
@@ -23,7 +22,6 @@ import {
   NoteBlock,
   PrimaryButton,
   Quote,
-  Reactions,
   Said,
   SecondaryButton,
   WhoBlock,
@@ -44,7 +42,6 @@ export interface QueueCardApi {
   openContact: (contactId: string, tab?: 'thread' | 'prayer') => void;
   openReply: (card: QueueCardData) => void;
   openLog: (card: QueueCardData) => void;
-  react: (card: QueueCardData, emoji: string) => void;
   text: (card: QueueCardData) => void;
 }
 
@@ -106,7 +103,6 @@ export function QueueCard({
   // ── a message from the full-timer who cares for you ──────────────────────
   if (card.kind === 'msg' && card.msg) {
     const m = card.msg;
-    const mine = (m.reactions || []).filter((r) => r.by === me).map((r) => r.emoji);
     return (
       <FocusCard
         tone="ask"
@@ -125,7 +121,6 @@ export function QueueCard({
         <WhoBlock name={m.fromName} id={m.from} sub={`${roleLabel('admin')} · cares for you`} />
         <Quote>{m.body}</Quote>
         {!!c && <AboutChip name={c.name} id={c.id} detail={c.stage} onPress={() => api.openContact(c.id, 'thread')} />}
-        <Reactions options={THREAD_REACTIONS} mine={mine} onPick={(e) => api.react(card, e)} />
       </FocusCard>
     );
   }

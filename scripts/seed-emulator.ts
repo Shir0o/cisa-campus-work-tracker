@@ -154,7 +154,6 @@ export async function seedEmulator() {
     kind: 'encouragement',
     body: 'Great first connection with Lila. Let us follow up this week.',
     at: new Date().toISOString(),
-    reactions: [],
   }, { merge: true });
 
   // General thread message on interaction
@@ -167,7 +166,6 @@ export async function seedEmulator() {
     kind: 'question',
     body: 'Should we invite her to the small group dinner next Tuesday?',
     at: new Date().toISOString(),
-    reactions: [],
   }, { merge: true });
 
   // Confidential full-timer only team discussion
@@ -180,7 +178,6 @@ export async function seedEmulator() {
     kind: 'note',
     body: 'Confidential Staff Note: Lila mentioned some family challenges back home. Full-timers keep in prayer.',
     at: new Date().toISOString(),
-    reactions: [],
   }, { merge: true });
 
   console.log('Emulator seeding complete.');

@@ -30,7 +30,6 @@ vi.mock("../lib/asks", () => ({
         kind: "question",
         body: "How do you start a conversation at the club table?",
         at: "2026-08-01T10:00:00.000Z",
-        reactions: [],
       },
       {
         id: "q2",
@@ -41,7 +40,6 @@ vi.mock("../lib/asks", () => ({
         kind: "question",
         body: "Is it strange to offer to pray with someone the first time you meet?",
         at: "2026-08-02T10:00:00.000Z",
-        reactions: [],
       },
       // answered — the first full-timer already replied, so it's off the feed
       {
@@ -53,7 +51,6 @@ vi.mock("../lib/asks", () => ({
         kind: "question",
         body: "Already answered.",
         at: "2026-08-03T10:00:00.000Z",
-        reactions: [],
       },
       {
         id: "a3",
@@ -64,7 +61,6 @@ vi.mock("../lib/asks", () => ({
         kind: "comment",
         body: "Answered already.",
         at: "2026-08-03T11:00:00.000Z",
-        reactions: [],
       },
     ]);
     return () => {};

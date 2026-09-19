@@ -423,11 +423,6 @@ export interface HospitalityOffer {
   updatedAt: string;
 }
 
-export interface ChatReaction {
-  by: string;
-  emoji: string;
-}
-
 export interface ChatMessage {
   id: string;
   roomId: string;
@@ -438,8 +433,6 @@ export interface ChatMessage {
   timestamp: unknown;
   type: 'text' | 'system';
   attachments?: ChatAttachment[];
-  /** Emoji reactions — anyone in the room can add or take their own back. */
-  reactions?: ChatReaction[];
   /** A message pinned to the top of its conversation (thread's pinned strip). */
   pinned?: boolean;
   /** Tombstone for "take back for everyone": the author or a Full-timer sets

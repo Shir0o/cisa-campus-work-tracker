@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db, sendNotification } from '../lib/firebase';
 import { sendPushNotification } from '../lib/push';
-import { ChatAttachment, ChatReaction } from '../types';
+import { ChatAttachment } from '../types';
 
 /**
  * Returns a sorted direct chat ID to ensure uniqueness per user pair.
@@ -468,25 +468,6 @@ export async function leaveGroup(
     timestamp: serverTimestamp(),
     type: 'system',
   });
-}
-
-/**
- * Toggle a reaction on a message. `by` is the reacting user's uid; the emoji
- * flips on or off for that user only. firestore.rules only lets a room member
- * write the `reactions` field, so this is a single targeted update.
- */
-export async function reactToMessage(
-  roomId: string,
-  messageId: string,
-  by: string,
-  emoji: string,
-  current: ChatReaction[]
-): Promise<void> {
-  const has = current.some((r) => r.by === by && r.emoji === emoji);
-  const reactions = has
-    ? current.filter((r) => !(r.by === by && r.emoji === emoji))
-    : [...current, { by, emoji }];
-  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), { reactions });
 }
 
 /**

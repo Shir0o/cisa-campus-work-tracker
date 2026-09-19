@@ -120,7 +120,6 @@ async function seed() {
     kind: string;
     body: string;
     at: string;
-    reactions: { by: string; emoji: string }[];
   }[] = [
     {
       contactId: "demo-walk-lila",
@@ -130,7 +129,6 @@ async function seed() {
       kind: "encouragement",
       body: "This is a beautiful first contact — you asked the realest question and just listened. Keep going.",
       at: iso(1),
-      reactions: [{ by: tr, emoji: "🙏" }],
     },
     {
       contactId: "demo-walk-lila",
@@ -140,7 +138,6 @@ async function seed() {
       kind: "question",
       body: "She asked me why God lets suffering happen and I froze. How would you have answered in the moment?",
       at: iso(0, 20),
-      reactions: [],
     },
     {
       contactId: "demo-walk-lila",
@@ -150,7 +147,6 @@ async function seed() {
       kind: "comment",
       body: "Freezing is honest — don't rush to fix it. Try: “I don't have a clean answer, but I'd love to sit in that with you.” Slow is faithful.",
       at: iso(0, 16),
-      reactions: [{ by: tr, emoji: "❤️" }],
     },
     {
       contactId: "demo-walk-rio",
@@ -160,7 +156,6 @@ async function seed() {
       kind: "nudge",
       body: "Don't forget the Thursday coffee with Rio — want me to come along, or you've got it?",
       at: iso(0, 6),
-      reactions: [],
     },
     {
       contactId: "demo-walk-kofi",
@@ -170,7 +165,6 @@ async function seed() {
       kind: "note",
       body: "Kofi mentioned his roommate keeps asking him about God. Feels like there might be two people to reach here.",
       at: iso(0, 3),
-      reactions: [],
     },
   ];
   for (const t of threads) {

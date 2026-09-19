@@ -86,7 +86,6 @@ vi.mock('../services/chat', async (importOriginal) => {
   return {
     ...actual,
     sendMessage: vi.fn().mockResolvedValue(undefined),
-    reactToMessage: vi.fn().mockResolvedValue(undefined),
     togglePinMessage: vi.fn().mockResolvedValue(undefined),
     removeMessageForEveryone: vi.fn().mockResolvedValue(undefined),
     deleteChatRoom: vi.fn().mockResolvedValue(undefined),
@@ -1021,7 +1020,7 @@ describe('Messages View Component', () => {
       expect(scrollIntoViewSpy).not.toHaveBeenCalled();
     });
 
-    it('renders announcement post card with Full-timer badge, reactions, acknowledgement and thread reply button', async () => {
+    it('renders announcement post card with Full-timer badge, acknowledgement and thread reply button', async () => {
       renderWithAnnouncement();
       openTheRoom();
 
@@ -1121,34 +1120,14 @@ describe('Messages View Component', () => {
     });
   });
 
-  // Field Notes desktop thread: quick-react, pin, and the ⋯ menu (hide from my
+  // Field Notes desktop thread: pin, and the ⋯ menu (hide from my
   // view / take back for everyone) are schema-backed acts on the message.
-  describe('reactions, pin and the message menu', () => {
+  describe('pin and the message menu', () => {
     const streamOf = (container: HTMLElement) => {
       const stream = container.querySelector('.msgs-stream');
       if (!stream) throw new Error('no .msgs-stream in container');
       return stream as HTMLElement;
     };
-
-    it('reacts to a message from the hover picker', async () => {
-      const { container } = render(
-        <MemoryRouter>
-          <Messages />
-        </MemoryRouter>
-      );
-      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
-      await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
-
-      const add = container.querySelector('.msgb-react-add');
-      expect(add).toBeTruthy();
-      fireEvent.click(add!);
-
-      await waitFor(() => {
-        expect(chatService.reactToMessage).toHaveBeenCalledWith(
-          'room1', 'm1', 'u1', expect.any(String), []
-        );
-      });
-    });
 
     it('pins a message from the hover tools', async () => {
       const { container } = render(

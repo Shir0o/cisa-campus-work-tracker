@@ -7,7 +7,6 @@ import {
   onSnapshot,
   orderBy,
   query,
-  runTransaction,
   updateDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -27,11 +26,6 @@ export type ThreadKind = "note" | "question" | "comment" | "encouragement" | "nu
 
 export type ThreadTone = "accent" | "teal" | "amber" | "violet" | "warn";
 
-export interface ThreadReaction {
-  by: string;
-  emoji: string;
-}
-
 export interface ThreadMessage {
   id: string;
   interactionId: string | null;
@@ -42,7 +36,6 @@ export interface ThreadMessage {
   kind: ThreadKind;
   body: string;
   at: string; // ISO
-  reactions: ThreadReaction[];
   mentionedUserIds?: string[];
   /** Follow-up asks only: who said they did it, and when. One shared close,
    *  written once and read by everyone tied — there is no per-person dismissal
@@ -52,9 +45,6 @@ export interface ThreadMessage {
   closedByName?: string | null;
   closedAt?: string | null;
 }
-
-// The single like reaction offered on every message.
-export const THREAD_REACTIONS = ["❤️"] as const;
 
 // Each kind gets its own tone + label. Icons live in the Thread component (so
 // this stays free of JSX). nudge = a follow-up reminder, rendered distinctly.
@@ -98,7 +88,6 @@ export function subscribeThreads(
             kind: (data.kind as ThreadKind) ?? "comment",
             body: data.body ?? "",
             at: data.at ?? new Date().toISOString(),
-            reactions: Array.isArray(data.reactions) ? data.reactions : [],
             mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
             closedBy: data.closedBy ?? null,
             closedByName: data.closedByName ?? null,
@@ -140,7 +129,6 @@ export function subscribeAllThreads(
             kind: (data.kind as ThreadKind) ?? "comment",
             body: data.body ?? "",
             at: data.at ?? new Date().toISOString(),
-            reactions: Array.isArray(data.reactions) ? data.reactions : [],
             mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
             closedBy: data.closedBy ?? null,
             closedByName: data.closedByName ?? null,
@@ -275,7 +263,6 @@ export async function addThreadMessage(
       kind: input.kind,
       body,
       at: new Date().toISOString(),
-      reactions: [] as ThreadReaction[],
       ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
     });
     // `addDoc` always hands back a reference; the guard keeps a caller that
@@ -444,36 +431,9 @@ export async function deleteThreadMessage(
   }
 }
 
-/** Toggle the current user's reaction (by + emoji) on a message. */
-export async function toggleReaction(
-  contactId: string,
-  messageId: string,
-  by: string,
-  emoji: string,
-): Promise<void> {
-  try {
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref(contactId, messageId));
-      if (!snap.exists()) return;
-      const reactions = (snap.data().reactions as ThreadReaction[]) ?? [];
-      const has = reactions.some((r) => r.by === by && r.emoji === emoji);
-      const next = has
-        ? reactions.filter((r) => !(r.by === by && r.emoji === emoji))
-        : [...reactions, { by, emoji }];
-      tx.update(ref(contactId, messageId), { reactions: next });
-    });
-  } catch (e) {
-    handleFirestoreError(
-      e,
-      OperationType.UPDATE,
-      `contacts/${contactId}/threads/${messageId}`,
-    );
-  }
-}
-
 /**
  * Subscribe a component to a contact's threads. Returns the live message list
- * (sorted oldest-first); re-renders on every post/reaction. Safe to call with an
+ * (sorted oldest-first); re-renders on every post. Safe to call with an
  * absent contactId (e.g. a closed modal) — it just yields an empty list.
  */
 export function useThreads(contactId?: string | null): ThreadMessage[] {

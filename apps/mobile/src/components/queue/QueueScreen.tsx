@@ -30,7 +30,7 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 import { setTodoDone, updateTodo } from '../../lib/data/todos';
-import { addThreadMessage, toggleReaction } from '../../lib/data/threads';
+import { addThreadMessage } from '../../lib/data/threads';
 import { useDayGoal } from '../../lib/useDayGoal';
 import { InboxReads } from '../../lib/data/inboxReads';
 import { useV2Theme } from '../../theme/v2';
@@ -158,14 +158,6 @@ export function QueueScreen() {
       setLogTask(card.task?.id ?? null);
       setLogCard(card.id);
       setLogOpen(true);
-    },
-    react: (card, emoji) => {
-      if (!card.msg || !uid) return;
-      void toggleReaction(card.msg.contactId, card.msg.id, uid, emoji);
-      InboxReads.markRead(uid, 'thread:' + card.msg.id);
-      queueState.handle(card.id);
-      setIndex(0);
-      setToast(`${t('mobile.queue.sent')} ${emoji}`);
     },
     text: (card) => {
       const phone = card.contact?.phone?.replace(/[^\d+]/g, '');

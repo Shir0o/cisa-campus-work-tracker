@@ -28,7 +28,6 @@ const message = (overrides: Partial<ThreadMessageWithContact> = {}): ThreadMessa
   kind: 'comment',
   body: '',
   at: new Date(NOW).toISOString(),
-  reactions: [],
   ...overrides,
 });
 

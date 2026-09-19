@@ -12,13 +12,11 @@ import {
   FileText,
   MessageSquare
 } from 'lucide-react';
-import { ChatRoom, ChatMessage, ChatAttachment, Contact, ChatReaction } from '../../types';
+import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../../types';
 import { cn, getUserInitials, relTime, firstName } from '../../lib/utils';
 import { convReplies } from '../../services/chat';
 import ContactPill from '../ui/ContactPill';
 import { useTranslate } from '../../hooks/useTranslate';
-
-const QUICK_REACTS = ["🙏", "❤️", "🌱", "👍", "🙌"];
 
 function canRemoveForEveryone(msg: ChatMessage, uid: string | undefined, isAdmin: boolean): boolean {
   return !!msg && !msg.deleted && (msg.senderId === uid || isAdmin);
@@ -56,7 +54,6 @@ export interface MsgThreadPaneProps {
   effectiveUid?: string;
   isAdmin: boolean;
   onClose: () => void;
-  onReact: (messageId: string, emoji: string, current: ChatReaction[]) => void;
   onPin: (messageId: string, pinned: boolean) => void;
   onRemoveAll: (msg: ChatMessage) => void;
   onHide: (messageId: string) => void;
@@ -74,7 +71,6 @@ export function MsgThreadPane({
   effectiveUid,
   isAdmin,
   onClose,
-  onReact,
   onPin,
   onRemoveAll,
   onHide,
@@ -114,9 +110,6 @@ export function MsgThreadPane({
   const renderBubble = (msg: ChatMessage, isParent: boolean) => {
     const isMe = msg.senderId === effectiveUid;
     const gone = !!msg.deleted;
-    const tally: Record<string, number> = {};
-    (msg.reactions || []).forEach((r) => { tally[r.emoji] = (tally[r.emoji] || 0) + 1; });
-    const mineReacted = (emoji: string) => (msg.reactions || []).some((r) => r.by === effectiveUid && r.emoji === emoji);
     const canAll = canRemoveForEveryone(msg, effectiveUid, isAdmin);
     const menuOpen = menuFor === msg.id;
 
@@ -177,19 +170,6 @@ export function MsgThreadPane({
 
             {!gone && (
               <div className="msgb-tools">
-                <span className="msgb-react-pick">
-                  {QUICK_REACTS.filter((e) => !tally[e]).slice(0, 3).map((e) => (
-                    <button
-                      key={e}
-                      type="button"
-                      className="msgb-react-add"
-                      title="React"
-                      onClick={() => onReact(msg.id, e, msg.reactions || [])}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </span>
                 <button
                   type="button"
                   className="msgb-pin-btn"
@@ -272,20 +252,6 @@ export function MsgThreadPane({
             <span className="msgb-when">
               {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
             </span>
-            {!gone && Object.keys(tally).length > 0 && (
-              <span className="msgb-reacts">
-                {Object.keys(tally).map((e) => (
-                  <button
-                    key={e}
-                    type="button"
-                    className={cn("msgb-react", mineReacted(e) && "on")}
-                    onClick={() => onReact(msg.id, e, msg.reactions || [])}
-                  >
-                    <span>{e}</span><span className="msgb-react-n">{tally[e]}</span>
-                  </button>
-                ))}
-              </span>
-            )}
           </div>
         </div>
       </div>

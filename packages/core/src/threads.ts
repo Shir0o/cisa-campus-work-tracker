@@ -4,18 +4,13 @@
 //
 // This is the PURE subset shared across platforms: message types + tone/label
 // metadata + pure filter/count helpers. The Firestore CRUD + subscriptions
-// (subscribeThreads, addThreadMessage, toggleReaction, useThreads, …) stay in
+// (subscribeThreads, addThreadMessage, useThreads, …) stay in
 // each app's data layer because they need a platform Firebase init. Phase 1 will
 // re-home those here behind an injected `db`.
 
 export type ThreadKind = "note" | "question" | "comment" | "encouragement" | "nudge";
 
 export type ThreadTone = "accent" | "teal" | "amber" | "violet" | "warn";
-
-export interface ThreadReaction {
-  by: string;
-  emoji: string;
-}
 
 export interface ThreadMessage {
   id: string;
@@ -27,7 +22,6 @@ export interface ThreadMessage {
   kind: ThreadKind;
   body: string;
   at: string; // ISO
-  reactions: ThreadReaction[];
   /** Follow-up asks only: who said they did it, and when (#813). */
   closedBy?: string | null;
   closedByName?: string | null;
@@ -36,9 +30,6 @@ export interface ThreadMessage {
 
 /** A thread message tagged with the contact it belongs to. */
 export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
-
-// The single like reaction offered on every message.
-export const THREAD_REACTIONS = ["❤️"] as const;
 
 // Each kind gets its own tone + label. Icons live in the Thread component (so
 // this stays free of JSX). nudge = a follow-up reminder, rendered distinctly.

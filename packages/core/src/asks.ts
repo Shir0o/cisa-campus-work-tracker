@@ -2,16 +2,14 @@
 //
 // "How do I start a conversation at the club table?" has nobody to attach to,
 // so it had nowhere to go and got asked in the corridor. These are person-less
-// messages: the same reply recursion and reactions as threads, but with no
+// messages: the same reply recursion as threads, but with no
 // contact, so the asking and the reading are ONE list and nothing is ever
 // "resolved" — a question with a reply is just a question with a reply. No
 // statuses, no resolve button, no FAQ, no topics.
 //
 // This is the PURE subset shared across platforms. The Firestore CRUD +
-// subscription (`subscribeAsks`, `addAsk`, `addAskReply`, `toggleAskReaction`)
+// subscription (`subscribeAsks`, `addAsk`, `addAskReply`)
 // lives in `./data/asks.ts` behind an injected `db`, mirroring threads.ts.
-
-import type { ThreadReaction } from "./threads";
 
 export type AskKind = "question" | "comment";
 
@@ -27,7 +25,6 @@ export interface AskMessage {
   kind: AskKind;
   body: string;
   at: string; // ISO
-  reactions: ThreadReaction[];
 }
 
 /** Top-level questions (answers excluded), newest first. */

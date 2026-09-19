@@ -64,7 +64,6 @@ const QUESTIONS: AskMessage[] = [
     kind: 'question',
     body: 'How do you approach people at the club table?',
     at: '2026-08-25T10:00:00.000Z',
-    reactions: [],
   },
   {
     id: 'q2',
@@ -75,7 +74,6 @@ const QUESTIONS: AskMessage[] = [
     kind: 'question',
     body: 'What should I do during campus quiet hour?',
     at: '2026-08-25T11:00:00.000Z',
-    reactions: [],
   },
   {
     id: 'r1',
@@ -86,7 +84,6 @@ const QUESTIONS: AskMessage[] = [
     kind: 'comment',
     body: 'Start with something about their day.',
     at: '2026-08-25T11:30:00.000Z',
-    reactions: [],
   },
 ];
 

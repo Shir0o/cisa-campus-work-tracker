@@ -20,7 +20,7 @@ import { useLanguage } from "../LanguageProvider";
 //
 // It carries both of the contact's staff threads as tabs, in the order the
 // contact detail page uses, and reuses that page's renderer rather than
-// growing a second one — so mentions, reactions and the compose-kind picker
+// growing a second one — so mentions and the compose-kind picker
 // come along unchanged. The composer writes into whichever tab is open, which
 // is the one genuinely new capability and the one risk worth naming: the two
 // audiences differ in exactly the way that matters, so the strip says whose

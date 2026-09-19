@@ -27,7 +27,7 @@ const interactions = [
 function msg(p: Partial<ThreadMessageWithContact>): ThreadMessageWithContact {
   return {
     id: 'm', interactionId: null, from: TRAINEE, fromName: 'Zion',
-    kind: 'question', body: '?', at: '2026-07-04T10:00:00Z', reactions: [],
+    kind: 'question', body: '?', at: '2026-07-04T10:00:00Z',
     contactId: 'c1', ...p,
   };
 }

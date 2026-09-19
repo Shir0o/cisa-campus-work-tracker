@@ -2,7 +2,7 @@
 //
 // "How do I start a conversation at the club table?" has nobody to attach to,
 // so it had nowhere to go and got asked in the corridor. Person-less messages
-// with the same reply recursion and reactions as threads: asking and reading are
+// with the same reply recursion as threads: asking and reading are
 // ONE list and nothing is ever "resolved". No statuses, no resolve button, no FAQ.
 //
 // Stored at asks/{id} — a top-level collection (like prayerRequests) so the
@@ -18,7 +18,6 @@ import {
   getDocs,
   onSnapshot,
   query,
-  runTransaction,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -38,7 +37,6 @@ export interface AskMessage {
   kind: AskKind;
   body: string;
   at: string; // ISO
-  reactions: { by: string; emoji: string }[];
 }
 
 const col = () => collection(db, "asks");
@@ -55,7 +53,6 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
   kind: (data.kind as AskKind) ?? "question",
   body: data.body ?? "",
   at: data.at ?? new Date().toISOString(),
-  reactions: Array.isArray(data.reactions) ? data.reactions : [],
 });
 
 export interface SubscribeAsksOptions {
@@ -259,7 +256,6 @@ export async function addAsk(input: {
       kind: "question" as AskKind,
       body: input.body.trim(),
       at: new Date().toISOString(),
-      reactions: [],
     });
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "asks");
@@ -288,7 +284,6 @@ export async function addAskFor(input: AskForInput): Promise<void> {
       kind: "question" as AskKind,
       body,
       at: new Date().toISOString(),
-      reactions: [],
     });
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "asks");
@@ -313,7 +308,6 @@ export async function addAskReply(
       kind: "comment" as AskKind,
       body,
       at: new Date().toISOString(),
-      reactions: [],
     });
     if (notifyTo) {
       const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
@@ -356,27 +350,5 @@ export async function deleteAskReply(replyId: string): Promise<void> {
     await deleteDoc(ref(replyId));
   } catch (e) {
     handleFirestoreError(e, OperationType.DELETE, `asks/${replyId}`);
-  }
-}
-
-/** Toggle `by`'s reaction (emoji) on a message. */
-export async function toggleAskReaction(
-  messageId: string,
-  by: string,
-  emoji: string,
-): Promise<void> {
-  try {
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref(messageId));
-      if (!snap.exists()) return;
-      const reactions = (snap.data().reactions as AskMessage["reactions"]) ?? [];
-      const has = reactions.some((r) => r.by === by && r.emoji === emoji);
-      const next = has
-        ? reactions.filter((r) => !(r.by === by && r.emoji === emoji))
-        : [...reactions, { by, emoji }];
-      tx.update(ref(messageId), { reactions: next });
-    });
-  } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `asks/${messageId}`);
   }
 }

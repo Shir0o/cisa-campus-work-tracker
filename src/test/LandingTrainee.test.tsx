@@ -151,7 +151,6 @@ vi.mock('../lib/threads', () => ({
         kind: 'nudge',
         body: 'Please follow up',
         at: new Date().toISOString(),
-        reactions: [],
       },
     ]);
     return () => {};

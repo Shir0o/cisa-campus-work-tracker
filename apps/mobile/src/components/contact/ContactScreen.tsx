@@ -351,8 +351,6 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                       message={m}
                       meUid={uid ?? ''}
                       nested
-                      canReact={canWrite}
-                      onToggleReaction={data.toggleReaction}
                       canDelete={canDeleteMessage(m)}
                       onDelete={deleteMessage}
                     />
@@ -441,8 +439,6 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                     ? interactionSnippet(story.find((i) => i.id === m.interactionId))
                     : null
                 }
-                canReact={canWrite}
-                onToggleReaction={data.toggleReaction}
                 canDelete={canDeleteMessage(m)}
                 onDelete={deleteMessage}
               />

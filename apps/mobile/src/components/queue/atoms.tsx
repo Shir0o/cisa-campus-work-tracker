@@ -325,44 +325,6 @@ export function AboutChip({
   );
 }
 
-// ── the emoji acknowledgement row ──────────────────────────────────────────
-export function Reactions({
-  options,
-  mine,
-  onPick,
-}: {
-  options: readonly string[];
-  mine: string[];
-  onPick: (emoji: string) => void;
-}) {
-  const { c, fs } = useV2Theme();
-  return (
-    <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
-      {options.map((e) => {
-        const on = mine.includes(e);
-        return (
-          <Pressable
-            key={e}
-            onPress={() => onPick(e)}
-            style={{
-              width: 46,
-              height: 46,
-              borderRadius: 14,
-              borderWidth: 1.5,
-              borderColor: on ? c.card.reactOnBorder : c.card.border,
-              backgroundColor: on ? c.card.reactOnBg : c.card.react,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: fs(18) }}>{e}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 // ── a section label, on the room or on the card ────────────────────────────
 export function Kicker({ children, onRoom, style }: { children: string; onRoom?: boolean; style?: StyleProp<ViewStyle> }) {
   const { c, font, fs } = useV2Theme();

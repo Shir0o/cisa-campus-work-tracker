@@ -765,7 +765,6 @@ describe('MyDayMobile', () => {
       kind: 'question',
       body: 'How do you start a conversation?',
       at: '2026-08-25T10:00:00.000Z',
-      reactions: [],
     };
     asksMock.askStacksFor.mockReturnValue([
       {

@@ -84,7 +84,6 @@ export async function migrateCommentsToThreads(firestore: Firestore): Promise<vo
         kind: 'comment',
         body: String(data.text || '').trim(),
         at: toIso(data.createdAt || data.date),
-        reactions: [],
         interactionId: null,
         scope: 'team',
         legacyComment: true,
