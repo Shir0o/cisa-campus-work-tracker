@@ -13,6 +13,7 @@ import { getAuth } from "firebase-admin/auth";
 import dotenv from "dotenv";
 import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 import { feedbackIssueSubmittedByLine } from "./src/lib/feedbackReporter";
+import { redactRecordIds } from "./src/lib/feedbackUrl";
 import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
 import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
 import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/lib/feedbackKinds";
@@ -695,13 +696,16 @@ export async function createApp() {
           // NOTE: `screenshot` is deliberately absent from every line below.
           // ADR 0018 decision 7 keeps captures out of the public issue tracker;
           // src/test/server.test.ts asserts the body stays screenshot-free.
+          // The Page URL is published on the same terms: the Firestore doc
+          // above keeps what the client sent, while the issue sees the route
+          // with record ids redacted (issue #1143 (from #1120/#1121)).
           const bodyLines = [
             "### Feedback Details",
             feedbackIssueSubmittedByLine(userName),
             "- **Type:** " + (type || "enhancement"),
             "- **Kind:** " + kindLabel,
             "- **Date:** " + new Date().toLocaleString(),
-            "- **Page URL:** " + (url || "N/A"),
+            "- **Page URL:** " + (redactRecordIds(url) || "N/A"),
             "- **Viewport:** " + (viewport || "N/A"),
             "- **User Agent:** " + (userAgent || "N/A"),
             "",
