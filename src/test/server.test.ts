@@ -461,6 +461,48 @@ describe("POST /api/feedback", () => {
       expect(Object.values(getCollection("feedback"))[0]).not.toHaveProperty("screenshot");
     });
   });
+
+  // ── Page URL: stored whole, published redacted (issue #1143 (from #1120/#1121)) ──
+  describe("page URL", () => {
+    const PEOPLE_URL = "https://cisa-campus-work-tracker.pages.dev/people/EmjcTrASeiV11WaNhXCG";
+
+    const publishIssue = () => {
+      vi.stubEnv("GITHUB_TOKEN", "gh-token");
+      vi.stubEnv("GITHUB_REPO", "org/repo");
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/51", number: 51 }), { status: 201 })
+      );
+    };
+
+    it("keeps the whole URL on the Firestore doc, where admins need it", async () => {
+      const res = await request(app).post("/api/feedback").send({ message: "broken", url: PEOPLE_URL });
+      expect(res.status).toBe(200);
+      expect(Object.values(getCollection("feedback"))[0].url).toBe(PEOPLE_URL);
+    });
+
+    it("never puts a contact id in the GitHub issue", async () => {
+      publishIssue();
+
+      const res = await request(app).post("/api/feedback").send({ message: "broken", kind: "bug", url: PEOPLE_URL });
+      expect(res.status).toBe(200);
+
+      const raw = (fetchMock.mock.calls[0][1] as RequestInit).body as string;
+      expect(raw).not.toContain("EmjcTrASeiV11WaNhXCG");
+      expect(JSON.parse(raw).body).toContain("/people/:id");
+    });
+
+    it("still publishes the route of a page that carries no id", async () => {
+      publishIssue();
+
+      const res = await request(app)
+        .post("/api/feedback")
+        .send({ message: "broken", kind: "bug", url: "https://cisa-campus-work-tracker.pages.dev/visits" });
+      expect(res.status).toBe(200);
+
+      const raw = (fetchMock.mock.calls[0][1] as RequestInit).body as string;
+      expect(JSON.parse(raw).body).toContain("/visits");
+    });
+  });
 });
 
 describe("POST /api/feedback/update", () => {
