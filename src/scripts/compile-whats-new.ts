@@ -26,6 +26,53 @@ export interface WhatsNewManifest {
   releases: WhatsNewRelease[];
 }
 
+/** Split a version string into its numeric parts; null when not major.minor.patch. */
+function parseVersionParts(input: string): number[] | null {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(input.trim());
+  if (match === null) return null;
+  return match.slice(1).map(Number);
+}
+
+/** The newest authored version strictly below the target — the git range base
+ *  a draft for `target` should diff from. Null when the target has nothing
+ *  older to diff against (it is the first authored version). */
+export function resolveDraftRangeBase(
+  authoredVersions: string[],
+  targetVersion: string,
+): string | null {
+  const target = parseVersionParts(targetVersion);
+  if (target === null) return null;
+
+  let best: string | null = null;
+  let bestParts: number[] | null = null;
+
+  for (const version of authoredVersions) {
+    const parts = parseVersionParts(version);
+    if (parts === null) continue;
+
+    // strictly below the target
+    let below = false;
+    for (let i = 0; i < 3; i++) {
+      if (parts[i] < target[i]) { below = true; break; }
+      if (parts[i] > target[i]) break;
+    }
+    if (!below) continue;
+
+    if (bestParts === null) {
+      best = version;
+      bestParts = parts;
+      continue;
+    }
+    // keep the largest
+    for (let i = 0; i < 3; i++) {
+      if (parts[i] > bestParts[i]) { best = version; bestParts = parts; break; }
+      if (parts[i] < bestParts[i]) break;
+    }
+  }
+
+  return best;
+}
+
 /**
  * Parses markdown with simple YAML frontmatter and bullet points with [Web]/[Mobile] platform tags.
  */
