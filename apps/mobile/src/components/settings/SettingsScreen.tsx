@@ -43,6 +43,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useRoomTint, type V2RoomTint } from '../../lib/roomTint';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker, PersonMark, SecondaryButton } from '../queue/atoms';
+import { SecuritySection } from './SecuritySection';
 import { Room, V2Screen } from '../v2/Widget';
 import { Snackbar } from '../ui';
 
@@ -709,6 +710,8 @@ function Settings() {
             </Pressable>
           </View>
         </Section>
+
+        <SecuritySection />
 
         {hasQueue && (
           <Section title={t('mobile.settings.todays_queue')}>

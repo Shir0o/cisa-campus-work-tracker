@@ -14,6 +14,11 @@ import { sleep } from '../lib/utils';
 import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole, roleLabel } from '../lib/permissions';
 import { ImpersonateTarget } from '../types';
 import { Impersonation, meIdFor, identityKey } from '../lib/impersonate';
+import {
+  extractMfaChallenge,
+  resolveTotpSignIn,
+  PendingMfaChallenge,
+} from '../lib/mfa';
 
 export interface AuthContextType {
   user: User | null;
@@ -35,6 +40,9 @@ export interface AuthContextType {
   authorizeSheets: () => Promise<string | null>;
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  pendingMfa: PendingMfaChallenge | null;
+  completeMfaSignIn: (otp: string) => Promise<void>;
+  cancelMfa: () => void;
   logOut: () => Promise<void>;
 }
 
@@ -65,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [pendingMfa, setPendingMfa] = useState<PendingMfaChallenge | null>(null);
 
   const isOwner = canSimulateRole(actualRole as AppRole, user?.email);
   const isImpersonating = isOwner && (ownerViewRole !== null || impersonateTarget !== null);
@@ -297,6 +306,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
+      // A user with a second factor enrolled: suspend the popup flow and hand
+      // the resolver to the login screen so it can prompt for the TOTP code.
+      if (extractMfaChallenge(auth, error)) {
+        setPendingMfa(extractMfaChallenge(auth, error));
+        return;
+      }
       // Storage-partitioned browsers (Safari ITP, Chrome partitioned) can't read
       // the cross-origin auth helper's initial state, so the popup fails with
       // "Unable to process request due to missing initial state" even though the
@@ -320,7 +335,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithEmail = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email.trim(), password);
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+    } catch (error) {
+      const challenge = extractMfaChallenge(auth, error);
+      if (challenge) {
+        setPendingMfa(challenge);
+        return;
+      }
+      throw error;
+    }
+  };
+
+  const completeMfaSignIn = async (otp: string) => {
+    if (!pendingMfa) throw new Error('No pending multi-factor sign-in.');
+    const hints = pendingMfa.hints;
+    const factor = hints.find((h) => h.factorId === 'totp') ?? hints[0];
+    await resolveTotpSignIn(pendingMfa.resolver, factor.uid, otp);
+    setPendingMfa(null);
+  };
+
+  const cancelMfa = () => {
+    setPendingMfa(null);
   };
 
   const logOut = async () => {
@@ -356,6 +392,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authorizeSheets,
         signIn,
         signInWithEmail,
+        pendingMfa,
+        completeMfaSignIn,
+        cancelMfa,
         logOut,
       }}
     >

@@ -47,6 +47,8 @@ import {
   PanelLeft,
   LayoutPanelLeft,
   Rows3,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -89,6 +91,22 @@ import {
   showWebPushNotification,
 } from '../lib/webPush';
 import { sendPushNotification } from '../lib/push';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+  sendEmailVerification,
+  reauthenticateWithPopup,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+} from 'firebase/auth';
+import {
+  listEnrolledFactors,
+  hasTotpFactor,
+  startTotpEnrollment,
+  unenrollTotpFactor,
+  type TotpEnrollment,
+  TOTP_FACTOR_ID,
+} from '../lib/mfa';
 
 type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -321,6 +339,357 @@ function AccountSection() {
           />
         )}
       </AnimatePresence>
+    </section>
+  );
+}
+
+// ── Security (second factor) ──────────────────────────────────────────
+
+const REQUIRES_RECENT_LOGIN = 'auth/requires-recent-login';
+
+function SecuritySection() {
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const factors = user ? listEnrolledFactors(user) : [];
+  const [status, setStatus] = useState<'idle' | 'reauth' | 'enrolling'>('idle');
+  const [pendingAction, setPendingAction] = useState<'enroll' | 'unenroll' | null>(null);
+  const [unenrollUid, setUnenrollUid] = useState<string | null>(null);
+  const [reauthPassword, setReauthPassword] = useState('');
+  const [showReauthPassword, setShowReauthPassword] = useState(false);
+  const [enrollment, setEnrollment] = useState<TotpEnrollment | null>(null);
+  const [otp, setOtp] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const clearFeedback = () => {
+    setMessage(null);
+    setError(null);
+  };
+  const email = user?.email ?? null;
+  const emailVerified = !!user?.emailVerified;
+  const isGoogle = !!user?.providerData?.some((p) => p.providerId === 'google.com');
+  const secondFactorOn = hasTotpFactor(user as never);
+
+  const requireRecentSignIn = async <T,>(action: () => Promise<T>, next: 'enroll' | 'unenroll') => {
+    clearFeedback();
+    setBusy(true);
+    try {
+      await action();
+      setBusy(false);
+      return true;
+    } catch (err: any) {
+      setBusy(false);
+      if (err?.code === REQUIRES_RECENT_LOGIN) {
+        setPendingAction(next);
+        setStatus('reauth');
+        return false;
+      }
+      setError(t('settings.security.reauth_required_failed', 'That could not be done. Please try again.'));
+      return false;
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!user) return;
+    clearFeedback();
+    setBusy(true);
+    try {
+      await sendEmailVerification(user);
+      setMessage(t('settings.security.verification_sent', 'Verification email sent. Open the link to verify your address.'));
+    } catch {
+      setError(t('settings.security.verification_failed', 'Could not send the verification email. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runPendingAction = async () => {
+    if (pendingAction === 'enroll') {
+      setStatus('idle');
+      await handleStartEnroll();
+    } else if (pendingAction === 'unenroll' && unenrollUid) {
+      setStatus('idle');
+      await handleUnenroll(unenrollUid);
+    }
+  };
+
+  const handleReauth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    clearFeedback();
+    setBusy(true);
+    try {
+      if (isGoogle) {
+        await reauthenticateWithPopup(user, new (GoogleAuthProvider)());
+      } else {
+        if (!email || !reauthPassword) return;
+        await reauthenticateWithCredential(user, EmailAuthProvider.credential(email, reauthPassword));
+      }
+      setBusy(false);
+      setReauthPassword('');
+      await runPendingAction();
+    } catch {
+      setBusy(false);
+      setError(t('settings.security.reauth_failed', 'Could not confirm your identity. Check your password and try again.'));
+    }
+  };
+
+  const handleStartEnroll = async () => {
+    if (!user) return;
+    clearFeedback();
+    await requireRecentSignIn(async () => {
+      const enr = await startTotpEnrollment(user, 'Authenticator');
+      setEnrollment(enr);
+      setStatus('enrolling');
+      setShowSecret(false);
+      setOtp('');
+    }, 'enroll');
+  };
+
+  const handleConfirmEnroll = async () => {
+    if (!enrollment) return;
+    clearFeedback();
+    setBusy(true);
+    try {
+      await enrollment.enroll(otp.trim());
+      setEnrollment(null);
+      setOtp('');
+      setStatus('idle');
+      setPendingAction(null);
+      setMessage(t('settings.security.added', 'Second factor added. Keep your authenticator app handy when signing in.'));
+    } catch {
+      setError(t('settings.security.code_invalid', 'That code did not work. Check your authenticator app and try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUnenroll = async (uid: string) => {
+    if (!user) return;
+    clearFeedback();
+    setUnenrollUid(uid);
+    const ok = await requireRecentSignIn(async () => {
+      await unenrollTotpFactor(user, uid);
+      setMessage(t('settings.security.removed', 'Second factor removed.'));
+    }, 'unenroll');
+    setUnenrollUid(null);
+    if (ok) setPendingAction(null);
+  };
+
+  const renderFactors = () => {
+    if (factors.length === 0) {
+      return (
+        <p className="text-sm text-on-surface-variant">
+          {t('settings.security.none', 'No second factor yet. Adding one keeps your account safer if your password leaks.')}
+        </p>
+      );
+    }
+    return (
+      <ul className="space-y-2">
+        {factors.map((f) => (
+          <li
+            key={f.uid}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-outline-variant/40 bg-surface px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-on-surface">
+                {f.factorId === TOTP_FACTOR_ID
+                  ? t('settings.security.authenticator_app', 'Authenticator app')
+                  : f.displayName || f.factorId}
+              </p>
+              {f.displayName && (
+                <p className="text-xs text-on-surface-variant">{f.displayName}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => handleUnenroll(f.uid)}
+              disabled={busy}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50 min-h-[40px]"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {t('settings.security.remove', 'Remove')}
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.security', 'Security')}
+        sub={t('settings.security_sub', 'A second factor protects your account even if your password is compromised.')}
+      />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-on-surface">
+              {t('settings.security.two_step_label', 'Two-step verification')}
+            </p>
+            <p className="text-sm text-on-surface-variant">
+              {secondFactorOn
+                ? t('settings.security.on', 'On — you verify with your authenticator app on sign-in.')
+                : t('settings.security.off', 'Off')}
+            </p>
+          </div>
+          <span
+            className={cn(
+              'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border shrink-0',
+              secondFactorOn ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20',
+            )}
+          >
+            {secondFactorOn
+              ? t('settings.security.status_on', 'On')
+              : t('settings.security.status_off', 'Off')}
+          </span>
+        </div>
+
+        {!emailVerified && (
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4 text-sm text-on-surface space-y-2">
+            <p>
+              {t('settings.security.email_not_verified', 'Your email address is not verified. Verify it before adding a second factor.')}
+            </p>
+            <button
+              type="button"
+              onClick={handleVerifyEmail}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-warning/15 text-warning hover:bg-warning/25 transition-colors disabled:opacity-50 min-h-[40px]"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              {t('settings.security.verify_email', 'Verify email')}
+            </button>
+          </div>
+        )}
+
+        {status === 'reauth' ? (
+          <form onSubmit={handleReauth} className="space-y-3 rounded-2xl border border-outline-variant/40 bg-surface p-4">
+            <p className="text-sm text-on-surface">
+              {t('settings.security.reauth_prompt', 'Re-confirm your identity to manage your second factor.')}
+            </p>
+            {!isGoogle ? (
+              <div className="relative">
+                <input
+                  type={showReauthPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder={t('settings.security.password_placeholder', 'Password')}
+                  value={reauthPassword}
+                  onChange={(e) => setReauthPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 pr-12 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowReauthPassword((v) => !v)}
+                  aria-label={showReauthPassword ? 'Hide password' : 'Show password'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-on-surface-variant hover:text-accent transition-colors"
+                >
+                  {showReauthPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-on-surface-variant">
+                {t('settings.security.google_reauth_note', 'You will confirm through Google.')}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={busy || (!isGoogle && !reauthPassword)}
+                className="flex-1 py-2.5 bg-primary text-on-primary rounded-2xl font-medium hover:opacity-90 transition-all disabled:opacity-60 min-h-[44px]"
+              >
+                {busy ? t('settings.security.confirming', 'Confirming…') : t('settings.security.confirm', 'Confirm')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatus('idle');
+                  setPendingAction(null);
+                  setReauthPassword('');
+                }}
+                className="px-4 py-2.5 border border-outline text-on-surface rounded-2xl font-medium hover:bg-surface-variant transition-all min-h-[44px]"
+              >
+                {t('actions.cancel', 'Cancel')}
+              </button>
+            </div>
+          </form>
+        ) : status === 'enrolling' && enrollment ? (
+          <div className="space-y-4 rounded-2xl border border-outline-variant/40 bg-surface p-4">
+            <p className="text-sm text-on-surface">
+              {t('settings.security.scan_prompt', 'Scan this code with your authenticator app (Google Authenticator or similar), then enter the 6-digit code.')}
+            </p>
+            <div className="flex justify-center">
+              <QRCodeSVG value={enrollment.qrCodeUrl} size={160} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSecret((v) => !v)}
+              className="text-xs text-accent underline underline-offset-2 hover:opacity-80"
+            >
+              {showSecret
+                ? t('settings.security.hide_secret', 'Hide manual secret')
+                : t('settings.security.show_secret', 'Can’t scan? Enter the secret manually')}
+            </button>
+            {showSecret && (
+              <p className="text-sm font-mono text-on-surface-variant break-all select-all">
+                {enrollment.secretKey}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder={t('settings.security.code_placeholder', '6-digit code')}
+                className="w-32 px-3 py-2.5 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface text-center tracking-[0.3em]"
+              />
+              <button
+                type="button"
+                onClick={handleConfirmEnroll}
+                disabled={busy || otp.length !== 6}
+                className="flex-1 py-2.5 bg-primary text-on-primary rounded-2xl font-medium hover:opacity-90 transition-all disabled:opacity-60 min-h-[44px]"
+              >
+                {busy ? t('settings.security.adding', 'Adding…') : t('settings.security.add_factor', 'Add second factor')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatus('idle');
+                  setEnrollment(null);
+                  setOtp('');
+                }}
+                disabled={busy}
+                className="px-4 py-2.5 border border-outline text-on-surface rounded-2xl font-medium hover:bg-surface-variant transition-all disabled:opacity-50 min-h-[44px]"
+              >
+                {t('actions.cancel', 'Cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {renderFactors()}
+            {factors.length === 0 && (
+              <button
+                type="button"
+                onClick={handleStartEnroll}
+                disabled={busy || !emailVerified}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-all disabled:opacity-50 min-h-[44px]"
+              >
+                <Plus className="w-4 h-4" />
+                {t('settings.security.set_up', 'Set up second factor')}
+              </button>
+            )}
+          </div>
+        )}
+
+        {message && <p className="text-sm text-success px-1">{message}</p>}
+        {error && <p className="text-sm text-error px-1">{error}</p>}
+      </div>
     </section>
   );
 }
@@ -2463,6 +2832,7 @@ export default function Settings() {
           <p className="text-base text-on-surface-variant mt-2">{t('settings.subtitle', 'Your account and preferences.')}</p>
         </header>
         <AccountSection />
+        <SecuritySection />
 
         <section className="mt-10">
           <SectionHeader
@@ -2505,6 +2875,7 @@ export default function Settings() {
         </p>
       </header>
       <AccountSection />
+      <SecuritySection />
       <AppearanceSection theme={theme} setTheme={setTheme} />
       <NavigationSection />
       <NotificationsSection />

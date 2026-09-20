@@ -25,6 +25,11 @@ import {
 import { auth, db, signIn } from './firebase';
 import { subscribeUsers } from './data/users';
 import { subscribePartners } from './data/partners';
+import {
+  extractMfaChallenge,
+  resolveTotpSignIn,
+  type PendingMfaChallenge,
+} from './mfa';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
@@ -53,6 +58,9 @@ interface AuthContextValue {
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  pendingMfa: PendingMfaChallenge | null;
+  completeMfaSignIn: (otp: string) => Promise<void>;
+  cancelMfa: () => void;
   logOut: () => Promise<void>;
 }
 
@@ -65,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [impersonateTarget, setImpersonateTargetState] = useState<ImpersonateTarget | null>(null);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingMfa, setPendingMfa] = useState<PendingMfaChallenge | null>(null);
 
   const isOwner = canSimulateRole(actualRole, user?.email);
 
@@ -211,15 +220,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isApproved,
     loading,
     signInWithEmail: async (email, password) => {
-      await signIn(email.trim(), password);
+      try {
+        await signIn(email.trim(), password);
+      } catch (error) {
+        const challenge = extractMfaChallenge(auth, error);
+        if (challenge) {
+          setPendingMfa(challenge);
+          return;
+        }
+        throw error;
+      }
     },
     signInWithGoogle: async () => {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      if (response.type === 'cancelled') return;
-      await signInWithCredential(auth, GoogleAuthProvider.credential(response.data.idToken));
+      try {
+        await GoogleSignin.hasPlayServices();
+        const response = await GoogleSignin.signIn();
+        if (response.type === 'cancelled') return;
+        await signInWithCredential(auth, GoogleAuthProvider.credential(response.data.idToken));
+      } catch (error) {
+        const challenge = extractMfaChallenge(auth, error);
+        if (challenge) {
+          setPendingMfa(challenge);
+          return;
+        }
+        throw error;
+      }
     },
+    completeMfaSignIn: async (otp) => {
+      if (!pendingMfa) throw new Error('No pending multi-factor sign-in.');
+      const factor = pendingMfa.hints.find((h) => h.factorId === 'totp') ?? pendingMfa.hints[0];
+      await resolveTotpSignIn(pendingMfa.resolver, factor.uid, otp);
+      setPendingMfa(null);
+    },
+    cancelMfa: () => setPendingMfa(null),
     logOut: () => signOut(auth),
+    pendingMfa,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1246,7 +1246,11 @@ describe("authorizeAdmin role enforcement", () => {
   });
 
   it("allows the founder email without a users doc", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "founder-1", email: "yilongwang05@gmail.com" });
+    mockVerifyIdToken.mockResolvedValue({
+      uid: "founder-1",
+      email: "yilongwang05@gmail.com",
+      firebase: { sign_in_second_factor: "totp" },
+    });
     seedDoc("feedback", "f-2", { status: "new" });
     const res = await request(app)
       .post("/api/feedback/update")
@@ -1256,7 +1260,11 @@ describe("authorizeAdmin role enforcement", () => {
   });
 
   it("allows a user whose users doc has role admin", async () => {
-    mockVerifyIdToken.mockResolvedValue({ uid: "admin-1", email: "admin@example.com" });
+    mockVerifyIdToken.mockResolvedValue({
+      uid: "admin-1",
+      email: "admin@example.com",
+      firebase: { sign_in_second_factor: "totp" },
+    });
     seedDoc("users", "admin-1", { role: "admin" });
     seedDoc("feedback", "f-3", { status: "new" });
     const res = await request(app)
@@ -1264,6 +1272,21 @@ describe("authorizeAdmin role enforcement", () => {
       .set("Authorization", "Bearer tok")
       .send({ id: "f-3", status: "resolved" });
     expect(res.status).toBe(200);
+  });
+
+  it("rejects an admin whose token did not complete a second factor", async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      uid: "admin-2",
+      email: "admin@example.com",
+      firebase: { sign_in_provider: "password" },
+    });
+    seedDoc("users", "admin-2", { role: "admin" });
+    const res = await request(app)
+      .post("/api/feedback/update")
+      .set("Authorization", "Bearer tok")
+      .send({ id: "f-4", status: "resolved" });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("Multi-factor authentication required");
   });
 
   it("forbids non-admin access to webhook logs", async () => {

@@ -138,21 +138,32 @@ export async function createApp() {
     const uid = decodedToken.uid;
     const email = decodedToken.email || "";
 
+    let role: string;
     if (email.toLowerCase() === "yilongwang05@gmail.com") {
-      return { uid, email, role: "admin" };
+      role = "admin";
+    } else {
+      const userDoc = await getAdminDb().collection("users").doc(uid).get();
+      if (!userDoc.exists) {
+        throw new Error("User does not exist in the system");
+      }
+
+      const userData = userDoc.data()!;
+      if (userData.role !== "admin") {
+        throw new Error("User is not an administrator");
+      }
+      role = userData.role;
     }
 
-    const userDoc = await getAdminDb().collection("users").doc(uid).get();
-    if (!userDoc.exists) {
-      throw new Error("User does not exist in the system");
+    // Enforce a completed second factor on administrator endpoints (ADR 0029,
+    // TOTP MFA). Full-timers and the owner are mandatory-enrolled, so a token
+    // that did not complete a second factor is rejected here — not only in the
+    // UI — keeping the admin API honest. The `firebase.sign_in_second_factor`
+    // claim is present only when sign-in finished a second factor.
+    if (!decodedToken.firebase?.sign_in_second_factor) {
+      throw new Error("Multi-factor authentication required");
     }
 
-    const userData = userDoc.data()!;
-    if (userData.role !== "admin") {
-      throw new Error("User is not an administrator");
-    }
-
-    return { uid, email, role: userData.role };
+    return { uid, email, role };
   }
 
   // Helper function to update GitHub issue state bidirectionally
