@@ -17,9 +17,9 @@ import { signInAs } from './helpers/auth';
  * Run with the emulator: npm run test:e2e:emulator -- --grep "spike"
  * Videos land under test-results/ (per-test .webm beside the trace).
  */
-test.describe('What\'s New Video spike (#1123)', () => {
-  test.use({ video: 'on' });
+test.use({ video: 'on' });
 
+test.describe('What\'s New Video spike (#1123)', () => {
   test('Full-timer watches their day, opens the directory, and reads a person', async ({ page }) => {
     // 1. Sign in as Full-timer and land on My Day.
     await signInAs(page, 'fulltimer');
