@@ -226,6 +226,7 @@ export type Event = Gathering;
 export interface SeasonSettings {
   override?: string | null;
   clubRush?: boolean;
+  bfa?: boolean;
 }
 
 // Team-wide gospel partners (one doc: settings/partners). The map is keyed by
