@@ -271,3 +271,12 @@ _Avoid_: Source language, input language, locale
 The read-time transform that lets a Spanish-mode reader read English-authored content: English text is translated toward Spanish when a Spanish-mode reader views it. It runs only in that direction — an English-mode reader never receives a translation, and content already written in Spanish is returned unchanged rather than re-translated. The model is English-canonical for now (ADR 0027).
 _Avoid_: Auto-translate, localization, on-the-fly translation
 
+**App Check**:
+Firebase's request attestation mechanism that verifies traffic originates from legitimate instances of CISA Campus Work Tracker (native iOS/Android app or official web domains) rather than unauthorized scripts or abusive API clients.
+_Avoid_: Device verification, API gatekeeper, bot blocker
+
+**App Check Debug Token**:
+A trusted pre-shared secret registered in the Firebase console that permits automated tests, emulators, and local development builds (`__DEV__`, QA) to bypass genuine device attestation while still transmitting valid attestation tokens.
+_Avoid_: Bypass token, dev key, test token
+
+

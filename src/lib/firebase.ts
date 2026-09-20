@@ -3,6 +3,12 @@ import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'fireba
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getDatabase, type Database } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+  CustomProvider,
+  type AppCheck,
+} from 'firebase/app-check';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const finalConfig = { ...firebaseConfig };
@@ -30,6 +36,51 @@ if (import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID) {
 }
 
 const app = initializeApp(finalConfig);
+
+// Firebase App Check: validates requests come from genuine instances.
+// Uses ReCaptchaEnterpriseProvider in production browser environments,
+// and debug token in local development / E2E / emulator environments.
+function initAppCheck(): AppCheck | null {
+  if (typeof window === 'undefined') return null;
+
+  const debugToken =
+    import.meta.env.VITE_APP_CHECK_DEBUG_TOKEN ||
+    ((import.meta.env.DEV || import.meta.env.VITE_E2E_MODE === 'true') &&
+    typeof (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN === 'string'
+      ? (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN
+      : undefined);
+
+  if (debugToken) {
+    (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken;
+  }
+
+  const recaptchaKey =
+    import.meta.env.VITE_RECAPTCHA_ENTERPRISE_KEY || '6LdAgcQtAAAAAKW1RwR4gKTt0S6W0M72h73jv-hr';
+
+  try {
+    const provider = debugToken
+      ? new CustomProvider({
+          getToken: async () => ({
+            token: debugToken,
+            expireTimeMillis: Date.now() + 60 * 60 * 1000,
+          }),
+        })
+      : new ReCaptchaEnterpriseProvider(recaptchaKey);
+
+    return initializeAppCheck(app, {
+      provider,
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('App Check initialization failed:', err);
+    }
+    return null;
+  }
+}
+
+export const appCheck: AppCheck | null = initAppCheck();
+
 export const db =
   import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
     ? getFirestore(app)
