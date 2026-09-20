@@ -30,6 +30,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run E2E tests against Firebase Emulator
         run: npm run test:e2e:emulator
+      - name: Upload What's New video (spike capture)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: whats-new-video
+          path: test-results/**/video.webm
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
