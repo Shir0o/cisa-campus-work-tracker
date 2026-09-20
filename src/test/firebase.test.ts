@@ -71,6 +71,13 @@ vi.mock('firebase/storage', () => ({
   getStorage: vi.fn(),
 }));
 
+const mockInitializeAppCheck = vi.fn();
+vi.mock('firebase/app-check', () => ({
+  initializeAppCheck: (...args: any[]) => mockInitializeAppCheck(...args),
+  ReCaptchaEnterpriseProvider: vi.fn(),
+  CustomProvider: vi.fn(),
+}));
+
 // We will load this dynamically to ensure mocks are set up first
 let handleFirestoreError: any;
 let logActivity: any;
@@ -270,6 +277,11 @@ describe('Firebase Service Helpers', () => {
       expect((window as any).__e2eSignIn).toBeTypeOf('function');
       await (window as any).__e2eSignIn('test@example.com', 'secret');
       expect(signInWithEmailAndPassword).toHaveBeenCalledWith(mockAuth, 'test@example.com', 'secret');
+
+      expect(mockInitializeAppCheck).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ isTokenAutoRefreshEnabled: true })
+      );
     });
   });
 });
