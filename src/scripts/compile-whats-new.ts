@@ -17,6 +17,8 @@ export interface WhatsNewRelease {
   roles?: string[];
   /** The Release Nudge's 3-4 plain sentences. Empty or absent = quiet release. */
   lines?: string[];
+  /** The What's New Video companion - a YouTube link. Absent = no video. */
+  video_url?: string;
   overview?: string;
   items: WhatsNewItem[];
 }
@@ -124,6 +126,7 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     : ['web', 'mobile'];
   const parsedRoles = Array.isArray(frontmatter.roles) ? (frontmatter.roles as string[]) : undefined;
   const parsedLines = Array.isArray(frontmatter.lines) ? (frontmatter.lines as string[]) : undefined;
+  const videoUrl = frontmatter.video_url || undefined;
 
   // Parse body: extract overview and bullet items
   const lines = bodyStr.split('\n');
@@ -201,6 +204,7 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     platforms,
     ...(parsedRoles ? { roles: parsedRoles } : {}),
     ...(parsedLines ? { lines: parsedLines } : {}),
+    ...(videoUrl ? { video_url: videoUrl } : {}),
     overview: overviewLines.length > 0 ? overviewLines.join('\n') : undefined,
     items,
   };

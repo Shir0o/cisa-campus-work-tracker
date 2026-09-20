@@ -34,6 +34,8 @@ export interface WhatsNewRelease {
   roles?: AppRole[];
   /** The Release Nudge's 3-4 plain sentences. Empty or absent = quiet release. */
   lines?: string[];
+  /** The What's New Video companion - a YouTube link. Absent = no video. */
+  video_url?: string;
   overview?: string;
   items: WhatsNewItem[];
 }

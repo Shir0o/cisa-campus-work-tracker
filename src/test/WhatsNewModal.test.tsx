@@ -54,6 +54,49 @@ describe('WhatsNewModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('embeds the What\'s New Video iframe when the release carries a video_url', () => {
+    const withVideo: WhatsNewManifest = {
+      latestReleaseId: '2026-09-17-v1.6.0',
+      releases: [
+        {
+          id: '2026-09-17-v1.6.0',
+          version: '1.6.0',
+          title: 'With Video',
+          date: '2026-09-17',
+          platforms: ['web', 'mobile'],
+          video_url: 'https://www.youtube.com/watch?v=abc123',
+          items: [{ text: 'A change', platforms: ['web', 'mobile'] }],
+        },
+      ],
+    };
+
+    render(
+      <WhatsNewModal
+        manifest={withVideo}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    const iframe = screen.getByTitle(/what's new video/i) as HTMLIFrameElement;
+    expect(iframe).toBeInTheDocument();
+    expect(iframe.src).toContain('youtube.com/embed/abc123');
+  });
+
+  it('renders no video when the release has no video_url', () => {
+    render(
+      <WhatsNewModal
+        manifest={sampleManifest}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTitle(/what's new video/i)).not.toBeInTheDocument();
+  });
+
   it('renders categorized items in order (New Features, UI/UX Updates, Bug Fixes) with badges', () => {
     const categorizedManifest: WhatsNewManifest = {
       latestReleaseId: '2026-09-04-v1.4.1',
