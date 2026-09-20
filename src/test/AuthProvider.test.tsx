@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AuthProvider, useAuth } from '../components/AuthProvider';
-import { onAuthStateChanged, signOut, signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signOut, signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, getMultiFactorResolver } from 'firebase/auth';
 import { getDoc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import React from 'react';
 
@@ -10,7 +10,10 @@ vi.mock('firebase/auth', () => {
   const mockSignOut = vi.fn().mockResolvedValue(undefined);
   const mockSignInWithPopup = vi.fn();
   const mockSignInWithEmailAndPassword = vi.fn();
-  
+  const mockGetMultiFactorResolver = vi.fn();
+  const mockTotpAssertionForSignIn = vi.fn();
+  const mockResolveSignIn = vi.fn();
+
   class MockGoogleAuthProvider {
     addScope = vi.fn();
     static credentialFromResult = vi.fn().mockReturnValue({
@@ -25,6 +28,12 @@ vi.mock('firebase/auth', () => {
     GoogleAuthProvider: MockGoogleAuthProvider,
     signOut: mockSignOut,
     signInWithEmailAndPassword: mockSignInWithEmailAndPassword,
+    getMultiFactorResolver: mockGetMultiFactorResolver,
+    multiFactor: vi.fn(),
+    TotpMultiFactorGenerator: {
+      FACTOR_ID: 'totp',
+      assertionForSignIn: mockTotpAssertionForSignIn,
+    },
   };
 });
 
@@ -770,6 +779,81 @@ describe('AuthProvider', () => {
     await waitFor(() => {
       expect(screen.queryByText('Loading Auth...')).not.toBeInTheDocument();
       expect(screen.getByText('User: prov-error@example.com')).toBeInTheDocument();
+    });
+  });
+
+  it('surfaces a pending MFA challenge when sign-in demands a second factor and resolves it with a TOTP code', async () => {
+    const mockUser = {
+      uid: 'mfa-uid',
+      email: 'mfa@example.com',
+      displayName: 'MFA User',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(mockUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({ role: 'admin', approved: true }),
+    });
+
+    const mockResolveSignIn = vi.fn().mockResolvedValue({ user: { uid: 'mfa-uid' } });
+    (getMultiFactorResolver as any).mockReturnValue({
+      hints: [{ uid: 'factor-1', factorId: 'totp', displayName: 'Authenticator', enrollmentTime: 'x' }],
+      resolveSignIn: mockResolveSignIn,
+    });
+    (signInWithEmailAndPassword as any).mockRejectedValue({ code: 'auth/multi-factor-auth-required' });
+
+    const MfaTestComponent = () => {
+      const { user, signInWithEmail, pendingMfa, completeMfaSignIn, cancelMfa } = useAuth();
+      return (
+        <div>
+          <div>User: {user?.email}</div>
+          <div>hasPending: {(!!pendingMfa).toString()}</div>
+          <div>hintCount: {pendingMfa?.hints.length ?? 0}</div>
+          <button onClick={() => signInWithEmail('mfa@example.com', 'password')}>Sign In Email</button>
+          <button onClick={() => completeMfaSignIn('123456')}>Complete MFA</button>
+          <button onClick={() => cancelMfa()}>Cancel MFA</button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <MfaTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('User: mfa@example.com')).toBeInTheDocument();
+    });
+
+    // Trigger the sign-in that throws the multi-factor-required error.
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In Email' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('hasPending: true')).toBeInTheDocument();
+      expect(screen.getByText('hintCount: 1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete MFA' }));
+
+    await waitFor(() => {
+      expect(mockResolveSignIn).toHaveBeenCalled();
+      expect(screen.getByText('hasPending: false')).toBeInTheDocument();
+    });
+
+    // Re-trigger the challenge, then cancel.
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In Email' }));
+    await waitFor(() => {
+      expect(screen.getByText('hasPending: true')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel MFA' }));
+    await waitFor(() => {
+      expect(screen.getByText('hasPending: false')).toBeInTheDocument();
     });
   });
 });

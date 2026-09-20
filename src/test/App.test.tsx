@@ -96,6 +96,8 @@ vi.mock('../components/modals/ContactDetailsModal', () => ({
 const mockSignIn = vi.fn();
 const mockLogOut = vi.fn();
 const mockSignInWithEmail = vi.fn();
+const mockCompleteMfaSignIn = vi.fn();
+const mockCancelMfa = vi.fn();
 
 const mockAuthValue = {
   user: null as any,
@@ -106,6 +108,9 @@ const mockAuthValue = {
   signIn: mockSignIn,
   logOut: mockLogOut,
   signInWithEmail: mockSignInWithEmail,
+  pendingMfa: null as any,
+  completeMfaSignIn: mockCompleteMfaSignIn,
+  cancelMfa: mockCancelMfa,
 };
 
 vi.mock('../components/AuthProvider', () => ({
@@ -166,6 +171,7 @@ describe('App Component', () => {
     mockAuthValue.loading = false;
     mockAuthValue.role = 'viewer';
     mockAuthValue.effectiveIdentityKey = 'viewer';
+    mockAuthValue.pendingMfa = null;
     window.location.hash = '';
     window.history.replaceState(null, '', '/');
   });
@@ -181,6 +187,28 @@ describe('App Component', () => {
     render(<App />);
     expect(screen.getByText('Welcome to CISA Campus Work Tracker')).toBeInTheDocument();
     expect(screen.getByText('Sign in with Google')).toBeInTheDocument();
+  });
+
+  it('shows the MFA challenge and completes it with the entered code', async () => {
+    mockAuthValue.user = null;
+    mockAuthValue.pendingMfa = { hints: [{ uid: 'factor-1', factorId: 'totp' }] };
+    render(<App />);
+    expect(screen.getByText('Enter your security code')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('6-digit code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
+
+    await waitFor(() => {
+      expect(mockCompleteMfaSignIn).toHaveBeenCalledWith('123456');
+    });
+  });
+
+  it('backs out of the MFA challenge to the sign-in view', () => {
+    mockAuthValue.user = null;
+    mockAuthValue.pendingMfa = { hints: [{ uid: 'factor-1', factorId: 'totp' }] };
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    expect(mockCancelMfa).toHaveBeenCalled();
   });
 
   it('pads the sign-in view for the top safe-area and grows instead of clipping the card (#1122)', () => {

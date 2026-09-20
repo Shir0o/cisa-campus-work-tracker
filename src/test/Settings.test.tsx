@@ -76,6 +76,36 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE', DELETE: 'DELETE' },
 }));
 
+const mfaMocks = vi.hoisted(() => ({
+  listEnrolledFactors: vi.fn(() => []),
+  hasTotpFactor: vi.fn(() => false),
+  startTotpEnrollment: vi.fn(),
+  unenrollTotpFactor: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../lib/mfa', () => ({
+  listEnrolledFactors: mfaMocks.listEnrolledFactors,
+  hasTotpFactor: mfaMocks.hasTotpFactor,
+  startTotpEnrollment: mfaMocks.startTotpEnrollment,
+  unenrollTotpFactor: mfaMocks.unenrollTotpFactor,
+  TOTP_FACTOR_ID: 'totp',
+}));
+
+const authMocks = vi.hoisted(() => ({
+  sendEmailVerification: vi.fn(() => Promise.resolve()),
+  reauthenticateWithCredential: vi.fn(() => Promise.resolve()),
+  reauthenticateWithPopup: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('firebase/auth', () => ({
+  getAuth: vi.fn(),
+  sendEmailVerification: authMocks.sendEmailVerification,
+  reauthenticateWithCredential: authMocks.reauthenticateWithCredential,
+  reauthenticateWithPopup: authMocks.reauthenticateWithPopup,
+  EmailAuthProvider: { credential: vi.fn((email: string, password: string) => ({ providerId: 'password', email, password })) },
+  GoogleAuthProvider: class {},
+}));
+
 // ── Fixtures ───────────────────────────────────────────────────────────
 
 const mockUsers = [
@@ -1393,6 +1423,120 @@ describe('Settings', () => {
       setupNonManagerAuth();
       render(<Settings />);
       expect(screen.queryByText("Which team they're on")).not.toBeInTheDocument();
+    });
+  });
+
+  describe('SecuritySection (second factor)', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mfaMocks.listEnrolledFactors.mockReturnValue([]);
+      mfaMocks.hasTotpFactor.mockReturnValue(false);
+      mfaMocks.unenrollTotpFactor.mockResolvedValue(undefined);
+      authMocks.sendEmailVerification.mockResolvedValue(undefined);
+      authMocks.reauthenticateWithCredential.mockResolvedValue(undefined);
+    });
+
+    const setupUser = (overrides: Record<string, any> = {}) => {
+      setupManagerAuth({
+        user: {
+          uid: 'u-admin',
+          displayName: 'Admin User',
+          email: 'admin@test.com',
+          emailVerified: true,
+          photoURL: null,
+          providerData: [{ providerId: 'password', email: 'admin@test.com' }],
+          ...overrides,
+        },
+      });
+    };
+
+    it('sends a verification email when the address is not verified', async () => {
+      setupUser({ emailVerified: false });
+      render(<Settings />);
+      fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+      await waitFor(() => {
+        expect(authMocks.sendEmailVerification).toHaveBeenCalled();
+      });
+    });
+
+    it('shows a disabled setup button until the email is verified', () => {
+      setupUser({ emailVerified: false });
+      render(<Settings />);
+      const btn = screen.getByRole('button', { name: 'Set up second factor' });
+      expect(btn).toBeDisabled();
+    });
+
+    it('starts enrollment and commits it with a code', async () => {
+      setupUser({ emailVerified: true });
+      mfaMocks.startTotpEnrollment.mockResolvedValue({
+        secretKey: 'SECRET123',
+        qrCodeUrl: 'otpauth://totp/?secret=x',
+        enroll: vi.fn().mockResolvedValue(undefined),
+      });
+      render(<Settings />);
+      fireEvent.click(screen.getByRole('button', { name: 'Set up second factor' }));
+      await waitFor(() => {
+        expect(mfaMocks.startTotpEnrollment).toHaveBeenCalled();
+      });
+      const code = screen.getByPlaceholderText('6-digit code');
+      fireEvent.change(code, { target: { value: '123456' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add second factor' }));
+      await waitFor(() => {
+        expect(screen.getByText(/Second factor added/)).toBeInTheDocument();
+      });
+    });
+
+    it('offers the manual secret when the QR cannot be scanned', async () => {
+      setupUser({ emailVerified: true });
+      mfaMocks.startTotpEnrollment.mockResolvedValue({
+        secretKey: 'MANUALSECRET',
+        qrCodeUrl: 'otpauth://totp/?secret=x',
+        enroll: vi.fn(),
+      });
+      render(<Settings />);
+      fireEvent.click(screen.getByRole('button', { name: 'Set up second factor' }));
+      await waitFor(() => {
+        expect(screen.getByText(/secret/i)).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Enter the secret manually/i }));
+      expect(screen.getByText('MANUALSECRET')).toBeInTheDocument();
+    });
+
+    it('prompts for reauthentication when enrollment requires a recent sign-in', async () => {
+      setupUser({ emailVerified: true });
+      mfaMocks.startTotpEnrollment
+        .mockRejectedValueOnce({ code: 'auth/requires-recent-login' })
+        .mockResolvedValueOnce({
+          secretKey: 'S',
+          qrCodeUrl: 'otpauth://totp/?secret=x',
+          enroll: vi.fn(),
+        });
+      render(<Settings />);
+      fireEvent.click(screen.getByRole('button', { name: 'Set up second factor' }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Re-confirm your identity/)).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'secret' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+
+      await waitFor(() => {
+        expect(authMocks.reauthenticateWithCredential).toHaveBeenCalled();
+        expect(mfaMocks.startTotpEnrollment).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('lists an enrolled factor and removes it', async () => {
+      setupUser({ emailVerified: true });
+      mfaMocks.listEnrolledFactors.mockReturnValue([{ uid: 'factor-1', factorId: 'totp', displayName: 'Authenticator', enrollmentTime: 'x' }]);
+      mfaMocks.hasTotpFactor.mockReturnValue(true);
+      render(<Settings />);
+      expect(screen.getByText('Authenticator app')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+      await waitFor(() => {
+        expect(mfaMocks.unenrollTotpFactor).toHaveBeenCalled();
+      });
     });
   });
 });

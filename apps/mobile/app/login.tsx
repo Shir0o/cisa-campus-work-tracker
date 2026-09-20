@@ -10,12 +10,14 @@ import { useAuth } from '../src/lib/AuthProvider';
 export default function Login() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signInWithGoogle, pendingMfa, completeMfaSignIn, cancelMfa } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [mfaSubmitting, setMfaSubmitting] = useState(false);
 
   const inputStyle = {
     borderWidth: 1,
@@ -53,59 +55,115 @@ export default function Login() {
     }
   };
 
+  const submitMfa = async () => {
+    setError(null);
+    setMfaSubmitting(true);
+    try {
+      await completeMfaSignIn(mfaCode.trim());
+      router.replace('/');
+    } catch {
+      setError('That code did not work. Check your authenticator app and try again.');
+    } finally {
+      setMfaSubmitting(false);
+    }
+  };
+
   return (
     <Screen>
       <View style={{ flex: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.md }}>
-        <View style={{ gap: 4, marginBottom: spacing.md }}>
-          <AppText variant="title">Sign in</AppText>
-          <AppText variant="body" color={colors.onSurfaceVariant}>
-            Use your CISA Campus account.
-          </AppText>
-        </View>
+        {pendingMfa ? (
+          <>
+            <View style={{ gap: 4, marginBottom: spacing.md }}>
+              <AppText variant="title">Enter your security code</AppText>
+              <AppText variant="body" color={colors.onSurfaceVariant}>
+                This account has a second factor. Open your authenticator app and enter the 6-digit code.
+              </AppText>
+            </View>
+            <TextInput
+              value={mfaCode}
+              onChangeText={(t) => setMfaCode(t.replace(/\D/g, ''))}
+              placeholder="6-digit code"
+              keyboardType="number-pad"
+              maxLength={6}
+              placeholderTextColor={colors.onSurfaceVariant}
+              style={{ ...inputStyle, fontSize: 20, textAlign: 'center', letterSpacing: 6 }}
+            />
+            {error && (
+              <AppText variant="caption" color={colors.error}>
+                {error}
+              </AppText>
+            )}
+            <Button
+              title={mfaSubmitting ? 'Verifying…' : 'Verify'}
+              onPress={submitMfa}
+              disabled={mfaSubmitting || mfaCode.length !== 6}
+              full
+            />
+            <Button
+              title="Back to sign in"
+              onPress={() => {
+                cancelMfa();
+                setMfaCode('');
+                setError(null);
+              }}
+              variant="secondary"
+              full
+            />
+          </>
+        ) : (
+          <>
+            <View style={{ gap: 4, marginBottom: spacing.md }}>
+              <AppText variant="title">Sign in</AppText>
+              <AppText variant="body" color={colors.onSurfaceVariant}>
+                Use your CISA Campus account.
+              </AppText>
+            </View>
 
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          placeholderTextColor={colors.onSurfaceVariant}
-          style={inputStyle}
-        />
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Password"
-          secureTextEntry
-          placeholderTextColor={colors.onSurfaceVariant}
-          style={inputStyle}
-        />
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Email"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              placeholderTextColor={colors.onSurfaceVariant}
+              style={inputStyle}
+            />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              secureTextEntry
+              placeholderTextColor={colors.onSurfaceVariant}
+              style={inputStyle}
+            />
 
-        {error && (
-          <AppText variant="caption" color={colors.error}>
-            {error}
-          </AppText>
+            {error && (
+              <AppText variant="caption" color={colors.error}>
+                {error}
+              </AppText>
+            )}
+
+            <Button
+              title={submitting ? 'Signing in…' : 'Sign in'}
+              onPress={submit}
+              disabled={submitting || !email || !password}
+              full
+            />
+
+            <AppText variant="caption" color={colors.onSurfaceVariant} style={{ textAlign: 'center' }}>
+              or
+            </AppText>
+
+            <Button
+              title={googleSubmitting ? 'Signing in…' : 'Sign in with Google'}
+              onPress={submitGoogle}
+              disabled={googleSubmitting || submitting}
+              variant="secondary"
+              full
+            />
+          </>
         )}
-
-        <Button
-          title={submitting ? 'Signing in…' : 'Sign in'}
-          onPress={submit}
-          disabled={submitting || !email || !password}
-          full
-        />
-
-        <AppText variant="caption" color={colors.onSurfaceVariant} style={{ textAlign: 'center' }}>
-          or
-        </AppText>
-
-        <Button
-          title={googleSubmitting ? 'Signing in…' : 'Sign in with Google'}
-          onPress={submitGoogle}
-          disabled={googleSubmitting || submitting}
-          variant="secondary"
-          full
-        />
       </View>
     </Screen>
   );

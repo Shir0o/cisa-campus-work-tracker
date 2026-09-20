@@ -192,6 +192,10 @@ _Avoid_: Reset database, wipe users, factory reset
 A seeded, non-person account a store reviewer signs in with, because the app is access-gated and has no self-registration. One of the `reviewer*` accounts that Test Account Purge scrubs, and the reason that purge must not run between creating the account and a submission.
 _Avoid_: Demo login, test user, guest account
 
+**Second factor (two-step verification)**:
+The extra proof, beyond the password or Google sign-in, that protects a staff account — a time-based code from an authenticator app (Google Authenticator or similar). It is **mandatory for Full-timers and the owner**, optional for everyone else, and enforced on the server for Full-timers' admin endpoints, not only in the UI. Users set it up or remove it under Settings > Security. A user must have a **verified email** and a recent sign-in to change it (ADR 0029).
+_Avoid_: 2FA, MFA (bare), security key, passcode
+
 
 
 

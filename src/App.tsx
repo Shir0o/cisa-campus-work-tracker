@@ -202,8 +202,11 @@ function EmailPasswordForm() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isApproved, loading, signIn, logOut } = useAuth();
+  const { user, isApproved, loading, signIn, logOut, pendingMfa, completeMfaSignIn, cancelMfa } = useAuth();
   const [signInError, setSignInError] = React.useState<string | null>(null);
+  const [mfaCode, setMfaCode] = React.useState("");
+  const [mfaBusy, setMfaBusy] = React.useState(false);
+  const [mfaError, setMfaError] = React.useState<string | null>(null);
 
   const handleSignIn = async () => {
     setSignInError(null);
@@ -211,6 +214,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       await signIn();
     } catch (e: any) {
       setSignInError(e?.message || 'Google sign-in failed. Please try again.');
+    }
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMfaError(null);
+    setMfaBusy(true);
+    try {
+      await completeMfaSignIn(mfaCode.trim());
+    } catch {
+      setMfaError("That code didn't work. Check your authenticator app and try again.");
+      setMfaBusy(false);
     }
   };
 
@@ -248,6 +263,53 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
+    if (pendingMfa) {
+      return (
+        <div
+          data-testid="mfa-challenge-view"
+          className="min-h-screen flex flex-col items-center justify-center bg-background px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
+        >
+          <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant">
+            <h2 className="text-3xl font-regular mb-2">Enter your security code</h2>
+            <p className="text-on-surface-variant mb-6">
+              This account has a second factor. Open your authenticator app and enter the 6-digit code to finish signing in.
+            </p>
+            <form onSubmit={handleMfaSubmit} className="space-y-3 text-left">
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="6-digit code"
+                className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface text-center text-2xl tracking-[0.5em]"
+                required
+              />
+              {mfaError && <p className="text-sm text-error px-1">{mfaError}</p>}
+              <button
+                type="submit"
+                disabled={mfaBusy || mfaCode.length !== 6}
+                className="w-full py-3 bg-primary text-on-primary rounded-full font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+              >
+                {mfaBusy ? "Verifying…" : "Verify"}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={() => {
+                cancelMfa();
+                setMfaCode("");
+                setMfaError(null);
+              }}
+              className="mt-4 text-sm text-on-surface-variant underline hover:text-accent transition-colors"
+            >
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         data-testid="sign-in-view"
