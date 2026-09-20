@@ -260,7 +260,7 @@ The product's single brand artwork — a cream striped lion on a purple (#5c5595
 _Avoid_: App icon, logo, favicon as names for the artwork itself
 
 **Guest Link (Coordination Doc)**:
-An unguessable, revocable URL (`/c/:docId?key=sec_...`) that opens exactly one coordination doc to someone outside the staff team - no account, no app install. The link carries its permission - **Can view** (read-only, task boxes locked) or **Can edit** - and the key *is* the capability: revoking deletes the config, regenerating rotates the key in place, and neither the doc id alone nor any other page, contact, thread, or conversation is reachable with it. An edit guest joins the same live Yjs document the Full-timers edit, so the running page stays the one source of truth; Google Docs sync is deliberately not part of this.
+An unguessable, revocable URL (`/c/:docId?key=sec_...`) that opens exactly one coordination doc to someone outside the staff team - no account, no app install. Surfaced as both a copyable URL and an in-person QR code on web and mobile. The link carries its permission - **Can view** (read-only, task boxes locked) or **Can edit** - and the key *is* the capability: revoking deletes the config, regenerating rotates the key in place, and neither the doc id alone nor any other page, contact, thread, or conversation is reachable with it. An edit guest joins the same live Yjs document the Full-timers edit, so the running page stays the one source of truth; Google Docs sync is deliberately not part of this.
 _Avoid_: Public link, bare "share link", anonymous edit, Google Docs sync
 
 **Combine contacts**:
