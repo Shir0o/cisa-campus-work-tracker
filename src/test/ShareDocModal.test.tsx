@@ -54,6 +54,7 @@ describe('ShareDocModal', () => {
 
     const expected = guestAccessUrl(window.location.origin, 'doc-1', key);
     expect((screen.getByLabelText('Guest link') as HTMLInputElement).value).toBe(expected);
+    expect(screen.getByTestId('guest-link-qr-code')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expected));
