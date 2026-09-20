@@ -242,6 +242,10 @@ _Avoid_: Release popup, changelog blast, splash alert
 The once-per-version prompt telling one person what is different for them since their last visit — the same release record as the **What's New Announcement**, but role-targeted, in plain sentences, and held back while the on-campus window is open.
 _Avoid_: Release notes, changelog, what's new sheet, release sheet
 
+**What's New Video**:
+The short recorded clip companion to a release — the same release record as the **What's New Announcement**, shown in it. On web it embeds in the announcement; on mobile it is a link. It is a release-medium decision, deliberately separate from onboarding, which stays text/in-situ (ADR 0010).
+_Avoid_: Tutorial video, walkthrough, onboarding video, release reel
+
 
 **Attention Feed**:
 The retired name for the two-part worklist that used to head My Day. It is dissolved (#943): **On you** is now a My Day card, and **Around the team** is a Full-timer destination at `/around`. "Attention" remains the right name for what the library computes (`src/lib/attention.ts`), and the library keeps its module name and its `attention*` exports.

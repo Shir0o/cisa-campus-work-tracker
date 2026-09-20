@@ -12,6 +12,15 @@ interface WhatsNewModalProps {
 
 const CATEGORY_ORDER: WhatsNewCategory[] = ['feature', 'ui', 'fix'];
 
+/** Turn a YouTube watch/shorts URL into an embed URL; empty when not YouTube. */
+function toEmbedUrl(videoUrl: string): string {
+  const idMatch =
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/.exec(
+      videoUrl,
+    );
+  return idMatch ? `https://www.youtube.com/embed/${idMatch[1]}` : '';
+}
+
 const CATEGORY_CONFIG: Record<
   WhatsNewCategory,
   {
@@ -61,6 +70,8 @@ export default function WhatsNewModal({
   };
 
   // Group items by category if any category is present, otherwise display as general highlights
+  const embedUrl = currentNotes.video_url ? toEmbedUrl(currentNotes.video_url) : '';
+
   const hasCategories = currentNotes.items.some((item) => item.category);
 
   // Categorized groups: New Features -> UI/UX -> Bug Fixes -> Uncategorized
@@ -112,6 +123,18 @@ export default function WhatsNewModal({
 
         {/* Content */}
         <div className="px-6 pt-3.5 pb-5 overflow-y-auto space-y-4">
+          {embedUrl && (
+            <div className="aspect-video w-full rounded-xl overflow-hidden border border-outline-variant/30">
+              <iframe
+                title="What's New Video"
+                src={embedUrl}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+
           {currentNotes.overview && (
             <p className="text-sm text-on-surface-variant leading-relaxed pb-3 border-b border-outline-variant/20">
               {currentNotes.overview}

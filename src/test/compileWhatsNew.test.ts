@@ -113,6 +113,35 @@ date: "2026-09-03"
     expect(draft).toContain('Push notification support.');
   });
 
+  it('parses an optional video_url companion for the What\'s New Video', () => {
+    const md = `---
+id: 2026-09-17-v1.6.0
+version: 1.6.0
+title: "With Video"
+date: "2026-09-17"
+video_url: "https://www.youtube.com/watch?v=abc123"
+---
+
+- A change
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.video_url).toBe('https://www.youtube.com/watch?v=abc123');
+  });
+
+  it('leaves video_url absent when a release has none', () => {
+    const md = `---
+id: 2026-09-06-v1.5.1
+version: 1.5.1
+title: "Quiet"
+date: "2026-09-06"
+---
+
+- A quiet patch
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.video_url).toBeUndefined();
+  });
+
   it('parses the personal layer (roles + lines) for the Release Nudge', () => {
     const md = `---
 id: 2026-09-05-v1.5.0
