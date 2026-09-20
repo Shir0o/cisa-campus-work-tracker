@@ -1,6 +1,195 @@
 {
-  "latestReleaseId": "2026-09-03-v1.4.0",
+  "latestReleaseId": "2026-09-17-v1.6.0",
   "releases": [
+    {
+      "id": "2026-09-17-v1.6.0",
+      "version": "1.6.0",
+      "title": "Founders, Partnerships & Attendance",
+      "date": "2026-09-17",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "roles": [
+        "admin",
+        "manager",
+        "operator",
+        "viewer"
+      ],
+      "lines": [
+        "A contact's founders are now co-equal, and the caregiver role is retired — caring ties read who has taken a person on.",
+        "Attendance moves onto the Gathering, so one page holds the roll and the meeting.",
+        "Bible study copies a permanent per-week link, and coordination docs can be shared with guests.",
+        "Tagging now suggests BFA and clears the new-contact tag after five days."
+      ],
+      "overview": "Welcome to the latest release. This update reworks how partners and caring relationships are modelled, moves attendance onto the Gathering, and adds easier sharing.",
+      "items": [
+        {
+          "text": "Partners: founders are co-equal, and the current-term widening is retired",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Founders are recorded when a person is brought in by a pair, and existing contacts are backfilled",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Attendance moves onto the Gathering, with a staged intake and review",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Coordination docs can be shared with guests via a link",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Bible study copies a permanent per-week link, not just the latest",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Bible study renders the verse reference in accent color",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Tags suggest BFA and auto-remove the new-contact tag after five days",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Retain directory filters when returning from a contact detail",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Around-the-team surfaces public sign-up contacts to Full-timers, and keeps one worked-through conversation state",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "A self-dismissed bottom sheet no longer re-dismisses",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Contact caregiver field and care transfer are removed",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        },
+        {
+          "text": "Taking someone into your sheep never grants reach; a carer tie ends with the tie that granted it",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        },
+        {
+          "text": "The empty \"This week\" prayer eyebrow aligns with the spine dot",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        },
+        {
+          "text": "Fixed an endless reload loop when a lazy chunk fails",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        }
+      ]
+    },
+    {
+      "id": "2026-09-14-v1.5.0",
+      "version": "1.5.0",
+      "title": "Contacts, Queue & Sharing",
+      "date": "2026-09-14",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "roles": [
+        "admin",
+        "manager",
+        "operator",
+        "viewer"
+      ],
+      "lines": [
+        "A contact's co-owners can now manage its collaborators, and an impersonation hole is closed.",
+        "Your Around-the-team filters are kept when a comment posts, and you get a clear confirmation.",
+        "Full-timers' message cards in the queue are scoped to their own people, and a crash when reading a trainee's messages is fixed."
+      ],
+      "overview": "Welcome to the latest release. This update makes contact collaboration safer and clearer, keeps your feed filters in place, and fixes a few crashes in the message queue.",
+      "items": [
+        {
+          "text": "Co-owners can manage a contact's collaborators, and an impersonation bypass is closed",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Around-the-team now keeps your filters and confirms when a comment posts",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Message cards in the queue are scoped to a full-timer's own people",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Fixed a crash when a trainee's impersonated messages were read",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "fix"
+        }
+      ]
+    },
     {
       "id": "2026-09-03-v1.4.0",
       "version": "1.4.0",
