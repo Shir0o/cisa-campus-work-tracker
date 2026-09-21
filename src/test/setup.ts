@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 // jsdom implements no object URLs, and the visit modal previews picked photos
 // with them.
