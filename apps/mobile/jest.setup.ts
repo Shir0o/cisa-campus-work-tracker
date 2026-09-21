@@ -29,7 +29,15 @@ jest.mock('react-native-worklets', () => ({
   },
   isWorkletFunction: () => false,
 }));
-jest.mock('react-native-reanimated', () => jest.requireActual('react-native-reanimated/mock'));
+jest.mock('react-native-reanimated', () => {
+  const mock = jest.requireActual('react-native-reanimated/mock');
+  // The official mock omits `isSharedValue`, which gesture-handler v3's
+  // ReanimatedSwipeable calls during render; mirror the real implementation so
+  // shared values are recognised (and plain values like undefined are not).
+  mock.isSharedValue = (value: unknown) =>
+    value != null && typeof value === 'object' && '_value' in value;
+  return mock;
+});
 
 // Safe-area insets are a native measurement; the library ships a jest mock.
 jest.mock('react-native-safe-area-context', () =>
