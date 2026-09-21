@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('firebase-admin/firestore', () => ({
+  getFirestore: vi.fn(),
+  FieldValue: {
+    serverTimestamp: () => ({ __mockServerTimestamp: true }),
+    delete: () => ({ __mockDelete: true }),
+  },
+}));
+
 import { migrateFeedbackToGithub } from '../../scripts/migrate-feedback-to-github';
 
 type Doc = { id: string; data: () => any };

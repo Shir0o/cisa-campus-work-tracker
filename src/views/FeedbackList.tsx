@@ -15,7 +15,7 @@ import {
   ShieldAlert,
   Archive,
   RefreshCw,
-  Github,
+  GitBranch,
   Link,
   Unlink,
   ZoomIn,
@@ -503,7 +503,7 @@ export default function FeedbackList() {
                               className="flex items-center gap-1.5 py-1 px-3 bg-neutral-500/10 text-neutral-700 dark:text-neutral-400 hover:bg-neutral-500/20 font-semibold text-xs rounded-full transition-all"
                               title={t('feedbackList.view_github_issue')}
                             >
-                              <Github className="w-3.5 h-3.5" />
+                              <GitBranch className="w-3.5 h-3.5" />
                               {extractIssueNumber(item.githubIssueUrl, t('feedbackList.issue_number_fallback'))}
                             </a>
                             <button
@@ -537,7 +537,7 @@ export default function FeedbackList() {
                               className="flex items-center gap-1.5 py-1 px-3 bg-primary/10 text-accent hover:bg-primary/20 font-semibold text-xs rounded-full transition-all border-none cursor-pointer"
                               title={t('feedbackList.create_issue_title')}
                             >
-                              <Github className="w-3.5 h-3.5" />
+                              <GitBranch className="w-3.5 h-3.5" />
                               {t('feedbackList.create_issue')}
                             </button>
                             <button

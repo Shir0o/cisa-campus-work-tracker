@@ -20,7 +20,7 @@ import {
   Sparkles,
   Heart,
   Footprints,
-  Instagram,
+  Camera,
   Check,
   Tag,
   MoreHorizontal,
@@ -1861,7 +1861,7 @@ export default function ContactDetailsModal({
                             )}
                             {contact.instagram && (
                               <div className="cd-kv-row">
-                                <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
+                                <Camera className="w-3.5 h-3.5 cd-kv-ico" />
                                 <span className="cd-kv-val dim">{contact.instagram}</span>
                               </div>
                             )}
