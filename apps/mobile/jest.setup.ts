@@ -11,24 +11,18 @@ jest.requireActual('react-native-gesture-handler/jestSetup');
 // import time, so both get their official jest mocks (which also initialize the
 // animation frame environment — no extra setUpTests call needed). Worklets'
 // mock is only shipped compiled, at lib/module/mock.
-jest.mock('react-native-worklets', () => ({
-  createSerializable: (v: any) => v,
-  isSerializableRef: () => false,
-  makeShareable: (v: any) => v,
-  makeShareableCloneRecursive: (v: any) => v,
-  makeShareableCloneOnUIRecursive: (v: any) => v,
-  runOnJS: (fn: any) => fn,
-  runOnUI: (fn: any) => fn,
-  createWorkletRuntime: () => ({}),
-  runOnRuntime: () => ({}),
-  serializableMappingCache: new Map(),
-  RuntimeKind: {
-    ReactNative: 'ReactNative',
-    UI: 'UI',
-    Worklet: 'Worklet',
-  },
-  isWorkletFunction: () => false,
-}));
+jest.mock('react-native-worklets', () =>
+  jest.requireActual('react-native-worklets/lib/module/mock'),
+);
+// Reanimated 4.6's jest mock initialises its JS module stand-in at import time
+// and registers a CSS event-handler hook on it; JSReanimated throws from that
+// hook to flag it as native-only, which aborts the mock's load. Neutralise the
+// hook on the singleton before the mock loads so the suite can bootstrap.
+(
+  jest.requireActual('react-native-reanimated/src/ReanimatedModule') as {
+    ReanimatedModule: { setCSSEventHandler: (handler: unknown) => void };
+  }
+).ReanimatedModule.setCSSEventHandler = () => {};
 jest.mock('react-native-reanimated', () => {
   const mock = jest.requireActual('react-native-reanimated/mock');
   // The official mock omits `isSharedValue`, which gesture-handler v3's
