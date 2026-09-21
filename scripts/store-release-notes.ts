@@ -26,7 +26,7 @@ const ROOT = process.cwd();
 const CONTENT_DIR = path.join(ROOT, 'content/whats-new');
 
 /** Play Console caps a changelog at 500 characters per language. */
-const LIMITS: Record<string, number> = { play: 500, testflight: 4000 };
+export const LIMITS: Record<string, number> = { play: 500, testflight: 4000 };
 
 interface Manifest {
   file: string;
@@ -103,7 +103,7 @@ function selectManifest(manifests: Manifest[], version: string | undefined): Man
 }
 
 /** Keep mobile-relevant bullets, drop web-only ones, strip the platform tag. */
-function keepForPlatform(bullets: string[], platform: string): string[] {
+export function keepForPlatform(bullets: string[], platform: string): string[] {
   if (platform !== 'play' && platform !== 'testflight') return bullets;
   return bullets
     .filter((bullet) => !/^\[Web\]/i.test(bullet))
@@ -111,7 +111,7 @@ function keepForPlatform(bullets: string[], platform: string): string[] {
     .filter((bullet) => bullet.length > 0);
 }
 
-function fitToLimit(bullets: string[], limit: number): string {
+export function fitToLimit(bullets: string[], limit: number): string {
   const kept: string[] = [];
   for (const bullet of bullets) {
     const candidate = [...kept, bullet].map((entry) => `\u2022 ${entry}`).join('\n');
@@ -122,33 +122,41 @@ function fitToLimit(bullets: string[], limit: number): string {
   if (kept.length > 0) return kept.map((entry) => `\u2022 ${entry}`).join('\n');
 
   // Nothing fits whole — truncate the first bullet rather than ship emptiness.
+  // Prefix is "• " (2 chars) and suffix is "…" (1 char), so slice content to limit - 3.
   const first = bullets[0] ?? 'Bug fixes and improvements.';
-  return `\u2022 ${first.slice(0, Math.max(0, limit - 2)).trimEnd()}\u2026`;
+  const maxContentLength = Math.max(0, limit - 3);
+  return `\u2022 ${first.slice(0, maxContentLength).trimEnd()}\u2026`;
 }
 
-function main(): void {
-  const platform = argValue('--platform') ?? 'play';
+export function formatStoreReleaseNotes(bullets: string[], platform: string): string {
   const limit = LIMITS[platform];
   if (!limit) {
     throw new Error(
       `Unknown --platform '${platform}'. Expected one of: ${Object.keys(LIMITS).join(', ')}.`,
     );
   }
-
-  const manifest = selectManifest(readManifests(), argValue('--version'));
-  const bullets = keepForPlatform(manifest.bullets, platform);
-  if (bullets.length === 0) {
-    throw new Error(`Manifest ${manifest.file} has no bullets usable for ${platform}.`);
+  const filtered = keepForPlatform(bullets, platform);
+  if (filtered.length === 0) {
+    throw new Error(`No bullets usable for ${platform}.`);
   }
+  return fitToLimit(filtered, limit);
+}
 
-  const notes = fitToLimit(bullets, limit);
+export function main(): void {
+  const platform = argValue('--platform') ?? 'play';
+  const manifest = selectManifest(readManifests(), argValue('--version'));
+  const limit = LIMITS[platform];
+  const notes = formatStoreReleaseNotes(manifest.bullets, platform);
   const out = argValue('--out');
   if (out) {
-    fs.writeFileSync(out, `${notes}\n`, 'utf8');
+    fs.writeFileSync(out, notes, 'utf8');
     console.log(`Wrote ${notes.length}/${limit} chars to ${out} (from ${manifest.file}).`);
   } else {
     console.log(notes);
   }
 }
 
-main();
+if (process.argv[1] && process.argv[1].endsWith('store-release-notes.ts')) {
+  main();
+}
+
