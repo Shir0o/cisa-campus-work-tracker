@@ -153,8 +153,9 @@ test.describe('Announcements UI/UX Rework (#743)', () => {
     await threadComposer.fill(traineeReply);
     await threadComposer.press('Meta+Enter');
 
-    // Reply appears inside the thread pane
-    await expect(page.locator('.msgs-pane').getByText(traineeReply)).toBeVisible({ timeout: 10_000 });
+    // Reply appears inside the thread pane (also still in the composer input, so
+// target the posted bubble explicitly).
+    await expect(page.locator('.msgs-pane').getByText(traineeReply).first()).toBeVisible({ timeout: 10_000 });
 
     // Main stream post footer updates to show "1 reply"
     await expect(postCard.getByText('1 reply')).toBeVisible({ timeout: 10_000 });

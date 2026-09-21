@@ -1,10 +1,25 @@
 import { test, expect } from '@playwright/test';
 import { signInAs } from './helpers/auth';
+import { initializeApp, getApps } from 'firebase-admin';
+import { getFirestore as adminFS } from 'firebase-admin/firestore';
 
 test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () => {
   test.describe.configure({ mode: 'serial' });
 
   const testContactName = `Journey Tester ${Date.now()}`;
+
+  // The browser Firestore SDK writes optimistically, so a fresh contact is
+  // visible in the creating page's own directory listing before the emulator
+  // has made it durable to OTHER connections. Later tests in this serial suite
+  // read the emulator from fresh contexts and would flake on a not-yet-durable
+  // write. Poll until the emulator serves the contact back before moving on.
+  async function waitForDurableContact() {
+    await expect(async () => {
+      if (getApps().length === 0) initializeApp({ projectId: 'sac-campus-hub' });
+      const snap = await adminFS().collection('contacts').where('name', '==', testContactName).get();
+      expect(snap.size).toBeGreaterThan(0);
+    }).toPass({ timeout: 15_000 });
+  }
 
   test('Full-timer creates contact via Quick Capture with tags and initial stage', async ({ page }) => {
     await signInAs(page, 'fulltimer');
@@ -68,6 +83,7 @@ test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () =>
     // Verify tags are rendered
     await expect(page.getByText('Freshman').first()).toBeVisible();
     await expect(page.getByText('Gospel').first()).toBeVisible();
+    await waitForDurableContact();
   });
 
   test('Full-timer advances contact across Journey pipeline and change reflects in real time', async ({ page }) => {

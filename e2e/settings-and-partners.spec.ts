@@ -26,18 +26,18 @@ test.describe('Administrative Settings & Gospel Partner Assignments', () => {
         await expect(page.getByText("Who's the first of the two?")).toBeVisible();
 
         // Pick first trainee if available
-        const firstTrainee = page.getByRole('button', { name: /Zion Adeyemi|Trainee/i }).first();
+        const firstTrainee = page.getByRole('button', { name: /Zion Adeyemi/i }).first();
         if (await firstTrainee.isVisible()) {
           await firstTrainee.click();
 
           // Second pick dialog
           await expect(page.getByText(/Who goes out with/i)).toBeVisible();
-          const secondTrainee = page.getByRole('button', { name: /Caleb Owusu|Trainee/i }).first();
+          const secondTrainee = page.getByRole('button', { name: /Caleb Owusu/i }).first();
           if (await secondTrainee.isVisible()) {
             await secondTrainee.click();
 
-            // Verify pair is rendered
-            await expect(page.getByText(/Partners this term|going as one/i).first()).toBeVisible({ timeout: 5_000 });
+            // Verify the pair is rendered
+            await expect(page.getByText('Zion Adeyemi and Caleb Owusu')).toBeVisible({ timeout: 5_000 });
           }
         }
       }

@@ -1,10 +1,9 @@
 /**
  * Quick Capture: NewContactModal end-to-end behaviour (issue #628).
  *
- * The Full-timer (admin) and Trainee (manager) are the only roles that can
- * capture a new contact. Students see no Quick Capture affordance; Community
- * (viewer) cannot open the modal at all. This spec drives the NewContactModal
- * from the People directory and verifies:
+ * The Full-timer (admin), Trainee (manager) and Student (operator) can all
+ * capture a new contact; Community (viewer) cannot open the modal at all. This
+ * spec drives the NewContactModal from the People directory and verifies:
  *
  *  - the modal opens from the directory toolbar,
  *  - the minimal "first name + phone" payload creates a contact,
@@ -12,8 +11,8 @@
  *    email, stage, tags, spiritual background and notes,
  *  - tags & stage persist and render in the directory,
  *  - the new contact survives a page reload (Firestore persistence),
- *  - Student & Community see no "Add someone" entry point and cannot open
- *    the modal even by direct invocation.
+ *  - Student can also open Quick Capture; Community cannot open the modal and
+ *    is redirected away from the directory route.
  *
  * Specs are serial because they share the same seeded Firestore database.
  */
@@ -156,14 +155,12 @@ test.describe('Quick Capture: NewContactModal (#628)', () => {
     await expect(page.getByText(unique).first()).toBeVisible({ timeout: 10_000 });
   });
 
-  test('Student sees no Quick Capture affordance on the People directory', async ({ page }) => {
+  test('Student can open Quick Capture from the People directory', async ({ page }) => {
     await signInAs(page, 'student');
-    await page.goto('/directory');
-    await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
+    await openQuickCaptureFromDirectory(page);
 
-    // "Add someone" must not be present for an operator.
-    const addContactBtn = page.getByRole('button', { name: ADD_SOMEONE_BTN }).first();
-    await expect(addContactBtn).toHaveCount(0);
+    // The minimal "first name" field is the only required input.
+    await expect(page.getByPlaceholder(/first name/i).first()).toBeVisible();
   });
 
   test('Community is redirected away from any Quick Capture entry point', async ({ page }) => {
