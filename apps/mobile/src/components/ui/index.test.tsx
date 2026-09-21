@@ -13,11 +13,11 @@ jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: undefined, user: null, role: null }),
 }));
 
-const renderUI = (el: React.ReactElement) => render(<ThemeProvider>{el}</ThemeProvider>);
+const renderUI = async (el: React.ReactElement) => await render(<ThemeProvider>{el}</ThemeProvider>);
 
 describe('Screen', () => {
-  it('renders its children', () => {
-    const { getByText } = renderUI(
+  it('renders its children', async () => {
+    const { getByText } = await renderUI(
       <Screen>
         <Text>Hello screen</Text>
       </Screen>,
@@ -27,13 +27,13 @@ describe('Screen', () => {
 });
 
 describe('AppText', () => {
-  it('renders its children with the default body variant', () => {
-    const { getByText } = renderUI(<AppText>Some words</AppText>);
+  it('renders its children with the default body variant', async () => {
+    const { getByText } = await renderUI(<AppText>Some words</AppText>);
     expect(getByText('Some words')).toBeTruthy();
   });
 
-  it('passes numberOfLines through and honours a custom color', () => {
-    const { getByText } = renderUI(
+  it('passes numberOfLines through and honours a custom color', async () => {
+    const { getByText } = await renderUI(
       <AppText numberOfLines={2} color="#ff0000">
         Truncated
       </AppText>,
@@ -44,31 +44,31 @@ describe('AppText', () => {
 });
 
 describe('Button', () => {
-  it('renders the title and fires onPress', () => {
+  it('renders the title and fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderUI(<Button title="Save" onPress={onPress} />);
+    const { getByText } = await renderUI(<Button title="Save" onPress={onPress} />);
 
-    fireEvent.press(getByText('Save'));
+    await fireEvent.press(getByText('Save'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('does not fire onPress while disabled', () => {
+  it('does not fire onPress while disabled', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderUI(<Button title="Save" onPress={onPress} disabled />);
+    const { getByText } = await renderUI(<Button title="Save" onPress={onPress} disabled />);
 
-    fireEvent.press(getByText('Save'));
+    await fireEvent.press(getByText('Save'));
     expect(onPress).not.toHaveBeenCalled();
   });
 
-  it('renders without an onPress handler', () => {
-    const { getByText } = renderUI(<Button title="Inert" />);
+  it('renders without an onPress handler', async () => {
+    const { getByText } = await renderUI(<Button title="Inert" />);
     expect(getByText('Inert')).toBeTruthy();
   });
 });
 
 describe('Card', () => {
-  it('renders children as a plain view when there is no onPress', () => {
-    const { getByText } = renderUI(
+  it('renders children as a plain view when there is no onPress', async () => {
+    const { getByText } = await renderUI(
       <Card>
         <Text>Body</Text>
       </Card>,
@@ -76,49 +76,49 @@ describe('Card', () => {
     expect(getByText('Body')).toBeTruthy();
   });
 
-  it('fires onPress when one is given', () => {
+  it('fires onPress when one is given', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderUI(
+    const { getByText } = await renderUI(
       <Card onPress={onPress}>
         <Text>Tappable</Text>
       </Card>,
     );
 
-    fireEvent.press(getByText('Tappable'));
+    await fireEvent.press(getByText('Tappable'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('Chip', () => {
-  it('renders its label', () => {
-    const { getByText } = renderUI(<Chip label="Follow up" />);
+  it('renders its label', async () => {
+    const { getByText } = await renderUI(<Chip label="Follow up" />);
     expect(getByText('Follow up')).toBeTruthy();
   });
 });
 
 describe('InlineInput', () => {
-  it('renders a text input and forwards typed text', () => {
+  it('renders a text input and forwards typed text', async () => {
     const onChangeText = jest.fn();
-    const { getByPlaceholderText } = renderUI(
+    const { getByPlaceholderText } = await renderUI(
       <InlineInput placeholder="Add a task" onChangeText={onChangeText} />,
     );
 
-    fireEvent.changeText(getByPlaceholderText('Add a task'), 'Call Dana');
+    await fireEvent.changeText(getByPlaceholderText('Add a task'), 'Call Dana');
     expect(onChangeText).toHaveBeenCalledWith('Call Dana');
   });
 
-  it('still calls the caller’s onFocus/onBlur alongside its focus styling', () => {
+  it('still calls the caller’s onFocus/onBlur alongside its focus styling', async () => {
     const onFocus = jest.fn();
     const onBlur = jest.fn();
-    const { getByPlaceholderText } = renderUI(
+    const { getByPlaceholderText } = await renderUI(
       <InlineInput placeholder="Notes" onFocus={onFocus} onBlur={onBlur} />,
     );
     const input = getByPlaceholderText('Notes');
 
-    fireEvent(input, 'focus');
+    await fireEvent(input, 'focus');
     expect(onFocus).toHaveBeenCalledTimes(1);
 
-    fireEvent(input, 'blur');
+    await fireEvent(input, 'blur');
     expect(onBlur).toHaveBeenCalledTimes(1);
   });
 });

@@ -46,9 +46,9 @@ describe('QueueScreen', () => {
     error: null,
   };
 
-  it('shows the queue skeleton while data is loading', () => {
+  it('shows the queue skeleton while data is loading', async () => {
     (useTraineeLandingData as jest.Mock).mockReturnValue(baseData);
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ThemeProvider>
         <QueueScreen />
       </ThemeProvider>,
@@ -56,9 +56,9 @@ describe('QueueScreen', () => {
     expect(getByTestId('queue-skeleton')).toBeTruthy();
   });
 
-  it('shows the queue instead of the skeleton once loaded', () => {
+  it('shows the queue instead of the skeleton once loaded', async () => {
     (useTraineeLandingData as jest.Mock).mockReturnValue({ ...baseData, loading: false });
-    const { queryByTestId } = render(
+    const { queryByTestId } = await render(
       <ThemeProvider>
         <QueueScreen />
       </ThemeProvider>,

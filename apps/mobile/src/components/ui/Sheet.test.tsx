@@ -61,8 +61,8 @@ afterEach(() => {
 });
 
 describe('Sheet', () => {
-  it('renders its children inside the sheet', () => {
-    const { getByText } = render(
+  it('renders its children inside the sheet', async () => {
+    const { getByText } = await render(
       <ThemeProvider>
         <Sheet visible onClose={jest.fn()}>
           <Text>Sheet content</Text>
@@ -72,8 +72,8 @@ describe('Sheet', () => {
     expect(getByText('Sheet content')).toBeTruthy();
   });
 
-  it('configures keyboardBehavior and android_keyboardInputMode for interactive keyboard avoidance', () => {
-    render(
+  it('configures keyboardBehavior and android_keyboardInputMode for interactive keyboard avoidance', async () => {
+    await render(
       <ThemeProvider>
         <Sheet visible onClose={jest.fn()}>
           <Text>Sheet content</Text>
@@ -86,8 +86,8 @@ describe('Sheet', () => {
     expect(__instances[0].props.android_keyboardInputMode).toBe('adjustResize');
   });
 
-  it('renders backdrop with pointerEvents none when visible is false', () => {
-    const { UNSAFE_getByType } = render(
+  it('renders backdrop with pointerEvents none when visible is false', async () => {
+    await render(
       <ThemeProvider>
         <Sheet visible={false} onClose={jest.fn()}>
           <Text>Content</Text>
@@ -96,18 +96,18 @@ describe('Sheet', () => {
     );
     // Render the backdropComponent provided to BottomSheetModal
     const BackdropComp = __instances[0].props.backdropComponent;
-    const { getByTestId, UNSAFE_queryAllByType } = render(
+    await render(
       <ThemeProvider>
         <BackdropComp animatedIndex={{ value: -1 }} />
       </ThemeProvider>,
     );
   });
 
-  it('calls present() a macrotask after opening, and dismiss() when closing', () => {
+  it('calls present() a macrotask after opening, and dismiss() when closing', async () => {
     jest.useFakeTimers();
     const onClose = jest.fn();
 
-    const { rerender } = render(
+    const { rerender } = await render(
       <ThemeProvider>
         <Sheet visible onClose={onClose}>
           <Text>Content</Text>
@@ -120,7 +120,7 @@ describe('Sheet', () => {
     jest.advanceTimersByTime(0);
     expect(__instances[0].present).toHaveBeenCalledTimes(1);
 
-    rerender(
+    await rerender(
       <ThemeProvider>
         <Sheet visible={false} onClose={onClose}>
           <Text>Content</Text>
@@ -130,9 +130,9 @@ describe('Sheet', () => {
     expect(__instances[0].dismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('never presents when mounted closed, so closing stays silent', () => {
+  it('never presents when mounted closed, so closing stays silent', async () => {
     jest.useFakeTimers();
-    const { rerender } = render(
+    const { rerender } = await render(
       <ThemeProvider>
         <Sheet visible={false} onClose={jest.fn()}>
           <Text>Content</Text>
@@ -143,7 +143,7 @@ describe('Sheet', () => {
     jest.advanceTimersByTime(0);
     expect(__instances[0].present).not.toHaveBeenCalled();
 
-    rerender(
+    await rerender(
       <ThemeProvider>
         <Sheet visible={false} onClose={jest.fn()}>
           <Text>Content</Text>

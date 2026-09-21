@@ -52,14 +52,14 @@ describe('useMyNotesData', () => {
     jest.useRealTimers();
   });
 
-  it('returns the signed-in user’s own notes once the snapshot lands', () => {
-    const { result } = renderHook(() => useMyNotesData());
+  it('returns the signed-in user’s own notes once the snapshot lands', async () => {
+    const { result } = await renderHook(() => useMyNotesData());
 
     expect(result.current.loading).toBe(true);
-    act(() => {
+    await act(() => {
       (cbs.notes as { cb: (n: unknown[]) => void }).cb([note('n1'), note('n2')]);
     });
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 
@@ -68,31 +68,31 @@ describe('useMyNotesData', () => {
     expect(result.current.notes[0].id).toBe('n1');
   });
 
-  it('clears the previous identity’s notes and returns to loading on uid change', () => {
-    const { result, rerender } = renderHook(() => useMyNotesData());
+  it('clears the previous identity’s notes and returns to loading on uid change', async () => {
+    const { result, rerender } = await renderHook(() => useMyNotesData());
 
-    act(() => {
+    await act(() => {
       (cbs.notes as { cb: (n: unknown[]) => void }).cb([note('n1')]);
     });
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
     expect(result.current.notes).toHaveLength(1);
 
     auth.uid = 'user2';
-    rerender(undefined);
+    await rerender(undefined);
 
     expect(result.current.loading).toBe(true);
     expect(result.current.notes).toHaveLength(0);
   });
 
-  it('surfaces a load error instead of silently showing nothing', () => {
-    const { result } = renderHook(() => useMyNotesData());
+  it('surfaces a load error instead of silently showing nothing', async () => {
+    const { result } = await renderHook(() => useMyNotesData());
 
-    act(() => {
+    await act(() => {
       (cbs.notes as { onError: (e: unknown) => void }).onError(new Error('denied'));
     });
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 

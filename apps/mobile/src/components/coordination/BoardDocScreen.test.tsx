@@ -78,7 +78,7 @@ describe('BoardDocScreen Spanish Translation', () => {
       keeperName: 'Ana Smith',
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="en">
         <ThemeProvider>
           <BoardDocScreen docId="doc-1" />
@@ -113,7 +113,7 @@ describe('BoardDocScreen Spanish Translation', () => {
       keeperName: 'Carlos Doe',
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardDocScreen docId="doc-2" />
@@ -147,7 +147,7 @@ describe('BoardDocScreen Spanish Translation', () => {
       keeperName: null,
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardDocScreen docId="doc-3" />
@@ -171,7 +171,7 @@ describe('BoardDocScreen Spanish Translation', () => {
       keeperName: null,
     });
 
-    const { getByText, rerender } = render(
+    const { getByText, rerender } = await render(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardDocScreen docId="missing" />
@@ -195,7 +195,7 @@ describe('BoardDocScreen Spanish Translation', () => {
       keeperName: null,
     });
 
-    rerender(
+    await rerender(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardDocScreen docId="locked" />
@@ -239,7 +239,7 @@ describe('BoardDocScreen Spanish Translation', () => {
       keeperName: 'Ana Smith',
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardDocScreen docId="doc-4" />

@@ -15,8 +15,8 @@ jest.mock('../../lib/AuthProvider', () => ({
 const newest = latestAnnouncement('mobile');
 const newestId = newest === null ? 'missing' : newest.id;
 
-const renderRelease = (props: Parameters<typeof M2Release>[0]) =>
-  render(
+const renderRelease = async (props: Parameters<typeof M2Release>[0]) =>
+  await render(
     <ThemeProvider>
       <M2Release {...props} />
     </ThemeProvider>,
@@ -30,23 +30,23 @@ beforeEach(async () => {
 describe('M2Release', () => {
   it('shows nothing once the newest release has been seen', async () => {
     await markReleaseSeen(newestId);
-    const tree = renderRelease({ role: 'admin', inWindow: false });
+    const tree = await renderRelease({ role: 'admin', inWindow: false });
     expect(tree.queryByText('A few things are different')).toBeNull();
   });
 
   it('shows the nudge once and stamps the release id on dismiss', async () => {
-    const tree = renderRelease({ role: 'admin', inWindow: false });
+    const tree = await renderRelease({ role: 'admin', inWindow: false });
     expect(tree.getByText('A few things are different')).toBeTruthy();
     expect(tree.getByText('Carry on')).toBeTruthy();
 
     await act(async () => {
-      fireEvent.press(tree.getByText('Carry on'));
+      await fireEvent.press(tree.getByText('Carry on'));
     });
     expect(await AsyncStorage.getItem(SEEN_RELEASE_KEY)).toBe(newestId);
   });
 
-  it('holds the nudge back while the on-campus window is open', () => {
-    const tree = renderRelease({ role: 'admin', inWindow: true });
+  it('holds the nudge back while the on-campus window is open', async () => {
+    const tree = await renderRelease({ role: 'admin', inWindow: true });
     expect(tree.queryByText('A few things are different')).toBeNull();
   });
 });

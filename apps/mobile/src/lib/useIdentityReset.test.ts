@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { useIdentityReset } from './useIdentityReset';
 
 describe('useIdentityReset', () => {
-  it('resets once, on the first render after the identity changes', () => {
+  it('resets once, on the first render after the identity changes', async () => {
     const resets: string[] = [];
-    const { result, rerender } = renderHook(({ id }: { id: string | null }) => {
+    const { result, rerender } = await renderHook(({ id }: { id: string | null }) => {
       const [value, setValue] = useState('fresh');
       useIdentityReset(id, () => {
         resets.push(id ?? 'null');
@@ -17,27 +17,27 @@ describe('useIdentityReset', () => {
     expect(result.current).toBe('fresh');
     expect(resets).toEqual([]);
 
-    rerender({ id: 'b' });
+    await rerender({ id: 'b' });
     expect(result.current).toBe('reset');
     expect(resets).toEqual(['b']);
 
-    rerender({ id: 'b' });
+    await rerender({ id: 'b' });
     expect(resets).toEqual(['b']);
 
-    rerender({ id: 'a' });
+    await rerender({ id: 'a' });
     expect(resets).toEqual(['b', 'a']);
   });
 
-  it('resets when identity goes null (sign-out)', () => {
+  it('resets when identity goes null (sign-out)', async () => {
     const resets: (string | null)[] = [];
-    const { rerender } = renderHook(({ id }: { id: string | null }) => {
+    const { rerender } = await renderHook(({ id }: { id: string | null }) => {
       useIdentityReset(id, () => {
         resets.push(id);
       });
       return id;
     }, { initialProps: { id: 'a' } });
 
-    rerender({ id: null });
+    await rerender({ id: null });
     expect(resets).toEqual([null]);
   });
 });

@@ -26,8 +26,8 @@ describe('QueueDrawer', () => {
     jest.clearAllMocks();
   });
 
-  it('renders menu items including Tell us how it\'s going', () => {
-    const { getByText } = render(
+  it('renders menu items including Tell us how it\'s going', async () => {
+    const { getByText } = await render(
       <ThemeProvider>
         <QueueDrawer visible={true} onClose={jest.fn()} onFeedback={jest.fn()} />
       </ThemeProvider>,
@@ -43,18 +43,18 @@ describe('QueueDrawer', () => {
     expect(getByText('Your app')).toBeTruthy();
   });
 
-  it('calls onClose and onFeedback when Tell us how it\'s going is pressed', () => {
+  it('calls onClose and onFeedback when Tell us how it\'s going is pressed', async () => {
     const onClose = jest.fn();
     const onFeedback = jest.fn();
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <ThemeProvider>
         <QueueDrawer visible={true} onClose={onClose} onFeedback={onFeedback} />
       </ThemeProvider>,
     );
 
     const feedbackBtn = getByText("Tell us how it's going");
-    fireEvent.press(feedbackBtn);
+    await fireEvent.press(feedbackBtn);
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onFeedback).toHaveBeenCalledTimes(1);

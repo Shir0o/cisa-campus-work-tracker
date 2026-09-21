@@ -69,44 +69,44 @@ describe('useChatThreadData', () => {
     jest.useRealTimers();
   });
 
-  it('clears stale messages and returns to loading when the uid changes', () => {
-    const { result, rerender } = renderHook(({ roomId }: { roomId: string }) => useChatThreadData(roomId), {
+  it('clears stale messages and returns to loading when the uid changes', async () => {
+    const { result, rerender } = await renderHook(({ roomId }: { roomId: string }) => useChatThreadData(roomId), {
       initialProps: { roomId: 'room1' },
     });
 
-    act(() => {
+    await act(() => {
       emitMessages([message('m1')]);
     });
     // Data has landed, but the skeleton's minimum duration keeps it up...
     expect(result.current.loading).toBe(true);
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
     expect(result.current.loading).toBe(false);
     expect(result.current.dayGroups[0].messages).toHaveLength(1);
 
     authState.uid = 'user2';
-    rerender({ roomId: 'room1' });
+    await rerender({ roomId: 'room1' });
 
     expect(result.current.loading).toBe(true);
     expect(result.current.dayGroups).toHaveLength(0);
     expect(result.current.room).toBeNull();
   });
 
-  it('clears stale messages and returns to loading when the room changes', () => {
-    const { result, rerender } = renderHook(({ roomId }: { roomId: string }) => useChatThreadData(roomId), {
+  it('clears stale messages and returns to loading when the room changes', async () => {
+    const { result, rerender } = await renderHook(({ roomId }: { roomId: string }) => useChatThreadData(roomId), {
       initialProps: { roomId: 'room1' },
     });
 
-    act(() => {
+    await act(() => {
       emitMessages([message('m1')]);
     });
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
     expect(result.current.dayGroups[0].messages).toHaveLength(1);
 
-    rerender({ roomId: 'room2' });
+    await rerender({ roomId: 'room2' });
 
     expect(result.current.loading).toBe(true);
     expect(result.current.dayGroups).toHaveLength(0);

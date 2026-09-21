@@ -9,8 +9,8 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('MemberScreen', () => {
-  it('shows the member home skeleton while loading', () => {
-    const { getByTestId } = render(
+  it('shows the member home skeleton while loading', async () => {
+    const { getByTestId } = await render(
       <ThemeProvider>
         <MemberScreen loading error={null}>
           <Text>Never rendered while loading</Text>
@@ -20,8 +20,8 @@ describe('MemberScreen', () => {
     expect(getByTestId('member-home-skeleton')).toBeTruthy();
   });
 
-  it('renders children once loading settles', () => {
-    const { getByText, queryByTestId } = render(
+  it('renders children once loading settles', async () => {
+    const { getByText, queryByTestId } = await render(
       <ThemeProvider>
         <MemberScreen error={null}>
           <Text>Today's content</Text>

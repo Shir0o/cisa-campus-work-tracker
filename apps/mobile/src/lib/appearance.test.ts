@@ -62,28 +62,29 @@ describe('AppearanceStore.set', () => {
 });
 
 describe('useAppearance', () => {
-  it('signed out: reports system and the setter is a no-op', () => {
-    const { result } = renderHook(() => useAppearance(null));
+  it('signed out: reports system and the setter is a no-op', async () => {
+    const { result } = await renderHook(() => useAppearance(null));
 
     expect(result.current[0]).toBe('system');
-    act(() => result.current[1]('dark'));
+    await act(() => result.current[1]('dark'));
     expect(result.current[0]).toBe('system');
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
 
-  it('signed in: set() is reflected live through pub/sub', () => {
-    const { result } = renderHook(() => useAppearance('me'));
+  it('signed in: set() is reflected live through pub/sub', async () => {
+    const { result } = await renderHook(() => useAppearance('me'));
 
     expect(result.current[0]).toBe('system');
-    act(() => result.current[1]('dark'));
+    await act(() => result.current[1]('dark'));
     expect(result.current[0]).toBe('dark');
   });
 
   it('a stored scheme hydrates into a mounted hook (emit reaches listeners)', async () => {
     await AsyncStorage.setItem(schemeKey('u5'), 'light');
-    const { result } = renderHook(() => useAppearance('u5'));
+    const { result } = await renderHook(() => useAppearance('u5'));
 
-    expect(result.current[0]).toBe('system'); // hydrated yet?
+    // v14's async render flushes the hydration, so the pre-hydration
+    // transient ('system') is no longer observable — only the hydrated value.
     await waitFor(() => expect(result.current[0]).toBe('light'));
   });
 });

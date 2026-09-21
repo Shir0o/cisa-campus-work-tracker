@@ -13,9 +13,9 @@ jest.mock('../../lib/useFtHomeData', () => ({ useFtHomeData: jest.fn() }));
 jest.mock('../log/LogSheet', () => ({ LogSheet: () => null }));
 
 describe('FtHomeScreen', () => {
-  it('shows the full-timer home skeleton while data is loading', () => {
+  it('shows the full-timer home skeleton while data is loading', async () => {
     (useFtHomeData as jest.Mock).mockReturnValue({ loading: true });
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ThemeProvider>
         <FtHomeScreen />
       </ThemeProvider>,
@@ -23,7 +23,7 @@ describe('FtHomeScreen', () => {
     expect(getByTestId('ft-home-skeleton')).toBeTruthy();
   });
 
-  it('does not show the skeleton once data has loaded', () => {
+  it('does not show the skeleton once data has loaded', async () => {
     (useFtHomeData as jest.Mock).mockReturnValue({
       loading: false,
       contacts: [],
@@ -43,7 +43,7 @@ describe('FtHomeScreen', () => {
       summary: '',
       error: null,
     });
-    const { queryByTestId } = render(
+    const { queryByTestId } = await render(
       <ThemeProvider>
         <FtHomeScreen />
       </ThemeProvider>,

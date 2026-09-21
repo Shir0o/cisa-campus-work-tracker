@@ -24,21 +24,21 @@ const releaseWithVideo: WhatsNewRelease = {
 };
 
 describe('M2WhatsNew', () => {
-  it('shows the current announcement record and closes on demand', () => {
+  it('shows the current announcement record and closes on demand', async () => {
     mockAnnouncement.mockReturnValue(releaseWithVideo);
     let closed = 0;
-    const tree = render(
+    const tree = await render(
       <ThemeProvider>
         <M2WhatsNew visible onClose={() => { closed += 1; }} />
       </ThemeProvider>,
     );
     expect(tree.getByTestId('m2-whats-new')).toBeTruthy();
-    fireEvent.press(tree.getByText('Got it'));
+    await fireEvent.press(tree.getByText('Got it'));
     expect(closed).toBe(1);
   });
 
-  it('renders nothing when hidden', () => {
-    const tree = render(
+  it('renders nothing when hidden', async () => {
+    const tree = await render(
       <ThemeProvider>
         <M2WhatsNew visible={false} onClose={() => {}} />
       </ThemeProvider>,
@@ -46,9 +46,9 @@ describe('M2WhatsNew', () => {
     expect(tree.queryByTestId('m2-whats-new')).toBeNull();
   });
 
-  it('renders a video link when the release carries a video_url', () => {
+  it('renders a video link when the release carries a video_url', async () => {
     mockAnnouncement.mockReturnValue(releaseWithVideo);
-    const tree = render(
+    const tree = await render(
       <ThemeProvider>
         <M2WhatsNew visible onClose={() => {}} />
       </ThemeProvider>,
@@ -56,9 +56,9 @@ describe('M2WhatsNew', () => {
     expect(tree.getByText('Watch what\'s new')).toBeTruthy();
   });
 
-  it('renders no video link when the release has no video_url', () => {
+  it('renders no video link when the release has no video_url', async () => {
     mockAnnouncement.mockReturnValue({ ...releaseWithVideo, video_url: undefined });
-    const tree = render(
+    const tree = await render(
       <ThemeProvider>
         <M2WhatsNew visible onClose={() => {}} />
       </ThemeProvider>,
