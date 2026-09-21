@@ -26,8 +26,8 @@ jest.mock('../../lib/data/users', () => ({
   setPushToken: jest.fn(),
 }));
 
-const renderBanner = () =>
-  render(
+const renderBanner = async () =>
+  await render(
     <ThemeProvider>
       <MobileNotificationPermissionBanner />
     </ThemeProvider>,
@@ -45,7 +45,7 @@ describe('MobileNotificationPermissionBanner', () => {
       canAskAgain: true,
     });
 
-    const { queryByText } = renderBanner();
+    const { queryByText } = await renderBanner();
     await waitFor(() => {
       expect(queryByText(/Enable notifications/i)).toBeNull();
     });
@@ -58,7 +58,7 @@ describe('MobileNotificationPermissionBanner', () => {
       canAskAgain: true,
     });
 
-    const { queryByText } = renderBanner();
+    const { queryByText } = await renderBanner();
     await waitFor(() => {
       expect(queryByText(/Enable notifications/i)).toBeNull();
     });
@@ -70,7 +70,7 @@ describe('MobileNotificationPermissionBanner', () => {
       canAskAgain: true,
     });
 
-    const { getByText } = renderBanner();
+    const { getByText } = await renderBanner();
     await waitFor(() => {
       expect(getByText(/Enable notifications/i)).toBeTruthy();
       expect(getByText(/CISA Campus Work Tracker is requesting notification permission/i)).toBeTruthy();
@@ -83,12 +83,12 @@ describe('MobileNotificationPermissionBanner', () => {
       canAskAgain: true,
     });
 
-    const { getByText, queryByText } = renderBanner();
+    const { getByText, queryByText } = await renderBanner();
     await waitFor(() => {
       expect(getByText('Later')).toBeTruthy();
     });
 
-    fireEvent.press(getByText('Later'));
+    await fireEvent.press(getByText('Later'));
 
     await waitFor(() => {
       expect(queryByText(/Enable notifications/i)).toBeNull();
@@ -103,12 +103,12 @@ describe('MobileNotificationPermissionBanner', () => {
     });
     (mobileNotifications.ensureNotificationPermission as jest.Mock).mockResolvedValue(true);
 
-    const { getByText, queryByText } = renderBanner();
+    const { getByText, queryByText } = await renderBanner();
     await waitFor(() => {
       expect(getByText('Enable')).toBeTruthy();
     });
 
-    fireEvent.press(getByText('Enable'));
+    await fireEvent.press(getByText('Enable'));
 
     // Two independent facts, waited on separately (#946). Sharing one waitFor
     // meant the dismissal raced whatever was left of the block's single 1s
@@ -144,12 +144,12 @@ describe('MobileNotificationPermissionBanner', () => {
       'ExponentPushToken[granted977]',
     );
 
-    const { getByText } = renderBanner();
+    const { getByText } = await renderBanner();
     await waitFor(() => {
       expect(getByText('Enable')).toBeTruthy();
     });
 
-    fireEvent.press(getByText('Enable'));
+    await fireEvent.press(getByText('Enable'));
 
     await waitFor(
       () => {
@@ -166,12 +166,12 @@ describe('MobileNotificationPermissionBanner', () => {
     });
     (mobileNotifications.ensureNotificationPermission as jest.Mock).mockResolvedValue(false);
 
-    const { getByText, queryByText } = renderBanner();
+    const { getByText, queryByText } = await renderBanner();
     await waitFor(() => {
       expect(getByText('Enable')).toBeTruthy();
     });
 
-    fireEvent.press(getByText('Enable'));
+    await fireEvent.press(getByText('Enable'));
 
     await waitFor(
       () => {

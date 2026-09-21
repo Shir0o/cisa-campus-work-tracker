@@ -140,14 +140,14 @@ describe('QueueState.subscribe', () => {
 });
 
 describe('useQueueState', () => {
-  it('signed out: empty state and no-op actions that never touch storage', () => {
-    const { result } = renderHook(() => useQueueState(null));
+  it('signed out: empty state and no-op actions that never touch storage', async () => {
+    const { result } = await renderHook(() => useQueueState(null));
 
     expect(result.current.handledCount).toBe(0);
     expect(result.current.handled).toEqual({});
     expect(result.current.later).toEqual({});
 
-    act(() => {
+    await act(() => {
       result.current.handle('c1');
       result.current.pushLater('c1');
       result.current.reset();
@@ -157,17 +157,17 @@ describe('useQueueState', () => {
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
 
-  it('signed in: handle / pushLater / reset are reflected live', () => {
-    const { result } = renderHook(() => useQueueState('me'));
+  it('signed in: handle / pushLater / reset are reflected live', async () => {
+    const { result } = await renderHook(() => useQueueState('me'));
 
-    act(() => result.current.handle('c1'));
+    await act(() => result.current.handle('c1'));
     expect(result.current.handledCount).toBe(1);
     expect(result.current.handled).toHaveProperty('c1');
 
-    act(() => result.current.pushLater('c2'));
+    await act(() => result.current.pushLater('c2'));
     expect(result.current.later).toHaveProperty('c2');
 
-    act(() => result.current.reset());
+    await act(() => result.current.reset());
     expect(result.current.handledCount).toBe(0);
     expect(result.current.later).toEqual({});
   });

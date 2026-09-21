@@ -57,8 +57,8 @@ describe('MemberYouScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders You screen sections including Tell the team and Tell us how it\'s going', () => {
-    const { getByText, queryByTestId } = render(
+  it('renders You screen sections including Tell the team and Tell us how it\'s going', async () => {
+    const { getByText, queryByTestId } = await render(
       <ThemeProvider>
         <MemberYouScreen role="student" />
       </ThemeProvider>,
@@ -70,20 +70,20 @@ describe('MemberYouScreen', () => {
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });
 
-  it('opens FeedbackSheet when Tell us how it\'s going is pressed', () => {
-    const { getByText, getByTestId, queryByTestId } = render(
+  it('opens FeedbackSheet when Tell us how it\'s going is pressed', async () => {
+    const { getByText, getByTestId, queryByTestId } = await render(
       <ThemeProvider>
         <MemberYouScreen role="student" />
       </ThemeProvider>,
     );
 
     const feedbackBtn = getByText("Tell us how it's going");
-    fireEvent.press(feedbackBtn);
+    await fireEvent.press(feedbackBtn);
 
     expect(getByTestId('feedback-sheet')).toBeTruthy();
 
     const closeBtn = getByTestId('close-feedback-btn');
-    fireEvent.press(closeBtn);
+    await fireEvent.press(closeBtn);
 
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });

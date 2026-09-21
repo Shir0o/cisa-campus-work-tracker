@@ -13,8 +13,8 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('SkeletonSection', () => {
-  it('renders a label bar and a card of rows', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders a label bar and a card of rows', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <SkeletonSection rows={2} />
       </ThemeProvider>,
@@ -25,8 +25,8 @@ describe('SkeletonSection', () => {
 });
 
 describe('QueueSkeleton', () => {
-  it('renders the queue chrome and one big card', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders the queue chrome and one big card', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <QueueSkeleton />
       </ThemeProvider>,
@@ -37,8 +37,8 @@ describe('QueueSkeleton', () => {
 });
 
 describe('MemberHomeSkeleton', () => {
-  it('renders the head and widget sections', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders the head and widget sections', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <MemberHomeSkeleton />
       </ThemeProvider>,
@@ -49,8 +49,8 @@ describe('MemberHomeSkeleton', () => {
 });
 
 describe('FtHomeSkeleton', () => {
-  it('renders the greeting, quick tiles and widget sections', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders the greeting, quick tiles and widget sections', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <FtHomeSkeleton />
       </ThemeProvider>,
@@ -61,8 +61,8 @@ describe('FtHomeSkeleton', () => {
 });
 
 describe('ContactSkeleton', () => {
-  it('renders the hero card and rows', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders the hero card and rows', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <ContactSkeleton />
       </ThemeProvider>,
@@ -73,8 +73,8 @@ describe('ContactSkeleton', () => {
 });
 
 describe('DocSkeleton', () => {
-  it('renders the audience line and a card of document lines', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders the audience line and a card of document lines', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <DocSkeleton />
       </ThemeProvider>,

@@ -117,12 +117,12 @@ describe('QueuePrefsStore.set / reset', () => {
 });
 
 describe('useQueuePrefs', () => {
-  it('signed out: reads the defaults and set/reset are no-ops', () => {
-    const { result } = renderHook(() => useQueuePrefs(null));
+  it('signed out: reads the defaults and set/reset are no-ops', async () => {
+    const { result } = await renderHook(() => useQueuePrefs(null));
 
     expect(result.current.prefs).toEqual(DEFAULTS);
 
-    act(() => {
+    await act(() => {
       result.current.set({ quietDays: 14 });
       result.current.reset();
     });
@@ -131,14 +131,14 @@ describe('useQueuePrefs', () => {
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
 
-  it('signed in: set() is reflected live', () => {
-    const { result } = renderHook(() => useQueuePrefs('me'));
+  it('signed in: set() is reflected live', async () => {
+    const { result } = await renderHook(() => useQueuePrefs('me'));
 
-    act(() => result.current.set({ prayers: 0 }));
+    await act(() => result.current.set({ prayers: 0 }));
     expect(result.current.prefs.prayers).toBe(0);
     expect(result.current.prefs.dayCap).toBe(8);
 
-    act(() => result.current.reset());
+    await act(() => result.current.reset());
     expect(result.current.prefs).toEqual(DEFAULTS);
   });
 });

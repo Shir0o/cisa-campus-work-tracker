@@ -11,9 +11,9 @@ jest.mock('./data/seasons', () => ({
 const mockedSubscribe = jest.requireMock('./data/seasons').subscribeSeasonSettings as jest.Mock;
 const mockedSave = saveSeasonSettings as jest.Mock;
 
-const emit = (settings: SeasonSettings) => {
+const emit = async (settings: SeasonSettings) => {
   const cb = mockedSubscribe.mock.calls[0][0];
-  act(() => cb(settings));
+  await act(() => cb(settings));
 };
 
 beforeEach(() => {
@@ -21,22 +21,22 @@ beforeEach(() => {
 });
 
 describe('useActiveSeason', () => {
-  it('exposes bfa off by default and omits the BFA tag', () => {
-    const { result } = renderHook(() => useActiveSeason());
+  it('exposes bfa off by default and omits the BFA tag', async () => {
+    const { result } = await renderHook(() => useActiveSeason());
     expect(result.current.bfa).toBe(false);
     expect(result.current.tags).not.toContain('BFA');
   });
 
-  it('includes the BFA tag when the bfa setting is on', () => {
-    const { result } = renderHook(() => useActiveSeason());
-    emit({ bfa: true });
+  it('includes the BFA tag when the bfa setting is on', async () => {
+    const { result } = await renderHook(() => useActiveSeason());
+    await emit({ bfa: true });
     expect(result.current.bfa).toBe(true);
     expect(result.current.tags).toContain('BFA');
   });
 
-  it('toggleBfa writes the inverse flag', () => {
-    const { result } = renderHook(() => useActiveSeason());
-    act(() => result.current.toggleBfa());
+  it('toggleBfa writes the inverse flag', async () => {
+    const { result } = await renderHook(() => useActiveSeason());
+    await act(() => result.current.toggleBfa());
     expect(mockedSave).toHaveBeenLastCalledWith({ bfa: true });
   });
 });

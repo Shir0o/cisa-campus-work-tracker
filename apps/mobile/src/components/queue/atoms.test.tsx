@@ -26,17 +26,17 @@ jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: undefined, user: null, role: null }),
 }));
 
-const renderV2 = (el: React.ReactElement) => render(<ThemeProvider>{el}</ThemeProvider>);
+const renderV2 = async (el: React.ReactElement) => await render(<ThemeProvider>{el}</ThemeProvider>);
 
 describe('ToneBadge', () => {
-  it('renders the label, and the ago line only when given', () => {
-    const { getByText, queryByText, rerender } = renderV2(
+  it('renders the label, and the ago line only when given', async () => {
+    const { getByText, queryByText, rerender } = await renderV2(
       <ToneBadge tone="follow" label="Follow up" ago="due tomorrow" />,
     );
     expect(getByText('Follow up')).toBeTruthy();
     expect(getByText('due tomorrow')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <ThemeProvider>
         <ToneBadge tone="follow" label="Follow up" />
       </ThemeProvider>,
@@ -46,21 +46,21 @@ describe('ToneBadge', () => {
 });
 
 describe('PersonMark', () => {
-  it('shows the person’s initials', () => {
-    const { getByText } = renderV2(<PersonMark name="Rio Alvarez" />);
+  it('shows the person’s initials', async () => {
+    const { getByText } = await renderV2(<PersonMark name="Rio Alvarez" />);
     expect(getByText('RA')).toBeTruthy();
   });
 });
 
 describe('WhoBlock', () => {
-  it('renders the name, and the sub line only when given', () => {
-    const { getByText, queryByText, rerender } = renderV2(
+  it('renders the name, and the sub line only when given', async () => {
+    const { getByText, queryByText, rerender } = await renderV2(
       <WhoBlock name="Rio Alvarez" sub="Sophomore · Biology" />,
     );
     expect(getByText('Rio Alvarez')).toBeTruthy();
     expect(getByText('Sophomore · Biology')).toBeTruthy();
 
-    rerender(
+    await rerender(
       <ThemeProvider>
         <WhoBlock name="Rio Alvarez" />
       </ThemeProvider>,
@@ -70,16 +70,16 @@ describe('WhoBlock', () => {
 });
 
 describe('NoteBlock', () => {
-  it('renders the label and the note', () => {
-    const { getByText } = renderV2(<NoteBlock label="What you wrote down">Call Dana re: Thursday</NoteBlock>);
+  it('renders the label and the note', async () => {
+    const { getByText } = await renderV2(<NoteBlock label="What you wrote down">Call Dana re: Thursday</NoteBlock>);
     expect(getByText('What you wrote down')).toBeTruthy();
     expect(getByText('Call Dana re: Thursday')).toBeTruthy();
   });
 });
 
 describe('prose pieces', () => {
-  it('Ask, Lead, Said, Why and Quote render their children', () => {
-    const { getByText } = renderV2(
+  it('Ask, Lead, Said, Why and Quote render their children', async () => {
+    const { getByText } = await renderV2(
       <>
         <Ask>Will you text Rio?</Ask>
         <Lead>Check in with Rio</Lead>
@@ -97,41 +97,41 @@ describe('prose pieces', () => {
 });
 
 describe('buttons', () => {
-  it('PrimaryButton fires onPress', () => {
+  it('PrimaryButton fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderV2(<PrimaryButton title="Text Rio" onPress={onPress} />);
-    fireEvent.press(getByText('Text Rio'));
+    const { getByText } = await renderV2(<PrimaryButton title="Text Rio" onPress={onPress} />);
+    await fireEvent.press(getByText('Text Rio'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('SecondaryButton fires onPress', () => {
+  it('SecondaryButton fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderV2(<SecondaryButton title="Cancel" onPress={onPress} />);
-    fireEvent.press(getByText('Cancel'));
+    const { getByText } = await renderV2(<SecondaryButton title="Cancel" onPress={onPress} />);
+    await fireEvent.press(getByText('Cancel'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('LaterButton renders its label (customisable) and fires onPress', () => {
+  it('LaterButton renders its label (customisable) and fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderV2(<LaterButton label="Not now" onPress={onPress} />);
-    fireEvent.press(getByText('Not now  →'));
+    const { getByText } = await renderV2(<LaterButton label="Not now" onPress={onPress} />);
+    await fireEvent.press(getByText('Not now  →'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('AboutChip', () => {
-  it('renders name and detail, and fires onPress', () => {
+  it('renders name and detail, and fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText, queryByText, rerender } = renderV2(
+    const { getByText, queryByText, rerender } = await renderV2(
       <AboutChip name="Rio Alvarez" id="c1" detail="Sophomore" onPress={onPress} />,
     );
     expect(getByText('Rio Alvarez')).toBeTruthy();
     expect(getByText('· Sophomore')).toBeTruthy();
 
-    fireEvent.press(getByText('Rio Alvarez'));
+    await fireEvent.press(getByText('Rio Alvarez'));
     expect(onPress).toHaveBeenCalledTimes(1);
 
-    rerender(
+    await rerender(
       <ThemeProvider>
         <AboutChip name="Rio Alvarez" id="c1" onPress={onPress} />
       </ThemeProvider>,
@@ -141,8 +141,8 @@ describe('AboutChip', () => {
 });
 
 describe('Kicker', () => {
-  it('renders its label', () => {
-    const { getByText } = renderV2(<Kicker>Dates worth knowing</Kicker>);
+  it('renders its label', async () => {
+    const { getByText } = await renderV2(<Kicker>Dates worth knowing</Kicker>);
     expect(getByText('Dates worth knowing')).toBeTruthy();
   });
 });

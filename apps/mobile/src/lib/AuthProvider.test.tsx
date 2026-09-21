@@ -71,13 +71,13 @@ describe('AuthProvider (Mobile)', () => {
   });
 
   it('renders initial signed-out state when onAuthStateChanged fires with null', async () => {
-    const { getByText } = render(
+    const { getByText } = await render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,
     );
 
-    act(() => {
+    await act(() => {
       mockAuthStateCallback?.(null);
     });
 
@@ -88,17 +88,17 @@ describe('AuthProvider (Mobile)', () => {
   });
 
   it('updates state when an authenticated user is emitted', async () => {
-    const { getByText } = render(
+    const { getByText } = await render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,
     );
 
-    act(() => {
+    await act(() => {
       mockAuthStateCallback?.({ uid: 'u123', email: 'reviewer@example.com' });
     });
 
-    act(() => {
+    await act(() => {
       mockOnSnapshotCallback?.({
         data: () => ({ role: 'admin', approved: true, displayName: 'Reviewer' }),
       });
@@ -117,13 +117,13 @@ describe('AuthProvider (Mobile)', () => {
       data: { idToken: 'mock-id-token' },
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,
     );
 
-    act(() => {
+    await act(() => {
       mockAuthStateCallback?.(null);
     });
 
@@ -133,7 +133,7 @@ describe('AuthProvider (Mobile)', () => {
 
     const btn = getByText('Google Sign In');
     await act(async () => {
-      fireEvent.press(btn);
+      await fireEvent.press(btn);
     });
 
     expect(GoogleSignin.hasPlayServices).toHaveBeenCalled();

@@ -8,8 +8,8 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('SkeletonList', () => {
-  it('renders the requested number of avatar rows', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders the requested number of avatar rows', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <SkeletonList rows={4} />
       </ThemeProvider>,
@@ -18,8 +18,8 @@ describe('SkeletonList', () => {
     expect(getAllByTestId('skeleton').length).toBeGreaterThanOrEqual(12);
   });
 
-  it('renders plain line rows when avatar is off', () => {
-    const { getAllByTestId } = render(
+  it('renders plain line rows when avatar is off', async () => {
+    const { getAllByTestId } = await render(
       <ThemeProvider>
         <SkeletonList rows={2} avatar={false} />
       </ThemeProvider>,

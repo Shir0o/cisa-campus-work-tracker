@@ -10,9 +10,9 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('SwipeToDelete', () => {
-  it('renders children wrapped in swipeable container', () => {
+  it('renders children wrapped in swipeable container', async () => {
     const onHide = jest.fn();
-    const { getByText } = render(
+    const { getByText } = await render(
       <GestureHandlerRootView>
         <ThemeProvider>
           <SwipeToDelete onHide={onHide}>

@@ -100,29 +100,29 @@ afterEach(() => {
 });
 
 describe('Sheet dismissal lifecycle', () => {
-  it('reopens after a native self-dismiss, instead of going dead', () => {
+  it('reopens after a native self-dismiss, instead of going dead', async () => {
     jest.useFakeTimers();
-    const { getByLabelText } = render(
+    const { getByLabelText } = await render(
       <ThemeProvider>
         <Harness />
       </ThemeProvider>,
     );
 
-    fireEvent.press(getByLabelText('open sheet'));
-    act(() => {
+    await fireEvent.press(getByLabelText('open sheet'));
+    await act(() => {
       jest.advanceTimersByTime(0);
     });
     expect(__instances).toHaveLength(1);
     expect(__instances[0].present).toHaveBeenCalledTimes(1);
     expect(__instances[0].status).toBe(__STATUS.presented);
 
-    act(() => {
+    await act(() => {
       __instances[0].selfDismiss();
     });
     expect(__instances[0].dismiss).not.toHaveBeenCalled();
     expect(__instances[0].status).toBe(__STATUS.initial);
-    fireEvent.press(getByLabelText('open sheet'));
-    act(() => {
+    await fireEvent.press(getByLabelText('open sheet'));
+    await act(() => {
       jest.advanceTimersByTime(0);
     });
     expect(__instances[0].present).toHaveBeenCalledTimes(2);

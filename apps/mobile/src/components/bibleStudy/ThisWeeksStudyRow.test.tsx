@@ -61,8 +61,8 @@ function mockWeek(week: unknown | null) {
   });
 }
 
-const renderRow = (props = {}) =>
-  render(
+const renderRow = async (props = {}) =>
+  await render(
     <ThemeProvider>
       <ThisWeeksStudyRow {...props} />
     </ThemeProvider>,
@@ -71,66 +71,66 @@ const renderRow = (props = {}) =>
 describe("This week's study — mobile row (#946)", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('opens the durable entry point URL in an in-app browser, not the system one', () => {
+  it('opens the durable entry point URL in an in-app browser, not the system one', async () => {
     // expo-linking would hand the person to Safari and make them app-switch
     // back; the browser sheet dismisses into the app.
     mockEntryPoints([WEDNESDAY]);
-    const { getByLabelText } = renderRow();
+    const { getByLabelText } = await renderRow();
 
-    fireEvent.press(getByLabelText("This week's study"));
+    await fireEvent.press(getByLabelText("This week's study"));
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(URL);
   });
 
   it('copies a permanent link pinned to this week, not the always-latest entry point', async () => {
     mockEntryPoints([WEDNESDAY]);
     mockWeek(WEEK);
-    const { getByLabelText } = renderRow();
+    const { getByLabelText } = await renderRow();
 
-    fireEvent.press(getByLabelText('Copy link'));
+    await fireEvent.press(getByLabelText('Copy link'));
     await waitFor(() => expect(mockSetStringAsync).toHaveBeenCalledWith(PERMALINK));
   });
 
   it('falls back to the entry point URL before the study has published a week', async () => {
     mockEntryPoints([WEDNESDAY]);
     mockWeek(null);
-    const { getByLabelText } = renderRow();
+    const { getByLabelText } = await renderRow();
 
-    fireEvent.press(getByLabelText('Copy link'));
+    await fireEvent.press(getByLabelText('Copy link'));
     await waitFor(() => expect(mockSetStringAsync).toHaveBeenCalledWith(URL));
   });
 
-  it('shows a code built from the entry point, on a white ground', () => {
+  it('shows a code built from the entry point, on a white ground', async () => {
     mockEntryPoints([WEDNESDAY]);
-    const { getByLabelText } = renderRow();
+    const { getByLabelText } = await renderRow();
 
-    fireEvent.press(getByLabelText('Show QR'));
+    await fireEvent.press(getByLabelText('Show QR'));
     expect(getByLabelText(URL)).toBeTruthy();
   });
 
-  it('names each room when a week is taught in two', () => {
+  it('names each room when a week is taught in two', async () => {
     // A split week is two Entry points (ADR 0011 §4); the names are what tell
     // them apart, so each gets its own row rather than a remembered pick.
     mockEntryPoints([WEDNESDAY, THURSDAY]);
-    const { getByLabelText } = renderRow();
+    const { getByLabelText } = await renderRow();
 
     expect(getByLabelText("This week's study — Wednesday Bible Study")).toBeTruthy();
     expect(getByLabelText("This week's study — Thursday 7pm")).toBeTruthy();
   });
 
-  it('renders nothing when no entry point has been seeded', () => {
+  it('renders nothing when no entry point has been seeded', async () => {
     mockEntryPoints([]);
-    const { queryByLabelText } = renderRow();
+    const { queryByLabelText } = await renderRow();
     expect(queryByLabelText("This week's study")).toBeNull();
   });
 
-  it('closes the drawer before opening the browser', () => {
+  it('closes the drawer before opening the browser', async () => {
     // The trainee shell reaches this through its drawer, which must not still
     // be sitting open behind the browser sheet when it is dismissed.
     mockEntryPoints([WEDNESDAY]);
     const onNavigate = jest.fn();
-    const { getByLabelText } = renderRow({ variant: 'drawer', onNavigate });
+    const { getByLabelText } = await renderRow({ variant: 'drawer', onNavigate });
 
-    fireEvent.press(getByLabelText("This week's study"));
+    await fireEvent.press(getByLabelText("This week's study"));
     expect(onNavigate).toHaveBeenCalled();
   });
 });

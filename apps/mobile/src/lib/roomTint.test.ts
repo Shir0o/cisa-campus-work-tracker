@@ -60,28 +60,29 @@ describe('RoomTintStore.set', () => {
 });
 
 describe('useRoomTint', () => {
-  it('signed out: reports green and the setter is a no-op', () => {
-    const { result } = renderHook(() => useRoomTint(null));
+  it('signed out: reports green and the setter is a no-op', async () => {
+    const { result } = await renderHook(() => useRoomTint(null));
 
     expect(result.current[0]).toBe('green');
-    act(() => result.current[1]('blue'));
+    await act(() => result.current[1]('blue'));
     expect(result.current[0]).toBe('green');
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
 
-  it('signed in: set() is reflected live through pub/sub', () => {
-    const { result } = renderHook(() => useRoomTint('me'));
+  it('signed in: set() is reflected live through pub/sub', async () => {
+    const { result } = await renderHook(() => useRoomTint('me'));
 
     expect(result.current[0]).toBe('green');
-    act(() => result.current[1]('blue'));
+    await act(() => result.current[1]('blue'));
     expect(result.current[0]).toBe('blue');
   });
 
   it('a stored tint hydrates into a mounted hook (emit reaches listeners)', async () => {
     await AsyncStorage.setItem(tintKey('u5'), 'blue');
-    const { result } = renderHook(() => useRoomTint('u5'));
+    const { result } = await renderHook(() => useRoomTint('u5'));
 
-    expect(result.current[0]).toBe('green'); // hydrated yet?
+    // v14's async render flushes the hydration, so the pre-hydration
+    // transient ('green') is no longer observable — only the hydrated value.
     await waitFor(() => expect(result.current[0]).toBe('blue'));
   });
 });

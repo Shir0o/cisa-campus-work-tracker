@@ -46,8 +46,8 @@ describe('FtMoreScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders More screen items including Tell us how it\'s going', () => {
-    const { getByText, queryByTestId } = render(
+  it('renders More screen items including Tell us how it\'s going', async () => {
+    const { getByText, queryByTestId } = await render(
       <ThemeProvider>
         <FtMoreScreen />
       </ThemeProvider>,
@@ -59,20 +59,20 @@ describe('FtMoreScreen', () => {
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });
 
-  it('opens FeedbackSheet when Tell us how it\'s going is pressed', () => {
-    const { getByText, getByTestId, queryByTestId } = render(
+  it('opens FeedbackSheet when Tell us how it\'s going is pressed', async () => {
+    const { getByText, getByTestId, queryByTestId } = await render(
       <ThemeProvider>
         <FtMoreScreen />
       </ThemeProvider>,
     );
 
     const feedbackBtn = getByText("Tell us how it's going");
-    fireEvent.press(feedbackBtn);
+    await fireEvent.press(feedbackBtn);
 
     expect(getByTestId('feedback-sheet')).toBeTruthy();
 
     const closeBtn = getByTestId('close-feedback-btn');
-    fireEvent.press(closeBtn);
+    await fireEvent.press(closeBtn);
 
     expect(queryByTestId('feedback-sheet')).toBeNull();
   });

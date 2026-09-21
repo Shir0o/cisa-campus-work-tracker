@@ -26,9 +26,9 @@ const data = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('ChatThreadScreen', () => {
-  it('shows the thread skeleton while data is loading', () => {
+  it('shows the thread skeleton while data is loading', async () => {
     (useChatThreadData as jest.Mock).mockReturnValue(data());
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId } = await render(
       <ThemeProvider>
         <ChatThreadScreen roomId="room1" />
       </ThemeProvider>,
@@ -37,9 +37,9 @@ describe('ChatThreadScreen', () => {
     expect(queryByTestId('activity-indicator')).toBeNull();
   });
 
-  it('shows the empty state instead of stale content once loading settles', () => {
+  it('shows the empty state instead of stale content once loading settles', async () => {
     (useChatThreadData as jest.Mock).mockReturnValue(data({ loading: false }));
-    const { getByText, queryByTestId } = render(
+    const { getByText, queryByTestId } = await render(
       <ThemeProvider>
         <ChatThreadScreen roomId="room1" />
       </ThemeProvider>,

@@ -43,8 +43,8 @@ describe('EditContactSheet', () => {
     });
   });
 
-  const renderSheet = (props?: Partial<React.ComponentProps<typeof EditContactSheet>>) =>
-    render(
+  const renderSheet = async (props?: Partial<React.ComponentProps<typeof EditContactSheet>>) =>
+    await render(
       <ThemeProvider>
         <EditContactSheet
           visible={true}
@@ -57,8 +57,8 @@ describe('EditContactSheet', () => {
       </ThemeProvider>,
     );
 
-  it('renders all contact fields correctly on open', () => {
-    const { getByDisplayValue, getByText } = renderSheet();
+  it('renders all contact fields correctly on open', async () => {
+    const { getByDisplayValue, getByText } = await renderSheet();
 
     expect(getByText('Edit Jordan')).toBeTruthy();
     expect(getByDisplayValue('Jordan')).toBeTruthy();
@@ -70,28 +70,28 @@ describe('EditContactSheet', () => {
     expect(getByDisplayValue('Very friendly, likes music')).toBeTruthy();
   });
 
-  it('toggles tag suggestion chips on and off', () => {
-    const { getByText } = renderSheet();
+  it('toggles tag suggestion chips on and off', async () => {
+    const { getByText } = await renderSheet();
 
     // Initial tags: Freshman, Choir
     expect(getByText('✓ Choir')).toBeTruthy();
 
     // Toggle Saved tag (from TAG_SUGGESTIONS)
     const savedChip = getByText('+ Saved');
-    fireEvent.press(savedChip);
+    await fireEvent.press(savedChip);
     expect(getByText('✓ Saved')).toBeTruthy();
 
     // Toggle off
-    fireEvent.press(getByText('✓ Saved'));
+    await fireEvent.press(getByText('✓ Saved'));
     expect(getByText('+ Saved')).toBeTruthy();
   });
 
-  it('adds custom tags using the custom tag input', () => {
-    const { getByPlaceholderText, getByText } = renderSheet();
+  it('adds custom tags using the custom tag input', async () => {
+    const { getByPlaceholderText, getByText } = await renderSheet();
 
     const tagInput = getByPlaceholderText('Add custom tag…');
-    fireEvent.changeText(tagInput, 'Band');
-    fireEvent.press(getByText('Add'));
+    await fireEvent.changeText(tagInput, 'Band');
+    await fireEvent.press(getByText('Add'));
 
     expect(getByText('✓ Band')).toBeTruthy();
   });
@@ -99,12 +99,12 @@ describe('EditContactSheet', () => {
   it('calls updateContact and triggers onSaved and onClose on save', async () => {
     (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
 
-    const { getByDisplayValue, getByText } = renderSheet();
+    const { getByDisplayValue, getByText } = await renderSheet();
 
     const phoneInput = getByDisplayValue('(555) 234-5678');
-    fireEvent.changeText(phoneInput, '(555) 999-8888');
+    await fireEvent.changeText(phoneInput, '(555) 999-8888');
 
-    fireEvent.press(getByText('Save Details'));
+    await fireEvent.press(getByText('Save Details'));
 
     await waitFor(() => {
       expect(updateContact).toHaveBeenCalledWith(
@@ -127,23 +127,23 @@ describe('EditContactSheet', () => {
     });
   });
 
-  it('closes directly when clean without prompt', () => {
+  it('closes directly when clean without prompt', async () => {
     const spyAlert = jest.spyOn(Alert, 'alert');
-    const { getByText } = renderSheet();
+    const { getByText } = await renderSheet();
 
-    fireEvent.press(getByText('Cancel'));
+    await fireEvent.press(getByText('Cancel'));
     expect(spyAlert).not.toHaveBeenCalled();
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('prompts confirmation when dirty on cancel', () => {
+  it('prompts confirmation when dirty on cancel', async () => {
     const spyAlert = jest.spyOn(Alert, 'alert');
-    const { getByDisplayValue, getByText } = renderSheet();
+    const { getByDisplayValue, getByText } = await renderSheet();
 
     const notesInput = getByDisplayValue('Very friendly, likes music');
-    fireEvent.changeText(notesInput, 'Changed notes');
+    await fireEvent.changeText(notesInput, 'Changed notes');
 
-    fireEvent.press(getByText('Cancel'));
+    await fireEvent.press(getByText('Cancel'));
     expect(spyAlert).toHaveBeenCalledWith(
       expect.stringContaining('Discard'),
       expect.any(String),

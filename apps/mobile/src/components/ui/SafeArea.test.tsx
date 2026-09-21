@@ -28,8 +28,8 @@ const { __capturedEdges } = jest.requireMock('react-native-safe-area-context') a
   __capturedEdges: (Edges | undefined)[];
 };
 
-function renderSA(edges: Edges | undefined, topOwned: boolean) {
-  return render(
+async function renderSA(edges: Edges | undefined, topOwned: boolean) {
+  return await render(
     <TopInsetOwnedContext.Provider value={topOwned}>
       <SafeAreaView edges={edges} testID="sa" />
     </TopInsetOwnedContext.Provider>,
@@ -43,23 +43,23 @@ beforeEach(() => {
 });
 
 describe('SafeAreaView', () => {
-  it('drops top from an array of edges while chrome owns the inset', () => {
-    renderSA(['top', 'bottom'], true);
+  it('drops top from an array of edges while chrome owns the inset', async () => {
+    await renderSA(['top', 'bottom'], true);
     expect(lastEdges()).toEqual(['bottom']);
   });
 
-  it('drops top from an edges record while chrome owns the inset', () => {
-    renderSA({ top: 'off', bottom: 'additive' }, true);
+  it('drops top from an edges record while chrome owns the inset', async () => {
+    await renderSA({ top: 'off', bottom: 'additive' }, true);
     expect(lastEdges()).toEqual({ bottom: 'additive' });
   });
 
-  it('leaves edges alone when nothing above the router owns the inset', () => {
-    renderSA(['top', 'bottom'], false);
+  it('leaves edges alone when nothing above the router owns the inset', async () => {
+    await renderSA(['top', 'bottom'], false);
     expect(lastEdges()).toEqual(['top', 'bottom']);
   });
 
-  it('passes an undefined edges through untouched', () => {
-    renderSA(undefined, true);
+  it('passes an undefined edges through untouched', async () => {
+    await renderSA(undefined, true);
     expect(lastEdges()).toBeUndefined();
   });
 });

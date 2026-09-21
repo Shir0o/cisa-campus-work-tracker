@@ -61,7 +61,7 @@ describe('BoardScreen Spanish Translation', () => {
       error: null,
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="en">
         <ThemeProvider>
           <BoardScreen />
@@ -113,7 +113,7 @@ describe('BoardScreen Spanish Translation', () => {
       error: null,
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardScreen />
@@ -146,7 +146,7 @@ describe('BoardScreen Spanish Translation', () => {
       error: null,
     });
 
-    const { getByText } = render(
+    const { getByText } = await render(
       <LanguageProvider defaultLanguage="es">
         <ThemeProvider>
           <BoardScreen />

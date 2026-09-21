@@ -46,8 +46,8 @@ jest.mock('expo-router', () => {
   return { useRouter: () => ({ push }) };
 });
 
-const renderSheet = (targetRef?: any) =>
-  render(
+const renderSheet = async (targetRef?: any) =>
+  await render(
     <ThemeProvider>
       <FeedbackSheet visible={true} onClose={jest.fn()} targetRef={targetRef} />
     </ThemeProvider>
@@ -55,8 +55,8 @@ const renderSheet = (targetRef?: any) =>
 
 const submit = async (getByPlaceholderText: any, getByText: any) => {
   const input = getByPlaceholderText("What's on your mind?");
-  fireEvent.changeText(input, 'Mobile test feedback note');
-  fireEvent.press(getByText('Send'));
+  await fireEvent.changeText(input, 'Mobile test feedback note');
+  await fireEvent.press(getByText('Send'));
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());
   return JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
 };
@@ -73,7 +73,7 @@ describe('FeedbackSheet', () => {
 
   it('captures the screen behind the sheet when given a targetRef', async () => {
     const dummyRef = { current: {} };
-    renderSheet(dummyRef);
+    await renderSheet(dummyRef);
 
     await waitFor(() => {
       expect(captureRef).toHaveBeenCalledWith(dummyRef, expect.objectContaining({
@@ -85,7 +85,7 @@ describe('FeedbackSheet', () => {
 
   it('sends the captured screenshot to /api/feedback', async () => {
     const dummyRef = { current: {} };
-    const { getByPlaceholderText, getByText } = renderSheet(dummyRef);
+    const { getByPlaceholderText, getByText } = await renderSheet(dummyRef);
 
     await waitFor(() => expect(captureRef).toHaveBeenCalled());
 
@@ -95,14 +95,14 @@ describe('FeedbackSheet', () => {
   });
 
   it('never sends the reporter email (ADR 0018 decision 5)', async () => {
-    const { getByPlaceholderText, getByText } = renderSheet({ current: {} });
+    const { getByPlaceholderText, getByText } = await renderSheet({ current: {} });
 
     const body = await submit(getByPlaceholderText, getByText);
     expect(body).not.toHaveProperty('userEmail');
   });
 
   it('submits without a screenshot when no targetRef is given', async () => {
-    const { getByPlaceholderText, getByText } = renderSheet(undefined);
+    const { getByPlaceholderText, getByText } = await renderSheet(undefined);
 
     const body = await submit(getByPlaceholderText, getByText);
     expect(captureRef).not.toHaveBeenCalled();
@@ -112,7 +112,7 @@ describe('FeedbackSheet', () => {
   it('drops a capture that overflows the size ceiling at every quality', async () => {
     // Always larger than the ceiling, so the whole quality ladder is exhausted.
     (captureRef as jest.Mock).mockResolvedValue('x'.repeat(MAX_SCREENSHOT_CHARS + 1));
-    const { getByPlaceholderText, getByText } = renderSheet({ current: {} });
+    const { getByPlaceholderText, getByText } = await renderSheet({ current: {} });
 
     await waitFor(() => expect(captureRef).toHaveBeenCalledTimes(3));
 
@@ -122,7 +122,7 @@ describe('FeedbackSheet', () => {
 
   it('submits without a screenshot when capture throws', async () => {
     (captureRef as jest.Mock).mockRejectedValue(new Error('no native view'));
-    const { getByPlaceholderText, getByText } = renderSheet({ current: {} });
+    const { getByPlaceholderText, getByText } = await renderSheet({ current: {} });
 
     await waitFor(() => expect(captureRef).toHaveBeenCalled());
 
@@ -131,11 +131,11 @@ describe('FeedbackSheet', () => {
   });
 
   it('offers "See your notes" after a submit, linking into the read-back view', async () => {
-    const { getByPlaceholderText, getByText } = renderSheet({ current: {} });
+    const { getByPlaceholderText, getByText } = await renderSheet({ current: {} });
 
     await submit(getByPlaceholderText, getByText);
 
-    fireEvent.press(getByText('See your notes'));
+    await fireEvent.press(getByText('See your notes'));
     const { useRouter } = require('expo-router');
     expect(useRouter().push).toHaveBeenCalledWith('/your-notes');
   });
