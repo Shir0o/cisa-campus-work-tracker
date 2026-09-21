@@ -15,14 +15,15 @@ Expo/EAS project rather than a Flutter one. The rationale is in
 2. `.github/workflows/release-please.yml` opens or updates a **release PR** that
    bumps `apps/mobile/package.json` and regenerates `apps/mobile/CHANGELOG.md`.
 3. You review and merge that PR.
-4. The merge pushes a tag (e.g. `v1.4.2`). Two workflows fire on it:
-   - `release-android.yml` — derives the version, builds a signed **AAB** with
-     `eas build --local`, submits it to the Play internal track as a **draft**
-     (testers are not notified), and attaches the AAB plus compiled notes to the
-     GitHub Release.
-   - `release-ios.yml` — derives the version, builds a signed **IPA**, submits it
-     to **TestFlight** with the compiled notes as “What to Test”, and attaches
-     both to the GitHub Release.
+4. The merge pushes a tag (e.g. `v1.4.2`). Three workflows fire on it:
+   - `draft-whats-new.yml` — auto-drafts the release markdown in `content/whats-new/` and opens a PR (`docs/whats-new-v...`) where maintainers can polish notes and optionally attach a YouTube `video_url` ([guide](docs/manual-release-videos.md)).
+    - `release-android.yml` — derives the version, builds a signed **AAB** with
+      `eas build --local`, submits it to the Play internal track as a **draft**
+      (testers are not notified), and attaches the AAB plus compiled notes to the
+      GitHub Release.
+    - `release-ios.yml` — derives the version, builds a signed **IPA**, submits it
+      to **TestFlight** with the compiled notes as “What to Test”, and attaches
+      both to the GitHub Release.
 5. **You** open each console, verify, and promote.
 
 Both release jobs sit behind the `mobile-release` environment, so they pause for

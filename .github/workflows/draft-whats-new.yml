@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: draft-whats-new-${{ github.ref_name }}
@@ -68,11 +69,19 @@ jobs:
         if: steps.draft.outputs.rc == '0'
         run: npm run whats-new:compile
 
-      - name: Commit and push to main
+      - name: Open pull request with drafted What's New
         if: steps.draft.outputs.rc == '0'
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: 'docs(whats-new): add What''s New record for ${{ github.ref_name }}'
-          commit_user_name: 'cisa-bot'
-          commit_user_email: '41898282+github-actions[bot]@users.noreply.github.com'
-          file_pattern: 'content/whats-new/*.md src/generated/whats-new.json apps/mobile/assets/whats-new.json'
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: 'docs(whats-new): draft What''s New record for ${{ github.ref_name }}'
+          title: 'docs(whats-new): draft What''s New record for ${{ github.ref_name }}'
+          body: |
+            Automated What's New draft for tag `${{ github.ref_name }}`.
+
+            - Curate release highlights and Release Nudge lines as needed.
+            - Optionally attach a YouTube `video_url` in the frontmatter.
+            - Once reviewed and merged, the compiled notes will be visible in-app.
+          branch: 'docs/whats-new-${{ github.ref_name }}'
+          delete-branch: true
+          base: main

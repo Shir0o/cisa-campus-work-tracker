@@ -7,19 +7,14 @@ import { signInAs } from './helpers/auth';
  * Records a release's key flows through the real UI with Playwright's built-in
  * video recorder (`video: 'on'` for this describe), against the seeded Firebase
  * emulator. The emitted .webm is the raw draft of a What's New Video — no human
- * curation. The point of the spike is to watch this output and decide whether
- * it is good enough to ship as-is (B), worth keeping as a raw draft a human
- * trims (A), or not good at all.
+ * The spike concluded (ADR 0030): automated headless screen recording was
+ * evaluated and retired in favor of manual, human-curated release walkthroughs.
+ * This spec is preserved as a functional regression test verifying that a
+ * Full-timer can navigate from My Day through the Directory to a contact card.
  *
- * The same spec is also a genuine E2E test: it signs in as real users and
- * asserts the flows still work, so recording a release verifies it too.
- *
- * Run with the emulator: npm run test:e2e:emulator -- --grep "spike"
- * Videos land under test-results/ (per-test .webm beside the trace).
+ * Run with the emulator: npm run test:e2e:emulator -- --grep "What's New Video"
  */
-test.use({ video: 'on' });
-
-test.describe('What\'s New Video spike (#1123)', () => {
+test.describe('What\'s New Video key flows (#1123)', () => {
   test('Full-timer watches their day, opens the directory, and reads a person', async ({ page }) => {
     // 1. Sign in as Full-timer and land on My Day.
     await signInAs(page, 'fulltimer');
