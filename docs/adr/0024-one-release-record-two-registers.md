@@ -48,3 +48,5 @@ release (`lines: []`) shows no nudge and never falls back to an older one.
 - See [0008](0008-custom-whats-new-announcements.md) for the announcement's
   manifest design and [0020](0020-mobile-release-automation.md) for how the
   store notes ride the release workflow.
+- See [`docs/manual-release-videos.md`](../manual-release-videos.md) for recording,
+  hosting, and attaching an optional YouTube **What's New Video** companion.

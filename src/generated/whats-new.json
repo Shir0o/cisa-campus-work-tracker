@@ -1,6 +1,114 @@
 {
-  "latestReleaseId": "2026-09-17-v1.6.0",
+  "latestReleaseId": "2026-09-20-v1.7.0",
   "releases": [
+    {
+      "id": "2026-09-20-v1.7.0",
+      "version": "1.7.0",
+      "title": "Release Companion Videos, Guest QR & Security",
+      "date": "2026-09-20",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "roles": [
+        "admin",
+        "manager",
+        "operator",
+        "viewer"
+      ],
+      "lines": [
+        "Watch a short video companion for new releases in What's New.",
+        "Scan or share a permanent QR code for coordination document guest links.",
+        "Tag incoming BFA contacts seamlessly on mobile, mirroring web.",
+        "Strengthen account protection with multi-factor authentication (TOTP) and App Check."
+      ],
+      "overview": "Welcome to version 1.7.0. This release introduces in-app release companion videos, coordination doc QR codes for guests, mobile BFA tagging parity, and enhanced security protections.",
+      "items": [
+        {
+          "text": "What's New Video companion: watch key release updates in the announcement on web or follow the link on mobile",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Coordination document guest QR codes: instant QR code generation for quick guest joining on web and mobile",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "BFA intake tag parity with web",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Multi-factor authentication (TOTP) support across web and mobile",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "In-app feedback follow-up thread editing and deletion",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Firebase App Check integration for web",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Enforced noindex headers and redacted record identifiers from published feedback URLs",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Restricted access screen for non-allowlisted accounts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Auto-draft release notes workflow on release tags",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Enhanced grid responsiveness to prevent clipping on compact displays",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Your notes read-back view",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        }
+      ]
+    },
     {
       "id": "2026-09-17-v1.6.0",
       "version": "1.6.0",
