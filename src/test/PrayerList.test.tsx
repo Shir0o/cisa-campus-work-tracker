@@ -481,7 +481,7 @@ describe('PrayerList', () => {
     // Contact c1 has 6 prayers (1 this week, 5 earlier)
     const multiplePrayers = [
       { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
-      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
       { id: 'p_e1', data: () => ({ contactId: 'c1', burden: 'Earlier 1', date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
       { id: 'p_e2', data: () => ({ contactId: 'c1', burden: 'Earlier 2', date: new Date(Date.now() - 22 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
       { id: 'p_e3', data: () => ({ contactId: 'c1', burden: 'Earlier 3', date: new Date(Date.now() - 29 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
@@ -553,7 +553,7 @@ describe('PrayerList', () => {
   it('still labels a prayer from last week "Last week" (#1041)', async () => {
     const prayersWithLastWeek = [
       { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
-      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
     ];
 
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
@@ -581,7 +581,7 @@ describe('PrayerList', () => {
   it('collapses each earlier prayer to a summary line and opens it in place', async () => {
     const prayers = [
       { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
-      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
       { id: 'p_e1', data: () => ({ contactId: 'c1', burden: 'Earlier one', date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(), status: 'ongoing' }) },
       { id: 'p_e2', data: () => ({ contactId: 'c1', burden: 'Earlier two', date: new Date(Date.now() - 22 * 24 * 3600 * 1000).toISOString(), status: 'answered' }) },
     ];
@@ -625,7 +625,7 @@ describe('PrayerList', () => {
   it('draws one neutral spine instead of a per-entry coloured rail', async () => {
     const prayers = [
       { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'ongoing' }) },
-      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'answered' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(), status: 'answered' }) },
     ];
 
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
