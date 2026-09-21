@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.6.0...v1.7.0) (2026-09-20)
+
+
+### Features
+
+* **auth:** add TOTP multi-factor authentication across web and mobile ([#1146](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1146)) ([#1146](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1146)) ([ee4054c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/ee4054c547cd342d76753c1dfc8b9d4944f821e1))
+* **board:** add QR code for coordination doc guest links on web and mobile ([#1149](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1149)) ([897e15f](https://github.com/Shir0o/cisa-campus-work-tracker/commit/897e15f1db8bd2a067ade9ba146fcc9d49c9cd01))
+* delete a single conversation thread message (author or admin) ([#1126](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1126)) ([#1138](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1138)) ([320ac0a](https://github.com/Shir0o/cisa-campus-work-tracker/commit/320ac0a9b51f512b23bd8b27c45afddbd4d1688f))
+* **mobile:** add Your notes read-back view ([#1137](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1137)) ([688d381](https://github.com/Shir0o/cisa-campus-work-tracker/commit/688d38154ca668e577ee92cae48068d6ff374565))
+* **mobile:** bring the BFA intake tag to mobile, mirroring web ([#1117](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1117)) ([#1148](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1148)) ([2f36b75](https://github.com/Shir0o/cisa-campus-work-tracker/commit/2f36b751809fbd5c43bdedfc338cb3c70a0344a5))
+* remove emoji reactions everywhere, keep heart-only encourage ([#1107](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1107)) ([#1141](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1141)) ([d023efc](https://github.com/Shir0o/cisa-campus-work-tracker/commit/d023efc5942065da88aa9efe14ab14799de11259))
+* **security:** configure Firebase App Check for web with monitoring-first rollout ([#1145](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1145)) ([832434c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/832434c1f71bf14581041845a1203339e943f949))
+* **translator:** show already-Spanish content as-is, en→es only ([#1043](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1043)) ([#1111](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1111)) ([60a3972](https://github.com/Shir0o/cisa-campus-work-tracker/commit/60a3972304186b5bfe697fcd6f47acf7a1d39869))
+* **whats-new:** add What's New Video release companion ([#1151](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1151)) ([#1153](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1153)) ([3de5eee](https://github.com/Shir0o/cisa-campus-work-tracker/commit/3de5eee850132ff36921f23a184489ac00c9aef9))
+* **whats-new:** auto-draft release notes on each release tag ([#1147](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1147)) ([c6a7bfa](https://github.com/Shir0o/cisa-campus-work-tracker/commit/c6a7bfad774557ec0f41a3ae4114cc865fa5075b))
+
 ## [1.6.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.5.0...v1.6.0) (2026-09-17)
 
 
