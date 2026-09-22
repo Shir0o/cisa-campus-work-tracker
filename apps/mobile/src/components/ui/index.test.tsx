@@ -6,6 +6,7 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { AppText, Button, Card, Chip, InlineInput, Screen } from './index';
 
@@ -23,6 +24,34 @@ describe('Screen', () => {
       </Screen>,
     );
     expect(getByText('Hello screen')).toBeTruthy();
+  });
+
+  // Regression: under Android edge-to-edge the system navigation bar draws
+  // over the bottom of the screen, so a screen that omits the bottom safe-area
+  // edge lets its bottom content (e.g. the sign-up "Send it" button) sit
+  // behind the nav bar and become barely tappable. The library default is ALL
+  // edges; Screen must not drop 'bottom' the way it deliberately drops 'top'
+  // for the impersonation strip (see SafeArea.tsx).
+  it('keeps the bottom safe-area edge by default', async () => {
+    const tree = await render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 320, height: 640 },
+          insets: { top: 0, right: 0, bottom: 48, left: 0 },
+        }}
+      >
+        <ThemeProvider>
+          <Screen>
+            <Text>Edge</Text>
+          </Screen>
+        </ThemeProvider>
+      </SafeAreaProvider>,
+    );
+
+    const safeArea = tree.toJSON();
+    // RNCSafeAreaView resolves `edges` to per-edge modes; bottom must be
+    // additive so the nav-bar inset pads the screen.
+    expect((safeArea as { props: { edges: Record<string, string> } }).props.edges.bottom).not.toBe('off');
   });
 });
 

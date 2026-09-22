@@ -25,7 +25,7 @@ import { toneColors, type ToneKey } from '../../theme/tokens';
 // ── Screen ──────────────────────────────────────────────────────────────────
 export function Screen({
   children,
-  edges = ['top'],
+  edges = ['top', 'bottom'],
   style,
 }: {
   children: React.ReactNode;
