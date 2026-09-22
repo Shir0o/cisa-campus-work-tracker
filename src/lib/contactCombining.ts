@@ -7,6 +7,144 @@ export interface DuplicatePair {
 }
 
 /**
+ * A single batched Firestore write prepared for a combine operation.
+ * `collection` is a full collection path (e.g. `contacts/s1/interactions`).
+ */
+export type FirestoreOp =
+  | { op: 'update'; collection: string; docId: string; data: Record<string, unknown> }
+  | { op: 'set'; collection: string; docId: string; data: Record<string, unknown> }
+  | { op: 'delete'; collection: string; docId: string };
+
+/** A subcollection document to migrate (interactions / threads). */
+export interface SubcollectionDoc {
+  id: string;
+  data: Record<string, unknown>;
+}
+
+/** Re-parentable external references gathered for a single pair. */
+export interface CombineMigrationData {
+  interactions: SubcollectionDoc[];
+  threads: SubcollectionDoc[];
+  prayers: string[];
+  tasks: string[];
+  visits: { id: string; contactIds: string[] }[];
+}
+
+/** Number of writes Firestore allows in one batch. */
+export const FIRESTORE_BATCH_LIMIT = 500;
+
+/**
+ * Prepares the ordered set of batched writes that absorb `duplicate` into
+ * `survivor` per ADR 0026:
+ *  - updates the survivor profile with the merged fields,
+ *  - copies interactions/threads subcollections to the survivor then deletes
+ *    the originals under the duplicate,
+ *  - re-parents prayers/tasks (by id) and rewrites visit contactIds,
+ *  - deletes the duplicate contact record.
+ */
+export function buildCombineOps(
+  survivor: Contact,
+  duplicate: Contact,
+  combined: Contact,
+  now: string,
+  updatedById: string | undefined,
+  updatedByName: string,
+  migration: CombineMigrationData = { interactions: [], threads: [], prayers: [], tasks: [], visits: [] }
+): FirestoreOp[] {
+  const ops: FirestoreOp[] = [];
+
+  ops.push({
+    op: 'update',
+    collection: 'contacts',
+    docId: survivor.id,
+    data: {
+      name: combined.name,
+      role: combined.role,
+      location: combined.location,
+      email: combined.email,
+      phone: combined.phone,
+      stage: combined.stage,
+      notes: combined.notes,
+      spiritualBackground: combined.spiritualBackground,
+      pronouns: combined.pronouns,
+      gender: combined.gender,
+      year: combined.year,
+      major: combined.major,
+      instagram: combined.instagram,
+      howHeard: combined.howHeard,
+      metVia: combined.metVia,
+      prayerRequest: combined.prayerRequest,
+      tags: combined.tags,
+      founders: combined.founders,
+      carers: combined.carers,
+      coCreators: combined.coCreators,
+      visibleTo: combined.visibleTo,
+      updatedAt: now,
+      updatedBy: updatedById,
+      updatedByName,
+    },
+  });
+
+  for (const interaction of migration.interactions) {
+    ops.push({
+      op: 'set',
+      collection: `contacts/${survivor.id}/interactions`,
+      docId: interaction.id,
+      data: interaction.data,
+    });
+    ops.push({
+      op: 'delete',
+      collection: `contacts/${duplicate.id}/interactions`,
+      docId: interaction.id,
+    });
+  }
+
+  for (const thread of migration.threads) {
+    ops.push({
+      op: 'set',
+      collection: `contacts/${survivor.id}/threads`,
+      docId: thread.id,
+      data: thread.data,
+    });
+    ops.push({
+      op: 'delete',
+      collection: `contacts/${duplicate.id}/threads`,
+      docId: thread.id,
+    });
+  }
+
+  for (const id of migration.prayers) {
+    ops.push({ op: 'update', collection: 'prayers', docId: id, data: { contactId: survivor.id } });
+  }
+
+  for (const id of migration.tasks) {
+    ops.push({ op: 'update', collection: 'tasks', docId: id, data: { contactId: survivor.id } });
+  }
+
+  for (const visit of migration.visits) {
+    ops.push({
+      op: 'update',
+      collection: 'visits',
+      docId: visit.id,
+      data: { contactIds: visit.contactIds.map((id) => (id === duplicate.id ? survivor.id : id)) },
+    });
+  }
+
+  ops.push({ op: 'delete', collection: 'contacts', docId: duplicate.id });
+
+  return ops;
+}
+
+/** Splits prepared ops into batches that respect the Firestore write limit. */
+export function chunkOps(ops: FirestoreOp[], size: number = FIRESTORE_BATCH_LIMIT): FirestoreOp[][] {
+  const chunks: FirestoreOp[][] = [];
+  for (let i = 0; i < ops.length; i += size) {
+    chunks.push(ops.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
  * Normalizes email for matching.
  */
 export function normalizeEmail(email?: string | null): string {
