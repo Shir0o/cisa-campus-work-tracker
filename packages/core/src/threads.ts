@@ -88,6 +88,20 @@ export interface ThreadStakeholders {
   carers?: string[] | null;
 }
 
+/** Extracts all stakeholders from a contact record. */
+export function contactStakeholdersOf(
+  contact?: Pick<import("./types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> | null,
+): ThreadStakeholders {
+  if (!contact) return {};
+  return {
+    createdBy: contact.createdBy ?? null,
+    addedBy: contact.addedBy ?? null,
+    coCreators: contact.coCreators ?? null,
+    founders: contact.founders ?? null,
+    carers: contact.carers ?? null,
+  };
+}
+
 /** The uids on the contact document, deduped, minus the poster. */
 export function stakeholderUidsOf(
   stakeholders: ThreadStakeholders | null | undefined,

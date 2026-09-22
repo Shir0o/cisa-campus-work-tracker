@@ -301,15 +301,7 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
         {
           to: item.by,
           contactName: contact?.name,
-          stakeholders: contact
-            ? {
-                createdBy: contact.createdBy ?? null,
-                addedBy: contact.addedBy ?? null,
-                coCreators: contact.coCreators ?? null,
-                founders: contact.founders ?? null,
-                carers: contact.carers ?? null,
-              }
-            : null,
+          stakeholders: core.contactStakeholdersOf(contact),
         },
       );
       InboxReads.markRead(uid, item.id);

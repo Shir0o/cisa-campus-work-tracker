@@ -221,13 +221,7 @@ export function useContactDetailData(contactId: string) {
           contactName: contact.name,
           // Without these, `walkingRecipient` returns null for a Trainee and the
           // post notified nobody at all — web has always passed them (#813).
-          stakeholders: {
-            createdBy: contact.createdBy ?? null,
-            addedBy: contact.addedBy ?? null,
-            coCreators: contact.coCreators ?? null,
-            founders: contact.founders ?? null,
-            carers: contact.carers ?? null,
-          },
+          stakeholders: core.contactStakeholdersOf(contact),
         },
       );
     },

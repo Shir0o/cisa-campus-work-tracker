@@ -15,6 +15,7 @@ import {
   type ThreadMessage,
 } from "../lib/threads";
 import { sendNotification } from "../lib/firebase";
+import { sendPushNotification } from "../lib/push";
 import { applyRoster } from "../lib/walking";
 
 vi.mock("firebase/firestore", () => ({
@@ -33,6 +34,10 @@ vi.mock("../lib/firebase", () => ({
   handleFirestoreError: vi.fn(),
   sendNotification: vi.fn(),
   OperationType: { CREATE: "CREATE", UPDATE: "UPDATE", DELETE: "DELETE", LIST: "LIST" },
+}));
+
+vi.mock("../lib/push", () => ({
+  sendPushNotification: vi.fn(),
 }));
 
 const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
@@ -204,6 +209,27 @@ describe("addThreadMessage notify", () => {
       expect.objectContaining({
         userId: "u-trainee-3",
         title: "Full asked about Jane",
+      }),
+    );
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-1",
+        title: "Full asked about Jane",
+        coalesceKey: "contact:C-1",
+      }),
+    );
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-2",
+        title: "Full asked about Jane",
+        coalesceKey: "contact:C-1",
+      }),
+    );
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-3",
+        title: "Full asked about Jane",
+        coalesceKey: "contact:C-1",
       }),
     );
   });
