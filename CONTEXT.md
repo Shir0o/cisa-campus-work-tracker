@@ -86,7 +86,7 @@ _Avoid_: Arbitrary px radii on inputs, lozenge inputs
 
 
 **In-app Notification**:
-An alert delivered to the notification bell in the top navigation bar (and optionally mirrored as an OS push notification) informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
+An alert delivered to the notification bell in the top navigation bar, and pushed as an OS notification to every device the recipient has turned notifications on for (ADR 0031), informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:

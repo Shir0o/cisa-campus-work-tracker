@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from '../views/Settings';
 import * as webPush from '../lib/webPush';
-import * as pushLib from '../lib/push';
+import { sendNotification } from '../lib/firebase';
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
@@ -35,6 +35,7 @@ vi.mock('../components/LanguageProvider', () => ({
 
 vi.mock('../lib/firebase', () => ({
   db: {},
+  sendNotification: vi.fn().mockResolvedValue(undefined),
   handleFirestoreError: vi.fn(),
   OperationType: { UPDATE: 'UPDATE' },
 }));
@@ -74,11 +75,9 @@ describe('Settings Notifications Section', () => {
     expect(screen.getByRole('button', { name: /Send test notification/i })).toBeInTheDocument();
   });
 
-  it('handles clicking Send test notification button', async () => {
+  it('sends the test through the real pipeline: a bell entry to yourself, pushed to every device', async () => {
     vi.spyOn(webPush, 'getWebNotificationPermissionStatus').mockReturnValue('granted');
-    const registerSwSpy = vi.spyOn(webPush, 'registerServiceWorker').mockResolvedValue(null);
-    const showPushSpy = vi.spyOn(webPush, 'showWebPushNotification').mockResolvedValue(true);
-    const sendPushSpy = vi.spyOn(pushLib, 'sendPushNotification').mockResolvedValue(undefined);
+    const registerSpy = vi.spyOn(webPush, 'registerWebPush').mockResolvedValue(true);
 
     render(
       <MemoryRouter>
@@ -86,20 +85,51 @@ describe('Settings Notifications Section', () => {
       </MemoryRouter>,
     );
 
-    const testBtn = screen.getByRole('button', { name: /Send test notification/i });
-    fireEvent.click(testBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Send test notification/i }));
 
     await waitFor(() => {
-      expect(registerSwSpy).toHaveBeenCalled();
-      expect(showPushSpy).toHaveBeenCalledWith('Test Notification', expect.any(Object));
-      expect(sendPushSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'u-123',
-          title: 'Test Notification',
-        }),
+      expect(registerSpy).toHaveBeenCalledWith('u-123');
+      expect(sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'u-123', title: 'Test Notification', type: 'info' }),
       );
     });
+    expect(
+      await screen.findByText('Test sent — it should arrive on every device where notifications are on.'),
+    ).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText('Test notification sent! Check your notification area.')).toBeInTheDocument();
+  it('says so when this browser cannot receive push, but still tests your other devices', async () => {
+    vi.spyOn(webPush, 'getWebNotificationPermissionStatus').mockReturnValue('granted');
+    vi.spyOn(webPush, 'registerWebPush').mockResolvedValue(false);
+
+    render(
+      <MemoryRouter>
+        <Settings />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Send test notification/i }));
+
+    expect(
+      await screen.findByText(
+        "This browser can't receive push alerts (on iPhone, add the app to your Home Screen first). The test was sent to your other devices.",
+      ),
+    ).toBeInTheDocument();
+    expect(sendNotification).toHaveBeenCalled();
+  });
+
+  it('registers this browser the moment notifications are enabled', async () => {
+    vi.spyOn(webPush, 'getWebNotificationPermissionStatus').mockReturnValue('default');
+    vi.spyOn(webPush, 'requestWebNotificationPermission').mockResolvedValue(true);
+    const registerSpy = vi.spyOn(webPush, 'registerWebPush').mockResolvedValue(true);
+
+    render(
+      <MemoryRouter>
+        <Settings />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Enable/i }));
+    await waitFor(() => expect(registerSpy).toHaveBeenCalledWith('u-123'));
   });
 });

@@ -31,11 +31,6 @@ vi.mock('../lib/firebase', () => ({
   sendNotification: (...args: any[]) => mockSendNotification(...args),
 }));
 
-const mockSendPushNotification = vi.fn().mockResolvedValue(undefined);
-
-vi.mock('../lib/push', () => ({
-  sendPushNotification: (...args: any[]) => mockSendPushNotification(...args),
-}));
 
 import {
   getDirectChatId,
@@ -221,14 +216,6 @@ describe('chat.ts services', () => {
         targetId: 'new-doc-id',
         link: '/messages/new-doc-id',
       });
-
-      expect(mockSendPushNotification).toHaveBeenCalledTimes(1);
-      expect(mockSendPushNotification).toHaveBeenCalledWith({
-        userId: 'u2',
-        title: 'New announcement channel',
-        body: 'Admin User started announcements for "Weekly Updates"',
-        data: { targetId: 'new-doc-id', link: '/messages/new-doc-id' },
-      });
     });
 
     it('creates an announcement room with audiencePreset and immediately posts initial announcement if provided (#743)', async () => {
@@ -338,15 +325,6 @@ describe('chat.ts services', () => {
         targetId: 'r1',
         link: '/messages/r1',
       });
-
-      // Same trigger also dispatches an OS-level push (#270).
-      expect(mockSendPushNotification).toHaveBeenCalledTimes(2);
-      expect(mockSendPushNotification).toHaveBeenCalledWith({
-        userId: 'u2',
-        title: 'New message',
-        body: 'User One: hello world',
-        data: { targetId: 'r1', link: '/messages/r1' },
-      });
     });
 
     it('sends attachment-only message and fetches room members if not provided', async () => {
@@ -440,13 +418,6 @@ describe('chat.ts services', () => {
         type: 'info',
         targetId: 'r-ann',
         link: '/messages/r-ann',
-      });
-
-      expect(mockSendPushNotification).toHaveBeenCalledWith({
-        userId: 'u2',
-        title: 'Campus Updates',
-        body: 'Naomi posted an announcement: Campus retreat this Saturday',
-        data: { targetId: 'r-ann', link: '/messages/r-ann' },
       });
     });
 

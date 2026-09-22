@@ -32,11 +32,9 @@ import { usePeopleData } from '../../lib/usePeopleData';
 import {
   ensureNotificationPermission,
   getNotificationPermissionStatus,
-  registerForPushToken,
-  sendTestLocalNotification,
 } from '../../lib/notifications';
-import { sendPushNotification } from '../../lib/push';
-import { setPushToken } from '../../lib/data/users';
+import { syncPushToken } from '../../lib/pushRegistration';
+import { sendNotification } from '../../lib/firebase';
 import { useQueuePrefs, type QueueSettings } from '../../lib/queuePrefs';
 import { useQueueState } from '../../lib/queueState';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -224,9 +222,8 @@ function Settings() {
         setToast('Notifications are off. You can still use the app — this only affects phone nudges.');
         return;
       }
-      const token = await registerForPushToken();
-      if (token && uid) {
-        await setPushToken(uid, token);
+      const token = await syncPushToken(user?.uid ?? null);
+      if (token) {
         setToast('Phone notifications are on.');
       } else {
         setToast('Permission granted, but this build cannot register for push yet.');
@@ -259,28 +256,23 @@ function Settings() {
         }
       }
 
-      // Fire local test notification
-      const localSent = await sendTestLocalNotification();
-
-      // If user is logged in, also try dispatching push test via backend
-      if (uid) {
-        const token = await registerForPushToken();
-        if (token) {
-          await setPushToken(uid, token);
-        }
-        await sendPushNotification({
-          userId: uid,
-          title: 'Test Notification',
-          body: 'Push delivery verified successfully.',
-          data: { type: 'test' },
-        });
-      }
-
-      if (localSent) {
-        setToast('Test notification sent! Check your notification center.');
-      } else {
-        setToast('Test notification dispatched.');
-      }
+      // The test takes the same path as every real alert: a bell entry, which
+      // the push function delivers to each device you have turned alerts on
+      // for. Registered on the real account, never an impersonated persona.
+      if (!user) return;
+      const token = await syncPushToken(user.uid);
+      await sendNotification({
+        userId: user.uid,
+        title: 'Test Notification',
+        message: 'Notifications are working.',
+        type: 'info',
+        link: '/settings',
+      });
+      setToast(
+        token
+          ? 'Test sent — it should arrive on this phone and every other device with notifications on.'
+          : 'This phone could not register for push; the test went to your other devices.',
+      );
     } catch (e) {
       console.error('Failed to send test notification:', e);
       setToast('Failed to send test notification.');

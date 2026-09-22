@@ -8,8 +8,8 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { useAuth } from '../../lib/AuthProvider';
-import { ensureNotificationPermission, registerForPushToken } from '../../lib/notifications';
-import { setPushToken } from '../../lib/data/users';
+import { ensureNotificationPermission } from '../../lib/notifications';
+import { syncPushToken } from '../../lib/pushRegistration';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Room, V2Screen } from '../v2/Widget';
 import { Snackbar } from '../ui';
@@ -36,7 +36,7 @@ const SECTIONS: { title: string; body: string }[] = [
 export function TutorialScreen() {
   const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
-  const { role, uid } = useAuth();
+  const { role, user } = useAuth();
   const [toast, setToast] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
@@ -51,9 +51,9 @@ export function TutorialScreen() {
         setToast('Notifications are off. You can still use the app — this only affects phone nudges.');
         return;
       }
-      const token = await registerForPushToken();
-      if (token && uid) {
-        await setPushToken(uid, token);
+      // The real account, never an impersonated persona's doc.
+      const token = await syncPushToken(user?.uid ?? null);
+      if (token) {
         setToast('Phone notifications are on.');
       } else {
         setToast('Permission granted, but this build cannot register for push yet.');

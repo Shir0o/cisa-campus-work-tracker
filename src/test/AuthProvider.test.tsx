@@ -59,6 +59,12 @@ vi.mock('../lib/firebase', () => ({
   db: {},
 }));
 
+vi.mock('../lib/webPush', () => ({
+  registerWebPush: vi.fn().mockResolvedValue(true),
+  unregisterWebPush: vi.fn().mockResolvedValue(undefined),
+}));
+import { registerWebPush, unregisterWebPush } from '../lib/webPush';
+
 const TestComponent = () => {
   const { user, isAdmin, isManager, role, isApproved, loading, authorizeSheets, signIn, signInWithEmail, logOut } = useAuth();
   
@@ -367,7 +373,36 @@ describe('AuthProvider', () => {
     // Test logout
     const logOutBtn = screen.getByRole('button', { name: 'Log Out' });
     fireEvent.click(logOutBtn);
-    expect(signOut).toHaveBeenCalled();
+    await waitFor(() => expect(signOut).toHaveBeenCalled());
+  });
+
+  it('registers this browser for push on sign-in and forgets it before signing out', async () => {
+    const mockUser = {
+      uid: 'push-uid',
+      email: 'push@example.com',
+      displayName: 'Push User',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+    };
+    (onAuthStateChanged as any).mockImplementation((_auth: any, callback: any) => {
+      callback(mockUser);
+      return vi.fn();
+    });
+    (getDoc as any).mockResolvedValue({ exists: () => true, data: () => ({ role: 'admin', approved: true }) });
+    const order: string[] = [];
+    vi.mocked(unregisterWebPush).mockImplementationOnce(async () => { order.push('unregister'); });
+    vi.mocked(signOut).mockImplementationOnce(async () => { order.push('signOut'); });
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => expect(registerWebPush).toHaveBeenCalledWith('push-uid'));
+    fireEvent.click(screen.getByRole('button', { name: 'Log Out' }));
+    // The device doc can only be deleted while still signed in as its owner.
+    await waitFor(() => expect(order).toEqual(['unregister', 'signOut']));
+    expect(unregisterWebPush).toHaveBeenCalledWith('push-uid');
   });
 
   it('correctly sets isOwner and allows ownerViewRole switching for app owner', async () => {

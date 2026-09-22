@@ -63,12 +63,6 @@ vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
-// Mock web push
-vi.mock('../lib/webPush', () => ({
-  showWebPushNotification: vi.fn(),
-}));
-
-import { showWebPushNotification } from '../lib/webPush';
 
 describe('NotificationCenter Component', () => {
   beforeEach(() => {
@@ -627,47 +621,38 @@ describe('NotificationCenter Component', () => {
     expect(container.querySelector('.lucide-sparkles')).toBeInTheDocument();
   });
 
-  // ── Web push on newly added notification ───────────────────────────
+  // ── Team broadcasts (ALL_ADMINS) are for Full-timers only ─────────
 
-  it('fires a web push notification for a newly added unread personal notification', async () => {
-    let personalCb: any;
-    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any) => {
-      if (!personalCb) personalCb = cb;
-      cb({ docs: [], docChanges: () => [] });
-      return vi.fn();
-    });
+  it('shows a Trainee none of the Full-timers\' broadcasts, such as new student sign-ups', async () => {
+    mockUseAuth.mockReturnValue({ role: 'manager' });
+    triggerOnSnapshotCallbacks([
+      { id: 'mine', userId: 'mock-user-id', title: 'Ana asked about Lila', message: 'm', type: 'info', readBy: [], createdAt: { toDate: () => new Date() } },
+      { id: 'signup', userId: 'ALL_ADMINS', title: 'New Student Sign-up', message: 'Sam signed up', type: 'event', readBy: [], createdAt: { toDate: () => new Date() } },
+    ]);
     render(
       <MemoryRouter>
         <NotificationCenter />
       </MemoryRouter>
     );
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
 
-    personalCb({
-      docs: [],
-      docChanges: () => [
-        {
-          type: 'added',
-          doc: {
-            id: 'new1',
-            data: () => ({
-              userId: 'mock-user-id',
-              title: 'Brand new',
-              message: 'fresh off the wire',
-              link: '/myday',
-              targetId: 't1',
-              readBy: [],
-            }),
-          },
-        },
-      ],
-    });
+    expect(await screen.findByText('Ana asked about Lila')).toBeInTheDocument();
+    expect(screen.queryByText('New Student Sign-up')).toBeNull();
+    expect(firestore.where).not.toHaveBeenCalledWith('userId', '==', 'ALL_ADMINS');
+  });
 
-    await waitFor(() => {
-      expect(showWebPushNotification).toHaveBeenCalledWith('Brand new', {
-        body: 'fresh off the wire',
-        data: { link: '/myday', targetId: 't1' },
-      });
-    });
+  it('shows a Full-timer the team broadcasts', async () => {
+    mockUseAuth.mockReturnValue({ role: 'admin' });
+    triggerOnSnapshotCallbacks([
+      { id: 'signup', userId: 'ALL_ADMINS', title: 'New Student Sign-up', message: 'Sam signed up', type: 'event', readBy: [], createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
+    expect(await screen.findByText('New Student Sign-up')).toBeInTheDocument();
   });
 
   // ── Snapshot error paths ───────────────────────────────────────────

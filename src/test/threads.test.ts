@@ -15,7 +15,6 @@ import {
   type ThreadMessage,
 } from "../lib/threads";
 import { sendNotification } from "../lib/firebase";
-import { sendPushNotification } from "../lib/push";
 import { applyRoster } from "../lib/walking";
 
 vi.mock("firebase/firestore", () => ({
@@ -36,9 +35,6 @@ vi.mock("../lib/firebase", () => ({
   OperationType: { CREATE: "CREATE", UPDATE: "UPDATE", DELETE: "DELETE", LIST: "LIST" },
 }));
 
-vi.mock("../lib/push", () => ({
-  sendPushNotification: vi.fn(),
-}));
 
 const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
   id: "x",
@@ -211,27 +207,13 @@ describe("addThreadMessage notify", () => {
         title: "Full asked about Jane",
       }),
     );
-    expect(sendPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u-trainee-1",
-        title: "Full asked about Jane",
-        coalesceKey: "contact:C-1",
-      }),
-    );
-    expect(sendPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u-trainee-2",
-        title: "Full asked about Jane",
-        coalesceKey: "contact:C-1",
-      }),
-    );
-    expect(sendPushNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: "u-trainee-3",
-        title: "Full asked about Jane",
-        coalesceKey: "contact:C-1",
-      }),
-    );
+    // Each is pushed by the notification function; the key holds a back-and-
+    // forth on one person to one buzz per hour for each of them (#813).
+    for (const userId of ["u-trainee-1", "u-trainee-2", "u-trainee-3"]) {
+      expect(sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ userId, coalesceKey: "contact:C-1" }),
+      );
+    }
   });
 
   it("notifies mentioned users with mention-specific title and message", async () => {
@@ -261,8 +243,20 @@ describe("addThreadMessage notify", () => {
       expect.objectContaining({
         userId: "u2",
         title: "Tony commented on Alex",
+        coalesceKey: "contact:C-1",
       }),
     );
+  });
+
+  it("never holds back an @mention: it is addressed to that person, so it always buzzes", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "comment", body: "@Rio look", mentionedUserIds: ["u4"] },
+      { contactName: "Alex", stakeholders: { createdBy: "u2" } },
+    );
+    const toU4 = vi.mocked(sendNotification).mock.calls.map((c) => c[0]).find((n) => n.userId === "u4");
+    expect(toU4).toBeDefined();
+    expect(toU4).not.toHaveProperty("coalesceKey");
   });
 
   it("filters out non-fulltimers from notifications when scope is team (discussion)", async () => {
