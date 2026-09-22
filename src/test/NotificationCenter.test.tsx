@@ -597,6 +597,19 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/prayer');
   });
 
+  it('does not subscribe to ALL_ADMINS broadcasts for a Trainee (rules deny it)', () => {
+    mockUseAuth.mockReturnValue({ role: 'manager' });
+    (firestore.onSnapshot as any).mockImplementation(() => vi.fn());
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+    expect(firestore.onSnapshot).toHaveBeenCalledTimes(1);
+    expect(firestore.where).toHaveBeenCalledWith('userId', '==', 'mock-user-id');
+    expect(firestore.where).not.toHaveBeenCalledWith('userId', '==', 'ALL_ADMINS');
+  });
+
   // ── Type/tonal icon coverage ───────────────────────────────────────
 
   it('renders tonal icons for assignment, warning, error, and custom tones', () => {
