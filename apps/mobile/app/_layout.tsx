@@ -20,7 +20,11 @@ import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
 import { initReleaseStore } from '../src/lib/releases';
+import { initSentry } from '../src/lib/sentry';
 import { MobileNotificationPermissionBanner } from '../src/components/notifications/MobileNotificationPermissionBanner';
+
+// Fire error reporting up before anything else can throw (no-op without a DSN).
+initSentry();
 
 // Routes reachable while signed out — the public welcome form (a prospective
 // student fills it out themselves, no account needed) plus login itself.

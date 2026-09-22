@@ -29,6 +29,9 @@ import {
 import { useChatReads } from './data/chatReads';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
+import { useLoadTimeout, LOAD_TIMEOUT_MS } from './useLoadTimeout';
+
+export { LOAD_TIMEOUT_MS };
 
 export function useMemberHomeData(uid: string | null, displayName: string | null) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -58,6 +61,7 @@ export function useMemberHomeData(uid: string | null, displayName: string | null
     if (!uid) return;
     const onLoadError = (e: unknown, path: string) => {
       setError(`Couldn't load ${path}.`);
+      setLoading(false);
       handleFirestoreError(e, OperationType.LIST, path, { rethrow: false });
     };
     const unsubEvents = subscribeEvents(
@@ -98,6 +102,10 @@ export function useMemberHomeData(uid: string | null, displayName: string | null
   );
 
   const shownLoading = useMinLoading(loading);
+
+  // A subscription that neither resolves nor errors must not leave the skeleton
+  // up forever — this is the read-error/hung-connection safety valve.
+  useLoadTimeout(uid, () => setLoading(false));
 
   return {
     loading: shownLoading,

@@ -25,6 +25,7 @@ import {
 } from 'firebase/firestore';
 import { getDatabase, type Database } from 'firebase/database';
 import type { SystemActivity, Notification } from '@cisa/core';
+import { captureFirestoreError } from './sentry';
 
 // Static fallback (matches firebase-applet-config.json). apiKey is intentionally
 // blank here — it must come from the environment.
@@ -122,6 +123,13 @@ export function handleFirestoreError(
       email: auth.currentUser?.email,
     },
   };
+  captureFirestoreError({
+    error: info.error,
+    operationType,
+    path,
+    userId: auth.currentUser?.uid,
+    email: auth.currentUser?.email,
+  });
   console.error('Firestore Error: ', JSON.stringify(info));
   if (options?.rethrow === false) return;
   throw new Error(JSON.stringify(info));
