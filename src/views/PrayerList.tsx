@@ -1463,16 +1463,16 @@ function PrayerItem({
                   </button>
                 </span>
               ))}
-              {newPhotoFiles.map((f, i) => (
-                <span key={`${f.name}-${i}`} className="relative">
+              {newPhotoFiles.map((_f, i) => (
+                <span key={i} className="relative">
                   <img
                     src={typeof newPhotoUrls[i] === 'string' && newPhotoUrls[i].startsWith('blob:') ? newPhotoUrls[i] : ''}
-                    alt={f.name}
+                    alt={`Photo attachment ${i + 1}`}
                     className="w-16 h-16 object-cover rounded-sm border border-primary/30"
                   />
                   <button
                     onClick={() => setNewPhotoFiles((x) => x.filter((_, j) => j !== i))}
-                    aria-label={t('prayers.remove_photo').replace('{name}', f.name)}
+                    aria-label={t('prayers.remove_photo').replace('{name}', String(i + 1))}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors"
                   >
                     <X className="w-3 h-3" />

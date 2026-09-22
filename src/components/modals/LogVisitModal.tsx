@@ -619,16 +619,16 @@ export default function LogVisitModal({
                         </button>
                       </li>
                     ))}
-                    {newPhotos.map((f, i) => (
-                      <li key={`${f.name}-${i}`} className="relative">
+                    {newPhotos.map((_f, i) => (
+                      <li key={i} className="relative">
                         <img
                           src={typeof newPhotoUrls[i] === 'string' && newPhotoUrls[i].startsWith('blob:') ? newPhotoUrls[i] : ''}
-                          alt={f.name || 'photo'}
+                          alt={`Photo attachment ${i + 1}`}
                           className="w-20 h-20 object-cover rounded-xl border border-primary/30"
                         />
                         <button
                           onClick={() => setNewPhotos((x) => x.filter((_, j) => j !== i))}
-                          aria-label={`Remove ${f.name}`}
+                          aria-label={`Remove photo ${i + 1}`}
                           className={photoRemove}
                         >
                           <X className="w-3 h-3" />
