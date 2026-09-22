@@ -1466,7 +1466,7 @@ function PrayerItem({
               {newPhotoFiles.map((f, i) => (
                 <span key={`${f.name}-${i}`} className="relative">
                   <img
-                    src={newPhotoUrls[i]}
+                    src={typeof newPhotoUrls[i] === 'string' && newPhotoUrls[i].startsWith('blob:') ? newPhotoUrls[i] : ''}
                     alt={f.name}
                     className="w-16 h-16 object-cover rounded-sm border border-primary/30"
                   />

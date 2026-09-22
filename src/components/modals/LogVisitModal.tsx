@@ -622,7 +622,7 @@ export default function LogVisitModal({
                     {newPhotos.map((f, i) => (
                       <li key={`${f.name}-${i}`} className="relative">
                         <img
-                          src={newPhotoUrls[i]}
+                          src={typeof newPhotoUrls[i] === 'string' && newPhotoUrls[i].startsWith('blob:') ? newPhotoUrls[i] : ''}
                           alt={f.name || 'photo'}
                           className="w-20 h-20 object-cover rounded-xl border border-primary/30"
                         />
