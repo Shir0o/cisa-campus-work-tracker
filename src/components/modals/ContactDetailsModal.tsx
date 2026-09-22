@@ -58,6 +58,7 @@ import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
+import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
 import { unhidePrayerContact } from "../../lib/prayers";
@@ -2507,10 +2508,7 @@ export default function ContactDetailsModal({
                         contactName={contact.name}
                         pane
                         teamMembers={teamMembers}
-                        contactStakeholders={{
-                          createdBy: contact.createdBy || contact.addedBy,
-                          coCreators: contact.coCreators,
-                        }}
+                        contactStakeholders={contactStakeholdersOf(contact)}
                       />
 
                     </div>
@@ -2710,10 +2708,7 @@ export default function ContactDetailsModal({
                         scope="team"
                         pane
                         teamMembers={teamMembers}
-                        contactStakeholders={{
-                          createdBy: contact.createdBy || contact.addedBy,
-                          coCreators: contact.coCreators,
-                        }}
+                        contactStakeholders={contactStakeholdersOf(contact)}
                       />
 
                     </div>

@@ -197,7 +197,24 @@ const TEAM_NOTIFY_TITLE = (who: string, contact: string) =>
  *  their own feed instead, never fanned out from here (#813). */
 export interface ThreadStakeholders {
   createdBy?: string | null;
+  addedBy?: string | null;
   coCreators?: string[] | null;
+  founders?: string[] | null;
+  carers?: string[] | null;
+}
+
+/** Extracts all stakeholders from a contact record. */
+export function contactStakeholdersOf(
+  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> | null,
+): ThreadStakeholders {
+  if (!contact) return {};
+  return {
+    createdBy: contact.createdBy ?? null,
+    addedBy: contact.addedBy ?? null,
+    coCreators: contact.coCreators ?? null,
+    founders: contact.founders ?? null,
+    carers: contact.carers ?? null,
+  };
 }
 
 /** The uids on the contact document, deduped, minus the poster. */
@@ -208,7 +225,10 @@ export function stakeholderUidsOf(
   if (!stakeholders) return [];
   const all = [
     stakeholders.createdBy,
+    stakeholders.addedBy,
     ...(stakeholders.coCreators || []),
+    ...(stakeholders.founders || []),
+    ...(stakeholders.carers || []),
   ].filter((id): id is string => !!id);
   return [...new Set(all)].filter((id) => id !== from);
 }

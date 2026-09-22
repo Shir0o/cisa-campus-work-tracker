@@ -298,7 +298,19 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
       void addThreadMessage(
         item.contactId,
         { interactionId: item.interactionId ?? null, from: uid, fromName: meName, kind, body },
-        { to: item.by, contactName: contact?.name },
+        {
+          to: item.by,
+          contactName: contact?.name,
+          stakeholders: contact
+            ? {
+                createdBy: contact.createdBy ?? null,
+                addedBy: contact.addedBy ?? null,
+                coCreators: contact.coCreators ?? null,
+                founders: contact.founders ?? null,
+                carers: contact.carers ?? null,
+              }
+            : null,
+        },
       );
       InboxReads.markRead(uid, item.id);
     },

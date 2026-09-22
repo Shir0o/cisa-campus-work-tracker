@@ -175,6 +175,39 @@ describe("addThreadMessage notify", () => {
     );
   });
 
+  it("notifies addedBy, founders, and carers as stakeholders, excluding author", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u-ft", fromName: "Full Timer", kind: "question", body: "How was the catchup?" },
+      {
+        contactName: "Jane",
+        stakeholders: {
+          addedBy: "u-trainee-1",
+          founders: ["u-trainee-2"],
+          carers: ["u-trainee-3"],
+        },
+      },
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-1",
+        title: "Full asked about Jane",
+      }),
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-2",
+        title: "Full asked about Jane",
+      }),
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-3",
+        title: "Full asked about Jane",
+      }),
+    );
+  });
+
   it("notifies mentioned users with mention-specific title and message", async () => {
     await addThreadMessage(
       "C-1",

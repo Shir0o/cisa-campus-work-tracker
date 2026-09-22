@@ -25,7 +25,10 @@ if (!IS_WEB) {
   if (Platform.OS === 'android') {
     void Notifications.setNotificationChannelAsync('default', {
       name: 'Default',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#5c5595',
+      sound: 'default',
     });
   }
 }
@@ -78,7 +81,12 @@ export async function scheduleReminderNotification(input: {
   if (IS_WEB) return null;
   try {
     return await Notifications.scheduleNotificationAsync({
-      content: { title: input.title, body: input.body },
+      content: {
+        title: input.title,
+        body: input.body,
+        sound: true,
+        channelId: 'default',
+      },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: input.trigger },
     });
   } catch (e) {
@@ -122,6 +130,7 @@ export async function sendTestLocalNotification(): Promise<boolean> {
         title: 'Test Notification',
         body: 'Notifications are working properly on your device.',
         sound: true,
+        channelId: 'default',
       },
       trigger: null, // immediate
     });

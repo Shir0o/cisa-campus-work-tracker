@@ -35,6 +35,7 @@ import { COMPOSE_KINDS, ComposeKindPicker, type ComposeKind } from "../ComposeKi
 import {
   addThreadMessage,
   closeFollowUpAsk,
+  contactStakeholdersOf,
   countFor,
   daysOpen,
   reopenFollowUpAsk,
@@ -194,10 +195,7 @@ function CardComposer({
       { interactionId: null, scope: null, from: uid, fromName: meName, kind, body },
       {
         contactName: contact.name,
-        stakeholders: {
-          createdBy: contact.createdBy ?? null,
-          coCreators: contact.coCreators ?? null,
-        },
+        stakeholders: contactStakeholdersOf(contact),
       },
     );
     setBusy(false);

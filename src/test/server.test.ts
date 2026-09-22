@@ -1194,7 +1194,12 @@ describe("POST /api/send-push", () => {
     expect(url).toBe("https://exp.host/--/api/v2/push/send");
     const headers = (init as RequestInit).headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer test-expo-token");
-    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ to: "ExponentPushToken[abc]", title: "Hello" });
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({
+      to: "ExponentPushToken[abc]",
+      title: "Hello",
+      channelId: "default",
+      priority: "high",
+    });
   });
 });
 
