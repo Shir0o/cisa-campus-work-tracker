@@ -762,7 +762,7 @@ describe('PrayerList', () => {
     fireEvent.change(screen.getByTestId('prayer-answer-photo-input'), { target: { files: [file] } });
 
     // The picked file shows as a thumbnail, not just a filename.
-    expect(await screen.findByAltText('answer.jpg')).toHaveAttribute('src', 'blob:preview');
+    expect(await screen.findByAltText('Photo attachment 1')).toHaveAttribute('src', 'blob:preview');
     expect(screen.getByText('1 photo — add another')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
