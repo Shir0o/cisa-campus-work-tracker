@@ -53,9 +53,13 @@ export const mdSummary = (md: string | undefined): string => {
       .replace(/\*(.+?)\*/g, '$1')
       .replace(/~~(.+?)~~/g, '$1')
       .replace(/`(.+?)`/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/<!--.*?-->/g, '') // strip HTML comments
-      .trim();
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    let prev = '';
+    do {
+      prev = t;
+      t = t.replace(/<!--[\s\S]*?-->/g, '');
+    } while (t !== prev);
+    t = t.trim();
     if (t) {
       textParts.push(t);
       if (textParts.join(' ').length >= 120) break;
@@ -164,7 +168,7 @@ turndown.addRule('tableSection', {
 turndown.addRule('tableCell', {
   filter: ['th', 'td'],
   replacement: (content) => {
-    const cleanContent = content.replace(/\|/g, '\\|').trim();
+    const cleanContent = content.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').trim();
     return `| ${cleanContent} `;
   },
 });

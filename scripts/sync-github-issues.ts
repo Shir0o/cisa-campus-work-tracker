@@ -172,8 +172,9 @@ export function autoCommitAndPush(
       execFn('git config user.email "github-actions[bot]@users.noreply.github.com"', { stdio: 'inherit' });
     }
 
+    const safeCommitMsg = `docs: sync github issues into ${displayPaths.replace(/["$`\\]/g, '')} [skip ci]`;
     console.log(`Committing changes...`);
-    execFn(`git commit -m "docs: sync github issues into ${displayPaths} [skip ci]"`, { stdio: 'inherit' });
+    execFn(`git commit -m "${safeCommitMsg.replace(/"/g, '')}"`, { stdio: 'inherit' });
 
     console.log(`Pushing to ${branch}...`);
     execFn(`git push origin ${branch}`, { stdio: 'inherit' });

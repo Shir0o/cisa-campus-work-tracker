@@ -177,9 +177,9 @@ describe('LogVisitModal', () => {
     const file = new File(['x'], 'room.jpg', { type: 'image/jpeg' });
     fireEvent.change(screen.getByTestId('visit-photo-input'), { target: { files: [file] } });
 
-    const thumb = await screen.findByAltText('room.jpg');
+    const thumb = await screen.findByAltText('Photo attachment 1');
     expect(thumb).toHaveAttribute('src', 'blob:preview');
-    expect(screen.getByRole('button', { name: 'Remove room.jpg' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove photo 1' })).toBeInTheDocument();
   });
 
   it('shows a photo already on the visit, and drops it when removed', () => {

@@ -187,7 +187,19 @@ export default function LogVisitModal({
 
   // Previews for the files just picked. Revoked whenever the set changes or the
   // modal goes, so picking and un-picking doesn't leave blobs behind.
-  const newPhotoUrls = useMemo(() => newPhotos.map((f) => URL.createObjectURL(f)), [newPhotos]);
+  const newPhotoUrls = useMemo(
+    () =>
+      newPhotos.map((f) => {
+        const raw = URL.createObjectURL(f);
+        try {
+          const parsed = new URL(raw);
+          return parsed.protocol === 'blob:' ? parsed.href : '';
+        } catch {
+          return '';
+        }
+      }),
+    [newPhotos],
+  );
   useEffect(() => () => newPhotoUrls.forEach((u) => URL.revokeObjectURL(u)), [newPhotoUrls]);
 
   const addPhotos = (files: FileList | null) => {
@@ -619,16 +631,16 @@ export default function LogVisitModal({
                         </button>
                       </li>
                     ))}
-                    {newPhotos.map((f, i) => (
-                      <li key={`${f.name}-${i}`} className="relative">
+                    {newPhotos.map((_f, i) => (
+                      <li key={i} className="relative">
                         <img
-                          src={newPhotoUrls[i]}
-                          alt={f.name || 'photo'}
+                          src={newPhotoUrls[i] ?? ''}
+                          alt={`Photo attachment ${i + 1}`}
                           className="w-20 h-20 object-cover rounded-xl border border-primary/30"
                         />
                         <button
                           onClick={() => setNewPhotos((x) => x.filter((_, j) => j !== i))}
-                          aria-label={`Remove ${f.name}`}
+                          aria-label={`Remove photo ${i + 1}`}
                           className={photoRemove}
                         >
                           <X className="w-3 h-3" />

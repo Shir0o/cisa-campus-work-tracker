@@ -51,9 +51,13 @@ export function impInits(name: string): string {
 }
 
 export function cleanCisaName(name: string): string {
-  let cleanName = name || '';
+  let cleanName = (name || '').trim();
   if (cleanName.toLowerCase().startsWith('cisa-')) {
-    cleanName = cleanName.replace(/\s*\([^)]*\)$/, '').trim();
+    const lastOpen = cleanName.lastIndexOf('(');
+    const lastClose = cleanName.lastIndexOf(')');
+    if (lastOpen !== -1 && lastClose === cleanName.length - 1 && lastOpen < lastClose) {
+      cleanName = cleanName.slice(0, lastOpen).trim();
+    }
   }
   return cleanName;
 }

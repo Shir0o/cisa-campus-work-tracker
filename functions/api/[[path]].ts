@@ -80,7 +80,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         source: "cloudflare-pages-proxy",
         error: "Gateway Request failure",
         message: "The proxy was unable to route request to the backend server.",
-        details: err.message || String(err),
+        details: "An internal network or gateway error occurred while connecting to the backend server.",
       }),
       {
         status: 502,
