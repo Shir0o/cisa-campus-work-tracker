@@ -1209,7 +1209,19 @@ function PrayerItem({
 
   // Answer photos — previews for the files just picked; revoked when the set
   // changes or the item unmounts (same hygiene as LogVisitModal).
-  const newPhotoUrls = useMemo(() => newPhotoFiles.map((f) => URL.createObjectURL(f)), [newPhotoFiles]);
+  const newPhotoUrls = useMemo(
+    () =>
+      newPhotoFiles.map((f) => {
+        const raw = URL.createObjectURL(f);
+        try {
+          const parsed = new URL(raw);
+          return parsed.protocol === 'blob:' ? parsed.href : '';
+        } catch {
+          return '';
+        }
+      }),
+    [newPhotoFiles],
+  );
   useEffect(() => () => newPhotoUrls.forEach((u) => URL.revokeObjectURL(u)), [newPhotoUrls]);
 
   const totalAnswerPhotos = answerPhotos.length + newPhotoFiles.length;
@@ -1466,7 +1478,7 @@ function PrayerItem({
               {newPhotoFiles.map((_f, i) => (
                 <span key={i} className="relative">
                   <img
-                    src={typeof newPhotoUrls[i] === 'string' && newPhotoUrls[i].startsWith('blob:') ? newPhotoUrls[i] : ''}
+                    src={newPhotoUrls[i] ?? ''}
                     alt={`Photo attachment ${i + 1}`}
                     className="w-16 h-16 object-cover rounded-sm border border-primary/30"
                   />
