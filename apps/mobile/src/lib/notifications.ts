@@ -85,9 +85,8 @@ export async function scheduleReminderNotification(input: {
         title: input.title,
         body: input.body,
         sound: true,
-        channelId: 'default',
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: input.trigger },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: input.trigger, channelId: 'default' },
     });
   } catch (e) {
     console.error('Failed to schedule reminder notification:', e);
@@ -130,7 +129,6 @@ export async function sendTestLocalNotification(): Promise<boolean> {
         title: 'Test Notification',
         body: 'Notifications are working properly on your device.',
         sound: true,
-        channelId: 'default',
       },
       trigger: null, // immediate
     });

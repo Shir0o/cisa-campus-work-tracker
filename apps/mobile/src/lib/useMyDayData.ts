@@ -24,6 +24,7 @@ import {
   thisWeekEvents,
   isFullTimer,
   setContactCarer,
+  contactStakeholdersOf,
   type Contact,
   type Event,
   type InboxItem,
@@ -301,7 +302,7 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
         {
           to: item.by,
           contactName: contact?.name,
-          stakeholders: core.contactStakeholdersOf(contact),
+          stakeholders: contactStakeholdersOf(contact),
         },
       );
       InboxReads.markRead(uid, item.id);
