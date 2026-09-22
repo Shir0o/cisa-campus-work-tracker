@@ -459,6 +459,51 @@ function SeasonManagerCard({ season }: { season: ActiveSeason }) {
           />
         </View>
       </Pressable>
+
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: season.bfa }}
+        onPress={season.toggleBfa}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          borderRadius: radius.md,
+          borderWidth: 1.5,
+          borderColor: colors.outlineVariant,
+          backgroundColor: colors.surfaceContainer,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+        }}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.onSurface }}>
+            BFA
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>
+            New sign-ups also get a “BFA” tag.
+          </Text>
+        </View>
+        <View
+          style={{
+            width: 44,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: season.bfa ? colors.primary : colors.outline,
+            padding: 3,
+          }}
+        >
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              backgroundColor: colors.surface,
+              transform: [{ translateX: season.bfa ? 18 : 0 }],
+            }}
+          />
+        </View>
+      </Pressable>
     </View>
   );
 }

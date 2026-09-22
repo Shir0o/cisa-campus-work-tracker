@@ -344,7 +344,6 @@ function Settings() {
                 >
                   {season.label}
                   {season.clubRush ? ` · ${t('mobile.settings.club_rush')}` : ''}
-                  {season.bfa ? ` · ${t('mobile.settings.bfa')}` : ''}
                 </Text>
               </View>
 
@@ -434,51 +433,6 @@ function Settings() {
                       borderRadius: 10,
                       backgroundColor: season.clubRush ? c.card.bg : c.card.bg,
                       transform: [{ translateX: season.clubRush ? 18 : 0 }],
-                    }}
-                  />
-                </View>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityState={{ checked: season.bfa }}
-                onPress={season.toggleBfa}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderRadius: radius.chip,
-                  borderWidth: 1.5,
-                  borderColor: c.card.border,
-                  backgroundColor: c.card.react,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                }}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
-                    {t('mobile.settings.bfa')}
-                  </Text>
-                  <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.ink3 }}>
-                    {t('mobile.settings.bfa_sub')}
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    width: 44,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: season.bfa ? c.card.ink : c.card.border,
-                    padding: 3,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: season.bfa ? c.card.bg : c.card.bg,
-                      transform: [{ translateX: season.bfa ? 18 : 0 }],
                     }}
                   />
                 </View>
