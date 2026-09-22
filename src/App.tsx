@@ -9,7 +9,7 @@ import {
   useParams,
   Link,
 } from "react-router-dom";
-import { doc, onSnapshot, collection } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "./lib/utils";
 import { db } from "./lib/firebase";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
@@ -46,7 +46,7 @@ import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { currentHref } from "./lib/navTrail";
 import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
-import { applyTeams } from "./lib/teams";
+import { applyTeams, subscribeUsers } from "./lib/teams";
 import { applyPartners, subscribePartners } from "./lib/partners";
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
@@ -661,14 +661,13 @@ function RosterSync() {
   // and which team each person is on for the news feed's filter (issue #727).
   React.useEffect(
     () =>
-      onSnapshot(collection(db, "users"), (snap) => {
-        const docs = snap.docs.map((d) => ({
-          uid: d.id,
-          ...(d.data() as { role?: string; team?: string | null; displayName?: string | null }),
-        }));
-        applyRoster(docs.map(({ uid, role }) => ({ uid, role })));
-        applyTeams(docs.map(({ uid, team, displayName }) => ({ uid, team, displayName })));
-      }),
+      subscribeUsers(
+        (users) => {
+          applyRoster(users.map(({ uid, role }) => ({ uid, role })));
+          applyTeams(users.map(({ uid, team, displayName }) => ({ uid, team, displayName })));
+        },
+        (e) => console.error("roster subscription error", e),
+      ),
     [],
   );
   // Feed the gospel-partners arrangement so contact-creation paths can stamp
