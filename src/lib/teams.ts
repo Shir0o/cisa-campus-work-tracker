@@ -11,7 +11,7 @@
 // A module-level roster (fed by App's RosterSync from the same users
 // subscription that feeds `walking.ts`) keeps `teamOf` synchronously readable,
 // so the pure feed helpers stay testable and need no prop plumbing.
-import { doc, updateDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 
 export interface Team {
@@ -89,6 +89,53 @@ export function uidsOnTeam(teamId: string): string[] {
  *  out — an option reading "Someone" is worse than one fewer option. */
 export function rosterOnTeam(teamId?: string | null): TeamMember[] {
   return ROSTER.filter((m) => (!teamId || m.team === teamId) && !!m.name);
+}
+
+// ── live roster feed (RosterSync) ─────────────────────────────────────────
+//
+// The whole roster is one users-collection subscription in App's RosterSync.
+// If that onSnapshot errors — a transient permission/network blip — the
+// listener dies and the module roster stays empty for the rest of the session:
+// the /around team filter then matches nothing and reads "nothing from YP
+// team" until a hard reload (#1163). So the subscription retries a few times
+// and hands every error to the caller; a failed feed is a surfaced event, not
+// a silent empty roster.
+export function subscribeUsers(
+  onRoster: (
+    users: Array<{ uid: string; role?: string; team?: string | null; displayName?: string | null }>,
+  ) => void,
+  onError?: (e: unknown) => void,
+  opts: { retries?: number; delayMs?: number } = {},
+): () => void {
+  const retries = opts.retries ?? 3;
+  const delayMs = opts.delayMs ?? 1500;
+  let unsubscribe: () => void = () => {};
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let attempt = 0;
+  const start = () => {
+    unsubscribe = onSnapshot(
+      collection(db, "users"),
+      (snap) => {
+        attempt = 0;
+        onRoster(
+          snap.docs.map((d) => ({
+            uid: d.id,
+            ...(d.data() as { role?: string; team?: string | null; displayName?: string | null }),
+          })),
+        );
+      },
+      (e) => {
+        onError?.(e);
+        attempt += 1;
+        if (attempt <= retries) timer = setTimeout(start, delayMs);
+      },
+    );
+  };
+  start();
+  return () => {
+    unsubscribe();
+    if (timer) clearTimeout(timer);
+  };
 }
 
 // ── Firestore ───────────────────────────────────────────────────────────────
