@@ -15,6 +15,7 @@ import {
   type ThreadMessage,
 } from "../lib/threads";
 import { sendNotification } from "../lib/firebase";
+import { sendPushNotification } from "../lib/push";
 import { applyRoster } from "../lib/walking";
 
 vi.mock("firebase/firestore", () => ({
@@ -33,6 +34,10 @@ vi.mock("../lib/firebase", () => ({
   handleFirestoreError: vi.fn(),
   sendNotification: vi.fn(),
   OperationType: { CREATE: "CREATE", UPDATE: "UPDATE", DELETE: "DELETE", LIST: "LIST" },
+}));
+
+vi.mock("../lib/push", () => ({
+  sendPushNotification: vi.fn(),
 }));
 
 const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
@@ -171,6 +176,60 @@ describe("addThreadMessage notify", () => {
         userId: "u3",
         title: "Tony commented on Rio",
         message: "Shared bible verse",
+      }),
+    );
+  });
+
+  it("notifies addedBy, founders, and carers as stakeholders, excluding author", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u-ft", fromName: "Full Timer", kind: "question", body: "How was the catchup?" },
+      {
+        contactName: "Jane",
+        stakeholders: {
+          addedBy: "u-trainee-1",
+          founders: ["u-trainee-2"],
+          carers: ["u-trainee-3"],
+        },
+      },
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-1",
+        title: "Full asked about Jane",
+      }),
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-2",
+        title: "Full asked about Jane",
+      }),
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-3",
+        title: "Full asked about Jane",
+      }),
+    );
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-1",
+        title: "Full asked about Jane",
+        coalesceKey: "contact:C-1",
+      }),
+    );
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-2",
+        title: "Full asked about Jane",
+        coalesceKey: "contact:C-1",
+      }),
+    );
+    expect(sendPushNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u-trainee-3",
+        title: "Full asked about Jane",
+        coalesceKey: "contact:C-1",
       }),
     );
   });

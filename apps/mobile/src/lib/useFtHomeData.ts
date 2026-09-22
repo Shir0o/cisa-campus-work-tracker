@@ -31,6 +31,7 @@ import {
   ftWeekAhead,
   inboxItemsFor,
   personalContactIdsOf,
+  contactStakeholdersOf,
   askStacksFor as coreAskStacksFor,
   type AppUser,
   type Contact,
@@ -362,7 +363,11 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
       void addThreadMessage(
         item.contactId,
         { interactionId: item.interactionId ?? null, from: uid, fromName: meName, kind, body },
-        { to: item.by, contactName: contact?.name },
+        {
+          to: item.by,
+          contactName: contact?.name,
+          stakeholders: contactStakeholdersOf(contact),
+        },
       );
       InboxReads.markRead(uid, item.id);
     },

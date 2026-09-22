@@ -2630,6 +2630,8 @@ ${JSON.stringify(contactsList)}`;
           title: title,
           body: body || "",
           data: data || {},
+          channelId: "default",
+          priority: "high",
         }),
       });
 

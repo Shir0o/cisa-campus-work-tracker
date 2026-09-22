@@ -42,3 +42,8 @@ We adopt a **Dual Model: Stakeholder Auto-notification + Explicit `@` Mentions**
 
 - **Pros**: Clean signal-to-noise ratio. Gospel partners remain in sync automatically on shared contacts. Teammates can easily loop in any other member using `@`. Team discussion privacy invariants remain intact.
 - **Cons**: Requires building a lightweight autocomplete input component for `@` triggers.
+
+## Amendment (2026-09-22, Issue #1166)
+
+- Extended automatic stakeholder resolution (`ThreadStakeholders`, `contactStakeholdersOf`, `stakeholderUidsOf`) to encompass all five contact ties: `createdBy`, `addedBy`, `coCreators`, `founders` (#1049), and `carers` (#1051). This ensures trainees and partners walking with or caring for a contact consistently receive notifications when full-timers or teammates post follow-up comments, questions, or ask for updates.
+

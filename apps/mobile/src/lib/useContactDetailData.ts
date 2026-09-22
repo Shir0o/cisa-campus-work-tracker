@@ -15,6 +15,7 @@ import {
   personalContactIdsOf,
   walkingRecipient,
   carerNamesOf,
+  contactStakeholdersOf,
   type Contact,
   type PrayerRecord,
   type Stage,
@@ -221,10 +222,7 @@ export function useContactDetailData(contactId: string) {
           contactName: contact.name,
           // Without these, `walkingRecipient` returns null for a Trainee and the
           // post notified nobody at all — web has always passed them (#813).
-          stakeholders: {
-            createdBy: contact.createdBy || contact.addedBy,
-            coCreators: contact.coCreators,
-          },
+          stakeholders: contactStakeholdersOf(contact),
         },
       );
     },
