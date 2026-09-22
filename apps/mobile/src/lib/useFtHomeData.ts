@@ -52,6 +52,7 @@ import {
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
+import { useLoadTimeout } from './useLoadTimeout';
 import { setTodoDone, addTodo } from './data/todos';
 import { addThreadMessage, subscribeAllThreads } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
@@ -114,6 +115,7 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     if (!uid) return;
     const onLoadError = (e: unknown, path: string) => {
       setError(`Couldn't load ${path}.`);
+      setLoading(false);
       handleFirestoreError(e, OperationType.LIST, path, { rethrow: false });
     };
     const unsubContacts = onSnapshot(
@@ -311,6 +313,10 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   const assignees = useMemo(() => ftAssignees(team, uid), [team, uid]);
 
   const shownLoading = useMinLoading(loading);
+
+  // A subscription that neither resolves nor errors must not leave the skeleton
+  // up forever — this is the read-error/hung-connection safety valve.
+  useLoadTimeout(uid, () => setLoading(false));
 
   return {
     loading: shownLoading,
