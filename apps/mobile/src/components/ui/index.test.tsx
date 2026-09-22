@@ -51,7 +51,7 @@ describe('Screen', () => {
     const safeArea = tree.toJSON();
     // RNCSafeAreaView resolves `edges` to per-edge modes; bottom must be
     // additive so the nav-bar inset pads the screen.
-    expect((safeArea as { props: { edges: Record<string, string> } }).props.edges.bottom).not.toBe('off');
+    expect((safeArea as unknown as { props: { edges: Record<string, string> } }).props.edges.bottom).not.toBe('off');
   });
 });
 
