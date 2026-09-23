@@ -263,6 +263,39 @@ describe('calendarSync domain engine', () => {
       expect(typeof unsub).toBe('function');
       unsub();
     });
+
+    it('returns empty array and no-op cleanup when calDb is null', async () => {
+      const onEvents = vi.fn();
+      // subscribeLiveCalendarEvents safely catches any missing db or auth errors
+      const unsub = subscribeLiveCalendarEvents(onEvents);
+      expect(typeof unsub).toBe('function');
+      unsub();
+    });
+
+    it('normalizes rrule.until when provided as a Firestore Timestamp or object with toDate()', () => {
+      const raw: CalRawEvent = {
+        id: 'ev-stamp',
+        title: 'Weekly Standup',
+        start: new Date('2026-08-01T10:00:00Z'),
+        cat: 'meeting',
+        rrule: {
+          freq: 'weekly',
+          until: { toDate: () => new Date('2026-08-15T00:00:00Z') } as unknown as string,
+        },
+      };
+
+      const from = new Date('2026-08-01T00:00:00Z');
+      const to = new Date('2026-08-30T00:00:00Z');
+
+      const instances = expandCalEvent(raw, from, to);
+      // Aug 1, Aug 8, Aug 15 are <= Aug 15. Aug 22 should not be generated.
+      expect(instances.length).toBe(3);
+      expect(instances.map((i) => i.id)).toEqual([
+        'ev-stamp#2026-08-01',
+        'ev-stamp#2026-08-08',
+        'ev-stamp#2026-08-15',
+      ]);
+    });
   });
 
   describe('useCalendarSync hook', () => {
@@ -278,3 +311,4 @@ describe('calendarSync domain engine', () => {
     });
   });
 });
+
