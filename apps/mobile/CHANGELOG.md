@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.0...v1.8.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **mobile:** resolve project fingerprint and xml parsing failures in release build ([#1195](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1195)) ([111489d](https://github.com/Shir0o/cisa-campus-work-tracker/commit/111489dfa4654eb0ce502e719feb1145a3c327bd))
+
 ## [1.8.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.7.0...v1.8.0) (2026-09-23)
 
 
