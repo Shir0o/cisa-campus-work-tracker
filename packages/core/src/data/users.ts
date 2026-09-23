@@ -85,11 +85,33 @@ export async function changeUserRole(db: Firestore, uid: string, newRole: AppRol
   await updateDoc(doc(db, "users", uid), { role: newRole, updatedAt: serverTimestamp() });
 }
 
-/** Best-effort remote push token registration — the owner writing to their
- * own doc. `pushToken` is otherwise unused until Phase 5's `eas init` step
- * unblocks minting a real one (see MIGRATION.md). */
-export async function setPushToken(db: Firestore, uid: string, pushToken: string | null): Promise<void> {
-  await updateDoc(doc(db, "users", uid), { pushToken, updatedAt: serverTimestamp() });
+/** A phone's device doc id under users/{uid}/pushDevices: the Expo token
+ *  with the characters doc ids may not carry replaced, so re-registering the
+ *  same phone overwrites rather than duplicates. */
+export function expoPushDeviceId(token: string): string {
+  return `expo-${token.replace(/[^A-Za-z0-9_-]/g, "_")}`.slice(0, 128);
+}
+
+/** Registers this phone to receive `uid`'s alerts — one doc per device, so
+ *  signing in on a second phone adds it rather than taking over. The
+ *  notification Cloud Function (firebase-functions/) pushes to every one. */
+export async function registerPushDevice(
+  db: Firestore,
+  uid: string,
+  token: string,
+  platform: "ios" | "android",
+): Promise<void> {
+  await setDoc(doc(db, "users", uid, "pushDevices", expoPushDeviceId(token)), {
+    kind: "expo",
+    token,
+    platform,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** On sign-out: this phone stops receiving `uid`'s alerts. */
+export async function unregisterPushDevice(db: Firestore, uid: string, token: string): Promise<void> {
+  await deleteDoc(doc(db, "users", uid, "pushDevices", expoPushDeviceId(token)));
 }
 
 export interface SendInvitationInput {

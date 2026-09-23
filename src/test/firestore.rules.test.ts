@@ -2718,6 +2718,74 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'admin1' });
       await assertSucceeds(updateDoc(doc(db, 'notifications', 'n1'), { title: 'Edited by staff' }));
     });
+
+    const bell = (extra: Record<string, unknown>) => ({
+      userId: 'viewer1', title: 'Hi', message: 'msg', type: 'info', read: false, createdAt: serverTimestamp(), ...extra,
+    });
+
+    it('N7: a bell entry may carry a push coalesce key', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'notifications', 'n3'), bell({ coalesceKey: 'contact:c1' })));
+    });
+
+    it('N8: a coalesce key must be a short string', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'notifications', 'n4'), bell({ coalesceKey: 42 })));
+      await assertFails(setDoc(doc(db, 'notifications', 'n5'), bell({ coalesceKey: 'x'.repeat(201) })));
+    });
+  });
+
+  describe('Push devices (users/{uid}/pushDevices)', () => {
+    const expo = { kind: 'expo', token: 'ExponentPushToken[abc]', platform: 'ios', updatedAt: serverTimestamp() };
+    const web = {
+      kind: 'web',
+      endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+      keys: { p256dh: 'BPk', auth: 'xyz' },
+      updatedAt: serverTimestamp(),
+    };
+
+    it('PD1: a user registers their own native and browser devices', async () => {
+      const db = getFirestore({ uid: 'u1' });
+      await assertSucceeds(setDoc(doc(db, 'users', 'u1', 'pushDevices', 'd-expo'), expo));
+      await assertSucceeds(setDoc(doc(db, 'users', 'u1', 'pushDevices', 'd-web'), web));
+    });
+
+    it('PD2: a user re-registers and removes their own device', async () => {
+      const db = getFirestore({ uid: 'u1' });
+      await assertSucceeds(setDoc(doc(db, 'users', 'u1', 'pushDevices', 'd-expo'), expo));
+      await assertSucceeds(setDoc(doc(db, 'users', 'u1', 'pushDevices', 'd-expo'), expo));
+      await assertSucceeds(deleteDoc(doc(db, 'users', 'u1', 'pushDevices', 'd-expo')));
+    });
+
+    it('PD3: nobody else can register, read or remove a device on your account', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'u1', 'pushDevices', 'd-expo'), expo);
+      });
+      const other = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(other, 'users', 'u1', 'pushDevices', 'd-new'), expo));
+      await assertFails(getDoc(doc(other, 'users', 'u1', 'pushDevices', 'd-expo')));
+      await assertFails(deleteDoc(doc(other, 'users', 'u1', 'pushDevices', 'd-expo')));
+      await assertFails(setDoc(doc(getFirestore(), 'users', 'u1', 'pushDevices', 'd-anon'), expo));
+    });
+
+    it('PD4: a device must be a well-formed Expo token or Web Push subscription', async () => {
+      const db = getFirestore({ uid: 'u1' });
+      const put = (data: Record<string, unknown>) => setDoc(doc(db, 'users', 'u1', 'pushDevices', 'd1'), data);
+      await assertFails(put({ ...expo, kind: 'sms' }));
+      await assertFails(put({ ...expo, token: 'x'.repeat(201) }));
+      await assertFails(put({ ...web, endpoint: 'http://insecure.example/push' }));
+      await assertFails(put({ ...web, keys: { p256dh: 'BPk' } }));
+      await assertFails(put({ ...expo, extra: true }));
+    });
+
+    it('PD5: the dispatcher bookkeeping collections are closed to clients', async () => {
+      const db = getFirestore({ uid: 'u1' });
+      await assertFails(getDoc(doc(db, 'pushThrottle', 'u1')));
+      await assertFails(setDoc(doc(db, 'pushSink', 's1'), { uid: 'u1' }));
+    });
   });
 
   describe('Translations Cache Collection', () => {

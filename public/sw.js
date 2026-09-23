@@ -13,10 +13,12 @@ self.addEventListener("push", (event) => {
   try {
     const data = event.data.json();
     const title = data.title || "CISA Campus Work Tracker";
+    // Payload shape: firebase-functions/src/transports.ts (webPushSender).
+    // PNG, not the SVG logo: Android Chrome does not render SVG notification icons.
     const options = {
       body: data.message || data.body || "",
-      icon: "/logo.svg",
-      badge: "/logo.svg",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
       data: {
         link: data.link || "/",
         targetId: data.targetId,

@@ -7,6 +7,7 @@
 // ported here — see MIGRATION.md's Phase 0.5 entry.
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signOut, type User } from 'firebase/auth';
+import { forgetPushDevice } from './pushRegistration';
 import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -253,7 +254,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPendingMfa(null);
     },
     cancelMfa: () => setPendingMfa(null),
-    logOut: () => signOut(auth),
+    logOut: async () => {
+      // Before signOut: only the signed-in owner may delete the device doc.
+      if (user) await forgetPushDevice(user.uid);
+      await signOut(auth);
+    },
     pendingMfa,
   };
 

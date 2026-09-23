@@ -5,6 +5,10 @@ import { NotificationPermissionBanner } from "../components/notifications/Notifi
 import * as webPush from "../lib/webPush";
 import * as notificationPrompt from "../lib/notificationPrompt";
 
+vi.mock("../components/AuthProvider", () => ({
+  useAuth: () => ({ user: { uid: "u-1" } }),
+}));
+
 describe("NotificationPermissionBanner", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -65,10 +69,10 @@ describe("NotificationPermissionBanner", () => {
     expect(setDismissedSpy).toHaveBeenCalledWith(true);
   });
 
-  it("requests permission and registers service worker when 'Enable' is clicked", async () => {
+  it("requests permission and subscribes this browser to push when 'Enable' is clicked", async () => {
     vi.spyOn(webPush, "getWebNotificationPermissionStatus").mockReturnValue("default");
     const requestSpy = vi.spyOn(webPush, "requestWebNotificationPermission").mockResolvedValue(true);
-    const registerSWSpy = vi.spyOn(webPush, "registerServiceWorker").mockResolvedValue(null);
+    const registerSWSpy = vi.spyOn(webPush, "registerWebPush").mockResolvedValue(true);
     const setDismissedSpy = vi.spyOn(notificationPrompt, "setNotificationPromptDismissed");
 
     render(<NotificationPermissionBanner />);
@@ -77,7 +81,7 @@ describe("NotificationPermissionBanner", () => {
 
     await waitFor(() => {
       expect(requestSpy).toHaveBeenCalled();
-      expect(registerSWSpy).toHaveBeenCalled();
+      expect(registerSWSpy).toHaveBeenCalledWith("u-1");
       expect(setDismissedSpy).toHaveBeenCalledWith(true);
       expect(screen.queryByText(/notification permission/i)).toBeNull();
     });

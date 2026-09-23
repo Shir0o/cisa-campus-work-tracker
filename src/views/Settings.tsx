@@ -12,7 +12,7 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, sendNotification } from '../lib/firebase';
 import { AppUser, Invitation } from '../types';
 import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
@@ -87,10 +87,8 @@ import {
 import {
   getWebNotificationPermissionStatus,
   requestWebNotificationPermission,
-  registerServiceWorker,
-  showWebPushNotification,
+  registerWebPush,
 } from '../lib/webPush';
-import { sendPushNotification } from '../lib/push';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   sendEmailVerification,
@@ -814,7 +812,7 @@ function NotificationsSection() {
     setPermStatus(getWebNotificationPermissionStatus());
     if (granted) {
       setFeedbackMsg(t('settings.notifications_enabled', 'Browser notifications are enabled'));
-      await registerServiceWorker();
+      if (user?.uid) await registerWebPush(user.uid);
     } else {
       setFeedbackMsg(t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings'));
     }
@@ -830,7 +828,9 @@ function NotificationsSection() {
         setFeedbackMsg(t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings'));
         return;
       }
-      if (status !== 'granted') {
+      // 'unsupported' (e.g. iOS Safari in a tab) still sends the test to your
+      // other devices; registerWebPush below reports this browser can't join.
+      if (status !== 'granted' && status !== 'unsupported') {
         const granted = await requestWebNotificationPermission();
         status = getWebNotificationPermissionStatus();
         setPermStatus(status);
@@ -840,25 +840,25 @@ function NotificationsSection() {
         }
       }
 
-      await registerServiceWorker();
-      const shown = await showWebPushNotification('Test Notification', {
-        body: 'Web notifications are working properly on your device.',
+      if (!user?.uid) return;
+      // The test takes the same path as every real alert: a bell entry, which
+      // the push function delivers to each device you have turned alerts on for.
+      const reachable = await registerWebPush(user.uid);
+      await sendNotification({
+        userId: user.uid,
+        title: 'Test Notification',
+        message: 'Notifications are working.',
+        type: 'info',
+        link: '/settings',
       });
-
-      if (user?.uid) {
-        await sendPushNotification({
-          userId: user.uid,
-          title: 'Test Notification',
-          body: 'Web push dispatch verified.',
-          data: { type: 'test' },
-        });
-      }
-
-      if (shown) {
-        setFeedbackMsg('Test notification sent! Check your notification area.');
-      } else {
-        setFeedbackMsg('Notification permission granted, test dispatched.');
-      }
+      setFeedbackMsg(
+        reachable
+          ? t('settings.push_test_sent', 'Test sent — it should arrive on every device where notifications are on.')
+          : t(
+              'settings.push_unsupported_here',
+              "This browser can't receive push alerts (on iPhone, add the app to your Home Screen first). The test was sent to your other devices.",
+            ),
+      );
     } catch (err) {
       console.error('Failed to send test notification:', err);
       setFeedbackMsg('Failed to send test notification.');

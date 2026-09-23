@@ -1,8 +1,8 @@
 // Local/scheduled OS notifications plus Expo push-token minting —
 // expo-notifications. Remote push is live: app.json carries extra.eas.projectId
 // (what getExpoPushTokenAsync needs to mint a token), the token is persisted to
-// the user's doc by lib/pushRegistration.ts, and the server's /api/send-push
-// dispatches to Expo. Every call here is a no-op on web — Expo web supports
+// the user's pushDevices by lib/pushRegistration.ts, and the notification
+// Cloud Function (firebase-functions/) pushes every bell entry to it. Every call here is a no-op on web — Expo web supports
 // neither real token minting nor persistent local scheduling.
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -118,23 +118,4 @@ export async function getNotificationPermissionStatus(): Promise<Notifications.P
   if (IS_WEB) return 'unsupported';
   const { status } = await Notifications.getPermissionsAsync();
   return status;
-}
-
-/** Sends an immediate local test notification to verify notification permissions and foreground/banner display. */
-export async function sendTestLocalNotification(): Promise<boolean> {
-  if (IS_WEB) return false;
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Test Notification',
-        body: 'Notifications are working properly on your device.',
-        sound: true,
-      },
-      trigger: null, // immediate
-    });
-    return true;
-  } catch (e) {
-    console.error('Failed to trigger test local notification:', e);
-    return false;
-  }
 }

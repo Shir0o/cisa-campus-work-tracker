@@ -18,6 +18,7 @@ import { LanguageProvider } from '../src/lib/LanguageProvider';
 import { useRoomTint } from '../src/lib/roomTint';
 import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
+import { useNotificationTapRouting } from '../src/lib/notificationRouting';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
 import { initReleaseStore } from '../src/lib/releases';
 import { initSentry } from '../src/lib/sentry';
@@ -51,6 +52,10 @@ function RootNavigator() {
     Lexend_500Medium,
     Lexend_600SemiBold,
   });
+
+  // Only once the Stack below is mounted and someone is signed in — a tap
+  // that cold-starts the app waits here rather than navigating into nothing.
+  useNotificationTapRouting(!!user && !loading && (fontsLoaded || !!fontError));
 
   useEffect(() => {
     if (fontError) {

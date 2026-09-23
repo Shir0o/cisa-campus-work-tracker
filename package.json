@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:emulator": "npx firebase-tools emulators:exec --project sac-campus-hub --only auth,firestore \"npx tsx scripts/seed-emulator.ts && npx playwright test\"",
+    "test:e2e:emulator": "npm run functions:emulator-prep && npx firebase-tools emulators:exec --project sac-campus-hub --only auth,firestore,functions \"npx tsx scripts/seed-emulator.ts && npx playwright test\"",
     "seed:emulator": "npx tsx scripts/seed-emulator.ts",
     "seed:e2e-users": "tsx scripts/seed-test-user-docs.ts",
     "seed:qa": "npx tsx scripts/seed-qa.ts",
@@ -25,7 +25,8 @@
     "sync:issues": "tsx scripts/sync-github-issues.ts",
     "check:i18n": "tsx scripts/check-hardcoded-ui-strings.ts",
     "check:colors": "tsx scripts/check-hardcoded-colors.ts",
-    "check:version": "tsx scripts/check-version.ts"
+    "check:version": "tsx scripts/check-version.ts",
+    "functions:emulator-prep": "npm --prefix firebase-functions ci && npm --prefix firebase-functions run build && node -e \"const f='firebase-functions/.secret.local';require('fs').existsSync(f)||require('fs').writeFileSync(f,'EXPO_ACCESS_TOKEN=emulator\\nVAPID_PRIVATE_KEY=emulator\\n')\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -2474,10 +2474,7 @@ export default function ContactDetailsModal({
                                             contactName={contact.name}
                                             compact
                                             teamMembers={teamMembers}
-                                            contactStakeholders={{
-                                              createdBy: contact.createdBy || contact.addedBy,
-                                              coCreators: contact.coCreators,
-                                            }}
+                                            contactStakeholders={contactStakeholdersOf(contact)}
                                           />
                                         </div>
                                       )}

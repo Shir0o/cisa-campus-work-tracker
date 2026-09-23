@@ -6,7 +6,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { MobileNotificationPermissionBanner } from './MobileNotificationPermissionBanner';
 import * as mobileNotifications from '../../lib/notifications';
 import { NOTIFICATION_PROMPT_STORAGE_KEY } from '../../lib/notificationPrompt';
-import { setPushToken } from '../../lib/data/users';
+import { registerPushDevice } from '../../lib/data/users';
 
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: 'user1', user: { uid: 'user1' }, role: 'admin' }),
@@ -23,7 +23,7 @@ jest.mock('../../lib/notifications', () => ({
 }));
 
 jest.mock('../../lib/data/users', () => ({
-  setPushToken: jest.fn(),
+  registerPushDevice: jest.fn(),
 }));
 
 const renderBanner = async () =>
@@ -153,7 +153,7 @@ describe('MobileNotificationPermissionBanner', () => {
 
     await waitFor(
       () => {
-        expect(setPushToken).toHaveBeenCalledWith('user1', 'ExponentPushToken[granted977]');
+        expect(registerPushDevice).toHaveBeenCalledWith('user1', 'ExponentPushToken[granted977]');
       },
       { timeout: 5000 },
     );
@@ -180,6 +180,6 @@ describe('MobileNotificationPermissionBanner', () => {
       { timeout: 5000 },
     );
     expect(mobileNotifications.registerForPushToken).not.toHaveBeenCalled();
-    expect(setPushToken).not.toHaveBeenCalled();
+    expect(registerPushDevice).not.toHaveBeenCalled();
   });
 });

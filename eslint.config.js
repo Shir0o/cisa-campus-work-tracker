@@ -19,7 +19,7 @@ function asWarnings(rules) {
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '.claude/**', 'e2e/**', 'coverage/**', 'functions/**'],
+    ignores: ['dist/**', 'node_modules/**', 'firebase-functions/lib/**', 'firebase-functions/node_modules/**', '.claude/**', 'e2e/**', 'coverage/**', 'functions/**'],
   },
   { rules: asWarnings(js.configs.recommended.rules) },
   {

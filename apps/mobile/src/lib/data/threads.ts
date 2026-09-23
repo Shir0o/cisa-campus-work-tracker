@@ -4,7 +4,6 @@
 import * as core from '@cisa/core';
 import type { ThreadKind, ThreadMessage, ThreadMessageWithContact } from '@cisa/core';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
-import { sendPushNotification } from '../push';
 
 /** Live subscription to every thread message across all contacts, tagged with contactId. */
 export function subscribeAllThreads(
@@ -33,10 +32,10 @@ export async function deleteThreadMessage(contactId: string, messageId: string):
   }
 }
 
-/** Post a new message to a contact; pings everyone tied to it, plus the phone
- *  of anyone who has one registered — held to one push per contact per person
- *  per hour by the server, so a back-and-forth does not buzz a Trainee eight
- *  times (#813). */
+/** Post a new message to a contact; pings everyone tied to it. The bell entry
+ *  is pushed by the notification function, held to one push per contact per
+ *  person per hour so a back-and-forth does not buzz a Trainee eight times
+ *  (#813). */
 export async function addThreadMessage(
   contactId: string,
   input: { interactionId?: string | null; from: string; fromName: string; kind: ThreadKind; body: string },
@@ -48,14 +47,10 @@ export async function addThreadMessage(
 ): Promise<void> {
   try {
     await core.addThreadMessage(db, contactId, input, notify, (payload) => {
-      void sendNotification(payload);
-      void sendPushNotification({
-        userId: payload.userId,
-        title: payload.title,
-        body: payload.message,
-        data: { targetId: payload.targetId },
+      void sendNotification({
+        ...payload,
+        link: `/people/${contactId}?tab=thread`,
         coalesceKey: `contact:${contactId}`,
-        coalesceMinutes: 60,
       });
     });
   } catch (e) {

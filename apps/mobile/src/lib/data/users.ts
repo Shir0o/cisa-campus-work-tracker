@@ -2,6 +2,7 @@
 // reads/writes for Settings — thin mobile wrappers around the shared
 // @cisa/core logic (behind an injected `db`).
 import * as core from '@cisa/core';
+import { Platform } from 'react-native';
 import type { AppRole, AppUser, FullTimerSummary, Invitation } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
@@ -44,12 +45,16 @@ export async function changeUserRole(uid: string, newRole: AppRole): Promise<voi
 
 /** Best-effort — called from a silent background sync (usePushRegistration),
  * so a failure just logs rather than throwing/crashing. */
-export async function setPushToken(uid: string, pushToken: string | null): Promise<void> {
+export async function registerPushDevice(uid: string, token: string): Promise<void> {
   try {
-    await core.setPushToken(db, uid, pushToken);
+    await core.registerPushDevice(db, uid, token, Platform.OS === 'ios' ? 'ios' : 'android');
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, `users/${uid}`, { rethrow: false });
+    handleFirestoreError(e, OperationType.WRITE, `users/${uid}/pushDevices`, { rethrow: false });
   }
+}
+
+export async function unregisterPushDevice(uid: string, token: string): Promise<void> {
+  await core.unregisterPushDevice(db, uid, token);
 }
 
 export async function sendInvitation(input: { email: string; role: AppRole; invitedBy: string }): Promise<void> {

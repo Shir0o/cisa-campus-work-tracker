@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { registerWebPush, unregisterWebPush } from '../lib/webPush';
 import { sleep } from '../lib/utils';
 
 import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole, roleLabel } from '../lib/permissions';
@@ -141,6 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       setUser(authUser);
+      // Keep this browser's push subscription on the signed-in account. A
+      // no-op until the user has granted notification permission.
+      if (authUser) void registerWebPush(authUser.uid);
 
       if (userDocUnsubscribe) {
         userDocUnsubscribe();
@@ -360,6 +364,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logOut = async () => {
+    // Before signOut: the device doc is only deletable by its signed-in owner.
+    if (user) await unregisterWebPush(user.uid);
     await signOut(auth);
     setAccessToken(null);
     setImpersonateTargetState(null);
