@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.2](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.1...v1.8.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **mobile:** resolve image-size metro bundling and xmldom plist parsing in release builds ([#1198](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1198)) ([09f112c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/09f112c1edda5002b6a5e13d257143bc6d236cf7))
+
 ## [1.8.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.0...v1.8.1) (2026-09-23)
 
 
