@@ -42,7 +42,8 @@
       "credentialsSource": "local",
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev"
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },
