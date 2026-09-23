@@ -123,11 +123,11 @@ The portion of scripture a Section is built around, shown in full on the page ra
 _Avoid_: reading, scripture reference, excerpt
 
 **Verse**:
-A proof-text cited mid-thought — scripture where the reference leads and the words follow at body size, sitting in the flow of the Section rather than pulling out of it. Written with the `Verse:` prefix, reference and text separated by an em dash; the prefix is the one marker, never shape detection of a reference. Distinct from **Passage**, which sets the words large with the citation trailing.
+A proof-text cited mid-thought — scripture where the reference leads and the words follow at body size, sitting in the flow of the Section rather than pulling out of it. Written with the `Verse:` prefix, reference and text separated by an em dash; the prefix is the one marker, never shape detection of a reference. A Verse may cite a single reference or a range (e.g. `mark 3:24-27`); a range is written with the reference alone on the first line and one verse per following line, rendered with superscript verse numbers. Distinct from **Passage**, which sets the words large with the citation trailing.
 _Avoid_: Passage, quotation, pull quote
 
 **Prompt**:
-The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
+The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. A Prompt's body may be a single point or a list of points, shown as a bullet list inside the card. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
 _Avoid_: Question (bare), exercise, discussion question
 
 **Blank**:
