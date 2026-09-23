@@ -260,6 +260,81 @@ describe('parseMeeting', () => {
     expect(verse.verse.before).toBe('while we were still weak.');
   });
 
+  it('a Verse line with no em dash starts a range: each following line is one verse (#1187)', () => {
+    const s = parseMeeting(
+      [
+        '## Range',
+        'Verse: mark 3:24-27',
+        'And if a kingdom is divided against itself, that kingdom cannot stand.',
+        'And if a house is divided against itself, that house cannot stand.',
+        'And if Satan rises up against himself, he cannot stand.',
+        "But no one can enter a strong man's house and plunder his goods.",
+      ].join('\n'),
+    )[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as {
+      ref: string;
+      verses: { before: string }[];
+    };
+    expect(verse.ref).toBe('mark 3:24-27');
+    expect(verse.verses).toHaveLength(4);
+    expect(verse.verses).toEqual([
+      { before: 'And if a kingdom is divided against itself, that kingdom cannot stand.' },
+      { before: 'And if a house is divided against itself, that house cannot stand.' },
+      { before: 'And if Satan rises up against himself, he cannot stand.' },
+      { before: "But no one can enter a strong man's house and plunder his goods." },
+    ]);
+  });
+
+  it('a blank line ends the verse range (#1187)', () => {
+    const s = parseMeeting(
+      '## Range\nVerse: mark 3:24-27\nAnd if a kingdom is divided against itself.\n\nTrailing prose.',
+    )[0];
+    expect(s.content.map((b) => b.kind)).toEqual(['verse', 'prose']);
+    const verse = s.content[0] as { ref: string; verses: unknown[] };
+    expect(verse.ref).toBe('mark 3:24-27');
+    expect(verse.verses).toHaveLength(1);
+  });
+
+  it('a following marker ends the verse range (#1187)', () => {
+    const s = parseMeeting(
+      '## Range\nVerse: mark 3:24-27\nAnd if a kingdom is divided against itself.\n\nDiscuss: What does this mean?',
+    )[0];
+    expect(s.content.map((b) => b.kind)).toEqual(['verse', 'prompt']);
+    expect((s.content[0] as { ref: string; verses: unknown[] }).verses).toHaveLength(1);
+  });
+
+  it('a single-verse Verse line is unchanged — no verses key (#1187)', () => {
+    const s = parseMeeting('## Proof\nVerse: Rom. 5:6 — while we were still weak.')[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as {
+      ref: string;
+      verse: { before: string };
+      verses?: unknown;
+    };
+    expect(verse.ref).toBe('Rom. 5:6');
+    expect(verse.verse.before).toBe('while we were still weak.');
+    expect(verse.verses).toBeUndefined();
+  });
+
+  it('a ref-only Verse line with no following lines stays a plain ref verse, no verses key (#1187)', () => {
+    const s = parseMeeting('## Proof\nVerse: Rom. 5:6')[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as { ref: string; verses?: unknown };
+    expect(verse).toEqual({ kind: 'verse', ref: 'Rom. 5:6' });
+    expect(verse.verses).toBeUndefined();
+  });
+
+  it('Blanks work inside a verse range line (#1187)', () => {
+    const s = parseMeeting(
+      '## Range\nVerse: mark 3:24-27\nAnd if a kingdom is divided against a [[house]], that kingdom cannot stand.',
+    )[0];
+    const verse = s.content.find((b) => b.kind === 'verse') as {
+      ref: string;
+      verses: { before: string; word: string; after: string }[];
+    };
+    expect(verse.verses).toEqual([
+      { before: 'And if a kingdom is divided against a ', word: 'house', after: ', that kingdom cannot stand.' },
+    ]);
+  });
+
   it('parses an Apply line into a Prompt of kind apply, case-insensitively (#919)', () => {
     const s = parseMeeting('## Apply\nApply: Name one thing you will do this week.')[0];
     expect(s.content[0]).toMatchObject({

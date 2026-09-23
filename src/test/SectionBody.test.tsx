@@ -290,6 +290,50 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(onRevealBlank).toHaveBeenCalledWith('1:b0');
   });
 
+  it('renders a Verse range with superscripted verse numbers (#1187)', () => {
+    const s = section({
+      content: [
+        {
+          kind: 'verse',
+          ref: 'mark 3:24-27',
+          verses: [
+            { before: 'And if a kingdom is divided against itself.' },
+            { before: 'And if a house is divided against itself.' },
+            { before: 'And if Satan rises up against himself.' },
+            { before: "But no one can enter a strong man's house." },
+          ],
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    const ref = screen.getByText('mark 3:24-27');
+    expect(ref.tagName).toBe('STRONG');
+    const block = ref.closest('[data-block-kind="verse"]')!;
+    const sups = Array.from(block.querySelectorAll('sup')).map((el) => el.textContent);
+    expect(sups).toEqual(['24', '25', '26', '27']);
+    expect(block.textContent).toContain('And if a kingdom is divided against itself.');
+    expect(block.textContent).toContain("But no one can enter a strong man's house.");
+    // No figure — a Verse stays visually distinct from a Passage.
+    expect(screen.queryByRole('figure')).toBeNull();
+  });
+
+  it('a Blank inside a verse range reveals via the callback with its range key (#1187)', () => {
+    const onRevealBlank = vi.fn();
+    const s = section({
+      content: [
+        {
+          kind: 'verse',
+          ref: 'mark 3:24-27',
+          verses: [{ before: 'And if a kingdom is divided against a ', word: 'house', after: '.' }],
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={onRevealBlank} />);
+    fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
+    expect(onRevealBlank).toHaveBeenCalledWith('0:vr0');
+  });
+
   it('an empty-content Section renders nothing in the body', () => {
     const s = section({ content: [] });
     const { container } = render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
