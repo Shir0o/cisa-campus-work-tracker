@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.8.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.7.0...v1.8.0) (2026-09-23)
+
+
+### Features
+
+* **whats-new:** setup release video hosting and manual capture workflow ([#1151](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1151)) ([#1160](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1160)) ([17b228e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/17b228ea047ac7bc545712a6c166b29d3aff933d))
+
+
+### Bug Fixes
+
+* **mobile:** add BFA toggle to sign-up form, remove from settings ([#1174](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1174)) ([6c25d5c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/6c25d5cfa15808f94d3663d68eb7f777608d4070))
+* **mobile:** end the eternal loading skeleton on read errors and add Sentry monitoring ([#1173](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1173)) ([ed61062](https://github.com/Shir0o/cisa-campus-work-tracker/commit/ed61062f9db18d1122e198b44f4670f1d44b251d))
+* **mobile:** keep bottom safe-area edge on Screen for Android edge-to-edge ([#1175](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1175)) ([b085100](https://github.com/Shir0o/cisa-campus-work-tracker/commit/b085100a598c6eb18f0d0a09cbc5a5b817fc34b3))
+* **mobile:** override @xmldom/xmldom to 0.9.x and bump joi to clear dependabot alerts ([#1158](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1158)) ([e7b0a4a](https://github.com/Shir0o/cisa-campus-work-tracker/commit/e7b0a4ad8d170429c2e558be3451bd3cde270d56))
+* **notifications:** propagate team actions to trainees and ensure Android delivery ([#1166](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1166)) ([#1170](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1170)) ([da7d5f7](https://github.com/Shir0o/cisa-campus-work-tracker/commit/da7d5f741070950e8ee127362f95c6626da1c5b3))
+* **notifications:** push every bell entry to web, PWA and native devices ([#1177](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1177)) ([4539c66](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4539c662618e12e8df80f39bd5d18aa52ed314c1))
+* **security:** resolve Dependabot vulnerabilities and CodeQL code scanning alerts ([#1165](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1165)) ([b2672cc](https://github.com/Shir0o/cisa-campus-work-tracker/commit/b2672cc32cf5b463f169da92fae74f12fd5c5309))
+
 ## [1.7.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.6.0...v1.7.0) (2026-09-20)
 
 
