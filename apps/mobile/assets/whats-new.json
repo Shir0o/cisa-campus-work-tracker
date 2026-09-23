@@ -1,6 +1,132 @@
 {
-  "latestReleaseId": "2026-09-20-v1.7.0",
+  "latestReleaseId": "2026-09-23-v1.8.0",
   "releases": [
+    {
+      "id": "2026-09-23-v1.8.0",
+      "version": "1.8.0",
+      "title": "Release 1.8.0",
+      "date": "2026-09-23",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Authenticate shared calendar reads and normalize rrule.until.",
+        "Search contacts by founder, carer, and co-creator.",
+        "Show field-level merge details in combine contacts preview.",
+        "Scope notification reads to recipients and Full-timers."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Authenticate shared calendar reads and normalize rrule.until",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Search contacts by founder, carer, and co-creator",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Show field-level merge details in combine contacts preview",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scope notification reads to recipients and Full-timers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Push every bell entry to web, PWA and native devices",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep bottom safe-area edge on Screen for Android edge-to-edge",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add BFA toggle to sign-up form, remove from settings",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "End the eternal loading skeleton on read errors and add Sentry monitoring",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Combine contacts individually, fix count label, and migrate subcollections",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve Dependabot vulnerabilities and CodeQL code scanning alerts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Propagate team actions to trainees and ensure Android delivery",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Retry the roster sync so a transient users-read failure no longer empties the team filter",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Setup release video hosting and manual capture workflow",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Override @xmldom/xmldom to 0.9.x and bump joi to clear dependabot alerts",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Enforce strict store release notes character limit",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Repair the web Playwright suite (84/84 green)",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-09-20-v1.7.0",
       "version": "1.7.0",
