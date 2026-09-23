@@ -13,12 +13,15 @@ import { mergeNotifications } from "../notifications";
  * 'ALL_ADMINS') notification queries, each ordered newest-first and capped
  * at 20, filtering out anything the caller has dismissed. Calls `cb` with
  * the combined, sorted, re-capped list whenever either query updates.
+ * The broadcast query runs only with `includeBroadcast` — the rules let only
+ * Full-timers (admin) read ALL_ADMINS docs.
  */
 export function subscribeNotifications(
   db: Firestore,
   uid: string,
   cb: (list: Notification[]) => void,
   onError?: (e: unknown) => void,
+  { includeBroadcast = false }: { includeBroadcast?: boolean } = {},
 ): () => void {
   let personal: Notification[] = [];
   let broadcast: Notification[] = [];
@@ -41,13 +44,6 @@ export function subscribeNotifications(
     orderBy("createdAt", "desc"),
     limit(20),
   );
-  const qBroadcast = query(
-    collection(db, "notifications"),
-    where("userId", "==", "ALL_ADMINS"),
-    orderBy("createdAt", "desc"),
-    limit(20),
-  );
-
   const onErr = (e: unknown) => (onError ? onError(e) : console.error("notifications subscription error", e));
 
   const unsubPersonal = onSnapshot(qPersonal, (snap) => {
@@ -57,6 +53,14 @@ export function subscribeNotifications(
     emit();
   }, onErr);
 
+  if (!includeBroadcast) return unsubPersonal;
+
+  const qBroadcast = query(
+    collection(db, "notifications"),
+    where("userId", "==", "ALL_ADMINS"),
+    orderBy("createdAt", "desc"),
+    limit(20),
+  );
   const unsubBroadcast = onSnapshot(qBroadcast, (snap) => {
     broadcast = snap.docs
       .map(mapDoc)

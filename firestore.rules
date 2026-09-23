@@ -625,22 +625,23 @@ service cloud.firestore {
                (!('coalesceKey' in data) || (data.coalesceKey is string && data.coalesceKey.size() <= 200));
       }
 
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isManager() || (resource.data.userId == 'ALL_ADMINS'));
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isManager() || (resource.data.userId == 'ALL_ADMINS'));
+      // A user reads only their own notifications; Full-timers (isAdmin) read
+      // everything, including the ALL_ADMINS broadcasts. Trainees (manager) are
+      // deliberately not staff here.
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       
       allow create: if isValidId(notificationId) && isValidNotification(incoming()) && (
                       (isApprovedUser() && isOperator()) ||
                       (incoming().userId == 'ALL_ADMINS' && incoming().type == 'event')
                     );
       
+      // Full-timers' blanket access covers marking read / dismissing ALL_ADMINS broadcasts.
       allow update: if isValidId(notificationId) && isSignedIn() && (
                       (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readBy'])) ||
-                      (resource.data.userId == 'ALL_ADMINS' && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readBy', 'dismissedBy'])) ||
-                      isSuperAdmin() ||
-                      isManager()
+                      isAdmin()
                     );
       
-      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isManager() || resource.data.userId == 'ALL_ADMINS');
+      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isAdmin());
     }
 
     // 9. Prayers Collection
