@@ -9,7 +9,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Section, SectionBlock, Blank, ListItem } from '../../lib/bibleStudy';
+import type { Section, SectionBlock, Blank, Text, ListItem } from '../../lib/bibleStudy';
 
 type BlankPart = { kind: 'blank'; blank: Blank; n: number };
 type MdPart = { kind: 'md'; text: string };
@@ -85,6 +85,16 @@ const BlankSpan: React.FC<{
     </span>
   </span>
 );
+
+/**
+ * The first verse number of a reference, e.g. 24 for `mark 3:24-27`,
+ * `mark 3:24`, and 1 for a multi-chapter range like `John 1:1-2:25`.
+ * The range renderer numbers each following verse from it.
+ */
+function verseStart(ref: string): number {
+  const m = ref.match(/:(\d+)/);
+  return m ? parseInt(m[1], 10) : 1;
+}
 
 export type SectionBodyProps = {
   section: Section;
@@ -173,6 +183,38 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
             // A proof-text in the flow (#918): the reference leads, at body
             // size, emphasised in sage; the words follow. No figure, no rule
             // above, no trailing citation — visibly distinct from a Passage.
+            // A range (#1187) renders the same leading ref, then one line per
+            // verse, each prefixed with its verse number as a superscript.
+            const renderVerseText = (v: Blank | Text, blankKey: string): React.ReactNode =>
+              'word' in v ? (
+                <>
+                  {v.before && <InlineMd text={v.before} />}
+                  <BlankSpan
+                    part={{ kind: 'blank', blank: v, n: 0 }}
+                    isOpen={!!openBlanks[blankKey]}
+                    onReveal={() => onRevealBlank(blankKey)}
+                  />
+                  {v.after && <InlineMd text={v.after} />}
+                </>
+              ) : (
+                <InlineMd text={v.before} />
+              );
+            if (block.verses && block.verses.length > 0) {
+              return (
+                <div
+                  key={bIdx}
+                  data-block-kind="verse"
+                  className="flex flex-col gap-2 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface"
+                >
+                  <strong className="font-semibold text-[var(--accent)]">{block.ref}</strong>
+                  {block.verses.map((v, i) => (
+                    <p key={i} className="m-0">
+                      <sup>{verseStart(block.ref) + i}</sup> {renderVerseText(v, `${sectionIndex}:vr${i}`)}
+                    </p>
+                  ))}
+                </div>
+              );
+            }
             const v = block.verse;
             return (
               <p key={bIdx} data-block-kind="verse" className="m-0 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface">
@@ -180,19 +222,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 {v && (
                   <>
                     {' '}
-                    {typeof v === 'object' && 'word' in v ? (
-                      <>
-                        {v.before && <InlineMd text={v.before} />}
-                        <BlankSpan
-                          part={{ kind: 'blank', blank: v, n: 0 }}
-                          isOpen={!!openBlanks[`${sectionIndex}:vs`]}
-                          onReveal={() => onRevealBlank(`${sectionIndex}:vs`)}
-                        />
-                        {v.after && <InlineMd text={v.after} />}
-                      </>
-                    ) : (
-                      <InlineMd text={v.before} />
-                    )}
+                    {renderVerseText(v, `${sectionIndex}:vs`)}
                   </>
                 )}
               </p>
