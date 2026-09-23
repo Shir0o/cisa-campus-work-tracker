@@ -4,6 +4,7 @@ import {
   combineContactProfiles,
   buildCombineOps,
   chunkOps,
+  diffCombineChanges,
   type FirestoreOp,
 } from '../lib/contactCombining';
 import type { Contact } from '../types';
@@ -105,6 +106,105 @@ describe('combineContactProfiles', () => {
     expect(merged.carers).toEqual(['u1', 'u4']);
     expect(merged.coCreators).toEqual(['u2', 'u3']);
     expect(merged.visibleTo).toEqual(['u1', 'u2', 'u3', 'u4']);
+  });
+});
+
+describe('diffCombineChanges', () => {
+  const survivor: Partial<Contact> = {
+    id: 's',
+    name: 'Survivor',
+    role: 'Student',
+    stage: 'Lead',
+    location: 'Dorm A',
+    email: '',
+    phone: '',
+    lastSeen: '',
+    initials: 'S',
+    tags: ['A'],
+    notes: 'first note',
+    createdAt: '2026-01-01',
+  };
+  const duplicate: Partial<Contact> = {
+    id: 'd',
+    name: 'Duplicate',
+    role: 'Student',
+    stage: 'Lead',
+    location: '',
+    email: '',
+    phone: '5551234',
+    lastSeen: '',
+    initials: 'D',
+    tags: ['A', 'B'],
+    notes: 'second note',
+    createdAt: '2026-02-01',
+  };
+
+  it('flags backfilled scalars, unioned sets, and combined notes', () => {
+    const combined = combineContactProfiles(survivor as Contact, duplicate as Contact);
+    const changes = diffCombineChanges(survivor as Contact, duplicate as Contact, combined);
+
+    expect(changes).toContainEqual({ field: 'phone', kind: 'backfilled', value: '5551234' });
+    expect(changes).toContainEqual({ field: 'tags', kind: 'unioned', value: ['A', 'B'], added: ['B'] });
+    expect(changes).toContainEqual(
+      expect.objectContaining({ field: 'notes', kind: 'notes-combined', value: expect.stringContaining('second note') })
+    );
+  });
+
+  it('flags a conflict where the survivor value is kept and the duplicate value is dropped', () => {
+    const s = { ...survivor, email: 'a@x.com' } as Contact;
+    const d = { ...duplicate, email: 'b@y.com' } as Contact;
+    const combined = combineContactProfiles(s, d);
+    const changes = diffCombineChanges(s, d, combined);
+
+    expect(changes).toContainEqual({
+      field: 'email',
+      kind: 'kept-survivor',
+      value: 'a@x.com',
+      duplicateValue: 'b@y.com',
+    });
+  });
+
+  it('omits fields that stay identical on both records', () => {
+    const s = { ...survivor, email: 'a@x.com' } as Contact;
+    const d = { ...duplicate, email: 'a@x.com' } as Contact;
+    const combined = combineContactProfiles(s, d);
+    const changes = diffCombineChanges(s, d, combined);
+
+    expect(changes.filter((c) => c.field === 'email')).toHaveLength(0);
+  });
+
+  it('omits fields the survivor already has and the duplicate lacks', () => {
+    const s = { ...survivor, email: 'a@x.com' } as Contact;
+    const d = { ...duplicate, email: '' } as Contact;
+    const combined = combineContactProfiles(s, d);
+    const changes = diffCombineChanges(s, d, combined);
+
+    expect(changes.filter((c) => c.field === 'email')).toHaveLength(0);
+  });
+
+  it('omits fields neither record has', () => {
+    const combined = combineContactProfiles(survivor as Contact, duplicate as Contact);
+    const changes = diffCombineChanges(survivor as Contact, duplicate as Contact, combined);
+
+    expect(changes.filter((c) => c.field === 'year')).toHaveLength(0);
+  });
+
+  it('omits sets that gain no members', () => {
+    const s = { ...survivor, tags: ['A', 'B'] } as Contact;
+    const d = { ...duplicate, tags: ['A', 'B'] } as Contact;
+    const combined = combineContactProfiles(s, d);
+    const changes = diffCombineChanges(s, d, combined);
+
+    expect(changes.filter((c) => c.field === 'tags')).toHaveLength(0);
+  });
+
+  it('flags notes backfilled from the duplicate when the survivor has none', () => {
+    const s = { ...survivor, notes: '' } as Contact;
+    const d = { ...duplicate, notes: 'signup note' } as Contact;
+    const combined = combineContactProfiles(s, d);
+    const changes = diffCombineChanges(s, d, combined);
+
+    expect(changes).toContainEqual({ field: 'notes', kind: 'backfilled', value: 'signup note' });
   });
 });
 
