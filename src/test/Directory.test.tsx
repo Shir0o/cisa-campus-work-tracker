@@ -988,4 +988,167 @@ describe('Directory', () => {
   });
 });
 
+describe('Directory — search by relationship fields (#1176)', () => {
+  const mockUsers = [
+    { id: 'founder-1', data: () => ({ displayName: 'Sarah Founder', role: 'manager' }) },
+    { id: 'carer-1',   data: () => ({ displayName: 'Mark Carer',   role: 'manager' }) },
+    { id: 'co-1',      data: () => ({ displayName: 'Dana CoCreate', role: 'manager' }) },
+  ];
 
+  const mockContactsWithTies = [
+    {
+      id: 'r1',
+      data: () => ({
+        name: 'Alpha Contact',
+        email: 'alpha@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        spiritualBackground: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        founders: ['founder-1'],
+      }),
+    },
+    {
+      id: 'r2',
+      data: () => ({
+        name: 'Beta Contact',
+        email: 'beta@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        spiritualBackground: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        carers: ['carer-1'],
+      }),
+    },
+    {
+      id: 'r3',
+      data: () => ({
+        name: 'Gamma Contact',
+        email: 'gamma@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        spiritualBackground: '',
+        tags: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        coCreators: ['co-1'],
+      }),
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    __resetDirectoryFilters();
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContactsWithTies, size: 3 });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({ docs: mockUsers, size: 3 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-test', displayName: 'Test User' },
+      effectiveUserId: 'u-test',
+    });
+
+    (useLayout as any).mockReturnValue({
+      openNewContact: vi.fn(),
+      setSelectedContact: vi.fn(),
+    });
+  });
+
+  it('finds a contact when searching by a founder display name', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Alpha Contact')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Sarah' } });
+
+    expect(screen.getByText('Alpha Contact')).toBeInTheDocument();
+    expect(screen.queryByText('Beta Contact')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gamma Contact')).not.toBeInTheDocument();
+  });
+
+  it('finds a contact when searching by a carer display name', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Beta Contact')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Mark' } });
+
+    expect(screen.getByText('Beta Contact')).toBeInTheDocument();
+    expect(screen.queryByText('Alpha Contact')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gamma Contact')).not.toBeInTheDocument();
+  });
+
+  it('finds a contact when searching by a co-creator display name', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Gamma Contact')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Dana' } });
+
+    expect(screen.getByText('Gamma Contact')).toBeInTheDocument();
+    expect(screen.queryByText('Alpha Contact')).not.toBeInTheDocument();
+    expect(screen.queryByText('Beta Contact')).not.toBeInTheDocument();
+  });
+
+  it('search by relationship name is case-insensitive', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Alpha Contact')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'sarah founder' } });
+
+    expect(screen.getByText('Alpha Contact')).toBeInTheDocument();
+  });
+
+  it('a contact with no relationship ties is not shown when searching a teammate name', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            ...mockContactsWithTies,
+            {
+              id: 'r4',
+              data: () => ({
+                name: 'Unrelated Contact',
+                email: 'unrelated@example.com',
+                role: 'Student',
+                stage: 'Lead',
+                spiritualBackground: '',
+                tags: [],
+                createdAt: '2026-01-01T00:00:00.000Z',
+              }),
+            },
+          ],
+          size: 4,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({ docs: mockUsers, size: 3 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Unrelated Contact')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Sarah' } });
+
+    expect(screen.getByText('Alpha Contact')).toBeInTheDocument();
+    expect(screen.queryByText('Unrelated Contact')).not.toBeInTheDocument();
+  });
+});
