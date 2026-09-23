@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.3](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.2...v1.8.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* **mobile:** disable Sentry auto upload during release builds when Sentry project is unconfigured ([#1201](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1201)) ([fca6e8a](https://github.com/Shir0o/cisa-campus-work-tracker/commit/fca6e8af68b38bf8b71c89464124e90c355a99e2))
+
 ## [1.8.2](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.1...v1.8.2) (2026-09-23)
 
 
