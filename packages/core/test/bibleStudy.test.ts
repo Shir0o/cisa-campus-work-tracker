@@ -455,6 +455,27 @@ Discuss: What does this mean?`;
       expect((s.content[0] as { ref: string; verses: unknown[] }).verses).toHaveLength(1);
     });
 
+    it('a blockquote line ends the verse range: the range flushes, then a Passage block follows (#1187)', () => {
+      const md = `## Range
+Verse: mark 3:24-27
+And if a kingdom is divided against itself.
+> And if a house is divided.
+> mark 3:25`;
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual(['verse', 'passage']);
+      expect((s.content[0] as { ref: string; verses: unknown[] }).verses).toHaveLength(1);
+    });
+
+    it('an indented bullet line ends the verse range: the range flushes, then a bullet-list block follows (#1187)', () => {
+      const md = `## Range
+Verse: mark 3:24-27
+And if a kingdom is divided against itself.
+  - And if a house is divided.`;
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual(['verse', 'bullet-list']);
+      expect((s.content[0] as { ref: string; verses: unknown[] }).verses).toHaveLength(1);
+    });
+
     it('a single-verse Verse line is unchanged — no verses key (#1187)', () => {
       const md = `## Proof
 Verse: Rom. 5:6 — while we were still weak.`;

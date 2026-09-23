@@ -218,8 +218,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
   let listLines: { indent: number; text: string }[] | null = null;
   let listKind: 'bullet-list' | 'number-list' = 'bullet-list';
   let proseLines: string[] | null = null;
-  let verseRangeRef: string | null = null;
-  let verseLines: (Blank | Text)[] | null = null;
+  let verseRange: { ref: string; lines: (Blank | Text)[] } | null = null;
 
   const flushList = () => {
     if (listLines && listLines.length > 0) {
@@ -246,15 +245,14 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     quoteLines = null;
   };
   const flushVerseRange = () => {
-    if (verseRangeRef) {
+    if (verseRange) {
       content.push(
-        verseLines && verseLines.length > 0
-          ? { kind: 'verse', ref: verseRangeRef, verses: verseLines }
-          : { kind: 'verse', ref: verseRangeRef },
+        verseRange.lines.length > 0
+          ? { kind: 'verse', ref: verseRange.ref, verses: verseRange.lines }
+          : { kind: 'verse', ref: verseRange.ref },
       );
     }
-    verseRangeRef = null;
-    verseLines = null;
+    verseRange = null;
   };
   const flushAll = () => {
     flushList();
@@ -296,11 +294,12 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       continue;
     }
 
-    // A Verse line (#918): `Verse: <reference> — <text>`. The prefix is the
-    // one unambiguous marker — shape detection of a reference is explicitly
-    // rejected, so a leading-reference line stays prose. The reference leads
-    // and the words follow at body size; a line with no ` — ` carries just
-    // the reference.
+    // A Verse line (#918, #1187): `Verse: <reference> — <text>`. The prefix
+    // is the one unambiguous marker — shape detection of a reference is
+    // explicitly rejected, so a leading-reference line stays prose. The
+    // reference leads and the words follow at body size; a line with no
+    // ` — ` (and therefore no text) starts a verse range, each following
+    // line being one verse.
     const verseMatch = line.match(/^verse:\s*(.*)$/i);
     if (verseMatch) {
       flushList();
@@ -314,8 +313,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
         // No em dash and no text: the reference starts a verse range (#1187).
         // Each following non-marker, non-blank line is one verse, numbered
         // from the reference's start.
-        verseRangeRef = ref;
-        verseLines = [];
+        verseRange = { ref, lines: [] };
       } else {
         content.push({
           kind: 'verse',
@@ -359,9 +357,9 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       continue;
     }
     flushList();
-    if (verseRangeRef) {
+    if (verseRange) {
       // A verse range is open: this line is one of the range's verses (#1187).
-      verseLines!.push(parseBlankOrText(line));
+      verseRange.lines.push(parseBlankOrText(line));
     } else {
       proseLines = proseLines ?? [];
       proseLines.push(line);

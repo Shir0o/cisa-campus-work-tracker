@@ -127,7 +127,7 @@ A proof-text cited mid-thought — scripture where the reference leads and the w
 _Avoid_: Passage, quotation, pull quote
 
 **Prompt**:
-The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. A Prompt's body may be a single point or a list of points, shown as a bullet list inside the card. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
+The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.
 _Avoid_: Question (bare), exercise, discussion question
 
 **Blank**:

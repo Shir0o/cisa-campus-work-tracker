@@ -87,11 +87,12 @@ const BlankSpan: React.FC<{
 );
 
 /**
- * The first verse number of a reference, e.g. 24 for `mark 3:24-27` and
- * `mark 3:24`. The range renderer numbers each following verse from it.
+ * The first verse number of a reference, e.g. 24 for `mark 3:24-27`,
+ * `mark 3:24`, and 1 for a multi-chapter range like `John 1:1-2:25`.
+ * The range renderer numbers each following verse from it.
  */
 function verseStart(ref: string): number {
-  const m = ref.match(/:(\d+)[^:]*$/);
+  const m = ref.match(/:(\d+)/);
   return m ? parseInt(m[1], 10) : 1;
 }
 

@@ -12,8 +12,7 @@ The trigger for revisiting: Full-timers bring existing studies in from the Googl
 
 1. **A Section reads as written — the code is brought back in line with the settled Structure row, not a new direction.** A Section is an ordered flow: `#`–`###` headings start Sections, `>` blockquotes are Passages (last blockquote line = citation), `Question:`/`Discuss:`/`Activity:` lines are Prompts, `[[word]]` are Blanks, and everything else renders as body content in author order. No canonical reordering of points, passage, and prompt.
 
-   **Amended by #1183:** two extensions to this grammar, both "as written" additions, landing in both mirrors under the "keep in step" rule:
-   - **Prompt with a list body.** A prompt line (`Question:`/`Discuss:`/`Activity:`/`Apply:`) followed by an *indented* `- ` run folds that run into the prompt as its points (`points[]`), rendering as a bullet list inside the prompt card. An un-indented list after a prompt stays a separate bullet-list block. Points are plain text — no Blanks.
+   **Amended by #1187:** one extension to this grammar, "as written", landing in both mirrors under the "keep in step" rule:
    - **Verse range.** A `Verse:` line whose reference has no em dash and no text (`Verse: mark 3:24-27`) starts a verse range: each following line is one verse, numbered sequentially from the reference's start as a leading superscript, with no validation of line count against the range end. A blank line or the next marker block ends the range. A single-verse ref (`Verse: mark 3:24 — text`) is unchanged.
 
 2. **Markdown scope for v1: inline bold, italic, links, and nested lists.** Underline is not carried — on the web underline is the link affordance, and markdown has no underline syntax that does not collide with bold. Tables and images are out of scope until a real document needs them; images would additionally require the Storage upload story, which does not exist.
