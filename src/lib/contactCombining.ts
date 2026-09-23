@@ -234,6 +234,86 @@ export function findCandidateDuplicates(contacts: Contact[]): DuplicatePair[] {
   return pairs;
 }
 
+/** How a field changes when a duplicate is absorbed into the survivor. */
+export type FieldChangeKind = 'backfilled' | 'kept-survivor' | 'unioned' | 'notes-combined';
+
+/** A single field-level change surfaced to the Full-timer before combining. */
+export interface FieldChange {
+  field: string;
+  kind: FieldChangeKind;
+  /** The merged value the survivor will end up with. */
+  value: string | string[];
+  /** For `kept-survivor` conflicts, the duplicate value that is dropped. */
+  duplicateValue?: string;
+  /** For `unioned` sets, the members added from the duplicate. */
+  added?: string[];
+}
+
+/** Scalar profile fields merged in combineContactProfiles (excluding notes). */
+const SCALAR_MERGE_FIELDS = [
+  'role',
+  'location',
+  'email',
+  'phone',
+  'stage',
+  'spiritualBackground',
+  'pronouns',
+  'gender',
+  'year',
+  'major',
+  'instagram',
+  'howHeard',
+  'metVia',
+  'prayerRequest',
+] as const;
+
+/** Relationship sets merged as a union in combineContactProfiles. */
+const SET_MERGE_FIELDS = ['tags', 'founders', 'carers', 'coCreators', 'visibleTo'] as const;
+
+/**
+ * Lists the field-level changes a combine will make to the survivor, so a
+ * reviewer sees exactly what is being merged before committing. Only fields
+ * that actually change are reported:
+ *  - `backfilled`: survivor was empty, the duplicate fills it.
+ *  - `kept-survivor`: both have different values, the survivor's is kept and
+ *    the duplicate's is dropped (the one case a reviewer must catch).
+ *  - `unioned`: a relationship set gains members from the duplicate.
+ *  - `notes-combined`: both records have notes, appended together.
+ */
+export function diffCombineChanges(survivor: Contact, duplicate: Contact, combined: Contact): FieldChange[] {
+  const changes: FieldChange[] = [];
+
+  for (const field of SCALAR_MERGE_FIELDS) {
+    const sv = survivor[field];
+    const dup = duplicate[field];
+    if (sv) {
+      if (dup && dup !== sv) {
+        changes.push({ field, kind: 'kept-survivor', value: sv, duplicateValue: dup });
+      }
+    } else if (dup) {
+      changes.push({ field, kind: 'backfilled', value: combined[field] ?? dup });
+    }
+  }
+
+  for (const field of SET_MERGE_FIELDS) {
+    const svSet = new Set<string>(survivor[field] ?? []);
+    const added = (combined[field] ?? []).filter((item) => !svSet.has(item));
+    if (added.length > 0) {
+      changes.push({ field, kind: 'unioned', value: combined[field] ?? [], added });
+    }
+  }
+
+  const svNotes = (survivor.notes ?? '').trim();
+  const dupNotes = (duplicate.notes ?? '').trim();
+  if (svNotes && dupNotes && !svNotes.includes(dupNotes)) {
+    changes.push({ field: 'notes', kind: 'notes-combined', value: combined.notes ?? '' });
+  } else if (!svNotes && dupNotes) {
+    changes.push({ field: 'notes', kind: 'backfilled', value: combined.notes ?? dupNotes });
+  }
+
+  return changes;
+}
+
 /**
  * Combines profile attributes of duplicate into survivor.
  * - Union sets for relationship ties (founders, carers, coCreators, visibleTo, tags)

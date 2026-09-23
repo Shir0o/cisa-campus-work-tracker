@@ -7,15 +7,18 @@ import {
   getDocs,
   writeBatch,
 } from 'firebase/firestore';
-import { X, Check, Users, ArrowRightLeft, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Check, Users, ArrowRightLeft, EyeOff, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import {
   findCandidateDuplicates,
   combineContactProfiles,
   buildCombineOps,
   chunkOps,
+  diffCombineChanges,
   type DuplicatePair,
   type CombineMigrationData,
+  type FieldChange,
+  type FieldChangeKind,
 } from '../../lib/contactCombining';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
@@ -27,6 +30,54 @@ import type { Contact } from '../../types';
 const createdAtLabel = (createdAt?: string): string | null => {
   const ms = parseMs(createdAt);
   return ms == null ? null : new Date(ms).toISOString().slice(0, 10);
+};
+
+/** Human label per merged field, used as the i18n fallback. */
+const FIELD_LABELS: Record<string, string> = {
+  role: 'Role',
+  location: 'Location',
+  email: 'Email',
+  phone: 'Phone',
+  stage: 'Stage',
+  spiritualBackground: 'Spiritual background',
+  pronouns: 'Pronouns',
+  gender: 'Gender',
+  year: 'Year',
+  major: 'Major',
+  instagram: 'Instagram',
+  howHeard: 'How they heard',
+  metVia: 'How we met',
+  prayerRequest: 'Prayer request',
+  tags: 'Tags',
+  founders: 'Founders',
+  carers: 'Cared for by',
+  coCreators: 'Co-creators',
+  visibleTo: 'Visible to',
+  notes: 'Notes',
+};
+
+/** Label per change kind, used as the i18n fallback. */
+const KIND_LABELS: Record<FieldChangeKind, string> = {
+  backfilled: 'Backfilled',
+  'kept-survivor': "Kept survivor's",
+  unioned: 'Unioned',
+  'notes-combined': 'Notes combined',
+};
+
+/** The human sentence for a change row, with the i18n fallback. */
+const renderChangeDetail = (c: FieldChange, t: (key: string, fallback?: string) => string): string => {
+  switch (c.kind) {
+    case 'backfilled':
+      return t('modals.merge_backfilled_detail', 'Filled in from duplicate: {value}').replace('{value}', String(c.value));
+    case 'kept-survivor':
+      return t('modals.merge_kept_detail', 'Kept "{value}"; dropped "{dropped}" from the duplicate')
+        .replace('{value}', String(c.value))
+        .replace('{dropped}', String(c.duplicateValue ?? ''));
+    case 'unioned':
+      return t('modals.merge_unioned_detail', 'Added from duplicate: {added}').replace('{added}', (c.added ?? []).join(', '));
+    case 'notes-combined':
+      return t('modals.merge_notes_detail', 'Notes from both records combined');
+  }
 };
 
 interface CombineContactsModalProps {
@@ -55,6 +106,16 @@ export default function CombineContactsModal({
   const { t } = useLanguage();
   const [applying, setApplying] = useState(false);
   const [combiningId, setCombiningId] = useState<string | null>(null);
+  const [openChangeIds, setOpenChangeIds] = useState<Set<string>>(new Set());
+
+  const toggleChanges = (pairKey: string) => {
+    setOpenChangeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(pairKey)) next.delete(pairKey);
+      else next.add(pairKey);
+      return next;
+    });
+  };
 
   // Initialize pairs from detector
   const initialPairs = useMemo(() => findCandidateDuplicates(contacts), [contacts]);
@@ -228,6 +289,13 @@ export default function CombineContactsModal({
               <div className="space-y-4">
                 {pairs.map((pair, idx) => {
                   const isCombining = combiningId === activeCombiningId(pair);
+                  const pairKey = `${pair.survivor.id}-${pair.duplicate.id}`;
+                  const changes = diffCombineChanges(
+                    pair.survivor,
+                    pair.duplicate,
+                    combineContactProfiles(pair.survivor, pair.duplicate)
+                  );
+                  const isOpen = openChangeIds.has(pairKey);
                   return (
                     <div
                       key={`${pair.survivor.id}-${pair.duplicate.id}`}
@@ -296,6 +364,50 @@ export default function CombineContactsModal({
                             </p>
                           )}
                         </div>
+                      </div>
+
+                      {/* Merge details preview (read-only) */}
+                      <div className="border-t border-outline-variant/40 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleChanges(pairKey)}
+                          disabled={combiningId !== null}
+                          className="flex w-full items-center justify-between text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
+                          aria-expanded={isOpen}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {t('modals.merge_details', 'Merge details')}
+                          </span>
+                          <span className="text-xs text-on-surface-variant/70">
+                            {changes.length > 0
+                              ? t('modals.merge_details_count', '{n} will change').replace(
+                                  '{n}',
+                                  `${changes.length} ${changes.length === 1 ? t('modals.field_singular', 'field') : t('modals.fields', 'fields')}`
+                                )
+                              : t('modals.no_fields_change', 'No fields will change')}
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <ul className="mt-3 space-y-2 text-sm">
+                            {changes.length === 0 && (
+                              <li className="text-on-surface-variant/70">
+                                {t('modals.no_fields_change_msg', 'Nothing about this pair will change.')}
+                              </li>
+                            )}
+                            {changes.map((c) => (
+                              <li key={c.field} className="flex items-start gap-2">
+                                <span className="w-36 shrink-0 font-medium text-on-surface">
+                                  {t('fields.' + c.field, FIELD_LABELS[c.field] ?? c.field)}
+                                </span>
+                                <span className="shrink-0 rounded-full bg-surface-variant px-2 py-0.5 text-xs text-on-surface-variant">
+                                  {t('modals.merge_kind_' + c.kind, KIND_LABELS[c.kind])}
+                                </span>
+                                <span className="min-w-0 flex-1 text-on-surface-variant">{renderChangeDetail(c, t)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
 
                       {/* Inline combine */}
