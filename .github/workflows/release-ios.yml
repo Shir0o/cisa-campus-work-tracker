@@ -147,6 +147,7 @@ jobs:
       - name: Build signed IPA locally
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         # See release-android.yml. Uses a step timeout, not the `timeout`
         # command, which macOS does not ship.
         timeout-minutes: 45
