@@ -169,7 +169,12 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         interests: form.interests,
         prayerRequest: form.prayerRequest.trim() || null,
         notes: form.notes.trim() || null,
-        role: 'Student',
+        // The public form is filled in by a stranger, so nothing it submits
+        // may assert membership (#1152): they are a student, and never in the
+        // church life. No stamp — nobody has decided about them yet, so they
+        // land in Not sorted yet for a Full-timer to confirm.
+        isStudent: true,
+        inChurchLife: false,
         stage: '',
         initials: getUserInitials(form.name),
         createdAt: serverTimestamp(),

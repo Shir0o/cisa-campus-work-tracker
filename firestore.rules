@@ -221,6 +221,10 @@ service cloud.firestore {
                (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 128)) &&
                (!('metVia' in data) || data.metVia == null || (data.metVia is string && data.metVia.size() <= 64)) &&
                (!('stage' in data) || data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
+               (!('inChurchLife' in data) || data.inChurchLife == null || data.inChurchLife is bool) &&
+               (!('isStudent' in data) || data.isStudent == null || data.isStudent is bool) &&
+               (!('kindSetBy' in data) || data.kindSetBy == null || (data.kindSetBy is string && data.kindSetBy.size() <= 128)) &&
+               (!('kindSetAt' in data) || data.kindSetAt == null || (data.kindSetAt is string && data.kindSetAt.size() <= 40)) &&
                (!('visibleTo' in data) || data.visibleTo == null ||
                 (data.visibleTo is list && data.visibleTo.size() <= 200));
       }
@@ -232,7 +236,18 @@ service cloud.firestore {
       // Anti-abuse Note: Without App Check or an authenticated backend function,
       // this allows unauthenticated creates. Mitigated partially by client-side 
       // honeypot and math captcha on the public form. Acceptable for low-traffic.
-      allow create: if isValidId(contactId) && isValidContact(incoming());
+      // #1152: the kind of person is a Full-timer's decision, so a create may
+      // not assert it. The safe shape — no membership claimed, no stamp — is
+      // what the public sign-up form writes, and it passes without a document
+      // read; only a create that claims membership or stamps itself pays for
+      // the role lookup.
+      function kindSafeOnCreate(data) {
+        return (data.get('inChurchLife', false) == false &&
+                !('kindSetBy' in data) && !('kindSetAt' in data))
+               || isAdmin();
+      }
+
+      allow create: if isValidId(contactId) && isValidContact(incoming()) && kindSafeOnCreate(incoming());
       // Operators edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
       // keys, so a contact carrying legacy/extra fields stays editable as long as
@@ -298,7 +313,8 @@ service cloud.firestore {
         let keys = incoming().diff(ex).affectedKeys();
         // Only the current holder of the share may rewrite who else can see a
         // person: an admin, whoever brought them in, or an existing co-creator.
-        let mayShare = isAdmin() ||
+        let admin = isAdmin();
+        let mayShare = admin ||
                        ex.get('createdBy', null) == uid ||
                        ex.get('addedBy', null) == uid ||
                        uid in ex.get('coCreators', []);
@@ -320,6 +336,16 @@ service cloud.firestore {
             'lastContactedBy', 'lastContactedById', 'lastContactedDate',
             'updatedAt', 'updatedBy', 'updatedByName'
           ]) ||
+
+          // #1152: the kind of person. Its own branch, Full-timers only, and
+          // deliberately not mixable with the profile edit above — otherwise a
+          // Trainee's ordinary edit could carry the kind through with it. The
+          // stamp moves with the fields it records, so a kind can never be set
+          // without saying who decided it.
+          (keys.hasOnly([
+            'inChurchLife', 'isStudent', 'kindSetBy', 'kindSetAt',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) && keys.hasAll(['kindSetBy', 'kindSetAt']) && admin) ||
 
           // Share / unshare: the access list moves in lockstep with the tie it
           // mirrors, so neither can be rewritten as a lone ghost field.
@@ -362,7 +388,7 @@ service cloud.firestore {
             'founders', 'visibleTo',
             'coCreators', 'carers',
             'updatedAt', 'updatedBy', 'updatedByName'
-          ]) && isAdmin() && keys.hasAny(['founders']));
+          ]) && admin && keys.hasAny(['founders']));
       }
 
       allow update: if isValidId(contactId) && isApprovedOperator() &&

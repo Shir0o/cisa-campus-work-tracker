@@ -1,3 +1,4 @@
+import { contactKind } from './contactKind';
 export { visibleToOf } from './contactTies';
 export type { ContactTies } from './contactTies';
 
@@ -351,13 +352,15 @@ export function visibleContacts<T extends { addedBy?: string; createdBy?: string
   return list.filter((c) => canSeeContact(role, staffId, c));
 }
 
-export function journeyContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string }>(
+export function journeyContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[]; season?: string; inChurchLife?: boolean; isStudent?: boolean }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,
   list: T[],
   currentSeasonTag?: string
 ): T[] {
-  const visible = visibleContacts(role, staffId, list);
+  // A Local saint sits outside outreach entirely (#1152, ADR 0030). Our own
+  // stay: the church-meeting step is theirs.
+  const visible = visibleContacts(role, staffId, list).filter((c) => contactKind(c) !== 'local-saint');
   if (role === 'manager' && currentSeasonTag) {
     return visible.filter((c) => !c.season || c.season === currentSeasonTag);
   }

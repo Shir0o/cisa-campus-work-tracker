@@ -14,6 +14,8 @@ import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage } from '../../types';
 import { inferGenderFromName, genderTag } from '../../lib/gender';
 import { normalizeTagList, TAG_SUGGESTIONS, tagStyle } from '../../lib/tags';
+import { contactKind, kindLabelKey } from '../../lib/contactKind';
+import KindFields from '../ui/KindFields';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -23,7 +25,7 @@ interface NewContactModalProps {
 }
 
 export default function NewContactModal({ isOpen, onClose, initialStage }: NewContactModalProps) {
-  const { user, role } = useAuth();
+  const { user, isAdmin, role } = useAuth();
   const { t } = useLanguage();
   if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    role: '',
+    inChurchLife: false,
+    isStudent: false,
     email: '',
     phone: '',
     stage: '',
@@ -133,7 +136,19 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const allFormTags = [...formData.tags, ...typedTags];
       const contactData = {
         name: fullName,
-        role: formData.role,
+        // The kind of person (#1152, ADR 0030), replacing the free-text
+        // "Status" this form used to ask for. Only a Full-timer is asked, and
+        // only their answer is a decision — a Trainee's add writes nothing
+        // here, so the person lands in Not sorted yet rather than being
+        // guessed at. The rules refuse a non-admin create that claims either.
+        ...(isAdmin
+          ? {
+              inChurchLife: formData.inChurchLife,
+              isStudent: formData.isStudent,
+              kindSetBy: user?.uid,
+              kindSetAt: new Date().toISOString(),
+            }
+          : {}),
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
@@ -163,7 +178,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const docRef = await addDoc(collection(db, 'contacts'), contactWithTies);
 
       const fieldsLog = [
-        `Group: ${formData.role}`,
+        isAdmin ? `Kind: ${t(kindLabelKey(contactKind({ inChurchLife: formData.inChurchLife, isStudent: formData.isStudent })))}` : '',
         `Stage: ${formData.stage}`,
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
@@ -223,7 +238,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       setFormData({
         firstName: '',
         lastName: '',
-        role: '',
+        inChurchLife: false,
+        isStudent: false,
         email: '',
         phone: '',
         stage: formData.stage,
@@ -385,19 +401,24 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       />
                     </div>
 
-                    {/* Status (role) */}
+                    {/* The kind of person (#1152). Two plain questions rather
+                        than a three-way picker: a picker cannot express a local
+                        who is not in the church life, and a control that
+                        silently cannot represent someone is worse than asking
+                        twice. The derived kind is shown back so the person
+                        adding a contact sees the bucket they are creating. */}
+                    {isAdmin && (
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
+                        <Briefcase className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
                       </label>
-                      <input
-                        type="text"
-                        value={formData.role}
-                        onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                        placeholder="e.g. Student, Faculty"
+                      <KindFields
+                        inChurchLife={formData.inChurchLife}
+                        isStudent={formData.isStudent}
+                        onChange={(next) => setFormData(f => ({ ...f, ...next }))}
                       />
                     </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">

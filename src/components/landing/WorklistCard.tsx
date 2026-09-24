@@ -43,6 +43,7 @@ import {
 } from "../../lib/threads";
 import { CardConversation, useCardThread } from "./CardConversation";
 import type { TeamMemberLike } from "../Thread";
+import KindChip from "../ui/KindChip";
 
 // ── The worklist card (#813, #1012) ─────────────────────────────────────────
 // Two independent facts per card, on "On you":
@@ -376,6 +377,9 @@ export function WorklistCard({
               {showDot && (
                 <span className="w-2 h-2 rounded-full bg-accent shrink-0 inline-block" />
               )}
+              {/* Without this, a teammate adding a Local saint reads exactly
+                  like one adding a student met on campus (#1152). */}
+              {contact && <KindChip contact={contact} />}
               <TalkedChip stack={stack} label={t("whatsNew.talked")} />
               {rowTeam && (
                 <span className="text-[11px] text-on-surface-variant border border-outline-variant rounded-full px-1.5 py-px shrink-0">

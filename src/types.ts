@@ -70,6 +70,19 @@ export interface Contact {
   lastContactedBy?: string;
   lastContactedById?: string;
   lastContactedDate?: string;
+  /** Whether they meet regularly with the church, as distinct from merely
+   *  believing (#1152, ADR 0030). With `isStudent` it decides the kind of
+   *  person: in the church life and not a student is a Local saint, in it and
+   *  a student is Our own, out of it is a Contact either way. */
+  inChurchLife?: boolean;
+  /** Whether they are a student of ours. Replaces the free-text `role`, which
+   *  was labelled "Status" in the form and collided with the staff role. */
+  isStudent?: boolean;
+  /** Who decided this person's kind, and when. Written only by a person's own
+   *  decision — never by the `inChurchLife: false` default, never by the
+   *  migration seed — so an absent stamp is what "Not sorted yet" counts. */
+  kindSetBy?: string;
+  kindSetAt?: string;
 }
 
 export interface Stage {

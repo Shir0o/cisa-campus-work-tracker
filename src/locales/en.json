@@ -448,7 +448,12 @@
     "everyone_you_added": "everyone you added, or were named on",
     "of_people_added": "{shown} of the {total} people you added or were named on",
     "of_people": "{shown} of {total}",
-    "confirm_remove": "Are you sure you want to remove {n} {count}?"
+    "confirm_remove": "Are you sure you want to remove {n} {count}?",
+    "kind": "Kind",
+    "all_kinds": "All kinds",
+    "set_kind_for_selected": "Set who the selected people are",
+    "cancel": "Cancel",
+    "save": "Save"
   },
   "myDay": {
     "good_morning": "Good morning, {name}.",
@@ -1890,5 +1895,15 @@
     "discard_failed": "Could not discard this draft.",
     "choose_rhythm_error": "Choose a Rhythm before confirming.",
     "confirm_failed": "Could not confirm this sync."
+  },
+  "contactKind": {
+    "local_saint": "Local saint",
+    "our_own": "Our own",
+    "contact": "Contact",
+    "not_sorted_yet": "Not sorted yet",
+    "in_church_life": "In the church life",
+    "is_student": "A student of ours",
+    "reads_as": "Reads as {kind}",
+    "who_they_are": "Who they are"
   }
 }

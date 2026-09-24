@@ -8,6 +8,7 @@ import { cn, getUserInitials } from '../../lib/utils';
 import { StageChip } from '../landing/primitives';
 import { parseMs, daysSince } from '../landing/helpers';
 import { carerNamesOf } from '../../lib/carers';
+import KindChip from './KindChip';
 
 export interface ContactPillProps {
   contactId: string;
@@ -213,6 +214,7 @@ export default function ContactPill({
 
       <div className="flex items-center gap-2 flex-wrap">
         {currentContact.stage && <StageChip stage={currentContact.stage} stages={stages} />}
+        <KindChip contact={currentContact} />
         <span className="text-xs text-on-surface-variant">{seenText}</span>
       </div>
 
@@ -263,6 +265,7 @@ export default function ContactPill({
         </span>
         <span className="truncate max-w-[140px] sm:max-w-[200px]">{name}</span>
         {!hideStage && currentContact.stage && <StageChip stage={currentContact.stage} stages={stages} />}
+        <KindChip contact={currentContact} />
       </button>
 
       {open &&

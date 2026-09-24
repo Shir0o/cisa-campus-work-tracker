@@ -96,6 +96,7 @@ import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
+import KindChip from "../components/ui/KindChip";
 
 interface MyTask {
   id: string;
@@ -1364,6 +1365,7 @@ export default function MyDay() {
                         {c.name}
                       </span>
                       <StageChip stage={c.stage} stages={stages} />
+                      <KindChip contact={c} />
                     </label>
                   );
                 })}

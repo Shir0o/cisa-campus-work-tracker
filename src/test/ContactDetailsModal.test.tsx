@@ -2846,3 +2846,73 @@ describe('stage move (#677)', () => {
     ).toHaveLength(0);
   });
 });
+
+// The kind of person on the contact's own page (#1152, ADR 0030).
+describe('ContactDetailsModal — the kind of person', () => {
+  const mockOnClose = vi.fn();
+  // Tied to the Trainee, or they would not be able to open the person at all.
+  const saint = { ...mockContact, inChurchLife: true, isStudent: false, createdBy: 'tr1', visibleTo: ['tr1'] } as any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' }, isAdmin: true, role: 'admin',
+    });
+    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
+      if (typeof cb === 'function') { try { cb({ docs: [] }); } catch { /* ignore */ } }
+      return () => {};
+    });
+    (firestore.getDocs as any).mockResolvedValue({ size: 0, docs: [] });
+    (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
+    (firestore.updateDoc as any).mockResolvedValue(true);
+  });
+
+  const openEdit = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Edit details'));
+  };
+
+  it('shows a Trainee who a person is, though they cannot change it', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'tr1', displayName: 'Trainee' }, isAdmin: false, role: 'manager',
+    });
+    render(<ContactDetailsModal isOpen onClose={mockOnClose} contact={saint} />);
+    expect(screen.getByText('Local saint')).toBeInTheDocument();
+  });
+
+  it('does not offer the questions to a Trainee', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'tr1', displayName: 'Trainee' }, isAdmin: false, role: 'manager',
+    });
+    render(<ContactDetailsModal isOpen onClose={mockOnClose} contact={saint} />);
+    openEdit();
+    expect(screen.queryByLabelText('In the church life')).toBeNull();
+  });
+
+  it('writes the kind alone, with its stamp, and lands the change in History', async () => {
+    render(<ContactDetailsModal isOpen onClose={mockOnClose} contact={mockContact} />);
+    openEdit();
+    fireEvent.click(screen.getByLabelText('In the church life'));
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+
+    await waitFor(() => {
+      const kindWrite = (firestore.updateDoc as any).mock.calls
+        .map((c: any[]) => c[1])
+        .find((payload: any) => 'inChurchLife' in payload);
+      expect(kindWrite).toBeTruthy();
+      // The rules keep the kind on its own branch: it must never travel with
+      // the profile fields, or the write is refused outright.
+      expect(kindWrite).not.toHaveProperty('notes');
+      expect(kindWrite).not.toHaveProperty('spiritualBackground');
+      expect(kindWrite.kindSetBy).toBe('user-123');
+      expect(kindWrite.kindSetAt).toBeTruthy();
+    });
+
+    await waitFor(() => {
+      const logged = (logActivity as any).mock.calls.map((c: any[]) => c[0])
+        .find((a: any) => String(a?.description || '').startsWith('kind:'));
+      expect(logged).toBeTruthy();
+      expect(logged.description).toContain('Local saint');
+    });
+  });
+});

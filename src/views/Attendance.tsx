@@ -49,6 +49,7 @@ import AttendanceMobile from './AttendanceMobile';
 import AttendanceSyncPanel from '../components/AttendanceSyncPanel';
 import { useLanguage } from '../components/LanguageProvider';
 import { useCalendarSync, calStartOfDay, calAddDays, canSeeCalendarSync, type CalContextItem } from '../lib/calendar/calendarSync';
+import KindChip from "../components/ui/KindChip";
 
 // Event dates are date-only ('yyyy-MM-dd'); parseISO reads them as LOCAL midnight
 // (new Date(...) would treat them as UTC and shift a day in negative-offset zones).
@@ -940,6 +941,7 @@ export default function Attendance() {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-on-surface">{contact.name}</span>
                               <StageChip stage={contact.stage} />
+                              <KindChip contact={contact} />
                             </div>
                             <div className="text-sm text-accent font-medium mt-0.5">
                               {t('attendance.last_with_us_at', 'Last with us at {event} · {date} — {n} gatherings ago')

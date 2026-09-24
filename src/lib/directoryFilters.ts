@@ -8,11 +8,14 @@
 // contact-detail navigation without persisting past a full page reload or
 // leaking across accounts/roles.
 
+import type { KindFilter } from './contactKind';
+
 export interface DirectoryFilterState {
   searchQuery: string;
   filterStage: string;
   filterRole: string;
   filterSpiritualBackground: string;
+  filterKind: KindFilter;
   filterAddedWhen: 'all' | 'today' | 'week' | 'month';
   customRange: { from: string; to: string };
   selectedTags: string[];
@@ -23,6 +26,7 @@ export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   filterStage: 'All',
   filterRole: 'All',
   filterSpiritualBackground: 'All',
+  filterKind: 'all',
   filterAddedWhen: 'all',
   customRange: { from: '', to: '' },
   selectedTags: [],

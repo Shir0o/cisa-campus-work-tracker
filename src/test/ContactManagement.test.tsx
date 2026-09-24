@@ -155,8 +155,9 @@ describe('Contact Management', () => {
     fireEvent.click(screen.getByText(/\+ Add the rest/i));
     fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Builder' } });
     fireEvent.change(screen.getByPlaceholderText(/alex@campus.edu/i), { target: { value: 'bob@build.it' } });
-    fireEvent.change(screen.getByPlaceholderText(/e.g. Student/i), { target: { value: 'Contractor' } });
     // #730: the new-contact form no longer exposes the ADDRESS / "How we met" fields.
+    // #1152: nor the free-text "Status" — it asks who the person is instead.
+    fireEvent.click(screen.getByLabelText('A student of ours'));
 
     // Submit
     const form = document.getElementById('new-contact-form');
@@ -168,7 +169,8 @@ describe('Contact Management', () => {
         expect.objectContaining({
           name: 'Bob Builder',
           email: 'bob@build.it',
-          role: 'Contractor'
+          isStudent: true,
+          inChurchLife: false,
         })
       );
     });

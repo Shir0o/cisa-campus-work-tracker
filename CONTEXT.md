@@ -292,3 +292,31 @@ A trusted pre-shared secret registered in the Firebase console that permits auto
 _Avoid_: Bypass token, dev key, test token
 
 
+
+**The church life**:
+Meeting regularly with the church, not merely believing. It is the axis that tells a **Local saint** and **Our own** apart from a **Contact**: all three may be believers, so belief distinguishes nobody and this is what actually does.
+_Avoid_: Saved, believer, saint, churched, active, engaged, committed, member
+
+**Local saint**:
+Someone in **the church life** who is not a student — the people whose **Home** we go round to. They sit outside The Journey and are never counted toward **The Day's Goal**: the board and the Goal measure outreach, and a local saint is not being reached.
+_Avoid_: Saint, member, church family, brother, sister, non-student
+
+**Our own**:
+A student of ours who is in **the church life** — as much a saint as a **Local saint**, and distinguished from one only by being a student. They stay on The Journey, where the church-meeting step lives, but are never counted as a new connection toward **The Day's Goal**.
+_Avoid_: Saint, student, our student, disciple, member
+
+**Contact (the kind of person)**:
+Someone **not in the church life** — a student we met on campus, or a local who is neither. They may well be a believer, which is exactly why belief cannot be the test. This is the narrow sense of the word: `Contact` in code and the `contacts` collection mean *any* person in the system, a local saint included. Both senses are live — the kind is a bucket in the Directory, the type is every row in it — so say "a Contact (kind)" when the distinction matters.
+_Avoid_: New contact, seeker, unbeliever, prospect, outsider — and never read the narrow sense into `Contact` in code
+
+**Home**:
+A household we visit, usually labelled by the family's last name ("the Peinados") — the label is free text, because a house sharing no one surname needs a name only the team would think of — and tied to the people in **the church life** who live there, usually **Local saints**, sometimes **Our own** living with family. Several may share one home, and someone may have none yet. The Home carries the place, because the person no longer does: `location` was retired from the contact form and survives only on older documents, which is why a visit's `where` has to be typed by hand today.
+_Avoid_: House, address, residence, location, venue
+
+**Who we haven't seen**:
+The second reading of **Visits**: how long it has been since we last sat with each person, grouped under the **Home** they live in. Someone never visited reads as a gap, not as missing data, and being in a Home is what puts a person here at all. It runs continuously rather than against a year or a term — nothing resets on a date, so a faithful December never reads as a wall of gaps in January — and it carries no target interval: the gap is shown and a Full-timer decides, rather than the app declaring a visit overdue on a cadence nobody maintains. Coverage is the wrong word for it, because there is no whole to be complete against.
+_Avoid_: Visitation coverage, coverage, visit schedule, rotation, cadence, visit quota
+
+**Not sorted yet**:
+The people whose kind nobody has decided — no one has said whether they are in **the church life** or a student. It is the absence of a stamp, not a value: the default and the migration seed both leave a person unsorted, and only a Full-timer's own decision marks them sorted. The count falls only as someone works through them, which makes it a measure of work remaining rather than of what the app guessed.
+_Avoid_: Uncategorised, unknown, unassigned, untagged, needs review

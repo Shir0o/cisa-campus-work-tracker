@@ -58,7 +58,10 @@ describe('NewContactModal', () => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-id', displayName: 'Test User' },
-      role: 'operator',
+      role: 'admin',
+      // #1152: the kind questions are Full-timer-only, so the default actor
+      // here is one; the Trainee case has its own describe below.
+      isAdmin: true,
     });
   });
 
@@ -210,8 +213,9 @@ describe('NewContactModal', () => {
     // Expand rest of fields
     await mockUserAct.click(screen.getByText(/\+ Add the rest/i));
 
-    const role = await screen.findByPlaceholderText('e.g. Student, Faculty');
-    await mockUserAct.type(role, 'Student');
+    // #1152: the free-text "Status" field is gone; the form asks two plain
+    // questions instead, and shows back the kind they add up to.
+    await mockUserAct.click(await screen.findByLabelText('A student of ours'));
 
     const email = await screen.findByPlaceholderText('alex@campus.edu');
     await mockUserAct.type(email, 'john@example.com');
@@ -230,6 +234,12 @@ describe('NewContactModal', () => {
 
     const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
     expect(contactArg?.tags).toEqual(expect.arrayContaining(['Summer 2026']));
+    // #1152: the two questions, and the stamp that says a person decided.
+    expect(contactArg?.isStudent).toBe(true);
+    expect(contactArg?.inChurchLife).toBe(false);
+    expect(contactArg?.kindSetBy).toBeTruthy();
+    expect(contactArg?.kindSetAt).toBeTruthy();
+    expect(contactArg?.role).toBeUndefined();
     // #730: the form no longer writes `metVia` or `location` to the new
     // contact doc. They may still be present in the type as undefined (we keep
     // the field on the schema for backward compat), but the form must not put
@@ -511,3 +521,27 @@ describe('NewContactModal', () => {
   });
 });
 
+
+// #1152 review follow-up: the kind is a Full-timer's decision. A Trainee adding
+// someone must write no kind and no stamp, so the person lands in Not sorted
+// yet rather than the app guessing on their behalf.
+describe('NewContactModal — the kind is a Full-timer decision', () => {
+  it('offers the two questions to a Full-timer', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'ft1', displayName: 'Full Timer' }, role: 'admin', isAdmin: true,
+    } as any);
+    render(<NewContactModal isOpen onClose={() => {}} />);
+    fireEvent.click(await screen.findByText(/\+ Add the rest/i));
+    expect(await screen.findByLabelText('A student of ours')).toBeTruthy();
+  });
+
+  it('does not offer them to a Trainee', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'tr1', displayName: 'Trainee' }, role: 'manager', isAdmin: false,
+    } as any);
+    render(<NewContactModal isOpen onClose={() => {}} />);
+    fireEvent.click(await screen.findByText(/\+ Add the rest/i));
+    expect(screen.queryByLabelText('A student of ours')).toBeNull();
+    expect(screen.queryByLabelText('In the church life')).toBeNull();
+  });
+});

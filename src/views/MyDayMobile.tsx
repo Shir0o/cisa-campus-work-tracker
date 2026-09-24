@@ -28,6 +28,7 @@ import AskStack from '../components/landing/AskStack';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
+import KindChip from "../components/ui/KindChip";
 // A Gathering in the coming week — no calendar merge anymore (ADR 0016
 // decision 2), so this is just our own `events` doc's display fields.
 interface WeekGathering {
@@ -531,6 +532,7 @@ export default function MyDayMobile({
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 mdm-person-sub">
                         <StageChip stage={contact.stage} stages={stages} />
+                        <KindChip contact={contact} />
                         {contact.role && (
                           <span className="text-xs text-on-surface-variant/80 font-medium">
                             {contact.role}
@@ -763,6 +765,7 @@ export default function MyDayMobile({
                       {c.name}
                     </span>
                     <StageChip stage={c.stage} stages={stages} />
+                    <KindChip contact={c} />
                     {checked && <Check className="w-4 h-4 text-on-primary shrink-0 ml-2" />}
                   </button>
                 );

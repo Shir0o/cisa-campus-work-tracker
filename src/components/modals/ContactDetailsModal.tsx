@@ -78,6 +78,9 @@ import {
   subscribeInteractionRemovals,
   getPendingRemovalIds,
 } from "../../lib/interactionRemoval";
+import KindChip from "../ui/KindChip";
+import KindFields from "../ui/KindFields";
+import { contactKind, kindLabelKey } from "../../lib/contactKind";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -371,6 +374,8 @@ export default function ContactDetailsModal({
     tags: [] as string[],
     notes: "",
     spiritualBackground: "",
+    inChurchLife: false,
+    isStudent: false,
   });
   const capitalize = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -437,6 +442,8 @@ export default function ContactDetailsModal({
         tags: contact.tags || [],
         notes: contact.notes || "",
         spiritualBackground: contact.spiritualBackground || "",
+        inChurchLife: !!contact.inChurchLife,
+        isStudent: !!contact.isStudent,
       });
       setEditTagInput("");
       setIsEditing(false);
@@ -814,6 +821,44 @@ export default function ContactDetailsModal({
           user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       };
       await updateDoc(contactRef, updateData);
+
+      // The kind of person (#1152) is a Full-timer-only write on its own rules
+      // branch, so it never travels with the profile edit above. The stamp
+      // moves with it: a kind is only ever set by someone deciding.
+      const kindChanged =
+        formData.inChurchLife !== !!contact.inChurchLife ||
+        formData.isStudent !== !!contact.isStudent;
+      if (isAdmin && kindChanged) {
+        await updateDoc(contactRef, {
+          inChurchLife: formData.inChurchLife,
+          isStudent: formData.isStudent,
+          kindSetBy: user?.uid,
+          kindSetAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          updatedBy: user?.uid,
+          updatedByName:
+            user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+        });
+
+        // Recognising someone as being in the church life is never silent —
+        // it lands in History the way a stage move does (#1152).
+        const before = contactKind(contact);
+        const after = contactKind({
+          inChurchLife: formData.inChurchLife,
+          isStudent: formData.isStudent,
+        });
+        const change = `kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(after))}"`;
+        logActivity({
+          action: `updated ${change} for`,
+          targetId: contact.id,
+          targetName: currentContact.name,
+          targetType: "contact",
+          type: "edit",
+          userName:
+            user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+          description: change,
+        } as any);
+      }
 
       logActivity({
         action:
@@ -1389,6 +1434,9 @@ export default function ContactDetailsModal({
                     ) : currentContact.stage ? (
                       <span className="cd-stage-pill">{currentContact.stage}</span>
                     ) : null)}
+                    {/* Everyone tied to a person sees who they are, whether or
+                        not they may change it (#1152). */}
+                    {!isEditing && <KindChip contact={currentContact} />}
                   </div>
                   {!isEditing && (
                     <div className="cd-head-sub">
@@ -1725,6 +1773,21 @@ export default function ContactDetailsModal({
                         );
                       })()}
                     </div>
+                    {/* The kind of person (#1152) — Full-timers only, and
+                        written on its own rules branch when saved. */}
+                    {isAdmin && (
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                          <Sparkles className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
+                        </label>
+                        <KindFields
+                          inChurchLife={formData.inChurchLife}
+                          isStudent={formData.isStudent}
+                          onChange={(next) => setFormData((f) => ({ ...f, ...next }))}
+                        />
+                      </div>
+                    )}
+
                     {/* Spiritual Background Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">

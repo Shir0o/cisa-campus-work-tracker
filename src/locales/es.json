@@ -448,7 +448,12 @@
     "everyone_you_added": "todas las personas que añadiste o en las que apareces",
     "of_people_added": "{shown} de las {total} personas que añadiste o en las que apareces",
     "of_people": "{shown} de {total}",
-    "confirm_remove": "¿Seguro que quieres eliminar {n} {count}?"
+    "confirm_remove": "¿Seguro que quieres eliminar {n} {count}?",
+    "kind": "Tipo",
+    "all_kinds": "Todos los tipos",
+    "set_kind_for_selected": "Definir quiénes son los seleccionados",
+    "cancel": "Cancelar",
+    "save": "Guardar"
   },
   "myDay": {
     "good_morning": "Buenos días, {name}.",
@@ -1890,5 +1895,15 @@
     "discard_failed": "No se pudo descartar este borrador.",
     "choose_rhythm_error": "Elige un Ritmo antes de confirmar.",
     "confirm_failed": "No se pudo confirmar esta sincronización."
+  },
+  "contactKind": {
+    "local_saint": "Santo local",
+    "our_own": "De los nuestros",
+    "contact": "Contacto",
+    "not_sorted_yet": "Sin clasificar todavía",
+    "in_church_life": "En la vida de la iglesia",
+    "is_student": "Estudiante nuestro",
+    "reads_as": "Se lee como {kind}",
+    "who_they_are": "Quiénes son"
   }
 }
