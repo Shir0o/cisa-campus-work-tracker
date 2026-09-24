@@ -128,16 +128,16 @@ export function contactIdForEmail(
  *  the church life does. A local who is not in the church life folds into
  *  `contact` alongside a student we just met; `isStudent` still tells them
  *  apart, it just does not change the bucket. */
-export type ContactKind = 'local-saint' | 'our-own' | 'contact';
+export type ContactKind = "local-saint" | "our-own" | "contact";
 
 /** What the Directory's kind filter can be set to. */
-export type KindFilter = ContactKind | 'all' | 'unsorted';
+export type KindFilter = ContactKind | "all" | "unsorted";
 
-type Kinded = Pick<Contact, 'inChurchLife' | 'isStudent' | 'kindSetBy' | 'kindSetAt'>;
+type Kinded = Pick<Contact, "inChurchLife" | "isStudent" | "kindSetBy" | "kindSetAt">;
 
 export function contactKind(c: Kinded): ContactKind {
-  if (!c.inChurchLife) return 'contact';
-  return c.isStudent ? 'our-own' : 'local-saint';
+  if (!c.inChurchLife) return "contact";
+  return c.isStudent ? "our-own" : "local-saint";
 }
 
 /** Whether a person's kind was decided by someone, rather than left at the
@@ -148,7 +148,13 @@ export function isKindSorted(c: Kinded): boolean {
 }
 
 export function kindMatches(c: Kinded, filter: KindFilter): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'unsorted') return !isKindSorted(c);
+  if (filter === "all") return true;
+  if (filter === "unsorted") return !isKindSorted(c);
   return contactKind(c) === filter;
+}
+
+/** The i18n key for a kind's label. One map, so the Directory's options, the
+ *  chip and the activity log can never drift apart. */
+export function kindLabelKey(kind: ContactKind): string {
+  return `contactKind.${kind.replace("-", "_")}`;
 }

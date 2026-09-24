@@ -14,7 +14,7 @@ import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage } from '../../types';
 import { inferGenderFromName, genderTag } from '../../lib/gender';
 import { normalizeTagList, TAG_SUGGESTIONS, tagStyle } from '../../lib/tags';
-import { contactKind } from '../../lib/contactKind';
+import { contactKind, kindLabelKey } from '../../lib/contactKind';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -24,7 +24,7 @@ interface NewContactModalProps {
 }
 
 export default function NewContactModal({ isOpen, onClose, initialStage }: NewContactModalProps) {
-  const { user, role } = useAuth();
+  const { user, isAdmin, role } = useAuth();
   const { t } = useLanguage();
   if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
@@ -136,12 +136,18 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const contactData = {
         name: fullName,
         // The kind of person (#1152, ADR 0030), replacing the free-text
-        // "Status" this form used to ask for. Adding someone IS a decision
-        // about them, so it carries the stamp.
-        inChurchLife: formData.inChurchLife,
-        isStudent: formData.isStudent,
-        kindSetBy: user?.uid,
-        kindSetAt: new Date().toISOString(),
+        // "Status" this form used to ask for. Only a Full-timer is asked, and
+        // only their answer is a decision — a Trainee's add writes nothing
+        // here, so the person lands in Not sorted yet rather than being
+        // guessed at. The rules refuse a non-admin create that claims either.
+        ...(isAdmin
+          ? {
+              inChurchLife: formData.inChurchLife,
+              isStudent: formData.isStudent,
+              kindSetBy: user?.uid,
+              kindSetAt: new Date().toISOString(),
+            }
+          : {}),
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
@@ -171,7 +177,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const docRef = await addDoc(collection(db, 'contacts'), contactWithTies);
 
       const fieldsLog = [
-        `Kind: ${t(`contactKind.${contactKind({ inChurchLife: formData.inChurchLife, isStudent: formData.isStudent }).replace('-', '_')}`)}`,
+        isAdmin ? `Kind: ${t(kindLabelKey(contactKind({ inChurchLife: formData.inChurchLife, isStudent: formData.isStudent })))}` : '',
         `Stage: ${formData.stage}`,
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
@@ -400,6 +406,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                         silently cannot represent someone is worse than asking
                         twice. The derived kind is shown back so the person
                         adding a contact sees the bucket they are creating. */}
+                    {isAdmin && (
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Briefcase className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
@@ -425,10 +432,11 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       <p className="text-xs text-on-surface-variant px-1">
                         {t('contactKind.reads_as').replace(
                           '{kind}',
-                          t(`contactKind.${contactKind({ inChurchLife: formData.inChurchLife, isStudent: formData.isStudent }).replace('-', '_')}`),
+                          t(kindLabelKey(contactKind({ inChurchLife: formData.inChurchLife, isStudent: formData.isStudent }))),
                         )}
                       </p>
                     </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">

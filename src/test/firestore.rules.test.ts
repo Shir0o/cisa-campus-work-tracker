@@ -3221,6 +3221,43 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('refuses an unstamped kind — a kind is never set without saying who decided it', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
+        inChurchLife: true,
+        updatedAt: serverTimestamp(), updatedBy: 'ft1', updatedByName: 'ft1',
+      }));
+    });
+
+    it('refuses a Trainee asserting membership on create', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'tr1'), { role: 'manager', approved: true });
+      });
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
+      await assertFails(setDoc(doc(db, 'contacts', 'k3'), {
+        name: 'Smuggled', email: 's@example.com', inChurchLife: true,
+      }));
+    });
+
+    it('refuses a self-attributed stamp on create', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'tr1'), { role: 'manager', approved: true });
+      });
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
+      await assertFails(setDoc(doc(db, 'contacts', 'k4'), {
+        name: 'Stamped', email: 'st@example.com',
+        kindSetBy: 'tr1', kindSetAt: '2026-09-24T00:00:00.000Z',
+      }));
+    });
+
+    it('still lets the public sign-up form create a student who is not in the church life', async () => {
+      const db = getFirestore();
+      await assertSucceeds(setDoc(doc(db, 'contacts', 'k5'), {
+        name: 'Sign Up', email: 'su@example.com', isStudent: true, inChurchLife: false,
+      }));
+    });
+
     it('accepts the kind fields on create', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });

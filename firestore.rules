@@ -212,7 +212,18 @@ service cloud.firestore {
       // Anti-abuse Note: Without App Check or an authenticated backend function,
       // this allows unauthenticated creates. Mitigated partially by client-side 
       // honeypot and math captcha on the public form. Acceptable for low-traffic.
-      allow create: if isValidId(contactId) && isValidContact(incoming());
+      // #1152: the kind of person is a Full-timer's decision, so a create may
+      // not assert it. The safe shape — no membership claimed, no stamp — is
+      // what the public sign-up form writes, and it passes without a document
+      // read; only a create that claims membership or stamps itself pays for
+      // the role lookup.
+      function kindSafeOnCreate(data) {
+        return (data.get('inChurchLife', false) == false &&
+                !('kindSetBy' in data) && !('kindSetAt' in data))
+               || isAdmin();
+      }
+
+      allow create: if isValidId(contactId) && isValidContact(incoming()) && kindSafeOnCreate(incoming());
       // Operators edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
       // keys, so a contact carrying legacy/extra fields stays editable as long as
@@ -310,7 +321,7 @@ service cloud.firestore {
           (keys.hasOnly([
             'inChurchLife', 'isStudent', 'kindSetBy', 'kindSetAt',
             'updatedAt', 'updatedBy', 'updatedByName'
-          ]) && admin) ||
+          ]) && keys.hasAll(['kindSetBy', 'kindSetAt']) && admin) ||
 
           // Share / unshare: the access list moves in lockstep with the tie it
           // mirrors, so neither can be rewritten as a lone ghost field.

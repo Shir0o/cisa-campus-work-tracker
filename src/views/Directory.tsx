@@ -52,7 +52,7 @@ import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads } from '../lib/threads';
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
-import { contactKind, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
+import { contactKind, kindLabelKey, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -530,8 +530,13 @@ export default function Directory() {
     e.preventDefault();
     if (selectedIds.size === 0 || !isAdmin) return;
 
-    const inChurchLife = bulkKind !== 'contact';
-    const isStudent = bulkKind === 'our-own';
+    // A Contact may be a student or a local — the fourth cell. The picker
+    // cannot express that, so setting someone to Contact writes only what the
+    // choice actually decides and leaves `isStudent` as it was.
+    const kindFields: Record<string, boolean> =
+      bulkKind === 'contact'
+        ? { inChurchLife: false }
+        : { inChurchLife: true, isStudent: bulkKind === 'our-own' };
     try {
       const batch = writeBatch(db);
       const selectedContacts = userContacts.filter(c => selectedIds.has(c.id));
@@ -540,8 +545,7 @@ export default function Directory() {
       selectedContacts.forEach(contact => {
         const before = contactKind(contact);
         batch.update(doc(db, 'contacts', contact.id), {
-          inChurchLife,
-          isStudent,
+          ...kindFields,
           kindSetBy: user?.uid,
           kindSetAt: now,
           updatedAt: now,
@@ -556,7 +560,7 @@ export default function Directory() {
             targetName: contact.name,
             targetType: 'contact',
             type: 'edit',
-            description: `Kind: "${before}" → "${bulkKind}"`,
+            description: `Kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(bulkKind))}"`,
           });
         }
       });
@@ -1298,6 +1302,7 @@ export default function Directory() {
 
       {/* ── Bulk Stage Modal ── */}
       <AnimatePresence>
+        {/* ── Who they are (kind) Modal ── */}
         {isKindModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div

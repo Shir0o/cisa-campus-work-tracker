@@ -58,7 +58,10 @@ describe('NewContactModal', () => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-id', displayName: 'Test User' },
-      role: 'operator',
+      role: 'admin',
+      // #1152: the kind questions are Full-timer-only, so the default actor
+      // here is one; the Trainee case has its own describe below.
+      isAdmin: true,
     });
   });
 
@@ -518,3 +521,27 @@ describe('NewContactModal', () => {
   });
 });
 
+
+// #1152 review follow-up: the kind is a Full-timer's decision. A Trainee adding
+// someone must write no kind and no stamp, so the person lands in Not sorted
+// yet rather than the app guessing on their behalf.
+describe('NewContactModal — the kind is a Full-timer decision', () => {
+  it('offers the two questions to a Full-timer', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'ft1', displayName: 'Full Timer' }, role: 'admin', isAdmin: true,
+    } as any);
+    render(<NewContactModal isOpen onClose={() => {}} />);
+    fireEvent.click(await screen.findByText(/\+ Add the rest/i));
+    expect(await screen.findByLabelText('A student of ours')).toBeTruthy();
+  });
+
+  it('does not offer them to a Trainee', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'tr1', displayName: 'Trainee' }, role: 'manager', isAdmin: false,
+    } as any);
+    render(<NewContactModal isOpen onClose={() => {}} />);
+    fireEvent.click(await screen.findByText(/\+ Add the rest/i));
+    expect(screen.queryByLabelText('A student of ours')).toBeNull();
+    expect(screen.queryByLabelText('In the church life')).toBeNull();
+  });
+});

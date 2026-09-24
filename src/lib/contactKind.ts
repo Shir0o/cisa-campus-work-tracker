@@ -37,3 +37,9 @@ export function kindMatches(c: Kinded, filter: KindFilter): boolean {
   if (filter === 'unsorted') return !isKindSorted(c);
   return contactKind(c) === filter;
 }
+
+/** The i18n key for a kind's label. One map, so the Directory's options, the
+ *  chip and the activity log can never drift apart. */
+export function kindLabelKey(kind: ContactKind): string {
+  return `contactKind.${kind.replace('-', '_')}`;
+}

@@ -1043,3 +1043,60 @@ describe('Directory — the kind of person', () => {
     expect(screen.queryByText('Plain Contact')).not.toBeInTheDocument();
   });
 });
+
+// #1152 review follow-up: the bulk picker offers three kinds, but a Contact can
+// be a student or a local — the fourth cell. Setting someone to Contact must
+// not silently overwrite what we know about their being a student.
+describe('Directory — bulk-setting the kind', () => {
+  const studentContact = [
+    { id: 'b1', data: () => ({ name: 'Known Student', email: 'ks@example.com', phone: '', role: '', stage: 'Lead', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', inChurchLife: true, isStudent: true, kindSetBy: 'u1', kindSetAt: '2026-09-23T00:00:00.000Z' }) },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'ft1', email: 'ft@example.com', displayName: 'Full Timer' },
+      role: 'admin',
+      isAdmin: true,
+    } as any);
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: studentContact, size: 1 });
+      else if (ref?.path === 'stages') callback({ docs: mockStages, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+  });
+
+  const setKindTo = async (value: string) => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Known Student')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    fireEvent.click(screen.getByTitle('Set who the selected people are'));
+    fireEvent.change(screen.getByTestId('bulk-kind-select'), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  };
+
+  it('leaves the student fact alone when setting someone to Contact', async () => {
+    await setKindTo('contact');
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    const written = mockUpdate.mock.calls.at(-1)?.[1];
+    expect(written.inChurchLife).toBe(false);
+    expect(written).not.toHaveProperty('isStudent');
+    expect(written.kindSetBy).toBe('ft1');
+  });
+
+  it('sets both when making someone Our own', async () => {
+    await setKindTo('our-own');
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    const written = mockUpdate.mock.calls.at(-1)?.[1];
+    expect(written.inChurchLife).toBe(true);
+    expect(written.isStudent).toBe(true);
+  });
+
+  it('records the change in the team\u2019s own words, not slugs', async () => {
+    await setKindTo('local-saint');
+    await waitFor(() => expect(logActivity).toHaveBeenCalled());
+    const logged = vi.mocked(logActivity).mock.calls.at(-1)?.[0] as any;
+    expect(logged.description).toContain('Local saint');
+    expect(logged.description).not.toContain('local-saint');
+  });
+});

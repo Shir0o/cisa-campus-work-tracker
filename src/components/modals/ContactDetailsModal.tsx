@@ -77,6 +77,7 @@ import {
   subscribeInteractionRemovals,
   getPendingRemovalIds,
 } from "../../lib/interactionRemoval";
+import KindChip from "../ui/KindChip";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -1411,6 +1412,9 @@ export default function ContactDetailsModal({
                     ) : currentContact.stage ? (
                       <span className="cd-stage-pill">{currentContact.stage}</span>
                     ) : null)}
+                    {/* Everyone tied to a person sees who they are, whether or
+                        not they may change it (#1152). */}
+                    {!isEditing && <KindChip contact={currentContact} />}
                   </div>
                   {!isEditing && (
                     <div className="cd-head-sub">
