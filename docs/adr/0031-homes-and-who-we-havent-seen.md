@@ -23,9 +23,11 @@ Five mockups of the new reading were built and compared on realistic data (37 pe
 
 5. **Homes are suggested, never derived.** Co-visit history is the primary signal, because **a visit is to one house**: it may name several people, but never people from two households. Every logged visit naming two or more people is therefore direct evidence of a household, and the existing visit log carries most of the backfill already. Surname clustering covers the rest. Every suggestion is confirmed and editable before it saves — a wrong home is harder to notice than a missing one.
 
-6. **The overdue strip is retired** when this ships. Two lists ranking people by time-since-seen, one capped at four and excluding never-visited, is how people learn to trust neither.
+6. **One visit, one house stays a convention, not a rule.** Nothing at log time stops a visit naming two households. The signal only has to be good enough to *propose* a home, never to decide one, and a confirmation step already catches a bad proposal — whereas a picker that restricted the people you may tick would fight you on the rare evening you see two families. Occasional mixed visits are tolerated as noise.
 
-7. **It is a second reading of `/visits`, behind a toggle**, opening on this reading and not remembering which was last used. Full-timers only, as the route already is; `homes` gets its own rules block, which spends none of the contacts ruleset's expression budget.
+7. **The overdue strip is retired** when this ships. Two lists ranking people by time-since-seen, one capped at four and excluding never-visited, is how people learn to trust neither.
+
+8. **It is a second reading of `/visits`, behind a toggle**, opening on this reading and not remembering which was last used. Full-timers only, as the route already is; `homes` gets its own rules block, which spends none of the contacts ruleset's expression budget.
 
 ## Consequences
 
