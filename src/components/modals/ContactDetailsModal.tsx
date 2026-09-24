@@ -78,6 +78,8 @@ import {
   getPendingRemovalIds,
 } from "../../lib/interactionRemoval";
 import KindChip from "../ui/KindChip";
+import KindFields from "../ui/KindFields";
+import { contactKind, kindLabelKey } from "../../lib/contactKind";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -836,6 +838,25 @@ export default function ContactDetailsModal({
           updatedByName:
             user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
         });
+
+        // Recognising someone as being in the church life is never silent —
+        // it lands in History the way a stage move does (#1152).
+        const before = contactKind(contact);
+        const after = contactKind({
+          inChurchLife: formData.inChurchLife,
+          isStudent: formData.isStudent,
+        });
+        const change = `kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(after))}"`;
+        logActivity({
+          action: `updated ${change} for`,
+          targetId: contact.id,
+          targetName: currentContact.name,
+          targetType: "contact",
+          type: "edit",
+          userName:
+            user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+          description: change,
+        } as any);
       }
 
       logActivity({
@@ -1758,24 +1779,11 @@ export default function ContactDetailsModal({
                         <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                           <Sparkles className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
                         </label>
-                        <label className="flex items-center gap-3 px-4 h-11 rounded-xl bg-surface-container-high border border-outline text-sm text-on-surface cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.inChurchLife}
-                            onChange={(e) => setFormData((f) => ({ ...f, inChurchLife: e.target.checked }))}
-                            className="accent-primary w-4 h-4"
-                          />
-                          <span>{t('contactKind.in_church_life')}</span>
-                        </label>
-                        <label className="flex items-center gap-3 px-4 h-11 rounded-xl bg-surface-container-high border border-outline text-sm text-on-surface cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.isStudent}
-                            onChange={(e) => setFormData((f) => ({ ...f, isStudent: e.target.checked }))}
-                            className="accent-primary w-4 h-4"
-                          />
-                          <span>{t('contactKind.is_student')}</span>
-                        </label>
+                        <KindFields
+                          inChurchLife={formData.inChurchLife}
+                          isStudent={formData.isStudent}
+                          onChange={(next) => setFormData((f) => ({ ...f, ...next }))}
+                        />
                       </div>
                     )}
 

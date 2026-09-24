@@ -12,7 +12,7 @@ const firestoreMock = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { addContact, removeContactCollaborator, setContactCarer, type NewContactInput } from '../src/data/contacts';
+import { addContact, removeContactCollaborator, setContactCarer, updateContact, type ContactUpdateFields, type NewContactInput } from '../src/data/contacts';
 import { applyPartners } from '../src/data/partners';
 
 const DOC_REF = { id: 'c-new' };
@@ -255,5 +255,32 @@ describe('removeContactCollaborator (#1052)', () => {
     const patch = firestoreMock.updateDoc.mock.calls[0][1] as Record<string, unknown>;
     expect(patch.carers).toBeUndefined();
     expect(patch.visibleTo).toEqual(['u1', 'u2', 'u4']);
+  });
+});
+// Mobile read-safety for the kind of person (#1152). Mobile has no kind UI yet,
+// so the thing that matters is that an ordinary mobile edit cannot strip or
+// clobber the two fields a Full-timer set on the web.
+describe('updateContact leaves the kind of person alone', () => {
+  const patch: ContactUpdateFields = {
+    name: 'Alex',
+    initials: 'A',
+    role: '',
+    email: '',
+    phone: '',
+    stage: 'Regular',
+    tags: [],
+    notes: 'edited on the phone',
+    spiritualBackground: '',
+  };
+
+  it('patches named fields only — it never sends the kind or its stamp', async () => {
+    await updateContact({} as never, 'c1', patch, { uid: 'u1', name: 'Trainee' });
+    const written = firestoreMock.updateDoc.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+    expect(written).not.toHaveProperty('inChurchLife');
+    expect(written).not.toHaveProperty('isStudent');
+    expect(written).not.toHaveProperty('kindSetBy');
+    expect(written).not.toHaveProperty('kindSetAt');
+    // ...and it is a merge patch, so what it omits survives on the document.
+    expect(written.notes).toBe('edited on the phone');
   });
 });

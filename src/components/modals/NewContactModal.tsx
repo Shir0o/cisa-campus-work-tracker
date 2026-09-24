@@ -15,6 +15,7 @@ import { Contact, Stage } from '../../types';
 import { inferGenderFromName, genderTag } from '../../lib/gender';
 import { normalizeTagList, TAG_SUGGESTIONS, tagStyle } from '../../lib/tags';
 import { contactKind, kindLabelKey } from '../../lib/contactKind';
+import KindFields from '../ui/KindFields';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -411,30 +412,11 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Briefcase className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
                       </label>
-                      <label className="flex items-center gap-3 px-4 h-11 rounded-xl bg-surface-container-high border border-outline text-sm text-on-surface cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.inChurchLife}
-                          onChange={e => setFormData(f => ({ ...f, inChurchLife: e.target.checked }))}
-                          className="accent-primary w-4 h-4"
-                        />
-                        <span>{t('contactKind.in_church_life')}</span>
-                      </label>
-                      <label className="flex items-center gap-3 px-4 h-11 rounded-xl bg-surface-container-high border border-outline text-sm text-on-surface cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.isStudent}
-                          onChange={e => setFormData(f => ({ ...f, isStudent: e.target.checked }))}
-                          className="accent-primary w-4 h-4"
-                        />
-                        <span>{t('contactKind.is_student')}</span>
-                      </label>
-                      <p className="text-xs text-on-surface-variant px-1">
-                        {t('contactKind.reads_as').replace(
-                          '{kind}',
-                          t(kindLabelKey(contactKind({ inChurchLife: formData.inChurchLife, isStudent: formData.isStudent }))),
-                        )}
-                      </p>
+                      <KindFields
+                        inChurchLife={formData.inChurchLife}
+                        isStudent={formData.isStudent}
+                        onChange={(next) => setFormData(f => ({ ...f, ...next }))}
+                      />
                     </div>
                     )}
 
