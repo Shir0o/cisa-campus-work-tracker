@@ -51,6 +51,8 @@ import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } fro
 import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads } from '../lib/threads';
 import { Translate } from '../components/Translate';
+import KindChip from '../components/ui/KindChip';
+import { contactKind, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -155,7 +157,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function Directory() {
   const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
-  const { user, role, effectiveUserId } = useAuth();
+  const { user, isAdmin, role, effectiveUserId } = useAuth();
 
   // Restore any filter state retained across a contact-detail navigation. The
   // detail route swaps the view for the directory (unmounting it), so filters
@@ -315,11 +317,14 @@ export default function Directory() {
   const [filterStage, setFilterStage] = useState<string>(restoredFilters.filterStage);
   const [filterRole, setFilterRole] = useState<string>(restoredFilters.filterRole);
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
+  const [filterKind, setFilterKind] = useState<KindFilter>(restoredFilters.filterKind);
   const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
   const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
+  const [isKindModalOpen, setIsKindModalOpen] = useState(false);
+  const [bulkKind, setBulkKind] = useState<ContactKind>('contact');
   const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [isCombineContactsOpen, setIsCombineContactsOpen] = useState(false);
@@ -360,11 +365,12 @@ export default function Directory() {
       filterStage,
       filterRole,
       filterSpiritualBackground,
+      filterKind,
       filterAddedWhen,
       customRange,
       selectedTags,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterAddedWhen, customRange, selectedTags]);
+  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -376,11 +382,11 @@ export default function Directory() {
         setShowFilterMenu(false);
       }
     };
-    if (isTagModalOpen || isStageModalOpen || isCombineTagsOpen || isTagGenderOpen || showFilterMenu) {
+    if (isTagModalOpen || isStageModalOpen || isKindModalOpen || isCombineTagsOpen || isTagGenderOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isTagModalOpen, isStageModalOpen, isCombineTagsOpen, showFilterMenu]);
+  }, [isTagModalOpen, isStageModalOpen, isKindModalOpen, isCombineTagsOpen, showFilterMenu]);
 
   // Days since last connected (interaction/comment, else createdAt) for a contact.
   const daysFor = (c: Contact): number | null => {
@@ -424,6 +430,12 @@ export default function Directory() {
       result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
     }
 
+    // The kind of person (#1152). "unsorted" is the absence of a stamp, which
+    // is what Not sorted yet counts — the backfill's own worklist.
+    if (filterKind !== 'all') {
+      result = result.filter(c => kindMatches(c, filterKind));
+    }
+
     // Filter by Added When (preset AND custom range, both must pass).
     if (filterAddedWhen !== 'all' || customRange.from || customRange.to) {
       result = result.filter(c => {
@@ -462,7 +474,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterAddedWhen, customRange, selectedTags]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -504,6 +516,52 @@ export default function Directory() {
       await batch.commit();
       setNewTag('');
       setIsTagModalOpen(false);
+      setSelectedIds(new Set());
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'contacts');
+    }
+  };
+
+  // Bulk-set the kind (#1152). Full-timers only, and written alone: the rules
+  // keep the kind on its own branch, so it never travels with a profile edit.
+  // The stamp goes with it — this is a person deciding, which is exactly what
+  // takes someone out of Not sorted yet.
+  const handleBulkKind = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedIds.size === 0 || !isAdmin) return;
+
+    const inChurchLife = bulkKind !== 'contact';
+    const isStudent = bulkKind === 'our-own';
+    try {
+      const batch = writeBatch(db);
+      const selectedContacts = userContacts.filter(c => selectedIds.has(c.id));
+      const now = new Date().toISOString();
+
+      selectedContacts.forEach(contact => {
+        const before = contactKind(contact);
+        batch.update(doc(db, 'contacts', contact.id), {
+          inChurchLife,
+          isStudent,
+          kindSetBy: user?.uid,
+          kindSetAt: now,
+          updatedAt: now,
+          updatedBy: user?.uid,
+          updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
+        });
+
+        if (before !== bulkKind) {
+          logActivity({
+            action: `updated the kind for`,
+            targetId: contact.id,
+            targetName: contact.name,
+            targetType: 'contact',
+            type: 'edit',
+            description: `Kind: "${before}" → "${bulkKind}"`,
+          });
+        }
+      });
+      await batch.commit();
+      setIsKindModalOpen(false);
       setSelectedIds(new Set());
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'contacts');
@@ -579,12 +637,13 @@ export default function Directory() {
     setFilterStage('All');
     setFilterRole('All');
     setFilterSpiritualBackground('All');
+    setFilterKind('all');
     setFilterAddedWhen('all');
     setCustomRange({ from: '', to: '' });
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || filterKind !== 'all' || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -926,6 +985,21 @@ export default function Directory() {
                     </div>
 
                     <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.kind')}</label>
+                      <Select
+                        value={filterKind}
+                        onChange={(e) => setFilterKind(e.target.value as KindFilter)}
+                        className="h-10 text-sm"
+                      >
+                        <option value="all">{t('directory.all_kinds')}</option>
+                        <option value="local-saint">{t('contactKind.local_saint')}</option>
+                        <option value="our-own">{t('contactKind.our_own')}</option>
+                        <option value="contact">{t('contactKind.contact')}</option>
+                        <option value="unsorted">{t('contactKind.not_sorted_yet')}</option>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.added_when')}</label>
                       <Select
                         value={filterAddedWhen}
@@ -1019,6 +1093,15 @@ export default function Directory() {
               exit={{ opacity: 0, x: 8 }}
               className="flex flex-wrap items-center gap-1"
             >
+              {isAdmin && (
+                <button
+                  onClick={() => setIsKindModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
+                  title={t('directory.set_kind_for_selected')}
+                >
+                  {t('directory.kind')}
+                </button>
+              )}
               <button
                 onClick={() => {
                   setBulkStage(stagesData[0]?.label || '');
@@ -1112,6 +1195,7 @@ export default function Directory() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-serif text-lg text-on-surface leading-tight">{contact.name}</span>
+                      <KindChip contact={contact} />
                       <span
                         style={tStyle}
                         className={cn(
@@ -1214,6 +1298,64 @@ export default function Directory() {
 
       {/* ── Bulk Stage Modal ── */}
       <AnimatePresence>
+        {isKindModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsKindModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
+            >
+              <div className="p-6 border-b border-outline-variant">
+                <h2 className="font-serif text-2xl text-on-surface">{t('contactKind.who_they_are')}</h2>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  {t('directory.for_selected').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people'))}
+                </p>
+              </div>
+
+              <form onSubmit={handleBulkKind} className="p-6 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-on-surface-variant px-1">{t('directory.kind')}</label>
+                  <Select
+                    required
+                    data-testid="bulk-kind-select"
+                    value={bulkKind}
+                    onChange={e => setBulkKind(e.target.value as ContactKind)}
+                    className="h-12 px-4"
+                  >
+                    <option value="local-saint">{t('contactKind.local_saint')}</option>
+                    <option value="our-own">{t('contactKind.our_own')}</option>
+                    <option value="contact">{t('contactKind.contact')}</option>
+                  </Select>
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsKindModalOpen(false)}
+                    className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+                  >
+                    {t('directory.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity"
+                  >
+                    {t('directory.save')}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
         {isStageModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div

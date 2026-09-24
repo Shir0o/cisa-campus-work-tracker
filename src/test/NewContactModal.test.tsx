@@ -210,8 +210,9 @@ describe('NewContactModal', () => {
     // Expand rest of fields
     await mockUserAct.click(screen.getByText(/\+ Add the rest/i));
 
-    const role = await screen.findByPlaceholderText('e.g. Student, Faculty');
-    await mockUserAct.type(role, 'Student');
+    // #1152: the free-text "Status" field is gone; the form asks two plain
+    // questions instead, and shows back the kind they add up to.
+    await mockUserAct.click(await screen.findByLabelText('A student of ours'));
 
     const email = await screen.findByPlaceholderText('alex@campus.edu');
     await mockUserAct.type(email, 'john@example.com');
@@ -230,6 +231,12 @@ describe('NewContactModal', () => {
 
     const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
     expect(contactArg?.tags).toEqual(expect.arrayContaining(['Summer 2026']));
+    // #1152: the two questions, and the stamp that says a person decided.
+    expect(contactArg?.isStudent).toBe(true);
+    expect(contactArg?.inChurchLife).toBe(false);
+    expect(contactArg?.kindSetBy).toBeTruthy();
+    expect(contactArg?.kindSetAt).toBeTruthy();
+    expect(contactArg?.role).toBeUndefined();
     // #730: the form no longer writes `metVia` or `location` to the new
     // contact doc. They may still be present in the type as undefined (we keep
     // the field on the schema for backward compat), but the form must not put

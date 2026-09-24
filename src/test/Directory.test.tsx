@@ -989,3 +989,57 @@ describe('Directory', () => {
 });
 
 
+
+// The kind of person in the Directory (#1152, ADR 0030).
+describe('Directory — the kind of person', () => {
+  const kindContacts = [
+    { id: 'k1', data: () => ({ name: 'Saint Local', email: 's@example.com', phone: '', role: '', stage: 'Regular', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', inChurchLife: true, isStudent: false, kindSetBy: 'u1', kindSetAt: '2026-09-23T00:00:00.000Z' }) },
+    { id: 'k2', data: () => ({ name: 'Ours Student', email: 'o@example.com', phone: '', role: '', stage: 'Regular', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', inChurchLife: true, isStudent: true, kindSetBy: 'u1', kindSetAt: '2026-09-23T00:00:00.000Z' }) },
+    { id: 'k3', data: () => ({ name: 'Plain Contact', email: 'p@example.com', phone: '', role: '', stage: 'Lead', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', inChurchLife: false, isStudent: true, kindSetBy: 'u1', kindSetAt: '2026-09-23T00:00:00.000Z' }) },
+    { id: 'k4', data: () => ({ name: 'Nobody Sorted', email: 'n@example.com', phone: '', role: '', stage: 'Lead', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z' }) },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: kindContacts, size: kindContacts.length });
+      else if (ref?.path === 'stages') callback({ docs: mockStages, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+  });
+
+  it('marks a Local saint and Our own on their rows, and leaves a Contact unmarked', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Saint Local')).toBeInTheDocument());
+    expect(screen.getByText('Local saint')).toBeInTheDocument();
+    expect(screen.getByText('Our own')).toBeInTheDocument();
+    // "Plain Contact" and "Nobody Sorted" carry no chip: only two chips exist.
+    expect(screen.queryAllByText('Contact')).toHaveLength(0);
+  });
+
+  it('narrows to one kind', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Saint Local')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Filters'));
+    const kindSelect = screen.getByText('Kind').parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(kindSelect, { target: { value: 'local-saint' } });
+
+    expect(screen.getByText('Saint Local')).toBeInTheDocument();
+    expect(screen.queryByText('Ours Student')).not.toBeInTheDocument();
+    expect(screen.queryByText('Plain Contact')).not.toBeInTheDocument();
+  });
+
+  it('narrows to the people nobody has sorted yet', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Saint Local')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Filters'));
+    const kindSelect = screen.getByText('Kind').parentElement?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(kindSelect, { target: { value: 'unsorted' } });
+
+    expect(screen.getByText('Nobody Sorted')).toBeInTheDocument();
+    expect(screen.queryByText('Saint Local')).not.toBeInTheDocument();
+    expect(screen.queryByText('Plain Contact')).not.toBeInTheDocument();
+  });
+});

@@ -4,6 +4,7 @@ import { Contact, Stage } from "../../types";
 import { Avatar, StageChip } from "./primitives";
 import { connectedLabel } from "./helpers";
 import { Translate } from "../Translate";
+import KindChip from '../ui/KindChip';
 
 // A person you're walking with: avatar + name + stage, when you last connected,
 // a recent note, and reach actions (Message / Email / Open). Shared by My Day's
@@ -38,6 +39,7 @@ export function ReachCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-on-surface">{contact.name}</span>
             <StageChip stage={contact.stage} stages={stages} />
+            <KindChip contact={contact} />
           </div>
           <div className="text-sm text-accent font-medium mt-0.5">
             {Number.isFinite(days) ? connectedLabel(days) : "Not connected yet"}

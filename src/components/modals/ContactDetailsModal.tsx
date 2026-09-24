@@ -370,6 +370,8 @@ export default function ContactDetailsModal({
     tags: [] as string[],
     notes: "",
     spiritualBackground: "",
+    inChurchLife: false,
+    isStudent: false,
   });
   const capitalize = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -436,6 +438,8 @@ export default function ContactDetailsModal({
         tags: contact.tags || [],
         notes: contact.notes || "",
         spiritualBackground: contact.spiritualBackground || "",
+        inChurchLife: !!contact.inChurchLife,
+        isStudent: !!contact.isStudent,
       });
       setEditTagInput("");
       setIsEditing(false);
@@ -813,6 +817,25 @@ export default function ContactDetailsModal({
           user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       };
       await updateDoc(contactRef, updateData);
+
+      // The kind of person (#1152) is a Full-timer-only write on its own rules
+      // branch, so it never travels with the profile edit above. The stamp
+      // moves with it: a kind is only ever set by someone deciding.
+      const kindChanged =
+        formData.inChurchLife !== !!contact.inChurchLife ||
+        formData.isStudent !== !!contact.isStudent;
+      if (isAdmin && kindChanged) {
+        await updateDoc(contactRef, {
+          inChurchLife: formData.inChurchLife,
+          isStudent: formData.isStudent,
+          kindSetBy: user?.uid,
+          kindSetAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          updatedBy: user?.uid,
+          updatedByName:
+            user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+        });
+      }
 
       logActivity({
         action:
@@ -1724,6 +1747,34 @@ export default function ContactDetailsModal({
                         );
                       })()}
                     </div>
+                    {/* The kind of person (#1152) — Full-timers only, and
+                        written on its own rules branch when saved. */}
+                    {isAdmin && (
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                          <Sparkles className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
+                        </label>
+                        <label className="flex items-center gap-3 px-4 h-11 rounded-xl bg-surface-container-high border border-outline text-sm text-on-surface cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.inChurchLife}
+                            onChange={(e) => setFormData((f) => ({ ...f, inChurchLife: e.target.checked }))}
+                            className="accent-primary w-4 h-4"
+                          />
+                          <span>{t('contactKind.in_church_life')}</span>
+                        </label>
+                        <label className="flex items-center gap-3 px-4 h-11 rounded-xl bg-surface-container-high border border-outline text-sm text-on-surface cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.isStudent}
+                            onChange={(e) => setFormData((f) => ({ ...f, isStudent: e.target.checked }))}
+                            className="accent-primary w-4 h-4"
+                          />
+                          <span>{t('contactKind.is_student')}</span>
+                        </label>
+                      </div>
+                    )}
+
                     {/* Spiritual Background Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
