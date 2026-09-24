@@ -200,6 +200,10 @@ export interface Visit {
    *  it back without joining the prayers collection. Absent on visits logged
    *  before we kept it, which still read as "a prayer came out of this". */
   prayerBurden?: string | null;
+  /** The Home the visit was to. Absent on visits logged before homes existed,
+   *  and on visits that map to no home (a student in halls) — `where` still
+   *  carries the free-text place either way. */
+  homeId?: string | null;
   photos: VisitPhoto[];
   createdAt: string;
   createdById: string;
@@ -207,6 +211,23 @@ export interface Visit {
   updatedAt?: string;
   updatedBy?: string;
   updatedByName?: string;
+}
+
+/** A household we visit (ADR 0031). A Home is a household, not an address: it
+ *  keeps its identity (and its visits) when it moves, and goes inactive rather
+ *  than being deleted when the last person leaves. Being in a Home is what puts
+ *  a person in the "Who we haven't seen" reading at all. */
+export interface Home {
+  id: string;
+  /** Free-text label, usually the family's last name ("the Peinados"). */
+  label: string;
+  /** The contact ids living there. */
+  members: string[];
+  /** Where the household lives — a visit's place comes from here. */
+  place?: string;
+  notes?: string;
+  /** False once the last person leaves; the home's visits keep their meaning. */
+  active: boolean;
 }
 
 // A recurring "Rhythm" — Wednesday Bible Study, Friday Gathering, etc. — as

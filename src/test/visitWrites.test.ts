@@ -108,6 +108,18 @@ describe('addVisit', () => {
     expect(payload).toMatchObject({ prayerId: 'p1', prayerBurden: "Her mum's recovery" });
   });
 
+  it('carries the home the visit was to', async () => {
+    await addVisit(input({ homeId: 'h1' }), by);
+    const [, payload] = mock(addDoc).mock.calls[0];
+    expect(payload).toMatchObject({ homeId: 'h1' });
+  });
+
+  it('writes null when the visit maps to no home', async () => {
+    await addVisit(input(), by);
+    const [, payload] = mock(addDoc).mock.calls[0];
+    expect(payload).toMatchObject({ homeId: null });
+  });
+
   it('mirrors the visit onto each person, with a server timestamp the rules require', async () => {
     await addVisit(input({ contactIds: ['c1', 'c2'], contactNames: ['Ama', 'Bo'] }), by);
 

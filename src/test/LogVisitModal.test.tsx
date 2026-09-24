@@ -7,8 +7,8 @@ import { addTodo, updateTodo } from '../lib/todos';
 import { addPrayerBurden, unhidePrayerContact } from '../lib/prayers';
 import { uploadVisitPhotos } from '../lib/visitPhotos';
 import { logActivity } from '../lib/firebase';
-import { addDoc, collection } from 'firebase/firestore';
-import type { AppUser, Contact, Visit } from '../types';
+import { addDoc } from 'firebase/firestore';
+import type { AppUser, Contact, Home, Visit } from '../types';
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 
@@ -59,12 +59,19 @@ const contacts = [
   { id: 'c2', name: 'Bo Chen', location: 'Ridgewood House' },
 ] as Contact[];
 
+// The place now comes from a Home, not from the contact's `location` (ADR
+// 0031). A home holding Ama means her visit's where is offered from it.
+const homes = [
+  { id: 'h1', label: 'the Oseis', members: ['c1'], place: 'Whitman Hall', active: true },
+  { id: 'h2', label: 'the Chens', members: ['c2'], place: 'Ridgewood House', active: true },
+] as Home[];
+
 const staff = [
   { uid: 'u1', displayName: 'Mei Tanaka' },
   { uid: 'u2', displayName: 'Jordan Park' },
 ] as AppUser[];
 
-const baseProps = { isOpen: true, onClose: vi.fn(), contacts, staff };
+const baseProps = { isOpen: true, onClose: vi.fn(), contacts, staff, homes };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -281,6 +288,32 @@ describe('LogVisitModal', () => {
     render(<LogVisitModal {...baseProps} initialContactId="c2" />);
     expect(screen.getByRole('button', { name: /Remove Bo Chen/ })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('Where')).toHaveValue('Ridgewood House'));
+  });
+
+  it('prefills a home\'s people and place from a gap, and logs with its home id', async () => {
+    const homes = [
+      { id: 'h1', label: 'the Oseis', members: ['c1', 'c2'], place: 'Whitman Hall', active: true },
+    ] as Home[];
+    render(<LogVisitModal {...baseProps} homes={homes} initialHomeId="h1" />);
+    expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove Bo Chen/ })).toBeInTheDocument();
+    expect(screen.getByLabelText('Where')).toHaveValue('Whitman Hall');
+    fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+    await waitFor(() => expect(addVisit).toHaveBeenCalled());
+    const [input] = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(input.contactIds).toEqual(['c1', 'c2']);
+    expect(input.homeId).toBe('h1');
+    expect(input.where).toBe('Whitman Hall');
+  });
+
+  it('still logs a visit that maps to no home', async () => {
+    render(<LogVisitModal {...baseProps} homes={[]} />);
+    pick('Ama');
+    await waitFor(() => expect(screen.getByLabelText('Where')).toHaveValue(''));
+    fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+    await waitFor(() => expect(addVisit).toHaveBeenCalled());
+    const [input] = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(input.homeId).toBeNull();
   });
 
   it('filters out non-person accounts from who went list (#366, #367)', () => {

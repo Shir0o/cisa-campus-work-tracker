@@ -21,7 +21,6 @@ import {
   groupVisits,
   initialsOf,
   lastVisitFor,
-  overdueVisits,
   visitDaysAgo,
   visitInteractionId,
   visitMirrorContent,
@@ -128,42 +127,6 @@ describe('visitsFor / lastVisitFor', () => {
   it('returns null when we have never been round', () => {
     expect(lastVisitFor(list, 'c1')?.id).toBe('a');
     expect(lastVisitFor(list, 'nobody')).toBeNull();
-  });
-});
-
-describe('overdueVisits', () => {
-  const contacts = [contact('c1', 'Ama Osei'), contact('c2', 'Bo Chen'), contact('c3', 'Never Visited')];
-
-  it('lists only people we have been to before, longest-neglected first', () => {
-    const list = [
-      visit({ id: 'a', date: '2026-07-01', contactIds: ['c1'] }), // 43 days
-      visit({ id: 'b', date: '2026-07-20', contactIds: ['c2'] }), // 24 days
-    ];
-    const out = overdueVisits(list, contacts, NOW);
-    expect(out.map((o) => o.contact.id)).toEqual(['c1', 'c2']);
-    expect(out[0].daysAgo).toBe(43);
-    expect(out[0].visit.id).toBe('a');
-  });
-
-  it('leaves out people seen inside the threshold, and never-visited people entirely', () => {
-    const list = [
-      visit({ id: 'a', date: '2026-08-01', contactIds: ['c1'] }), // 12 days — still fresh
-      visit({ id: 'b', date: '2026-07-01', contactIds: ['c2'] }),
-    ];
-    expect(overdueVisits(list, contacts, NOW).map((o) => o.contact.id)).toEqual(['c2']);
-  });
-
-  it('caps the strip so it stays a nudge, not a backlog', () => {
-    const many = Array.from({ length: 8 }, (_, i) => contact(`p${i}`, `Person ${i}`));
-    const list = many.map((c, i) => visit({ id: `v${i}`, date: '2026-06-01', contactIds: [c.id] }));
-    expect(overdueVisits(list, many, NOW)).toHaveLength(4);
-    expect(overdueVisits(list, many, NOW, { limit: 2 })).toHaveLength(2);
-  });
-
-  it('honours a custom threshold', () => {
-    const list = [visit({ id: 'a', date: '2026-08-05', contactIds: ['c1'] })]; // 8 days
-    expect(overdueVisits(list, contacts, NOW)).toHaveLength(0);
-    expect(overdueVisits(list, contacts, NOW, { minDays: 7 })).toHaveLength(1);
   });
 });
 

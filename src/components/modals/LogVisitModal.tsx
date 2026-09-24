@@ -14,7 +14,7 @@ import { db, handleFirestoreError, logActivity, OperationType } from '../../lib/
 import { addPrayerBurden, unhidePrayerContact } from '../../lib/prayers';
 import { addTodo, updateTodo } from '../../lib/todos';
 import { MAX_PHOTOS_PER_VISIT, uploadVisitPhotos } from '../../lib/visitPhotos';
-import type { AppUser, Contact, Visit, VisitPhoto } from '../../types';
+import type { AppUser, Contact, Home, Visit, VisitPhoto } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
@@ -28,23 +28,33 @@ interface LogVisitModalProps {
   onClose: () => void;
   contacts: Contact[];
   staff: AppUser[];
+  homes?: Home[];
   /** Editing an existing visit, rather than logging a new one. */
   visit?: Visit | null;
   /** Person pre-picked from the "haven't been round in a while" strip. */
   initialContactId?: string | null;
+  /** Home pre-picked from the "Who we haven't seen" reading — its people and
+   *  its place come with it, so a gap and the recording are one motion. */
+  initialHomeId?: string | null;
 }
 
 /** A follow-up lands as a to-do a week out — long enough to be a real intention,
  *  short enough that it doesn't quietly become never. */
 const FOLLOW_UP_DAYS = 7;
 
+/** Stable default so the reset effect's `homes` dep isn't a new array each
+ *  render (which would re-run the effect — and the state it resets — forever). */
+const NO_HOMES: Home[] = [];
+
 export default function LogVisitModal({
   isOpen,
   onClose,
   contacts,
   staff,
+  homes = NO_HOMES,
   visit = null,
   initialContactId = null,
+  initialHomeId = null,
 }: LogVisitModalProps) {
   const { user, effectiveUserId } = useAuth();
   const { t } = useLanguage();
@@ -77,29 +87,41 @@ export default function LogVisitModal({
     [contacts, localCreatedContacts],
   );
 
-  // One person, one place — offer it rather than making them type it. Two people
-  // in different halls means we genuinely don't know, so we ask.
-  const placeFor = (contactIds: string[]): string => {
-    const places = Array.from(
-      new Set(contactIds.map((id) => allContacts.find((c) => c.id === id)?.location).filter(Boolean)),
+  // A visit is to one house: when everyone on it lives in the same home, the
+  // place comes from that home and the visit carries its id. Two people from
+  // two households means we genuinely don't know, so we ask. The person's own
+  // `location` is no longer read — the Home carries the place now (ADR 0031).
+  const homeFor = (contactIds: string[]): Home | null => {
+    if (!contactIds.length) return null;
+    const containing = homes.filter(
+      (h) => h.active && contactIds.every((id) => h.members.includes(id)),
     );
-    return places.length === 1 ? (places[0] as string) : '';
+    return containing.length === 1 ? containing[0] : null;
   };
 
   /** Change who we saw, keeping the offered `where` in step until it's typed in. */
   const setPeople = (next: string[]) => {
     setIds(next);
-    if (!whereTouched) setWhere(placeFor(next));
+    if (!whereTouched) {
+      setWhere(homeFor(next)?.place ?? '');
+    }
   };
 
   // Reset to the visit we're editing (or to a blank one) each time the modal opens.
   useEffect(() => {
     if (!isOpen) return;
-    const startIds = visit ? visit.contactIds.slice() : initialContactId ? [initialContactId] : [];
+    const initialHome = homes.find((h) => h.id === initialHomeId) ?? null;
+    const startIds = visit
+      ? visit.contactIds.slice()
+      : initialHome
+        ? initialHome.members.filter((id) => allContacts.some((c) => c.id === id))
+        : initialContactId
+          ? [initialContactId]
+          : [];
     setDate(visit ? visit.date : format(new Date(), 'yyyy-MM-dd'));
     setIds(startIds);
     setWent(visit ? visit.went.slice() : me ? [me] : []);
-    setWhere(visit ? visit.where : placeFor(startIds));
+    setWhere(visit ? visit.where : initialHome?.place ?? homeFor(startIds)?.place ?? '');
     setWhereTouched(!!visit?.where);
     setPurpose(visit ? visit.purpose : '');
     setHow(visit ? visit.how : '');
@@ -109,7 +131,7 @@ export default function LogVisitModal({
     setExistingPhotos(visit ? (visit.photos || []).slice() : []);
     setNewPhotos([]);
     setQ('');
-  }, [isOpen, visit, initialContactId, me]);
+  }, [isOpen, visit, initialContactId, initialHomeId, homes, me]);
 
   const chosen = useMemo(
     () => ids.map((id) => allContacts.find((c) => c.id === id)).filter((c): c is Contact => !!c),
@@ -218,6 +240,7 @@ export default function LogVisitModal({
         went,
         wentNames: went.map((uid) => staff.find((s) => s.uid === uid)?.displayName || 'A full-timer'),
         where,
+        homeId: homeFor(ids)?.id ?? null,
         purpose,
         how,
         followUp: followUpOn ? followUp : '',

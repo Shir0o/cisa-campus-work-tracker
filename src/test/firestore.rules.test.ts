@@ -1234,6 +1234,76 @@ describeRules('Firestore Security Rules', () => {
         }),
       );
     });
+
+    it('VS6: Accepts a visit that names its home', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'visits', 'v3'), { ...validVisit, homeId: 'home1' }),
+      );
+      await assertSucceeds(
+        setDoc(doc(db, 'visits', 'v4'), { ...validVisit, homeId: null }),
+      );
+    });
+  });
+
+  describe('Homes (ADR 0031)', () => {
+    const validHome = {
+      label: 'the Oseis',
+      members: ['contact1', 'contact2'],
+      place: 'Whitman Hall, room 214',
+      notes: '',
+      active: true,
+    };
+
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('HS1: Full-timer can read and write a home', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'homes', 'home1'), validHome));
+      await assertSucceeds(
+        updateDoc(doc(db, 'homes', 'home1'), { label: 'Osei', active: true }),
+      );
+      await assertSucceeds(getDoc(doc(db, 'homes', 'home1')));
+    });
+
+    it('HS2: Trainee, operator and viewer can neither read nor write a home', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
+      });
+      for (const uid of ['manager1', 'operator1', 'viewer1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'homes', 'home1')));
+        await assertFails(setDoc(doc(db, 'homes', 'homeX'), validHome));
+        await assertFails(updateDoc(doc(db, 'homes', 'home1'), { label: 'renamed' }));
+      }
+    });
+
+    it('HS3: Rejects a home with no label, an empty label, or an invalid active flag', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, label: '' }));
+      await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, active: 'yes' }));
+      await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, members: 'not-a-list' }));
+    });
+
+    it('HS4: No delete path for a home', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(deleteDoc(doc(db, 'homes', 'home1')));
+    });
   });
 
   describe('My Day — user preferences, inbox state & personal prayers', () => {

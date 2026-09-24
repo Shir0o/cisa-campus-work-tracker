@@ -31,11 +31,6 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 
-/** How long a relationship can go unvisited before the page nudges about it. */
-export const OVERDUE_VISIT_DAYS = 21;
-/** The nudge strip is a nudge, not a backlog — it stays short on purpose. */
-export const OVERDUE_VISIT_LIMIT = 4;
-
 // ── reading ──────────────────────────────────────────────────────────────────
 
 /** Parse a 'YYYY-MM-DD' day string at local noon. */
@@ -111,34 +106,6 @@ export function lastVisitFor(visits: Visit[], contactId: string): Visit | null {
   return visitsFor(visits, contactId)[0] || null;
 }
 
-export interface OverdueVisit {
-  contact: Contact;
-  visit: Visit;
-  daysAgo: number;
-}
-
-/** People we've been to before, but not lately, longest-neglected first.
- *
- *  Never-visited people are left out on purpose: this strip is about letting a
- *  relationship lapse, not about working through everyone we've never seen. */
-export function overdueVisits(
-  visits: Visit[],
-  contacts: Contact[],
-  now: Date = new Date(),
-  opts: { minDays?: number; limit?: number } = {},
-): OverdueVisit[] {
-  const minDays = opts.minDays ?? OVERDUE_VISIT_DAYS;
-  const limit = opts.limit ?? OVERDUE_VISIT_LIMIT;
-  return contacts
-    .map((contact) => {
-      const visit = lastVisitFor(visits, contact.id);
-      return visit ? { contact, visit, daysAgo: visitDaysAgo(visit.date, now) } : null;
-    })
-    .filter((x): x is OverdueVisit => x !== null && x.daysAgo >= minDays)
-    .sort((a, b) => b.daysAgo - a.daysAgo)
-    .slice(0, limit);
-}
-
 /** The quiet figures in the page footer. Counted only so we notice whose door
  *  we haven't knocked on. */
 export function visitStats(visits: Visit[]): { visits: number; peopleSeen: number; wentOut: number } {
@@ -183,6 +150,8 @@ export interface VisitInput {
   followUpTaskId?: string | null;
   prayerId?: string | null;
   prayerBurden?: string | null;
+  /** The Home the visit was to; null when it maps to none (a student in halls). */
+  homeId?: string | null;
   photos?: VisitPhoto[];
 }
 
@@ -218,6 +187,7 @@ const cleanInput = (input: VisitInput) => ({
   followUpTaskId: input.followUpTaskId ?? null,
   prayerId: input.prayerId ?? null,
   prayerBurden: input.prayerBurden?.trim() || null,
+  homeId: input.homeId ?? null,
   photos: input.photos ?? [],
 });
 
