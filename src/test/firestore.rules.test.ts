@@ -3151,4 +3151,85 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // The kind of person (#1152, ADR 0030). Its own branch, Full-timers only —
+  // and the branch must not be mixable with the ordinary profile edit, or a
+  // Trainee could smuggle the kind through the operator branch.
+  describe('Contact kind (inChurchLife / isStudent)', () => {
+    const seedKind = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'tr1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'op1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts', 'k1'), {
+          name: 'Kind Test', email: 'kind@example.com',
+          createdBy: 'op1', coCreators: [], carers: [], visibleTo: ['ft1', 'tr1', 'op1'],
+        });
+      });
+    };
+    const stamp = (uid: string) => ({
+      kindSetBy: uid, kindSetAt: '2026-09-23T00:00:00.000Z',
+      updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: uid,
+    });
+
+    it('lets a Full-timer set the kind', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'k1'), {
+        inChurchLife: true, isStudent: false, ...stamp('ft1'),
+      }));
+    });
+
+    it('refuses a Trainee', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
+        inChurchLife: true, isStudent: false, ...stamp('tr1'),
+      }));
+    });
+
+    it('refuses an operator', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'op1', email: 'op1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
+        inChurchLife: true, isStudent: true, ...stamp('op1'),
+      }));
+    });
+
+    it('refuses the kind mixed into an ordinary profile edit', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
+        notes: 'changed', inChurchLife: true, ...stamp('ft1'),
+      }));
+    });
+
+    it('refuses a non-boolean kind', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
+        inChurchLife: 'yes', isStudent: false, ...stamp('ft1'),
+      }));
+    });
+
+    it('still lets an operator make an ordinary profile edit (expression budget)', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'op1', email: 'op1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'k1'), {
+        notes: 'an ordinary edit', updatedAt: serverTimestamp(),
+        updatedBy: 'op1', updatedByName: 'Op One',
+      }));
+    });
+
+    it('accepts the kind fields on create', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(setDoc(doc(db, 'contacts', 'k2'), {
+        name: 'New Person', email: 'new@example.com', inChurchLife: false, isStudent: true,
+      }));
+    });
+  });
+
 });

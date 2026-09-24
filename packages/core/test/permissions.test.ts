@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  journeyContacts,
   roleLabel,
   canAccessRoute,
   canSeePrefs,
@@ -285,5 +286,31 @@ describe('visibleToOf', () => {
 
   it('is order-stable: ties come before collaborators', () => {
     expect(visibleToOf({ coCreators: ['c'], createdBy: 'o' })).toEqual(['o', 'c']);
+  });
+});
+
+// The Journey is outreach (#1152, ADR 0030): a Local saint sits outside it.
+// Our own stay, because the church-meeting step is theirs.
+describe('journeyContacts excludes Local saints', () => {
+  const person = (over: Record<string, unknown>) => ({ addedBy: 'u1', ...over });
+
+  it('drops a local saint from the board', () => {
+    const list = [person({ id: 'a', inChurchLife: true, isStudent: false })];
+    expect(journeyContacts('admin', 'u1', list)).toHaveLength(0);
+  });
+
+  it('keeps our own on the board', () => {
+    const list = [person({ id: 'b', inChurchLife: true, isStudent: true })];
+    expect(journeyContacts('admin', 'u1', list)).toHaveLength(1);
+  });
+
+  it('keeps contacts, including legacy documents carrying neither field', () => {
+    const list = [person({ id: 'c' }), person({ id: 'd', inChurchLife: false, isStudent: true })];
+    expect(journeyContacts('admin', 'u1', list)).toHaveLength(2);
+  });
+
+  it('drops a local saint for a trainee too', () => {
+    const list = [person({ id: 'e', inChurchLife: true, isStudent: false, carers: ['u1'] })];
+    expect(journeyContacts('manager', 'u1', list)).toHaveLength(0);
   });
 });

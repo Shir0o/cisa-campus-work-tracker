@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import type { Contact } from '../types';
+import { contactKind } from './contactKind';
 
 export interface DayGoal {
   on: boolean;
@@ -35,7 +36,12 @@ export function normalizeDayGoal(raw: unknown): DayGoal {
 
 const startOfLocalDay = (t: number) => new Date(t).setHours(0, 0, 0, 0);
 
-type AddableContact = Pick<Contact, 'createdBy' | 'addedBy' | 'createdAt'>;
+type AddableContact = Pick<Contact, 'createdBy' | 'addedBy' | 'createdAt' | 'inChurchLife' | 'isStudent'>;
+
+/** The Goal measures NEW campus connections (#1152): a Local saint is not
+ *  being reached, and Our own has been with us a while — neither is new,
+ *  however recently their record went in. */
+const isNewConnection = (c: AddableContact): boolean => contactKind(c) === 'contact';
 
 /** Today's new people added by one uid (the trainee's own count). */
 export function goalCountFor(
@@ -48,6 +54,7 @@ export function goalCountFor(
   return contacts.filter((c) => {
     const added = c.createdBy || c.addedBy;
     if (added !== uid) return false;
+    if (!isNewConnection(c)) return false;
     const at = new Date(c.createdAt ?? '').getTime();
     if (!Number.isFinite(at)) return false;
     return startOfLocalDay(at) === today;
@@ -58,6 +65,7 @@ export function goalCountFor(
 export function goalNewToday(contacts: AddableContact[], now: number = Date.now()): number {
   const today = startOfLocalDay(now);
   return contacts.filter((c) => {
+    if (!isNewConnection(c)) return false;
     const at = new Date(c.createdAt ?? '').getTime();
     return Number.isFinite(at) && startOfLocalDay(at) === today;
   }).length;

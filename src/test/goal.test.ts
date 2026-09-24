@@ -91,3 +91,39 @@ describe('goalNewToday / goalMet / goalFill / goalShow', () => {
     expect(goalShow({ on: false, count: 5 }, 3, true)).toBe(false);
   });
 });
+// The Day's Goal counts new campus connections (#1152, ADR 0030). A Local
+// saint is not being reached, and Our own has been with us a while — neither
+// is a new connection, however recently their record went in.
+describe("the Day's Goal counts Contacts only", () => {
+  const NOW = new Date('2026-09-23T10:00:00Z').getTime();
+  const added = (over: Record<string, unknown> = {}) => ({
+    createdBy: 'u1',
+    createdAt: new Date(NOW).toISOString(),
+    ...over,
+  });
+
+  it('counts a contact added today', () => {
+    expect(goalNewToday([added()], NOW)).toBe(1);
+  });
+
+  it('counts a legacy document carrying neither field', () => {
+    expect(goalNewToday([added({ inChurchLife: undefined, isStudent: undefined })], NOW)).toBe(1);
+  });
+
+  it('does not count a local saint added today', () => {
+    expect(goalNewToday([added({ inChurchLife: true, isStudent: false })], NOW)).toBe(0);
+  });
+
+  it('does not count our own added today', () => {
+    expect(goalNewToday([added({ inChurchLife: true, isStudent: true })], NOW)).toBe(0);
+  });
+
+  it('counts a local not in the church life — the fourth cell is still a contact', () => {
+    expect(goalNewToday([added({ inChurchLife: false, isStudent: false })], NOW)).toBe(1);
+  });
+
+  it("leaves a trainee's own count on the same rule", () => {
+    const list = [added(), added({ inChurchLife: true, isStudent: true })];
+    expect(goalCountFor(list, 'u1', NOW)).toBe(1);
+  });
+});

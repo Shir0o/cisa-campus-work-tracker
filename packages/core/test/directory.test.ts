@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { contactIdForEmail, filterAndSortDirectory, splitDirectory, stageToneKey } from '../src/directory';
+import { contactIdForEmail, contactKind, filterAndSortDirectory, isKindSorted, kindMatches, splitDirectory, stageToneKey } from '../src/directory';
 import type { Touch } from '../src/myday';
 import type { Contact, Stage } from '../src/types';
 
@@ -197,5 +197,69 @@ describe('contactIdForEmail', () => {
     expect(contactIdForEmail(roster, '')).toBeNull();
     expect(contactIdForEmail(roster, null)).toBeNull();
     expect(contactIdForEmail([contact({ id: 'c3' })], undefined)).toBeNull();
+  });
+});
+
+// The kind of person (#1152, ADR 0030). Two booleans, three buckets, and a
+// stamp that says a human decided rather than the default or the seed.
+describe('contactKind — the four cells', () => {
+  it('reads someone in the church life who is not a student as a local saint', () => {
+    expect(contactKind(contact({ inChurchLife: true, isStudent: false }))).toBe('local-saint');
+  });
+
+  it('reads a student in the church life as our own', () => {
+    expect(contactKind(contact({ inChurchLife: true, isStudent: true }))).toBe('our-own');
+  });
+
+  it('reads a student not in the church life as a contact', () => {
+    expect(contactKind(contact({ inChurchLife: false, isStudent: true }))).toBe('contact');
+  });
+
+  it('reads a local not in the church life as a contact too — the fourth cell folds in', () => {
+    expect(contactKind(contact({ inChurchLife: false, isStudent: false }))).toBe('contact');
+  });
+
+  it('reads a legacy document carrying neither field as a contact', () => {
+    expect(contactKind(contact())).toBe('contact');
+  });
+
+  it('does not depend on the stage — two people alike but for their step match', () => {
+    const atChurchMtg = contact({ inChurchLife: true, isStudent: true, stage: 'Church Mtg' });
+    const atFirstContact = contact({ inChurchLife: true, isStudent: true, stage: 'First Contact' });
+    expect(contactKind(atChurchMtg)).toBe(contactKind(atFirstContact));
+  });
+});
+
+describe('isKindSorted — the stamp, not the value', () => {
+  it('counts someone with no stamp as not sorted, whatever the fields say', () => {
+    expect(isKindSorted(contact({ inChurchLife: false, isStudent: false }))).toBe(false);
+  });
+
+  it('counts someone a person decided about as sorted, including a plain contact', () => {
+    expect(isKindSorted(contact({ inChurchLife: false, isStudent: false, kindSetBy: 'u1', kindSetAt: '2026-09-23' }))).toBe(true);
+  });
+
+  it('does not count a half-written stamp', () => {
+    expect(isKindSorted(contact({ kindSetBy: 'u1' }))).toBe(false);
+  });
+});
+
+describe('kindMatches — the Directory filter', () => {
+  const saint = contact({ inChurchLife: true, isStudent: false, kindSetBy: 'u1', kindSetAt: '2026-09-23' });
+  const ourOwn = contact({ inChurchLife: true, isStudent: true, kindSetBy: 'u1', kindSetAt: '2026-09-23' });
+  const unsorted = contact();
+
+  it('lets everyone through on "all"', () => {
+    expect([saint, ourOwn, unsorted].filter((c) => kindMatches(c, 'all'))).toHaveLength(3);
+  });
+
+  it('narrows to one kind', () => {
+    expect(kindMatches(saint, 'local-saint')).toBe(true);
+    expect(kindMatches(ourOwn, 'local-saint')).toBe(false);
+  });
+
+  it('narrows to the people nobody has sorted yet', () => {
+    expect(kindMatches(unsorted, 'unsorted')).toBe(true);
+    expect(kindMatches(saint, 'unsorted')).toBe(false);
   });
 });
