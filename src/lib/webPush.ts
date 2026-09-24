@@ -78,11 +78,15 @@ export async function registerWebPush(uid: string): Promise<boolean> {
         userVisibleOnly: true,
         applicationServerKey: base64UrlToBytes(WEB_PUSH_PUBLIC_KEY),
       }));
+    const { endpoint } = sub;
     const { keys } = sub.toJSON();
-    await setDoc(doc(db, "users", uid, "pushDevices", await webPushDeviceId(sub.endpoint)), {
+    if (!endpoint || !endpoint.startsWith("https://") || typeof keys?.p256dh !== "string" || !keys.p256dh || typeof keys?.auth !== "string" || !keys.auth) {
+      throw new Error("Push subscription is missing required endpoint or encryption keys");
+    }
+    await setDoc(doc(db, "users", uid, "pushDevices", await webPushDeviceId(endpoint)), {
       kind: "web",
-      endpoint: sub.endpoint,
-      keys: { p256dh: keys?.p256dh, auth: keys?.auth },
+      endpoint,
+      keys: { p256dh: keys.p256dh, auth: keys.auth },
       updatedAt: serverTimestamp(),
     });
     return true;

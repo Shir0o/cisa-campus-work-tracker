@@ -251,6 +251,20 @@ describe("webPush", () => {
       expect(await registerWebPush("u1")).toBe(false);
     });
 
+    it("returns false and does not write when subscription keys are missing or invalid", async () => {
+      stubNotification("granted");
+      const brokenSub = {
+        endpoint,
+        toJSON: () => ({ endpoint, keys: {} as any }),
+        unsubscribe: vi.fn(async () => true),
+      };
+      stubWorker(brokenSub as any);
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(await registerWebPush("u1")).toBe(false);
+      expect(setDoc).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+
     it("on sign-out, forgets this browser so the next person on it gets nothing meant for you", async () => {
       stubWorker(subscription);
       await unregisterWebPush("u1");
