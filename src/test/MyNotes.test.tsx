@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
@@ -14,6 +14,7 @@ vi.mock('../components/AuthProvider', () => ({
 let noteDocs: any[] = [];
 let replyDocs: any[] = [];
 let notesError: unknown = null;
+let notesSnapshotCallback: ((cb: any, onErr: any) => void) | null = null;
 
 const asSnapshot = (docs: any[]) => ({
   docs: docs.map((d) => ({ id: d.id, data: () => d })),
@@ -29,8 +30,12 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
   onSnapshot: (q: any, cb: any, onErr: any) => {
     if (q.__path === 'feedback') {
-      if (notesError) onErr(notesError);
-      else cb(asSnapshot(noteDocs));
+      if (notesSnapshotCallback) {
+        notesSnapshotCallback(cb, onErr);
+      } else {
+        if (notesError) onErr(notesError);
+        else cb(asSnapshot(noteDocs));
+      }
     } else {
       cb(asSnapshot(replyDocs));
     }
@@ -87,11 +92,51 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     noteDocs = [];
     replyDocs = [];
     notesError = null;
+    notesSnapshotCallback = null;
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true, mirroredToGitHub: true }),
     });
     signIn();
+  });
+
+  it('renders skeleton loaders while loading notes and does not flash empty state', () => {
+    let fireSnapshot: ((snapshot: any) => void) | null = null;
+    notesSnapshotCallback = (cb) => {
+      fireSnapshot = cb;
+    };
+
+    render(<MyNotes />);
+
+    expect(screen.getByTestId('my-notes-loading-skeletons')).toBeInTheDocument();
+    expect(screen.queryByText(/haven't left a note yet/i)).not.toBeInTheDocument();
+
+    // Now resolve with empty notes
+    act(() => {
+      fireSnapshot!(asSnapshot([]));
+    });
+
+    expect(screen.queryByTestId('my-notes-loading-skeletons')).not.toBeInTheDocument();
+    expect(screen.getByText(/haven't left a note yet/i)).toBeInTheDocument();
+  });
+
+  it('transitions from skeleton loaders to rendered note cards when data arrives', () => {
+    let fireSnapshot: ((snapshot: any) => void) | null = null;
+    notesSnapshotCallback = (cb) => {
+      fireSnapshot = cb;
+    };
+
+    render(<MyNotes />);
+
+    expect(screen.getByTestId('my-notes-loading-skeletons')).toBeInTheDocument();
+    expect(screen.queryByText(NOTE.message)).not.toBeInTheDocument();
+
+    act(() => {
+      fireSnapshot!(asSnapshot([NOTE]));
+    });
+
+    expect(screen.queryByTestId('my-notes-loading-skeletons')).not.toBeInTheDocument();
+    expect(screen.getByText(NOTE.message)).toBeInTheDocument();
   });
 
   it('renders the notes heading', () => {
