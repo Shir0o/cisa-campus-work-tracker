@@ -1478,6 +1478,16 @@ describe('Settings', () => {
       await waitFor(() => {
         expect(mfaMocks.startTotpEnrollment).toHaveBeenCalled();
       });
+
+      // Verify the QR container is high-contrast white with quiet zone
+      const qrContainer = screen.getByTestId('totp-qr-container');
+      expect(qrContainer).toBeInTheDocument();
+      expect(qrContainer.className).toContain('bg-white');
+
+      const qrSvg = qrContainer.querySelector('svg');
+      expect(qrSvg).toBeInTheDocument();
+      expect(qrSvg).toHaveAttribute('aria-label', 'Authenticator setup QR code');
+
       const code = screen.getByPlaceholderText('6-digit code');
       fireEvent.change(code, { target: { value: '123456' } });
       fireEvent.click(screen.getByRole('button', { name: 'Add second factor' }));

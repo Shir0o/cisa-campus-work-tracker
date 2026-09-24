@@ -620,7 +620,20 @@ function SecuritySection() {
               {t('settings.security.scan_prompt', 'Scan this code with your authenticator app (Google Authenticator or similar), then enter the 6-digit code.')}
             </p>
             <div className="flex justify-center">
-              <QRCodeSVG value={enrollment.qrCodeUrl} size={160} />
+              <div
+                data-testid="totp-qr-container"
+                className="flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white p-3 shadow-xs"
+              >
+                <QRCodeSVG
+                  value={enrollment.qrCodeUrl}
+                  size={160}
+                  level="M"
+                  marginSize={2}
+                  bgColor="#FFFFFF"
+                  fgColor="#0A0A0B"
+                  aria-label="Authenticator setup QR code"
+                />
+              </div>
             </div>
             <button
               type="button"
