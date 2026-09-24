@@ -120,6 +120,25 @@ describe('MyNotes — your own notes and their follow-ups', () => {
     expect(screen.getByText(/haven't left a note yet/i)).toBeInTheDocument();
   });
 
+  it('transitions from skeleton loaders to rendered note cards when data arrives', () => {
+    let fireSnapshot: ((snapshot: any) => void) | null = null;
+    notesSnapshotCallback = (cb) => {
+      fireSnapshot = cb;
+    };
+
+    render(<MyNotes />);
+
+    expect(screen.getByTestId('my-notes-loading-skeletons')).toBeInTheDocument();
+    expect(screen.queryByText(NOTE.message)).not.toBeInTheDocument();
+
+    act(() => {
+      fireSnapshot!(asSnapshot([NOTE]));
+    });
+
+    expect(screen.queryByTestId('my-notes-loading-skeletons')).not.toBeInTheDocument();
+    expect(screen.getByText(NOTE.message)).toBeInTheDocument();
+  });
+
   it('renders the notes heading', () => {
     render(<MyNotes />);
     expect(screen.getByRole('heading', { name: 'Your notes' })).toBeInTheDocument();
