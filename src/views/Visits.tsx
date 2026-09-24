@@ -1,15 +1,18 @@
-// Visits — a record of having gone to where someone lives.
+// Visits — a record of having gone to where someone lives, with a second
+// reading: "Who we haven't seen".
 //
 // Logged after the fact, full-timers only, usually a pair, sometimes several
-// people at once. The page reads as a small history of going out, led by the
-// homes we haven't been round to in a while — absence into care, the same shape
-// as Gatherings. The source of truth for a visit lives here; the person's card
-// shows it as an interaction and links back.
+// people at once. The page reads as a small history of going out, with a
+// toggle up top switching to the roster of the homes we go round to — absence
+// into care, the same shape as Gatherings. The source of truth for a visit
+// lives here; the person's card shows it as an interaction and links back.
+// The page opens on the reading, and never remembers which one was last used.
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { House, Plus } from 'lucide-react';
 import { db, handleFirestoreError, logActivity, OperationType } from '../lib/firebase';
-import { deleteVisit, groupVisits, initialsOf, overdueVisits, subscribeVisits, visitStats } from '../lib/visits';
+import { deleteVisit, groupVisits, subscribeVisits, visitStats } from '../lib/visits';
+import { subscribeHomes } from '../lib/homes';
 import { isRealPerson } from '../lib/permissions';
 import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -19,9 +22,11 @@ import { useLanguage } from '../components/LanguageProvider';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import LogVisitModal from '../components/modals/LogVisitModal';
+import HomesModal from '../components/modals/HomesModal';
+import WhoWeHaventSeen from '../components/visits/WhoWeHaventSeen';
 import { VisitGroup } from '../components/visits/VisitCard';
 import VisitsMobile from './VisitsMobile';
-import type { AppUser, Contact, Visit } from '../types';
+import type { AppUser, Contact, Home, Visit } from '../types';
 
 export default function Visits() {
   const { t } = useLanguage();
@@ -31,13 +36,17 @@ export default function Visits() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [staff, setStaff] = useState<AppUser[]>([]);
+  const [homes, setHomes] = useState<Home[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [tab, setTab] = useState<'reading' | 'log'>('reading');
   const [openId, setOpenId] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [homesOpen, setHomesOpen] = useState(false);
   const [editing, setEditing] = useState<Visit | null>(null);
   const [seedContactId, setSeedContactId] = useState<string | null>(null);
+  const [seedHomeId, setSeedHomeId] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
@@ -75,25 +84,38 @@ export default function Visits() {
       (e) => onLoadError(e, 'visits'),
     );
 
+    const unsubscribeHomes = subscribeHomes(
+      (list) => setHomes(list),
+      (e) => onLoadError(e, 'homes'),
+    );
+
     return () => {
       unsubscribeContacts();
       unsubscribeStaff();
       unsubscribeVisits();
+      unsubscribeHomes();
     };
   }, []);
 
   const groups = useMemo(() => groupVisits(visits), [visits]);
-  const overdue = useMemo(() => overdueVisits(visits, contacts), [visits, contacts]);
   const stats = useMemo(() => visitStats(visits), [visits]);
 
   const openLog = (contactId?: string) => {
     setSeedContactId(contactId ?? null);
+    setSeedHomeId(null);
+    setLogOpen(true);
+  };
+
+  const openLogForHome = (home: Home) => {
+    setSeedHomeId(home.id);
+    setSeedContactId(null);
     setLogOpen(true);
   };
 
   const closeLog = () => {
     setLogOpen(false);
     setSeedContactId(null);
+    setSeedHomeId(null);
   };
 
   const openContact = (contactId: string) => {
@@ -137,40 +159,31 @@ export default function Visits() {
         onClose={closeLog}
         contacts={contacts}
         staff={staff}
+        homes={homes}
         initialContactId={seedContactId}
+        initialHomeId={seedHomeId}
       />
       <LogVisitModal
         isOpen={editing !== null}
         onClose={() => setEditing(null)}
         contacts={contacts}
         staff={staff}
+        homes={homes}
         visit={editing}
+      />
+      <HomesModal
+        isOpen={homesOpen}
+        onClose={() => setHomesOpen(false)}
+        homes={homes}
+        contacts={contacts}
+        visits={visits}
+        onHomeSaved={() => setHomesOpen(false)}
       />
     </>
   );
 
   if (error) {
     return <DataLoadError label={error} />;
-  }
-
-  if (isMobile) {
-    return (
-      <>
-        <VisitsMobile
-          visits={visits}
-          groups={groups}
-          overdue={overdue}
-          stats={stats}
-          openId={openId}
-          setOpenId={setOpenId}
-          onOpenContact={openContact}
-          onLog={openLog}
-          onEdit={setEditing}
-          onRemove={removeVisit}
-        />
-        {modals}
-      </>
-    );
   }
 
   const groupProps = {
@@ -182,6 +195,54 @@ export default function Visits() {
     uid: user?.uid,
   };
 
+  const toggle = (
+    <div className="flex items-center gap-1 p-1 rounded-full bg-surface-container-low border border-outline-variant">
+      <button
+        onClick={() => setTab('reading')}
+        aria-pressed={tab === 'reading'}
+        className={tab === 'reading'
+          ? 'px-4 h-8 rounded-full bg-primary text-on-primary text-sm font-medium'
+          : 'px-4 h-8 rounded-full text-on-surface-variant text-sm hover:text-on-surface transition-colors'}
+      >
+        {t('visits.who_we_havent_seen')}
+      </button>
+      <button
+        onClick={() => setTab('log')}
+        aria-pressed={tab === 'log'}
+        className={tab === 'log'
+          ? 'px-4 h-8 rounded-full bg-primary text-on-primary text-sm font-medium'
+          : 'px-4 h-8 rounded-full text-on-surface-variant text-sm hover:text-on-surface transition-colors'}
+      >
+        {t('visits.the_log')}
+      </button>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <VisitsMobile
+          visits={visits}
+          groups={groups}
+          stats={stats}
+          homes={homes}
+          contacts={contacts}
+          tab={tab}
+          toggle={toggle}
+          openId={openId}
+          setOpenId={setOpenId}
+          onOpenContact={openContact}
+          onLog={openLog}
+          onLogForHome={openLogForHome}
+          onEdit={setEditing}
+          onRemove={removeVisit}
+          onManageHomes={() => setHomesOpen(true)}
+        />
+        {modals}
+      </>
+    );
+  }
+
   return (
     <PageContainer variant="wide">
       <header className="flex items-start gap-6 flex-wrap mb-2">
@@ -191,94 +252,47 @@ export default function Visits() {
           </div>
           <h1 className="font-serif page-title text-on-surface">{t('visits.title')}</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-            {groups.thisWeek.length > 0 ? (
+            {tab === 'log' && groups.thisWeek.length > 0 ? (
               <>
                 {t('visits.weve_been_round_to')}{' '}
                 <span className="text-on-surface font-semibold">
                   {groups.thisWeek.length} {groups.thisWeek.length === 1 ? t('visits.home') : t('visits.homes')}
                 </span>{' '}
                 {t('visits.this_week')}
-                {groups.lastWeek.length > 0 && <>, {groups.lastWeek.length} {t('visits.last_week')}</>}. {t('visits.going_to_where')}
+                {groups.lastWeek.length > 0 && <>, {groups.lastWeek.length} {t('visits.last_week')}</>}.
               </>
             ) : (
               <>
-                {t('visits.no_visits_this_week')}
+                {t('visits.going_to_where')}
               </>
             )}
           </p>
         </div>
-        <button
-          onClick={() => openLog()}
-          className="ml-auto inline-flex items-center gap-2 px-5 h-10 rounded-full bg-primary text-on-primary text-sm font-medium shrink-0"
-        >
-          <Plus className="w-4 h-4" /> {t('visits.log_a_visit')}
-        </button>
+        <div className="ml-auto flex items-center gap-3 shrink-0">
+          {toggle}
+          <button
+            onClick={() => openLog()}
+            className="inline-flex items-center gap-2 px-5 h-10 rounded-full bg-primary text-on-primary text-sm font-medium shrink-0"
+          >
+            <Plus className="w-4 h-4" /> {t('visits.log_a_visit')}
+          </button>
+        </div>
       </header>
 
       {loading ? (
         <div className="text-center py-16 text-on-surface-variant">{t('visits.gathering')}</div>
+      ) : tab === 'reading' ? (
+        <div className="mt-4">
+          <WhoWeHaventSeen
+            homes={homes}
+            contacts={contacts}
+            visits={visits}
+            onLogVisit={openLogForHome}
+            onManageHomes={() => setHomesOpen(true)}
+          />
+        </div>
       ) : (
         <>
-          {overdue.length > 0 && (
-            <section className="mt-10">
-              <div className="flex items-baseline gap-4 flex-wrap mb-4">
-                <h2 className="font-serif text-[23px] text-on-surface">{t('visits.havent_been_round')}</h2>
-                <span className="text-sm text-on-surface-variant">
-                  {t('visits.youve_been_to_theirs')}
-                </span>
-              </div>
-              {/* The design's `.reach`: a two-column row that lifts on hover. */}
-              <div className="flex flex-col gap-3">
-                {overdue.map(({ contact, visit, daysAgo }) => (
-                  <div
-                    key={contact.id}
-                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-[18px] px-5 py-[18px] rounded-[14px] bg-surface border border-outline-variant  transition-[border-color,transform,box-shadow] duration-150 hover:border-primary/30 hover:-translate-y-px "
-                  >
-                    <div className="flex items-start gap-4 min-w-0">
-                      <span className="w-10 h-10 rounded-full bg-primary/10 text-accent grid place-items-center text-xs font-semibold shrink-0">
-                        {initialsOf(contact.name)}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-[17px] font-semibold text-on-surface">{contact.name}</div>
-                        <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
-                          {/* TODO(#730 follow-up): the previous fallback was `contact.location`,
-                              which has been retired from the contact model. For now we surface
-                              a "no location noted" label when the visit itself has no `where`;
-                              a real follow-up should land a `visitAddress` field on the Visit
-                              doc (or move `where` to be required at visit-log time). */}
-                          {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || t('visits.no_location_noted')}
-                          {visit.followUp && (
-                            <>
-                              {' · '}
-                              {t('visits.you_said_youd').replace(
-                                '{followUp}',
-                                visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1),
-                              )}
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => openContact(contact.id)}
-                        className="px-4 h-9 rounded-full border border-outline-variant text-sm text-on-surface hover:border-primary/30 transition-colors"
-                      >
-                        {t('visits.open')}
-                      </button>
-                      <button
-                        onClick={() => openLog(contact.id)}
-                        className="px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium"
-                      >
-                        {t('visits.log_a_visit')}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
           <VisitGroup title={t('visits.this_week_group')} sub={t('visits.tap_a_visit')} list={groups.thisWeek} {...groupProps} />
           <VisitGroup title={t('visits.last_week_group')} list={groups.lastWeek} {...groupProps} />
           <VisitGroup title={t('visits.earlier')} list={groups.earlier} {...groupProps} />

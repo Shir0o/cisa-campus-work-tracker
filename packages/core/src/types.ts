@@ -73,6 +73,16 @@ export interface Contact {
   kindSetAt?: string;
 }
 
+/** A record of having gone to where someone lives (ADR 0031). The web app's
+ *  Visit carries more (photos, who went, the write-up); the reading and the
+ *  suggestions only need who was seen and when, so this is the shared subset. */
+export interface Visit {
+  id: string;
+  /** 'YYYY-MM-DD' — the day we went, not when it was written down. */
+  date: string;
+  contactIds: string[];
+}
+
 export interface Stage {
   id: string;
   label: string;

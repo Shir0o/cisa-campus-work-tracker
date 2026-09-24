@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Visits from '../views/Visits';
 import { useAuth } from '../components/AuthProvider';
 import { deleteVisit, subscribeVisits } from '../lib/visits';
+import { subscribeHomes } from '../lib/homes';
 import { logActivity, handleFirestoreError } from '../lib/firebase';
 import { useMediaQuery } from '../lib/useMediaQuery';
-import type { Visit } from '../types';
+import type { Home, Visit } from '../types';
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
@@ -27,11 +28,16 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
-// Only the reads are mocked — the grouping/overdue helpers are the real ones,
+// Only the reads are mocked — the grouping/reading helpers are the real ones,
 // so this exercises the same logic the page ships with.
 vi.mock('../lib/visits', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/visits')>();
   return { ...actual, subscribeVisits: vi.fn(), deleteVisit: vi.fn(() => Promise.resolve()) };
+});
+
+vi.mock('../lib/homes', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/homes')>();
+  return { ...actual, subscribeHomes: vi.fn() };
 });
 
 vi.mock('../components/modals/ContactDetailsModal', () => ({
@@ -44,12 +50,22 @@ vi.mock('../components/modals/ContactDetailsModal', () => ({
     ) : null,
 }));
 vi.mock('../components/modals/LogVisitModal', () => ({
-  default: ({ isOpen, visit, initialContactId, staff, onClose }: any) =>
+  default: ({ isOpen, visit, initialContactId, initialHomeId, staff, onClose }: any) =>
     isOpen ? (
       <div>
         Log modal: {visit ? `editing ${visit.id}` : `seed ${initialContactId ?? 'none'}`}
+        {initialHomeId && <div data-testid="log-modal-home">{initialHomeId}</div>}
         <div data-testid="log-modal-staff">{(staff || []).map((s: any) => s.displayName).join(',')}</div>
         <button onClick={onClose}>Close log</button>
+      </div>
+    ) : null,
+}));
+vi.mock('../components/modals/HomesModal', () => ({
+  default: ({ isOpen, homes }: any) =>
+    isOpen ? (
+      <div>
+        Homes modal
+        <div data-testid="homes-modal-count">{(homes || []).length}</div>
       </div>
     ) : null,
 }));
@@ -68,6 +84,11 @@ const contactDocs = (ref: { path?: string }) => {
     return [
       { id: 'u1', data: () => ({ displayName: 'Mei Tanaka', role: 'admin', approved: true }) },
       { id: 'u9', data: () => ({ displayName: 'Ana Beltrán', role: 'manager', approved: true }) },
+    ];
+  }
+  if (ref?.path === 'homes') {
+    return [
+      { id: 'h1', data: () => ({ label: 'the Oseis', members: ['c1'], place: 'Whitman Hall', active: true }) },
     ];
   }
   return [];
@@ -107,6 +128,20 @@ const emitVisits = (list: Visit[]) => {
   });
 };
 
+const emitHomes = (list: Home[]) => {
+  (subscribeHomes as unknown as ReturnType<typeof vi.fn>).mockImplementation((cb: (h: Home[]) => void) => {
+    cb(list);
+    return vi.fn();
+  });
+};
+
+const goToLog = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'The log' }));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'The log' })).toHaveAttribute('aria-pressed', 'true'),
+  );
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   (useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -116,21 +151,59 @@ beforeEach(() => {
     isAdmin: true,
   });
   emitVisits([]);
+  emitHomes([]);
 });
 
 describe('Visits', () => {
-  it('invites a first visit when the record is empty', async () => {
+  it('opens on the "Who we haven\'t seen" reading', async () => {
+    render(<Visits />);
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: "Who we haven't seen" })).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/No homes yet/)).toBeInTheDocument();
+  });
+
+  it('invites a first visit from the log reading', async () => {
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
-    expect(screen.getByText("Where we've been")).toBeInTheDocument();
-    expect(screen.getByText(/No visits logged this week yet/)).toBeInTheDocument();
+    await goToLog();
     expect(screen.getByText(/Nothing here yet/)).toBeInTheDocument();
+  });
+
+  it('shows a home and its member on the reading', async () => {
+    emitHomes([{ id: 'h1', label: 'the Oseis', members: ['c1'], place: 'Whitman Hall', active: true }]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('the Oseis')).toBeInTheDocument());
+    expect(screen.getByText('Ama Osei')).toBeInTheDocument();
+    // Never visited — reads as a gap, not as blank data.
+    expect(screen.getByText('never')).toBeInTheDocument();
+  });
+
+  it('opens the log prefilled with a home from a gap', async () => {
+    const home = { id: 'h1', label: 'the Oseis', members: ['c1'], place: 'Whitman Hall', active: true };
+    emitHomes([home]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('the Oseis')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Log a visit: Ama Osei' }));
+    expect(screen.getByTestId('log-modal-home')).toHaveTextContent('h1');
+  });
+
+  it('switches between the reading and the log', async () => {
+    emitVisits([visit()]);
+    emitHomes([{ id: 'h1', label: 'the Oseis', members: ['c1'], place: 'Whitman Hall', active: true }]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('the Oseis')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'The log' }));
+    expect(await screen.findByText('This week')).toBeInTheDocument();
+    expect(screen.getByText('Ama Osei')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: "Who we haven't seen" }));
+    expect(await screen.findByText('the Oseis')).toBeInTheDocument();
   });
 
   it('groups the record and reads back what we did this week', async () => {
     emitVisits([visit(), visit({ id: 'v2', date: daysAgo(30), contactIds: ['c2'], contactNames: ['Bo Chen'] })]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('This week')).toBeInTheDocument());
+    await goToLog();
     expect(screen.getByText('1 home')).toBeInTheDocument();
     expect(screen.getByText('Earlier')).toBeInTheDocument();
     expect(screen.getByText('Ama Osei')).toBeInTheDocument();
@@ -138,25 +211,10 @@ describe('Visits', () => {
     expect(screen.getByText("people we've sat with")).toBeInTheDocument();
   });
 
-  it('nudges about a home nobody has been round to in three weeks', async () => {
-    emitVisits([visit({ date: daysAgo(40) })]);
-    render(<Visits />);
-    await waitFor(() => expect(screen.getByText("We haven't been round in a while")).toBeInTheDocument());
-    expect(screen.getByText(/Last visit 40 days ago/)).toBeInTheDocument();
-  });
-
-  it('opens the log with the nudged person already picked', async () => {
-    emitVisits([visit({ date: daysAgo(40) })]);
-    render(<Visits />);
-    await waitFor(() => expect(screen.getByText("We haven't been round in a while")).toBeInTheDocument());
-    fireEvent.click(screen.getAllByRole('button', { name: 'Log a visit' })[1]);
-    expect(screen.getByText('Log modal: seed c1')).toBeInTheDocument();
-  });
-
   it('opens a person from a visit', async () => {
     emitVisits([visit()]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     // The avatar's initials are part of the button's accessible name ("AO Ama Osei").
     fireEvent.click(screen.getByRole('button', { name: /AO\s*Ama Osei$/ }));
@@ -166,7 +224,7 @@ describe('Visits', () => {
   it('does not overlay the ⋯ menu on top of the who-went avatar (#687)', async () => {
     emitVisits([visit()]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
 
     // The avatar (initials "MT") and the ⋯ trigger ("More for Ama Osei") must
     // share the right-hand meta column of the toggle button — the dots sit
@@ -194,7 +252,7 @@ describe('Visits', () => {
   it('removes a visit only after it is confirmed, and says so in the record', async () => {
     emitVisits([visit()]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
 
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Remove$/ }));
@@ -209,7 +267,7 @@ describe('Visits', () => {
   it("reads back the prayer's own words, not just that there was one", async () => {
     emitVisits([visit({ prayerId: 'p1', prayerBurden: "Her mum's recovery" })]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     expect(screen.getByText("Her mum's recovery")).toBeInTheDocument();
     expect(screen.getByText('now on our hearts')).toBeInTheDocument();
@@ -218,7 +276,7 @@ describe('Visits', () => {
   it('still says something for a visit logged before we kept the words', async () => {
     emitVisits([visit({ prayerId: 'p1' })]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     expect(screen.getByText('A prayer came out of this visit')).toBeInTheDocument();
   });
@@ -226,7 +284,7 @@ describe('Visits', () => {
   it('marks a photo whose file has gone rather than showing a broken one', async () => {
     emitVisits([visit({ photos: [{ path: 'visits/v1/1.jpg', url: '', name: 'room.jpg' }] })]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.getByTitle('room.jpg')).toBeInTheDocument();
@@ -235,7 +293,7 @@ describe('Visits', () => {
   it('opens an existing visit for editing', async () => {
     emitVisits([visit()]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Edit this visit/ }));
     expect(screen.getByText('Log modal: editing v1')).toBeInTheDocument();
@@ -269,20 +327,10 @@ describe('Visits', () => {
     expect(screen.queryByText(/Log modal/)).not.toBeInTheDocument();
   });
 
-  it('opens and closes a person from the overdue nudge', async () => {
-    emitVisits([visit({ date: daysAgo(40) })]);
-    render(<Visits />);
-    await waitFor(() => expect(screen.getByText("We haven't been round in a while")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
-    expect(screen.getByText('Contact: Ama Osei')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Close contact'));
-    expect(screen.queryByText(/Contact: Ama Osei/)).not.toBeInTheDocument();
-  });
-
   it('closes the edit modal when cancelled', async () => {
     emitVisits([visit()]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Edit this visit/ }));
     expect(screen.getByText('Log modal: editing v1')).toBeInTheDocument();
@@ -295,7 +343,7 @@ describe('Visits', () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     emitVisits([visit()]);
     render(<Visits />);
-    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    await goToLog();
 
     fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Remove$/ }));
@@ -335,7 +383,7 @@ describe('Visits', () => {
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
     expect(screen.getByText("Where we've been")).toBeInTheDocument();
-    expect(screen.getByText('This week')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: "Who we haven't seen" })).toBeInTheDocument();
   });
 
   it('renders the mobile component while visits are still loading', async () => {

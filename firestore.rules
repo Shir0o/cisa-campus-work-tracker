@@ -853,12 +853,35 @@ service cloud.firestore {
                (!('followUpTaskId' in data) || data.followUpTaskId == null || (data.followUpTaskId is string && data.followUpTaskId.size() <= 128)) &&
                (!('prayerId' in data) || data.prayerId == null || (data.prayerId is string && data.prayerId.size() <= 128)) &&
                (!('prayerBurden' in data) || data.prayerBurden == null || (data.prayerBurden is string && data.prayerBurden.size() <= 500)) &&
+               (!('homeId' in data) || data.homeId == null || (data.homeId is string && data.homeId.size() <= 128)) &&
                (!('photos' in data) || data.photos is list && data.photos.size() <= 12);
       }
 
       allow list, get: if isApprovedUser() && isAdmin();
       allow create, update: if isValidId(visitId) && isApprovedUser() && isAdmin() && isValidVisit(incoming());
       allow delete: if isValidId(visitId) && isAdmin();
+    }
+
+    // 10c. Homes Collection — a household we go round to (ADR 0031). A Home is
+    // a household, not an address: it keeps its identity (and its visits) when
+    // it moves, and goes inactive rather than being deleted when the last
+    // person leaves. Being in a Home is what puts a person in the "Who we
+    // haven't seen" reading at all. Full-timers only on both sides — the
+    // roster of who we visit is pastoral detail, and it gets its own block so
+    // it spends none of the contacts ruleset's expression budget.
+    match /homes/{homeId} {
+      function isValidHome(data) {
+        return data.keys().hasAll(['label', 'members', 'active']) &&
+               data.label is string && data.label.size() > 0 && data.label.size() <= 120 &&
+               data.members is list && data.members.size() <= 50 &&
+               data.active is bool &&
+               (!('place' in data) || data.place == null || (data.place is string && data.place.size() <= 200)) &&
+               (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 1000));
+      }
+
+      allow list, get: if isApprovedUser() && isAdmin();
+      allow create, update: if isValidId(homeId) && isApprovedUser() && isAdmin() && isValidHome(incoming());
+      allow delete: if false;
     }
 
     // 11. Feedback Collection
