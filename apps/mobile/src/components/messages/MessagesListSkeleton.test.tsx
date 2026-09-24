@@ -8,8 +8,8 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('MessagesListSkeleton', () => {
-  it('renders a list of conversation-row placeholders', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders a list of conversation-row placeholders', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <MessagesListSkeleton />
       </ThemeProvider>,

@@ -15,7 +15,7 @@ export type ListItem = (Blank | Text) & { children?: ListItem[] };
 export type ListBlock = { kind: "bullet-list" | "number-list"; points: ListItem[] };
 export type PassageBlock = { kind: "passage"; passage: Blank | Text; ref?: string };
 /** A proof-text in the flow: the reference leads, the words follow at body size (#918). */
-export type VerseBlock = { kind: "verse"; ref: string; verse?: Blank | Text };
+export type VerseBlock = { kind: "verse"; ref: string; verse?: Blank | Text; verses?: (Blank | Text)[] };
 export type PromptBlock = { kind: "prompt"; prompt: { kind: PromptKind; text: string } };
 export type SectionBlock = ProseBlock | ListBlock | PassageBlock | VerseBlock | PromptBlock;
 
@@ -215,6 +215,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
   let listLines: { indent: number; text: string }[] | null = null;
   let listKind: "bullet-list" | "number-list" = "bullet-list";
   let proseLines: string[] | null = null;
+  let verseRange: { ref: string; lines: (Blank | Text)[] } | null = null;
 
   const flushList = () => {
     if (listLines && listLines.length > 0) {
@@ -240,10 +241,21 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     }
     quoteLines = null;
   };
+  const flushVerseRange = () => {
+    if (verseRange) {
+      content.push(
+        verseRange.lines.length > 0
+          ? { kind: "verse", ref: verseRange.ref, verses: verseRange.lines }
+          : { kind: "verse", ref: verseRange.ref },
+      );
+    }
+    verseRange = null;
+  };
   const flushAll = () => {
     flushList();
     flushProse();
     flushQuote();
+    flushVerseRange();
   };
 
   for (const rawLine of lines) {
@@ -256,6 +268,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     if (line.startsWith(">")) {
       flushList();
       flushProse();
+      flushVerseRange();
       quoteLines = quoteLines ?? [];
       quoteLines.push(line.replace(/^>\s?/, ""));
       continue;
@@ -266,6 +279,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     if (promptMatch) {
       flushList();
       flushProse();
+      flushVerseRange();
       const last = content[content.length - 1];
       const prompt = { kind: promptMatch[1].toLowerCase() as PromptKind, text: promptMatch[2].trim() };
       // The last prompt in a Section is the Prompt; an earlier prompt block
@@ -277,30 +291,40 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       continue;
     }
 
-    // A Verse line (#918): `Verse: <reference> — <text>`. The prefix is the
-    // one unambiguous marker — shape detection of a reference is explicitly
-    // rejected, so a leading-reference line stays prose. The reference leads
-    // and the words follow at body size; a line with no ` — ` carries just
-    // the reference.
+    // A Verse line (#918, #1187): `Verse: <reference> — <text>`. The prefix
+    // is the one unambiguous marker — shape detection of a reference is
+    // explicitly rejected, so a leading-reference line stays prose. The
+    // reference leads and the words follow at body size; a line with no
+    // ` — ` (and therefore no text) starts a verse range, each following
+    // line being one verse.
     const verseMatch = line.match(/^verse:\s*(.*)$/i);
     if (verseMatch) {
       flushList();
       flushProse();
+      flushVerseRange();
       const rest = verseMatch[1].trim();
       const sep = rest.search(/—/);
       const ref = (sep === -1 ? rest : rest.slice(0, sep)).trim();
       const text = sep === -1 ? "" : rest.slice(sep + 1).trim();
-      content.push({
-        kind: "verse",
-        ref,
-        ...(text ? { verse: parseBlankOrText(text) } : {}),
-      });
+      if (sep === -1) {
+        // No em dash and no text: the reference starts a verse range (#1187).
+        // Each following non-marker, non-blank line is one verse, numbered
+        // from the reference's start.
+        verseRange = { ref, lines: [] };
+      } else {
+        content.push({
+          kind: "verse",
+          ref,
+          ...(text ? { verse: parseBlankOrText(text) } : {}),
+        });
+      }
       continue;
     }
 
     const bulletMatch = rawLine.match(/^(\s*)[-*]\s+(.*)$/);
     if (bulletMatch) {
       flushProse();
+      flushVerseRange();
       if (!listLines) {
         listKind = "bullet-list";
         listLines = [];
@@ -314,6 +338,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     const numberMatch = numberContMatch ?? line.match(/^(\d+[.)])\s+(.*)$/);
     if (numberMatch) {
       flushProse();
+      flushVerseRange();
       if (!listLines) {
         listKind = "number-list";
         listLines = [];
@@ -329,8 +354,13 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     }
 
     flushList();
-    proseLines = proseLines ?? [];
-    proseLines.push(line);
+    if (verseRange) {
+      // A verse range is open: this line is one of the range's verses (#1187).
+      verseRange.lines.push(parseBlankOrText(line));
+    } else {
+      proseLines = proseLines ?? [];
+      proseLines.push(line);
+    }
   }
 
   flushAll();

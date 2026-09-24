@@ -14,7 +14,7 @@ test.describe('Notification Bell Deep-Linking & Routing User Stories (#682)', ()
 
     // 3. Contact Details modal opens immediately with Lila Chen's information
     await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('First Contact')).toBeVisible();
+    await expect(page.getByText('First Contact').first()).toBeVisible();
 
     // 4. Test query parameter deep-link with ?tab=thread (/people/e2e-contact-lila?tab=thread)
     await page.goto('/people/e2e-contact-lila?tab=thread');

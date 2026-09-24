@@ -12,7 +12,8 @@
 
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { calDb } from './firebase';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { calDb, calAuth } from './firebase';
 
 export interface CalCategory {
   id: string;
@@ -147,7 +148,23 @@ export function expandCalEvent(ev: CalRawEvent, rangeStart: Date, rangeEnd: Date
   const out: CalRawEvent[] = [];
   const exdates = new Set(r.exdates || []);
   const interval = Math.max(1, r.interval || 1);
-  const until = r.until ? new Date(r.until) : null;
+  const until = (() => {
+    if (!r.until) return null;
+    let d: Date;
+    if (typeof (r.until as any)?.toDate === 'function') {
+      d = (r.until as any).toDate();
+    } else if (typeof r.until === 'string') {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r.until.trim());
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      d = new Date(r.until);
+    } else {
+      d = new Date(r.until as any);
+    }
+    if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+      return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    }
+    return d;
+  })();
   const dur = ev.dur || 60;
   const seriesStart = calStartOfDay(ev.start);
   let cur = calStartOfDay(rangeStart < seriesStart ? seriesStart : rangeStart);
@@ -345,35 +362,76 @@ export function subscribeLiveCalendarEvents(
       onEvents([]);
       return () => {};
     }
-    const unsub = onSnapshot(
-      collection(calDb, 'events'),
-      (snapshot) => {
-        const list: CalRawEvent[] = [];
-        snapshot.forEach((doc) => {
-          const d = doc.data();
-          const start = d.start?.toDate ? d.start.toDate() : d.start ? new Date(d.start) : new Date();
-          const end = d.end?.toDate ? d.end.toDate() : d.end ? new Date(d.end) : undefined;
-          list.push({
-            id: doc.id,
-            title: d.title || '',
-            cat: d.cat || 'meeting',
-            start,
-            end,
-            dur: d.dur,
-            allDay: !!d.allDay,
-            loc: d.loc || '',
-            notes: d.notes || '',
-            rrule: d.rrule,
+
+    let unsubSnapshot: (() => void) | null = null;
+    let unsubAuth: (() => void) | null = null;
+    let isDisposed = false;
+
+    const startSnapshotListener = () => {
+      if (isDisposed) return;
+      if (unsubSnapshot) {
+        unsubSnapshot();
+        unsubSnapshot = null;
+      }
+      unsubSnapshot = onSnapshot(
+        collection(calDb, 'events'),
+        (snapshot) => {
+          const list: CalRawEvent[] = [];
+          snapshot.forEach((doc) => {
+            const d = doc.data();
+            const start = d.start?.toDate ? d.start.toDate() : d.start ? new Date(d.start) : new Date();
+            const end = d.end?.toDate ? d.end.toDate() : d.end ? new Date(d.end) : undefined;
+            let rrule = d.rrule;
+            if (rrule && rrule.until && typeof (rrule.until as any)?.toDate === 'function') {
+              rrule = { ...rrule, until: calISO((rrule.until as any).toDate()) };
+            }
+            list.push({
+              id: doc.id,
+              title: d.title || '',
+              cat: d.cat || 'meeting',
+              start,
+              end,
+              dur: d.dur,
+              allDay: !!d.allDay,
+              loc: d.loc || '',
+              notes: d.notes || '',
+              rrule,
+            });
           });
-        });
-        onEvents(list);
-      },
-      () => {
-        // Handle unauthenticated / permission denied silently and return empty list
-        onEvents([]);
-      },
-    );
-    return unsub;
+          onEvents(list);
+        },
+        () => {
+          // Handle unauthenticated / permission denied silently and return empty list
+          onEvents([]);
+        },
+      );
+    };
+
+    if (calAuth && typeof onAuthStateChanged === 'function') {
+      let isFirstCall = true;
+      unsubAuth = onAuthStateChanged(calAuth, (user) => {
+        if (isDisposed) return;
+        if (user) {
+          if (!isFirstCall) {
+            // Re-run listener now that we are authenticated
+            startSnapshotListener();
+          }
+        }
+        isFirstCall = false;
+      });
+    }
+
+    if (calAuth && !calAuth.currentUser && typeof signInAnonymously === 'function') {
+      signInAnonymously(calAuth).catch(() => {});
+    }
+
+    startSnapshotListener();
+
+    return () => {
+      isDisposed = true;
+      if (unsubSnapshot) unsubSnapshot();
+      if (unsubAuth) unsubAuth();
+    };
   } catch {
     onEvents([]);
     return () => {};

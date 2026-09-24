@@ -314,6 +314,21 @@ export default function Directory() {
     return map;
   }, [touches]);
 
+  // Team display names, keyed by uid, for searching by founder/carer/coCreator name (#1176).
+  const [teamDisplayNames, setTeamDisplayNames] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+      const names = new Map<string, string>();
+      snap.docs.forEach((d) => {
+        const data = d.data() as Record<string, unknown>;
+        const name = (data.name || data.displayName || data.email || '') as string;
+        if (name) names.set(d.id, name);
+      });
+      setTeamDisplayNames(names);
+    });
+    return unsub;
+  }, []);
+
   const [filterStage, setFilterStage] = useState<string>(restoredFilters.filterStage);
   const [filterRole, setFilterRole] = useState<string>(restoredFilters.filterRole);
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
@@ -405,12 +420,17 @@ export default function Directory() {
       const lowerQuery = searchQuery.toLowerCase();
       result = result.filter(c => {
         const effectiveTags = getEffectiveContactTags(c.tags, c.createdAt);
+        const resolveNames = (ids?: string[]) =>
+          (ids || []).some(id => (teamDisplayNames.get(id) || '').toLowerCase().includes(lowerQuery));
         return (
           c.name.toLowerCase().includes(lowerQuery) ||
           c.email.toLowerCase().includes(lowerQuery) ||
           c.role.toLowerCase().includes(lowerQuery) ||
           (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
-          effectiveTags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery))
+          effectiveTags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery)) ||
+          resolveNames(c.founders) ||
+          resolveNames(c.carers) ||
+          resolveNames(c.coCreators)
         );
       });
     }
@@ -474,7 +494,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags, teamDisplayNames]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {

@@ -1,6 +1,563 @@
 {
-  "latestReleaseId": "2026-09-03-v1.4.0",
+  "latestReleaseId": "2026-09-23-v1.8.3",
   "releases": [
+    {
+      "id": "2026-09-23-v1.8.3",
+      "version": "1.8.3",
+      "title": "Release 1.8.3",
+      "date": "2026-09-23",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Disable Sentry auto upload during release builds when Sentry project is unconfigured.",
+        "Resolve image-size metro bundling and xmldom plist parsing in release builds.",
+        "Resolve project fingerprint and xml parsing failures in release build.",
+        "Verse range with superscripted verse numbers."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Disable Sentry auto upload during release builds when Sentry project is unconfigured",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve image-size metro bundling and xmldom plist parsing in release builds",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve project fingerprint and xml parsing failures in release build",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Verse range with superscripted verse numbers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add scheduled background translation cron",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2026-09-23-v1.8.2",
+      "version": "1.8.2",
+      "title": "Release 1.8.2",
+      "date": "2026-09-23",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Resolve image-size metro bundling and xmldom plist parsing in release builds.",
+        "Resolve project fingerprint and xml parsing failures in release build.",
+        "Verse range with superscripted verse numbers.",
+        "Add scheduled background translation cron."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Resolve image-size metro bundling and xmldom plist parsing in release builds",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve project fingerprint and xml parsing failures in release build",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Verse range with superscripted verse numbers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add scheduled background translation cron",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2026-09-23-v1.8.1",
+      "version": "1.8.1",
+      "title": "Release 1.8.1",
+      "date": "2026-09-23",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Resolve project fingerprint and xml parsing failures in release build.",
+        "Verse range with superscripted verse numbers.",
+        "Add scheduled background translation cron."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Resolve project fingerprint and xml parsing failures in release build",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Verse range with superscripted verse numbers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add scheduled background translation cron",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2026-09-23-v1.8.0",
+      "version": "1.8.0",
+      "title": "Release 1.8.0",
+      "date": "2026-09-23",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Authenticate shared calendar reads and normalize rrule.until.",
+        "Search contacts by founder, carer, and co-creator.",
+        "Show field-level merge details in combine contacts preview.",
+        "Scope notification reads to recipients and Full-timers."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Authenticate shared calendar reads and normalize rrule.until",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Search contacts by founder, carer, and co-creator",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Show field-level merge details in combine contacts preview",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scope notification reads to recipients and Full-timers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Push every bell entry to web, PWA and native devices",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep bottom safe-area edge on Screen for Android edge-to-edge",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add BFA toggle to sign-up form, remove from settings",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "End the eternal loading skeleton on read errors and add Sentry monitoring",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Combine contacts individually, fix count label, and migrate subcollections",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve Dependabot vulnerabilities and CodeQL code scanning alerts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Propagate team actions to trainees and ensure Android delivery",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Retry the roster sync so a transient users-read failure no longer empties the team filter",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Setup release video hosting and manual capture workflow",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Override @xmldom/xmldom to 0.9.x and bump joi to clear dependabot alerts",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Enforce strict store release notes character limit",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Repair the web Playwright suite (84/84 green)",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2026-09-20-v1.7.0",
+      "version": "1.7.0",
+      "title": "Release Companion Videos, Guest QR & Security",
+      "date": "2026-09-20",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "roles": [
+        "admin",
+        "manager",
+        "operator",
+        "viewer"
+      ],
+      "lines": [
+        "Watch a short video companion for new releases in What's New.",
+        "Scan or share a permanent QR code for coordination document guest links.",
+        "Tag incoming BFA contacts seamlessly on mobile, mirroring web.",
+        "Strengthen account protection with multi-factor authentication (TOTP) and App Check."
+      ],
+      "overview": "Welcome to version 1.7.0. This release introduces in-app release companion videos, coordination doc QR codes for guests, mobile BFA tagging parity, and enhanced security protections.",
+      "items": [
+        {
+          "text": "What's New Video companion: watch key release updates in the announcement on web or follow the link on mobile",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Coordination document guest QR codes: instant QR code generation for quick guest joining on web and mobile",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "BFA intake tag parity with web",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Multi-factor authentication (TOTP) support across web and mobile",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "In-app feedback follow-up thread editing and deletion",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Firebase App Check integration for web",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Enforced noindex headers and redacted record identifiers from published feedback URLs",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Restricted access screen for non-allowlisted accounts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Auto-draft release notes workflow on release tags",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Enhanced grid responsiveness to prevent clipping on compact displays",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Your notes read-back view",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        }
+      ]
+    },
+    {
+      "id": "2026-09-17-v1.6.0",
+      "version": "1.6.0",
+      "title": "Founders, Partnerships & Attendance",
+      "date": "2026-09-17",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "roles": [
+        "admin",
+        "manager",
+        "operator",
+        "viewer"
+      ],
+      "lines": [
+        "A contact's founders are now co-equal, and the caregiver role is retired — caring ties read who has taken a person on.",
+        "Attendance moves onto the Gathering, so one page holds the roll and the meeting.",
+        "Bible study copies a permanent per-week link, and coordination docs can be shared with guests.",
+        "Tagging now suggests BFA and clears the new-contact tag after five days."
+      ],
+      "overview": "Welcome to the latest release. This update reworks how partners and caring relationships are modelled, moves attendance onto the Gathering, and adds easier sharing.",
+      "items": [
+        {
+          "text": "Partners: founders are co-equal, and the current-term widening is retired",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Founders are recorded when a person is brought in by a pair, and existing contacts are backfilled",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Attendance moves onto the Gathering, with a staged intake and review",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Coordination docs can be shared with guests via a link",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Bible study copies a permanent per-week link, not just the latest",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Bible study renders the verse reference in accent color",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Tags suggest BFA and auto-remove the new-contact tag after five days",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Retain directory filters when returning from a contact detail",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Around-the-team surfaces public sign-up contacts to Full-timers, and keeps one worked-through conversation state",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "A self-dismissed bottom sheet no longer re-dismisses",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Contact caregiver field and care transfer are removed",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        },
+        {
+          "text": "Taking someone into your sheep never grants reach; a carer tie ends with the tie that granted it",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        },
+        {
+          "text": "The empty \"This week\" prayer eyebrow aligns with the spine dot",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        },
+        {
+          "text": "Fixed an endless reload loop when a lazy chunk fails",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "fix"
+        }
+      ]
+    },
+    {
+      "id": "2026-09-14-v1.5.0",
+      "version": "1.5.0",
+      "title": "Contacts, Queue & Sharing",
+      "date": "2026-09-14",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "roles": [
+        "admin",
+        "manager",
+        "operator",
+        "viewer"
+      ],
+      "lines": [
+        "A contact's co-owners can now manage its collaborators, and an impersonation hole is closed.",
+        "Your Around-the-team filters are kept when a comment posts, and you get a clear confirmation.",
+        "Full-timers' message cards in the queue are scoped to their own people, and a crash when reading a trainee's messages is fixed."
+      ],
+      "overview": "Welcome to the latest release. This update makes contact collaboration safer and clearer, keeps your feed filters in place, and fixes a few crashes in the message queue.",
+      "items": [
+        {
+          "text": "Co-owners can manage a contact's collaborators, and an impersonation bypass is closed",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "feature"
+        },
+        {
+          "text": "Around-the-team now keeps your filters and confirms when a comment posts",
+          "platforms": [
+            "web",
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Message cards in the queue are scoped to a full-timer's own people",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "ui"
+        },
+        {
+          "text": "Fixed a crash when a trainee's impersonated messages were read",
+          "platforms": [
+            "mobile"
+          ],
+          "category": "fix"
+        }
+      ]
+    },
     {
       "id": "2026-09-03-v1.4.0",
       "version": "1.4.0",

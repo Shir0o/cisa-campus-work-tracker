@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import type { Contact } from "../../types";
 import Thread, { firstName, type TeamMemberLike } from "../Thread";
-import { countFor, type ThreadMessage } from "../../lib/threads";
+import { contactStakeholdersOf, countFor, type ThreadMessage } from "../../lib/threads";
 import { useLanguage } from "../LanguageProvider";
 
 // ── The conversation strip on a card (#1012) ────────────────────────────────
@@ -177,10 +177,7 @@ export function CardConversation({
         messages={messages}
         highlightIds={justPosted}
         highlightLabel={t("whatsNew.just_posted")}
-        contactStakeholders={{
-          createdBy: contact.createdBy ?? null,
-          coCreators: contact.coCreators ?? null,
-        }}
+        contactStakeholders={contactStakeholdersOf(contact)}
         onPosted={onPosted}
       />
     </div>

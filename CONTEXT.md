@@ -86,7 +86,7 @@ _Avoid_: Arbitrary px radii on inputs, lozenge inputs
 
 
 **In-app Notification**:
-An alert delivered to the notification bell in the top navigation bar (and optionally mirrored as an OS push notification) informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
+An alert delivered to the notification bell in the top navigation bar, and pushed as an OS notification to every device the recipient has turned notifications on for (ADR 0031), informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:
@@ -123,7 +123,7 @@ The portion of scripture a Section is built around, shown in full on the page ra
 _Avoid_: reading, scripture reference, excerpt
 
 **Verse**:
-A proof-text cited mid-thought — scripture where the reference leads and the words follow at body size, sitting in the flow of the Section rather than pulling out of it. Written with the `Verse:` prefix, reference and text separated by an em dash; the prefix is the one marker, never shape detection of a reference. Distinct from **Passage**, which sets the words large with the citation trailing.
+A proof-text cited mid-thought — scripture where the reference leads and the words follow at body size, sitting in the flow of the Section rather than pulling out of it. Written with the `Verse:` prefix, reference and text separated by an em dash; the prefix is the one marker, never shape detection of a reference. A Verse may cite a single reference or a range (e.g. `mark 3:24-27`); a range is written with the reference alone on the first line and one verse per following line, rendered with superscript verse numbers. Distinct from **Passage**, which sets the words large with the citation trailing.
 _Avoid_: Passage, quotation, pull quote
 
 **Prompt**:
@@ -242,6 +242,10 @@ _Avoid_: Release popup, changelog blast, splash alert
 The once-per-version prompt telling one person what is different for them since their last visit — the same release record as the **What's New Announcement**, but role-targeted, in plain sentences, and held back while the on-campus window is open.
 _Avoid_: Release notes, changelog, what's new sheet, release sheet
 
+**What's New Video**:
+The short recorded clip companion to a release — the same release record as the **What's New Announcement**, shown in it. On web it embeds in the announcement; on mobile it is a link. It is a release-medium decision, deliberately separate from onboarding, which stays text/in-situ (ADR 0010).
+_Avoid_: Tutorial video, walkthrough, onboarding video, release reel
+
 
 **Attention Feed**:
 The retired name for the two-part worklist that used to head My Day. It is dissolved (#943): **On you** is now a My Day card, and **Around the team** is a Full-timer destination at `/around`. "Attention" remains the right name for what the library computes (`src/lib/attention.ts`), and the library keeps its module name and its `attention*` exports.
@@ -260,7 +264,7 @@ The product's single brand artwork — a cream striped lion on a purple (#5c5595
 _Avoid_: App icon, logo, favicon as names for the artwork itself
 
 **Guest Link (Coordination Doc)**:
-An unguessable, revocable URL (`/c/:docId?key=sec_...`) that opens exactly one coordination doc to someone outside the staff team - no account, no app install. The link carries its permission - **Can view** (read-only, task boxes locked) or **Can edit** - and the key *is* the capability: revoking deletes the config, regenerating rotates the key in place, and neither the doc id alone nor any other page, contact, thread, or conversation is reachable with it. An edit guest joins the same live Yjs document the Full-timers edit, so the running page stays the one source of truth; Google Docs sync is deliberately not part of this.
+An unguessable, revocable URL (`/c/:docId?key=sec_...`) that opens exactly one coordination doc to someone outside the staff team - no account, no app install. Surfaced as both a copyable URL and an in-person QR code on web and mobile. The link carries its permission - **Can view** (read-only, task boxes locked) or **Can edit** - and the key *is* the capability: revoking deletes the config, regenerating rotates the key in place, and neither the doc id alone nor any other page, contact, thread, or conversation is reachable with it. An edit guest joins the same live Yjs document the Full-timers edit, so the running page stays the one source of truth; Google Docs sync is deliberately not part of this.
 _Avoid_: Public link, bare "share link", anonymous edit, Google Docs sync
 
 **Combine contacts**:
@@ -274,6 +278,10 @@ _Avoid_: Source language, input language, locale
 **Reading translation**:
 The read-time transform that lets a Spanish-mode reader read English-authored content: English text is translated toward Spanish when a Spanish-mode reader views it. It runs only in that direction — an English-mode reader never receives a translation, and content already written in Spanish is returned unchanged rather than re-translated. The model is English-canonical for now (ADR 0027).
 _Avoid_: Auto-translate, localization, on-the-fly translation
+
+**Background translation**:
+The scheduled off-peak sweep (ADR 0032) that pre-populates Firestore's translation cache for user-authored content across collections (prayers, interactions, contacts, todos, coordination notes) using a persistent cursor. Pre-warms translations into the `translations` collection so Spanish-mode readers see immediate text without client-side loading delay, while preserving on-demand reading translation as a fallback.
+_Avoid_: Real-time sync translation, inline translation mutation
 
 **App Check**:
 Firebase's request attestation mechanism that verifies traffic originates from legitimate instances of CISA Campus Work Tracker (native iOS/Android app or official web domains) rather than unauthorized scripts or abusive API clients.

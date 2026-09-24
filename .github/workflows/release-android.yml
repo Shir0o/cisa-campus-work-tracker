@@ -131,6 +131,7 @@ jobs:
       - name: Build signed AAB locally
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         # Bounded with a step timeout rather than the `timeout` command: macOS
         # runners have no coreutils `timeout`, so that command broke the iOS
         # job with exit code 127. A hang here also hides the failure's own log,

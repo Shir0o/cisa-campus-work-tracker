@@ -1657,7 +1657,13 @@
       "restore": "Restore",
       "delete_forever": "Delete Forever",
       "delete_forever_title": "Delete Forever?",
-      "delete_forever_message": "This will permanently delete this page. It cannot be recovered."
+      "delete_forever_message": "This will permanently delete this page. It cannot be recovered.",
+      "share_qr": "QR",
+      "share_title": "Guest Link",
+      "scan_qr_prompt": "Scan to open this page without an account",
+      "copy_link": "Copy link",
+      "copied": "Copied",
+      "close": "Close"
     },
     "study": {
       "this_weeks_study": "This week's study",

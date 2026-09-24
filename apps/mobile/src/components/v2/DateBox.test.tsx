@@ -13,7 +13,7 @@ jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: undefined, user: null, role: null }),
 }));
 
-const renderV2 = (el: React.ReactElement) => render(<ThemeProvider>{el}</ThemeProvider>);
+const renderV2 = async (el: React.ReactElement) => await render(<ThemeProvider>{el}</ThemeProvider>);
 
 const date = (id: string, day: number, title: string, sub: string): QueueDate => ({
   id,
@@ -23,13 +23,13 @@ const date = (id: string, day: number, title: string, sub: string): QueueDate =>
 });
 
 describe('V2DateBox', () => {
-  it('renders nothing for an empty list', () => {
-    const { queryByText } = renderV2(<V2DateBox label="Coming up" dates={[]} />);
+  it('renders nothing for an empty list', async () => {
+    const { queryByText } = await renderV2(<V2DateBox label="Coming up" dates={[]} />);
     expect(queryByText('Coming up')).toBeNull();
   });
 
-  it('renders the label and one row per date', () => {
-    const { getByText } = renderV2(
+  it('renders the label and one row per date', async () => {
+    const { getByText } = await renderV2(
       <V2DateBox
         label="Dates worth knowing"
         dates={[date('d1', 15, 'Kickoff', 'First night'), date('d2', 22, 'Serve day', 'Campus cleanup')]}

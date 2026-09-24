@@ -170,7 +170,9 @@
     "next_30_days": "Próximos 30 días",
     "just_a_date": "Solo una fecha a tener en cuenta",
     "becomes_gathering": "Se convierte en reunión de {name}",
-    "open_shared_calendar_app": "Abrir la aplicación del calendario compartido en una pestaña nueva"
+    "open_shared_calendar_app": "Abrir la aplicación del calendario compartido en una pestaña nueva",
+    "push_test_sent": "Prueba enviada: debería llegar a cada dispositivo con las notificaciones activadas.",
+    "push_unsupported_here": "Este navegador no puede recibir alertas push (en iPhone, primero agrega la app a tu pantalla de inicio). La prueba se envió a tus otros dispositivos."
   },
   "calendar": {
     "badge": "calendario",
@@ -1501,6 +1503,9 @@
     "cancel": "Cancelar",
     "applying": "Aplicando…",
     "combine_n_contacts": "Combinar {n} {count}",
+    "combine_all": "Combinar todo ({n})",
+    "skip_for_now": "Saltar por ahora",
+    "combine": "Combinar",
     "and_more": "…y {n} más.",
     "new_kind_placeholder": "Nuevo tipo, p. ej. Taller",
     "location": "Ubicación",

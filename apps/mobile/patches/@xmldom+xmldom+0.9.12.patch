@@ -1,0 +1,26 @@
+diff --git a/node_modules/@xmldom/xmldom/lib/dom-parser.js b/node_modules/@xmldom/xmldom/lib/dom-parser.js
+index d74ba8d..abb2016 100644
+--- a/node_modules/@xmldom/xmldom/lib/dom-parser.js
++++ b/node_modules/@xmldom/xmldom/lib/dom-parser.js
+@@ -221,9 +221,20 @@ function DOMParser(options) {
+  * @see https://html.spec.whatwg.org/#dom-domparser-parsefromstring-dev
+  */
+ DOMParser.prototype.parseFromString = function (source, mimeType) {
+-	if (!isValidMimeType(mimeType)) {
++	if (!mimeType) {
++		mimeType = MIME_TYPE.XML_TEXT;
++	} else if (!isValidMimeType(mimeType)) {
+ 		throw new TypeError('DOMParser.parseFromString: the provided mimeType "' + mimeType + '" is not valid.');
+ 	}
++	if (typeof source === 'string') {
++		var plistStart = source.indexOf('<plist');
++		var plistEnd = source.lastIndexOf('</plist>');
++		if (plistStart !== -1 && plistEnd !== -1 && plistEnd > plistStart) {
++			var xmlStart = source.lastIndexOf('<?xml', plistStart);
++			var start = xmlStart !== -1 ? xmlStart : plistStart;
++			source = source.substring(start, plistEnd + 8);
++		}
++	}
+ 	var defaultNSMap = this.assign(Object.create(null), this.xmlns);
+ 	var entityMap = entities.XML_ENTITIES;
+ 	var defaultNamespace = defaultNSMap[''] || null;

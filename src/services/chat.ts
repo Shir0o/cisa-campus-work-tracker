@@ -14,7 +14,6 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, sendNotification } from '../lib/firebase';
-import { sendPushNotification } from '../lib/push';
 import { ChatAttachment } from '../types';
 
 /**
@@ -199,12 +198,6 @@ export async function createAnnouncementRoom(
       targetId: roomRef.id,
       link: `/messages/${roomRef.id}`,
     });
-    void sendPushNotification({
-      userId: memberId,
-      title: 'New announcement channel',
-      body: `${currentUser.displayName} started announcements for "${name}"`,
-      data: { targetId: roomRef.id, link: `/messages/${roomRef.id}` },
-    });
   }
 
   return roomRef.id;
@@ -336,12 +329,6 @@ export async function sendMessage(
         targetId: roomId,
         link: `/messages/${roomId}`,
       });
-      void sendPushNotification({
-        userId: memberId,
-        title,
-        body,
-        data: { targetId: roomId, link: `/messages/${roomId}` },
-      });
     }
     return;
   }
@@ -362,14 +349,6 @@ export async function sendMessage(
         type: 'info',
         targetId: roomId,
         link: `/messages/${roomId}`,
-      });
-      // Same trigger as the in-app bell, but as an OS-level push to the
-      // recipient's phone (#270).
-      void sendPushNotification({
-        userId: memberId,
-        title,
-        body: notificationBody,
-        data: { targetId: roomId, link: `/messages/${roomId}` },
       });
     }
   }

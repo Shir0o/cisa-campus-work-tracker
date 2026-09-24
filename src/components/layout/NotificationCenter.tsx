@@ -11,7 +11,6 @@ import { Notification } from '../../types';
 import { cn, ntfWhen } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { showWebPushNotification } from '../../lib/webPush';
 import { useLanguage } from '../LanguageProvider';
 import { Translate } from '../Translate';
 
@@ -94,13 +93,13 @@ export default function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentUserId = effectiveUserId || auth.currentUser?.uid;
+  const seesTeamBroadcasts = role === 'admin';
 
   useEffect(() => {
     if (!currentUserId) return;
 
     let localNotifs: Notification[] = [];
     let globalNotifs: Notification[] = [];
-    let isInitialPersonal = true;
 
     const updateCombined = () => {
       const combined = [...localNotifs, ...globalNotifs]
@@ -113,13 +112,6 @@ export default function NotificationCenter() {
     const qPersonal = query(
       collection(db, 'notifications'),
       where('userId', '==', currentUserId),
-      orderBy('createdAt', 'desc'),
-      limit(20),
-    );
-
-    const qGlobal = query(
-      collection(db, 'notifications'),
-      where('userId', '==', 'ALL_ADMINS'),
       orderBy('createdAt', 'desc'),
       limit(20),
     );
@@ -139,32 +131,29 @@ export default function NotificationCenter() {
         .map(mapDoc)
         .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
 
-      if (!isInitialPersonal) {
-        snap.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const notif = mapDoc(change.doc);
-            if (!notif.read && currentUserId && notif.userId === currentUserId) {
-              void showWebPushNotification(notif.title, {
-                body: notif.message,
-                data: { link: notif.link || '/', targetId: notif.targetId },
-              });
-            }
-          }
-        });
-      }
-      isInitialPersonal = false;
+      // No OS popup from here: every bell entry is pushed by the notification
+      // function, and the service worker shows it — open tab or not.
       updateCombined();
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
 
-    const unsubGlobal = onSnapshot(qGlobal, (snap) => {
-      globalNotifs = snap.docs
-        .map(mapDoc)
-        .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
-      updateCombined();
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
+    // ALL_ADMINS broadcasts (e.g. a new student sign-up) are the Full-timers'
+    // alone — the same audience the push function fans them out to.
+    const unsubGlobal = seesTeamBroadcasts
+      ? onSnapshot(query(
+          collection(db, 'notifications'),
+          where('userId', '==', 'ALL_ADMINS'),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        ), (snap) => {
+          globalNotifs = snap.docs
+            .map(mapDoc)
+            .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
+          updateCombined();
+        }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'))
+      : () => {};
 
     return () => { unsubPersonal(); unsubGlobal(); };
-  }, [currentUserId]);
+  }, [currentUserId, seesTeamBroadcasts]);
 
 
   useEffect(() => {

@@ -69,7 +69,12 @@ export function validateSignUpBasics(form: SignUpFormState): string | null {
   if (!form.year) return 'Please select your year.';
   if (form.year === 'Other' && !signUpYearValue(form)) return 'Please tell us your year.';
   if (!form.major.trim()) return 'Please enter your major.';
-  if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
+  const atIdx = form.email.indexOf('@');
+  const dotIdx = form.email.lastIndexOf('.');
+  const hasWhitespace = /\s/.test(form.email);
+  if (!form.email.trim() || hasWhitespace || atIdx <= 0 || dotIdx <= atIdx + 1 || dotIdx === form.email.length - 1) {
+    return 'Please enter a valid email address.';
+  }
   if (!form.phone.trim()) return 'Please enter your phone number.';
   return null;
 }

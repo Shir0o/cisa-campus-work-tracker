@@ -1,0 +1,87 @@
+name: Draft What's New
+
+# Auto-drafts a What's New release record on every release tag and commits it
+# to main, so notes always appear for a release (issue #1021 / #1118).
+#
+# release-please pushes a v* tag after its release PR merges; main already
+# contains that release's commits by then. We check out main, draft a
+# content/whats-new/<date>-v<version>.md for the tag, recompile the JSON
+# bundles the web and mobile apps read, and commit+push when the record is new.
+# The drafted bullets and Release Nudge `lines` are a starting point a human
+# trims before the next release ships — but the note exists even if nobody
+# touches it.
+#
+# The commit is a docs: change (hidden from the release-please changelog), so
+# pushing to main does not open another release PR.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: draft-whats-new-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: Draft and commit What's New for ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Derive version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Derived whats-new version ${VERSION} from ${GITHUB_REF_NAME}"
+
+      - name: Draft the release record
+        id: draft
+        run: |
+          set +e
+          npx tsx scripts/draft-whats-new.ts --version "${{ steps.version.outputs.version }}"
+          rc=$?
+          set -e
+          echo "rc=${rc}" >> "$GITHUB_OUTPUT"
+          if [ "$rc" -ne 0 ]; then
+            echo "Draft script exited $rc — treating as already-drafted (nothing to do)."
+          fi
+
+      - name: Recompile the JSON bundles from content/whats-new
+        if: steps.draft.outputs.rc == '0'
+        run: npm run whats-new:compile
+
+      - name: Open pull request with drafted What's New
+        if: steps.draft.outputs.rc == '0'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: 'docs(whats-new): draft What''s New record for ${{ github.ref_name }}'
+          title: 'docs(whats-new): draft What''s New record for ${{ github.ref_name }}'
+          body: |
+            Automated What's New draft for tag `${{ github.ref_name }}`.
+
+            - Curate release highlights and Release Nudge lines as needed.
+            - Optionally attach a YouTube `video_url` in the frontmatter.
+            - Once reviewed and merged, the compiled notes will be visible in-app.
+          branch: 'docs/whats-new-${{ github.ref_name }}'
+          delete-branch: true
+          base: main

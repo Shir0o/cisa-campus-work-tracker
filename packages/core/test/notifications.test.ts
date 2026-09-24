@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { typeToTone, toneForNotification, mergeNotifications, groupNotifications } from '../src/notifications';
+import { contactStakeholdersOf, stakeholderUidsOf } from '../src/threads';
 import type { Notification } from '../src/types';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime();
@@ -91,5 +92,36 @@ describe('groupNotifications', () => {
     expect(groups.unread.map((n) => n.id)).toEqual(['unread']);
     expect(groups.read.map((n) => n.id)).toEqual(['read']);
     expect(groups.unreadCount).toBe(1);
+  });
+});
+
+describe('stakeholder resolution across ties', () => {
+  it('extracts all contact ties including addedBy, founders, and carers', () => {
+    const contact = {
+      createdBy: 'u1',
+      addedBy: 'u2',
+      coCreators: ['u3'],
+      founders: ['u4'],
+      carers: ['u5'],
+    };
+    expect(contactStakeholdersOf(contact)).toEqual({
+      createdBy: 'u1',
+      addedBy: 'u2',
+      coCreators: ['u3'],
+      founders: ['u4'],
+      carers: ['u5'],
+    });
+  });
+
+  it('resolves deduped uids excluding the author', () => {
+    const stakeholders = {
+      createdBy: 'u1',
+      addedBy: 'u2',
+      coCreators: ['u2', 'u3'],
+      founders: ['u4'],
+      carers: ['u5'],
+    };
+    expect(stakeholderUidsOf(stakeholders, 'u1')).toEqual(['u2', 'u3', 'u4', 'u5']);
+    expect(stakeholderUidsOf(stakeholders, 'u2')).toEqual(['u1', 'u3', 'u4', 'u5']);
   });
 });

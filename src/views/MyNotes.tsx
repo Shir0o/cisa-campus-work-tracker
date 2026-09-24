@@ -9,6 +9,7 @@ import { kindMeta, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedba
 import { isAppOwner } from '../lib/permissions';
 import { Feedback, FeedbackReply } from '../types';
 import PageContainer from '../components/layout/PageContainer';
+import { Skeleton } from '../components/ui/Skeleton';
 
 /**
  * "Your notes" — the submitter's own side of the feedback loop (ADR 0019).
@@ -28,6 +29,7 @@ export default function MyNotes() {
   const { t } = useLanguage();
 
   const [notes, setNotes] = useState<Feedback[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [openNoteId, setOpenNoteId] = useState<string | null>(null);
 
@@ -57,12 +59,14 @@ export default function MyNotes() {
           } as Feedback);
         });
         setNotes(items);
+        setLoading(false);
         setLoadError(false);
       },
       (err) => {
         // A silent failure here is what made this page look empty rather than
         // broken for everyone but a Full-timer. Say so instead.
         console.error('Failed to subscribe to your notes:', err);
+        setLoading(false);
         setLoadError(true);
       }
     );
@@ -71,7 +75,7 @@ export default function MyNotes() {
   }, [user?.uid]);
 
   return (
-    <PageContainer variant="reading" className="max-w-2xl space-y-6" id="my-notes-page">
+    <PageContainer variant="reading" className="max-w-4xl space-y-6" id="my-notes-page">
       <div>
         <h1 className="font-serif page-title font-medium tracking-tight text-on-background">
           {t('feedback.your_notes')}
@@ -91,26 +95,46 @@ export default function MyNotes() {
         </div>
       )}
 
-      {!loadError && notes.length === 0 && (
+      {loading ? (
+        <div data-testid="my-notes-loading-skeletons" className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-surface-container border border-outline-variant p-4.5 rounded-xl space-y-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-5 w-20 rounded" />
+                <Skeleton className="h-4 w-24 rounded" />
+              </div>
+              <Skeleton className="h-4 w-3/4 rounded" />
+              <Skeleton className="h-4 w-1/2 rounded" />
+              <div className="pt-2 border-t border-outline-variant/40 flex items-center justify-between">
+                <Skeleton className="h-4 w-36 rounded" />
+                <Skeleton className="h-4 w-20 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : !loadError && notes.length === 0 ? (
         <div className="bg-surface-container border border-outline-variant rounded-xl p-8 text-center space-y-2">
           <div className="w-12 h-12 mx-auto bg-primary/10 text-accent rounded-full grid place-items-center text-2xl">✦</div>
           <p className="text-sm text-on-surface-variant max-w-sm mx-auto leading-relaxed">
             {t('feedback.no_notes_yet')}
           </p>
         </div>
+      ) : (
+        <div className="space-y-3">
+          {notes.map((note) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              asSubmitter={asSubmitter}
+              expanded={openNoteId === note.id}
+              onToggle={() => setOpenNoteId(openNoteId === note.id ? null : note.id)}
+            />
+          ))}
+        </div>
       )}
-
-      <div className="space-y-3">
-        {notes.map((note) => (
-          <NoteCard
-            key={note.id}
-            note={note}
-            asSubmitter={asSubmitter}
-            expanded={openNoteId === note.id}
-            onToggle={() => setOpenNoteId(openNoteId === note.id ? null : note.id)}
-          />
-        ))}
-      </div>
     </PageContainer>
   );
 }

@@ -4,7 +4,7 @@
 // categorised bullets the web modal and the store release notes compile from.
 // It is a re-read, so it never marks the Release Nudge seen.
 import React from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { releaseDateWords, type WhatsNewCategory, type WhatsNewItem } from '@cisa/core';
 import { latestAnnouncement } from '../../lib/releases';
@@ -77,6 +77,29 @@ export function M2WhatsNew({
         </Text>
 
         <ScrollView style={{ marginTop: 12 }} contentContainerStyle={{ paddingBottom: 8 }}>
+          {release.video_url ? (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel="Watch what's new"
+              onPress={() => void Linking.openURL(release.video_url!)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                marginBottom: 10,
+                borderRadius: 16,
+                backgroundColor: c.card.line,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ fontFamily: font.semi, fontSize: fs(14.5), color: c.card.primary }}>
+                Watch what's new
+              </Text>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.primary }}>›</Text>
+            </Pressable>
+          ) : null}
           {release.overview ? (
             <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(20), color: c.card.ink3, marginBottom: 10 }}>
               {release.overview}

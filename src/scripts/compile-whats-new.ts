@@ -17,6 +17,8 @@ export interface WhatsNewRelease {
   roles?: string[];
   /** The Release Nudge's 3-4 plain sentences. Empty or absent = quiet release. */
   lines?: string[];
+  /** The What's New Video companion - a YouTube link. Absent = no video. */
+  video_url?: string;
   overview?: string;
   items: WhatsNewItem[];
 }
@@ -24,6 +26,53 @@ export interface WhatsNewRelease {
 export interface WhatsNewManifest {
   latestReleaseId: string | null;
   releases: WhatsNewRelease[];
+}
+
+/** Split a version string into its numeric parts; null when not major.minor.patch. */
+function parseVersionParts(input: string): number[] | null {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(input.trim());
+  if (match === null) return null;
+  return match.slice(1).map(Number);
+}
+
+/** The newest authored version strictly below the target — the git range base
+ *  a draft for `target` should diff from. Null when the target has nothing
+ *  older to diff against (it is the first authored version). */
+export function resolveDraftRangeBase(
+  authoredVersions: string[],
+  targetVersion: string,
+): string | null {
+  const target = parseVersionParts(targetVersion);
+  if (target === null) return null;
+
+  let best: string | null = null;
+  let bestParts: number[] | null = null;
+
+  for (const version of authoredVersions) {
+    const parts = parseVersionParts(version);
+    if (parts === null) continue;
+
+    // strictly below the target
+    let below = false;
+    for (let i = 0; i < 3; i++) {
+      if (parts[i] < target[i]) { below = true; break; }
+      if (parts[i] > target[i]) break;
+    }
+    if (!below) continue;
+
+    if (bestParts === null) {
+      best = version;
+      bestParts = parts;
+      continue;
+    }
+    // keep the largest
+    for (let i = 0; i < 3; i++) {
+      if (parts[i] > bestParts[i]) { best = version; bestParts = parts; break; }
+      if (parts[i] < bestParts[i]) break;
+    }
+  }
+
+  return best;
 }
 
 /**
@@ -77,6 +126,7 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     : ['web', 'mobile'];
   const parsedRoles = Array.isArray(frontmatter.roles) ? (frontmatter.roles as string[]) : undefined;
   const parsedLines = Array.isArray(frontmatter.lines) ? (frontmatter.lines as string[]) : undefined;
+  const videoUrl = frontmatter.video_url || undefined;
 
   // Parse body: extract overview and bullet items
   const lines = bodyStr.split('\n');
@@ -154,6 +204,7 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     platforms,
     ...(parsedRoles ? { roles: parsedRoles } : {}),
     ...(parsedLines ? { lines: parsedLines } : {}),
+    ...(videoUrl ? { video_url: videoUrl } : {}),
     overview: overviewLines.length > 0 ? overviewLines.join('\n') : undefined,
     items,
   };

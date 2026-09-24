@@ -150,6 +150,30 @@ service cloud.firestore {
       match /personalPrayers/{prayerId} {
         allow read, write, delete: if isApprovedUser() && (isOwner(userId) || isManager());
       }
+
+      // Where this person's alerts are delivered: one doc per device — an Expo
+      // token from the native app or a Web Push subscription from a browser /
+      // installed PWA. Only the owner registers or removes one; the push
+      // dispatcher (a Cloud Function, admin SDK) reads them. Nobody else, staff
+      // included, may point your notifications at their device.
+      match /pushDevices/{deviceId} {
+        function isValidPushDevice(data) {
+          return data.updatedAt == request.time && (
+            (data.keys().hasOnly(['kind', 'token', 'platform', 'updatedAt']) &&
+             data.kind == 'expo' &&
+             data.token is string && data.token.size() > 0 && data.token.size() <= 200 &&
+             data.platform in ['ios', 'android']) ||
+            (data.keys().hasOnly(['kind', 'endpoint', 'keys', 'updatedAt']) &&
+             data.kind == 'web' &&
+             data.endpoint is string && data.endpoint.size() <= 1024 && data.endpoint.matches('^https://.+') &&
+             data.keys.keys().hasOnly(['p256dh', 'auth']) &&
+             data.keys.p256dh is string && data.keys.p256dh.size() <= 256 &&
+             data.keys.auth is string && data.keys.auth.size() <= 128)
+          );
+        }
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isValidId(deviceId) && isOwner(userId) && isValidPushDevice(incoming());
+      }
     }
 
     // 2b. User Preferences — private My Day settings (personal contacts,
@@ -623,25 +647,27 @@ service cloud.firestore {
                data.message is string && data.message.size() <= 512 &&
                data.type in ['info', 'success', 'warning', 'error', 'assignment', 'event'] &&
                data.read is bool &&
-               data.createdAt == request.time;
+               data.createdAt == request.time &&
+               (!('coalesceKey' in data) || (data.coalesceKey is string && data.coalesceKey.size() <= 200));
       }
 
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isManager() || (resource.data.userId == 'ALL_ADMINS'));
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isManager() || (resource.data.userId == 'ALL_ADMINS'));
+      // A user reads only their own notifications; Full-timers (isAdmin) read
+      // everything, including the ALL_ADMINS broadcasts. Trainees (manager) are
+      // deliberately not staff here.
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       
       allow create: if isValidId(notificationId) && isValidNotification(incoming()) && (
                       (isApprovedUser() && isOperator()) ||
                       (incoming().userId == 'ALL_ADMINS' && incoming().type == 'event')
                     );
       
+      // Full-timers' blanket access covers marking read / dismissing ALL_ADMINS broadcasts.
       allow update: if isValidId(notificationId) && isSignedIn() && (
                       (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readBy'])) ||
-                      (resource.data.userId == 'ALL_ADMINS' && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readBy', 'dismissedBy'])) ||
-                      isSuperAdmin() ||
-                      isManager()
+                      isAdmin()
                     );
       
-      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isManager() || resource.data.userId == 'ALL_ADMINS');
+      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isAdmin());
     }
 
     // 9. Prayers Collection

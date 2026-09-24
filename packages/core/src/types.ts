@@ -239,6 +239,7 @@ export type Event = Gathering;
 export interface SeasonSettings {
   override?: string | null;
   clubRush?: boolean;
+  bfa?: boolean;
 }
 
 // Team-wide gospel partners (one doc: settings/partners). The map is keyed by
@@ -328,6 +329,9 @@ export interface Notification {
   createdAt: string;
   link?: string;
   targetId?: string;
+  /** Pushed at most once per hour per recipient for the same key; the bell
+   *  keeps every entry. Read by firebase-functions/ (#813). */
+  coalesceKey?: string;
 }
 
 export type FeedbackKind = 'thought' | 'idea' | 'off' | 'request';

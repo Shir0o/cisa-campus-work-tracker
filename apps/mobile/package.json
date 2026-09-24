@@ -1,6 +1,6 @@
 {
   "name": "cisa-campus-mobile",
-  "version": "1.6.0",
+  "version": "1.8.3",
   "private": true,
   "license": "Apache-2.0",
   "main": "expo-router/entry",
@@ -42,6 +42,7 @@
     "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-google-signin/google-signin": "^16.1.4",
+    "@sentry/react-native": "~7.2.0",
     "date-fns": "^4.1.0",
     "expo": "~54.0.37",
     "expo-asset": "~12.0.13",
@@ -64,7 +65,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-gesture-handler": "~2.28.0",
+    "react-native-gesture-handler": "~3.2.1",
     "react-native-marked": "^8.1.1",
     "react-native-qrcode-svg": "^6.3.24",
     "react-native-reanimated": "~4.1.1",
@@ -76,9 +77,18 @@
     "react-native-webview": "13.15.0",
     "react-native-worklets": "0.5.2"
   },
+  "overrides": {
+    "@xmldom/xmldom": "^0.9.10",
+    "decode-uri-component": "^0.5.0",
+    "fast-xml-parser": "^5.7.0",
+    "joi": "^17.13.8",
+    "nanoid": "^3.3.19",
+    "postcss": "^8.5.23",
+    "uuid": "^11.1.1"
+  },
   "devDependencies": {
     "@babel/core": "^7.29.7",
-    "@testing-library/react-native": "^13.3.3",
+    "@testing-library/react-native": "^14.0.1",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
@@ -90,6 +100,7 @@
     "patch-package": "^8.0.1",
     "react-test-renderer": "^19.1.0",
     "sucrase": "3.35.0",
+    "test-renderer": "1.1.0",
     "typescript": "^5.3.3"
   }
 }

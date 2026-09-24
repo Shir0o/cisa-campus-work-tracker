@@ -8,8 +8,8 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('ThreadSkeleton', () => {
-  it('renders a conversation-shaped set of bubble placeholders', () => {
-    const { getByTestId, getAllByTestId } = render(
+  it('renders a conversation-shaped set of bubble placeholders', async () => {
+    const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <ThreadSkeleton />
       </ThemeProvider>,

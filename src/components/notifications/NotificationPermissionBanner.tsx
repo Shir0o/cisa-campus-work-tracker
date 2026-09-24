@@ -3,8 +3,9 @@ import { Bell, X } from "lucide-react";
 import {
   getWebNotificationPermissionStatus,
   requestWebNotificationPermission,
-  registerServiceWorker,
+  registerWebPush,
 } from "../../lib/webPush";
+import { useAuth } from "../AuthProvider";
 import {
   shouldShowNotificationPrompt,
   getNotificationPromptDismissed,
@@ -13,6 +14,7 @@ import {
 } from "../../lib/notificationPrompt";
 
 export function NotificationPermissionBanner() {
+  const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
@@ -38,8 +40,8 @@ export function NotificationPermissionBanner() {
     setRequesting(true);
     try {
       const granted = await requestWebNotificationPermission();
-      if (granted) {
-        await registerServiceWorker();
+      if (granted && user) {
+        await registerWebPush(user.uid);
       }
     } finally {
       setNotificationPromptDismissed(true);

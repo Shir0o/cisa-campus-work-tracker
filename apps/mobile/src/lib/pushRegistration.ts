@@ -6,7 +6,7 @@
 // meant a fresh grant sat unregistered until the next background/foreground
 // cycle, so nothing buzzed in between (#977).
 import { registerForPushToken } from './notifications';
-import { setPushToken } from './data/users';
+import { registerPushDevice, unregisterPushDevice } from './data/users';
 
 /** Best-effort: mints a token and persists it under `uid`. Resolves to the
  * token when one was stored, else `null` — a failure only costs the buzz, so
@@ -16,10 +16,22 @@ export async function syncPushToken(uid: string | null): Promise<string | null> 
   try {
     const token = await registerForPushToken();
     if (!token) return null;
-    await setPushToken(uid, token);
+    await registerPushDevice(uid, token);
     return token;
   } catch (err) {
     console.error('Failed to sync push token:', err);
     return null;
+  }
+}
+
+/** On sign-out, before the session ends (only the owner may delete the
+ *  device doc): this phone stops receiving `uid`'s alerts, so whoever signs
+ *  in next is not shown them. Never throws — sign-out must not be blocked. */
+export async function forgetPushDevice(uid: string): Promise<void> {
+  try {
+    const token = await registerForPushToken();
+    if (token) await unregisterPushDevice(uid, token);
+  } catch (err) {
+    console.error('Failed to forget push device:', err);
   }
 }

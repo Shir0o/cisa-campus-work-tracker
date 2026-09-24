@@ -15,7 +15,18 @@ let cache: Record<Role, CredentialInfo> | null = null;
 
 export function credentials(): Record<Role, CredentialInfo> {
   if (cache) return cache;
-  if (process.env.VITE_USE_FIREBASE_EMULATOR === 'true' || process.env.USE_FIREBASE_EMULATOR === 'true') {
+  // Running against the Local Emulator: the suite's own `test:e2e:emulator`
+  // boots it via `firebase emulators:exec`, which sets FIREBASE_AUTH/FIRESTORE
+  // EMULATOR_HOST in the runner env (NOT VITE_USE_FIREBASE_EMULATOR — that only
+  // reaches the dev-server child via webServer.env). Without these checks the
+  // runner would fall through to .test-credentials.json (real-Firebase users
+  // the emulator seed never creates) and every sign-in fails with user-not-found.
+  const usingEmulator =
+    process.env.VITE_USE_FIREBASE_EMULATOR === 'true' ||
+    process.env.USE_FIREBASE_EMULATOR === 'true' ||
+    !!process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    !!process.env.FIRESTORE_EMULATOR_HOST;
+  if (usingEmulator) {
     cache = DEFAULT_CREDENTIALS;
     return DEFAULT_CREDENTIALS;
   }

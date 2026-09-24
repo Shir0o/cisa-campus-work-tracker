@@ -26,4 +26,11 @@ describe('seasons', () => {
     expect(seasonTags('fall', false, d)).toEqual(['Fall 2026']);
     expect(seasonTags('fall', true, d)).toEqual(['Fall 2026', 'Club Rush']);
   });
+
+  it('adds a BFA tag when the bfa intake flag is set', () => {
+    const d = new Date(2026, 8, 1);
+    expect(seasonTags('fall', false, d, true)).toEqual(['Fall 2026', 'BFA']);
+    expect(seasonTags('fall', true, d, true)).toEqual(['Fall 2026', 'Club Rush', 'BFA']);
+    expect(seasonTags('fall', false, d, false)).toEqual(['Fall 2026']);
+  });
 });

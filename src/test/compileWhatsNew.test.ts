@@ -3,6 +3,7 @@ import {
   parseWhatsNewMarkdown,
   compileWhatsNewManifest,
   parseGitCommitsToDraft,
+  resolveDraftRangeBase,
 } from '../scripts/compile-whats-new';
 
 describe('compile-whats-new markdown & parser', () => {
@@ -112,6 +113,35 @@ date: "2026-09-03"
     expect(draft).toContain('Push notification support.');
   });
 
+  it('parses an optional video_url companion for the What\'s New Video', () => {
+    const md = `---
+id: 2026-09-17-v1.6.0
+version: 1.6.0
+title: "With Video"
+date: "2026-09-17"
+video_url: "https://www.youtube.com/watch?v=abc123"
+---
+
+- A change
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.video_url).toBe('https://www.youtube.com/watch?v=abc123');
+  });
+
+  it('leaves video_url absent when a release has none', () => {
+    const md = `---
+id: 2026-09-06-v1.5.1
+version: 1.5.1
+title: "Quiet"
+date: "2026-09-06"
+---
+
+- A quiet patch
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.video_url).toBeUndefined();
+  });
+
   it('parses the personal layer (roles + lines) for the Release Nudge', () => {
     const md = `---
 id: 2026-09-05-v1.5.0
@@ -152,5 +182,36 @@ date: "2026-09-06"
     const release = parseWhatsNewMarkdown(md);
     expect(release.roles).toBeUndefined();
     expect(release.lines).toBeUndefined();
+  });
+});
+
+describe('resolveDraftRangeBase', () => {
+  it('returns the newest authored version strictly below the target', () => {
+    expect(
+      resolveDraftRangeBase(['1.4.0', '1.5.0'], '1.6.0'),
+    ).toBe('1.5.0');
+  });
+
+  it('ignores patch releases that share the target minor', () => {
+    expect(
+      resolveDraftRangeBase(['1.4.0', '1.5.0', '1.5.2'], '1.5.3'),
+    ).toBe('1.5.2');
+  });
+
+  it('returns null when the target is the first authored version', () => {
+    expect(resolveDraftRangeBase([], '1.6.0')).toBeNull();
+    expect(resolveDraftRangeBase(['1.6.0'], '1.6.0')).toBeNull();
+  });
+
+  it('compares by numeric parts, not lexically', () => {
+    expect(
+      resolveDraftRangeBase(['1.9.0', '1.10.0'], '1.11.0'),
+    ).toBe('1.10.0');
+  });
+
+  it('tolerates v-prefixed versions and drops junk', () => {
+    expect(
+      resolveDraftRangeBase(['v1.4.0', 'not-a-version', '1.5.0'], '1.6.0'),
+    ).toBe('1.5.0');
   });
 });

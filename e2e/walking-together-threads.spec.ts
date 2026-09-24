@@ -20,16 +20,16 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     // 4. Contact Details Modal opens
     await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible();
 
-    // 5. Open "Follow-up" (Thread) tab
-    const threadTab = page.getByRole('button', { name: /follow-up/i }).first();
+    // 5. Open the "Conversation" (thread) tab
+    const threadTab = page.getByRole('button', { name: /conversation/i }).first();
     await expect(threadTab).toBeVisible();
     await threadTab.click();
 
     // Verify initial seeded thread message is rendered
     await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible();
 
-    // Post a new message in Follow-up thread
-    const threadInput = page.getByPlaceholder('Add a comment…').first();
+    // Post a new message in the Conversation thread
+    const threadInput = page.getByPlaceholder('Write something…').first();
     await expect(threadInput).toBeVisible();
     const newThreadMessage = `Full-timer encouragement message ${Date.now()}`;
     await threadInput.fill(newThreadMessage);
@@ -39,8 +39,8 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(page.getByText(newThreadMessage)).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
 
-    // 6. Open "Discussion" tab (Team confidential discussion for Full-timers)
-    const discussionTab = page.getByRole('button', { name: /discussion/i }).first();
+    // 6. Open "Full-timers" tab (Team confidential discussion for Full-timers)
+    const discussionTab = page.getByRole('button', { name: /full-timers/i }).first();
     await expect(discussionTab).toBeVisible();
     await discussionTab.click();
 
@@ -48,7 +48,7 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(page.getByText(/Confidential Staff Note: Lila mentioned some family challenges/i)).toBeVisible();
 
     // Post a confidential discussion note
-    const discussionInput = page.getByPlaceholder("Add to the team's discussion…").first();
+    const discussionInput = page.getByPlaceholder('Add to the Full-timers thread…').first();
     await expect(discussionInput).toBeVisible();
     const confidentialNote = `Staff confidential coordination note ${Date.now()}`;
     await discussionInput.fill(confidentialNote);
@@ -74,19 +74,19 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     // 4. Verify Contact Details modal opens
     await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible();
 
-    // 5. Check Discussion tab is NOT visible / not accessible
-    await expect(page.getByRole('button', { name: /^discussion/i })).not.toBeVisible();
+    // 5. Check the Full-timers tab is NOT visible / not accessible
+    await expect(page.getByRole('button', { name: /^full-timers/i })).not.toBeVisible();
     await expect(page.locator('body')).not.toContainText('Confidential Staff Note');
 
-    // 6. Open Follow-up tab and verify shared walking-together thread is readable
-    const threadTab = page.getByRole('button', { name: /follow-up/i }).first();
+    // 6. Open Conversation tab and verify shared walking-together thread is readable
+    const threadTab = page.getByRole('button', { name: /conversation/i }).first();
     await expect(threadTab).toBeVisible();
     await threadTab.click();
 
     await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible();
 
     // Trainee posts a reply / comment in walking-together thread
-    const threadInput = page.getByPlaceholder('Add a comment…').first();
+    const threadInput = page.getByPlaceholder('Write something…').first();
     await expect(threadInput).toBeVisible();
     const traineeComment = `Trainee walking-together check-in ${Date.now()}`;
     await threadInput.fill(traineeComment);
@@ -109,12 +109,12 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(contactCard).toBeVisible({ timeout: 10_000 });
     await contactCard.click();
 
-    // 4. Verify Discussion tab is hidden from Student
-    await expect(page.getByRole('button', { name: /^discussion/i })).not.toBeVisible();
+    // 4. Verify the Full-timers tab is hidden from Student
+    await expect(page.getByRole('button', { name: /^full-timers/i })).not.toBeVisible();
     await expect(page.locator('body')).not.toContainText('Confidential Staff Note');
 
-    // 5. Open Follow-up tab
-    const threadTab = page.getByRole('button', { name: /follow-up/i }).first();
+    // 5. Open Conversation tab
+    const threadTab = page.getByRole('button', { name: /conversation/i }).first();
     await expect(threadTab).toBeVisible();
     await threadTab.click();
 

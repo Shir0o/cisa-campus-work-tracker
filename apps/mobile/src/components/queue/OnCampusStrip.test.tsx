@@ -10,7 +10,7 @@ jest.mock('../../lib/AuthProvider', () => ({
   useAuth: () => ({ uid: 'u1', user: null, role: null }),
 }));
 
-const renderV2 = (el: React.ReactElement) => render(<ThemeProvider>{el}</ThemeProvider>);
+const renderV2 = async (el: React.ReactElement) => await render(<ThemeProvider>{el}</ThemeProvider>);
 
 const window = { days: [2, 3], from: 12, to: 15 };
 const goal: OnCampusStripGoal = {
@@ -19,31 +19,31 @@ const goal: OnCampusStripGoal = {
 };
 
 describe('OnCampusStrip', () => {
-  it('renders the headline and sub line, and fires onPress', () => {
+  it('renders the headline and sub line, and fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText } = renderV2(<OnCampusStrip window={window} onPress={onPress} />);
+    const { getByText } = await renderV2(<OnCampusStrip window={window} onPress={onPress} />);
     expect(getByText('Log it while you remember — 20 seconds.')).toBeTruthy();
-    fireEvent.press(getByText('Log it while you remember — 20 seconds.'));
+    await fireEvent.press(getByText('Log it while you remember — 20 seconds.'));
     expect(onPress).toHaveBeenCalled();
   });
 
-  it('shows the plain dot when there is no goal', () => {
-    const { queryByTestId } = renderV2(<OnCampusStrip window={window} onPress={jest.fn()} />);
+  it('shows the plain dot when there is no goal', async () => {
+    const { queryByTestId } = await renderV2(<OnCampusStrip window={window} onPress={jest.fn()} />);
     expect(queryByTestId('goal-ring')).toBeNull();
   });
 
-  it('shows the filling ring when the day has a goal, with a spoken label', () => {
-    const { getByTestId } = renderV2(
+  it('shows the filling ring when the day has a goal, with a spoken label', async () => {
+    const { getByTestId } = await renderV2(
       <OnCampusStrip window={window} onPress={jest.fn()} goal={goal} />,
     );
     expect(getByTestId('goal-ring')).toBeTruthy();
   });
 
-  it('wears the goal’s screen-reader label, and no label without a goal', () => {
-    const withGoal = renderV2(<OnCampusStrip window={window} onPress={jest.fn()} goal={goal} />);
+  it('wears the goal’s screen-reader label, and no label without a goal', async () => {
+    const withGoal = await renderV2(<OnCampusStrip window={window} onPress={jest.fn()} goal={goal} />);
     expect(withGoal.getByLabelText(goal.label)).toBeTruthy();
 
-    const without = renderV2(<OnCampusStrip window={window} onPress={jest.fn()} />);
+    const without = await renderV2(<OnCampusStrip window={window} onPress={jest.fn()} />);
     expect(without.queryByLabelText(goal.label)).toBeNull();
   });
 });

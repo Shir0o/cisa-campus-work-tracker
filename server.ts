@@ -59,6 +59,16 @@ export async function createApp() {
   let adminDbInstance: ReturnType<typeof getFirestore> | null = null;
   let aiClientInstance: GoogleGenAI | null = null;
 
+  // Standard rate limiter for sensitive and expensive API routes
+  const standardRateLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    limit: 100,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please try again later." },
+    skip: () => process.env.NODE_ENV === "test",
+  });
+
   function getAdminDb() {
     if (!adminDbInstance) {
       try {
@@ -785,7 +795,7 @@ export async function createApp() {
     }
   });
   // Endpoint: Update feedback status / archive (admin-facing, syncs with GitHub)
-  app.post("/api/feedback/update", async (req, res) => {
+  app.post("/api/feedback/update", standardRateLimiter, async (req, res) => {
     try {
       // Authorize administrator role
       if (process.env.NODE_ENV !== "test") {
@@ -817,7 +827,7 @@ export async function createApp() {
 
       // Save changes to Firestore
       await docRef.update(updates);
-      console.log(`Updated feedback document "${id}" with:`, updates);
+      console.log('Updated feedback document', id, 'with:', updates);
 
       // Bidirectional sync: check if we need to update GitHub issue state
       const targetIssueUrl = githubIssueUrl !== undefined ? githubIssueUrl : currentData.githubIssueUrl;
@@ -1810,7 +1820,7 @@ Analyze the input text carefully and extract the following:
 
 
   // Endpoint 0: Developer Query Endpoint to fetch latest webhook logs as JSON outside the website
-  app.get("/api/webhook/logs", async (req, res) => {
+  app.get("/api/webhook/logs", standardRateLimiter, async (req, res) => {
     try {
       // Admin-only: these logs contain raw contact PII and SMS/GroupMe message bodies.
       if (process.env.NODE_ENV !== "test") {
@@ -1841,7 +1851,7 @@ Analyze the input text carefully and extract the following:
   });
 
   // Endpoint 1: Direct JSON API endpoint for custom clients, Siri, Android Shortcuts, or browser tools
-  app.post("/api/quick-add", async (req, res) => {
+  app.post("/api/quick-add", standardRateLimiter, async (req, res) => {
     try {
       const { text } = req.body;
 
@@ -1885,7 +1895,7 @@ Analyze the input text carefully and extract the following:
   });
 
   // Endpoint 2: URL-Encoded Twilio Webhook compatibility endpoint (SMS & WhatsApp trigger)
-  app.post("/api/webhook/sms", async (req, res) => {
+  app.post("/api/webhook/sms", standardRateLimiter, async (req, res) => {
     try {
       const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
       if (twilioAuthToken) {
@@ -1940,11 +1950,17 @@ ${contact.isExisting ? "📝 Added interaction notes to history." : `💡 Notes:
     } catch (error: any) {
       console.error("Webhook Quick Add Error: ", error);
       await logApiCall("Twilio SMS", req.body, req.headers, "error", "Error parsing SMS to contact.", error.message || String(error));
+      const safeErrorMsg = String(error.message || "Internal server processing error.")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
       const twimlError = `
 <Response>
   <Message>
 ⚠️ Failed to parse/quick-add contact via AI service.
-Error: ${error.message || "Internal server processing error."}
+Error: ${safeErrorMsg}
   </Message>
 </Response>
       `.trim();
@@ -2064,7 +2080,7 @@ Error: ${error.message || "Internal server processing error."}
   });
 
   // AI Notes Analyzer endpoint: automates contact linking and suggests tasks
-  app.post("/api/analyze-notes", async (req, res) => {
+  app.post("/api/analyze-notes", standardRateLimiter, async (req, res) => {
     try {
       // Admin-only: this endpoint dumps the full contact directory + user roster
       // into the AI prompt (matches the client-side canEdit=isAdmin gating on the
@@ -2167,7 +2183,7 @@ The current local date is: ${currentDate}.`,
   });
 
   // AI Smart Import endpoint: parses raw text into contacts, interactions, and discussions
-  app.post("/api/smart-import/parse", async (req, res) => {
+  app.post("/api/smart-import/parse", standardRateLimiter, async (req, res) => {
     try {
       if (process.env.NODE_ENV !== "test") {
         try {
@@ -2308,7 +2324,7 @@ ${JSON.stringify(contactsList)}`;
     }
   });
 
-  app.post("/api/smart-import/commit", async (req, res) => {
+  app.post("/api/smart-import/commit", standardRateLimiter, async (req, res) => {
     try {
       let uid = "system";
       let userName = "Smart Import";
@@ -2459,7 +2475,7 @@ ${JSON.stringify(contactsList)}`;
   // a react-native-webview page (which has its own, separate auth storage).
   // No privilege escalation — the token signs in as the same uid the caller
   // already authenticated as.
-  app.post("/api/mint-custom-token", async (req, res) => {
+  app.post("/api/mint-custom-token", standardRateLimiter, async (req, res) => {
     try {
       const decodedToken = await authenticateFirebaseUser(req);
       const token = await getAdminAuth().createCustomToken(decodedToken.uid);
@@ -2572,72 +2588,6 @@ ${JSON.stringify(contactsList)}`;
     } catch (error: any) {
       console.error("POST /api/guest-doc error: ", error);
       res.status(500).json({ error: "unavailable" });
-    }
-  });
-
-  // Remote Push Dispatch: sends an Expo push notification to target user's registered pushToken
-  app.post("/api/send-push", async (req, res) => {
-    try {
-      const { userId, title, body, data, coalesceKey, coalesceMinutes } = req.body;
-      if (!userId || !title) {
-        return res.status(400).json({ success: false, error: "userId and title are required" });
-      }
-
-      const expoAccessToken = process.env.EXPO_ACCESS_TOKEN;
-      if (!expoAccessToken) {
-        return res.status(200).json({ success: true, pushSent: false, reason: "EXPO_ACCESS_TOKEN not configured" });
-      }
-
-      const db = getAdminDb();
-      const userSnap = await db.collection("users").doc(userId).get();
-      const pushToken = userSnap.data()?.pushToken;
-
-      if (!pushToken || typeof pushToken !== "string") {
-        return res.status(200).json({ success: true, pushSent: false, reason: "No pushToken registered for user" });
-      }
-
-      // Coalescing (#813). A follow-up ask or a question reaches everyone tied to
-      // the contact, so two Full-timers going back and forth on one person must
-      // not buzz three Trainees eight times. The window lives here rather than on
-      // the sending client because the senders are different people on different
-      // devices — only the server sees them all. Nothing is lost when a push is
-      // held: the bell still carries every message.
-      const throttleRef =
-        typeof coalesceKey === "string" && coalesceKey
-          ? db.collection("pushThrottle").doc(userId)
-          : null;
-      if (throttleRef) {
-        const windowMs = Math.max(0, Number(coalesceMinutes) || 60) * 60_000;
-        const throttleSnap = await throttleRef.get();
-        const lastIso = throttleSnap.data()?.[coalesceKey];
-        const lastMs = typeof lastIso === "string" ? new Date(lastIso).getTime() : NaN;
-        if (!Number.isNaN(lastMs) && Date.now() - lastMs < windowMs) {
-          return res.status(200).json({ success: true, pushSent: false, reason: "coalesced" });
-        }
-        await throttleRef.set({ [coalesceKey]: new Date().toISOString() }, { merge: true });
-      }
-
-      const pushResponse = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${expoAccessToken}`,
-        },
-        body: JSON.stringify({
-          to: pushToken,
-          sound: "default",
-          title: title,
-          body: body || "",
-          data: data || {},
-        }),
-      });
-
-      const pushResult = await pushResponse.json();
-      res.status(200).json({ success: true, pushSent: true, result: pushResult });
-    } catch (error: any) {
-      console.error("Send Push Error: ", error);
-      res.status(500).json({ success: false, error: error.message || "Failed to send push notification" });
     }
   });
 
@@ -2783,7 +2733,7 @@ ${JSON.stringify(contactsList)}`;
   );
 
   // Translation Endpoint: translates batched text strings to targetLang with Firestore L3 caching
-  app.post("/api/translate", async (req, res) => {
+  app.post("/api/translate", standardRateLimiter, async (req, res) => {
     try {
       if (process.env.NODE_ENV !== "test") {
         try {
@@ -2866,7 +2816,20 @@ ${JSON.stringify(contactsList)}`;
 
       // If we have uncached items, call Gemini in chunks with timeout protection
       if (uncachedItems.length > 0) {
-        const langName = normalizedTargetLang === "es" ? "Spanish" : normalizedTargetLang;
+        const KNOWN_LANGUAGES: Record<string, string> = {
+          es: "Spanish",
+          zh: "Chinese",
+          ko: "Korean",
+          ja: "Japanese",
+          fr: "French",
+          de: "German",
+          pt: "Portuguese",
+          ru: "Russian",
+          vi: "Vietnamese",
+          tl: "Tagalog",
+          en: "English",
+        };
+        const langName = KNOWN_LANGUAGES[normalizedTargetLang] || "Spanish";
         const CHUNK_SIZE = 15;
         const AI_TIMEOUT_MS = 15000;
         const resultMap = new Map<number, string>();
@@ -3025,7 +2988,7 @@ CRITICAL RULES:
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.use((req, res) => {
+    app.use(standardRateLimiter, (req, res) => {
       res.sendFile("index.html", { root: distPath });
     });
   }

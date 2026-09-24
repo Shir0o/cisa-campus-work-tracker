@@ -170,7 +170,9 @@
     "next_30_days": "Next 30 days",
     "just_a_date": "Just a date we should know",
     "becomes_gathering": "Becomes a {name} gathering",
-    "open_shared_calendar_app": "Open the shared calendar app in a new tab"
+    "open_shared_calendar_app": "Open the shared calendar app in a new tab",
+    "push_test_sent": "Test sent — it should arrive on every device where notifications are on.",
+    "push_unsupported_here": "This browser can't receive push alerts (on iPhone, add the app to your Home Screen first). The test was sent to your other devices."
   },
   "calendar": {
     "badge": "calendar",
@@ -1501,6 +1503,9 @@
     "cancel": "Cancel",
     "applying": "Applying…",
     "combine_n_contacts": "Combine {n} {count}",
+    "combine_all": "Combine all ({n})",
+    "skip_for_now": "Skip for now",
+    "combine": "Combine",
     "and_more": "…and {n} more.",
     "new_kind_placeholder": "New kind, e.g. Workshop",
     "location": "Location",

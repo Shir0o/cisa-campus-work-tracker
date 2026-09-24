@@ -22,6 +22,7 @@ vi.mock('../lib/threads', () => ({
   countFor: (msgs: any[]) => msgs.length,
   repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
   addThreadMessage: vi.fn(() => Promise.resolve()),
+  contactStakeholdersOf: vi.fn((c) => c || {}),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
 }));
 

@@ -15,11 +15,11 @@ jest.mock('./notifications', () => ({
 }));
 
 jest.mock('./data/users', () => ({
-  setPushToken: jest.fn(),
+  registerPushDevice: jest.fn(),
 }));
 
 import { registerForPushToken } from './notifications';
-import { setPushToken } from './data/users';
+import { registerPushDevice } from './data/users';
 
 const authState: TestState = { uid: 'real-uid-1', user: { uid: 'real-uid-1' } };
 (globalThis as unknown as { __cisaPushAuth: TestState }).__cisaPushAuth = authState;
@@ -45,41 +45,41 @@ describe('usePushRegistration', () => {
 
   it('registers the token on the real auth uid, not the effective uid', async () => {
     authState.uid = 'cisa-student';
-    renderHook(() => usePushRegistration());
+    await renderHook(() => usePushRegistration());
 
-    await waitFor(() => expect(setPushToken).toHaveBeenCalledTimes(1));
-    expect(setPushToken).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
+    await waitFor(() => expect(registerPushDevice).toHaveBeenCalledTimes(1));
+    expect(registerPushDevice).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
   });
 
   it('registers on the real auth uid when no effective override exists', async () => {
-    renderHook(() => usePushRegistration());
+    await renderHook(() => usePushRegistration());
 
-    await waitFor(() => expect(setPushToken).toHaveBeenCalledTimes(1));
-    expect(setPushToken).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
+    await waitFor(() => expect(registerPushDevice).toHaveBeenCalledTimes(1));
+    expect(registerPushDevice).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
   });
 
   it('skips registration when signed out', async () => {
     authState.uid = null;
     authState.user = null;
-    renderHook(() => usePushRegistration());
+    await renderHook(() => usePushRegistration());
 
     await act(async () => {});
-    expect(setPushToken).not.toHaveBeenCalled();
+    expect(registerPushDevice).not.toHaveBeenCalled();
   });
 
   it('skips registration when no token could be minted', async () => {
     (registerForPushToken as jest.Mock).mockResolvedValue(null);
-    renderHook(() => usePushRegistration());
+    await renderHook(() => usePushRegistration());
 
     await act(async () => {});
-    expect(setPushToken).not.toHaveBeenCalled();
+    expect(registerPushDevice).not.toHaveBeenCalled();
   });
 
   it('re-registers token when AppState transitions to active', async () => {
-    renderHook(() => usePushRegistration());
+    await renderHook(() => usePushRegistration());
 
-    await waitFor(() => expect(setPushToken).toHaveBeenCalledTimes(1));
-    expect(setPushToken).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
+    await waitFor(() => expect(registerPushDevice).toHaveBeenCalledTimes(1));
+    expect(registerPushDevice).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
 
     (registerForPushToken as jest.Mock).mockResolvedValue('ExponentPushToken[fresh456]');
 
@@ -90,6 +90,6 @@ describe('usePushRegistration', () => {
       }
     });
 
-    await waitFor(() => expect(setPushToken).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[fresh456]'));
+    await waitFor(() => expect(registerPushDevice).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[fresh456]'));
   });
 });

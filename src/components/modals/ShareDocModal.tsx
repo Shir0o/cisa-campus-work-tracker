@@ -3,6 +3,7 @@
 // rotate, or kill it. Copy is the whole UX for handing the link out.
 import { useState } from 'react';
 import { Check, Copy, Link2, Lock, RefreshCw, Users, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '../LanguageProvider';
 import { audienceOf, guestAccessUrl, type BoardDoc, type GuestPermission } from '../../lib/board';
 import { enableGuestAccess, regenerateGuestAccess, revokeGuestAccess, setGuestPermission } from '../../lib/data/board';
@@ -137,6 +138,13 @@ export default function ShareDocModal({
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied ? t('coordination.share.copied', 'Copied') : t('coordination.share.copy', 'Copy')}
                 </button>
+              </div>
+
+              <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-outline-variant/60 bg-white p-3 shadow-xs" data-testid="guest-link-qr-code">
+                <QRCodeSVG value={url} size={144} />
+                <p className="mt-2 text-[11px] text-neutral-500">
+                  {t('coordination.share.scan_qr_prompt', 'Scan to open on a phone or tablet')}
+                </p>
               </div>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-2">

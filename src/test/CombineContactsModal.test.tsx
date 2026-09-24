@@ -6,7 +6,9 @@ import type { Contact } from '../types';
 
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
+const mockSet = vi.fn();
 const mockCommit = vi.fn().mockResolvedValue(undefined);
+const mockGetDocs = vi.fn().mockResolvedValue({ docs: [] });
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
@@ -16,16 +18,24 @@ vi.mock('../components/AuthProvider', () => ({
 
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({
-    t: (key: string, fallback?: string) => fallback || key,
+    t: (key: string, fallback?: string) => {
+      if (key === 'modals.combine_all') return 'Combine all ({n})';
+      return fallback || key;
+    },
     language: 'en',
   }),
 }));
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db: unknown, path: string, id: string) => ({ path, id })),
+  collection: vi.fn(() => ({})),
+  query: vi.fn((q: unknown) => q),
+  where: vi.fn(),
+  getDocs: () => mockGetDocs(),
   writeBatch: vi.fn(() => ({
     update: mockUpdate,
     delete: mockDelete,
+    set: mockSet,
     commit: mockCommit,
   })),
 }));
@@ -67,6 +77,7 @@ const testContacts: Contact[] = [
 beforeEach(() => {
   vi.clearAllMocks();
   mockCommit.mockResolvedValue(undefined);
+  mockGetDocs.mockResolvedValue({ docs: [] });
 });
 
 describe('CombineContactsModal', () => {
@@ -87,15 +98,45 @@ describe('CombineContactsModal', () => {
     render(<CombineContactsModal contacts={testContacts} onClose={vi.fn()} />);
     const swapBtn = screen.getByRole('button', { name: /swap survivor/i });
     fireEvent.click(swapBtn);
-    const applyBtn = screen.getByRole('button', { name: /combine 1 contact/i });
+    const applyBtn = screen.getByRole('button', { name: /combine all/i });
     expect(applyBtn).toBeInTheDocument();
   });
 
-  it('allows dismissing a pair so it will not be combined', () => {
+  it('skips a pair so it will not be combined', () => {
     render(<CombineContactsModal contacts={testContacts} onClose={vi.fn()} />);
-    const dismissBtn = screen.getByRole('button', { name: /dismiss pair/i });
-    fireEvent.click(dismissBtn);
+    const skipBtn = screen.getByRole('button', { name: /skip for now/i });
+    fireEvent.click(skipBtn);
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+  });
+
+  it('combines a single pair inline and removes its card', async () => {
+    const onApplied = vi.fn();
+    render(<CombineContactsModal contacts={testContacts} onClose={vi.fn()} onApplied={onApplied} />);
+    const inlineBtn = screen.getByRole('button', { name: /^Combine$/i });
+    fireEvent.click(inlineBtn);
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockSet).not.toHaveBeenCalled();
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockCommit).toHaveBeenCalled();
+      expect(onApplied).toHaveBeenCalled();
+      expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    });
+  });
+
+  it('combines all remaining pairs on bulk apply', async () => {
+    const onClose = vi.fn();
+    render(<CombineContactsModal contacts={testContacts} onClose={onClose} />);
+    const applyBtn = screen.getByRole('button', { name: /combine all \(1\)/i });
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockCommit).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
   });
 
   it('renders "Created" yyyy-mm-dd from string createdAt', () => {
@@ -123,17 +164,72 @@ describe('CombineContactsModal', () => {
     expect(screen.getByText('Created: 2025-06-15')).toBeInTheDocument();
   });
 
-  it('applies batch changes and deletes duplicate on confirmation', async () => {
-    const onClose = vi.fn();
-    render(<CombineContactsModal contacts={testContacts} onClose={onClose} />);
-    const applyBtn = screen.getByRole('button', { name: /combine 1 contact/i });
-    fireEvent.click(applyBtn);
+  it('shows a field-change badge and expands to reveal merge details', () => {
+    render(<CombineContactsModal contacts={testContacts} onClose={vi.fn()} />);
+    const toggle = screen.getByRole('button', { name: /1 field will change/i });
+    expect(toggle).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.getByText(/Kept survivor's/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kept "Lead"; dropped "Contact" from the duplicate/i)).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(mockUpdate).toHaveBeenCalled();
-      expect(mockDelete).toHaveBeenCalled();
-      expect(mockCommit).toHaveBeenCalled();
-      expect(onClose).toHaveBeenCalled();
-    });
+  it('shows "No fields will change" when the pair merge changes nothing', () => {
+    const a: Contact = {
+      id: 'x1',
+      name: 'Same',
+      email: 'same@x.com',
+      phone: '555',
+      role: 'Student',
+      stage: 'Lead',
+      location: 'A',
+      lastSeen: '',
+      initials: 'S',
+      notes: 'note',
+      tags: ['T'],
+      createdAt: '2026-01-01',
+    };
+    render(<CombineContactsModal contacts={[a, { ...a, id: 'x2', createdAt: '2026-02-01' }]} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /no fields will change/i })).toBeInTheDocument();
+  });
+
+  it('renders backfilled and unioned change rows', () => {
+    const survivor: Contact = {
+      id: 's',
+      name: 'Survivor',
+      email: 'dup@x.com',
+      phone: '',
+      role: 'Student',
+      stage: 'Lead',
+      location: '',
+      lastSeen: '',
+      initials: 'S',
+      tags: ['A'],
+      notes: 'first',
+      createdAt: '2026-01-01',
+    };
+    const duplicate: Contact = {
+      id: 'd',
+      name: 'Duplicate',
+      email: 'dup@x.com',
+      phone: '555',
+      role: 'Student',
+      stage: 'Lead',
+      location: '',
+      lastSeen: '',
+      initials: 'D',
+      tags: ['A', 'B'],
+      notes: 'second',
+      createdAt: '2026-02-01',
+    };
+    render(<CombineContactsModal contacts={[survivor, duplicate]} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /fields will change/i }));
+    expect(screen.getByText(/Backfilled/i)).toBeInTheDocument();
+    expect(screen.getByText(/Unioned/i)).toBeInTheDocument();
+  });
+
+  it('merge details are read-only — no editable controls appear', () => {
+    render(<CombineContactsModal contacts={testContacts} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /1 field will change/i }));
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

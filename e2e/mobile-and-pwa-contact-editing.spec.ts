@@ -44,7 +44,7 @@ test.describe('Mobile & PWA Contact Editing (#633)', () => {
     // Expand optional fields disclosure to fill last name
     await page.getByRole('button', { name: /\+ add the rest/i }).click();
     await page.getByPlaceholder(/e\.g\. johnson/i).first().fill('Rivera');
-    await page.getByPlaceholder(/\(555\) 000-0000/i).first().fill('555-0199');
+    await page.getByPlaceholder(/\(555\) 000-0000/i).first().fill('555-019-9901');
 
     // Submit new contact
     const saveContactBtn = page.getByRole('button', { name: /add contact|^save$/i }).first();

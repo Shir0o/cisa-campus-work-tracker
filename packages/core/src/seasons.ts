@@ -45,9 +45,15 @@ export function seasonLabel(id: SeasonId, d: Date = new Date()): string {
 }
 
 /** Cohort tags for a new contact — canonical full-year tags (e.g. "Fall 2026"). */
-export function seasonTags(activeId: SeasonId, clubRush: boolean, d: Date = new Date()): string[] {
+export function seasonTags(
+  activeId: SeasonId,
+  clubRush: boolean,
+  d: Date = new Date(),
+  bfa = false,
+): string[] {
   const tags = [`${SEASONS[activeId].label} ${d.getFullYear()}`];
   if (clubRush) tags.push("Club Rush");
+  if (bfa) tags.push("BFA");
   return tags;
 }
 

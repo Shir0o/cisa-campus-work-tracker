@@ -40,8 +40,8 @@ const stack: AskStackData = {
 };
 
 describe('AskStack (full-timer questions widget)', () => {
-  it('renders nothing when there are no unanswered questions', () => {
-    const { queryByText } = render(
+  it('renders nothing when there are no unanswered questions', async () => {
+    const { queryByText } = await render(
       <ThemeProvider>
         <AskStack
           stacks={[]}
@@ -57,9 +57,9 @@ describe('AskStack (full-timer questions widget)', () => {
     expect(queryByText('Questions for the team')).toBeNull();
   });
 
-  it('renders the question and answers it, pinging the asker', () => {
+  it('renders the question and answers it, pinging the asker', async () => {
     const onAnswer = jest.fn();
-    const { getByText, getByPlaceholderText } = render(
+    const { getByText, getByPlaceholderText } = await render(
       <ThemeProvider>
         <AskStack
           stacks={[stack]}
@@ -78,8 +78,8 @@ describe('AskStack (full-timer questions widget)', () => {
     expect(getByText(/How do you start a conversation at the club table/)).toBeTruthy();
 
     const input = getByPlaceholderText("Answer Zion the way you'd say it out loud.");
-    fireEvent.changeText(input, 'Three tries, spread out.');
-    fireEvent.press(getByText('Send it'));
+    await fireEvent.changeText(input, 'Three tries, spread out.');
+    await fireEvent.press(getByText('Send it'));
 
     expect(onAnswer).toHaveBeenCalledWith('q1', 't1', 'Three tries, spread out.');
   });

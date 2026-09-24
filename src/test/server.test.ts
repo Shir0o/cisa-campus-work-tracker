@@ -186,7 +186,6 @@ beforeEach(async () => {
   vi.stubEnv("GROUPME_BOT_ID", "");
   vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
   vi.stubEnv("APP_URL", "https://example.test");
-  vi.stubEnv("EXPO_ACCESS_TOKEN", "test-expo-token");
   vi.stubGlobal("fetch", fetchMock);
 
   resetDb();
@@ -1160,44 +1159,6 @@ describe("POST /api/mint-custom-token", () => {
   });
 });
 
-describe("POST /api/send-push", () => {
-  it("returns 400 when userId or title is missing", async () => {
-    const res = await request(app).post("/api/send-push").send({ title: "Hi" });
-    expect(res.status).toBe(400);
-  });
-
-  it("returns pushSent false when the user has no pushToken", async () => {
-    seedDoc("users", "u-1", { displayName: "Sam" });
-    const res = await request(app).post("/api/send-push").send({ userId: "u-1", title: "Hi" });
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ success: true, pushSent: false });
-  });
-
-  it("returns pushSent false when EXPO_ACCESS_TOKEN is not configured", async () => {
-    vi.stubEnv("EXPO_ACCESS_TOKEN", "");
-    seedDoc("users", "u-3", { pushToken: "ExponentPushToken[abc]" });
-    const res = await request(app).post("/api/send-push").send({ userId: "u-3", title: "Hi" });
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ success: true, pushSent: false });
-    expect(res.body.reason).toContain("EXPO_ACCESS_TOKEN");
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("dispatches a push via Expo when the user has a pushToken", async () => {
-    seedDoc("users", "u-2", { pushToken: "ExponentPushToken[abc]" });
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: { status: "ok" } }), { status: 200 }));
-    const res = await request(app).post("/api/send-push").send({ userId: "u-2", title: "Hello", body: "World" });
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ success: true, pushSent: true });
-
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("https://exp.host/--/api/v2/push/send");
-    const headers = (init as RequestInit).headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer test-expo-token");
-    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ to: "ExponentPushToken[abc]", title: "Hello" });
-  });
-});
-
 describe("GET /api/quick-add/status", () => {
   it("returns server configuration status", async () => {
     const res = await request(app).get("/api/quick-add/status");
@@ -1556,18 +1517,6 @@ describe("POST /api/smart-import/commit — matching paths", () => {
     const storedContact = getCollection("contacts")["existing-1"];
     expect(storedContact.name).toBeUndefined();
     expect(storedContact.lastSeen).toBeTruthy();
-  });
-});
-
-describe("POST /api/send-push — failure path", () => {
-  it("returns 500 when the Expo push fetch fails", async () => {
-    seedDoc("users", "u-4", { pushToken: "ExponentPushToken[abc]" });
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    fetchMock.mockRejectedValue(new Error("expo down"));
-    const res = await request(app).post("/api/send-push").send({ userId: "u-4", title: "Hi" });
-    expect(res.status).toBe(500);
-    expect(res.body.success).toBe(false);
-    errSpy.mockRestore();
   });
 });
 

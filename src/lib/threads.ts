@@ -11,7 +11,6 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
-import { sendPushNotification } from "./push";
 import { isFullTimer } from "./walking";
 
 // "Walking together" threads — the single per-person conversation surface,
@@ -197,7 +196,24 @@ const TEAM_NOTIFY_TITLE = (who: string, contact: string) =>
  *  their own feed instead, never fanned out from here (#813). */
 export interface ThreadStakeholders {
   createdBy?: string | null;
+  addedBy?: string | null;
   coCreators?: string[] | null;
+  founders?: string[] | null;
+  carers?: string[] | null;
+}
+
+/** Extracts all stakeholders from a contact record. */
+export function contactStakeholdersOf(
+  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> | null,
+): ThreadStakeholders {
+  if (!contact) return {};
+  return {
+    createdBy: contact.createdBy ?? null,
+    addedBy: contact.addedBy ?? null,
+    coCreators: contact.coCreators ?? null,
+    founders: contact.founders ?? null,
+    carers: contact.carers ?? null,
+  };
 }
 
 /** The uids on the contact document, deduped, minus the poster. */
@@ -208,22 +224,12 @@ export function stakeholderUidsOf(
   if (!stakeholders) return [];
   const all = [
     stakeholders.createdBy,
+    stakeholders.addedBy,
     ...(stakeholders.coCreators || []),
+    ...(stakeholders.founders || []),
+    ...(stakeholders.carers || []),
   ].filter((id): id is string => !!id);
   return [...new Set(all)].filter((id) => id !== from);
-}
-
-/** A push that says something happened about one person. Held to one per
- *  contact per person per hour, server-side; the bell keeps every message. */
-function pushAbout(userId: string, contactId: string, title: string, body: string, link: string) {
-  void sendPushNotification({
-    userId,
-    title,
-    body,
-    data: { link, targetId: contactId },
-    coalesceKey: `contact:${contactId}`,
-    coalesceMinutes: 60,
-  });
 }
 
 /** Post a new message to a contact (and optionally to one interaction). Dispatches
@@ -289,9 +295,11 @@ export async function addThreadMessage(
       return isFullTimer(uid);
     };
 
-    // An @mention narrows everything to the person named: they are the only one
-    // who gets the personal wording, and the only one pushed.
-    const narrowed = mentionedUserIds.length > 0;
+    // Every bell entry below is pushed to the recipient's devices by the
+    // notification function. `coalesceKey` holds a back-and-forth about one
+    // person to one buzz per hour each (#813); an @mention carries none — it is
+    // addressed to that person, so it always buzzes.
+    const aboutThisPerson = `contact:${contactId}`;
 
     for (const mUid of mentionedUserIds) {
       if (mUid !== input.from && isAllowedRecipient(mUid)) {
@@ -307,7 +315,6 @@ export async function addThreadMessage(
           targetId: contactId,
           link: targetLink,
         });
-        pushAbout(mUid, contactId, title, truncatedBody, targetLink);
       }
     }
 
@@ -325,10 +332,8 @@ export async function addThreadMessage(
         type: "info",
         targetId: contactId,
         link: targetLink,
+        coalesceKey: aboutThisPerson,
       });
-      // A mention means "this one is for you" — the rest hear about it in the
-      // bell without their phone going off.
-      if (!narrowed) pushAbout(sUid, contactId, title, truncatedBody, targetLink);
     }
 
     // Legacy fallback: notify.to when the caller passed no stakeholders.
@@ -341,8 +346,8 @@ export async function addThreadMessage(
         type: "info",
         targetId: contactId,
         link: targetLink,
+        coalesceKey: aboutThisPerson,
       });
-      if (!narrowed) pushAbout(notify.to, contactId, title, truncatedBody, targetLink);
     }
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);

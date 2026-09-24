@@ -55,24 +55,24 @@ describe('useMessagesData', () => {
     jest.useRealTimers();
   });
 
-  it('clears stale rooms and returns to loading when the uid changes', () => {
-    const { result, rerender } = renderHook((_props: { ignored?: boolean }) => useMessagesData(), {
+  it('clears stale rooms and returns to loading when the uid changes', async () => {
+    const { result, rerender } = await renderHook((_props: { ignored?: boolean }) => useMessagesData(), {
       initialProps: {},
     });
 
-    act(() => {
+    await act(() => {
       (cbs.user1 as (rooms: unknown[]) => void)([room('r1')]);
     });
     // Data has landed, but the skeleton's minimum duration keeps it up...
     expect(result.current.loading).toBe(true);
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
     expect(result.current.loading).toBe(false);
     expect(result.current.rooms).toHaveLength(1);
 
     authState.uid = 'user2';
-    rerender({});
+    await rerender({});
 
     expect(result.current.loading).toBe(true);
     expect(result.current.rooms).toHaveLength(0);

@@ -148,14 +148,14 @@ describe('ContactScreen', () => {
     (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'trainee' });
   });
 
-  it('renders skeleton during initial loading state', () => {
+  it('renders skeleton during initial loading state', async () => {
     (useContactDetailData as jest.Mock).mockReturnValue({
       ...baseLoadedData,
       contact: null,
       loading: true,
     });
 
-    const { getByTestId } = render(
+    const { getByTestId } = await render(
       <ThemeProvider>
         <ContactScreen contactId="contact1" initialTab="story" />
       </ThemeProvider>,
@@ -164,14 +164,14 @@ describe('ContactScreen', () => {
     expect(getByTestId('contact-skeleton')).toBeTruthy();
   });
 
-  it('transitions cleanly from loading state to loaded contact without hook order errors', () => {
+  it('transitions cleanly from loading state to loaded contact without hook order errors', async () => {
     (useContactDetailData as jest.Mock).mockReturnValue({
       ...baseLoadedData,
       contact: null,
       loading: true,
     });
 
-    const { getByTestId, queryByTestId, getByText, rerender } = render(
+    const { getByTestId, queryByTestId, getByText, rerender } = await render(
       <ThemeProvider>
         <ContactScreen contactId="contact1" initialTab="story" />
       </ThemeProvider>,
@@ -186,7 +186,7 @@ describe('ContactScreen', () => {
       loading: false,
     });
 
-    rerender(
+    await rerender(
       <ThemeProvider>
         <ContactScreen contactId="contact1" initialTab="story" />
       </ThemeProvider>,
@@ -197,7 +197,7 @@ describe('ContactScreen', () => {
     expect(getByText('Interested')).toBeTruthy();
   });
 
-  it('renders empty/error state when contact is not found', () => {
+  it('renders empty/error state when contact is not found', async () => {
     (useContactDetailData as jest.Mock).mockReturnValue({
       ...baseLoadedData,
       contact: null,
@@ -205,7 +205,7 @@ describe('ContactScreen', () => {
       error: 'Contact not found',
     });
 
-    const { getByText, queryByTestId } = render(
+    const { getByText, queryByTestId } = await render(
       <ThemeProvider>
         <ContactScreen contactId="contact_unknown" initialTab="story" />
       </ThemeProvider>,
@@ -226,13 +226,13 @@ describe('ContactScreen', () => {
       type: 'chat',
     };
 
-      const renderStory = (data: Partial<typeof baseLoadedData> = {}) => {
+      const renderStory = async (data: Partial<typeof baseLoadedData> = {}) => {
     (useContactDetailData as jest.Mock).mockReturnValue({
       ...baseLoadedData,
       ...data,
       interactions: data.interactions ?? [interaction],
     });
-      return render(
+      return await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
@@ -243,55 +243,55 @@ describe('ContactScreen', () => {
       jest.useRealTimers();
     });
 
-    it('shows Remove on own interactions and hides the card, then restores on Undo', () => {
-      const { getByText, queryByText } = renderStory();
+    it('shows Remove on own interactions and hides the card, then restores on Undo', async () => {
+      const { getByText, queryByText } = await renderStory();
 
       expect(getByText('Coffee chat')).toBeTruthy();
 
-      fireEvent.press(getByText('Remove'));
+      await fireEvent.press(getByText('Remove'));
       expect(queryByText('Coffee chat')).toBeNull();
 
-      fireEvent.press(getByText('Undo'));
+      await fireEvent.press(getByText('Undo'));
       expect(getByText('Coffee chat')).toBeTruthy();
     });
 
-    it('commits the delete only after the undo window expires', () => {
+    it('commits the delete only after the undo window expires', async () => {
       jest.useFakeTimers();
-      const { getByText } = renderStory();
+      const { getByText } = await renderStory();
 
-      fireEvent.press(getByText('Remove'));
+      await fireEvent.press(getByText('Remove'));
       expect(baseLoadedData.deleteInteraction).not.toHaveBeenCalled();
 
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(5000);
       });
 
       expect(baseLoadedData.deleteInteraction).toHaveBeenCalledWith(interaction);
     });
 
-    it('hides the remove affordance for a non-owner non-manager', () => {
+    it('hides the remove affordance for a non-owner non-manager', async () => {
       (useAuth as jest.Mock).mockReturnValue({ uid: 'other-user', user: { displayName: 'Viewer' }, role: 'viewer' });
-      const { getByText, queryByText } = renderStory();
+      const { getByText, queryByText } = await renderStory();
 
       expect(getByText('Coffee chat')).toBeTruthy();
       expect(queryByText('Remove')).toBeNull();
     });
 
-    it('hides the remove affordance for visit-mirror interactions', () => {
-      const { queryByText } = renderStory({
+    it('hides the remove affordance for visit-mirror interactions', async () => {
+      const { queryByText } = await renderStory({
         interactions: [{ ...interaction, id: 'visit_abc' }],
       });
 
       expect(queryByText('Remove')).toBeNull();
     });
 
-    it('asks for confirmation when the interaction has thread messages', () => {
+    it('asks for confirmation when the interaction has thread messages', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-      const { getByText } = renderStory({
+      const { getByText } = await renderStory({
         threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' }] as ThreadMessage[],
       });
 
-      fireEvent.press(getByText('Remove'));
+      await fireEvent.press(getByText('Remove'));
 
       expect(alertSpy).toHaveBeenCalledWith(
         expect.any(String),
@@ -301,15 +301,15 @@ describe('ContactScreen', () => {
       alertSpy.mockRestore();
     });
 
-    it('removes after confirming the thread warning', () => {
+    it('removes after confirming the thread warning', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
         buttons?.[1]?.onPress?.();
       });
-      const { queryByText, getByText } = renderStory({
+      const { queryByText, getByText } = await renderStory({
         threadMessages: [{ id: 'm1', interactionId: 'int1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' }] as ThreadMessage[],
       });
 
-      fireEvent.press(getByText('Remove'));
+      await fireEvent.press(getByText('Remove'));
 
       expect(queryByText('Coffee chat')).toBeNull();
       alertSpy.mockRestore();
@@ -317,9 +317,9 @@ describe('ContactScreen', () => {
   });
 
   describe('Contact Editing Flow', () => {
-    it('renders Edit button in top row for write roles', () => {
+    it('renders Edit button in top row for write roles', async () => {
       (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
-      const { getByText } = render(
+      const { getByText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
@@ -328,10 +328,10 @@ describe('ContactScreen', () => {
       expect(getByText('Edit')).toBeTruthy();
     });
 
-    it('hides Edit button for viewer role', () => {
+    it('hides Edit button for viewer role', async () => {
       (useAuth as jest.Mock).mockReturnValue({ uid: 'user_viewer', user: { displayName: 'Viewer' }, role: 'viewer' });
       (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
-      const { queryByText } = render(
+      const { queryByText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
@@ -340,9 +340,9 @@ describe('ContactScreen', () => {
       expect(queryByText('Edit')).toBeNull();
     });
 
-    it('opens EditContactSheet from top row Edit button and handles save', () => {
+    it('opens EditContactSheet from top row Edit button and handles save', async () => {
       (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
-      const { getByText, getByTestId, queryByTestId } = render(
+      const { getByText, getByTestId, queryByTestId } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
@@ -350,17 +350,17 @@ describe('ContactScreen', () => {
 
       expect(queryByTestId('edit-contact-sheet')).toBeNull();
 
-      fireEvent.press(getByText('Edit'));
+      await fireEvent.press(getByText('Edit'));
       expect(getByTestId('edit-contact-sheet')).toBeTruthy();
 
-      fireEvent.press(getByText('Trigger Save'));
+      await fireEvent.press(getByText('Trigger Save'));
       expect(queryByTestId('edit-contact-sheet')).toBeNull();
       expect(getByText('Sarah Connor updated')).toBeTruthy();
     });
 
-    it('renders Edit details button inside details disclosure for write roles and opens sheet', () => {
+    it('renders Edit details button inside details disclosure for write roles and opens sheet', async () => {
       (useContactDetailData as jest.Mock).mockReturnValue(baseLoadedData);
-      const { getByText, getByTestId, queryByTestId } = render(
+      const { getByText, getByTestId, queryByTestId } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
@@ -368,17 +368,17 @@ describe('ContactScreen', () => {
 
       // Expand details
       const detailsToggle = getByText('Details, notes, how to reach them');
-      fireEvent.press(detailsToggle);
+      await fireEvent.press(detailsToggle);
 
       expect(getByText('Edit details')).toBeTruthy();
 
-      fireEvent.press(getByText('Edit details'));
+      await fireEvent.press(getByText('Edit details'));
       expect(getByTestId('edit-contact-sheet')).toBeTruthy();
     });
   });
 
   describe('Collaborator Management & Impersonation', () => {
-    it('displays who else can see and add someone button when user can share', () => {
+    it('displays who else can see and add someone button when user can share', async () => {
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
         contact: {
@@ -387,44 +387,44 @@ describe('ContactScreen', () => {
         },
       });
 
-      const { getByText, getByLabelText } = render(
+      const { getByText, getByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
       );
 
       // Expand details
-      fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
 
       expect(getByText('Who else can see')).toBeTruthy();
       expect(getByText('Partner Bob')).toBeTruthy();
       expect(getByLabelText('Add someone…')).toBeTruthy();
     });
 
-    it('opens AddCollaboratorSheet when pressing add someone and invokes addCollaborator', () => {
+    it('opens AddCollaboratorSheet when pressing add someone and invokes addCollaborator', async () => {
       const mockAddCollaborator = jest.fn().mockResolvedValue(undefined);
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
         addCollaborator: mockAddCollaborator,
       });
 
-      const { getByText, getByLabelText, getByTestId, queryByTestId } = render(
+      const { getByText, getByLabelText, getByTestId, queryByTestId } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
       );
 
-      fireEvent.press(getByText('Details, notes, how to reach them'));
-      fireEvent.press(getByLabelText('Add someone…'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByLabelText('Add someone…'));
 
       expect(getByTestId('add-collaborator-sheet')).toBeTruthy();
 
-      fireEvent.press(getByText('Add Partner Bob'));
+      await fireEvent.press(getByText('Add Partner Bob'));
       expect(mockAddCollaborator).toHaveBeenCalledWith('u-collab', 'Partner Bob');
       expect(queryByTestId('add-collaborator-sheet')).toBeNull();
     });
 
-    it('confirms and calls removeCollaborator when removing an added collaborator', () => {
+    it('confirms and calls removeCollaborator when removing an added collaborator', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert');
       const mockRemoveCollaborator = jest.fn().mockResolvedValue(undefined);
 
@@ -438,17 +438,17 @@ describe('ContactScreen', () => {
         removeCollaborator: mockRemoveCollaborator,
       });
 
-      const { getByText, getByLabelText } = render(
+      const { getByText, getByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
       );
 
-      fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
 
       // The remove button has accessibilityLabel="Remove access"
       const removeBtn = getByLabelText('Remove access');
-      fireEvent.press(removeBtn);
+      await fireEvent.press(removeBtn);
 
       expect(alertSpy).toHaveBeenCalledWith(
         'Remove access',
@@ -465,7 +465,7 @@ describe('ContactScreen', () => {
       alertSpy.mockRestore();
     });
 
-    it('does not allow removing the original creator', () => {
+    it('does not allow removing the original creator', async () => {
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
         contact: {
@@ -475,19 +475,19 @@ describe('ContactScreen', () => {
         },
       });
 
-      const { getByText, queryByLabelText } = render(
+      const { getByText, queryByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
       );
 
-      fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
 
       // No remove button for original creator
       expect(queryByLabelText('Remove access')).toBeNull();
     });
 
-    it('shows founders distinctly from added collaborators and offers remove controls only where they apply (#1054)', () => {
+    it('shows founders distinctly from added collaborators and offers remove controls only where they apply (#1054)', async () => {
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
         contact: {
@@ -498,13 +498,13 @@ describe('ContactScreen', () => {
         },
       });
 
-      const { getByText, getByLabelText, queryByLabelText, getAllByLabelText, getAllByText } = render(
+      const { getByText, getByLabelText, queryByLabelText, getAllByLabelText, getAllByText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
       );
 
-      fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
 
       // Founders are named as gospel partners; the added collaborator is not.
       expect(getAllByText('Gospel partner').length).toBe(2);
@@ -519,7 +519,7 @@ describe('ContactScreen', () => {
       expect(removeBtns.length).toBe(1);
     });
 
-    it('only a Full-timer sees the remove control on a founder (#1054)', () => {
+    it('only a Full-timer sees the remove control on a founder (#1054)', async () => {
       (useAuth as jest.Mock).mockReturnValue({ uid: 'user-ft', user: { displayName: 'Full-timer' }, role: 'admin' });
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
@@ -531,19 +531,19 @@ describe('ContactScreen', () => {
         },
       });
 
-      const { getByText, getAllByLabelText } = render(
+      const { getByText, getAllByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
       );
 
-      fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
 
       // A Full-timer may remove anyone: both founders and the added collaborator.
       expect(getAllByLabelText('Remove access').length).toBe(3);
     });
 
-    it('disables sharing and editing when isImpersonating is true', () => {
+    it('disables sharing and editing when isImpersonating is true', async () => {
       (useAuth as jest.Mock).mockReturnValue({
         uid: 'user1',
         user: { displayName: 'Staffer' },
@@ -559,7 +559,7 @@ describe('ContactScreen', () => {
         },
       });
 
-      const { getByText, queryByText, queryByLabelText } = render(
+      const { getByText, queryByText, queryByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="story" />
         </ThemeProvider>,
@@ -568,7 +568,7 @@ describe('ContactScreen', () => {
       // Top-row Edit button should be hidden in impersonation mode
       expect(queryByText('Edit')).toBeNull();
 
-      fireEvent.press(getByText('Details, notes, how to reach them'));
+      await fireEvent.press(getByText('Details, notes, how to reach them'));
 
       // Edit details button inside disclosure should be hidden
       expect(queryByText('Edit details')).toBeNull();
@@ -622,7 +622,7 @@ describe('ContactScreen', () => {
     it.each([
       ['A Full-timer using "See it as they do" on a trainee', true],
       ['A trainee signed in for real', false],
-    ])('%s cannot open a person they have no tie to', (_label, isImpersonating) => {
+    ])('%s cannot open a person they have no tie to', async (_label, isImpersonating) => {
       (useAuth as jest.Mock).mockReturnValue({
         uid: 'enoch',
         user: { displayName: 'Enoch' },
@@ -635,7 +635,7 @@ describe('ContactScreen', () => {
         threadMessages: [teamMessage, openMessage],
       });
 
-      const { queryByText } = render(
+      const { queryByText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="amy" initialTab="alongside" />
         </ThemeProvider>,
@@ -647,7 +647,7 @@ describe('ContactScreen', () => {
       expect(queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
     });
 
-    it('hides team-scope discussion from a tied trainee, and keeps it for a full-timer', () => {
+    it('hides team-scope discussion from a tied trainee, and keeps it for a full-timer', async () => {
       const mine = {
         ...mockContact,
         id: 'mine',
@@ -664,7 +664,7 @@ describe('ContactScreen', () => {
         threadMessages: [teamMessage, openMessage],
       });
 
-      const asTrainee = render(
+      const asTrainee = await render(
         <ThemeProvider>
           <ContactScreen contactId="mine" initialTab="alongside" />
         </ThemeProvider>,
@@ -674,7 +674,7 @@ describe('ContactScreen', () => {
       expect(asTrainee.queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
 
       (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
-      const asFullTimer = render(
+      const asFullTimer = await render(
         <ThemeProvider>
           <ContactScreen contactId="mine" initialTab="alongside" />
         </ThemeProvider>,
@@ -703,7 +703,7 @@ describe('ContactScreen', () => {
       at: '2026-09-11T12:00:00.000Z',
     };
 
-    it('shows a delete affordance on the viewer\'s own message and deletes it', () => {
+    it('shows a delete affordance on the viewer\'s own message and deletes it', async () => {
       (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'trainee' });
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
@@ -711,7 +711,7 @@ describe('ContactScreen', () => {
         threadMessages: [mine, theirs],
       });
 
-      const { getAllByLabelText } = render(
+      const { getAllByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="alongside" />
         </ThemeProvider>,
@@ -720,11 +720,11 @@ describe('ContactScreen', () => {
       // Only the viewer's own message (MINE) is deletable — theirs is not.
       const deletes = getAllByLabelText('Delete message');
       expect(deletes).toHaveLength(1);
-      fireEvent.press(deletes[0]);
+      await fireEvent.press(deletes[0]);
       expect(baseLoadedData.deleteThreadMessage).toHaveBeenCalledWith(mine);
     });
 
-    it('lets an admin delete anyone\'s message', () => {
+    it('lets an admin delete anyone\'s message', async () => {
       (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
       (useContactDetailData as jest.Mock).mockReturnValue({
         ...baseLoadedData,
@@ -732,7 +732,7 @@ describe('ContactScreen', () => {
         threadMessages: [mine, theirs],
       });
 
-      const { getAllByLabelText } = render(
+      const { getAllByLabelText } = await render(
         <ThemeProvider>
           <ContactScreen contactId="contact1" initialTab="alongside" />
         </ThemeProvider>,

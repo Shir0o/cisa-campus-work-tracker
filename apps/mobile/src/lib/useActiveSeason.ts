@@ -17,11 +17,13 @@ export interface ActiveSeason {
   activeId: SeasonId;
   label: string;
   clubRush: boolean;
+  bfa: boolean;
   tags: string[];
   isAuto: boolean;
   setSeason: (id: SeasonId) => Promise<void>;
   resetSeason: () => Promise<void>;
   toggleClubRush: () => Promise<void>;
+  toggleBfa: () => Promise<void>;
 }
 
 export function useActiveSeason(): ActiveSeason {
@@ -35,6 +37,7 @@ export function useActiveSeason(): ActiveSeason {
       : null;
   const activeId = override ?? autoId;
   const clubRush = !!settings.clubRush;
+  const bfa = !!settings.bfa;
 
   const setSeason = (id: SeasonId) =>
     saveSeasonSettings({ override: id === autoId ? null : id }).catch((e) =>
@@ -48,16 +51,22 @@ export function useActiveSeason(): ActiveSeason {
     saveSeasonSettings({ clubRush: !clubRush }).catch((e) =>
       console.warn('Failed to update season settings', e),
     );
+  const toggleBfa = () =>
+    saveSeasonSettings({ bfa: !bfa }).catch((e) =>
+      console.warn('Failed to update season settings', e),
+    );
 
   return {
     autoId,
     activeId,
     label: seasonLabel(activeId),
     clubRush,
-    tags: seasonTags(activeId, clubRush),
+    bfa,
+    tags: seasonTags(activeId, clubRush, new Date(), bfa),
     isAuto: !override,
     setSeason,
     resetSeason,
     toggleClubRush,
+    toggleBfa,
   };
 }
