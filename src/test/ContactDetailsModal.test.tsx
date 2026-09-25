@@ -1167,6 +1167,34 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
+  it('renders "Just {name} for now." without a trailing brace when no one else is shared (#1191)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    const singleOwnerContact = {
+      ...mockContact,
+      name: 'Jane Doe',
+      createdBy: 'user-123',
+      createdByName: 'Tony Wang',
+      founders: ['user-123'],
+      coCreators: [],
+    };
+
+    (firestore.onSnapshot as any).mockImplementation((_q: any, successCallback: any) => {
+      successCallback({ docs: [] });
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={singleOwnerContact} />);
+    await screen.findByText('Jane Doe');
+
+    expect(screen.getByText('Just Jane for now.')).toBeInTheDocument();
+    expect(screen.queryByText(/Just Jane\} for now\./)).not.toBeInTheDocument();
+  });
+
   it('dropping a share also drops the removed collaborator from their sheep (#1052)', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Admin User' },
