@@ -5,6 +5,7 @@
 // selection stays out of this module, matching feedback.ts/history.ts's
 // convention.
 import { hasMinRole, type AppRole } from "./permissions";
+import { matchContact, matchTier, type ContactMatch } from "./contactMatch";
 import type { Hist } from "./history";
 import type { Contact } from "./types";
 
@@ -24,18 +25,29 @@ export function recentPeople(contacts: Contact[], max: number = GS_MAX): Contact
     .slice(0, max);
 }
 
-const matchesPersonQuery = (c: Contact, q: string): boolean =>
-  (c.name || "").toLowerCase().includes(q) ||
-  (c.role || "").toLowerCase().includes(q) ||
-  (c.location || "").toLowerCase().includes(q) ||
-  (c.notes || "").toLowerCase().includes(q) ||
-  (c.spiritualBackground || "").toLowerCase().includes(q) ||
-  (c.tags || []).some((t) => t.toLowerCase().includes(q));
+const personFields = (c: Contact): Array<string | undefined> => [
+  c.role,
+  c.location,
+  c.notes,
+  c.spiritualBackground,
+  (c.tags ?? []).join(" "),
+];
 
+/** Name-first, word-boundary match (#1192): name matches rank above contacts
+ *  that only match on role/location/notes/background/tags, and "ian" no longer
+ *  matches "Christian" mid-word. */
 export function searchPeople(contacts: Contact[], q: string, max: number = GS_MAX): Contact[] {
-  const needle = q.trim().toLowerCase();
+  const needle = q.trim();
   if (!needle) return [];
-  return contacts.filter((c) => matchesPersonQuery(c, needle)).slice(0, max);
+  const scored: { c: Contact; match: ContactMatch }[] = [];
+  for (const c of contacts) {
+    const m = matchContact(c, needle, personFields(c));
+    if (m) scored.push({ c, match: m });
+  }
+  // Stable by construction (matches scanned in list order); name matches win,
+  // then the first `max` results — so a name lookup fills the cap first.
+  scored.sort((a, b) => matchTier(a.match) - matchTier(b.match));
+  return scored.slice(0, max).map((s) => s.c);
 }
 
 const matchesHistoryQuery = (a: Hist, q: string): boolean =>

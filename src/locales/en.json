@@ -422,6 +422,7 @@
     "all_groups": "All groups",
     "all_backgrounds": "All backgrounds",
     "no_matches_title": "No one matches that just yet",
+    "matched_by": "Matched by {names}",
     "unassigned": "Unassigned",
     "no_contact_logged": "No contact logged yet.",
     "lately": "Lately:",

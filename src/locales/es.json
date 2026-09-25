@@ -419,6 +419,7 @@
     "select": "Seleccionar",
     "deselect": "Deseleccionar",
     "no_matches_title": "Aún no hay coincidencias",
+    "matched_by": "Coincide con {names}",
     "unassigned": "Sin asignar",
     "all_stages": "Todas las etapas",
     "all_groups": "Todos los grupos",

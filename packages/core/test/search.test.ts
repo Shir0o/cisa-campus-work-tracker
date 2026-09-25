@@ -82,6 +82,32 @@ describe('searchPeople', () => {
     const contacts = [contact({ id: 'a', name: 'Match A' }), contact({ id: 'b', name: 'Match B' })];
     expect(searchPeople(contacts, 'match', 1)).toHaveLength(1);
   });
+
+  it('matches word-boundary, not mid-word substrings (#1192)', () => {
+    const contacts = [
+      contact({ id: 'named-ian', name: 'Ian Marks' }),
+      contact({ id: 'christian-role', name: 'Bo', role: 'Christian' }),
+    ];
+    expect(searchPeople(contacts, 'ian').map((c) => c.id)).toEqual(['named-ian']);
+    expect(searchPeople(contacts, 'christ').map((c) => c.id)).toEqual(['christian-role']);
+  });
+
+  it('ranks name matches above field-only matches (#1192)', () => {
+    const contacts = [
+      contact({ id: 'by-role', name: 'Zed', role: 'Ian Studies' }),
+      contact({ id: 'by-name', name: 'Ian Zephyr' }),
+    ];
+    expect(searchPeople(contacts, 'ian').map((c) => c.id)).toEqual(['by-name', 'by-role']);
+  });
+
+  it('fills the cap with name matches before field-only matches (#1192)', () => {
+    const contacts = [
+      contact({ id: 'name-1', name: 'Ian A' }),
+      contact({ id: 'name-2', name: 'Ian B' }),
+      contact({ id: 'field-1', name: 'X', role: 'Ian Studies' }),
+    ];
+    expect(searchPeople(contacts, 'ian', 2).map((c) => c.id)).toEqual(['name-1', 'name-2']);
+  });
 });
 
 describe('searchHistory', () => {

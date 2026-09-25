@@ -36,6 +36,7 @@ import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
 import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
+import { matchContact, type ContactMatch } from '../../lib/contactMatch';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Cap per group so the panel stays scannable.
@@ -195,16 +196,25 @@ export default function GlobalSearch() {
 
   const peopleResults = useMemo(() => {
     if (!hasQ) return [];
-    const matched = contacts.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(ql) ||
-        (c.role || '').toLowerCase().includes(ql) ||
-        (c.notes || '').toLowerCase().includes(ql) ||
-        (c.spiritualBackground || '').toLowerCase().includes(ql) ||
-        (c.tags || []).some((t) => t.toLowerCase().includes(ql)),
-    );
-    return rankByFrecency(currentUid, matched, (c) => c.id).slice(0, GS_MAX);
-  }, [hasQ, ql, contacts, currentUid]);
+    // Word-boundary, name-first (#1192): a query matches a whole word, so
+    // "ian" finds a person named Ian rather than every "Christian". Frecency
+    // ranks *within* each tier — name matches always come before field-only
+    // matches and fill the cap first, while still being frecency-ordered.
+    const needle = q.trim();
+    const scored: { c: Contact; match: ContactMatch }[] = [];
+    for (const c of contacts) {
+      const m = matchContact(c, needle, [
+        c.role,
+        c.notes,
+        c.spiritualBackground,
+        (c.tags || []).join(' '),
+      ]);
+      if (m) scored.push({ c, match: m });
+    }
+    const name = rankByFrecency(currentUid, scored.filter((s) => s.match.quality === 'name').map((s) => s.c), (c) => c.id);
+    const field = rankByFrecency(currentUid, scored.filter((s) => s.match.quality === 'field').map((s) => s.c), (c) => c.id);
+    return [...name, ...field].slice(0, GS_MAX);
+  }, [hasQ, q, contacts, currentUid]);
   const convResults = useMemo(() => {
     if (!hasQ || !isStaff) return [];
     return interactions
