@@ -110,7 +110,10 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
   // the legacy `${sectionIndex}:p${pIdx}` scheme with the child path
   // (`p0.1`), keeping flat legacy keys byte-identical and nested keys
   // deterministic across mixed depths.
-  const renderList = (block: Extract<SectionBlock, { kind: 'bullet-list' | 'number-list' }>): React.ReactNode => {
+  const renderList = (
+    block: Extract<SectionBlock, { kind: 'bullet-list' | 'number-list' }>,
+    bIdx: number,
+  ): React.ReactNode => {
     const Tag = block.kind === 'number-list' ? 'ol' : 'ul';
     const renderPoint = (pt: ListItem, path: string): React.ReactNode => {
       if (!pt || typeof pt !== 'object') return null;
@@ -140,6 +143,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
     };
     return (
       <Tag
+        key={bIdx}
         data-block-kind={block.kind}
         className={`flex flex-col gap-3 py-1 ${
           block.kind === 'number-list' ? 'list-decimal' : 'list-disc'
@@ -156,7 +160,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
         switch (block.kind) {
           case 'bullet-list':
           case 'number-list':
-            return renderList(block);
+            return renderList(block, bIdx);
           case 'passage':
             return (
               <figure key={bIdx} data-block-kind="passage" className="m-0 pt-4 border-t border-outline-variant">
@@ -245,7 +249,17 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 >
                   {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : k === 'apply' ? 'Apply' : 'Question'}
                 </div>
-                <p className="m-0 text-[length:calc(var(--reader-fs)-1px)] leading-relaxed text-on-surface">{block.prompt.text}</p>
+                {block.prompt.points && block.prompt.points.length > 0 ? (
+                  <ul className="flex flex-col gap-2 py-1 list-disc pl-5 marker:text-on-surface-variant m-0">
+                    {block.prompt.points.map((pt, pIdx) => (
+                      <li key={pIdx} className="text-[length:calc(var(--reader-fs)-1px)] leading-relaxed text-on-surface">
+                        {pt}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="m-0 text-[length:calc(var(--reader-fs)-1px)] leading-relaxed text-on-surface">{block.prompt.text}</p>
+                )}
               </div>
             );
           }

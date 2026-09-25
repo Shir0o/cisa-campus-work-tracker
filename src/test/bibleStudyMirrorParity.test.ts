@@ -137,6 +137,12 @@ Apply: Name one thing you will do this week.
 apply: a lowercase prefix parses the same.
 
 Activity: The last prompt wins.`,
+
+  // Prompt bullet lists (#1186): indented bullet list under a prompt is folded into points.
+  `## Prompt bullet list
+Discuss:
+  - First point of prompt
+  - Second point with [[blank]] as text`,
 ];
 
 describe('parser mirror parity (ADR 0013 keep-in-step)', () => {

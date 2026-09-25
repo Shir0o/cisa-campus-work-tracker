@@ -362,6 +362,58 @@ describe('parseMeeting', () => {
     const lower = parseMeeting('## Apply\napply: a lowercase prefix parses the same.')[0];
     expect(lower.prompt?.kind).toBe('apply');
   });
+
+  it('folds indented bullet points under a Prompt line into prompt points (#1186)', () => {
+    const md = `## Discussion
+Discuss:
+  - First question point
+  - Second question point with [[literal]] text`;
+    const s = parseMeeting(md)[0];
+    expect(s.content).toHaveLength(1);
+    expect(s.content[0]).toEqual({
+      kind: 'prompt',
+      prompt: {
+        kind: 'discuss',
+        points: ['First question point', 'Second question point with [[literal]] text'],
+      },
+    });
+    expect(s.prompt).toEqual({
+      kind: 'discuss',
+      points: ['First question point', 'Second question point with [[literal]] text'],
+    });
+  });
+
+  it('supports prompt bullet lists across all four prompt kinds (#1186)', () => {
+    for (const kind of ['Question', 'Discuss', 'Activity', 'Apply']) {
+      const md = `## Test\n${kind}:\n  - Point 1\n  - Point 2`;
+      const s = parseMeeting(md)[0];
+      const p = s.content[0];
+      expect(p).toEqual({
+        kind: 'prompt',
+        prompt: {
+          kind: kind.toLowerCase(),
+          points: ['Point 1', 'Point 2'],
+        },
+      });
+    }
+  });
+
+  it('keeps an un-indented bullet list after a prompt as a separate bullet-list block (#1186)', () => {
+    const md = `## Mixed
+Discuss: Single line prompt text
+- Separate bullet list item 1
+- Separate bullet list item 2`;
+    const s = parseMeeting(md)[0];
+    expect(s.content).toHaveLength(2);
+    expect(s.content[0]).toEqual({
+      kind: 'prompt',
+      prompt: {
+        kind: 'discuss',
+        text: 'Single line prompt text',
+      },
+    });
+    expect(s.content[1].kind).toBe('bullet-list');
+  });
 });
 
 describe('nextMeetingDate', () => {
