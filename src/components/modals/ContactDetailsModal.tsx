@@ -2042,7 +2042,7 @@ export default function ContactDetailsModal({
                           <div className="cd-share">
                             {sharedWith.length === 0 && (
                               <span className="text-xs text-on-surface-variant">
-                                {t('modals.contactDetails.just_owner_for_now').replace('{name', firstName)}
+                                {t('modals.contactDetails.just_owner_for_now').replace('{name}', firstName)}
                               </span>
                             )}
                             {sharedWith.map((s) => {
