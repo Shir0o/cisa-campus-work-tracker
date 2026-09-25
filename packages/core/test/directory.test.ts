@@ -75,6 +75,28 @@ describe('filterAndSortDirectory', () => {
     expect(result[1].days).toBe(1);
   });
 
+  it('matches word-boundary, not mid-word substrings (#1192)', () => {
+    const contacts = [
+      contact({ id: 'named-ian', name: 'Ian Marks' }),
+      contact({ id: 'christian-name', name: 'Christian Hall' }),
+      contact({ id: 'christian-major', name: 'Bo Lin', major: 'Christian Studies' }),
+    ];
+    const ids = (search: string) =>
+      filterAndSortDirectory(contacts, [], { search, stageId: 'all' }, NOW).map((l) => l.contact.id);
+    expect(ids('ian')).toEqual(['named-ian']);
+    expect(ids('christ')).toEqual(['christian-name', 'christian-major']);
+  });
+
+  it('ranks name matches above field-only matches (#1192)', () => {
+    const contacts = [
+      contact({ id: 'field-major', name: 'X Y', major: 'Ian Studies' }),
+      contact({ id: 'name', name: 'Ian Z' }),
+      contact({ id: 'field-notes', name: 'X W', notes: 'lives in Ian Hall' }),
+    ];
+    const result = filterAndSortDirectory(contacts, [], { search: 'ian', stageId: 'all' }, NOW);
+    expect(result.map((l) => l.contact.id)).toEqual(['name', 'field-major', 'field-notes']);
+  });
+
   it('falls back to createdAt when a contact has no touches', () => {
     const contacts = [contact({ id: 'a', createdAt: new Date(NOW - DAY_MS * 3).toISOString() })];
     const [entry] = filterAndSortDirectory(contacts, [], { search: '', stageId: 'all' }, NOW);
@@ -145,6 +167,18 @@ describe('splitDirectory', () => {
     const touches: Touch[] = [touch({ contactId: 'a', ms: NOW - DAY_MS * 4 })];
     const { mine } = splitDirectory(contacts, touches, new Set(['a']), '', NOW);
     expect(mine[0].days).toBe(4);
+  });
+
+  it('ranks name matches above field-only matches within each group (#1192)', () => {
+    const contacts = [
+      contact({ id: 'mine-name', name: 'Ian Mine' }),
+      contact({ id: 'mine-field', name: 'Bo Mine', major: 'Ian Studies' }),
+      contact({ id: 'rest-name', name: 'Ian Other' }),
+      contact({ id: 'rest-field', name: 'Bo Other', notes: 'lives in Ian Hall' }),
+    ];
+    const { mine, rest } = splitDirectory(contacts, [], new Set(['mine-name', 'mine-field']), 'ian', NOW);
+    expect(mine.map((l) => l.contact.id)).toEqual(['mine-name', 'mine-field']);
+    expect(rest.map((l) => l.contact.id)).toEqual(['rest-name', 'rest-field']);
   });
 });
 

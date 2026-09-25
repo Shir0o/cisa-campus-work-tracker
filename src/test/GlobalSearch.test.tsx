@@ -217,6 +217,57 @@ describe('GlobalSearch', () => {
     expect(screen.queryAllByText('Bob Lee').length).toBe(0);
   });
 
+  it('matches word-boundary, not mid-word substrings (#1192)', () => {
+    seedData();
+    h.mockData.contacts.push(
+      docOf('c3', {
+        name: 'Christian Hall',
+        role: 'Student',
+        notes: 'no match',
+        tags: [],
+        updatedAt: '2026-06-12T10:00:00Z',
+      }),
+      docOf('c4', {
+        name: 'Ian Marks',
+        role: 'Student',
+        notes: 'no match',
+        tags: [],
+        updatedAt: '2026-06-10T10:00:00Z',
+      }),
+    );
+    render(<GlobalSearch />);
+    typeDesktop('ian');
+    expect(screen.getAllByText('Ian Marks').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Christian Hall').length).toBe(0);
+  });
+
+  it('ranks name matches above field-only matches in the People group (#1192)', () => {
+    seedData();
+    h.mockData.contacts.push(
+      docOf('c5', {
+        name: 'Ana Rolls',
+        role: 'Student',
+        notes: 'meets with Ian weekly',
+        tags: [],
+        updatedAt: '2026-06-12T10:00:00Z',
+      }),
+      docOf('c6', {
+        name: 'Ian Cruz',
+        role: 'Student',
+        notes: 'no match',
+        tags: [],
+        updatedAt: '2026-06-08T10:00:00Z',
+      }),
+    );
+    render(<GlobalSearch />);
+    typeDesktop('ian');
+    const texts = Array.from(document.querySelectorAll('button')).map((b) => b.textContent || '');
+    const nameIdx = texts.findIndex((t) => t.includes('Ian Cruz'));
+    const fieldIdx = texts.findIndex((t) => t.includes('Ana Rolls'));
+    expect(nameIdx).toBeGreaterThanOrEqual(0);
+    expect(fieldIdx).toBeGreaterThan(nameIdx);
+  });
+
   it('admin sees Conversations, The Board, and an opt-in History group', () => {
     render(<GlobalSearch />);
     typeDesktop('plan');
@@ -515,6 +566,46 @@ describe('GlobalSearch', () => {
 
     expect(matchTexts[0]).toContain('Alice Halle');
     expect(matchTexts[1]).toContain('Bob Halle');
+  });
+
+  it('name matches fill the cap before field-only matches, even against frecency (#1192)', () => {
+    // The field-only match (c5) gets a high frecency score; the four name
+    // matches (c1–c4) have none. Name-first must still win: the cap of 4 is
+    // filled entirely by name matches, never including the popular field match.
+    h.mockData.contacts = [
+      docOf('c1', { name: 'Ian Ayer', role: 'Student', notes: '', updatedAt: '2026-06-10T10:00:00Z' }),
+      docOf('c2', { name: 'Ian Bell', role: 'Student', notes: '', updatedAt: '2026-06-11T10:00:00Z' }),
+      docOf('c3', { name: 'Ian Cade', role: 'Student', notes: '', updatedAt: '2026-06-09T10:00:00Z' }),
+      docOf('c4', { name: 'Ian Drew', role: 'Student', notes: '', updatedAt: '2026-06-08T10:00:00Z' }),
+      docOf('c5', { name: 'Xavier Doe', role: 'Student', notes: 'meets Ian weekly', updatedAt: '2026-06-12T10:00:00Z' }),
+    ];
+
+    const uid = 'u1';
+    Frecency.recordOpen(uid, 'c5');
+    Frecency.recordOpen(uid, 'c5');
+    Frecency.recordOpen(uid, 'c5');
+
+    render(<GlobalSearch />);
+    typeDesktop('ian');
+
+    const rows = screen.getAllByRole('button');
+    // The same panel body renders in both the desktop dropdown and the mobile
+    // overlay, so rows appear twice — dedupe while preserving order.
+    const seen = new Set<string>();
+    const matchTexts = rows
+      .map((r) => r.textContent || '')
+      .filter((t) => ['Ian Ayer', 'Ian Bell', 'Ian Cade', 'Ian Drew', 'Xavier Doe'].some((n) => t.includes(n)))
+      .filter((t) => {
+        const name = ['Ian Ayer', 'Ian Bell', 'Ian Cade', 'Ian Drew', 'Xavier Doe'].find((n) => t.includes(n))!;
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+
+    expect(matchTexts).toHaveLength(4);
+    expect(matchTexts[0]).toContain('Ian Ayer');
+    expect(matchTexts[3]).toContain('Ian Drew');
+    expect(matchTexts.join(' ')).not.toContain('Xavier Doe');
   });
 
   it('records open event when selecting contact in search results', () => {

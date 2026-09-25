@@ -1151,6 +1151,80 @@ describe('Directory — search by relationship fields (#1176)', () => {
     expect(screen.getByText('Alpha Contact')).toBeInTheDocument();
     expect(screen.queryByText('Unrelated Contact')).not.toBeInTheDocument();
   });
+
+  it('matches word-boundary, not mid-word substrings (#1192)', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'w1', data: () => ({ name: 'Christian Hall', email: 'chris@example.com', role: 'Student', stage: 'Lead', spiritualBackground: 'Christian', tags: [], createdAt: '2026-01-01T00:00:00.000Z' }) },
+            { id: 'w2', data: () => ({ name: 'Ian Marks', email: 'ian@example.com', role: 'Student', stage: 'Lead', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z' }) },
+          ],
+          size: 2,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({ docs: mockUsers, size: 3 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Christian Hall')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'ian' } });
+
+    expect(screen.getByText('Ian Marks')).toBeInTheDocument();
+    expect(screen.queryByText('Christian Hall')).not.toBeInTheDocument();
+  });
+
+  it('ranks name matches above relationship-only matches and captions the latter (#1192)', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'n1', data: () => ({ name: 'Julia Bell', email: 'julia@example.com', role: 'Student', stage: 'Lead', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z' }) },
+            {
+              id: 'n2',
+              data: () => ({ name: 'Tied Person', email: 'tied@example.com', role: 'Student', stage: 'Lead', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', carers: ['carer-julia'] }),
+            },
+          ],
+          size: 2,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({
+          docs: [
+            { id: 'carer-julia', data: () => ({ displayName: 'Julia Worker', role: 'manager' }) },
+          ],
+          size: 1,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Julia Bell')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'julia' } });
+
+    // The name match and the carer match both show, and the name match comes first.
+    expect(screen.getByText('Julia Bell')).toBeInTheDocument();
+    expect(screen.getByText('Tied Person')).toBeInTheDocument();
+    const nameCard = screen.getByText('Julia Bell');
+    const tiedCard = screen.getByText('Tied Person');
+    expect(nameCard.compareDocumentPosition(tiedCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The relationship-only hit explains itself with a "matched by" caption.
+    expect(screen.getByText('Matched by Julia Worker')).toBeInTheDocument();
+  });
 });
 
 // The kind of person in the Directory (#1152, ADR 0030).

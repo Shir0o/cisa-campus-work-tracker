@@ -4,6 +4,7 @@
 // deriveLeaders (this is that same computation applied to ALL contacts,
 // not just the ones personally held).
 import { daysSince, lastTouchByContact, parseMs, type Leader, type Touch } from "./myday";
+import { matchContact, matchTier, type ContactMatch } from "./contactMatch";
 import type { Contact } from "./types";
 
 export interface DirectoryFilters {
@@ -12,18 +13,25 @@ export interface DirectoryFilters {
   stageId: string;
 }
 
-/** The design's `M2People` `hit()` (views/mobile/screens.jsx) searches more than
- * the desktop directory does — you look someone up by the hall they live in or
- * the one thing you wrote down about them, not only by name. */
-const matchesSearch = (c: Contact, q: string): boolean => {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  const fields = [c.name, c.major, c.year, c.location, (c.tags ?? []).join(" "), c.notes];
-  return fields.some((v) => (v ?? "").toLowerCase().includes(needle));
-};
+/** The fields the mobile People search scans, beside the name — the v2
+ *  `M2People` `hit()` looks you up by the hall you live in or the one thing
+ *  written about you, not only by name. Matching itself is shared word-boundary
+ *  logic (#1192), so "ian" finds a person named Ian rather than every "Christian". */
+const personFields = (c: Contact): Array<string | undefined> => [
+  c.major,
+  c.year,
+  c.location,
+  (c.tags ?? []).join(" "),
+  c.notes,
+];
+
+/** Word-boundary match + name-first tiering (#1192): null when nothing matches,
+ *  otherwise the match quality and any field-only extras. */
+const matchFor = (c: Contact, q: string): ContactMatch | null => matchContact(c, q, personFields(c));
 
 /** All contacts matching the search/stage filters, longest-since-touched
- * first (folks we haven't seen in a while rise to the top). */
+ *  first (folks we haven't seen in a while rise to the top), with name matches
+ *  ranked above field-only matches when searching (#1192). */
 export function filterAndSortDirectory(
   contacts: Contact[],
   touches: Touch[],
@@ -31,16 +39,18 @@ export function filterAndSortDirectory(
   now: number = Date.now(),
 ): Leader[] {
   const touchMap = lastTouchByContact(touches);
+  const needle = filters.search.trim();
   return contacts
     .filter((c) => filters.stageId === "all" || c.stage === filters.stageId)
-    .filter((c) => matchesSearch(c, filters.search))
     .map((c) => {
       const touch = touchMap.get(c.id);
       const ms = touch?.ms ?? parseMs(c.createdAt);
       const days = ms == null ? Infinity : daysSince(ms, now);
-      return { contact: c, days, note: touch?.note || c.notes || "" };
+      const match = needle ? matchFor(c, needle) : null;
+      return { contact: c, days, note: touch?.note || c.notes || "", match };
     })
-    .sort((a, b) => b.days - a.days);
+    .filter((l) => !needle || l.match !== null)
+    .sort((a, b) => matchTier(a.match) - matchTier(b.match) || b.days - a.days);
 }
 
 export interface DirectorySplit {
@@ -68,6 +78,7 @@ export function splitDirectory(
   now: number = Date.now(),
 ): DirectorySplit {
   const touchMap = lastTouchByContact(touches);
+  const needle = search.trim();
   const toLeader = (c: Contact): Leader => {
     const touch = touchMap.get(c.id);
     const ms = touch?.ms ?? parseMs(c.createdAt);
@@ -77,16 +88,23 @@ export function splitDirectory(
       note: touch?.note || c.notes || "",
     };
   };
-  const matched = contacts.filter((c) => matchesSearch(c, search));
+  const matched = contacts
+    .map((c): { leader: Leader; match: ContactMatch | null } => {
+      const match = needle ? matchFor(c, needle) : null;
+      return { leader: toLeader(c), match };
+    })
+    .filter(({ match }) => !needle || match !== null);
+  const order = (a: { leader: Leader; match: ContactMatch | null }, b: { leader: Leader; match: ContactMatch | null }, byDays: boolean): number =>
+    matchTier(a.match) - matchTier(b.match) || (byDays ? b.leader.days - a.leader.days : a.leader.contact.name.localeCompare(b.leader.contact.name));
   return {
     mine: matched
-      .filter((c) => personalIds.has(c.id))
-      .map(toLeader)
-      .sort((a, b) => b.days - a.days),
+      .filter(({ leader }) => personalIds.has(leader.contact.id))
+      .sort((a, b) => order(a, b, true))
+      .map(({ leader }) => leader),
     rest: matched
-      .filter((c) => !personalIds.has(c.id))
-      .map(toLeader)
-      .sort((a, b) => a.contact.name.localeCompare(b.contact.name)),
+      .filter(({ leader }) => !personalIds.has(leader.contact.id))
+      .sort((a, b) => order(a, b, false))
+      .map(({ leader }) => leader),
   };
 }
 

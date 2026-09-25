@@ -53,6 +53,7 @@ import { subscribeAllThreads } from '../lib/threads';
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
 import { contactKind, kindLabelKey, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
+import { matchContact, matchTier, type ContactMatch } from '../lib/contactMatch';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -412,27 +413,45 @@ export default function Directory() {
   const staffId = effectiveUserId || user?.uid;
   const userContacts = useMemo(() => visibleContacts(role, staffId, contacts), [role, staffId, contacts]);
 
+  // Name-first word-boundary search (#1192): each visible contact's match
+  // quality, keyed by id, so the filter below can tier results (name matches
+  // first) and the cards can say which teammate a relationship-only hit came
+  // from. The predicate mirrors the shared contactMatch rule, keeping the web
+  // Directory's own field set (name/email/role/background/tags + ties).
+  const searchMatches = useMemo(() => {
+    if (!searchQuery.trim()) return new Map<string, ContactMatch>();
+    const needle = searchQuery.trim();
+    const map = new Map<string, ContactMatch>();
+    for (const c of userContacts) {
+      const effectiveTags = getEffectiveContactTags(c.tags, c.createdAt);
+      const resolveNames = (ids?: string[]) =>
+        (ids || []).map(id => teamDisplayNames.get(id) || '').filter(Boolean);
+      const match = matchContact(
+        c,
+        needle,
+        [
+          c.email,
+          c.role,
+          c.spiritualBackground,
+          effectiveTags.map(t => normalizeTag(t)).join(' '),
+        ],
+        [
+          ...resolveNames(c.founders),
+          ...resolveNames(c.carers),
+          ...resolveNames(c.coCreators),
+        ],
+      );
+      if (match) map.set(c.id, match);
+    }
+    return map;
+  }, [userContacts, searchQuery, teamDisplayNames]);
+
   const filteredContacts = useMemo(() => {
     let result = userContacts;
 
     // Search
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter(c => {
-        const effectiveTags = getEffectiveContactTags(c.tags, c.createdAt);
-        const resolveNames = (ids?: string[]) =>
-          (ids || []).some(id => (teamDisplayNames.get(id) || '').toLowerCase().includes(lowerQuery));
-        return (
-          c.name.toLowerCase().includes(lowerQuery) ||
-          c.email.toLowerCase().includes(lowerQuery) ||
-          c.role.toLowerCase().includes(lowerQuery) ||
-          (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
-          effectiveTags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery)) ||
-          resolveNames(c.founders) ||
-          resolveNames(c.carers) ||
-          resolveNames(c.coCreators)
-        );
-      });
+    if (searchQuery.trim()) {
+      result = result.filter(c => searchMatches.has(c.id));
     }
 
     // Filter by Stage
@@ -493,8 +512,15 @@ export default function Directory() {
       });
     }
 
+    // Name-first tiering (#1192): a contact whose name matches the query outranks
+    // one that only matched on email/role/background/tags/ties. Stable — the
+    // underlying userContacts order holds within each tier.
+    if (searchQuery.trim()) {
+      result = result.slice().sort((a, b) => matchTier(searchMatches.get(a.id)) - matchTier(searchMatches.get(b.id)));
+    }
+
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags, teamDisplayNames]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags, searchMatches]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -1188,6 +1214,8 @@ export default function Directory() {
             const sub = [contact.role].filter(Boolean).join(' · ');
             const tags = getEffectiveContactTags(contact.tags, contact.createdAt);
             const selected = selectedIds.has(contact.id);
+            // Which teammate a relationship-only search hit matched on (#1192).
+            const matchedBy = searchMatches.get(contact.id)?.matchedExtras ?? [];
 
             return (
               <div
@@ -1232,6 +1260,11 @@ export default function Directory() {
                     </div>
                     {sub && (
                       <div className="text-sm text-on-surface-variant mt-0.5 truncate">{sub}</div>
+                    )}
+                    {matchedBy.length > 0 && (
+                      <div className="text-xs text-accent mt-0.5 truncate">
+                        {t('directory.matched_by').replace('{names}', matchedBy.join(', '))}
+                      </div>
                     )}
                     {days != null ? (
                       <div className={cn(
