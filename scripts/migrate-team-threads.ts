@@ -33,11 +33,14 @@ export async function migrateTeamThreads(
   firestore: Firestore,
   { write, log = console.log }: { write: boolean; log?: (message: string) => void },
 ): Promise<{ moved: number; skipped: number }> {
-  const snap = await firestore.collectionGroup('threads').where('scope', '==', 'team').get();
+  // Read the whole group and filter here: a collection-group `where` on
+  // `scope` needs an index nobody else uses, and this runs once.
+  const snap = await firestore.collectionGroup('threads').get();
   let moved = 0;
   let skipped = 0;
 
   for (const d of snap.docs) {
+    if (d.data().scope !== 'team') continue;
     const target = teamThreadPath(d.ref.path);
     if (!target) {
       log(`  ↷ ${d.ref.path}: not a contact thread, skipping`);
