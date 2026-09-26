@@ -718,6 +718,66 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // A contact's interactions and comments are part of its detail page, so they
+  // are visible exactly when the contact is: a Trainee reads them only for
+  // people in their `visibleTo`. A collection-group list cannot pin a parent,
+  // so it stays with the roles that see every person.
+  describe('Interactions and comments follow their contact\'s visibility', () => {
+    const seedSubcollections = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
+        for (const contactId of ['tied', 'untied']) {
+          await setDoc(doc(fs, `contacts/${contactId}/interactions/i1`), {
+            userId: 'admin1', userName: 'Admin', content: 'Coffee', dateTime: '2026-01-01', createdAt: '2026-01-01',
+          });
+          await setDoc(doc(fs, `contacts/${contactId}/comments/c1`), {
+            userId: 'admin1', userName: 'Admin', text: 'Note', createdAt: '2026-01-01', parentId: null,
+          });
+        }
+      });
+    };
+    // The client query shapes: the last-touch feeds, and one person's list.
+    const feed = (db: ReturnType<typeof getFirestore>, sub: string) =>
+      query(collectionGroup(db, sub), orderBy('createdAt', 'desc'), limit(500));
+    const forContact = (db: ReturnType<typeof getFirestore>, contactId: string, sub: string) =>
+      query(collection(db, 'contacts', contactId, sub), orderBy('createdAt', 'desc'), limit(50));
+
+    for (const sub of ['interactions', 'comments']) {
+      const one = sub === 'interactions' ? 'i1' : 'c1';
+
+      it(`lets a Trainee read ${sub} only of a person they can see`, async () => {
+        await seedSubcollections();
+        const trainee = getFirestore({ uid: 'manager1' });
+        await assertSucceeds(getDoc(doc(trainee, `contacts/tied/${sub}/${one}`)));
+        await assertSucceeds(getDocs(forContact(trainee, 'tied', sub)));
+        await assertFails(getDoc(doc(trainee, `contacts/untied/${sub}/${one}`)));
+        await assertFails(getDocs(forContact(trainee, 'untied', sub)));
+      });
+
+      it(`denies a Trainee the ${sub} collection-group feed`, async () => {
+        await seedSubcollections();
+        await assertFails(getDocs(feed(getFirestore({ uid: 'manager1' }), sub)));
+      });
+
+      it(`keeps every person's ${sub} readable for roles that see every person`, async () => {
+        await seedSubcollections();
+        for (const uid of ['admin1', 'operator1', 'viewer1']) {
+          const db = getFirestore({ uid });
+          const all = await assertSucceeds(getDocs(feed(db, sub)));
+          expect(all.docs.map((d) => d.ref.path).sort()).toEqual([`contacts/tied/${sub}/${one}`, `contacts/untied/${sub}/${one}`]);
+          await assertSucceeds(getDoc(doc(db, `contacts/untied/${sub}/${one}`)));
+          await assertSucceeds(getDocs(forContact(db, 'untied', sub)));
+        }
+      });
+    }
+  });
+
   // The founders list is written once at creation (#1049) and backfilled for
   // older contacts (#1050). It is immutable: any update that touches it is a
   // ghost field for everyone except a Full-timer's genuine-mistake correction,

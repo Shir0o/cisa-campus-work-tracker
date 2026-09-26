@@ -395,6 +395,16 @@ service cloud.firestore {
                       isValidContact(incoming()) && canUpdateContact();
       allow delete: if isValidId(contactId) && isManager();
 
+      // Interactions and comments are part of the contact's detail page, so
+      // they are readable exactly when the contact is -- the canReadContact
+      // decision, with the contact fetched only for a Trainee.
+      function canReadParentContact() {
+        return isApprovedUser() && (
+          seesAllContacts() ||
+          request.auth.uid in get(/databases/$(database)/documents/contacts/$(contactId)).data.get('visibleTo', [])
+        );
+      }
+
       // Interactions
       match /interactions/{interactionId} {
         function isValidInteraction(data) {
@@ -403,8 +413,8 @@ service cloud.firestore {
                  data.content is string && data.content.size() <= 5000;
         }
 
-        allow list: if isApprovedUser();
-        allow get: if isValidId(interactionId) && isApprovedUser();
+        allow list: if canReadParentContact();
+        allow get: if isValidId(interactionId) && canReadParentContact();
         allow create: if isValidId(interactionId) && isApprovedUser() && isOperator() && 
                         isValidInteraction(incoming()) && 
                         incoming().userId == request.auth.uid && 
@@ -426,7 +436,7 @@ service cloud.firestore {
                  (data.parentId == null || (data.parentId is string && data.parentId.size() <= 128));
         }
 
-        allow read: if isApprovedUser();
+        allow read: if canReadParentContact();
         allow create: if isValidId(commentId) && isApprovedUser() && isOperator() && 
                         isValidComment(incoming()) && 
                         incoming().userId == request.auth.uid && 
@@ -1196,12 +1206,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Collection Group helpers
+    // Collection Group helpers. A collection-group list spans every contact
+    // and cannot pin a parent to check visibleTo against, so it is for the
+    // roles that see every person; a Trainee lists one visible contact's
+    // subcollection at a time through the nested rules above.
     match /{path=**}/interactions/{interactionId} {
-      allow list: if isApprovedUser();
+      allow list: if isApprovedUser() && seesAllContacts();
     }
     match /{path=**}/comments/{commentId} {
-      allow list: if isApprovedUser();
+      allow list: if isApprovedUser() && seesAllContacts();
     }
     // Walking-together threads — collection-group list for the full-timer inbox
     // (My Day) and the trainee cockpit, which read thread messages across all

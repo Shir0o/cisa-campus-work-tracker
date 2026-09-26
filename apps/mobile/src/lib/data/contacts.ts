@@ -1,6 +1,6 @@
 // Contacts/stages/touches reads + contact creation — thin mobile wrapper
 // around the shared @cisa/core logic (behind an injected `db`).
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, type QueryDocumentSnapshot } from 'firebase/firestore';
 import * as core from '@cisa/core';
 import type { AppRole, Contact, ContactEditFields, ContactNotifyPayload, NewContactInput, Stage, Touch } from '@cisa/core';
 import { db, handleFirestoreError, logActivity, OperationType, sendNotification } from '../firebase';
@@ -32,8 +32,20 @@ export function subscribeStages(
 export function subscribeTouches(
   cb: (touches: Touch[]) => void,
   onError?: (e: unknown) => void,
+  scope?: { role?: AppRole | string | null; staffId?: string | null },
 ): () => void {
-  return core.subscribeTouches(db, cb, onError);
+  return core.subscribeTouches(db, cb, onError, scope);
+}
+
+/** A Trainee's read of one contact subcollection across the people they can
+ * see (the rules deny them the collection-group feed). */
+export function subscribeTiedSubcollection(
+  staffId: string,
+  sub: 'interactions' | 'comments',
+  cb: (docs: QueryDocumentSnapshot[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeTiedSubcollection(db, staffId, sub, cb, onError);
 }
 
 /** Create a new contact; self-notifies the creator and pings their full-timer

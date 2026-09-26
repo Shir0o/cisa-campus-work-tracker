@@ -23,7 +23,8 @@ import {
   orderBy,
   limit,
   doc,
-  writeBatch
+  writeBatch,
+  type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { cn, getUserInitials } from '../lib/utils';
@@ -32,7 +33,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { prefetchTranslations } from '../lib/translator';
 import { visibleContacts, seesAllPeople } from '../lib/permissions';
-import { contactVisibilityConstraints } from '../lib/contactQueries';
+import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../lib/contactQueries';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -277,14 +278,20 @@ export default function Directory() {
     const publish = () =>
       setTouches([...interactionTouches, ...commentTouches].filter((t) => !Number.isNaN(t.ms)));
 
-    const unsubInteractions = onSnapshot(
-      query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
-      (snap) => {
-        interactionTouches = ingest(snap as never, 'content');
-        publish();
-      },
-      (e) => onLoadError(e, 'interactions (collectionGroup)'),
-    );
+    const onInteractions = (docs: QueryDocumentSnapshot[]) => {
+      interactionTouches = ingest({ docs }, 'content');
+      publish();
+    };
+    // A Trainee may not list the interactions collection group (it spans
+    // people outside their visibleTo); they read each visible person's.
+    const staffId = effectiveUserId || user?.uid;
+    const unsubInteractions = seesAllPeople(role) || !staffId
+      ? onSnapshot(
+          query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
+          (snap) => onInteractions(snap.docs),
+          (e) => onLoadError(e, 'interactions (collectionGroup)'),
+        )
+      : subscribeTiedSubcollection(staffId, 'interactions', onInteractions, (e) => onLoadError(e, 'interactions'));
 
     const unsubThreads = subscribeAllThreads((messages) => {
       // Threads are the single per-person conversation surface. Team-scope
@@ -304,7 +311,7 @@ export default function Directory() {
       unsubInteractions();
       unsubThreads();
     };
-  }, []);
+  }, [role, effectiveUserId, user?.uid]);
 
   const lastTouchByContact = useMemo(() => {
     const map: TouchMap = new Map();

@@ -40,7 +40,8 @@ import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { Translate } from '../components/Translate';
-import { journeyContacts } from '../lib/permissions';
+import { journeyContacts, seesAllPeople } from '../lib/permissions';
+import { subscribeTiedSubcollection } from '../lib/contactQueries';
 import {
   collection,
   collectionGroup,
@@ -52,7 +53,8 @@ import {
   doc,
   deleteDoc,
   updateDoc,
-  writeBatch
+  writeBatch,
+  type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
@@ -368,14 +370,20 @@ export default function OutreachBoard() {
     const publish = () =>
       setTouches([...interactionTouches, ...commentTouches].filter((t) => !Number.isNaN(t.ms)));
 
-    const unsubInteractions = onSnapshot(
-      query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
-      (snap) => {
-        interactionTouches = ingest(snap as never, 'content');
-        publish();
-      },
-      (e) => onLoadError(e, 'interactions (collectionGroup)'),
-    );
+    const onInteractions = (docs: QueryDocumentSnapshot[]) => {
+      interactionTouches = ingest({ docs }, 'content');
+      publish();
+    };
+    // A Trainee may not list the interactions collection group (it spans
+    // people outside their visibleTo); they read each visible person's.
+    const staffId = effectiveUserId || user?.uid;
+    const unsubInteractions = seesAllPeople(role) || !staffId
+      ? onSnapshot(
+          query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
+          (snap) => onInteractions(snap.docs),
+          (e) => onLoadError(e, 'interactions (collectionGroup)'),
+        )
+      : subscribeTiedSubcollection(staffId, 'interactions', onInteractions, (e) => onLoadError(e, 'interactions'));
 
     const unsubThreads = subscribeAllThreads((messages) => {
       // Threads are the single per-person conversation surface. Team-scope
@@ -395,7 +403,7 @@ export default function OutreachBoard() {
       unsubInteractions();
       unsubThreads();
     };
-  }, []);
+  }, [role, effectiveUserId, user?.uid]);
 
   const lastTouchByContact = useMemo(() => {
     const map: TouchMap = new Map();

@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
 import Directory from '../views/Directory';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -27,7 +27,7 @@ vi.mock('../App', () => ({
 }));
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db, path) => ({ path })),
+  collection: vi.fn((_db, ...segments) => ({ path: segments.join('/') })),
   collectionGroup: vi.fn((_db, group) => ({ group })),
   onSnapshot: vi.fn((ref, callback) => {
     callback({ docs: [], size: 0 });
@@ -985,6 +985,26 @@ describe('Directory', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
     const restoredInput = screen.getByPlaceholderText(/Find someone by name/i) as HTMLInputElement;
     expect(restoredInput.value).toBe('');
+  });
+
+  // The rules deny a Trainee the interactions collection group (it spans
+  // people outside their visibleTo), so their last-touch feed reads each
+  // visible person's interactions instead.
+  it('reads a Trainee\'s last touches through their visible contacts, never the collection group', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'trainee-1', displayName: 'Trainee' },
+      effectiveUserId: 'trainee-1',
+      role: 'manager',
+    });
+    render(<Directory />);
+    await waitFor(() => expect(collection).toHaveBeenCalledWith({}, 'contacts', mockContacts[0].id, 'interactions'));
+    expect(collectionGroup).not.toHaveBeenCalledWith({}, 'interactions');
+  });
+
+  it('keeps the interactions collection group for a reader who sees every person', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    render(<Directory />);
+    await waitFor(() => expect(collectionGroup).toHaveBeenCalledWith({}, 'interactions'));
   });
 });
 

@@ -63,7 +63,7 @@ export function useJourneyData(uid: string | null, role?: AppRole | string | nul
       { role, staffId: uid },
     );
     const unsubStages = subscribeStages(setStages, (e) => onLoadError(e, 'stages'));
-    const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'));
+    const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'), { role, staffId: uid });
     // The v2 screen puts the people in my care at the top of every step.
     const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
       setPrefContactIds(prefs.personalContactIds ?? null),

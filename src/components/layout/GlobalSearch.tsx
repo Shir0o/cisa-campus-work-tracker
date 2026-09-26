@@ -24,6 +24,7 @@ import {
   query,
   orderBy,
   limit,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
 import { Contact, Interaction, SystemActivity } from '../../types';
@@ -32,10 +33,10 @@ import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../..
 import { useFrecency, rankByFrecency, Frecency } from '../../lib/frecency';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
-import { contactVisibilityConstraints } from '../../lib/contactQueries';
+import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
-import { hasMinRole, AppRole, navItemsForRole, navExternalFor, canSeeHistory } from '../../lib/permissions';
+import { hasMinRole, AppRole, navItemsForRole, navExternalFor, canSeeHistory, seesAllPeople } from '../../lib/permissions';
 import { matchContact, type ContactMatch } from '../../lib/contactMatch';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -134,20 +135,22 @@ export default function GlobalSearch() {
 
   useEffect(() => {
     if (!searchOpen || !isStaff) return;
-    const unsub = onSnapshot(
-      collectionGroup(db, 'interactions'),
-      (snap) =>
-        setInteractions(
-          snap.docs.map((d) => ({
-            ...(d.data() as Interaction),
-            id: d.id,
-            contactId: d.ref.parent.parent?.id,
-          })),
-        ),
-      (err) => console.error('GlobalSearch interactions listener:', err),
-    );
+    const onDocs = (docs: QueryDocumentSnapshot[]) =>
+      setInteractions(
+        docs.map((d) => ({
+          ...(d.data() as Interaction),
+          id: d.id,
+          contactId: d.ref.parent.parent?.id,
+        })),
+      );
+    const onError = (err: unknown) => console.error('GlobalSearch interactions listener:', err);
+    // A Trainee may not list the interactions collection group (it spans
+    // people outside their visibleTo); they search each visible person's.
+    const unsub = seesAllPeople(role) || !currentUid
+      ? onSnapshot(collectionGroup(db, 'interactions'), (snap) => onDocs(snap.docs), onError)
+      : subscribeTiedSubcollection(currentUid, 'interactions', onDocs, onError);
     return () => unsub();
-  }, [searchOpen, isStaff]);
+  }, [searchOpen, isStaff, role, currentUid]);
 
   useEffect(() => {
     if (!searchOpen || !isFullStaff) return;

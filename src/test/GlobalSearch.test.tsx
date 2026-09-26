@@ -57,8 +57,8 @@ vi.mock('motion/react', () => ({
 }));
 
 vi.mock('firebase/firestore', () => ({
-  collection: (_db: any, name: string) => ({ __c: name }),
-  collectionGroup: (_db: any, name: string) => ({ __c: name }),
+  collection: (_db: any, ...segments: string[]) => ({ __c: segments[segments.length - 1] }),
+  collectionGroup: vi.fn((_db: any, name: string) => ({ __c: name })),
   query: (ref: any) => ref,
   where: () => ({}),
   orderBy: () => ({}),
@@ -311,6 +311,16 @@ describe('GlobalSearch', () => {
     expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
     const reads = vi.mocked(firestore.onSnapshot).mock.calls.map(([ref]) => (ref as any).__c);
     expect(reads).not.toContain('activities');
+  });
+
+  it('Trainee searches conversations through their visible contacts, never the collection group', () => {
+    // The rules deny a Trainee the interactions collection group — it spans
+    // people outside their visibleTo — so each visible person's are read.
+    h.mockAuth.value = TEST_USERS.manager;
+    render(<GlobalSearch />);
+    typeDesktop('plan');
+    expect(firestore.collectionGroup).not.toHaveBeenCalledWith(expect.anything(), 'interactions');
+    expect(screen.getAllByText('Conversations').length).toBeGreaterThan(0);
   });
 
   it('↓ then ↵ opens the focused contact', () => {

@@ -18,11 +18,13 @@ import {
   query,
   orderBy,
   onSnapshot,
-  limit
+  limit,
+  type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
-import { contactVisibilityConstraints } from '../../lib/contactQueries';
+import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../../lib/contactQueries';
+import { seesAllPeople } from '../../lib/permissions';
 import { useLanguage } from '../LanguageProvider';
 import { ChatAttachment } from '../../types';
 
@@ -122,19 +124,31 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setLoading(false);
         });
       } else if (activeTab === 'interaction') {
-        const q = query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(100));
-        unsubscribe = onSnapshot(q, (snap) => {
-          setItems(snap.docs.map(doc => ({
-            id: doc.id,
-            name: doc.data().content.substring(0, 80) + (doc.data().content.length > 80 ? '...' : ''),
-            subtitle: `${doc.data().userName || t('modals.someone')} • ${new Date(doc.data().dateTime || doc.data().createdAt).toLocaleDateString()}`,
-            ...doc.data()
-          })));
-          setLoading(false);
-        }, err => {
+        const toItems = (docs: QueryDocumentSnapshot[]) => docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().content.substring(0, 80) + (doc.data().content.length > 80 ? '...' : ''),
+          subtitle: `${doc.data().userName || t('modals.someone')} • ${new Date(doc.data().dateTime || doc.data().createdAt).toLocaleDateString()}`,
+          ...doc.data()
+        }));
+        const onError = (err: unknown) => {
           console.error(err);
           setLoading(false);
-        });
+        };
+        if (seesAllPeople(userRole) || !currentUser?.uid) {
+          const q = query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(100));
+          unsubscribe = onSnapshot(q, (snap) => {
+            setItems(toItems(snap.docs));
+            setLoading(false);
+          }, onError);
+        } else {
+          // A Trainee may not list the interactions collection group (it spans
+          // people outside their visibleTo); they pick from each visible person's.
+          unsubscribe = subscribeTiedSubcollection(currentUser.uid, 'interactions', (docs) => {
+            const newestFirst = [...docs].sort((a, b) => String(b.data().dateTime ?? '').localeCompare(String(a.data().dateTime ?? '')));
+            setItems(toItems(newestFirst.slice(0, 100)));
+            setLoading(false);
+          }, onError);
+        }
       } else if (activeTab === 'prayer') {
         const q = query(collection(db, 'prayers'), orderBy('date', 'desc'), limit(100));
         unsubscribe = onSnapshot(q, (snap) => {
@@ -189,7 +203,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
     }
 
     return unsubscribe;
-  }, [isOpen, activeTab, isAdmin]);
+  }, [isOpen, activeTab, isAdmin, userRole, currentUser?.uid]);
 
   const filteredItems = items.filter((item) => {
     const qStr = search.toLowerCase();
