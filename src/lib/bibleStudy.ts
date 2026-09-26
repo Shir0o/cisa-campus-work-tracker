@@ -14,7 +14,7 @@ export type Text = { before: string };
 export type ProseBlock = { kind: 'prose'; md: string };
 /** One point of a list block. Indented sub-points nest via `children` (ADR 0013 §Decision 2). */
 export type ListItem = (Blank | Text) & { children?: ListItem[] };
-export type ListBlock = { kind: 'bullet-list' | 'number-list'; points: ListItem[] };
+export type ListBlock = { kind: 'bullet-list' | 'number-list'; points: ListItem[]; start?: number };
 export type PassageBlock = { kind: 'passage'; passage: Blank | Text; ref?: string };
 /** A proof-text in the flow: the reference leads, the words follow at body size (#918). */
 export type VerseBlock = { kind: 'verse'; ref: string; verse?: Blank | Text; verses?: (Blank | Text)[] };
@@ -217,14 +217,22 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
   let quoteLines: string[] | null = null;
   let listLines: { indent: number; text: string }[] | null = null;
   let listKind: 'bullet-list' | 'number-list' = 'bullet-list';
+  let listStartNumber: number | null = null;
   let proseLines: string[] | null = null;
   let verseRange: { ref: string; lines: (Blank | Text)[] } | null = null;
 
   const flushList = () => {
     if (listLines && listLines.length > 0) {
-      content.push({ kind: listKind, points: nestListPoints(listLines, listKind) });
+      content.push({
+        kind: listKind,
+        points: nestListPoints(listLines, listKind),
+        ...(listKind === 'number-list' && listStartNumber !== null && listStartNumber !== 1
+          ? { start: listStartNumber }
+          : {}),
+      });
     }
     listLines = null;
+    listStartNumber = null;
   };
   const flushProse = () => {
     if (proseLines && proseLines.length > 0) {
@@ -360,6 +368,10 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       if (!listLines) {
         listKind = 'number-list';
         listLines = [];
+        const numPart = numberMatch[1].match(/\d+/);
+        if (numPart) {
+          listStartNumber = parseInt(numPart[0], 10);
+        }
       }
       // A list-continuation line (3 groups) carries its indent in group 1;
       // a list-start line (2 groups) is trimmed, so its indent is 0 (the

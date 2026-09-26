@@ -78,7 +78,19 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(list.className).toContain('list-decimal');
     expect(list.className).toContain('pl-5');
     expect(list.querySelectorAll('li')).toHaveLength(2);
+    expect(list.getAttribute('start')).toBeNull();
   });
+
+  it('renders a numbered list with start attribute when start is specified', () => {
+    const s = section({
+      content: [{ kind: 'number-list', points: [{ before: 'Third step' }, { before: 'Fourth step' }], start: 3 }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    const list = screen.getByRole('list');
+    expect(list.tagName).toBe('OL');
+    expect(list.getAttribute('start')).toBe('3');
+  });
+
 
   it('strips a literal "1." prefix a legacy stored section still carries, so the ol marker is the only number', () => {
     // Sections saved before the strip render from Firestore's stored copy —

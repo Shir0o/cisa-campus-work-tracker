@@ -18,7 +18,7 @@ import {
   type EntryPoint,
 } from '../lib/bibleStudy';
 import { useCommand } from '../lib/commands';
-import { restoreScrollAfterEdit } from '../lib/editorScroll';
+import { restoreScrollAfterEdit, scrollCaretIntoView } from '../lib/editorScroll';
 import {
   saveMeeting,
   setMeetingPublished,
@@ -376,6 +376,7 @@ export default function BibleStudyEditor() {
     el.focus();
     el.setSelectionRange(offset, offset);
     syncCaretSection(el);
+    scrollCaretIntoView(el, offset);
   };
 
   // The phone fits the pane on BOTH axes and keeps its ratio: on a short
