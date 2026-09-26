@@ -18,6 +18,8 @@ import {
   collectionGroup,
   query,
   where,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as fs from 'fs';
@@ -657,6 +659,62 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDoc(doc(trainee, 'contacts/untied/threads/th2')));
       // Team-scope Discussion stays Full-timer-only even on a readable person.
       await assertFails(getDoc(doc(trainee, 'contacts/tied/threads/th3')));
+    });
+  });
+
+  // A History entry is data about its target contact (targetName, a stage
+  // change in description), so it is visible exactly when the contact is: a
+  // Trainee reads only entries about people in their `visibleTo`.
+  describe('Activities follow their target contact\'s visibility', () => {
+    const seedActivities = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
+        const entry = (targetId: string, targetType: string, createdAt: string) => ({
+          userId: 'admin1', userName: 'Admin', action: 'updated', type: 'edit',
+          targetId, targetType, targetName: targetId, description: 'stage: "First Contact" → "Regular"', createdAt,
+        });
+        await setDoc(doc(fs, 'activities/a_tied'), entry('tied', 'contact', '2026-01-01'));
+        await setDoc(doc(fs, 'activities/a_untied'), entry('untied', 'contact', '2026-01-02'));
+        await setDoc(doc(fs, 'activities/a_event'), entry('event1', 'event', '2026-01-03'));
+      });
+    };
+    // The client query shapes: History / GlobalSearch, and Contact Detail.
+    const feed = (db: ReturnType<typeof getFirestore>) =>
+      query(collection(db, 'activities'), orderBy('createdAt', 'desc'), limit(100));
+    const forContact = (db: ReturnType<typeof getFirestore>, contactId: string) =>
+      query(collection(db, 'activities'), where('targetId', '==', contactId), orderBy('createdAt', 'desc'), limit(50));
+
+    it('lets a Trainee get an entry only about a person they can see', async () => {
+      await seedActivities();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(getDoc(doc(trainee, 'activities/a_tied')));
+      await assertFails(getDoc(doc(trainee, 'activities/a_untied')));
+      await assertFails(getDoc(doc(trainee, 'activities/a_event')));
+    });
+
+    it('lets a Trainee list one visible person\'s history, never an unseen person\'s or the whole feed', async () => {
+      await seedActivities();
+      const trainee = getFirestore({ uid: 'manager1' });
+      const scoped = await assertSucceeds(getDocs(forContact(trainee, 'tied')));
+      expect(scoped.docs.map((d) => d.id)).toEqual(['a_tied']);
+      await assertFails(getDocs(forContact(trainee, 'untied')));
+      await assertFails(getDocs(feed(trainee)));
+    });
+
+    it('keeps the whole feed readable for roles that see every person', async () => {
+      await seedActivities();
+      for (const uid of ['admin1', 'operator1', 'viewer1']) {
+        const db = getFirestore({ uid });
+        const all = await assertSucceeds(getDocs(feed(db)));
+        expect(all.docs.map((d) => d.id)).toEqual(['a_event', 'a_untied', 'a_tied']);
+        await assertSucceeds(getDocs(forContact(db, 'untied')));
+      }
     });
   });
 
