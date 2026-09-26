@@ -549,12 +549,10 @@ export function partitionAttentionStacks(
       (it) => it.type === "task" || it.type === "notification",
     );
 
-    // Something addressed to you: a question or a follow-up ask on a person you
-    // are involved with, an explicit mention, or a question you are waiting on.
-    const hasThreadAskOrMention = stack.items.some(
-      (it) =>
-        it.type === "thread" &&
-        (it.kind === "question" || it.kind === "nudge" || it.mentioned || it.awaitingReply),
+    // Something addressed to you personally: an explicit mention or a question
+    // you are waiting on a reply for (#1209).
+    const hasDirectMentionOrReply = stack.items.some(
+      (it) => it.type === "thread" && (it.mentioned || it.awaitingReply),
     );
 
     // One definition of "tied to this person", shared with the notification
@@ -566,7 +564,7 @@ export function partitionAttentionStacks(
       stack.contactId,
     );
 
-    if (hasDirectTaskOrNotif || hasThreadAskOrMention || isOwnedContact) {
+    if (hasDirectTaskOrNotif || hasDirectMentionOrReply || isOwnedContact) {
       onYou.push(stack);
     } else {
       aroundTeam.push(stack);

@@ -60,6 +60,7 @@ describe("the worklist card, through On you (#813, #943)", () => {
       id: "c1",
       name: "Alex Johnson",
       createdBy: "u3",
+      carers: ["u1"],
       createdAt: new Date().toISOString(),
       stage: "Freshman Contact",
       ...over,
