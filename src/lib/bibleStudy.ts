@@ -18,7 +18,7 @@ export type ListBlock = { kind: 'bullet-list' | 'number-list'; points: ListItem[
 export type PassageBlock = { kind: 'passage'; passage: Blank | Text; ref?: string };
 /** A proof-text in the flow: the reference leads, the words follow at body size (#918). */
 export type VerseBlock = { kind: 'verse'; ref: string; verse?: Blank | Text; verses?: (Blank | Text)[] };
-export type PromptBlock = { kind: 'prompt'; prompt: { kind: PromptKind; text: string } };
+export type PromptBlock = { kind: 'prompt'; prompt: { kind: PromptKind; text?: string; points?: string[] } };
 export type SectionBlock = ProseBlock | ListBlock | PassageBlock | VerseBlock | PromptBlock;
 
 export type Section = {
@@ -29,7 +29,7 @@ export type Section = {
   /** Legacy summary views over `content`, kept for consumers and old documents. */
   points: (Blank | Text)[];
   passage?: Blank | Text;
-  prompt?: { kind: PromptKind; text: string };
+  prompt?: { kind: PromptKind; text?: string; points?: string[] };
   ref?: string;
 };
 
@@ -284,11 +284,18 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       flushProse();
       flushVerseRange();
       const last = content[content.length - 1];
-      const prompt = { kind: promptMatch[1].toLowerCase() as PromptKind, text: promptMatch[2].trim() };
+      const kind = promptMatch[1].toLowerCase() as PromptKind;
+      const text = promptMatch[2].trim();
+      const prompt: { kind: PromptKind; text?: string; points?: string[] } = text ? { kind, text } : { kind };
       // The last prompt in a Section is the Prompt; an earlier prompt block
       // dissolves into prose (same rule the legacy summary field followed).
       if (last && last.kind === 'prompt') {
-        content[content.length - 1] = { kind: 'prose', md: `${last.prompt.kind}: ${last.prompt.text}` };
+        const proseText = last.prompt.text
+          ? `${last.prompt.kind}: ${last.prompt.text}`
+          : last.prompt.points
+            ? `${last.prompt.kind}:\n` + last.prompt.points.map((p) => `- ${p}`).join('\n')
+            : last.prompt.kind;
+        content[content.length - 1] = { kind: 'prose', md: proseText };
       }
       content.push({ kind: 'prompt', prompt });
       continue;
@@ -328,6 +335,13 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
     if (bulletMatch) {
       flushProse();
       flushVerseRange();
+      const last = content[content.length - 1];
+      // Indented bullet under an immediately preceding prompt folds into its points (#1186)
+      if (last && last.kind === 'prompt' && !listLines && bulletMatch[1].length > 0) {
+        last.prompt.points = last.prompt.points ?? [];
+        last.prompt.points.push(bulletMatch[2].trim());
+        continue;
+      }
       if (!listLines) {
         listKind = 'bullet-list';
         listLines = [];

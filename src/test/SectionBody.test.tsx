@@ -205,6 +205,35 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(screen.getByText('Apply').className).toContain('text-[var(--t-ochre)]');
   });
 
+  it('renders a Prompt with points as a bullet list inside the prompt card (#1186)', () => {
+    const s = section({
+      content: [
+        {
+          kind: 'prompt',
+          prompt: {
+            kind: 'discuss',
+            points: ['First question point', 'Second question point with [[literal]] text'],
+          },
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    const card = screen.getByText('Discuss').closest('[data-block-kind="prompt"]')!;
+    expect(card).toBeInTheDocument();
+
+    const list = card.querySelector('ul');
+    expect(list).toBeInTheDocument();
+    expect(list?.className).toContain('list-disc');
+
+    const items = card.querySelectorAll('li');
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toBe('First question point');
+    // [[literal]] renders as literal text, not a blank button
+    expect(items[1].textContent).toBe('Second question point with [[literal]] text');
+    expect(card.querySelector('button, [role="button"]')).toBeNull();
+  });
+
   it('renders a Passage with no citation as a bare quote (#921)', () => {
     const s = section({
       content: [{ kind: 'passage', passage: { before: 'The words stand alone.' } }],
