@@ -254,7 +254,7 @@ describe('buildCombineOps', () => {
     expect(duplicateDelete).toBeDefined();
   });
 
-  it('copies interactions and threads subcollections to the survivor then deletes originals', () => {
+  it('copies interactions, threads and teamThreads subcollections to the survivor then deletes originals', () => {
     const ops = buildCombineOps(
       survivor,
       duplicate,
@@ -268,6 +268,7 @@ describe('buildCombineOps', () => {
           { id: 'i2', data: { content: 'again' } },
         ],
         threads: [{ id: 't1', data: { body: 'note' } }],
+        teamThreads: [{ id: 'tt1', data: { body: 'team', scope: 'team' } }],
         prayers: [],
         tasks: [],
         visits: [],
@@ -302,6 +303,17 @@ describe('buildCombineOps', () => {
       collection: 'contacts/d1/threads',
       docId: 't1',
     });
+    expect(ops).toContainEqual({
+      op: 'set',
+      collection: 'contacts/s1/teamThreads',
+      docId: 'tt1',
+      data: { body: 'team', scope: 'team' },
+    });
+    expect(ops).toContainEqual({
+      op: 'delete',
+      collection: 'contacts/d1/teamThreads',
+      docId: 'tt1',
+    });
   });
 
   it('re-parents prayers and tasks and rewrites visit contactIds', () => {
@@ -315,6 +327,7 @@ describe('buildCombineOps', () => {
       {
         interactions: [],
         threads: [],
+        teamThreads: [],
         prayers: ['p1', 'p2'],
         tasks: ['k1'],
         visits: [

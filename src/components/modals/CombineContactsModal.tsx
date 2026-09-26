@@ -93,7 +93,7 @@ interface CombineContactsModalProps {
  * and presents a preview of each pair. Full-timers can confirm pairs one by
  * one (inline "Combine"), skip false positives ("Skip for now"), or combine
  * everything at once ("Combine all"). Combining migrates the absorbed
- * contact's subcollections (interactions, threads), re-parents external
+ * contact's subcollections (interactions, threads, teamThreads), re-parents external
  * references (prayers, tasks, visits), enriches the survivor, and deletes the
  * duplicate — all in chunked batches that respect the Firestore write limit.
  */
@@ -140,9 +140,10 @@ export default function CombineContactsModal({
 
   /** Reads the subcollections and external references that point at the duplicate. */
   const loadMigrationData = async (duplicateId: string): Promise<CombineMigrationData> => {
-    const [interactions, threads, prayers, tasks, visits] = await Promise.all([
+    const [interactions, threads, teamThreads, prayers, tasks, visits] = await Promise.all([
       getDocs(collection(db, 'contacts', duplicateId, 'interactions')),
       getDocs(collection(db, 'contacts', duplicateId, 'threads')),
+      getDocs(collection(db, 'contacts', duplicateId, 'teamThreads')),
       getDocs(query(collection(db, 'prayers'), where('contactId', '==', duplicateId))),
       getDocs(query(collection(db, 'tasks'), where('contactId', '==', duplicateId))),
       getDocs(query(collection(db, 'visits'), where('contactIds', 'array-contains', duplicateId))),
@@ -151,6 +152,7 @@ export default function CombineContactsModal({
     return {
       interactions: interactions.docs.map((d) => ({ id: d.id, data: d.data() })),
       threads: threads.docs.map((d) => ({ id: d.id, data: d.data() })),
+      teamThreads: teamThreads.docs.map((d) => ({ id: d.id, data: d.data() })),
       prayers: prayers.docs.map((d) => d.id),
       tasks: tasks.docs.map((d) => d.id),
       visits: visits.docs.map((d) => ({ id: d.id, contactIds: d.data().contactIds ?? [] })),

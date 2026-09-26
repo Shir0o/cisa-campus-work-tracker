@@ -82,12 +82,12 @@ export default function PointerCard({
   useEffect(() => {
     if (propsThreads) return;
     try {
-      const unsubThreads = subscribeAllThreads(setLiveThreads);
+      const unsubThreads = subscribeAllThreads(setLiveThreads, undefined, { includeTeam: role === "admin" });
       return () => unsubThreads();
     } catch {
       // Degrade gracefully in test environments without live firestore
     }
-  }, [propsThreads]);
+  }, [propsThreads, role]);
 
   const interactions = propsInteractions || liveInteractions;
   // Team-scope Discussion is Full-timer-only; hide it from any other role even

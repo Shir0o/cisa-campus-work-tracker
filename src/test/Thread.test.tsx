@@ -100,7 +100,17 @@ describe("Thread", () => {
     render(<Thread contactId="C-1" meStaffId="u1" />);
     const del = screen.getByRole("button", { name: "Delete message" });
     await userEvent.click(del);
-    expect(deleteThreadMessage).toHaveBeenCalledWith("C-1", "a");
+    expect(deleteThreadMessage).toHaveBeenCalledWith("C-1", "a", undefined);
+  });
+
+  // Full-timers Discussion lives in its own subcollection, so the delete must
+  // say which one the message came from.
+  it("deletes a Full-timers message from the team thread", async () => {
+    hoisted.isAdmin = true;
+    hoisted.messages = [message({ id: "t", from: "u1", fromName: "Tony Wang", body: "team note", scope: "team" })];
+    render(<Thread contactId="C-1" meStaffId="u1" scope="team" />);
+    await userEvent.click(screen.getByRole("button", { name: "Delete message" }));
+    expect(deleteThreadMessage).toHaveBeenCalledWith("C-1", "t", "team");
   });
 
   it("hides the delete affordance on others' messages for a non-admin", () => {

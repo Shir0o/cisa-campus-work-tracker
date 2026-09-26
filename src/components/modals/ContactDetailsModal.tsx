@@ -337,7 +337,7 @@ export default function ContactDetailsModal({
   }, [isOpen]);
   // Walking-together threads on this contact (live), + which interaction's
   // inline thread is expanded.
-  const threadMessages = useThreads(contact?.id);
+  const threadMessages = useThreads(contact?.id, { includeTeam: isAdmin });
   const [openThread, setOpenThread] = useState<string | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
   const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());

@@ -469,6 +469,91 @@ describe("subscribeThreads", () => {
     expect(onError).toHaveBeenCalledWith(err);
   });
 });
+// Full-timers Discussion has its own subcollection so no non-admin list query
+// can reach it: a list rule cannot drop single documents from a result.
+describe("Full-timers Discussion lives in teamThreads", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const snapFor = (path: string) => {
+    if (path.endsWith("teamThreads")) {
+      return [
+        {
+          id: "t1",
+          ref: { parent: { parent: { id: "c2" } } },
+          data: () => ({ from: "ft", fromName: "Ft", kind: "comment", body: "team", at: "2021-02-01T00:00:00.000Z", interactionId: null }),
+        },
+      ];
+    }
+    return [
+      {
+        id: "m1",
+        ref: { parent: { parent: { id: "c1" } } },
+        data: () => ({ from: "u1", fromName: "U", kind: "note", body: "open", at: "2021-01-01T00:00:00.000Z", interactionId: null }),
+      },
+    ];
+  };
+  const mockBoth = () => {
+    const unsubs: ReturnType<typeof vi.fn>[] = [];
+    vi.mocked(onSnapshot).mockImplementation((q: unknown, next: unknown) => {
+      (next as (s: unknown) => void)({ docs: snapFor((q as { path: string }).path) });
+      const u = vi.fn();
+      unsubs.push(u);
+      return u;
+    });
+    return unsubs;
+  };
+  const pathsQueried = () => vi.mocked(onSnapshot).mock.calls.map((c) => (c[0] as unknown as { path: string }).path);
+
+  it("posts a team-scope message to contacts/{id}/teamThreads", async () => {
+    await addThreadMessage("C-1", { scope: "team", from: "ft", fromName: "Ft", kind: "comment", body: "hi" });
+    expect(addDoc).toHaveBeenCalledWith({ path: "contacts/C-1/teamThreads" }, expect.objectContaining({ scope: "team" }));
+  });
+
+  it("keeps an open-thread message in contacts/{id}/threads", async () => {
+    await addThreadMessage("C-1", { from: "u1", fromName: "U", kind: "comment", body: "hi" });
+    expect(addDoc).toHaveBeenCalledWith({ path: "contacts/C-1/threads" }, expect.objectContaining({ scope: null }));
+  });
+
+  it("deletes a team-scope message from teamThreads", async () => {
+    await deleteThreadMessage("C-1", "M-1", "team");
+    expect(deleteDoc).toHaveBeenCalledWith({ path: "contacts/C-1/teamThreads/M-1" });
+  });
+
+  it("subscribeThreads reads only the open thread unless asked for the team one", () => {
+    mockBoth();
+    const cb = vi.fn();
+    subscribeThreads("C-1", cb);
+    expect(pathsQueried()).toEqual(["contacts/C-1/threads"]);
+    expect(cb.mock.calls.at(-1)![0].map((m: ThreadMessage) => m.id)).toEqual(["m1"]);
+  });
+
+  it("subscribeThreads merges the team thread newest-first for a Full-timer, and closes both", () => {
+    const unsubs = mockBoth();
+    const cb = vi.fn();
+    const stop = subscribeThreads("C-1", cb, undefined, { includeTeam: true });
+    expect(pathsQueried()).toEqual(["contacts/C-1/threads", "contacts/C-1/teamThreads"]);
+    const last = cb.mock.calls.at(-1)![0] as ThreadMessage[];
+    expect(last.map((m) => [m.id, m.scope])).toEqual([["t1", "team"], ["m1", null]]);
+    stop();
+    for (const u of unsubs) expect(u).toHaveBeenCalled();
+  });
+
+  it("subscribeAllThreads merges every contact's team thread for a Full-timer", () => {
+    mockBoth();
+    const cb = vi.fn();
+    subscribeAllThreads(cb, undefined, { includeTeam: true });
+    expect(pathsQueried()).toEqual(["threads", "teamThreads"]);
+    const last = cb.mock.calls.at(-1)![0] as (ThreadMessage & { contactId: string })[];
+    expect(last.map((m) => [m.id, m.contactId, m.scope])).toEqual([["t1", "c2", "team"], ["m1", "c1", null]]);
+  });
+
+  it("subscribeAllThreads reads only the open threads by default", () => {
+    mockBoth();
+    subscribeAllThreads(vi.fn());
+    expect(pathsQueried()).toEqual(["threads"]);
+  });
+});
+
 describe("repliesOf helper", () => {
   it("filters replies belonging to a parentId", () => {
     const msgs = [
