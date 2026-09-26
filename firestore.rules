@@ -633,8 +633,16 @@ service cloud.firestore {
                data.targetType in ['contact', 'event', 'comment', 'interaction'] &&
                data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'];
       }
-      allow list: if isSignedIn() && (isApprovedUser() || isSuperAdmin());
-      allow get: if isApprovedUser();
+      // An entry is data about its target (targetName, a stage change in
+      // description), so it is readable exactly when that contact is -- the
+      // canReadContact decision, with the contact fetched only for a Trainee.
+      // A Trainee's list must therefore pin targetId (Contact Detail's
+      // history); the whole feed and non-contact entries stay with the roles
+      // that see every person.
+      allow read: if isApprovedUser() && (
+                    seesAllContacts() ||
+                    request.auth.uid in get(/databases/$(database)/documents/contacts/$(resource.data.targetId)).data.get('visibleTo', [])
+                  );
       allow create: if isValidId(activityId) && isApprovedUser() && isOperator() && isValidActivity(incoming());
       allow update, delete: if isValidId(activityId) && isManager();
     }

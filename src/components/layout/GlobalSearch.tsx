@@ -35,7 +35,7 @@ import { useAuth } from '../AuthProvider';
 import { contactVisibilityConstraints } from '../../lib/contactQueries';
 import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
-import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
+import { hasMinRole, AppRole, navItemsForRole, navExternalFor, canSeeHistory } from '../../lib/permissions';
 import { matchContact, type ContactMatch } from '../../lib/contactMatch';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -82,6 +82,8 @@ export default function GlobalSearch() {
 
   const isStaff = isManager; // Trainee+ (manager/admin)
   const isFullStaff = isAdmin; // Full-timer
+  // The rules deny anyone who can't see every person the whole activity feed.
+  const seesHistory = canSeeHistory(role);
   const isOperator = hasMinRole(role as AppRole, 'operator');
   const currentUid = auth.currentUser?.uid || '';
   useFrecency(currentUid);
@@ -158,7 +160,7 @@ export default function GlobalSearch() {
   }, [searchOpen, isFullStaff]);
 
   useEffect(() => {
-    if (!searchOpen || !isStaff || !inclHistory) return;
+    if (!searchOpen || !seesHistory || !inclHistory) return;
     const unsub = onSnapshot(
       query(collection(db, 'activities'), orderBy('createdAt', 'desc'), limit(100)),
       (snap) =>
@@ -168,7 +170,7 @@ export default function GlobalSearch() {
       (err) => console.error('GlobalSearch activities listener:', err),
     );
     return () => unsub();
-  }, [searchOpen, isStaff, inclHistory]);
+  }, [searchOpen, seesHistory, inclHistory]);
 
   // ── results ───────────────────────────────────────────────────────────────
   const recentPeople = useMemo(() => {
@@ -258,7 +260,7 @@ export default function GlobalSearch() {
   }, [role, isAdmin]);
 
   const historyResults = useMemo(() => {
-    if (!hasQ || !isStaff || !inclHistory) return [];
+    if (!hasQ || !seesHistory || !inclHistory) return [];
     return activities
       .filter(
         (a) =>
@@ -267,7 +269,7 @@ export default function GlobalSearch() {
           (a.targetName || '').toLowerCase().includes(ql),
       )
       .slice(0, GS_MAX);
-  }, [hasQ, ql, isStaff, inclHistory, activities]);
+  }, [hasQ, ql, seesHistory, inclHistory, activities]);
 
   const destResults = useMemo(() => {
     if (!hasQ) return [];
@@ -686,7 +688,7 @@ export default function GlobalSearch() {
             </div>
           )}
 
-          {isStaff && (
+          {seesHistory && (
             <div className="px-2.5 pt-3 pb-1">
               <button
                 type="button"

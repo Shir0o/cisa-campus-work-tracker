@@ -60,6 +60,7 @@ vi.mock('firebase/firestore', () => ({
   collection: (_db: any, name: string) => ({ __c: name }),
   collectionGroup: (_db: any, name: string) => ({ __c: name }),
   query: (ref: any) => ref,
+  where: () => ({}),
   orderBy: () => ({}),
   limit: () => ({}),
   onSnapshot: vi.fn((ref: any, cb: any) => {
@@ -299,6 +300,17 @@ describe('GlobalSearch', () => {
     expect(screen.queryAllByText('Conversations').length).toBe(0);
     expect(screen.queryAllByText('Coordination Notes').length).toBe(0);
     expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
+  });
+
+  it('Trainee gets no history toggle and never reads the activity feed', () => {
+    // The rules deny a Trainee the whole feed — History entries follow their
+    // contact's visibility — so the unscoped listener must not start.
+    h.mockAuth.value = TEST_USERS.manager;
+    render(<GlobalSearch />);
+    typeDesktop('plan');
+    expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
+    const reads = vi.mocked(firestore.onSnapshot).mock.calls.map(([ref]) => (ref as any).__c);
+    expect(reads).not.toContain('activities');
   });
 
   it('↓ then ↵ opens the focused contact', () => {
