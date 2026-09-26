@@ -177,6 +177,14 @@ describe('parseMeeting', () => {
     expect(sections[1]).toHaveProperty('passage');
     expect(sections[1]).toHaveProperty('prompt');
   });
+  it('preserves a trailing section that has only a heading marker without title or content (#1184)', () => {
+    const md = '## First section\nSome text\n\n## ';
+    const sections = parseMeeting(md);
+    expect(sections).toHaveLength(2);
+    expect(sections[0].title).toBe('First section');
+    expect(sections[1].title).toBe('Untitled');
+  });
+
   it('strips the literal "1." prefix from number-list points so the ol marker is the only number', () => {
     // Bullets already lose their "- "; numbers must match, or the reader
     // re-parses "1. …" as its own nested list and the numbers double up.

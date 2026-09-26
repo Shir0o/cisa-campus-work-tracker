@@ -121,13 +121,13 @@ export function parseMeeting(md: string): Section[] {
 
   const lines = md.split("\n");
   const rawSections: { title: string; lines: string[] }[] = [];
-  let currentTitle = "";
+  let currentTitle: string | null = null;
   let currentLines: string[] = [];
 
   for (const line of lines) {
     const headingTitle = parseHeading(line);
     if (headingTitle !== null) {
-      if (currentTitle || currentLines.length > 0) {
+      if (currentTitle !== null || currentLines.length > 0) {
         rawSections.push({ title: currentTitle || "Untitled", lines: currentLines });
       }
       currentTitle = headingTitle;
@@ -136,7 +136,7 @@ export function parseMeeting(md: string): Section[] {
       currentLines.push(line);
     }
   }
-  if (currentTitle || currentLines.length > 0) {
+  if (currentTitle !== null || currentLines.length > 0) {
     rawSections.push({ title: currentTitle || "Untitled", lines: currentLines });
   }
 
