@@ -11,6 +11,7 @@ import {
   sectionOffsets,
   sectionIndexAtOffset,
   blockInsertionPoint,
+  promptInsertionPoint,
   previewScale,
   PREVIEW_PHONE_HEIGHT,
   type StudySetupForm,
@@ -627,6 +628,35 @@ describe('blockInsertionPoint (#921 — block inserters land at the end of the c
     const { offset } = blockInsertionPoint(md, 2);
     expect(md.slice(0, offset)).toBe('Intro prose');
     expect(md.slice(offset)).toContain('## Alpha');
+  });
+});
+
+describe('promptInsertionPoint (#1182 — prompts land on the next line after cursor line)', () => {
+  it('inserts on the next line when cursor is on a content line', () => {
+    const md = '## Alpha\n- point 1\n- point 2\n\n## Beta';
+    // Cursor mid-line inside "- point 1"
+    const offset = md.indexOf('point 1') + 2;
+    const res = promptInsertionPoint(md, offset, 'Discuss: ');
+    // Should insert on the next line with blank line separation:
+    // "## Alpha\n- point 1\n\nDiscuss: \n\n- point 2\n\n## Beta"
+    expect(res.text).toBe('## Alpha\n- point 1\n\nDiscuss: \n\n- point 2\n\n## Beta');
+    expect(res.caret).toBe(res.text.indexOf('Discuss: ') + 'Discuss: '.length);
+  });
+
+  it('inserts cleanly when cursor is at the end of a line or document', () => {
+    const md = '## Alpha\n- point 1';
+    const res = promptInsertionPoint(md, md.length, 'Question: ');
+    expect(res.text).toBe('## Alpha\n- point 1\n\nQuestion: ');
+    expect(res.caret).toBe(res.text.length);
+  });
+
+  it('does not duplicate blank lines when already on or adjacent to blank lines', () => {
+    const md = '## Alpha\n\n- point 1\n\n\n- point 2';
+    // Cursor on the blank line between "- point 1" and "- point 2"
+    const blankLineOffset = md.indexOf('- point 1') + '- point 1\n\n'.length;
+    const res = promptInsertionPoint(md, blankLineOffset, 'Apply: ');
+    expect(res.text).toBe('## Alpha\n\n- point 1\n\nApply: \n\n- point 2');
+    expect(res.caret).toBe(res.text.indexOf('Apply: ') + 'Apply: '.length);
   });
 });
 

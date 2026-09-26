@@ -577,6 +577,69 @@ export function blockInsertionPoint(md: string, offset: number): { offset: numbe
 }
 
 /**
+ * Where a Prompt block insertion belongs (#1182): the line immediately
+ * following the cursor's current line.
+ *
+ * Rather than appending all the way to the end of the Section (#921), a
+ * Prompt (Question, Discuss, Activity, Apply) lands on the next line after
+ * whatever line the author is currently editing, separated with a blank line
+ * from preceding content (if non-empty) and followed by a blank line before
+ * subsequent content (if non-empty), leaving the caret placed inside the prompt
+ * ready to type.
+ */
+export function promptInsertionPoint(
+  md: string,
+  cursorOffset: number,
+  block: string,
+): { text: string; caret: number } {
+  const safeOffset = Math.max(0, Math.min(cursorOffset, md.length));
+
+  // Find the end of the line containing safeOffset
+  let lineEnd = md.indexOf('\n', safeOffset);
+  if (lineEnd === -1) {
+    lineEnd = md.length;
+  }
+
+  // Preceding slice up to the end of current line
+  let before = md.slice(0, lineEnd);
+  // Trailing slice starting after lineEnd
+  let after = md.slice(lineEnd);
+
+  // If after starts with \r\n or \n, strip the first newline because we will format line boundaries
+  if (after.startsWith('\r\n')) {
+    after = after.slice(2);
+  } else if (after.startsWith('\n')) {
+    after = after.slice(1);
+  }
+
+  // Trim trailing blank lines from before
+  let beforeTrimmedEnd = before.length;
+  while (beforeTrimmedEnd > 0) {
+    const c = before.charCodeAt(beforeTrimmedEnd - 1);
+    if (c === 10 || c === 13) beforeTrimmedEnd--;
+    else break;
+  }
+  before = before.slice(0, beforeTrimmedEnd);
+
+  // Trim leading blank lines from after
+  let afterTrimmedStart = 0;
+  while (afterTrimmedStart < after.length) {
+    const c = after.charCodeAt(afterTrimmedStart);
+    if (c === 10 || c === 13) afterTrimmedStart++;
+    else break;
+  }
+  after = after.slice(afterTrimmedStart);
+
+  // Compose with blank line separation
+  const prefix = before ? `${before}\n\n` : '';
+  const suffix = after ? `\n\n${after}` : '';
+  const text = `${prefix}${block}${suffix}`;
+  const caret = prefix.length + block.length;
+
+  return { text, caret };
+}
+
+/**
  * A new week starts from a small skeleton that teaches the three conventions
  * — Section heading, blockquote Passage, marked Prompt line — visibly as
  * placeholders. Never a silent copy of the previous week's text, which risks

@@ -421,12 +421,32 @@ describe('BibleStudyEditor view', () => {
       // Caret inside Section 1's body.
       area.setSelectionRange(3, 3);
 
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
+
+      await waitFor(() => {
+        // The Passage block lands at the end of Section 1, before Section 2's
+        // heading — never at the end of the document.
+        expect(area.value).toBe(
+          '## Section 1\n- Point 1\n\n> \n\n## Section 2\n- Point 2',
+        );
+      });
+    });
+
+    it('inserts a prompt on the next line after the cursor line (#1182)', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      // Caret inside Section 1's Point 1.
+      const point1Offset = MEETING_MD.indexOf('Point 1') + 2;
+      area.setSelectionRange(point1Offset, point1Offset);
+
       openMenu('Prompts');
       fireEvent.click(screen.getByRole('menuitem', { name: /Discuss/i }));
 
       await waitFor(() => {
-        // The Discuss line lands at the end of Section 1, before Section 2's
-        // heading — never at the end of the document.
         expect(area.value).toBe(
           '## Section 1\n- Point 1\n\nDiscuss: \n\n## Section 2\n- Point 2',
         );
@@ -621,12 +641,13 @@ describe('BibleStudyEditor view', () => {
 
     const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
     area.focus();
-    area.setSelectionRange(3, 3);
+    const point1Offset = MEETING_MD.indexOf('Point 1') + 2;
+    area.setSelectionRange(point1Offset, point1Offset);
 
     fireEvent.click(screen.getByRole('menuitem', { name: /Apply/i }));
 
     await waitFor(() => {
-      // The Apply line lands at the end of the caret's Section, ready to
+      // The Apply line lands on the line following the caret line, ready to
       // type the move the room will make — the same "ready to type"
       // contract the other block inserters have.
       expect(area.value).toBe(
