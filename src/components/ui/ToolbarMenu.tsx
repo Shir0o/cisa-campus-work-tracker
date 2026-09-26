@@ -3,8 +3,6 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { RowActionItem } from './RowActions';
 
-/** How long the pointer must rest on the trigger before the menu opens. */
-const HOVER_OPEN_DELAY = 300;
 
 interface ToolbarMenuProps {
   /** Trigger label — the group's name, e.g. "Insert". */
@@ -16,16 +14,14 @@ interface ToolbarMenuProps {
 /**
  * A labelled dropdown for a formatting toolbar.
  *
- * Click toggles, focus opens (keyboard reach), and a short hover delay opens
- * it for the mouse without firing on a crossing pointer. The menu closes on
- * Escape, an outside mousedown, or an item pick. Every button suppresses the
- * mousedown focus shift (#917) so the author's caret and scroll survive the
- * whole pick — the textarea never blurs.
+ * Click toggles open and close. The menu closes on Escape, an outside
+ * mousedown, or an item pick. Every button suppresses the mousedown focus shift
+ * (#917) so the author's caret and scroll survive the whole pick — the textarea
+ * never blurs.
  */
 export function ToolbarMenu({ label, items, className }: ToolbarMenuProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<number | null>(null);
 
   const close = () => setOpen(false);
 
@@ -45,27 +41,10 @@ export function ToolbarMenu({ label, items, className }: ToolbarMenuProps) {
     };
   }, [open]);
 
-  useEffect(() => () => {
-    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-  }, []);
-
-  const openAfterHover = () => {
-    if (open) return;
-    hoverTimer.current = window.setTimeout(() => setOpen(true), HOVER_OPEN_DELAY);
-  };
-  const cancelHover = () => {
-    if (hoverTimer.current) {
-      window.clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-  };
-
   return (
     <div
       ref={wrapRef}
       className={cn('relative shrink-0', className)}
-      onMouseEnter={openAfterHover}
-      onMouseLeave={cancelHover}
     >
       <button
         type="button"
@@ -74,10 +53,8 @@ export function ToolbarMenu({ label, items, className }: ToolbarMenuProps) {
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => {
           e.stopPropagation();
-          cancelHover();
           setOpen((v) => !v);
         }}
-        onFocus={() => setOpen(true)}
         onBlur={(e) => {
           if (!wrapRef.current?.contains(e.relatedTarget as Node)) close();
         }}

@@ -9,6 +9,7 @@ import {
   sectionOffsets,
   sectionIndexAtOffset,
   blockInsertionPoint,
+  promptInsertionPoint,
   previewScale,
   PREVIEW_PHONE_WIDTH,
   PREVIEW_PHONE_HEIGHT,
@@ -349,6 +350,24 @@ export default function BibleStudyEditor() {
     }, 0);
   };
 
+  // Prompt inserters (#1182): Prompts (Question, Discuss, Activity, Apply)
+  // land on the line immediately following the author's cursor line, rather
+  // than jumping all the way to the section end.
+  const insertPromptAtNextLine = (block: string) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const current = formRef.current.markdown;
+    const { text, caret } = promptInsertionPoint(current, el.selectionStart ?? 0, block);
+    const capturedScrollTop = el.scrollTop;
+    editMarkdown(0, current.length, text);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(caret, caret);
+      syncCaretSection(el);
+      restoreScrollAfterEdit(el, capturedScrollTop, caret);
+    }, 0);
+  };
+
   // The one Section mutation (#890): appends `\n\n## ` at the END of the
   // document — never at the cursor, which is offset 0 in a textarea that has
   // never been focused, the exact bug where the heading landed at the top
@@ -579,22 +598,22 @@ export default function BibleStudyEditor() {
                 {
                   id: 'question',
                   label: 'Question',
-                  onSelect: () => insertBlockAtSectionEnd('Question: ', 10),
+                  onSelect: () => insertPromptAtNextLine('Question: '),
                 },
                 {
                   id: 'discuss',
                   label: 'Discuss',
-                  onSelect: () => insertBlockAtSectionEnd('Discuss: ', 9),
+                  onSelect: () => insertPromptAtNextLine('Discuss: '),
                 },
                 {
                   id: 'activity',
                   label: 'Activity',
-                  onSelect: () => insertBlockAtSectionEnd('Activity: ', 10),
+                  onSelect: () => insertPromptAtNextLine('Activity: '),
                 },
                 {
                   id: 'apply',
                   label: 'Apply',
-                  onSelect: () => insertBlockAtSectionEnd('Apply: ', 7),
+                  onSelect: () => insertPromptAtNextLine('Apply: '),
                 },
               ]}
             />
