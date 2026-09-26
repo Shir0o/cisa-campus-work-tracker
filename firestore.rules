@@ -374,21 +374,22 @@ service cloud.firestore {
             'updatedAt', 'updatedBy', 'updatedByName'
           ]) && mayShare && dropsOnlyOneCollaborator()) ||
 
-          // #1055: the founders list is immutable after creation — written once
-          // at #1049/#1050 from the pairing. It is rejected as a ghost field for
-          // everyone except a Full-timer's genuine-mistake correction (the
-          // documented exception). A Full-timer may add, change or remove the
-          // founding set, and must rewrite visibleTo in lockstep so a corrected
-          // founding set and the access it grants never drift. They may also
-          // drop the carer tie that only that founder's reach held. Only an
-          // admin reaches this branch — it fires only when `founders` is itself
-          // among the affected keys, so a non-admin write touching founders is
-          // rejected as a ghost field and founders never moves for anyone else.
+          // #1055 & #1103: the founders list and creator attribution are
+          // immutable after creation — written once from the pairing. They are
+          // rejected as ghost fields for everyone except a Full-timer's
+          // genuine-mistake correction (the documented exception). A Full-timer
+          // may add, change or remove the founding set and reassign createdBy/createdByName,
+          // and must rewrite visibleTo in lockstep so a corrected founding set,
+          // creator, and the access they grant never drift. They may also drop
+          // the carer tie that only that founder/creator's reach held. Only an
+          // admin reaches this branch — it fires only when `founders` or `createdBy`
+          // is itself among the affected keys, so a non-admin write touching them is
+          // rejected as a ghost field and neither moves for anyone else.
           (keys.hasOnly([
-            'founders', 'visibleTo',
+            'founders', 'createdBy', 'createdByName', 'visibleTo',
             'coCreators', 'carers',
             'updatedAt', 'updatedBy', 'updatedByName'
-          ]) && admin && keys.hasAny(['founders']));
+          ]) && admin && keys.hasAny(['founders', 'createdBy']));
       }
 
       allow update: if isValidId(contactId) && isApprovedOperator() &&
@@ -640,6 +641,10 @@ service cloud.firestore {
     }
 
     match /attendee_aliases/{aliasId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /groupme_aliases/{aliasId} {
       allow read, write: if isAdmin();
     }
 

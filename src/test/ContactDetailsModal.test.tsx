@@ -1455,6 +1455,104 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.queryByTitle('Remove access')).toBeNull();
   });
 
+  describe('Creator reassignment (#1103)', () => {
+    it('shows the change creator button for admin and updates creator, coCreators, and visibleTo on selection', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'user-123', displayName: 'Admin Tony' },
+        isAdmin: true,
+        role: 'admin',
+        isImpersonating: false,
+      });
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        if (q?.path?.includes('users') || q?.type === 'users') {
+          successCallback({
+            docs: [
+              { id: 'user-123', data: () => ({ name: 'Admin Tony', role: 'admin' }) },
+              { id: 'user-456', data: () => ({ name: 'Brother Barnabas', role: 'admin' }) },
+            ],
+          });
+        } else {
+          successCallback({ docs: [] });
+        }
+        return vi.fn();
+      });
+
+      const contactWithCreator = {
+        ...mockContact,
+        createdBy: 'user-123',
+        createdByName: 'Admin Tony',
+        coCreators: ['existing-partner'],
+      };
+
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCreator} />);
+      await screen.findByText('John Doe');
+      await screen.findByText('Admin Tony');
+
+      const changeBtn = screen.getByRole('button', { name: 'Change creator' });
+      fireEvent.click(changeBtn);
+
+      const select = screen.getByRole('combobox', { name: 'Reassign creator' });
+      expect(select).toBeInTheDocument();
+
+      fireEvent.change(select, { target: { value: 'user-456' } });
+
+      await waitFor(() => {
+        expect(firestore.updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            createdBy: 'user-456',
+            createdByName: 'Brother Barnabas',
+            coCreators: expect.arrayContaining(['existing-partner']),
+            visibleTo: expect.arrayContaining(['user-456']),
+          }),
+        );
+      });
+
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'reassigned creator for',
+          targetId: 'contact-abc',
+        }),
+      );
+    });
+
+    it('does not show the change creator button for non-admins', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'user-trainee', displayName: 'Trainee Tom' },
+        isAdmin: false,
+        role: 'manager',
+        isImpersonating: false,
+      });
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        if (q?.path?.includes('users') || q?.type === 'users') {
+          successCallback({
+            docs: [
+              { id: 'user-123', data: () => ({ name: 'Admin Tony', role: 'admin' }) },
+              { id: 'user-trainee', data: () => ({ name: 'Trainee Tom', role: 'trainee' }) },
+            ],
+          });
+        } else {
+          successCallback({ docs: [] });
+        }
+        return vi.fn();
+      });
+
+      const contactWithCreator = {
+        ...mockContact,
+        createdBy: 'user-trainee',
+        createdByName: 'Admin Tony',
+      };
+
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCreator} />);
+      await screen.findByText('John Doe');
+      await screen.findByText('Admin Tony');
+
+      expect(screen.queryByRole('button', { name: 'Change creator' })).not.toBeInTheDocument();
+    });
+  });
+
   it("never offers a care transfer — the caregiver field and the transfer machinery are gone (#1053)", async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: "user-123", displayName: "Owner Tony" },
@@ -2997,3 +3095,4 @@ describe('desktop story layout (design D)', () => {
     expect(screen.getByRole('dialog', { name: 'Conversation' })).toBeInTheDocument();
   });
 });
+

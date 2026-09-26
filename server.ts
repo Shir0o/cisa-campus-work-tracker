@@ -20,6 +20,7 @@ import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/l
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
+import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partners";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();
@@ -1384,10 +1385,29 @@ Analyze the input text carefully and extract the following:
     return null;
   }
 
-  // Helper: Match an external sender name/email against registered team members in the `users` collection
-  async function findMatchingTeamUser(senderName?: string, senderEmail?: string) {
-    if (!senderName && !senderEmail) return null;
+  // Helper: Match an external sender against registered team members in `groupme_aliases` or `users`
+  async function findMatchingTeamUser(senderName?: string, senderEmail?: string, senderId?: string) {
     const db = getAdminDb();
+
+    // 1. If senderId is provided, check groupme_aliases collection first
+    if (senderId) {
+      try {
+        const aliasDoc = await db.collection("groupme_aliases").doc(senderId).get();
+        if (aliasDoc.exists) {
+          const aliasData = aliasDoc.data();
+          if (aliasData?.userId) {
+            const userDoc = await db.collection("users").doc(aliasData.userId).get();
+            if (userDoc.exists) {
+              return { id: userDoc.id, ...userDoc.data() };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`Failed to check groupme_aliases for senderId ${senderId}:`, err);
+      }
+    }
+
+    if (!senderName && !senderEmail) return null;
     const snapshot = await db.collection("users").get();
     const cleanName = (senderName || "").trim().toLowerCase();
     const cleanEmail = (senderEmail || "").trim().toLowerCase();
@@ -1409,6 +1429,25 @@ Analyze the input text carefully and extract the following:
     });
 
     return matchedUser;
+  }
+
+  // Helper: Resolve gospel partner co-creators for a user from settings/partners
+  async function resolvePartnerCoCreators(userId?: string): Promise<string[]> {
+    if (!userId || userId.startsWith("system-") || userId.startsWith("groupme-") || userId === "system-quick-add") {
+      return [];
+    }
+    try {
+      const partnersDoc = await getAdminDb().collection("settings").doc("partners").get();
+      if (!partnersDoc.exists) return [];
+      const data = partnersDoc.data() || {};
+      const pairings: PartnerPairing[] = Array.isArray(data.pairings)
+        ? cleanPairings(data.pairings)
+        : migrateByTermToPairings(data.byTerm as PartnersByTerm);
+      return partnersAt(pairings, userId, dayKey());
+    } catch (e) {
+      console.warn("Error resolving partner co-creators:", e);
+      return [];
+    }
   }
 
   // Developer Logging Helper: Records incoming API and webhook events for debugging purposes
@@ -1569,6 +1608,7 @@ Analyze the input text carefully and extract the following:
         };
       } else {
         // Contact doesn't exist, create minimal contact and append interaction
+        const partnerCoCreators = await resolvePartnerCoCreators(opUserId);
         const contactData = {
           name: parsed.contactName,
           role: "Student",
@@ -1584,6 +1624,7 @@ Analyze the input text carefully and extract the following:
           serverCreatedAt: FieldValue.serverTimestamp(),
           createdBy: opUserId,
           createdByName: opUserName,
+          ...(partnerCoCreators.length > 0 ? { coCreators: partnerCoCreators } : {}),
           hasNewActivity: true,
         };
         // `createdBy` is a persisted tie, so the access list the rules read has
@@ -1749,6 +1790,7 @@ Analyze the input text carefully and extract the following:
       }
 
       // Creating new contact
+      const partnerCoCreators = await resolvePartnerCoCreators(opUserId);
       const contactData = {
         name: parsed.name,
         role: parsed.role || "Student",
@@ -1764,6 +1806,7 @@ Analyze the input text carefully and extract the following:
         serverCreatedAt: FieldValue.serverTimestamp(),
         createdBy: opUserId,
         createdByName: opUserName,
+        ...(partnerCoCreators.length > 0 ? { coCreators: partnerCoCreators } : {}),
         hasNewActivity: true,
       };
       // Derived from the ties actually persisted above, so this agrees exactly
@@ -2019,7 +2062,7 @@ Error: ${safeErrorMsg}
       }
 
       console.log(`Processing GroupMe Bot incoming trigger from user "${name}": "${textToParse}"`);
-      const matchedUser = await findMatchingTeamUser(name);
+      const matchedUser = await findMatchingTeamUser(name, undefined, sender_id);
       const opUserId = matchedUser ? matchedUser.id : (sender_id ? `groupme-${sender_id}` : "system-groupme");
       const opUserName = matchedUser ? (matchedUser.displayName || matchedUser.email || name) : (name ? `${name} (GroupMe)` : "GroupMe User");
 
@@ -2483,6 +2526,129 @@ ${JSON.stringify(contactsList)}`;
     } catch (error: any) {
       console.error("Mint Custom Token Error: ", error);
       res.status(401).json({ success: false, error: error.message || "Failed to mint custom token" });
+    }
+  });
+
+  // #1103: Save or update a mapping between GroupMe senderId and registered team user
+  app.post("/api/groupme-aliases", standardRateLimiter, async (req, res) => {
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authorizeAdmin(req);
+        } catch (authErr: any) {
+          return res.status(403).json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+        }
+      }
+      const { senderId, userId, name } = req.body;
+      if (!senderId || !userId) {
+        return res.status(400).json({ success: false, error: "senderId and userId are required" });
+      }
+
+      // Verify user exists
+      const userDoc = await getAdminDb().collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+      const userData = userDoc.data() || {};
+      const userName = name || userData.displayName || userData.name || userData.email || "Unknown";
+
+      await getAdminDb().collection("groupme_aliases").doc(senderId).set({
+        senderId,
+        userId,
+        name: userName,
+        updatedAt: new Date().toISOString(),
+        serverUpdatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      res.status(200).json({ success: true, senderId, userId, name: userName });
+    } catch (error: any) {
+      console.error("Save GroupMe Alias Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to save GroupMe alias",
+      });
+    }
+  });
+
+  // #1103: Retroactive repair endpoint: reassign contacts created by `groupme-<senderId>`
+  // to the real registered user, updating createdByName, partner coCreators, and visibleTo
+  app.post("/api/groupme-aliases/repair", standardRateLimiter, async (req, res) => {
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authorizeAdmin(req);
+        } catch (authErr: any) {
+          return res.status(403).json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+        }
+      }
+      const { senderId, userId } = req.body;
+      if (!senderId || !userId) {
+        return res.status(400).json({ success: false, error: "senderId and userId are required" });
+      }
+
+      const userDoc = await getAdminDb().collection("users").doc(userId).get();
+      if (!userDoc.exists) {
+        return res.status(404).json({ success: false, error: "Target user not found" });
+      }
+      const userData = userDoc.data() || {};
+      const targetUserName = userData.displayName || userData.name || userData.email || "Team Member";
+
+      // Also ensure alias is stored
+      await getAdminDb().collection("groupme_aliases").doc(senderId).set({
+        senderId,
+        userId,
+        name: targetUserName,
+        updatedAt: new Date().toISOString(),
+        serverUpdatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      const legacyCreatedBy = `groupme-${senderId}`;
+      const contactsSnap = await getAdminDb()
+        .collection("contacts")
+        .where("createdBy", "==", legacyCreatedBy)
+        .get();
+
+      const partnerCoCreators = await resolvePartnerCoCreators(userId);
+      let repairedCount = 0;
+
+      for (const contactDoc of contactsSnap.docs) {
+        const cData = contactDoc.data() || {};
+        const existingCoCreators: string[] = Array.isArray(cData.coCreators) ? cData.coCreators : [];
+        const mergedCoCreators = [...new Set([...existingCoCreators, ...partnerCoCreators])];
+
+        const ties: ContactTies = {
+          createdBy: userId,
+          addedBy: cData.addedBy,
+          coCreators: mergedCoCreators,
+          founders: cData.founders,
+          carers: cData.carers,
+        };
+
+        await contactDoc.ref.update({
+          createdBy: userId,
+          createdByName: targetUserName,
+          coCreators: mergedCoCreators,
+          visibleTo: visibleToOf(ties),
+          updatedAt: new Date().toISOString(),
+          updatedBy: userId,
+          updatedByName: targetUserName,
+        });
+
+        repairedCount++;
+      }
+
+      res.status(200).json({
+        success: true,
+        senderId,
+        userId,
+        repairedCount,
+      });
+    } catch (error: any) {
+      console.error("GroupMe Contacts Repair Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to repair GroupMe contacts",
+      });
     }
   });
 

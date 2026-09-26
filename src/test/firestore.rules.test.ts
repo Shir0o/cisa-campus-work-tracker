@@ -892,6 +892,35 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets a Full-timer reassign createdBy and createdByName (#1103), rewriting visibleTo in lockstep', async () => {
+      await seed('c_reassign', {
+        createdBy: 'groupme-12345', createdByName: 'Sam (GroupMe)',
+        visibleTo: ['admin1'],
+      });
+      const admin = getFirestore({ uid: 'admin1' });
+      const trainee = getFirestore({ uid: 'manager1' });
+
+      // Trainee cannot reassign creator
+      await assertFails(updateDoc(doc(trainee, 'contacts/c_reassign'), {
+        createdBy: 'manager1',
+        createdByName: 'Trainee One',
+        visibleTo: ['admin1', 'manager1'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Trainee One',
+      }));
+
+      // Admin can reassign creator and update visibleTo in lockstep
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_reassign'), {
+        createdBy: 'manager1',
+        createdByName: 'Trainee One',
+        visibleTo: ['manager1'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'admin1',
+        updatedByName: 'Admin One',
+      }));
+    });
+
     it('rejects the removed caregiver field on a contact as a ghost field (#1055)', async () => {
       await seed('c_no_caregiver', {
         createdBy: 'admin1', founders: ['admin1'], visibleTo: ['admin1'],
@@ -3609,6 +3638,26 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDoc(doc(traineeDb, 'pending_attendance_imports', 'p1')));
       await assertFails(getDoc(doc(traineeDb, 'attendee_aliases', 'a1')));
       await assertFails(getDoc(doc(traineeDb, 'integrations_attd_event_mappings', 'e1')));
+    });
+
+    it('lets a Full-timer read and write groupme_aliases but not a Trainee (#1103)', async () => {
+      await seedSyncUsers();
+      const adminDb = getFirestore({ uid: 'sync-ft', email: 'sync-ft@test.com' });
+      const traineeDb = getFirestore({ uid: 'sync-trainee', email: 'sync-trainee@test.com' });
+
+      await assertSucceeds(setDoc(doc(adminDb, 'groupme_aliases', 'gm-sender-1'), {
+        senderId: 'gm-sender-1',
+        userId: 'sync-trainee',
+        name: 'Trainee Sam',
+      }));
+      await assertSucceeds(getDoc(doc(adminDb, 'groupme_aliases', 'gm-sender-1')));
+
+      await assertFails(setDoc(doc(traineeDb, 'groupme_aliases', 'gm-sender-2'), {
+        senderId: 'gm-sender-2',
+        userId: 'sync-trainee',
+        name: 'Trainee Sam',
+      }));
+      await assertFails(getDoc(doc(traineeDb, 'groupme_aliases', 'gm-sender-1')));
     });
 
     it('keeps the sync token private to Full-timers', async () => {

@@ -1472,7 +1472,10 @@
       "story_moved_by": "by {name}",
       "prayer_answered_story": "Prayer answered",
       "talk_about": "Talk about {name}",
-      "close_drawer": "Close {thread}"
+      "close_drawer": "Close {thread}",
+      "change_creator": "Change creator",
+      "reassign_creator": "Reassign creator",
+      "select_creator": "Select new creator..."
     },
     "no_duplicate_tags": "No duplicate or overlapping tags found.",
     "before": "Before:",
