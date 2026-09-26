@@ -2600,14 +2600,96 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDoc(doc(operatorDb, 'contacts/contact1/threads/team1')));
     });
 
-    it('lets only a Full-timer create team-scope Discussion', async () => {
+    // A list rule cannot drop single documents from a result: an unfiltered
+    // `threads` list is allowed or refused whole, and the approved roles need
+    // it allowed (shipped mobile builds query it that way). So Full-timers
+    // Discussion may not be written into `threads` at all, even by a
+    // Full-timer; it has its own `teamThreads` subcollection.
+    it('refuses team-scope Discussion in the open threads collection, even from a Full-timer', async () => {
       await seedThreadUsers();
 
       const operatorDb = getFirestore({ uid: 'operator1' });
       await assertFails(setDoc(doc(operatorDb, 'contacts/contact1/threads/team2'), newMsg({ scope: 'team' })));
 
       const adminDb = getFirestore({ uid: 'admin1' });
-      await assertSucceeds(setDoc(doc(adminDb, 'contacts/contact1/threads/team3'), newMsg({ from: 'admin1', scope: 'team' })));
+      await assertFails(setDoc(doc(adminDb, 'contacts/contact1/threads/team3'), newMsg({ from: 'admin1', scope: 'team' })));
+    });
+
+    it('never lets Full-timers Discussion reach a non-admin\'s unfiltered thread list', async () => {
+      await seedThreadUsers();
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        const fs = c.firestore();
+        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/tied/threads/open1'), newMsg());
+      });
+
+      // A Full-timer posts to the Full-timers tab through whichever path the
+      // rules allow. Being refused in `threads` is the fix, so a refusal there
+      // is expected rather than a test failure.
+      const adminDb = getFirestore({ uid: 'admin1' });
+      const teamMsg = newMsg({ from: 'admin1', scope: 'team' });
+      await setDoc(doc(adminDb, 'contacts/tied/threads/team1'), teamMsg).catch(() => undefined);
+      await setDoc(doc(adminDb, 'contacts/tied/teamThreads/team1'), teamMsg).catch(() => undefined);
+
+      const unfiltered = [
+        ['operator1', (db: ReturnType<typeof getFirestore>) => query(collectionGroup(db, 'threads'), orderBy('at', 'desc'))],
+        ['viewer1', (db: ReturnType<typeof getFirestore>) => query(collectionGroup(db, 'threads'), orderBy('at', 'desc'))],
+        ['operator1', (db: ReturnType<typeof getFirestore>) => query(collection(db, 'contacts', 'tied', 'threads'), orderBy('at', 'desc'))],
+        ['viewer1', (db: ReturnType<typeof getFirestore>) => query(collection(db, 'contacts', 'tied', 'threads'), orderBy('at', 'desc'))],
+        ['manager1', (db: ReturnType<typeof getFirestore>) => query(collection(db, 'contacts', 'tied', 'threads'), orderBy('at', 'desc'))],
+      ] as const;
+      for (const [uid, q] of unfiltered) {
+        const snap = await assertSucceeds(getDocs(q(getFirestore({ uid }))));
+        const ids = snap.docs.map((d) => d.id);
+        expect(ids, uid).toContain('open1');
+        expect(ids, uid).not.toContain('team1');
+      }
+    });
+
+    describe('Full-timers Discussion (teamThreads)', () => {
+      const teamMsg = (over: Record<string, unknown> = {}) => newMsg({ from: 'admin1', scope: 'team', ...over });
+      const seedTeam = async (id: string) => {
+        await testEnv.withSecurityRulesDisabled(async (c) => {
+          const fs = c.firestore();
+          await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+          await setDoc(doc(fs, 'contacts', 'tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+          await setDoc(doc(fs, `contacts/tied/teamThreads/${id}`), teamMsg());
+        });
+      };
+
+      it('lets a Full-timer post, read, list and delete it', async () => {
+        await seedThreadUsers();
+        await seedTeam('seeded');
+        const adminDb = getFirestore({ uid: 'admin1' });
+        await assertSucceeds(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t1'), teamMsg()));
+        await assertSucceeds(getDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded')));
+        await assertSucceeds(getDocs(query(collection(adminDb, 'contacts', 'tied', 'teamThreads'), orderBy('at', 'desc'))));
+        await assertSucceeds(getDocs(query(collectionGroup(adminDb, 'teamThreads'), orderBy('at', 'desc'))));
+        await assertSucceeds(deleteDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded')));
+      });
+
+      it('refuses a Full-timer posting as someone else, or without the team scope', async () => {
+        await seedThreadUsers();
+        await seedTeam('seeded');
+        const adminDb = getFirestore({ uid: 'admin1' });
+        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t2'), teamMsg({ from: 'operator1' })));
+        await assertFails(setDoc(doc(adminDb, 'contacts/tied/teamThreads/t3'), teamMsg({ scope: null })));
+        await assertFails(updateDoc(doc(adminDb, 'contacts/tied/teamThreads/seeded'), { body: 'edited' }));
+      });
+
+      it('keeps every other role out, even a Trainee tied to the person', async () => {
+        await seedThreadUsers();
+        await seedTeam('seeded');
+        for (const uid of ['operator1', 'viewer1', 'manager1']) {
+          const db = getFirestore({ uid });
+          await assertFails(getDoc(doc(db, 'contacts/tied/teamThreads/seeded')));
+          await assertFails(getDocs(query(collection(db, 'contacts', 'tied', 'teamThreads'))));
+          await assertFails(getDocs(query(collectionGroup(db, 'teamThreads'))));
+          await assertFails(setDoc(doc(db, 'contacts/tied/teamThreads/x'), teamMsg({ from: uid })));
+          await assertFails(deleteDoc(doc(db, 'contacts/tied/teamThreads/seeded')));
+        }
+      });
     });
 
     it('collection-group thread lists hide team-scope from non-admins', async () => {

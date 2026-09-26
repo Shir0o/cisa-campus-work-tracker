@@ -36,8 +36,9 @@ export const firstName = (name?: string) => (name || "Someone").trim().split(/\s
 function useThreadMessages(
   contactId: string,
   supplied?: ThreadMessage[] | null,
+  includeTeam = false,
 ): ThreadMessage[] {
-  const subscribed = useThreads(supplied ? null : contactId);
+  const subscribed = useThreads(supplied ? null : contactId, { includeTeam });
   return supplied ?? subscribed;
 }
 const getInitials = (name?: string) => {
@@ -138,7 +139,7 @@ function ThrRow({ m, meStaffId, contactId, children, justPosted, justPostedLabel
         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
           {canDelete && (
             <button
-              onClick={() => deleteThreadMessage(contactId, m.id)}
+              onClick={() => deleteThreadMessage(contactId, m.id, m.scope)}
               aria-label="Delete message"
               title="Delete message"
               className="w-6 h-6 grid place-items-center rounded-full text-on-surface-variant/60 hover:text-error hover:bg-surface-container-high transition-colors"
@@ -182,7 +183,7 @@ function ThreadMsg({
 }: ThreadMsgProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const allMessages = useThreadMessages(contactId, propsMessages);
+  const allMessages = useThreadMessages(contactId, propsMessages, m.scope === "team");
   const replies = repliesOf(allMessages, m.id);
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState("");
@@ -375,7 +376,7 @@ export default function Thread({
 }: ThreadProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const allMessages = useThreadMessages(contactId, propsMessages);
+  const allMessages = useThreadMessages(contactId, propsMessages, scope === "team");
   const messages = threadsFor(allMessages, interactionId, scope);
 
   const [draft, setDraft] = useState("");

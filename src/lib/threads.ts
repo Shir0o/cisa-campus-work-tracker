@@ -8,6 +8,7 @@ import {
   orderBy,
   query,
   updateDoc,
+  type Query,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -19,9 +20,11 @@ import { subscribeTiedSubcollection } from "./contactQueries";
 // attached to a contact and (optionally) to one logged interaction. Stored as:
 //   contacts/{contactId}/threads/{threadId}
 // interactionId === null is the contact-level thread; otherwise it hangs off that
-// interaction. The old contacts/{id}/comments subcollection has been retired;
-// Full-timer-only Discussion lives here with `scope: "team"`. No word "mentor"
-// anywhere.
+// interaction. The old contacts/{id}/comments subcollection has been retired.
+// Full-timers Discussion (`scope: "team"`) lives apart, in
+//   contacts/{contactId}/teamThreads/{threadId}
+// because every approved role lists `threads` unfiltered and a list rule
+// cannot drop single documents from a result. No word "mentor" anywhere.
 
 export type ThreadKind = "note" | "question" | "comment" | "encouragement" | "nudge";
 
@@ -60,58 +63,21 @@ export const THREAD_KINDS: Record<
   nudge: { label: "Follow-up", tone: "warn", verb: "nudged" },
 };
 
-const col = (contactId: string) => collection(db, "contacts", contactId, "threads");
-const ref = (contactId: string, messageId: string) =>
-  doc(db, "contacts", contactId, "threads", messageId);
+type Scope = "team" | null | undefined;
+const sub = (scope: Scope) => (scope === "team" ? "teamThreads" : "threads");
+const col = (contactId: string, scope?: Scope) => collection(db, "contacts", contactId, sub(scope));
+const ref = (contactId: string, messageId: string, scope?: Scope) =>
+  doc(db, "contacts", contactId, sub(scope), messageId);
 
 const norm = (val?: string | null) => (val === "" || val === undefined ? null : val);
 
-/** Subscribe to all messages for a single contact, newest first. */
-export function subscribeThreads(
-  contactId: string,
-  onUpdate: (messages: ThreadMessage[]) => void,
-  onError?: (err: unknown) => void,
-): () => void {
-  const q = query(col(contactId), orderBy("at", "desc"));
-  return onSnapshot(
-    q,
-    (snap) =>
-      onUpdate(
-        snap.docs.map((d) => {
-          const data = d.data() as Partial<ThreadMessage>;
-          return {
-            id: d.id,
-            interactionId: data.interactionId ?? null,
-            parentId: data.parentId ?? null,
-            scope: (data.scope as "team") ?? null,
-            from: data.from ?? "",
-            fromName: data.fromName ?? "",
-            kind: (data.kind as ThreadKind) ?? "comment",
-            body: data.body ?? "",
-            at: data.at ?? new Date().toISOString(),
-            mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
-            closedBy: data.closedBy ?? null,
-            closedByName: data.closedByName ?? null,
-            closedAt: data.closedAt ?? null,
-          };
-        }),
-      ),
-    (e) => (onError ? onError(e) : console.error("threads subscription error", e)),
-  );
-}
-
-/** A thread message tagged with the contact it belongs to. */
-export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
-
-const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContact => {
+function toMessage(d: QueryDocumentSnapshot, team: boolean): ThreadMessage {
   const data = d.data() as Partial<ThreadMessage>;
-  const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
   return {
     id: d.id,
-    contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "",
     interactionId: data.interactionId ?? null,
     parentId: data.parentId ?? null,
-    scope: (data.scope as "team") ?? null,
+    scope: team ? "team" : ((data.scope as "team") ?? null),
     from: data.from ?? "",
     fromName: data.fromName ?? "",
     kind: (data.kind as ThreadKind) ?? "comment",
@@ -122,6 +88,58 @@ const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContac
     closedByName: data.closedByName ?? null,
     closedAt: data.closedAt ?? null,
   };
+}
+
+/** Only a Full-timer may read teamThreads; everyone else opens the open
+ *  thread alone, or the rules refuse the whole listener. */
+export interface ThreadSubscribeOptions {
+  includeTeam?: boolean;
+}
+
+/** One listener per query, handed back as a single list, newest first. */
+function listen<T extends ThreadMessage>(
+  queries: [Query, (d: QueryDocumentSnapshot) => T][],
+  onUpdate: (messages: T[]) => void,
+  onError: (err: unknown) => void,
+): () => void {
+  const latest: T[][] = queries.map(() => []);
+  const unsubs = queries.map(([q, map], i) =>
+    onSnapshot(
+      q,
+      (snap) => {
+        latest[i] = snap.docs.map(map);
+        onUpdate(latest.length === 1 ? latest[0] : latest.flat().sort((a, b) => b.at.localeCompare(a.at)));
+      },
+      onError,
+    ),
+  );
+  return () => unsubs.forEach((u) => u());
+}
+
+/** Subscribe to all messages for a single contact, newest first. */
+export function subscribeThreads(
+  contactId: string,
+  onUpdate: (messages: ThreadMessage[]) => void,
+  onError?: (err: unknown) => void,
+  { includeTeam = false }: ThreadSubscribeOptions = {},
+): () => void {
+  const scopes: Scope[] = includeTeam ? [null, "team"] : [null];
+  return listen(
+    scopes.map((scope) => [
+      query(col(contactId, scope), orderBy("at", "desc")),
+      (d: QueryDocumentSnapshot) => toMessage(d, scope === "team"),
+    ]),
+    onUpdate,
+    (e) => (onError ? onError(e) : console.error("threads subscription error", e)),
+  );
+}
+
+/** A thread message tagged with the contact it belongs to. */
+export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
+
+const toMessageWithContact = (d: QueryDocumentSnapshot, team = false): ThreadMessageWithContact => {
+  const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
+  return { ...toMessage(d, team), contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "" };
 };
 
 /** Subscribe to all thread messages across every contact via collectionGroup.
@@ -130,14 +148,15 @@ const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContac
 export function subscribeAllThreads(
   onUpdate: (messages: ThreadMessageWithContact[]) => void,
   onError?: (err: unknown) => void,
+  { includeTeam = false }: ThreadSubscribeOptions = {},
 ): () => void {
-  const q = query(
-    collectionGroup(db, "threads"),
-    orderBy("at", "desc"),
-  );
-  return onSnapshot(
-    q,
-    (snap) => onUpdate(snap.docs.map(toMessageWithContact)),
+  const scopes: Scope[] = includeTeam ? [null, "team"] : [null];
+  return listen(
+    scopes.map((scope) => [
+      query(collectionGroup(db, sub(scope)), orderBy("at", "desc")),
+      (d: QueryDocumentSnapshot) => toMessageWithContact(d, scope === "team"),
+    ]),
+    onUpdate,
     (e) =>
       onError ? onError(e) : console.error("all-threads subscription error", e),
   );
@@ -153,7 +172,7 @@ export function subscribeTiedThreads(
   return subscribeTiedSubcollection(
     staffId,
     "threads",
-    (docs) => onUpdate(docs.map(toMessageWithContact).sort((a, b) => b.at.localeCompare(a.at))),
+    (docs) => onUpdate(docs.map((d) => toMessageWithContact(d)).sort((a, b) => b.at.localeCompare(a.at))),
     onError,
   );
 }
@@ -278,7 +297,7 @@ export async function addThreadMessage(
   const mentionedUserIds = (input.mentionedUserIds || []).filter(Boolean);
   let written: string | null = null;
   try {
-    const created = await addDoc(col(contactId), {
+    const created = await addDoc(col(contactId, input.scope), {
       interactionId: input.interactionId ?? null,
       parentId: input.parentId ?? null,
       scope: input.scope ?? null,
@@ -368,7 +387,7 @@ export async function addThreadMessage(
       });
     }
   } catch (e) {
-    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
+    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/${sub(input.scope)}`);
   }
   return written;
 }
@@ -442,14 +461,15 @@ export function daysOpen(m: Pick<ThreadMessage, "at">, now: number = Date.now())
 export async function deleteThreadMessage(
   contactId: string,
   messageId: string,
+  scope?: "team" | null,
 ): Promise<void> {
   try {
-    await deleteDoc(ref(contactId, messageId));
+    await deleteDoc(ref(contactId, messageId, scope));
   } catch (e) {
     handleFirestoreError(
       e,
       OperationType.DELETE,
-      `contacts/${contactId}/threads/${messageId}`,
+      `contacts/${contactId}/${sub(scope)}/${messageId}`,
     );
   }
 }
@@ -459,15 +479,18 @@ export async function deleteThreadMessage(
  * (sorted oldest-first); re-renders on every post. Safe to call with an
  * absent contactId (e.g. a closed modal) — it just yields an empty list.
  */
-export function useThreads(contactId?: string | null): ThreadMessage[] {
+export function useThreads(
+  contactId?: string | null,
+  { includeTeam = false }: ThreadSubscribeOptions = {},
+): ThreadMessage[] {
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   useEffect(() => {
     if (!contactId) {
       setMessages([]);
       return;
     }
-    return subscribeThreads(contactId, setMessages);
-  }, [contactId]);
+    return subscribeThreads(contactId, setMessages, undefined, { includeTeam });
+  }, [contactId, includeTeam]);
   return messages;
 }
 

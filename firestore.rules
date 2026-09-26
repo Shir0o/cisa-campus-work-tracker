@@ -449,30 +449,32 @@ service cloud.firestore {
         allow delete: if isValidId(commentId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
       }
 
+      function isValidThread(data) {
+        return data.keys().hasAll(['from', 'fromName', 'kind', 'body', 'at', 'interactionId']) &&
+               (data.get('scope', null) == null || data.get('scope', null) == 'team') &&
+               data.from is string && data.from.size() <= 128 &&
+               data.fromName is string && data.fromName.size() <= 128 &&
+               data.kind in ['note', 'question', 'comment', 'encouragement', 'nudge'] &&
+               data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
+               data.at is string && data.at.size() <= 40 &&
+               (data.interactionId == null || (data.interactionId is string && data.interactionId.size() <= 128));
+      }
+
       // Walking-together threads (trainee <-> full-timer). A light conversation
       // attached to the contact (interactionId null) or to one interaction.
-      // The same collection is also the single home for the Full-timer-only
-      // Discussion scope (`scope: "team"`); rules below keep that scope hidden
-      // from everyone who could not read the old admin Comments tab.
+      // Full-timers Discussion (`scope: "team"`) may not be written here: a
+      // list rule cannot drop single documents from an unfiltered query, and
+      // every approved role lists this collection unfiltered. It lives in
+      // teamThreads below. The scope clauses that remain guard legacy docs
+      // until scripts/migrate-team-threads.ts has moved them.
       match /threads/{threadId} {
-        function isValidThread(data) {
-          return data.keys().hasAll(['from', 'fromName', 'kind', 'body', 'at', 'interactionId']) &&
-                 (data.get('scope', null) == null || data.get('scope', null) == 'team') &&
-                 data.from is string && data.from.size() <= 128 &&
-                 data.fromName is string && data.fromName.size() <= 128 &&
-                 data.kind in ['note', 'question', 'comment', 'encouragement', 'nudge'] &&
-                 data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
-                 data.at is string && data.at.size() <= 40 &&
-                 (data.interactionId == null || (data.interactionId is string && data.interactionId.size() <= 128));
-        }
-
         // Reading a person's Alongside thread requires being able to read the
         // person. The collection-group rule above still governs the inbox read.
         allow read: if canReadContact(get(/databases/$(database)/documents/contacts/$(contactId)).data) &&
                        (resource.data.get('scope', '') != 'team' || isAdmin());
         allow create: if isValidId(threadId) && isApprovedUser() && isOperator() &&
                         isValidThread(incoming()) &&
-                        (incoming().get('scope', '') != 'team' || isAdmin()) &&
+                        incoming().get('scope', null) == null &&
                         incoming().from == request.auth.uid;
         // Reactions have been removed. Body edits: author only (kind/from/at
         // are immutable). Closing a follow-up ask (#813): a `nudge` is one
@@ -509,6 +511,17 @@ service cloud.firestore {
                         )
                       );
         allow delete: if isValidId(threadId) && isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isAdmin() || existing().from == request.auth.uid);
+      }
+
+      // Full-timers Discussion — the contact tab only Full-timers see. Its own
+      // subcollection so no non-admin list query can ever reach it. Messages
+      // are posted and removed, never edited (the tab offers no edit).
+      match /teamThreads/{threadId} {
+        allow read, delete: if isApprovedUser() && isAdmin();
+        allow create: if isValidId(threadId) && isApprovedUser() && isAdmin() &&
+                        isValidThread(incoming()) &&
+                        incoming().get('scope', null) == 'team' &&
+                        incoming().from == request.auth.uid;
       }
     }
 
@@ -1225,6 +1238,10 @@ service cloud.firestore {
     match /{path=**}/threads/{threadId} {
       allow list: if isApprovedUser() && seesAllContacts() &&
                      (resource.data.get('scope', '') != 'team' || isAdmin());
+    }
+    // Full-timers Discussion across every contact, for a Full-timer's feed.
+    match /{path=**}/teamThreads/{threadId} {
+      allow list: if isApprovedUser() && isAdmin();
     }
     // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
     // Scoped to the requester's own RSVPs: the query filters on the `uid` field,

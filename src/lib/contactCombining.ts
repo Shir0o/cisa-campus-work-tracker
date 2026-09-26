@@ -15,7 +15,7 @@ export type FirestoreOp =
   | { op: 'set'; collection: string; docId: string; data: Record<string, unknown> }
   | { op: 'delete'; collection: string; docId: string };
 
-/** A subcollection document to migrate (interactions / threads). */
+/** A subcollection document to migrate (interactions / threads / teamThreads). */
 export interface SubcollectionDoc {
   id: string;
   data: Record<string, unknown>;
@@ -25,6 +25,7 @@ export interface SubcollectionDoc {
 export interface CombineMigrationData {
   interactions: SubcollectionDoc[];
   threads: SubcollectionDoc[];
+  teamThreads: SubcollectionDoc[];
   prayers: string[];
   tasks: string[];
   visits: { id: string; contactIds: string[] }[];
@@ -37,7 +38,7 @@ export const FIRESTORE_BATCH_LIMIT = 500;
  * Prepares the ordered set of batched writes that absorb `duplicate` into
  * `survivor` per ADR 0026:
  *  - updates the survivor profile with the merged fields,
- *  - copies interactions/threads subcollections to the survivor then deletes
+ *  - copies interactions/threads/teamThreads subcollections to the survivor then deletes
  *    the originals under the duplicate,
  *  - re-parents prayers/tasks (by id) and rewrites visit contactIds,
  *  - deletes the duplicate contact record.
@@ -49,7 +50,7 @@ export function buildCombineOps(
   now: string,
   updatedById: string | undefined,
   updatedByName: string,
-  migration: CombineMigrationData = { interactions: [], threads: [], prayers: [], tasks: [], visits: [] }
+  migration: CombineMigrationData = { interactions: [], threads: [], teamThreads: [], prayers: [], tasks: [], visits: [] }
 ): FirestoreOp[] {
   const ops: FirestoreOp[] = [];
 
@@ -99,18 +100,20 @@ export function buildCombineOps(
     });
   }
 
-  for (const thread of migration.threads) {
-    ops.push({
-      op: 'set',
-      collection: `contacts/${survivor.id}/threads`,
-      docId: thread.id,
-      data: thread.data,
-    });
-    ops.push({
-      op: 'delete',
-      collection: `contacts/${duplicate.id}/threads`,
-      docId: thread.id,
-    });
+  for (const [sub, docs] of [['threads', migration.threads], ['teamThreads', migration.teamThreads]] as const) {
+    for (const thread of docs) {
+      ops.push({
+        op: 'set',
+        collection: `contacts/${survivor.id}/${sub}`,
+        docId: thread.id,
+        data: thread.data,
+      });
+      ops.push({
+        op: 'delete',
+        collection: `contacts/${duplicate.id}/${sub}`,
+        docId: thread.id,
+      });
+    }
   }
 
   for (const id of migration.prayers) {

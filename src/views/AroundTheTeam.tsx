@@ -201,12 +201,12 @@ export default function AroundTheTeam({
   useEffect(() => {
     if (propsThreads) return;
     try {
-      const unsubThreads = subscribeAllThreads(setLiveThreads);
+      const unsubThreads = subscribeAllThreads(setLiveThreads, undefined, { includeTeam: role === "admin" });
       return () => unsubThreads();
     } catch {
       // Degrade gracefully in test environments without live firestore
     }
-  }, [propsThreads]);
+  }, [propsThreads, role]);
 
   const contacts = propsContacts || liveContacts;
   const interactions = propsInteractions || liveInteractions;
