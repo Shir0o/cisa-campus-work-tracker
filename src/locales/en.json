@@ -1463,7 +1463,16 @@
       "staff_role": "Staff",
       "full_timer": "Full-timer",
       "trainee": "Trainee",
-      "you": "you"
+      "you": "you",
+      "story_so_far": "The story so far",
+      "write_what_happened": "Write what happened next…",
+      "story_added_by": "Added by {name}",
+      "story_added": "Added",
+      "story_moved_from_by": "from {stage} · by {name}",
+      "story_moved_by": "by {name}",
+      "prayer_answered_story": "Prayer answered",
+      "talk_about": "Talk about {name}",
+      "close_drawer": "Close {thread}"
     },
     "no_duplicate_tags": "No duplicate or overlapping tags found.",
     "before": "Before:",

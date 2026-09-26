@@ -81,6 +81,7 @@ import {
 import KindChip from "../ui/KindChip";
 import KindFields from "../ui/KindFields";
 import { contactKind, kindLabelKey } from "../../lib/contactKind";
+import { buildContactStory } from "../../lib/contactStory";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -295,6 +296,8 @@ export default function ContactDetailsModal({
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
   >("overview");
+  // Desktop has no tabs: the two conversation threads open in a side drawer.
+  const [drawer, setDrawer] = useState<null | "thread" | "discussion">(null);
 
   const [liveContact, setLiveContact] = useState<Contact | null>(contact);
 
@@ -420,13 +423,16 @@ export default function ContactDetailsModal({
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key !== "Escape") return;
+      // An open thread drawer closes first; the page closes on the next Esc.
+      if (drawer) setDrawer(null);
+      else handleClose();
     };
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
     }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, handleClose]);
+  }, [isOpen, handleClose, drawer]);
 
   useEffect(() => {
     if (contact) {
@@ -581,7 +587,16 @@ export default function ContactDetailsModal({
     setTagInput("");
     setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
+    // On desktop the contact-level thread deep-link opens its drawer.
+    setDrawer(!initialInteractionId && initialTab === "thread" ? "thread" : null);
   }, [contact?.id, isOpen, initialTab, initialInteractionId]);
+
+  // An interaction deep-link on desktop scrolls the story to that
+  // conversation, whose thread is already expanded (openThread above).
+  useEffect(() => {
+    if (!isOpen || isMobile || !initialInteractionId || interactionsLoading) return;
+    document.getElementById(`story-${initialInteractionId}`)?.scrollIntoView?.({ block: "center" });
+  }, [isOpen, isMobile, initialInteractionId, interactionsLoading]);
 
   if (!contact) return null;
 
@@ -1736,6 +1751,225 @@ export default function ContactDetailsModal({
     );
   };
 
+  // "Where they are": in Overview on phones, the band across the top of the
+  // desktop story page.
+  const journeySection = (
+    <div className="cd-sec">
+      <div className="cd-sec-head">
+        <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
+      </div>
+      <div className="cd-journey">
+        {sortedStages.length === 0 && (
+          <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
+        )}
+        {sortedStages.map((s, i) => {
+          const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
+          const body = (
+            <>
+              <span className="cd-step-mark">
+                {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
+                {state === "done" && <span className="pd" />}
+              </span>
+              <span className="cd-step-name">{s.label}</span>
+              {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
+            </>
+          );
+          // The step list is where the pipeline is already
+          // explained, so it doubles as the move target
+          // for anyone who may edit (#677).
+          return canMoveStage && state !== "on" ? (
+            <button
+              key={s.id}
+              onClick={() => moveStage(s.label)}
+              className={cn("cd-journey-step is-move", state)}
+            >
+              {body}
+              <span className="cd-step-move">
+                {t('modals.contactDetails.move_here')}
+                <ChevronRight className="w-3 h-3" />
+              </span>
+            </button>
+          ) : (
+            <div key={s.id} className={cn("cd-journey-step", state)}>
+              {body}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderThread = (scope?: "team") => (
+    <Thread
+      contactId={contact.id}
+      interactionId={null}
+      meStaffId={currentUid ?? ""}
+      recipientUid={threadRecipient}
+      contactName={contact.name}
+      scope={scope}
+      pane
+      teamMembers={teamMembers}
+      contactStakeholders={contactStakeholdersOf(contact)}
+    />
+  );
+
+  // ── Desktop story page (design D) ──
+  // No tabs: "Where they are" runs across the top, the story fills the main
+  // column, and the profile groups sit beside it. The two threads open in a
+  // drawer; the full audit log lives on the History page.
+  const story = buildContactStory({
+    contact,
+    interactions,
+    prayers,
+    activities,
+    pendingRemovalIds,
+  });
+  const canSeeTeamThread = role === "admin" || isAdmin;
+
+  const storySection = (
+    <section aria-label={t('modals.contactDetails.story_so_far')} className="cd-story">
+      <div className="cd-sec-head">
+        <h3 className="cd-sec-title">{t('modals.contactDetails.story_so_far')}</h3>
+      </div>
+      {isLoggingInteraction || isAddingPrayer ? (
+        <div className="cd-story-compose-open">
+          <button
+            type="button"
+            onClick={() => {
+              setIsLoggingInteraction(false);
+              setIsAddingPrayer(false);
+            }}
+            className="self-end text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            {t('modals.contactDetails.cancel')}
+          </button>
+          {logInteractionForm}
+          {addPrayerForm}
+        </div>
+      ) : (
+        <div className="cd-story-compose">
+          <button
+            type="button"
+            onClick={() => setIsLoggingInteraction(true)}
+            className="cd-story-compose-input"
+          >
+            {t('modals.contactDetails.write_what_happened')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddingPrayer(true)}
+            aria-label={t('modals.contactDetails.add_prayer')}
+            title={t('modals.contactDetails.add_prayer')}
+            className="cd-story-compose-pray"
+          >
+            <Heart className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      {/* Conversations are the spine; prayers join as their listener lands. */}
+      {interactionsLoading ? (
+        <Skeleton className="h-24 w-full rounded-2xl" />
+      ) : (
+        <ol className="cd-story-list">
+          {story.map((entry) => (
+            <li
+              key={`${entry.kind}:${entry.id}`}
+              id={entry.kind === "conversation" ? `story-${entry.id}` : undefined}
+              data-kind={entry.kind}
+              className={cn(
+                "cd-story-entry",
+                (entry.kind === "step" || entry.kind === "added" || entry.kind === "prayer-answered") && "is-milestone",
+              )}
+            >
+              <span className="cd-story-date">{fmtDate(entry.at)}</span>
+              <span className="cd-story-dot" aria-hidden="true" />
+              <div className="cd-story-body">
+                {entry.kind === "conversation" && renderInteraction(entry.interaction)}
+                {entry.kind === "prayer" && renderPrayerCard(entry.prayer)}
+                {entry.kind === "prayer-answered" && (
+                  <div className="cd-story-milestone">
+                    <strong>{t('modals.contactDetails.prayer_answered_story')}</strong>
+                    <span>{(entry.prayer.burden || "").split("\n\n")[0]}</span>
+                    {entry.prayer.answer && (
+                      <p className="cd-prose">
+                        <Translate showOriginalToggle text={entry.prayer.answer} />
+                      </p>
+                    )}
+                  </div>
+                )}
+                {entry.kind === "step" && (
+                  <div className="cd-story-milestone">
+                    <strong>
+                      {entry.to
+                        ? t('modals.contactDetails.moved_to').replace('{stage}', entry.to)
+                        : t('modals.contactDetails.moved_out_of_steps')}
+                    </strong>
+                    <span>
+                      {(entry.from
+                        ? t('modals.contactDetails.story_moved_from_by').replace('{stage}', entry.from)
+                        : t('modals.contactDetails.story_moved_by')
+                      ).replace('{name}', entry.byName)}
+                    </span>
+                  </div>
+                )}
+                {entry.kind === "added" && (
+                  <div className="cd-story-milestone">
+                    <strong>
+                      {entry.byName
+                        ? t('modals.contactDetails.story_added_by').replace('{name}', entry.byName)
+                        : t('modals.contactDetails.story_added')}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+
+  const threadLinks = (
+    <div className="cd-sec">
+      <div className="cd-sec-head">
+        <h3 className="cd-sec-title">{t('modals.contactDetails.talk_about').replace('{name}', firstName)}</h3>
+      </div>
+      <div className="cd-thread-links">
+        <button type="button" className="cd-thread-link" onClick={() => setDrawer("thread")}>
+          <Footprints className="w-4 h-4" />
+          {walkLabel}
+          <span className="count">{countFor(threadMessages, null)}</span>
+        </button>
+        {canSeeTeamThread && (
+          <button type="button" className="cd-thread-link" onClick={() => setDrawer("discussion")}>
+            <MessageSquare className="w-4 h-4" />
+            {t('modals.contactDetails.discussion')}
+            <span className="count">{countFor(threadMessages, null, "team")}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const wrapDesktopStory = (content: React.ReactNode) =>
+    isMobile ? (
+      content
+    ) : (
+      <>
+        <div className="cd-journey-band">{journeySection}</div>
+        <div className="cd-story-layout">
+          {storySection}
+          <div className="cd-story-aside">
+            {threadLinks}
+            {content}
+          </div>
+        </div>
+      </>
+    );
+
+  const drawerOpen = !isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread));
+  const drawerLabel = drawer === "discussion" ? t('modals.contactDetails.discussion') : walkLabel;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1953,7 +2187,7 @@ export default function ContactDetailsModal({
               </header>
             )}
 
-            {/* Content Tab Switcher */}
+            {/* Content Tab Switcher — phones only; desktop is one story page */}
             {!isEditing && (() => {
               const visibleTabList = [
                 { id: "overview", label: t('modals.contactDetails.overview') },
@@ -1984,23 +2218,7 @@ export default function ContactDetailsModal({
                     </span>
                   </div>
                 </div>
-              ) : (
-                /* Desktop Tab Bar — Field Notes */
-                <div className="cd-tabs-bar">
-                  {visibleTabList.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setActiveTab(t.id as any)}
-                      className={cn("cd-tab", activeTab === t.id && "on")}
-                    >
-                      {t.label}
-                      {"count" in t && t.count != null && (
-                        <span className="count">{t.count}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              );
+              ) : null;
             })()}
 
             {/* Content */}
@@ -2294,8 +2512,8 @@ export default function ContactDetailsModal({
                   </div>
                 </form>
               ) : (
-                <>
-                {activeTab === "overview" && (
+                wrapDesktopStory(<>
+                {(!isMobile || activeTab === "overview") && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2399,49 +2617,7 @@ export default function ContactDetailsModal({
                           </div>
                         </div>
 
-                        <div className="cd-sec">
-                          <div className="cd-sec-head">
-                            <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
-                          </div>
-                          <div className="cd-journey">
-                            {sortedStages.length === 0 && (
-                              <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
-                            )}
-                            {sortedStages.map((s, i) => {
-                              const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
-                              const body = (
-                                <>
-                                  <span className="cd-step-mark">
-                                    {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
-                                    {state === "done" && <span className="pd" />}
-                                  </span>
-                                  <span className="cd-step-name">{s.label}</span>
-                                  {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
-                                </>
-                              );
-                              // The step list is where the pipeline is already
-                              // explained, so it doubles as the move target
-                              // for anyone who may edit (#677).
-                              return canMoveStage && state !== "on" ? (
-                                <button
-                                  key={s.id}
-                                  onClick={() => moveStage(s.label)}
-                                  className={cn("cd-journey-step is-move", state)}
-                                >
-                                  {body}
-                                  <span className="cd-step-move">
-                                    {t('modals.contactDetails.move_here')}
-                                    <ChevronRight className="w-3 h-3" />
-                                  </span>
-                                </button>
-                              ) : (
-                                <div key={s.id} className={cn("cd-journey-step", state)}>
-                                  {body}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        {isMobile && journeySection}
 
                         <div className="cd-sec">
                           <div className="cd-sec-head">
@@ -2645,7 +2821,7 @@ export default function ContactDetailsModal({
                       )}
                     </motion.div>
                   )}
-{activeTab === "interactions" && (
+{isMobile && activeTab === "interactions" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2700,7 +2876,7 @@ export default function ContactDetailsModal({
                     </motion.div>
                   )}
 
-                  {activeTab === "thread" && (
+                  {isMobile && activeTab === "thread" && (
                     <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
@@ -2708,21 +2884,12 @@ export default function ContactDetailsModal({
                           {t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
                         </span>
                       </div>
-                      <Thread
-                        contactId={contact.id}
-                        interactionId={null}
-                        meStaffId={currentUid ?? ""}
-                        recipientUid={threadRecipient}
-                        contactName={contact.name}
-                        pane
-                        teamMembers={teamMembers}
-                        contactStakeholders={contactStakeholdersOf(contact)}
-                      />
+                      {renderThread()}
 
                     </div>
                   )}
 
-                  {activeTab === "prayer" && (
+                  {isMobile && activeTab === "prayer" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2765,7 +2932,7 @@ export default function ContactDetailsModal({
                     </motion.div>
                   )}
 
-                  {activeTab === "discussion" && (role === "admin" || isAdmin) && (
+                  {isMobile && activeTab === "discussion" && (role === "admin" || isAdmin) && (
                     <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{t('modals.contactDetails.discussion')}</h3>
@@ -2773,24 +2940,14 @@ export default function ContactDetailsModal({
                           {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
                         </span>
                       </div>
-                      <Thread
-                        contactId={contact.id}
-                        interactionId={null}
-                        meStaffId={currentUid ?? ""}
-                        recipientUid={threadRecipient}
-                        contactName={contact.name}
-                        scope="team"
-                        pane
-                        teamMembers={teamMembers}
-                        contactStakeholders={contactStakeholdersOf(contact)}
-                      />
+                      {renderThread("team")}
 
                     </div>
                   )}
 
 
 
-                  {activeTab === "history" && (
+                  {isMobile && activeTab === "history" && (
                     <div className="cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{t('modals.contactDetails.looking_back')}</h3>
@@ -2828,7 +2985,7 @@ export default function ContactDetailsModal({
                       </div>
                     </div>
                   )}
-                </>
+                </>)
               )}
             </div>
 
@@ -2875,6 +3032,33 @@ export default function ContactDetailsModal({
                 )}
               </button>
             </div>
+
+            {drawerOpen && (
+              <div className="cd-drawer" role="dialog" aria-label={drawerLabel}>
+                <div className="cd-drawer-head">
+                  <div>
+                    <h3 className="cd-sec-title">{drawerLabel}</h3>
+                    <span className="cd-sec-sub">
+                      {drawer === "discussion"
+                        ? `Full-timers only — how the team is thinking about caring for ${firstName}.`
+                        : t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDrawer(null)}
+                    title={t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel)}
+                    aria-label={t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel)}
+                    className="w-9 h-9 shrink-0 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="cd-drawer-body">
+                  {drawer === "discussion" ? renderThread("team") : renderThread()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
