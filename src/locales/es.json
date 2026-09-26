@@ -1463,7 +1463,16 @@
       "staff_role": "Personal",
       "full_timer": "Full-timer",
       "trainee": "Aprendiz",
-      "you": "tú"
+      "you": "tú",
+      "story_so_far": "La historia hasta ahora",
+      "write_what_happened": "Escribe lo que pasó después…",
+      "story_added_by": "Añadido por {name}",
+      "story_added": "Añadido",
+      "story_moved_from_by": "desde {stage} · por {name}",
+      "story_moved_by": "por {name}",
+      "prayer_answered_story": "Oración respondida",
+      "talk_about": "Hablar de {name}",
+      "close_drawer": "Cerrar {thread}"
     },
     "no_duplicate_tags": "No se encontraron etiquetas duplicadas ni superpuestas.",
     "before": "Antes:",

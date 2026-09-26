@@ -118,6 +118,34 @@ describe('ContactDetailsModal Component', () => {
     return screen.getByText('Edit details');
   };
 
+  /** Desktop has no History tab (the audit log is the History page); phones
+   * still pick it from the tab dropdown. */
+  const renderOnPhoneAtHistory = (ui: React.ReactElement) => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query) => ({
+        matches: query === '(max-width: 768px)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    restoreMatchMedia = () => Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    const utils = render(ui);
+    fireEvent.change(document.querySelector('.cdm-select') as HTMLSelectElement, { target: { value: 'history' } });
+    return utils;
+  };
+  let restoreMatchMedia: (() => void) | null = null;
+  afterEach(() => {
+    restoreMatchMedia?.();
+    restoreMatchMedia = null;
+  });
+
   const clickLogInteractionMenu = () => {
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
     fireEvent.click(screen.getByText('Log interaction'));
@@ -249,10 +277,6 @@ describe('ContactDetailsModal Component', () => {
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
     );
     expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
-
-    // Switch to Prayer (empty) and confirm the same.
-    fireEvent.click(screen.getByRole('button', { name: /^Prayer\s*\d*$/ }));
-    expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
   });
 
   it('Full-timers tab renders the composer as a direct child of the pane', async () => {
@@ -281,26 +305,15 @@ describe('ContactDetailsModal Component', () => {
     ).toBeTruthy();
   });
 
-  it('allows clicking tabs and switching views', async () => {
+  it('shows notes, the story and prayers on one desktop page, with Full-timers in a drawer', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    // overview is active
     expect(screen.getByText('Some notes about John Doe.')).toBeInTheDocument();
-
-    // Click Interactions tab (labeled "Interactions")
-    const interactionsTab = screen.getByRole('button', { name: /Interactions/i });
-    fireEvent.click(interactionsTab);
-    expect(screen.getByText('Every conversation')).toBeInTheDocument();
-
-    // Click Prayer tab
-    const prayerTab = screen.getByRole('button', { name: /^Prayer\s*\d*$/ });
-    fireEvent.click(prayerTab);
+    expect(screen.getByRole('region', { name: 'The story so far' })).toBeInTheDocument();
     expect(screen.getByText("Prayers we're praying for")).toBeInTheDocument();
 
-    // Click the Full-timers tab (was labelled "Discussion" before #813)
-    const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
     await act(async () => {
-      fireEvent.click(commentsTab);
+      fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
     });
     expect(await screen.findByPlaceholderText(/Add to the Full-timers thread…/i)).toBeInTheDocument();
   });
@@ -688,11 +701,7 @@ describe('ContactDetailsModal Component', () => {
       return vi.fn();
     });
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-
-    // Click History tab
-    const historyTab = screen.getByRole('button', { name: /History/i });
-    fireEvent.click(historyTab);
+    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Assert that history header and activity are displayed
     await waitFor(() => {
@@ -727,10 +736,6 @@ describe('ContactDetailsModal Component', () => {
     });
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-
-    // Click Interactions tab
-    const interactionsTab = screen.getByRole('button', { name: /Interactions/i });
-    fireEvent.click(interactionsTab);
 
     await screen.findByText('Old content');
 
@@ -969,12 +974,8 @@ describe('ContactDetailsModal Component', () => {
       return vi.fn();
     });
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
-
-    // Click History tab
-    const historyTab = screen.getByRole('button', { name: /History/i });
-    fireEvent.click(historyTab);
 
     // Verify all custom action strings are rendered
     await waitFor(() => {
@@ -1102,7 +1103,7 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getAllByText(/Last connected/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Tony Wang/i).length).toBeGreaterThan(0);
     // Overview's Cared-for-by section keeps the legacy "Added by" line.
-    expect(screen.getByText(/Added by/i)).toBeInTheDocument();
+    expect(within(document.querySelector('.cd-whowho') as HTMLElement).getByText(/Added by/i)).toBeInTheDocument();
     expect(screen.getAllByText('Sarah Connor').length).toBeGreaterThan(0);
   });
 
@@ -1628,7 +1629,7 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getAllByText('Pray for finals').length).toBeGreaterThan(0);
     expect(screen.getByText(/Held \d+ (day|days)/)).toBeInTheDocument();
     // The invalid-date prayer shows no held count.
-    expect(screen.getByText('Bad date prayer')).toBeInTheDocument();
+    expect(screen.getAllByText('Bad date prayer').length).toBeGreaterThan(0);
     // The aside journey marks the current stage as "here now".
     expect(await screen.findByText('here now')).toBeInTheDocument();
     expect(screen.getByText('First')).toBeInTheDocument();
@@ -1649,8 +1650,7 @@ describe('ContactDetailsModal Component', () => {
     });
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Prayer\s*\d*$/ }));
-    expect(screen.getByText('Pray for finals')).toBeInTheDocument();
+    expect(screen.getAllByText('Pray for finals').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Answered' }));
     await waitFor(() => {
@@ -1829,8 +1829,8 @@ describe('ContactDetailsModal Component', () => {
       expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument(),
     );
 
-    // The section header toggles the form back on and off.
-    fireEvent.click(screen.getByRole('button', { name: /^Log interaction$/ }));
+    // The story's composer opens the form again, and Cancel closes it.
+    fireEvent.click(screen.getByRole('button', { name: /Write what happened next/ }));
     expect(screen.getByPlaceholderText(/Describe the interaction\.\.\./i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
     expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
@@ -1879,7 +1879,6 @@ describe('ContactDetailsModal Component', () => {
     });
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
     await screen.findByText('Old content');
 
     fireEvent.click(screen.getByRole('button', { name: /^Edit$/ }));
@@ -2000,15 +1999,13 @@ describe('ContactDetailsModal Component', () => {
   it('shows skeletons while interactions, prayers and activities are loading', async () => {
     (firestore.onSnapshot as any).mockImplementation(() => vi.fn());
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    expect(
+      within(screen.getByRole('region', { name: 'The story so far' })).getByText('', { selector: '.animate-pulse' }),
+    ).toBeInTheDocument();
+    unmount();
 
-    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
-    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: /^Prayer\s*\d*$/ }));
-    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole('button', { name: /History/i }));
+    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
@@ -2076,8 +2073,7 @@ describe('ContactDetailsModal Component', () => {
       return vi.fn();
     });
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    fireEvent.click(screen.getByRole('button', { name: /History/i }));
+    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('created contact');
 
     const item = screen.getByText('created contact').closest('.group')!;
@@ -2143,7 +2139,8 @@ describe('ContactDetailsModal Component', () => {
       />
     );
     // Initial interaction is Sarah Chen on Aug 10.
-    expect(screen.getByText(/Sarah Chen/i)).toBeInTheDocument();
+    const lastBy = () => within(document.querySelector('.cd-whowho') as HTMLElement);
+    expect(lastBy().getByText(/Sarah Chen/i)).toBeInTheDocument();
 
     // Now simulate a newer interaction logged by Tony Wang.
     await act(async () => {
@@ -2174,7 +2171,7 @@ describe('ContactDetailsModal Component', () => {
         });
       }
     });
-    expect(screen.getByText(/Tony Wang/i)).toBeInTheDocument();
+    expect(lastBy().getByText(/Tony Wang/i)).toBeInTheDocument();
   });
 
   it('orders interactions by the date they happened, not when they were logged', async () => {
@@ -2218,7 +2215,6 @@ describe('ContactDetailsModal Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
     await screen.findByText('Backdated newer');
 
     const rendered = screen.getAllByText(/Backdated newer|Logged later but actually older/);
@@ -2459,7 +2455,6 @@ describe('removing interactions (#650)', () => {
       return vi.fn();
     });
     render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
-    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
   };
 
   afterEach(() => {
@@ -2543,51 +2538,6 @@ describe('removing interactions (#650)', () => {
     expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
     expect(screen.getByText('Conversation removed')).toBeInTheDocument();
     confirmSpy.mockRestore();
-  });
-
-  it('renders all tab navigation buttons in cd-tabs-bar with consistent tab elements (#684)', () => {
-    const { container } = render(
-      <ContactDetailsModal
-        isOpen={true}
-        onClose={vi.fn()}
-        contact={{
-          id: 'contact-test-tabs',
-          name: 'Test Student',
-          email: 'test@example.com',
-          initials: 'TS',
-          stage: 'Lead',
-          tags: ['student'],
-          createdAt: new Date().toISOString(),
-        } as any}
-      />
-    );
-
-    const tabsBar = container.querySelector('.cd-tabs-bar');
-    expect(tabsBar).toBeTruthy();
-
-    const tabs = container.querySelectorAll('.cd-tab');
-    expect(tabs.length).toBeGreaterThanOrEqual(4);
-
-    // Overview tab is rendered and active by default without count badge
-    const overviewTab = screen.getByRole('button', { name: /^Overview$/i });
-    expect(overviewTab).toHaveClass('cd-tab');
-    expect(overviewTab).toHaveClass('on');
-    expect(overviewTab.querySelector('.count')).toBeNull();
-
-    // Tabs with counts render the .count badge element
-    const interactionsTab = screen.getByRole('button', { name: /Interactions/i });
-    expect(interactionsTab).toHaveClass('cd-tab');
-    expect(interactionsTab.querySelector('.count')).toBeTruthy();
-
-    // Switching to Interactions makes it active and removes active from Overview
-    fireEvent.click(interactionsTab);
-    expect(interactionsTab).toHaveClass('on');
-    expect(overviewTab).not.toHaveClass('on');
-
-    // Switching back to Overview restores active state smoothly
-    fireEvent.click(overviewTab);
-    expect(overviewTab).toHaveClass('on');
-    expect(interactionsTab).not.toHaveClass('on');
   });
 
   describe('Mobile Viewport / PWA Contact Editing', () => {
@@ -2942,5 +2892,108 @@ describe('ContactDetailsModal — the kind of person', () => {
       expect(logged).toBeTruthy();
       expect(logged.description).toContain('Local saint');
     });
+  });
+});
+
+describe('desktop story layout (design D)', () => {
+  const mockOnClose = vi.fn();
+
+  const docOf = (id: string, data: Record<string, unknown>) => ({ id, data: () => data });
+
+  // Feed each Firestore listener by collection path.
+  const feed = (byPath: Record<string, ReturnType<typeof docOf>[]>) => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any) => {
+      const path: string = q?.path || '';
+      const key = Object.keys(byPath).find((k) => path.endsWith(k));
+      if (typeof cb === 'function') cb({ docs: key ? byPath[key] : [] });
+      return () => {};
+    });
+  };
+
+  const asRole = (role: string) =>
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' },
+      isAdmin: role === 'admin',
+      role,
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.messages = [];
+    asRole('admin');
+    (firestore.getDocs as any).mockResolvedValue({ size: 0, docs: [] });
+  });
+
+  it('shows the story with conversations, prayers, step moves and the beginning, without tabs', async () => {
+    feed({
+      interactions: [
+        docOf('inter-1', { userId: 'user-123', userName: 'Daniel Kim', content: 'Coffee at the Union', dateTime: '2026-09-21T10:00', createdAt: '2026-09-21T10:05:00.000Z' }),
+      ],
+      prayers: [
+        docOf('prayer-1', { contactId: 'contact-abc', date: '2026-09-20T20:00:00.000Z', burden: "Her grandmother's surgery", status: 'ongoing', updatedAt: '2026-09-20T20:00:00.000Z' }),
+      ],
+      activities: [
+        docOf('act-1', { userId: 'user-123', userName: 'Daniel Kim', action: 'updated stage: "First Contact" → "Regular" for', targetId: 'contact-abc', targetName: 'John Doe', targetType: 'contact', type: 'edit', description: 'stage: "First Contact" → "Regular"', createdAt: '2026-09-18T09:00:00.000Z' }),
+      ],
+    });
+
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, createdAt: '2026-09-03T18:00:00.000Z', createdByName: 'Sarah Lee' }}
+      />,
+    );
+
+    const story = screen.getByRole('region', { name: 'The story so far' });
+    expect(within(story).getByText('Coffee at the Union')).toBeInTheDocument();
+    expect(within(story).getAllByText("Her grandmother's surgery").length).toBeGreaterThan(0);
+    expect(within(story).getByText('Moved to Regular')).toBeInTheDocument();
+    expect(within(story).getByText('Added by Sarah Lee')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: /^Interactions/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^History/ })).toBeNull();
+  });
+
+  it('opens the Conversation thread in a drawer, and closes it', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+
+    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    expect(drawer.querySelector('[data-thread-pane]')).toBeTruthy();
+
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Close Conversation' }));
+    expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
+  });
+
+  it('offers the Full-timers thread to Full-timers only', () => {
+    asRole('manager');
+    const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    expect(screen.queryByRole('button', { name: /^Full-timers/ })).toBeNull();
+    unmount();
+
+    asRole('admin');
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
+    expect(screen.getByRole('dialog', { name: 'Full-timers' })).toBeInTheDocument();
+  });
+
+  it('closes an open drawer on Escape before closing the page', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
+    expect(mockOnClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it('opens the Conversation drawer when deep-linked to the thread', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    expect(screen.getByRole('dialog', { name: 'Conversation' })).toBeInTheDocument();
   });
 });

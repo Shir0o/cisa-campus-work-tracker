@@ -4276,48 +4276,103 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 }
 
 
-/* ── tabs ── */
-.cd-tabs-bar {
-  display: flex; align-items: center; gap: 2px;
-  padding: 0 28px;
-  min-height: 48px;
-  height: 48px;
-  border-bottom: 1px solid var(--outline-variant);
-  background: var(--surface);
-  overflow-x: auto; scrollbar-width: none;
+/* ── desktop story page (design D) ──
+   No tab bar on desktop: "Where they are" runs across the top, the story fills
+   the main column and the profile groups sit in a side column. Phones keep
+   the tab dropdown (.cdm-switch). */
+.cd-page-main { position: relative; }
+.cd-journey-band { padding: 20px 28px; border-bottom: 1px solid var(--outline-variant); }
+.cd-journey-band > .cd-sec { padding: 0; border-bottom: 0; }
+.cd-journey-band > .cd-sec > .cd-sec-head { margin-bottom: 12px; }
+.cd-journey-band .cd-journey { flex-direction: row; gap: 8px; }
+.cd-journey-band .cd-journey-step {
+  flex: 1 1 0; min-width: 0; border-top: 0; padding: 10px 12px;
+  flex-direction: column; align-items: flex-start; gap: 6px;
+  border-radius: var(--radius-sm); background: var(--surface-container-low);
 }
-.cd-tabs-bar::-webkit-scrollbar { display: none; }
-.cd-tab {
-  position: relative;
-  min-height: 48px;
-  height: 48px;
-  box-sizing: border-box;
-  padding: 0 12px; font-size: 14px; color: var(--on-surface-variant);
-  background: none; border: 0; margin-bottom: -1px;
-  cursor: pointer; white-space: nowrap; flex: 0 0 auto;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  font-family: var(--font-sans); transition: color 120ms ease;
+.cd-journey-band .cd-step-here,
+.cd-journey-band .cd-step-move { margin-left: 0; }
+.cd-journey-band .cd-journey-step.is-move { width: auto; margin: 0; padding: 10px 12px; }
+.cd-journey-band .cd-journey-step.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cd-story-layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+@container cd-main (min-width: 900px) {
+  .cd-story-layout { grid-template-columns: minmax(0, 1fr) 340px; }
+  .cd-story-aside { border-left: 1px solid var(--outline-variant); }
 }
-/* Bento active bar: a centred 16×4 rounded mark, not a full-width underline.
-   Sit at the bottom of the tab (aligned with the tab bar border) (#398). */
-.cd-tab::after {
-  content: ""; position: absolute; left: 50%; bottom: 0;
-  width: 16px; height: 4px; border-radius: 999px; background: transparent;
-  transform: translateX(-50%); transition: background 120ms ease;
+.cd-story { padding: 24px 28px; min-width: 0; }
+.cd-story-aside { min-width: 0; }
+/* The profile groups stay one column beside the story. */
+.cd-story-aside .cd-overview-grid { display: block; }
+.cd-story-aside .cd-overview-grid > .cd-sec { border-right: 0; }
+.cd-story-compose { display: flex; gap: 8px; margin-bottom: 20px; }
+.cd-story-compose-input {
+  flex: 1 1 auto; min-height: 44px; padding: 0 16px; text-align: left;
+  border: 1px solid var(--outline-variant); border-radius: var(--radius);
+  background: var(--surface-container-low); color: var(--on-surface-variant);
+  font-family: var(--font-sans); font-size: 15px; cursor: text;
 }
-.cd-tab:hover { color: var(--on-surface); }
-.cd-tab.on { color: var(--on-surface); font-weight: 600; }
-.cd-tab.on::after { background: var(--accent); }
-.cd-tab .count {
-  font-size: 11.5px; font-weight: 600; color: var(--on-surface-variant);
-  background: var(--surface-container-high); border: 1px solid var(--outline-variant);
-  border-radius: 999px; padding: 0 7px; line-height: 17px; min-width: 17px; text-align: center;
+.cd-story-compose-input:hover { border-color: var(--outline); }
+.cd-story-compose-pray {
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center;
+  border: 1px solid var(--outline-variant); border-radius: var(--radius);
+  background: var(--stage-violet-soft); color: var(--stage-violet); cursor: pointer;
 }
-.cd-tab.on .count {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
+.cd-story-compose-open { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.cd-story-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cd-story-entry {
+  display: grid; grid-template-columns: 84px 14px minmax(0, 1fr); column-gap: 14px;
+  position: relative; padding-bottom: 22px;
 }
+/* The thread line joins each entry's dot to the next one. */
+.cd-story-entry:not(:last-child)::after {
+  content: ""; position: absolute; left: calc(84px + 14px + 6px); top: 18px; bottom: 0;
+  width: 2px; background: var(--outline-variant);
+}
+.cd-story-date { font-size: 12.5px; color: var(--on-surface-variant); text-align: right; padding-top: 3px; }
+.cd-story-dot {
+  width: 10px; height: 10px; margin: 6px 2px 0; border-radius: 999px;
+  background: var(--stage-accent);
+}
+.cd-story-entry[data-kind="prayer"] .cd-story-dot,
+.cd-story-entry[data-kind="prayer-answered"] .cd-story-dot { background: var(--stage-violet); }
+.cd-story-entry.is-milestone .cd-story-dot {
+  width: 14px; height: 14px; margin: 4px 0 0;
+  background: var(--surface); border: 3px solid var(--primary); box-sizing: border-box;
+}
+.cd-story-body { min-width: 0; }
+.cd-story-milestone {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 14px; border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  font-size: 13px; color: var(--on-surface-variant);
+}
+.cd-story-milestone strong { font-size: 15px; font-weight: 600; color: var(--on-surface); }
+.cd-thread-links { display: flex; flex-direction: column; gap: 8px; }
+.cd-thread-link {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--outline-variant); border-radius: var(--radius-md);
+  background: var(--surface); color: var(--on-surface);
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.cd-thread-link:hover { background: var(--hover); }
+.cd-thread-link .count {
+  margin-left: auto; font-size: 12px; font-weight: 600; color: var(--on-surface-variant);
+  background: var(--surface-container-high); border-radius: 999px; padding: 0 8px; line-height: 20px;
+}
+/* The Conversation / Full-timers thread opens over the side column. */
+.cd-drawer {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 30;
+  width: min(460px, 100%); display: flex; flex-direction: column;
+  background: var(--surface); border-left: 1px solid var(--outline-variant);
+  box-shadow: var(--shadow-pop);
+}
+.cd-drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 20px 20px 14px 24px; border-bottom: 1px solid var(--outline-variant); flex: none;
+}
+.cd-drawer-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 16px 24px; }
+
 /* ── container queries ──
    The edit form and Overview field groups size against the column's real
    width because the navigation rail's 232/76px collapse changes the

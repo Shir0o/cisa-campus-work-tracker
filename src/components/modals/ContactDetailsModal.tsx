@@ -81,6 +81,7 @@ import {
 import KindChip from "../ui/KindChip";
 import KindFields from "../ui/KindFields";
 import { contactKind, kindLabelKey } from "../../lib/contactKind";
+import { buildContactStory } from "../../lib/contactStory";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -295,6 +296,8 @@ export default function ContactDetailsModal({
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
   >("overview");
+  // Desktop has no tabs: the two conversation threads open in a side drawer.
+  const [drawer, setDrawer] = useState<null | "thread" | "discussion">(null);
 
   const [liveContact, setLiveContact] = useState<Contact | null>(contact);
 
@@ -420,13 +423,16 @@ export default function ContactDetailsModal({
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key !== "Escape") return;
+      // An open thread drawer closes first; the page closes on the next Esc.
+      if (drawer) setDrawer(null);
+      else handleClose();
     };
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
     }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, handleClose]);
+  }, [isOpen, handleClose, drawer]);
 
   useEffect(() => {
     if (contact) {
@@ -581,7 +587,16 @@ export default function ContactDetailsModal({
     setTagInput("");
     setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
+    // On desktop the contact-level thread deep-link opens its drawer.
+    setDrawer(!initialInteractionId && initialTab === "thread" ? "thread" : null);
   }, [contact?.id, isOpen, initialTab, initialInteractionId]);
+
+  // An interaction deep-link on desktop scrolls the story to that
+  // conversation, whose thread is already expanded (openThread above).
+  useEffect(() => {
+    if (!isOpen || isMobile || !initialInteractionId || interactionsLoading) return;
+    document.getElementById(`story-${initialInteractionId}`)?.scrollIntoView?.({ block: "center" });
+  }, [isOpen, isMobile, initialInteractionId, interactionsLoading]);
 
   if (!contact) return null;
 
@@ -1284,6 +1299,677 @@ export default function ContactDetailsModal({
     );
   }
 
+  // Shared by the phone tabs and the desktop story (#design-D): the log form,
+  // one conversation, the add-prayer form and one prayer card.
+  const logInteractionForm = (
+    <AnimatePresence>
+      {isLoggingInteraction && (
+        <motion.form
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          onSubmit={handleAddInteraction}
+          className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
+        >
+          <div className="grid grid-cols-2 gap-3 pb-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
+                <Calendar className="w-3 h-3" /> {t('modals.contactDetails.date_time')}
+              </label>
+              <input
+                required
+                type="datetime-local"
+                value={newInteraction.dateTime}
+                onChange={(e) =>
+                  setNewInteraction((prev) => ({
+                    ...prev,
+                    dateTime: e.target.value,
+                  }))
+                }
+                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
+                <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.type')}
+              </label>
+              <select
+                value={newInteraction.type}
+                onChange={(e) =>
+                  setNewInteraction((prev) => ({
+                    ...prev,
+                    type: e.target.value,
+                  }))
+                }
+                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+              >
+                <option value="chat">{t('modals.contactDetails.chat_message')}</option>
+                <option value="call">{t('modals.contactDetails.phone_call')}</option>
+                <option value="meeting">{t('modals.contactDetails.meeting')}</option>
+                <option value="email">{t('modals.contactDetails.email')}</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
+              <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.content')}
+            </label>
+            <textarea
+              required
+              placeholder={t('modals.contactDetails.interaction_placeholder')}
+              value={newInteraction.content}
+              onChange={(e) =>
+                setNewInteraction((prev) => ({
+                  ...prev,
+                  content: e.target.value,
+                }))
+              }
+              className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={
+                submittingInteraction ||
+                !newInteraction.content.trim()
+              }
+              className="px-4 h-9 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
+            >
+              {submittingInteraction ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              Log Interaction
+            </button>
+          </div>
+        </motion.form>
+      )}
+    </AnimatePresence>
+  );
+
+  const renderInteraction = (interaction: Interaction) => (
+    <div
+      key={interaction.id}
+      className="flex gap-3 group"
+    >
+      <div className="shrink-0 mt-0.5">
+        {interaction.userPhoto ? (
+          <img
+            src={interaction.userPhoto}
+            alt={interaction.userName}
+            className="w-8 h-8 rounded-full border border-outline-variant"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+            <UserCircle className="w-5 h-5" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        {editingInteractionId === interaction.id ? (
+          <form
+            onSubmit={handleUpdateInteraction}
+            className="space-y-3 p-3 rounded-3xl bg-surface-container-high border border-primary/20"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
+                  {t('modals.contactDetails.date')}
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={editInteractionData.dateTime}
+                  onChange={(e) =>
+                    setEditInteractionData((prev) => ({
+                      ...prev,
+                      dateTime: e.target.value,
+                    }))
+                  }
+                  className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
+                  {t('modals.contactDetails.type')}
+                </label>
+                <select
+                  value={editInteractionData.type}
+                  onChange={(e) =>
+                    setEditInteractionData((prev) => ({
+                      ...prev,
+                      type: e.target.value,
+                    }))
+                  }
+                  className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
+                >
+                  <option value="chat">
+                    {t('modals.contactDetails.chat_message')}
+                  </option>
+                  <option value="call">
+                    {t('modals.contactDetails.phone_call')}
+                  </option>
+                  <option value="meeting">
+                    {t('modals.contactDetails.meeting')}
+                  </option>
+                  <option value="email">{t('modals.contactDetails.email')}</option>
+                  <option value="interaction">
+                    {t('modals.contactDetails.other')}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
+                {t('modals.contactDetails.content')}
+              </label>
+              <textarea
+                required
+                value={editInteractionData.content}
+                onChange={(e) =>
+                  setEditInteractionData((prev) => ({
+                    ...prev,
+                    content: e.target.value,
+                  }))
+                }
+                className="w-full min-h-[60px] p-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1 border-t border-outline-variant/30">
+              <button
+                type="button"
+                onClick={() =>
+                  setEditingInteractionId(null)
+                }
+                className="h-7 px-3 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  isUpdatingInteraction ||
+                  !editInteractionData.content.trim()
+                }
+                className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-semibold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
+              >
+                {isUpdatingInteraction ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  t('modals.contactDetails.save')
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-on-surface  tracking-tight">
+                  {interaction.userName}
+                </span>
+                <span className="text-[10px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
+                  {new Date(
+                    interaction.dateTime,
+                  ).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 transition-opacity">
+                {(user?.uid === interaction.userId || isAdmin) && (
+                  <button
+                    onClick={() => {
+                      setEditingInteractionId(
+                        interaction.id,
+                      );
+                      setEditInteractionData({
+                        content: interaction.content,
+                        dateTime: interaction.dateTime,
+                        type:
+                          interaction.type ||
+                          "interaction",
+                      });
+                    }}
+                    className="text-[10px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
+                  >
+                    Edit
+                  </button>
+                )}
+                {canRemoveInteraction(interaction) && (
+                  <button
+                    onClick={() => handleRemoveInteraction(interaction)}
+                    className="text-[10px] font-semibold text-error hover:opacity-80 focus:outline-none"
+                  >
+                    {t('modals.contactDetails.remove_interaction')}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors whitespace-pre-wrap">
+              <Translate showOriginalToggle text={interaction.content} />
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-semibold text-on-surface-variant/40  ">
+                {interaction.createdAt
+                  ? t('modals.contactDetails.logged_at').replace('{date}', new Date(interaction.createdAt).toLocaleDateString()).replace('{time}', new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+                  : t('modals.contactDetails.logging')}
+              </span>
+              {(interaction.duration ||
+                interaction.type) && (
+                <span className="text-[10px] font-semibold text-on-surface-variant/40   flex items-center gap-1">
+                  {interaction.type && (
+                    <span className="px-1.5 py-0.5 rounded bg-surface-container-high">
+                      {interaction.type}
+                    </span>
+                  )}
+                  {interaction.duration && (
+                    <span className="flex items-center gap-0.5">
+                      <Clock className="w-3 h-3" />
+                      {interaction.duration}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            {/* Walk through this interaction together */}
+            <div className="mt-2">
+              <button
+                onClick={() =>
+                  setOpenThread(
+                    openThread === interaction.id
+                      ? null
+                      : interaction.id,
+                  )
+                }
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold   text-on-surface-variant/60 hover:text-accent transition-colors"
+              >
+                <Footprints className="w-3.5 h-3.5" />
+                {countFor(threadMessages, interaction.id) > 0
+                  ? `${t('modals.contactDetails.alongside')} · ${countFor(threadMessages, interaction.id)}`
+                  : t('modals.contactDetails.think_this_through_together')}
+              </button>
+              {openThread === interaction.id && (
+                <div className="mt-2 pl-3 border-l-2 border-outline-variant/40">
+                  <Thread
+                    contactId={contact.id}
+                    interactionId={interaction.id}
+                    meStaffId={currentUid ?? ""}
+                    recipientUid={threadRecipient}
+                    contactName={contact.name}
+                    compact
+                    teamMembers={teamMembers}
+                    contactStakeholders={contactStakeholdersOf(contact)}
+                  />
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const addPrayerForm = (
+    <AnimatePresence>
+      {isAddingPrayer && (
+        <motion.form
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          onSubmit={handleAddPrayer}
+          className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
+        >
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-on-surface-variant px-1">
+              What are we praying for?
+            </label>
+            <input
+              required
+              autoFocus
+              type="text"
+              placeholder={`e.g. ${firstName}'s family back home`}
+              value={newPrayer.burden}
+              onChange={(e) =>
+                setNewPrayer((p) => ({ ...p, burden: e.target.value }))
+              }
+              className="w-full h-10 px-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-on-surface-variant px-1">
+              {t('modals.contactDetails.prayer_context_label')} <span className="text-on-surface-variant/60">{t('modals.contactDetails.optional')}</span>
+            </label>
+            <textarea
+              placeholder={t('modals.contactDetails.prayer_context_placeholder')}
+              value={newPrayer.context}
+              onChange={(e) =>
+                setNewPrayer((p) => ({ ...p, context: e.target.value }))
+              }
+              className="w-full min-h-[70px] p-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm resize-none"
+            />
+          </div>
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={submittingPrayer || !newPrayer.burden.trim()}
+              className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {submittingPrayer ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Heart className="w-3.5 h-3.5" />
+              )}
+              Add prayer
+            </button>
+          </div>
+        </motion.form>
+      )}
+    </AnimatePresence>
+  );
+
+  const renderPrayerCard = (p: PrayerRecord) => {
+    const answered = p.status === "answered";
+    const heldDays = p.date
+      ? Math.max(
+          0,
+          Math.floor(
+            (Date.now() - new Date(p.date).getTime()) / 86_400_000,
+          ),
+        )
+      : null;
+    return (
+      <div
+        key={p.id}
+        className="p-4 rounded-3xl bg-surface-container-high border border-outline-variant/40"
+      >
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
+              answered
+                ? "bg-stage-teal-soft text-stage-teal"
+                : p.status === "unanswered"
+                  ? "bg-surface-variant text-on-surface-variant"
+                  : "bg-stage-violet-soft text-stage-violet",
+            )}
+          >
+            <span
+              className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                answered
+                  ? "bg-stage-teal"
+                  : p.status === "unanswered"
+                    ? "bg-on-surface-variant"
+                    : "bg-stage-violet",
+              )}
+            />
+            {answered
+              ? t('modals.contactDetails.answered')
+              : p.status === "unanswered"
+                ? t('modals.contactDetails.closed')
+                : t('modals.contactDetails.open')}
+          </span>
+          {heldDays != null && (
+            <span className="text-xs text-on-surface-variant/60">
+              {t('modals.contactDetails.held')} {heldDays} {heldDays === 1 ? t('modals.contactDetails.day') : t('modals.contactDetails.days')}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
+          {p.burden}
+        </p>
+        {canUpdatePrayers && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-on-surface-variant mr-0.5">
+              {t('modals.contactDetails.mark')}
+            </span>
+            {PRAYER_MARK_ORDER.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() =>
+                  handleUpdatePrayerStatus(
+                    p,
+                    p.status === s ? "pending" : s,
+                  )
+                }
+                className={cn(
+                  "text-xs px-2.5 py-1 rounded-full border transition-colors",
+                  p.status === s
+                    ? PRAYER_MARK_ON[s]
+                    : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline",
+                )}
+              >
+                {t('modals.contactDetails.' + (s === 'pending' ? 'unmarked' : s === 'ongoing' ? 'ongoing' : s === 'answered' ? 'answered' : 'archived'))}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // "Where they are": in Overview on phones, the band across the top of the
+  // desktop story page.
+  const journeySection = (
+    <div className="cd-sec">
+      <div className="cd-sec-head">
+        <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
+      </div>
+      <div className="cd-journey">
+        {sortedStages.length === 0 && (
+          <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
+        )}
+        {sortedStages.map((s, i) => {
+          const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
+          const body = (
+            <>
+              <span className="cd-step-mark">
+                {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
+                {state === "done" && <span className="pd" />}
+              </span>
+              <span className="cd-step-name">{s.label}</span>
+              {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
+            </>
+          );
+          // The step list is where the pipeline is already
+          // explained, so it doubles as the move target
+          // for anyone who may edit (#677).
+          return canMoveStage && state !== "on" ? (
+            <button
+              key={s.id}
+              onClick={() => moveStage(s.label)}
+              className={cn("cd-journey-step is-move", state)}
+            >
+              {body}
+              <span className="cd-step-move">
+                {t('modals.contactDetails.move_here')}
+                <ChevronRight className="w-3 h-3" />
+              </span>
+            </button>
+          ) : (
+            <div key={s.id} className={cn("cd-journey-step", state)}>
+              {body}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderThread = (scope?: "team") => (
+    <Thread
+      contactId={contact.id}
+      interactionId={null}
+      meStaffId={currentUid ?? ""}
+      recipientUid={threadRecipient}
+      contactName={contact.name}
+      scope={scope}
+      pane
+      teamMembers={teamMembers}
+      contactStakeholders={contactStakeholdersOf(contact)}
+    />
+  );
+
+  // ── Desktop story page (design D) ──
+  // No tabs: "Where they are" runs across the top, the story fills the main
+  // column, and the profile groups sit beside it. The two threads open in a
+  // drawer; the full audit log lives on the History page.
+  const story = buildContactStory({
+    contact,
+    interactions,
+    prayers,
+    activities,
+    pendingRemovalIds,
+  });
+  const canSeeTeamThread = role === "admin" || isAdmin;
+
+  const storySection = (
+    <section aria-label={t('modals.contactDetails.story_so_far')} className="cd-story">
+      <div className="cd-sec-head">
+        <h3 className="cd-sec-title">{t('modals.contactDetails.story_so_far')}</h3>
+      </div>
+      {isLoggingInteraction || isAddingPrayer ? (
+        <div className="cd-story-compose-open">
+          <button
+            type="button"
+            onClick={() => {
+              setIsLoggingInteraction(false);
+              setIsAddingPrayer(false);
+            }}
+            className="self-end text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            {t('modals.contactDetails.cancel')}
+          </button>
+          {logInteractionForm}
+          {addPrayerForm}
+        </div>
+      ) : (
+        <div className="cd-story-compose">
+          <button
+            type="button"
+            onClick={() => setIsLoggingInteraction(true)}
+            className="cd-story-compose-input"
+          >
+            {t('modals.contactDetails.write_what_happened')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddingPrayer(true)}
+            aria-label={t('modals.contactDetails.add_prayer')}
+            title={t('modals.contactDetails.add_prayer')}
+            className="cd-story-compose-pray"
+          >
+            <Heart className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      {/* Conversations are the spine; prayers join as their listener lands. */}
+      {interactionsLoading ? (
+        <Skeleton className="h-24 w-full rounded-2xl" />
+      ) : (
+        <ol className="cd-story-list">
+          {story.map((entry) => (
+            <li
+              key={`${entry.kind}:${entry.id}`}
+              id={entry.kind === "conversation" ? `story-${entry.id}` : undefined}
+              data-kind={entry.kind}
+              className={cn(
+                "cd-story-entry",
+                (entry.kind === "step" || entry.kind === "added" || entry.kind === "prayer-answered") && "is-milestone",
+              )}
+            >
+              <span className="cd-story-date">{fmtDate(entry.at)}</span>
+              <span className="cd-story-dot" aria-hidden="true" />
+              <div className="cd-story-body">
+                {entry.kind === "conversation" && renderInteraction(entry.interaction)}
+                {entry.kind === "prayer" && renderPrayerCard(entry.prayer)}
+                {entry.kind === "prayer-answered" && (
+                  <div className="cd-story-milestone">
+                    <strong>{t('modals.contactDetails.prayer_answered_story')}</strong>
+                    <span>{(entry.prayer.burden || "").split("\n\n")[0]}</span>
+                    {entry.prayer.answer && (
+                      <p className="cd-prose">
+                        <Translate showOriginalToggle text={entry.prayer.answer} />
+                      </p>
+                    )}
+                  </div>
+                )}
+                {entry.kind === "step" && (
+                  <div className="cd-story-milestone">
+                    <strong>
+                      {entry.to
+                        ? t('modals.contactDetails.moved_to').replace('{stage}', entry.to)
+                        : t('modals.contactDetails.moved_out_of_steps')}
+                    </strong>
+                    <span>
+                      {(entry.from
+                        ? t('modals.contactDetails.story_moved_from_by').replace('{stage}', entry.from)
+                        : t('modals.contactDetails.story_moved_by')
+                      ).replace('{name}', entry.byName)}
+                    </span>
+                  </div>
+                )}
+                {entry.kind === "added" && (
+                  <div className="cd-story-milestone">
+                    <strong>
+                      {entry.byName
+                        ? t('modals.contactDetails.story_added_by').replace('{name}', entry.byName)
+                        : t('modals.contactDetails.story_added')}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+
+  const threadLinks = (
+    <div className="cd-sec">
+      <div className="cd-sec-head">
+        <h3 className="cd-sec-title">{t('modals.contactDetails.talk_about').replace('{name}', firstName)}</h3>
+      </div>
+      <div className="cd-thread-links">
+        <button type="button" className="cd-thread-link" onClick={() => setDrawer("thread")}>
+          <Footprints className="w-4 h-4" />
+          {walkLabel}
+          <span className="count">{countFor(threadMessages, null)}</span>
+        </button>
+        {canSeeTeamThread && (
+          <button type="button" className="cd-thread-link" onClick={() => setDrawer("discussion")}>
+            <MessageSquare className="w-4 h-4" />
+            {t('modals.contactDetails.discussion')}
+            <span className="count">{countFor(threadMessages, null, "team")}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const wrapDesktopStory = (content: React.ReactNode) =>
+    isMobile ? (
+      content
+    ) : (
+      <>
+        <div className="cd-journey-band">{journeySection}</div>
+        <div className="cd-story-layout">
+          {storySection}
+          <div className="cd-story-aside">
+            {threadLinks}
+            {content}
+          </div>
+        </div>
+      </>
+    );
+
+  const drawerOpen = !isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread));
+  const drawerLabel = drawer === "discussion" ? t('modals.contactDetails.discussion') : walkLabel;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1501,7 +2187,7 @@ export default function ContactDetailsModal({
               </header>
             )}
 
-            {/* Content Tab Switcher */}
+            {/* Content Tab Switcher — phones only; desktop is one story page */}
             {!isEditing && (() => {
               const visibleTabList = [
                 { id: "overview", label: t('modals.contactDetails.overview') },
@@ -1532,23 +2218,7 @@ export default function ContactDetailsModal({
                     </span>
                   </div>
                 </div>
-              ) : (
-                /* Desktop Tab Bar — Field Notes */
-                <div className="cd-tabs-bar">
-                  {visibleTabList.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setActiveTab(t.id as any)}
-                      className={cn("cd-tab", activeTab === t.id && "on")}
-                    >
-                      {t.label}
-                      {"count" in t && t.count != null && (
-                        <span className="count">{t.count}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              );
+              ) : null;
             })()}
 
             {/* Content */}
@@ -1842,8 +2512,8 @@ export default function ContactDetailsModal({
                   </div>
                 </form>
               ) : (
-                <>
-                {activeTab === "overview" && (
+                wrapDesktopStory(<>
+                {(!isMobile || activeTab === "overview") && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1947,49 +2617,7 @@ export default function ContactDetailsModal({
                           </div>
                         </div>
 
-                        <div className="cd-sec">
-                          <div className="cd-sec-head">
-                            <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
-                          </div>
-                          <div className="cd-journey">
-                            {sortedStages.length === 0 && (
-                              <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
-                            )}
-                            {sortedStages.map((s, i) => {
-                              const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
-                              const body = (
-                                <>
-                                  <span className="cd-step-mark">
-                                    {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
-                                    {state === "done" && <span className="pd" />}
-                                  </span>
-                                  <span className="cd-step-name">{s.label}</span>
-                                  {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
-                                </>
-                              );
-                              // The step list is where the pipeline is already
-                              // explained, so it doubles as the move target
-                              // for anyone who may edit (#677).
-                              return canMoveStage && state !== "on" ? (
-                                <button
-                                  key={s.id}
-                                  onClick={() => moveStage(s.label)}
-                                  className={cn("cd-journey-step is-move", state)}
-                                >
-                                  {body}
-                                  <span className="cd-step-move">
-                                    {t('modals.contactDetails.move_here')}
-                                    <ChevronRight className="w-3 h-3" />
-                                  </span>
-                                </button>
-                              ) : (
-                                <div key={s.id} className={cn("cd-journey-step", state)}>
-                                  {body}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        {isMobile && journeySection}
 
                         <div className="cd-sec">
                           <div className="cd-sec-head">
@@ -2193,7 +2821,7 @@ export default function ContactDetailsModal({
                       )}
                     </motion.div>
                   )}
-{activeTab === "interactions" && (
+{isMobile && activeTab === "interactions" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2219,91 +2847,7 @@ export default function ContactDetailsModal({
                       </div>
 
                       {/* Log Interaction Form */}
-                      <AnimatePresence>
-                        {isLoggingInteraction && (
-                          <motion.form
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            onSubmit={handleAddInteraction}
-                            className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
-                          >
-                            <div className="grid grid-cols-2 gap-3 pb-3">
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                                  <Calendar className="w-3 h-3" /> {t('modals.contactDetails.date_time')}
-                                </label>
-                                <input
-                                  required
-                                  type="datetime-local"
-                                  value={newInteraction.dateTime}
-                                  onChange={(e) =>
-                                    setNewInteraction((prev) => ({
-                                      ...prev,
-                                      dateTime: e.target.value,
-                                    }))
-                                  }
-                                  className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                                  <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.type')}
-                                </label>
-                                <select
-                                  value={newInteraction.type}
-                                  onChange={(e) =>
-                                    setNewInteraction((prev) => ({
-                                      ...prev,
-                                      type: e.target.value,
-                                    }))
-                                  }
-                                  className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-                                >
-                                  <option value="chat">{t('modals.contactDetails.chat_message')}</option>
-                                  <option value="call">{t('modals.contactDetails.phone_call')}</option>
-                                  <option value="meeting">{t('modals.contactDetails.meeting')}</option>
-                                  <option value="email">{t('modals.contactDetails.email')}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                                <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.content')}
-                              </label>
-                              <textarea
-                                required
-                                placeholder={t('modals.contactDetails.interaction_placeholder')}
-                                value={newInteraction.content}
-                                onChange={(e) =>
-                                  setNewInteraction((prev) => ({
-                                    ...prev,
-                                    content: e.target.value,
-                                  }))
-                                }
-                                className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
-                              />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-1">
-                              <button
-                                type="submit"
-                                disabled={
-                                  submittingInteraction ||
-                                  !newInteraction.content.trim()
-                                }
-                                className="px-4 h-9 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
-                              >
-                                {submittingInteraction ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Send className="w-3.5 h-3.5" />
-                                )}
-                                Log Interaction
-                              </button>
-                            </div>
-                          </motion.form>
-                        )}
-                      </AnimatePresence>
+                      {logInteractionForm}
 
                       <div className="space-y-4">
                         {interactionsLoading ? (
@@ -2326,233 +2870,13 @@ export default function ContactDetailsModal({
                             </p>
                           </div>
                         ) : (
-                          visibleInteractions.map((interaction) => (
-                            <div
-                              key={interaction.id}
-                              className="flex gap-3 group"
-                            >
-                              <div className="shrink-0 mt-0.5">
-                                {interaction.userPhoto ? (
-                                  <img
-                                    src={interaction.userPhoto}
-                                    alt={interaction.userName}
-                                    className="w-8 h-8 rounded-full border border-outline-variant"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                    <UserCircle className="w-5 h-5" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                {editingInteractionId === interaction.id ? (
-                                  <form
-                                    onSubmit={handleUpdateInteraction}
-                                    className="space-y-3 p-3 rounded-3xl bg-surface-container-high border border-primary/20"
-                                  >
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div className="space-y-1">
-                                        <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                                          {t('modals.contactDetails.date')}
-                                        </label>
-                                        <input
-                                          type="datetime-local"
-                                          required
-                                          value={editInteractionData.dateTime}
-                                          onChange={(e) =>
-                                            setEditInteractionData((prev) => ({
-                                              ...prev,
-                                              dateTime: e.target.value,
-                                            }))
-                                          }
-                                          className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
-                                        />
-                                      </div>
-                                      <div className="space-y-1">
-                                        <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                                          {t('modals.contactDetails.type')}
-                                        </label>
-                                        <select
-                                          value={editInteractionData.type}
-                                          onChange={(e) =>
-                                            setEditInteractionData((prev) => ({
-                                              ...prev,
-                                              type: e.target.value,
-                                            }))
-                                          }
-                                          className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
-                                        >
-                                          <option value="chat">
-                                            {t('modals.contactDetails.chat_message')}
-                                          </option>
-                                          <option value="call">
-                                            {t('modals.contactDetails.phone_call')}
-                                          </option>
-                                          <option value="meeting">
-                                            {t('modals.contactDetails.meeting')}
-                                          </option>
-                                          <option value="email">{t('modals.contactDetails.email')}</option>
-                                          <option value="interaction">
-                                            {t('modals.contactDetails.other')}
-                                          </option>
-                                        </select>
-                                      </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                                        {t('modals.contactDetails.content')}
-                                      </label>
-                                      <textarea
-                                        required
-                                        value={editInteractionData.content}
-                                        onChange={(e) =>
-                                          setEditInteractionData((prev) => ({
-                                            ...prev,
-                                            content: e.target.value,
-                                          }))
-                                        }
-                                        className="w-full min-h-[60px] p-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs resize-none"
-                                      />
-                                    </div>
-                                    <div className="flex justify-end gap-2 pt-1 border-t border-outline-variant/30">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setEditingInteractionId(null)
-                                        }
-                                        className="h-7 px-3 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button
-                                        type="submit"
-                                        disabled={
-                                          isUpdatingInteraction ||
-                                          !editInteractionData.content.trim()
-                                        }
-                                        className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-semibold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
-                                      >
-                                        {isUpdatingInteraction ? (
-                                          <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                          t('modals.contactDetails.save')
-                                        )}
-                                      </button>
-                                    </div>
-                                  </form>
-                                ) : (
-                                  <>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs font-semibold text-on-surface  tracking-tight">
-                                          {interaction.userName}
-                                        </span>
-                                        <span className="text-[10px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
-                                          {new Date(
-                                            interaction.dateTime,
-                                          ).toLocaleDateString()}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-2 transition-opacity">
-                                        {(user?.uid === interaction.userId || isAdmin) && (
-                                          <button
-                                            onClick={() => {
-                                              setEditingInteractionId(
-                                                interaction.id,
-                                              );
-                                              setEditInteractionData({
-                                                content: interaction.content,
-                                                dateTime: interaction.dateTime,
-                                                type:
-                                                  interaction.type ||
-                                                  "interaction",
-                                              });
-                                            }}
-                                            className="text-[10px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
-                                          >
-                                            Edit
-                                          </button>
-                                        )}
-                                        {canRemoveInteraction(interaction) && (
-                                          <button
-                                            onClick={() => handleRemoveInteraction(interaction)}
-                                            className="text-[10px] font-semibold text-error hover:opacity-80 focus:outline-none"
-                                          >
-                                            {t('modals.contactDetails.remove_interaction')}
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors whitespace-pre-wrap">
-                                      <Translate showOriginalToggle text={interaction.content} />
-                                    </div>
-                                    <div className="mt-1 flex items-center justify-between gap-2">
-                                      <span className="text-[10px] font-semibold text-on-surface-variant/40  ">
-                                        {interaction.createdAt
-                                          ? t('modals.contactDetails.logged_at').replace('{date}', new Date(interaction.createdAt).toLocaleDateString()).replace('{time}', new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-                                          : t('modals.contactDetails.logging')}
-                                      </span>
-                                      {(interaction.duration ||
-                                        interaction.type) && (
-                                        <span className="text-[10px] font-semibold text-on-surface-variant/40   flex items-center gap-1">
-                                          {interaction.type && (
-                                            <span className="px-1.5 py-0.5 rounded bg-surface-container-high">
-                                              {interaction.type}
-                                            </span>
-                                          )}
-                                          {interaction.duration && (
-                                            <span className="flex items-center gap-0.5">
-                                              <Clock className="w-3 h-3" />
-                                              {interaction.duration}
-                                            </span>
-                                          )}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {/* Walk through this interaction together */}
-                                    <div className="mt-2">
-                                      <button
-                                        onClick={() =>
-                                          setOpenThread(
-                                            openThread === interaction.id
-                                              ? null
-                                              : interaction.id,
-                                          )
-                                        }
-                                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold   text-on-surface-variant/60 hover:text-accent transition-colors"
-                                      >
-                                        <Footprints className="w-3.5 h-3.5" />
-                                        {countFor(threadMessages, interaction.id) > 0
-                                          ? `${t('modals.contactDetails.alongside')} · ${countFor(threadMessages, interaction.id)}`
-                                          : t('modals.contactDetails.think_this_through_together')}
-                                      </button>
-                                      {openThread === interaction.id && (
-                                        <div className="mt-2 pl-3 border-l-2 border-outline-variant/40">
-                                          <Thread
-                                            contactId={contact.id}
-                                            interactionId={interaction.id}
-                                            meStaffId={currentUid ?? ""}
-                                            recipientUid={threadRecipient}
-                                            contactName={contact.name}
-                                            compact
-                                            teamMembers={teamMembers}
-                                            contactStakeholders={contactStakeholdersOf(contact)}
-                                          />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          ))
+                          visibleInteractions.map((interaction) => renderInteraction(interaction))
                         )}
                       </div>
                     </motion.div>
                   )}
 
-                  {activeTab === "thread" && (
+                  {isMobile && activeTab === "thread" && (
                     <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
@@ -2560,21 +2884,12 @@ export default function ContactDetailsModal({
                           {t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
                         </span>
                       </div>
-                      <Thread
-                        contactId={contact.id}
-                        interactionId={null}
-                        meStaffId={currentUid ?? ""}
-                        recipientUid={threadRecipient}
-                        contactName={contact.name}
-                        pane
-                        teamMembers={teamMembers}
-                        contactStakeholders={contactStakeholdersOf(contact)}
-                      />
+                      {renderThread()}
 
                     </div>
                   )}
 
-                  {activeTab === "prayer" && (
+                  {isMobile && activeTab === "prayer" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2594,61 +2909,7 @@ export default function ContactDetailsModal({
                       </div>
 
                       {/* Add Prayer Form */}
-                      <AnimatePresence>
-                        {isAddingPrayer && (
-                          <motion.form
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            onSubmit={handleAddPrayer}
-                            className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
-                          >
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-on-surface-variant px-1">
-                                What are we praying for?
-                              </label>
-                              <input
-                                required
-                                autoFocus
-                                type="text"
-                                placeholder={`e.g. ${firstName}'s family back home`}
-                                value={newPrayer.burden}
-                                onChange={(e) =>
-                                  setNewPrayer((p) => ({ ...p, burden: e.target.value }))
-                                }
-                                className="w-full h-10 px-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-on-surface-variant px-1">
-                                {t('modals.contactDetails.prayer_context_label')} <span className="text-on-surface-variant/60">{t('modals.contactDetails.optional')}</span>
-                              </label>
-                              <textarea
-                                placeholder={t('modals.contactDetails.prayer_context_placeholder')}
-                                value={newPrayer.context}
-                                onChange={(e) =>
-                                  setNewPrayer((p) => ({ ...p, context: e.target.value }))
-                                }
-                                className="w-full min-h-[70px] p-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm resize-none"
-                              />
-                            </div>
-                            <div className="flex justify-end pt-1">
-                              <button
-                                type="submit"
-                                disabled={submittingPrayer || !newPrayer.burden.trim()}
-                                className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-                              >
-                                {submittingPrayer ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Heart className="w-3.5 h-3.5" />
-                                )}
-                                Add prayer
-                              </button>
-                            </div>
-                          </motion.form>
-                        )}
-                      </AnimatePresence>
+                      {addPrayerForm}
 
                       <div className="space-y-3">
                         {prayersLoading ? (
@@ -2665,93 +2926,13 @@ export default function ContactDetailsModal({
                             </p>
                           </div>
                         ) : (
-                          prayers.map((p) => {
-                            const answered = p.status === "answered";
-                            const heldDays = p.date
-                              ? Math.max(
-                                  0,
-                                  Math.floor(
-                                    (Date.now() - new Date(p.date).getTime()) / 86_400_000,
-                                  ),
-                                )
-                              : null;
-                            return (
-                              <div
-                                key={p.id}
-                                className="p-4 rounded-3xl bg-surface-container-high border border-outline-variant/40"
-                              >
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
-                                      answered
-                                        ? "bg-stage-teal-soft text-stage-teal"
-                                        : p.status === "unanswered"
-                                          ? "bg-surface-variant text-on-surface-variant"
-                                          : "bg-stage-violet-soft text-stage-violet",
-                                    )}
-                                  >
-                                    <span
-                                      className={cn(
-                                        "w-1.5 h-1.5 rounded-full",
-                                        answered
-                                          ? "bg-stage-teal"
-                                          : p.status === "unanswered"
-                                            ? "bg-on-surface-variant"
-                                            : "bg-stage-violet",
-                                      )}
-                                    />
-                                    {answered
-                                      ? t('modals.contactDetails.answered')
-                                      : p.status === "unanswered"
-                                        ? t('modals.contactDetails.closed')
-                                        : t('modals.contactDetails.open')}
-                                  </span>
-                                  {heldDays != null && (
-                                    <span className="text-xs text-on-surface-variant/60">
-                                      {t('modals.contactDetails.held')} {heldDays} {heldDays === 1 ? t('modals.contactDetails.day') : t('modals.contactDetails.days')}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
-                                  {p.burden}
-                                </p>
-                                {canUpdatePrayers && (
-                                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                                    <span className="text-[11px] text-on-surface-variant mr-0.5">
-                                      {t('modals.contactDetails.mark')}
-                                    </span>
-                                    {PRAYER_MARK_ORDER.map((s) => (
-                                      <button
-                                        key={s}
-                                        type="button"
-                                        onClick={() =>
-                                          handleUpdatePrayerStatus(
-                                            p,
-                                            p.status === s ? "pending" : s,
-                                          )
-                                        }
-                                        className={cn(
-                                          "text-xs px-2.5 py-1 rounded-full border transition-colors",
-                                          p.status === s
-                                            ? PRAYER_MARK_ON[s]
-                                            : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline",
-                                        )}
-                                      >
-                                        {t('modals.contactDetails.' + (s === 'pending' ? 'unmarked' : s === 'ongoing' ? 'ongoing' : s === 'answered' ? 'answered' : 'archived'))}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
+                          prayers.map((p) => renderPrayerCard(p))
                         )}
                       </div>
                     </motion.div>
                   )}
 
-                  {activeTab === "discussion" && (role === "admin" || isAdmin) && (
+                  {isMobile && activeTab === "discussion" && (role === "admin" || isAdmin) && (
                     <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{t('modals.contactDetails.discussion')}</h3>
@@ -2759,24 +2940,14 @@ export default function ContactDetailsModal({
                           {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
                         </span>
                       </div>
-                      <Thread
-                        contactId={contact.id}
-                        interactionId={null}
-                        meStaffId={currentUid ?? ""}
-                        recipientUid={threadRecipient}
-                        contactName={contact.name}
-                        scope="team"
-                        pane
-                        teamMembers={teamMembers}
-                        contactStakeholders={contactStakeholdersOf(contact)}
-                      />
+                      {renderThread("team")}
 
                     </div>
                   )}
 
 
 
-                  {activeTab === "history" && (
+                  {isMobile && activeTab === "history" && (
                     <div className="cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{t('modals.contactDetails.looking_back')}</h3>
@@ -2814,7 +2985,7 @@ export default function ContactDetailsModal({
                       </div>
                     </div>
                   )}
-                </>
+                </>)
               )}
             </div>
 
@@ -2861,6 +3032,33 @@ export default function ContactDetailsModal({
                 )}
               </button>
             </div>
+
+            {drawerOpen && (
+              <div className="cd-drawer" role="dialog" aria-label={drawerLabel}>
+                <div className="cd-drawer-head">
+                  <div>
+                    <h3 className="cd-sec-title">{drawerLabel}</h3>
+                    <span className="cd-sec-sub">
+                      {drawer === "discussion"
+                        ? `Full-timers only — how the team is thinking about caring for ${firstName}.`
+                        : t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDrawer(null)}
+                    title={t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel)}
+                    aria-label={t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel)}
+                    className="w-9 h-9 shrink-0 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="cd-drawer-body">
+                  {drawer === "discussion" ? renderThread("team") : renderThread()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
