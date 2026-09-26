@@ -25,7 +25,7 @@ describe("partitionAttentionStacks (#595)", () => {
     {
       id: "c_owned",
       name: "Alex Johnson",
-      createdBy: "u3",
+      createdBy: uid,
       createdAt: new Date().toISOString(),
       stage: "Freshman Contact",
     } as Contact,
@@ -77,6 +77,32 @@ describe("partitionAttentionStacks (#595)", () => {
 
     expect(onYou.some((s) => s.contactId === "c_owned")).toBe(true);
     expect(aroundTeam.some((s) => s.contactId === "c_team")).toBe(true);
+  });
+
+  it("routes unanswered questions on untied contacts to aroundTeam, not onYou (#1209)", () => {
+    const threadQuestion: ThreadMessageWithContact = {
+      id: "t_untied_q",
+      contactId: "c_team", // Not owned by u1
+      from: "u2",
+      fromName: "Emerson",
+      kind: "question",
+      body: "Does anyone know when Emerson is graduating?",
+      at: new Date().toISOString(),
+      interactionId: null,
+    };
+
+    const rawItems = buildAttentionItems({
+      role: "admin",
+      uid,
+      contacts: sampleContacts,
+      threads: [threadQuestion],
+    });
+
+    const stacks = attentionStacksFor(rawItems, uid);
+    const { onYou, aroundTeam } = partitionAttentionStacks(stacks, sampleContacts, uid, "admin");
+
+    expect(aroundTeam.some((s) => s.contactId === "c_team")).toBe(true);
+    expect(onYou.some((s) => s.contactId === "c_team")).toBe(false);
   });
 
   it("places direct assigned tasks and notifications into onYou", () => {
