@@ -112,6 +112,14 @@ Activity: Stand up and pair off
       expect(sections[3].passage).toBeDefined();
     });
 
+    it('preserves a trailing section that has only a heading marker without title or content (#1184)', () => {
+      const md = '## First section\nSome text\n\n## ';
+      const sections = parseMeeting(md);
+      expect(sections).toHaveLength(2);
+      expect(sections[0].title).toBe('First section');
+      expect(sections[1].title).toBe('Untitled');
+    });
+
     it('recognises each Prompt kind (question, discuss, activity) and unmarked lines are not Prompts', () => {
       const md = `## Prompt Kinds
 Question: Why did he say that?

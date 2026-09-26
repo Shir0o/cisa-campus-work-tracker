@@ -58,6 +58,12 @@ Activity: Stand up and pair off
 > Second passage
 > Genesis 1:2`,
 
+  // Section with trailing empty heading (#1184).
+  `## Section before empty
+Prose text
+
+## `,
+
   // Rich markdown, read as written (the ADR 0013 grammar).
   `## Mixed flow
 Opening prose paragraph.

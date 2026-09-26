@@ -881,6 +881,26 @@ describe('BibleStudyEditor view', () => {
       expect(within(screen.getByTestId('reader-header')).getByText('02 / 02')).toBeInTheDocument();
     });
 
+    it('jumps the live preview to the newly added section when "+ Add section" is clicked (#1184)', async () => {
+      vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
+        cb({ ...MEETING, md: BLANK_MD, sections: [] });
+        return () => {};
+      });
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const header = screen.getByTestId('reader-header');
+      expect(within(header).getByText('01 / 02')).toBeInTheDocument();
+
+      const addSecBtn = screen.getByRole('button', { name: /\+ Add section/i });
+      fireEvent.click(addSecBtn);
+
+      // Live preview should now be pointing at the newly added Section 3
+      await waitFor(() => {
+        expect(within(screen.getByTestId('reader-header')).getByText('03 / 03')).toBeInTheDocument();
+      });
+    });
+
     it('keeps a revealed Blank revealed after an edit elsewhere in the document', async () => {
       vi.mocked(bibleData.subscribeMeeting).mockImplementation((_db, _meetingId, cb) => {
         cb({ ...MEETING, md: BLANK_MD, sections: [] });
