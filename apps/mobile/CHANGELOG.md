@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.4](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.3...v1.8.4) (2026-09-26)
+
+
+### Bug Fixes
+
+* **rules:** scope interactions and comments reads to the contact's visibility ([#1219](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1219)) ([48c2b5e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/48c2b5e637293eb2f79176c4b613af14f45d6ef8))
+* **rules:** scope threads reads to the contact's visibility ([#1223](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1223)) ([9de6d4e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9de6d4edcf531c5cec662869bc58be4bea0744d0))
+
 ## [1.8.3](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.2...v1.8.3) (2026-09-23)
 
 
