@@ -18,6 +18,7 @@ import {
   where,
   type Firestore,
   type QueryConstraint,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { isTrainee, fullTimerIds } from "../walking";
 import { seesAllPeople, visibleToOf, type AppRole } from "../permissions";
@@ -87,13 +88,76 @@ export function subscribeStages(
 // contacts/{contactId}/interactions/{id} → segment 1 is the contactId.
 const contactIdFromPath = (path: string) => path.split("/")[1] ?? "";
 
-/** Live "last touch" feed — interactions + comments across every contact,
- * flattened to a flat Touch list. Mirrors apps/mobile/src/lib/useMyDayData.ts's
- * interactions/comments collection-group subscriptions. */
+/** How many of each visible person's newest entries a Trainee's fan-out reads. */
+const TIED_PER_CONTACT = 50;
+
+/**
+ * A Trainee's read of one contact subcollection across the people they can
+ * see. The rules deny them the collection-group feed -- it spans people outside
+ * their `visibleTo` -- so this lists each visible contact's subcollection
+ * instead and hands back the merged docs, following the contact list as ties
+ * come and go. A refused per-person read is the race when a tie is removed
+ * (the subcollection listener can hear first); that person's docs are dropped
+ * and the contact list's next snapshot settles it. Mirrored in the web app's
+ * src/lib/contactQueries.ts.
+ */
+export function subscribeTiedSubcollection(
+  db: Firestore,
+  staffId: string,
+  sub: "interactions" | "comments",
+  cb: (docs: QueryDocumentSnapshot[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  const perContact = new Map<string, { docs: QueryDocumentSnapshot[]; unsub: () => void }>();
+  const publish = () => cb([...perContact.values()].flatMap((e) => e.docs));
+
+  const unsubContacts = onSnapshot(
+    query(collection(db, "contacts"), where("visibleTo", "array-contains", staffId)),
+    (snap) => {
+      const ids = new Set(snap.docs.map((d) => d.id));
+      for (const [id, entry] of perContact) {
+        if (!ids.has(id)) {
+          entry.unsub();
+          perContact.delete(id);
+        }
+      }
+      for (const id of ids) {
+        if (perContact.has(id)) continue;
+        const entry = { docs: [] as QueryDocumentSnapshot[], unsub: () => {} };
+        perContact.set(id, entry);
+        entry.unsub = onSnapshot(
+          query(collection(db, "contacts", id, sub), orderBy("createdAt", "desc"), limit(TIED_PER_CONTACT)),
+          (s) => {
+            entry.docs = s.docs;
+            publish();
+          },
+          () => {
+            perContact.delete(id);
+            publish();
+          },
+        );
+      }
+      publish();
+    },
+    (e) => (onError ? onError(e) : console.error(`${sub} subscription error`, e)),
+  );
+
+  return () => {
+    unsubContacts();
+    for (const entry of perContact.values()) entry.unsub();
+  };
+}
+
+/** Live "last touch" feed — interactions + comments across every contact the
+ * reader can see, flattened to a flat Touch list. Mirrors
+ * apps/mobile/src/lib/useMyDayData.ts's collection-group subscriptions; a
+ * Trainee (`scope` not seeing every person) reads through
+ * `subscribeTiedSubcollection` instead, as the rules require. */
 export function subscribeTouches(
   db: Firestore,
   cb: (touches: Touch[]) => void,
   onError?: (e: unknown) => void,
+  scope?: ContactReadScope,
 ): () => void {
   let interactions: Interaction[] = [];
   let comments: Touch[] = [];
@@ -110,33 +174,38 @@ export function subscribeTouches(
   const handleError = (e: unknown) =>
     onError ? onError(e) : console.error("touches subscription error", e);
 
-  const unsubInteractions = onSnapshot(
-    query(collectionGroup(db, "interactions"), orderBy("createdAt", "desc"), limit(500)),
-    (snap) => {
-      interactions = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Record<string, unknown>),
+  const onInteractions = (docs: QueryDocumentSnapshot[]) => {
+    interactions = docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as Record<string, unknown>),
+      contactId: contactIdFromPath(d.ref.path),
+    })) as Interaction[];
+    publish();
+  };
+  const onComments = (docs: QueryDocumentSnapshot[]) => {
+    comments = docs.map((d) => {
+      const data = d.data() as Record<string, unknown>;
+      return {
         contactId: contactIdFromPath(d.ref.path),
-      })) as Interaction[];
-      publish();
-    },
-    handleError,
-  );
-  const unsubComments = onSnapshot(
-    query(collectionGroup(db, "comments"), orderBy("createdAt", "desc"), limit(500)),
-    (snap) => {
-      comments = snap.docs.map((d) => {
-        const data = d.data() as Record<string, unknown>;
-        return {
-          contactId: contactIdFromPath(d.ref.path),
-          ms: new Date((data.createdAt as string) ?? "").getTime(),
-          note: ((data.text as string) ?? "").trim(),
-        };
-      });
-      publish();
-    },
-    handleError,
-  );
+        ms: new Date((data.createdAt as string) ?? "").getTime(),
+        note: ((data.text as string) ?? "").trim(),
+      };
+    });
+    publish();
+  };
+
+  const tiedTo = contactReadConstraints(scope).length > 0 ? scope?.staffId : null;
+  const feed = (sub: "interactions" | "comments", next: (docs: QueryDocumentSnapshot[]) => void) =>
+    tiedTo
+      ? subscribeTiedSubcollection(db, tiedTo, sub, next, handleError)
+      : onSnapshot(
+          query(collectionGroup(db, sub), orderBy("createdAt", "desc"), limit(500)),
+          (snap) => next(snap.docs),
+          handleError,
+        );
+
+  const unsubInteractions = feed("interactions", onInteractions);
+  const unsubComments = feed("comments", onComments);
 
   return () => {
     unsubInteractions();

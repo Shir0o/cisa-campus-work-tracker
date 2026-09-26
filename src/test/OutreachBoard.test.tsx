@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, writeBatch } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot, writeBatch } from 'firebase/firestore';
 import OutreachBoard, { __resetOutreachBoardStageCache } from '../views/OutreachBoard';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -29,9 +29,10 @@ vi.mock('../lib/useMediaQuery', () => ({
 }));
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn((_db, path) => ({ path })),
+  collection: vi.fn((_db, ...segments) => ({ path: segments.join('/') })),
   collectionGroup: vi.fn((_db, group) => ({ group })),
   query: vi.fn((ref) => ref),
+  where: vi.fn(),
   orderBy: vi.fn(),
   addDoc: vi.fn(() => Promise.resolve({ id: 'new-id' })),
   doc: vi.fn((_db, coll, id) => ({ path: `${coll}/${id}`, id })),
@@ -1049,6 +1050,18 @@ describe('OutreachBoard', () => {
 
     await screen.findByText('Bob Park');
     expect(screen.queryByText('Alice Chen')).not.toBeInTheDocument();
+  });
+
+  // The rules deny a Trainee the interactions collection group (it spans
+  // people outside their visibleTo), so "last connected" reads each visible
+  // person's interactions instead.
+  it('reads a Trainee\'s last touches through their visible contacts, never the collection group', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    (useAuth as any).mockReturnValue({ isAdmin: false, user: { uid: 'trainee-1' }, role: 'manager', effectiveUserId: 'trainee-1' });
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+    await waitFor(() => expect(collection).toHaveBeenCalledWith(expect.anything(), 'contacts', mockContacts[0].id, 'interactions'));
+    expect(collectionGroup).not.toHaveBeenCalledWith(expect.anything(), 'interactions');
   });
 
   it('renders OutreachBoardMobile on mobile viewport even while loading', async () => {

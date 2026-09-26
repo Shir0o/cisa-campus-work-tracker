@@ -20,6 +20,7 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn().mockReturnValue('mock-collection'),
   collectionGroup: vi.fn().mockReturnValue('mock-collection-group'),
   query: vi.fn().mockReturnValue('mock-query'),
+  where: vi.fn(),
   orderBy: vi.fn(),
   onSnapshot: vi.fn(),
   limit: vi.fn(),
@@ -438,6 +439,20 @@ describe('AttachDataModal Component', () => {
     expect(await screen.findByText(new RegExp(`No ${plural} found matching your query`, 'i'))).toBeInTheDocument();
     expect(errSpy).toHaveBeenCalled();
     errSpy.mockRestore();
+  });
+
+  // The rules deny a Trainee the interactions collection group (it spans
+  // people outside their visibleTo), so their Interaction tab lists each
+  // visible person's interactions instead.
+  it('lists a Trainee\'s interactions through their visible contacts, never the collection group', async () => {
+    (useAuth as any).mockReturnValue({ role: 'manager', user: { uid: 'trainee-1' } });
+    // One seeded row stands in for both the visible contact and its interaction.
+    setupOnSnapshot([{ id: 'c1', content: 'Coffee on the quad', userName: 'Tess', dateTime: '2026-06-01' }]);
+    render(<AttachDataModal isOpen={true} onClose={mockOnClose} onAttach={mockOnAttach} />);
+    fireEvent.click(screen.getByText('Interaction'));
+    expect(await screen.findByText('Coffee on the quad')).toBeInTheDocument();
+    expect(firestore.collection).toHaveBeenCalledWith('mock-db', 'contacts', 'c1', 'interactions');
+    expect(firestore.collectionGroup).not.toHaveBeenCalled();
   });
 
   it('clears items when an admin-only tab becomes unavailable after a role change', async () => {

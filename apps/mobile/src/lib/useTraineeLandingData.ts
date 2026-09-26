@@ -2,7 +2,7 @@
 // derivations in the web app's src/views/landings/LandingTrainee.tsx, using
 // @cisa/core's pure derivations as the shared behavior oracle.
 import { useEffect, useMemo, useState } from 'react';
-import { collection, collectionGroup, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import {
   buildQueue,
   fullTimerIds,
@@ -32,6 +32,7 @@ import {
   updatePersonalPrayer as updatePersonalPrayerDoc,
 } from './data/personalPrayers';
 import { subscribeAllThreads } from './data/threads';
+import { subscribeTiedSubcollection } from './data/contacts';
 import { useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
 import { useQueuePrefs } from './queuePrefs';
@@ -108,25 +109,21 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       (snap) => setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Task[]),
       (e) => onLoadError(e, 'tasks'),
     );
-    // The 500 cap is deliberate, and matches useMyDayData: this is a LIVE
-    // collection-group subscription over every contact's interactions, so
-    // dropping the limit would stream the whole team's history into a phone.
-    // What it costs when a busy team pushes this trainee's own people past the
-    // newest 500: the "you last talked …" line on a follow-up/quiet card goes
-    // missing (`last` is null and both cards already render without it). No
-    // card appears or disappears — those come from tasks/threads/contacts/
-    // prayers, which are each scoped to this user.
-    const unsubInteractions = onSnapshot(
-      query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
-      (snap) =>
+    // Every interaction on the people this trainee can see. The rules deny a
+    // Trainee the collection-group feed (it spans people outside their
+    // `visibleTo`), so this reads each visible person's newest interactions.
+    const unsubInteractions = subscribeTiedSubcollection(
+      uid,
+      'interactions',
+      (docs) =>
         setInteractions(
-          snap.docs.map((d) => ({
+          docs.map((d) => ({
             id: d.id,
             ...(d.data() as Record<string, unknown>),
             contactId: contactIdFromPath(d.ref.path),
           })) as Interaction[],
         ),
-      (e) => onLoadError(e, 'interactions (collectionGroup)'),
+      (e) => onLoadError(e, 'interactions'),
     );
     // End of queue only: the one-off dates worth knowing.
     const unsubEvents = onSnapshot(
