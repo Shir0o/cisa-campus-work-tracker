@@ -192,7 +192,7 @@ describe('PublicStudyReader (above the seam)', () => {
     );
 
     expect(screen.getAllByText(/Older Week/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(/Week of/);
+    expect(screen.queryByTestId('stale-date-chip')).toBeNull();
   });
 
   it('shows the newest week with its date when a permalink names a week that does not exist', async () => {
@@ -207,7 +207,7 @@ describe('PublicStudyReader (above the seam)', () => {
     );
 
     expect(screen.getAllByText(/Peace that holds/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByTestId('stale-date-chip')).toHaveTextContent(/Most recent ·/);
+    expect(screen.queryByTestId('stale-date-chip')).toBeNull();
   });
 
   it('handles a permalink for a Study that does not exist instead of rendering an empty page', async () => {

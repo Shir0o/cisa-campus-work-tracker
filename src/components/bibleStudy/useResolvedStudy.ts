@@ -109,12 +109,10 @@ export function useResolvedStudy(
   // The stale-week treatment condenses into a date chip inside the sticky
   // header (ADR 0011 §3 — falling back is correct; falling back silently is
   // not), so a reader on any panel can still see the week is old.
+  // Permalinks (#1207) suppress the chip entirely.
   const staleDateLabel = (() => {
-    if (!meeting || !isStale) return null;
-    const prefix =
-      isPermalink && permalink?.date && meetings.some((m) => m.date === permalink.date)
-        ? 'Week of '
-        : 'Most recent · ';
+    if (isPermalink || !meeting || !isStale) return null;
+    const prefix = 'Most recent · ';
     const formatted = meeting.date
       ? (() => {
           try {
