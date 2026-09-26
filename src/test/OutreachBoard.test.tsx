@@ -188,6 +188,9 @@ describe('OutreachBoard', () => {
 
     // Default onSnapshot: all empty
     setupOnSnapshotWith();
+
+    const { useMediaQuery } = await import('../lib/useMediaQuery');
+    vi.mocked(useMediaQuery).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -1072,5 +1075,25 @@ describe('OutreachBoard', () => {
     await waitFor(() => {
       expect(document.querySelector('.jrnm')).toBeTruthy();
     });
+  });
+
+  it('scopes contacts query to visibleTo for a Trainee', async () => {
+    const { collection, query, where } = await import('firebase/firestore');
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    (useAuth as any).mockReturnValue({
+      isAdmin: false,
+      user: { uid: 'trainee-enoch' },
+      role: 'manager',
+      effectiveUserId: 'trainee-enoch',
+    });
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const contactsQueryCall = vi.mocked(query).mock.calls.find(
+      (call) => (call[0] as any)?.path === 'contacts',
+    );
+    expect(contactsQueryCall).toBeDefined();
+    expect(contactsQueryCall?.length).toBeGreaterThan(1);
+    expect(where).toHaveBeenCalledWith('visibleTo', 'array-contains', 'trainee-enoch');
   });
 });

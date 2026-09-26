@@ -41,7 +41,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { Translate } from '../components/Translate';
 import { journeyContacts, seesAllPeople } from '../lib/permissions';
-import { subscribeTiedSubcollection } from '../lib/contactQueries';
+import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../lib/contactQueries';
 import {
   collection,
   collectionGroup,
@@ -332,7 +332,10 @@ export default function OutreachBoard() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, 'contacts'));
+    const q = query(
+      collection(db, 'contacts'),
+      ...contactVisibilityConstraints(role, effectiveUserId || user?.uid),
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const contactData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -344,7 +347,7 @@ export default function OutreachBoard() {
     }, (e) => onLoadError(e, 'contacts'));
 
     return () => unsubscribe();
-  }, [activeId]);
+  }, [role, effectiveUserId, user?.uid, activeId]);
 
   const [boardContacts, setBoardContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
