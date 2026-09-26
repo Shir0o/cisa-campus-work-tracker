@@ -1403,7 +1403,7 @@ Analyze the input text carefully and extract the following:
           }
         }
       } catch (err) {
-        console.warn(`Failed to check groupme_aliases for senderId ${senderId}:`, err);
+        console.warn("Failed to check groupme_aliases for senderId:", err);
       }
     }
 
