@@ -31,7 +31,7 @@ import {
   subscribePersonalPrayers,
   updatePersonalPrayer as updatePersonalPrayerDoc,
 } from './data/personalPrayers';
-import { subscribeAllThreads } from './data/threads';
+import { subscribeTiedThreads } from './data/threads';
 import { subscribeTiedSubcollection } from './data/contacts';
 import { useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
@@ -98,10 +98,11 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       (e) => onLoadError(e, 'prayers'),
     );
     const unsubPersonalPrayers = subscribePersonalPrayers(uid, setPersonalPrayers);
-    // Quiet on error: before the threads collection-group rule is deployed this
-    // read is permission-denied — degrade to an empty "what's waiting" section
-    // rather than surfacing a load error for the whole screen.
-    const unsubThreads = subscribeAllThreads(setThreads, () => setThreads([]));
+    // Thread messages on the people this trainee can see; the rules deny a
+    // Trainee the threads collection group. Quiet on error — degrade to an
+    // empty "what's waiting" section rather than surfacing a load error for
+    // the whole screen.
+    const unsubThreads = subscribeTiedThreads(uid, setThreads, () => setThreads([]));
     // The focus queue's "due" and "follow-up" cards, and the "you last talked …"
     // line under them.
     const unsubTasks = onSnapshot(

@@ -778,6 +778,55 @@ describeRules('Firestore Security Rules', () => {
     }
   });
 
+  // Threads are part of a contact's detail page too. The nested rule already
+  // checks the parent contact; the collection-group list could not, so it let
+  // a Trainee list every person's thread messages.
+  describe('Threads follow their contact\'s visibility', () => {
+    const seedThreads = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: [] });
+        for (const contactId of ['tied', 'untied']) {
+          await setDoc(doc(fs, `contacts/${contactId}/threads/t1`), {
+            from: 'admin1', fromName: 'Admin', kind: 'comment', body: 'Walking with you',
+            at: '2026-01-01T00:00:00.000Z', interactionId: null, scope: null,
+          });
+        }
+      });
+    };
+    const feed = (db: ReturnType<typeof getFirestore>) =>
+      query(collectionGroup(db, 'threads'), where('scope', '==', null));
+    const forContact = (db: ReturnType<typeof getFirestore>, contactId: string) =>
+      query(collection(db, 'contacts', contactId, 'threads'), where('scope', '==', null));
+
+    it('lets a Trainee read threads only of a person they can see', async () => {
+      await seedThreads();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(getDoc(doc(trainee, 'contacts/tied/threads/t1')));
+      await assertSucceeds(getDocs(forContact(trainee, 'tied')));
+      await assertFails(getDoc(doc(trainee, 'contacts/untied/threads/t1')));
+      await assertFails(getDocs(forContact(trainee, 'untied')));
+    });
+
+    it('denies a Trainee the threads collection-group feed', async () => {
+      await seedThreads();
+      await assertFails(getDocs(feed(getFirestore({ uid: 'manager1' }))));
+    });
+
+    it('keeps every person\'s threads listable for roles that see every person', async () => {
+      await seedThreads();
+      for (const uid of ['admin1', 'operator1', 'viewer1']) {
+        const all = await assertSucceeds(getDocs(feed(getFirestore({ uid }))));
+        expect(all.docs.map((d) => d.ref.path).sort()).toEqual(['contacts/tied/threads/t1', 'contacts/untied/threads/t1']);
+      }
+    });
+  });
+
   // The founders list is written once at creation (#1049) and backfilled for
   // older contacts (#1050). It is immutable: any update that touches it is a
   // ghost field for everyone except a Full-timer's genuine-mistake correction,
@@ -2572,7 +2621,9 @@ describeRules('Firestore Security Rules', () => {
       expect(adminIds).toContain('open4');
       expect(adminIds).toContain('team4');
 
-      for (const nonAdminUid of ['operator1', 'manager1']) {
+      // A Trainee (manager1) may not list the collection group at all; see
+      // 'Threads follow their contact's visibility'.
+      for (const nonAdminUid of ['operator1']) {
         const nonAdminDb = getFirestore({ uid: nonAdminUid });
         // Non-admins are denied when attempting to query team-scoped messages
         await assertFails(getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '==', 'team'))));

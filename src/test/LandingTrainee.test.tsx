@@ -141,7 +141,8 @@ vi.mock('../lib/threads', () => ({
   threadsFor: (msgs: any[]) => msgs,
   countFor: (msgs: any[]) => msgs.length,
   contactStakeholdersOf: vi.fn((c) => c || {}),
-  subscribeAllThreads: vi.fn((callback) => {
+  subscribeAllThreads: vi.fn(() => () => {}),
+  subscribeTiedThreads: vi.fn((_staffId, callback) => {
     callback([
       {
         id: 't1',
@@ -261,6 +262,23 @@ describe('LandingTrainee component', () => {
     fireEvent.click(prayerTitle);
     const deleteBtn = screen.getAllByRole('button', { name: /^Delete$/i })[0];
     if (deleteBtn) fireEvent.click(deleteBtn);
+  });
+
+  // The rules deny a Trainee the threads collection group (it spans people
+  // outside their visibleTo), so "What's waiting" reads each visible person's.
+  it('reads the Trainee\'s threads through their visible contacts, never the collection group', async () => {
+    const threads = await import('../lib/threads');
+    vi.mocked(threads.subscribeAllThreads).mockClear();
+    vi.mocked(threads.subscribeTiedThreads).mockClear();
+    mockAuthValue = {
+      user: { uid: 'u-trainee', displayName: 'Trainee Sam' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee',
+      effectiveUserName: 'Trainee Sam',
+    };
+    render(<MemoryRouter><LandingTrainee /></MemoryRouter>);
+    await waitFor(() => expect(threads.subscribeTiedThreads).toHaveBeenCalledWith('u-trainee', expect.any(Function)));
+    expect(threads.subscribeAllThreads).not.toHaveBeenCalled();
   });
 
   it('renders impersonated persona name and scopes data by effectiveUserId when impersonating', async () => {

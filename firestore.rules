@@ -1217,11 +1217,14 @@ service cloud.firestore {
       allow list: if isApprovedUser() && seesAllContacts();
     }
     // Walking-together threads — collection-group list for the full-timer inbox
-    // (My Day) and the trainee cockpit, which read thread messages across all
-    // contacts at once. The nested contacts/{id}/threads rule governs get/write.
-    // Team-scope Discussion is only visible to Full-timers here too.
+    // (My Day), which reads thread messages across all contacts at once. Like
+    // interactions and comments it is for the roles that see every person; a
+    // Trainee lists one visible contact's threads at a time through the nested
+    // contacts/{id}/threads rule, which also governs get/write. Team-scope
+    // Discussion is only visible to Full-timers here too.
     match /{path=**}/threads/{threadId} {
-      allow list: if isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin());
+      allow list: if isApprovedUser() && seesAllContacts() &&
+                     (resource.data.get('scope', '') != 'team' || isAdmin());
     }
     // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
     // Scoped to the requester's own RSVPs: the query filters on the `uid` field,

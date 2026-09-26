@@ -13,6 +13,7 @@ import {
   orderBy,
   query,
   type Firestore,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import {
   THREAD_NOTIFY_TITLE,
@@ -22,6 +23,7 @@ import {
   type ThreadMessage,
   type ThreadMessageWithContact,
 } from "../threads";
+import { subscribeTiedSubcollection } from "./contacts";
 
 const col = (db: Firestore, contactId: string) => collection(db, "contacts", contactId, "threads");
 const msgRef = (db: Firestore, contactId: string, id: string) =>
@@ -65,7 +67,23 @@ export async function deleteThreadMessage(
   await deleteDoc(msgRef(db, contactId, messageId));
 }
 
-/** Live subscription to every thread message across all contacts, tagged with contactId. */
+const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContact => {
+  const data = d.data() as Partial<ThreadMessage>;
+  return {
+    id: d.id,
+    contactId: d.ref.parent.parent?.id ?? "",
+    interactionId: data.interactionId ?? null,
+    from: data.from ?? "",
+    fromName: data.fromName ?? "",
+    kind: (data.kind as ThreadKind) ?? "comment",
+    body: data.body ?? "",
+    at: data.at ?? new Date().toISOString(),
+  };
+};
+
+/** Live subscription to every thread message across all contacts, tagged with
+ * contactId. The rules allow this only for roles that see every person; a
+ * Trainee reads through `subscribeTiedThreads`. */
 export function subscribeAllThreads(
   db: Firestore,
   cb: (messages: ThreadMessageWithContact[]) => void,
@@ -73,24 +91,20 @@ export function subscribeAllThreads(
 ): () => void {
   return onSnapshot(
     query(collectionGroup(db, "threads")),
-    (snap) =>
-      cb(
-        snap.docs.map((d) => {
-          const data = d.data() as Partial<ThreadMessage>;
-          return {
-            id: d.id,
-            contactId: d.ref.parent.parent?.id ?? "",
-            interactionId: data.interactionId ?? null,
-            from: data.from ?? "",
-            fromName: data.fromName ?? "",
-            kind: (data.kind as ThreadKind) ?? "comment",
-            body: data.body ?? "",
-            at: data.at ?? new Date().toISOString(),
-          };
-        }),
-      ),
+    (snap) => cb(snap.docs.map(toMessageWithContact)),
     (e) => (onError ? onError(e) : console.error("all-threads subscription error", e)),
   );
+}
+
+/** A Trainee's thread messages: each visible person's newest, tagged with
+ * contactId. Mirrors the web app's src/lib/threads.ts. */
+export function subscribeTiedThreads(
+  db: Firestore,
+  staffId: string,
+  cb: (messages: ThreadMessageWithContact[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return subscribeTiedSubcollection(db, staffId, "threads", (docs) => cb(docs.map(toMessageWithContact)), onError);
 }
 
 export interface ThreadNotifyPayload {

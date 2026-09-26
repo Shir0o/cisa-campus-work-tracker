@@ -30,7 +30,7 @@ import {
 import { updatePrayerStatus } from "../../lib/prayers";
 import { openMessage } from "../../lib/messaging";
 import { isFullTimer } from "../../lib/walking";
-import { subscribeAllThreads, type ThreadMessageWithContact } from "../../lib/threads";
+import { subscribeTiedThreads, type ThreadMessageWithContact } from "../../lib/threads";
 import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
 import FirstRunCard from "../../components/landing/FirstRunCard";
@@ -192,18 +192,19 @@ export default function LandingTrainee() {
     return subscribePersonalPrayers(uid, setPersonalPrayers);
   }, [uid]);
 
-  // Thread messages across all contacts — powers "What's waiting on you" and the
-  // weighed-in status. Needs the threads collection-group rule deployed; until
-  // then it's permission-denied and stays empty (section simply doesn't render),
-  // so degrade quietly rather than surfacing a load error.
-  useEffect(
-    () =>
-      subscribeAllThreads((messages) =>
-        // Trainees never see Full-timer-only Discussion scope.
-        setThreads(messages.filter((m) => m.scope !== "team")),
-      ),
-    [],
-  );
+  // Thread messages on the people this trainee can see — powers "What's
+  // waiting on you" and the weighed-in status. The rules deny a Trainee the
+  // threads collection group (it spans people outside their visibleTo), so this
+  // reads each visible person's. A failed read leaves the section empty
+  // (it simply doesn't render), so degrade quietly rather than surfacing a
+  // load error.
+  useEffect(() => {
+    if (!uid) return;
+    return subscribeTiedThreads(uid, (messages) =>
+      // Trainees never see Full-timer-only Discussion scope.
+      setThreads(messages.filter((m) => m.scope !== "team")),
+    );
+  }, [uid]);
 
   // Your people — the contacts you created or co-created, longest-since-seen first.
   const myPeople = useMemo(() => {

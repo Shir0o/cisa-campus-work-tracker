@@ -37,12 +37,13 @@ const TIED_PER_CONTACT = 50;
  * instead and hands back the merged docs, following the contact list as ties
  * come and go. A refused per-person read is the race when a tie is removed
  * (the subcollection listener can hear first); that person's docs are dropped
- * and the contact list's next snapshot settles it. Mirrors
+ * and the contact list's next snapshot settles it. Thread messages carry `at`
+ * rather than `createdAt`, so a threads fan-out orders by that. Mirrors
  * packages/core/src/data/contacts.ts.
  */
 export function subscribeTiedSubcollection(
   staffId: string,
-  sub: 'interactions' | 'comments',
+  sub: 'interactions' | 'comments' | 'threads',
   cb: (docs: QueryDocumentSnapshot[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
@@ -64,7 +65,7 @@ export function subscribeTiedSubcollection(
         const entry = { docs: [] as QueryDocumentSnapshot[], unsub: () => {} };
         perContact.set(id, entry);
         entry.unsub = onSnapshot(
-          query(collection(db, 'contacts', id, sub), orderBy('createdAt', 'desc'), limit(TIED_PER_CONTACT)),
+          query(collection(db, 'contacts', id, sub), orderBy(sub === 'threads' ? 'at' : 'createdAt', 'desc'), limit(TIED_PER_CONTACT)),
           (s) => {
             entry.docs = s.docs;
             publish();

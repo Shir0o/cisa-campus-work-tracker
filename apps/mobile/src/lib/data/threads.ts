@@ -13,6 +13,16 @@ export function subscribeAllThreads(
   return core.subscribeAllThreads(db, cb, onError);
 }
 
+/** A Trainee's thread messages across the people they can see (the rules deny
+ * them the collection-group feed). */
+export function subscribeTiedThreads(
+  staffId: string,
+  cb: (messages: ThreadMessageWithContact[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeTiedThreads(db, staffId, cb, onError);
+}
+
 /** Live subscription to a single contact's thread messages (Contact Detail's
  * "Alongside" tab). */
 export function subscribeThreads(

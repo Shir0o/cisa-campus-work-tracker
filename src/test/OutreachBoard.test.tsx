@@ -1064,6 +1064,24 @@ describe('OutreachBoard', () => {
     expect(collectionGroup).not.toHaveBeenCalledWith(expect.anything(), 'interactions');
   });
 
+  // Same for threads, which feed "last connected" too.
+  it('reads a Trainee\'s thread touches through their visible contacts, never the collection group', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    (useAuth as any).mockReturnValue({ isAdmin: false, user: { uid: 'trainee-1' }, role: 'manager', effectiveUserId: 'trainee-1' });
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+    await waitFor(() => expect(collection).toHaveBeenCalledWith(expect.anything(), 'contacts', mockContacts[0].id, 'threads'));
+    expect(collectionGroup).not.toHaveBeenCalledWith(expect.anything(), 'threads');
+  });
+
+  it('keeps the threads collection group for a reader who sees every person', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    (useAuth as any).mockReturnValue({ isAdmin: true, user: { uid: 'admin-1' }, role: 'admin', effectiveUserId: 'admin-1' });
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+    await waitFor(() => expect(collectionGroup).toHaveBeenCalledWith(expect.anything(), 'threads'));
+  });
+
   it('renders OutreachBoardMobile on mobile viewport even while loading', async () => {
     const { useMediaQuery } = await import('../lib/useMediaQuery');
     vi.mocked(useMediaQuery).mockReturnValue(true);
