@@ -61,7 +61,7 @@ import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { useMediaQuery } from '../lib/useMediaQuery';
-import { subscribeAllThreads } from '../lib/threads';
+import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
 import OutreachBoardMobile from './OutreachBoardMobile';
 
 // ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
@@ -385,7 +385,8 @@ export default function OutreachBoard() {
         )
       : subscribeTiedSubcollection(staffId, 'interactions', onInteractions, (e) => onLoadError(e, 'interactions'));
 
-    const unsubThreads = subscribeAllThreads((messages) => {
+    // Threads likewise: a Trainee reads each visible person's.
+    const onThreads = (messages: ThreadMessageWithContact[]) => {
       // Threads are the single per-person conversation surface. Team-scope
       // Discussion messages are Full-timer-only, so don't surface them as a
       // public "last connected" touch.
@@ -397,7 +398,10 @@ export default function OutreachBoard() {
           note: m.body.trim(),
         }));
       publish();
-    });
+    };
+    const unsubThreads = seesAllPeople(role) || !staffId
+      ? subscribeAllThreads(onThreads)
+      : subscribeTiedThreads(staffId, onThreads);
 
     return () => {
       unsubInteractions();

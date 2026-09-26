@@ -8,10 +8,12 @@ import {
   orderBy,
   query,
   updateDoc,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
 import { isFullTimer } from "./walking";
+import { subscribeTiedSubcollection } from "./contactQueries";
 
 // "Walking together" threads — the single per-person conversation surface,
 // attached to a contact and (optionally) to one logged interaction. Stored as:
@@ -101,7 +103,30 @@ export function subscribeThreads(
 /** A thread message tagged with the contact it belongs to. */
 export type ThreadMessageWithContact = ThreadMessage & { contactId: string };
 
-/** Subscribe to all thread messages across every contact via collectionGroup. */
+const toMessageWithContact = (d: QueryDocumentSnapshot): ThreadMessageWithContact => {
+  const data = d.data() as Partial<ThreadMessage>;
+  const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
+  return {
+    id: d.id,
+    contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "",
+    interactionId: data.interactionId ?? null,
+    parentId: data.parentId ?? null,
+    scope: (data.scope as "team") ?? null,
+    from: data.from ?? "",
+    fromName: data.fromName ?? "",
+    kind: (data.kind as ThreadKind) ?? "comment",
+    body: data.body ?? "",
+    at: data.at ?? new Date().toISOString(),
+    mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
+    closedBy: data.closedBy ?? null,
+    closedByName: data.closedByName ?? null,
+    closedAt: data.closedAt ?? null,
+  };
+};
+
+/** Subscribe to all thread messages across every contact via collectionGroup.
+ * The rules allow this only for roles that see every person; a Trainee reads
+ * through `subscribeTiedThreads`. */
 export function subscribeAllThreads(
   onUpdate: (messages: ThreadMessageWithContact[]) => void,
   onError?: (err: unknown) => void,
@@ -112,31 +137,24 @@ export function subscribeAllThreads(
   );
   return onSnapshot(
     q,
-    (snap) =>
-      onUpdate(
-        snap.docs.map((d) => {
-          const data = d.data() as Partial<ThreadMessage>;
-          const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
-          return {
-            id: d.id,
-            contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "",
-            interactionId: data.interactionId ?? null,
-            parentId: data.parentId ?? null,
-            scope: (data.scope as "team") ?? null,
-            from: data.from ?? "",
-            fromName: data.fromName ?? "",
-            kind: (data.kind as ThreadKind) ?? "comment",
-            body: data.body ?? "",
-            at: data.at ?? new Date().toISOString(),
-            mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
-            closedBy: data.closedBy ?? null,
-            closedByName: data.closedByName ?? null,
-            closedAt: data.closedAt ?? null,
-          };
-        }),
-      ),
+    (snap) => onUpdate(snap.docs.map(toMessageWithContact)),
     (e) =>
       onError ? onError(e) : console.error("all-threads subscription error", e),
+  );
+}
+
+/** A Trainee's thread messages: each visible person's newest, merged and
+ * newest first like `subscribeAllThreads`. */
+export function subscribeTiedThreads(
+  staffId: string,
+  onUpdate: (messages: ThreadMessageWithContact[]) => void,
+  onError?: (err: unknown) => void,
+): () => void {
+  return subscribeTiedSubcollection(
+    staffId,
+    "threads",
+    (docs) => onUpdate(docs.map(toMessageWithContact).sort((a, b) => b.at.localeCompare(a.at))),
+    onError,
   );
 }
 

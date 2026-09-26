@@ -1001,6 +1001,25 @@ describe('Directory', () => {
     expect(collectionGroup).not.toHaveBeenCalledWith({}, 'interactions');
   });
 
+  // Same for threads: the collection group spans people outside a Trainee's
+  // visibleTo, so their thread touches come from each visible person.
+  it('reads a Trainee\'s thread touches through their visible contacts, never the collection group', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'trainee-1', displayName: 'Trainee' },
+      effectiveUserId: 'trainee-1',
+      role: 'manager',
+    });
+    render(<Directory />);
+    await waitFor(() => expect(collection).toHaveBeenCalledWith({}, 'contacts', mockContacts[0].id, 'threads'));
+    expect(collectionGroup).not.toHaveBeenCalledWith({}, 'threads');
+  });
+
+  it('keeps the threads collection group for a reader who sees every person', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    render(<Directory />);
+    await waitFor(() => expect(collectionGroup).toHaveBeenCalledWith({}, 'threads'));
+  });
+
   it('keeps the interactions collection group for a reader who sees every person', async () => {
     (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
     render(<Directory />);

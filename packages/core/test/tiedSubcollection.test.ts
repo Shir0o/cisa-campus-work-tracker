@@ -16,6 +16,7 @@ const firestoreMock = vi.hoisted(() => ({
 vi.mock('firebase/firestore', () => firestoreMock);
 
 import { subscribeTiedSubcollection, subscribeTouches } from '../src/data/contacts';
+import { subscribeTiedThreads } from '../src/data/threads';
 
 const listenerAt = (path: string) => listeners.filter((l) => l.path === path).pop()!;
 const contactsSnap = (ids: string[]) => ({ docs: ids.map((id) => ({ id })) });
@@ -51,6 +52,15 @@ describe('subscribeTiedSubcollection', () => {
       'contacts/b/interactions/i2',
       'contacts/b/interactions/i3',
     ]);
+  });
+
+  it('orders a threads fan-out by `at`, the field thread messages carry', () => {
+    subscribeTiedSubcollection({} as never, 'trainee1', 'threads', vi.fn());
+    listenerAt('contacts').next(contactsSnap(['a']));
+
+    expect(listenerAt('contacts/a/threads')).toBeDefined();
+    expect(firestoreMock.orderBy).toHaveBeenCalledWith('at', 'desc');
+    expect(firestoreMock.orderBy).not.toHaveBeenCalledWith('createdAt', 'desc');
   });
 
   it('follows the contact list: drops a person who is no longer visible and adds a new one', () => {
@@ -119,6 +129,27 @@ describe('subscribeTouches', () => {
     expect(cb.mock.lastCall![0]).toEqual([
       { contactId: 'a', ms: Date.parse('2026-01-01T00:00:00Z'), note: 'Coffee' },
       { contactId: 'a', ms: Date.parse('2026-01-02T00:00:00Z'), note: 'Note' },
+    ]);
+  });
+});
+
+describe('subscribeTiedThreads', () => {
+  it('reads a Trainee\'s threads through their visible contacts only, tagged with the contact', () => {
+    const cb = vi.fn();
+    subscribeTiedThreads({} as never, 'trainee1', cb);
+
+    expect(firestoreMock.collectionGroup).not.toHaveBeenCalled();
+    listenerAt('contacts').next(contactsSnap(['a']));
+    listenerAt('contacts/a/threads').next({
+      docs: [{
+        id: 'm1',
+        ref: { path: 'contacts/a/threads/m1', parent: { parent: { id: 'a' } } },
+        data: () => ({ from: 'u1', fromName: 'Ada', kind: 'question', body: 'q', at: '2026-01-01T00:00:00.000Z', interactionId: null }),
+      }],
+    });
+
+    expect(cb.mock.lastCall![0]).toEqual([
+      { id: 'm1', contactId: 'a', interactionId: null, from: 'u1', fromName: 'Ada', kind: 'question', body: 'q', at: '2026-01-01T00:00:00.000Z' },
     ]);
   });
 });

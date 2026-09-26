@@ -50,7 +50,7 @@ import { useUndoSnack } from '../hooks/useUndoSnack';
 import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { bucketFor } from '../components/landing/dateBuckets';
-import { subscribeAllThreads } from '../lib/threads';
+import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
 import { contactKind, kindLabelKey, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
@@ -293,7 +293,8 @@ export default function Directory() {
         )
       : subscribeTiedSubcollection(staffId, 'interactions', onInteractions, (e) => onLoadError(e, 'interactions'));
 
-    const unsubThreads = subscribeAllThreads((messages) => {
+    // Threads likewise: a Trainee reads each visible person's.
+    const onThreads = (messages: ThreadMessageWithContact[]) => {
       // Threads are the single per-person conversation surface. Team-scope
       // Discussion messages are Full-timer-only, so don't surface them as a
       // public "last connected" touch.
@@ -305,7 +306,10 @@ export default function Directory() {
           note: m.body.trim(),
         }));
       publish();
-    });
+    };
+    const unsubThreads = seesAllPeople(role) || !staffId
+      ? subscribeAllThreads(onThreads)
+      : subscribeTiedThreads(staffId, onThreads);
 
     return () => {
       unsubInteractions();

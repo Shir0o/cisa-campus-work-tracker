@@ -10,6 +10,7 @@ import {
   deleteThreadMessage,
   subscribeThreads,
   subscribeAllThreads,
+  subscribeTiedThreads,
   useThreads,
   useAllThreads,
   type ThreadMessage,
@@ -27,6 +28,9 @@ vi.mock("firebase/firestore", () => ({
   orderBy: vi.fn((field, dir) => ({ field, dir })),
   query: vi.fn((ref) => ref),
 }));
+
+const tiedMock = vi.hoisted(() => ({ subscribeTiedSubcollection: vi.fn(() => () => {}) }));
+vi.mock("../lib/contactQueries", () => tiedMock);
 
 vi.mock("../lib/firebase", () => ({
   db: {},
@@ -360,6 +364,31 @@ describe("subscribeAllThreads", () => {
     expect(messages[0]).toMatchObject({ id: "m1", contactId: "c1", interactionId: "i9", kind: "question" });
     // malformed doc → empty contactId + safe field defaults
     expect(messages[1]).toMatchObject({ id: "m2", contactId: "", kind: "comment", from: "" });
+  });
+});
+
+describe("subscribeTiedThreads", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads a Trainee's threads through their visible contacts, newest first", () => {
+    const cb = vi.fn();
+    const onError = vi.fn();
+    subscribeTiedThreads("trainee1", cb, onError);
+
+    expect(onSnapshot).not.toHaveBeenCalled();
+    expect(tiedMock.subscribeTiedSubcollection).toHaveBeenCalledWith("trainee1", "threads", expect.any(Function), onError);
+
+    const next = (tiedMock.subscribeTiedSubcollection.mock.calls[0] as unknown[])[2] as (docs: unknown[]) => void;
+    const docAt = (id: string, contactId: string, at: string) => ({
+      id,
+      ref: { path: `contacts/${contactId}/threads/${id}`, parent: { parent: { id: contactId } } },
+      data: () => ({ from: "u1", fromName: "Ada", kind: "note", body: id, at, interactionId: null }),
+    });
+    // Merged per contact, so not in time order until sorted.
+    next([docAt("old", "a", "2026-01-01T00:00:00.000Z"), docAt("new", "b", "2026-03-01T00:00:00.000Z")]);
+
+    const messages = cb.mock.lastCall![0] as (ThreadMessage & { contactId: string })[];
+    expect(messages.map((m) => [m.id, m.contactId])).toEqual([["new", "b"], ["old", "a"]]);
   });
 });
 

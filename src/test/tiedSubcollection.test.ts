@@ -56,6 +56,15 @@ describe('subscribeTiedSubcollection', () => {
     ]);
   });
 
+  it('orders a threads fan-out by `at`, the field thread messages carry', () => {
+    subscribeTiedSubcollection('trainee1', 'threads', vi.fn());
+    listenerAt('contacts').next(contactsSnap(['a']));
+
+    expect(listenerAt('contacts/a/threads')).toBeDefined();
+    expect(firestoreMock.orderBy).toHaveBeenCalledWith('at', 'desc');
+    expect(firestoreMock.orderBy).not.toHaveBeenCalledWith('createdAt', 'desc');
+  });
+
   it('follows the contact list: drops a person who is no longer visible and adds a new one', () => {
     const cb = vi.fn();
     subscribeTiedSubcollection('trainee1', 'comments', cb);
