@@ -995,6 +995,112 @@ describe("POST /api/webhook/groupme", () => {
     expect(createdContact.createdByName).toBe("Sam Wilson");
   });
 
+  it("attributes creator via groupme_aliases if sender_id is mapped (#1103)", async () => {
+    seedDoc("users", "user-tony-uid", {
+      displayName: "Tony Stark",
+      email: "tony@campus.edu",
+    });
+    seedDoc("groupme_aliases", "gm-tony-id", {
+      senderId: "gm-tony-id",
+      userId: "user-tony-uid",
+      name: "Tony Stark",
+    });
+
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Peter Parker", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({
+      text: "!add Peter Parker",
+      name: "Iron Man", // Nickname does not match user name
+      sender_id: "gm-tony-id",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const savedContacts = Object.values(getCollection("contacts"));
+    const createdContact = savedContacts.find((c) => c.name === "Peter Parker");
+    expect(createdContact).toBeDefined();
+    expect(createdContact.createdBy).toBe("user-tony-uid");
+    expect(createdContact.createdByName).toBe("Tony Stark");
+  });
+
+  it("stamps gospel partner coCreators when creator has active pairing (#1103)", async () => {
+    seedDoc("users", "user-trainee-1", {
+      displayName: "Trainee One",
+      email: "t1@campus.edu",
+    });
+    seedDoc("settings", "partners", {
+      pairings: [
+        { id: "pair-1", members: ["user-trainee-1", "user-trainee-2"], startDate: "2020-01-01" },
+      ],
+    });
+
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Ned Leeds", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({
+      text: "!add Ned Leeds",
+      name: "Trainee One",
+      sender_id: "s-t1",
+    });
+
+    expect(res.status).toBe(200);
+    const savedContacts = Object.values(getCollection("contacts"));
+    const created = savedContacts.find((c) => c.name === "Ned Leeds");
+    expect(created).toBeDefined();
+    expect(created.createdBy).toBe("user-trainee-1");
+    expect(created.coCreators).toEqual(["user-trainee-2"]);
+    expect(created.visibleTo).toContain("user-trainee-1");
+    expect(created.visibleTo).toContain("user-trainee-2");
+  });
+
+  it("saves a GroupMe alias via POST /api/groupme-aliases (#1103)", async () => {
+    seedDoc("users", "admin-1", { role: "admin", email: "admin@example.com" });
+    seedDoc("users", "user-member-1", { displayName: "Bruce Banner", email: "bruce@campus.edu" });
+    mockVerifyIdToken.mockResolvedValue({ uid: "admin-1", email: "admin@example.com" });
+
+    const res = await request(app)
+      .post("/api/groupme-aliases")
+      .set("Authorization", "Bearer valid-token")
+      .send({ senderId: "gm-hulk", userId: "user-member-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const aliases = getCollection("groupme_aliases");
+    expect(aliases["gm-hulk"]).toBeDefined();
+    expect(aliases["gm-hulk"].userId).toBe("user-member-1");
+    expect(aliases["gm-hulk"].name).toBe("Bruce Banner");
+  });
+
+  it("retroactively repairs contacts via POST /api/groupme-aliases/repair (#1103)", async () => {
+    seedDoc("users", "admin-1", { role: "admin", email: "admin@example.com" });
+    seedDoc("users", "user-steve", { displayName: "Steve Rogers", email: "steve@campus.edu" });
+    seedDoc("settings", "partners", {
+      pairings: [
+        { id: "pair-steve", members: ["user-steve", "user-bucky"], startDate: "2020-01-01" },
+      ],
+    });
+    seedDoc("contacts", "contact-legacy", {
+      name: "Bucky Barnes",
+      createdBy: "groupme-gm-steve",
+      createdByName: "Steve (GroupMe)",
+      visibleTo: [],
+    });
+    mockVerifyIdToken.mockResolvedValue({ uid: "admin-1", email: "admin@example.com" });
+
+    const res = await request(app)
+      .post("/api/groupme-aliases/repair")
+      .set("Authorization", "Bearer valid-token")
+      .send({ senderId: "gm-steve", userId: "user-steve" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.repairedCount).toBe(1);
+
+    const contact = getCollection("contacts")["contact-legacy"];
+    expect(contact.createdBy).toBe("user-steve");
+    expect(contact.createdByName).toBe("Steve Rogers");
+    expect(contact.coCreators).toEqual(["user-bucky"]);
+    expect(contact.visibleTo).toContain("user-steve");
+    expect(contact.visibleTo).toContain("user-bucky");
+  });
+
   it("tags a new GroupMe-added contact with the current semester", async () => {
     const now = new Date();
     const month = now.getMonth() + 1;

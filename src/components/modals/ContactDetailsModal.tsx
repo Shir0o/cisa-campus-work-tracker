@@ -54,6 +54,7 @@ import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canRemoveContactMember, visibleToOf } from "../../lib/permissions";
+import { partnersOf } from "../../lib/partners";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
@@ -293,6 +294,7 @@ export default function ContactDetailsModal({
   // True while the mobile "Where is {name} now?" stage sheet is open (#677).
   const [movingStage, setMovingStage] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [reassigningCreator, setReassigningCreator] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
   >("overview");
@@ -710,6 +712,66 @@ export default function ContactDetailsModal({
         description: `Removed view access for ${s.name}`,
       });
     }
+  };
+
+  const handleReassignCreator = async (newStaffId: string) => {
+    if (!contact) return;
+    const targetMember = teamMembers.find((m) => m.id === newStaffId);
+    if (!targetMember) return;
+
+    const newCreatorName = targetMember.name;
+    const partnerUids = partnersOf(newStaffId);
+
+    // Compute updated coCreators: include new partners, exclude the new creator itself,
+    // and keep previous coCreators
+    const currentCoCreators = currentContact.coCreators || [];
+    const coCreatorsSet = new Set(currentCoCreators);
+    for (const p of partnerUids) {
+      if (p !== newStaffId) {
+        coCreatorsSet.add(p);
+      }
+    }
+    coCreatorsSet.delete(newStaffId);
+    const nextCoCreators = Array.from(coCreatorsSet);
+
+    // Compute updated visibleTo
+    const nextContactState = {
+      ...currentContact,
+      createdBy: newStaffId,
+      createdByName: newCreatorName,
+      coCreators: nextCoCreators,
+    };
+    const nextVisibleTo = visibleToOf(nextContactState);
+
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = {
+      createdBy: newStaffId,
+      createdByName: newCreatorName,
+      coCreators: nextCoCreators,
+      visibleTo: nextVisibleTo,
+      updatedAt: now,
+      updatedBy: currentUid || "system",
+      updatedByName: user?.displayName || user?.email || "Admin",
+    };
+
+    await updateDoc(doc(db, "contacts", contact.id), patch);
+
+    // Update in-memory contact object for immediate reflection
+    contact.createdBy = newStaffId;
+    contact.createdByName = newCreatorName;
+    contact.coCreators = nextCoCreators;
+    contact.visibleTo = nextVisibleTo;
+
+    await logActivity({
+      action: "reassigned creator for",
+      targetId: contact.id,
+      targetName: `${newCreatorName} is now the creator of ${contact.name.split(" ")[0]}.`,
+      targetType: "contact",
+      type: "edit",
+      description: `Reassigned creator from ${addedByName || "unknown"} to ${newCreatorName}`,
+    });
+
+    setReassigningCreator(false);
   };
 
   const handlePhoneBlur = () => {
@@ -1257,8 +1319,10 @@ export default function ContactDetailsModal({
   );
   const carerMembers = teamMembers.filter((m) => (currentContact?.carers || []).includes(m.id));
   const addedByName =
-    contact.createdByName ||
-    (contact.addedBy ? teamMembers.find((m) => m.id === contact.addedBy)?.name : null);
+    currentContact.createdByName ||
+    ((currentContact.createdBy || currentContact.addedBy)
+      ? teamMembers.find((m) => m.id === (currentContact.createdBy || currentContact.addedBy))?.name
+      : null);
   const sortedStages = [...stages].sort((a, b) => a.order - b.order);
   const stageIdx = currentContact.stage
     ? sortedStages.findIndex((s) => s.label === currentContact.stage)
@@ -2644,11 +2708,46 @@ export default function ContactDetailsModal({
                           {(addedByName || sinceBy) && (
                             <div className="cd-whowho">
                               {addedByName && (
-                                <div className="cd-lastby">
+                                <div className="cd-lastby flex-wrap">
                                   <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                                     {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                                   </div>
                                   <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                                  {isAdmin && !isImpersonating && (
+                                    reassigningCreator ? (
+                                      <div className="flex items-center gap-1.5 w-full mt-1.5 pl-8">
+                                        <select
+                                          className="cd-share-sel text-xs flex-1"
+                                          autoFocus
+                                          defaultValue=""
+                                          aria-label={t('modals.contactDetails.reassign_creator', 'Reassign creator')}
+                                          onChange={(e) => e.target.value && handleReassignCreator(e.target.value)}
+                                        >
+                                          <option value="" disabled>{t('modals.contactDetails.select_creator', 'Select new creator...')}</option>
+                                          {teamMembers.map((m) => (
+                                            <option key={m.id} value={m.id}>{m.name} · {m.role}</option>
+                                          ))}
+                                        </select>
+                                        <button
+                                          type="button"
+                                          onClick={() => setReassigningCreator(false)}
+                                          className="px-2 py-0.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                                        >
+                                          {t('common.cancel', 'Cancel')}
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setReassigningCreator(true)}
+                                        aria-label={t('modals.contactDetails.change_creator', 'Change creator')}
+                                        title={t('modals.contactDetails.change_creator', 'Change creator')}
+                                        className="ml-1 text-on-surface-variant hover:text-primary transition-colors p-0.5 rounded inline-flex items-center"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                    )
+                                  )}
                                 </div>
                               )}
                               {sinceBy && (

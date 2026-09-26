@@ -1472,7 +1472,10 @@
       "story_moved_by": "por {name}",
       "prayer_answered_story": "Oración respondida",
       "talk_about": "Hablar de {name}",
-      "close_drawer": "Cerrar {thread}"
+      "close_drawer": "Cerrar {thread}",
+      "change_creator": "Cambiar creador",
+      "reassign_creator": "Reasignar creador",
+      "select_creator": "Seleccionar nuevo creador..."
     },
     "no_duplicate_tags": "No se encontraron etiquetas duplicadas ni superpuestas.",
     "before": "Antes:",
