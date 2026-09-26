@@ -4,11 +4,12 @@ import { migrateTeamThreads, teamThreadPath } from '../../scripts/migrate-team-t
 
 function fakeFirestore(docs: { path: string; data: Record<string, unknown> }[]) {
   const ops: [string, string, unknown?][] = [];
-  const where = vi.fn(() => ({
-    get: async () => ({ docs: docs.map((d) => ({ ref: { path: d.path }, data: () => d.data })) }),
-  }));
+  // No `where`: a collection-group equality filter needs an index that does
+  // not exist, so the script reads the group and filters in memory.
   const firestore = {
-    collectionGroup: vi.fn(() => ({ where })),
+    collectionGroup: vi.fn(() => ({
+      get: async () => ({ docs: docs.map((d) => ({ ref: { path: d.path }, data: () => d.data })) }),
+    })),
     doc: (path: string) => ({ path }),
     batch: () => {
       const pending: [string, string, unknown?][] = [];
@@ -19,7 +20,7 @@ function fakeFirestore(docs: { path: string; data: Record<string, unknown> }[]) 
       };
     },
   };
-  return { firestore: firestore as unknown as Firestore, ops, where };
+  return { firestore: firestore as unknown as Firestore, ops };
 }
 
 describe('migrate-team-threads', () => {
@@ -28,12 +29,13 @@ describe('migrate-team-threads', () => {
     expect(teamThreadPath('rooms/r1/threads/m1')).toBeNull();
   });
 
-  it('lists only team-scope docs, and writes nothing on a dry run', async () => {
-    const { firestore, ops, where } = fakeFirestore([
+  it('picks out only team-scope docs, and writes nothing on a dry run', async () => {
+    const { firestore, ops } = fakeFirestore([
       { path: 'contacts/c1/threads/t1', data: { scope: 'team', body: 'x' } },
+      { path: 'contacts/c1/threads/o1', data: { scope: null, body: 'open' } },
+      { path: 'contacts/c1/threads/o2', data: { body: 'mobile, no scope field' } },
     ]);
     const report = await migrateTeamThreads(firestore, { write: false, log: () => {} });
-    expect(where).toHaveBeenCalledWith('scope', '==', 'team');
     expect(report).toEqual({ moved: 1, skipped: 0 });
     expect(ops).toEqual([]);
   });
