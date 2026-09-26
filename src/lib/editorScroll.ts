@@ -98,3 +98,13 @@ export function restoreScrollAfterEdit(
   const contentHeight = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   el.scrollTop = scrollTargetAfterEdit(line.top, line.bottom, capturedScrollTop, contentHeight);
 }
+
+/**
+ * Scrolls the textarea so the line at caretOffset is visible. If the line is
+ * already visible, leaves scrollTop alone; if above or below the viewport,
+ * scrolls it to the top or bottom edge.
+ */
+export function scrollCaretIntoView(el: HTMLTextAreaElement, caretOffset: number): void {
+  restoreScrollAfterEdit(el, el.scrollTop, caretOffset);
+}
+

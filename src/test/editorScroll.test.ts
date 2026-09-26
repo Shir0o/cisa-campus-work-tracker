@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scrollTargetAfterEdit, restoreScrollAfterEdit } from '../lib/editorScroll';
+import { scrollTargetAfterEdit, restoreScrollAfterEdit, scrollCaretIntoView } from '../lib/editorScroll';
 
 // #917 — a toolbar click must not throw the author back to the top. The
 // scroll decision is pure: given the caret line's [top, bottom] within the
@@ -53,3 +53,15 @@ describe('scrollTargetAfterEdit', () => {
     expect(el.scrollTop).toBe(42);
   });
 });
+
+describe('scrollCaretIntoView', () => {
+  it('does not crash and leaves scrollTop unchanged when layout is unmeasurable in jsdom', () => {
+    const el = document.createElement('textarea');
+    el.value = '## Section One\nProse\n\n## Section Two\nMore prose';
+    el.scrollTop = 10;
+    scrollCaretIntoView(el, 25);
+    // In jsdom without layout, mirror div height is zero so it safely no-ops
+    expect(el.scrollTop).toBe(10);
+  });
+});
+

@@ -145,6 +145,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
       <Tag
         key={bIdx}
         data-block-kind={block.kind}
+        start={block.kind === 'number-list' ? block.start : undefined}
         className={`flex flex-col gap-3 py-1 ${
           block.kind === 'number-list' ? 'list-decimal' : 'list-disc'
         } pl-5 marker:text-on-surface-variant`}

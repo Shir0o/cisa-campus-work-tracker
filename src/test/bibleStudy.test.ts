@@ -182,9 +182,19 @@ describe('parseMeeting', () => {
     // re-parses "1. …" as its own nested list and the numbers double up.
     const md = '## Steps\n1. First\n2) Second\n3. Third';
     const s = parseMeeting(md)[0];
-    const block = s.content.find((b) => b.kind === 'number-list') as { points: { before: string }[] };
+    const block = s.content.find((b) => b.kind === 'number-list') as { points: { before: string }[]; start?: number };
     expect(block.points.map((p) => p.before)).toEqual(['First', 'Second', 'Third']);
+    expect(block.start).toBeUndefined();
   });
+
+  it('captures the starting number on number-list when it begins at a number other than 1', () => {
+    const md = '## Steps\n3. Third\n4. Fourth';
+    const s = parseMeeting(md)[0];
+    const block = s.content.find((b) => b.kind === 'number-list') as { points: { before: string }[]; start?: number };
+    expect(block.points.map((p) => p.before)).toEqual(['Third', 'Fourth']);
+    expect(block.start).toBe(3);
+  });
+
 
   it('parses a single-line blockquote as a Passage with no citation (#921)', () => {
     // The Passage button inserts a bare quote; the parser must treat it as
