@@ -49,6 +49,7 @@ import {
   Rows3,
   Eye,
   EyeOff,
+  RefreshCw,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1500,8 +1501,166 @@ function IntegrationsSection({
             </div>
           </div>
         </ChannelCard>
+
+        <AttdIntegrationCard appUrl={appUrl} currentUser={currentUser} />
       </div>
     </section>
+  );
+}
+
+function AttdIntegrationCard({
+  appUrl,
+  currentUser,
+}: {
+  appUrl: string;
+  currentUser: User | null;
+}) {
+  const { t } = useLanguage();
+  const [syncToken, setSyncToken] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  const intakeUrl = `${appUrl}/api/attendance-sync`;
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, 'settings', 'integrations'),
+      (snapshot) => {
+        const exists = typeof snapshot?.exists === 'function' ? snapshot.exists() : false;
+        if (exists && typeof snapshot?.data === 'function') {
+          const data = snapshot.data();
+          setSyncToken((data?.attdSyncToken as string) || '');
+        } else {
+          setSyncToken('');
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error reading integrations settings:', err);
+        setLoading(false);
+      },
+    );
+    return () => unsub();
+  }, []);
+
+  const handleGenerateToken = async () => {
+    setIsGenerating(true);
+    setSaveStatus(null);
+    try {
+      const generated = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      await setDoc(
+        doc(db, 'settings', 'integrations'),
+        {
+          attdSyncToken: generated,
+          attdSyncUrl: intakeUrl,
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser?.email || 'admin',
+        },
+        { merge: true },
+      );
+      setSyncToken(generated);
+      setShowToken(true);
+      setSaveStatus(t('attendanceSync.attd_token_saved', 'Sync token updated successfully'));
+    } catch (e: any) {
+      console.error('Error saving sync token:', e);
+      setSaveStatus(t('attendanceSync.attd_token_save_failed', 'Could not save sync token.'));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <ChannelCard
+      Icon={Zap}
+      title={t('attendanceSync.attd_integration_title', 'Attendance Tracker app (~/attd)')}
+      blurb={t('attendanceSync.attd_integration_blurb', "Configure your team's secret sync token and intake endpoint for the attendance app.")}
+      defaultOpen
+    >
+      <p className="text-[13px] text-on-surface-variant leading-relaxed">
+        {t(
+          'attendanceSync.attd_integration_desc',
+          'Staff taking attendance in the room can stage their records directly into CISA without requiring a personal Firebase login.',
+        )}
+      </p>
+
+      <CodeBlock label={t('attendanceSync.attd_endpoint_label', 'Intake endpoint URL')} code={intakeUrl} />
+
+      <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[11px] text-on-surface-variant font-medium">
+            {t('attendanceSync.attd_token_label', 'Sync Token (x-sync-token)')}
+          </span>
+          <button
+            onClick={handleGenerateToken}
+            disabled={isGenerating}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {isGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            <span>{t('attendanceSync.attd_generate_token', 'Generate new token')}</span>
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-on-surface-variant py-1">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>Loading token…</span>
+          </div>
+        ) : syncToken ? (
+          <div className="relative">
+            <pre className="font-code text-[11.5px] leading-relaxed text-on-surface-variant whitespace-pre-wrap break-words px-3 py-2 pr-20 bg-surface border border-outline-variant/40 rounded-lg select-all">
+              {showToken ? syncToken : '•'.repeat(Math.min(syncToken.length, 32))}
+            </pre>
+            <div className="absolute top-1.5 right-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowToken((prev) => !prev)}
+                className="p-1 rounded-md text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                title={showToken ? 'Hide token' : 'Show token'}
+                aria-label={showToken ? 'Hide token' : 'Show token'}
+              >
+                {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(syncToken);
+                  setSaveStatus(t('attendanceSync.attd_token_copied', 'Sync token copied to clipboard'));
+                  setTimeout(() => setSaveStatus(null), 2500);
+                }}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                title="Copy token"
+                aria-label="Copy token"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{t('actions.copy', 'Copy')}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-warning bg-warning/10 border border-warning/30 p-2.5 rounded-lg">
+            {t('attendanceSync.attd_no_token', 'No sync token configured yet. Generate one to enable sync from ~/attd.')}
+          </p>
+        )}
+
+        {saveStatus && (
+          <p className="text-xs text-success font-medium pt-1">
+            {saveStatus}
+          </p>
+        )}
+      </div>
+
+      <Steps
+        items={[
+          t('attendanceSync.attd_step_1', 'Open Settings in the Attendance Tracker (~/attd) app.'),
+          t('attendanceSync.attd_step_2', 'Navigate to CISA Campus Tracker under Additional Settings.'),
+          t('attendanceSync.attd_step_3', 'Paste this Intake URL and Sync Token, then sync any session.'),
+        ]}
+      />
+    </ChannelCard>
   );
 }
 

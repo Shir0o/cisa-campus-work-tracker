@@ -1908,7 +1908,20 @@
     "confirm": "Confirm sync",
     "discard_failed": "Could not discard this draft.",
     "choose_rhythm_error": "Choose a Rhythm before confirming.",
-    "confirm_failed": "Could not confirm this sync."
+    "confirm_failed": "Could not confirm this sync.",
+    "attd_integration_title": "Attendance Tracker app (~/attd)",
+    "attd_integration_blurb": "Configure your team's secret sync token and intake endpoint for the attendance app.",
+    "attd_integration_desc": "Staff taking attendance in the room can stage their records directly into CISA without requiring a personal Firebase login.",
+    "attd_endpoint_label": "Intake endpoint URL",
+    "attd_token_label": "Sync Token (x-sync-token)",
+    "attd_generate_token": "Generate new token",
+    "attd_token_copied": "Sync token copied to clipboard",
+    "attd_token_saved": "Sync token updated successfully",
+    "attd_token_save_failed": "Could not save sync token.",
+    "attd_no_token": "No sync token configured yet. Generate one to enable sync from ~/attd.",
+    "attd_step_1": "Open Settings in the Attendance Tracker (~/attd) app.",
+    "attd_step_2": "Navigate to CISA Campus Tracker under Additional Settings.",
+    "attd_step_3": "Paste this Intake URL and Sync Token, then sync any session."
   },
   "contactKind": {
     "local_saint": "Local saint",
