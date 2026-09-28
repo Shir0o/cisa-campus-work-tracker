@@ -1911,7 +1911,20 @@
     "confirm": "Confirmar sincronización",
     "discard_failed": "No se pudo descartar este borrador.",
     "choose_rhythm_error": "Elige un Ritmo antes de confirmar.",
-    "confirm_failed": "No se pudo confirmar esta sincronización."
+    "confirm_failed": "No se pudo confirmar esta sincronización.",
+    "attd_integration_title": "App Attendance Tracker (~/attd)",
+    "attd_integration_blurb": "Configura el token de sincronización secreto y el punto de recepción de tu equipo para la app de asistencia.",
+    "attd_integration_desc": "El equipo que toma asistencia en la sala puede cargar sus registros directamente en CISA sin requerir inicio de sesión en Firebase.",
+    "attd_endpoint_label": "URL del punto de recepción",
+    "attd_token_label": "Token de sincronización (x-sync-token)",
+    "attd_generate_token": "Generar nuevo token",
+    "attd_token_copied": "Token de sincronización copiado",
+    "attd_token_saved": "Token de sincronización guardado con éxito",
+    "attd_token_save_failed": "No se pudo guardar el token de sincronización.",
+    "attd_no_token": "Aún no hay token de sincronización configurado. Genera uno para habilitar la sincronización.",
+    "attd_step_1": "Abre Configuración en la app Attendance Tracker (~/attd).",
+    "attd_step_2": "Ve a CISA Campus Tracker en Configuración adicional.",
+    "attd_step_3": "Pega esta URL de recepción y el Token de sincronización."
   },
   "contactKind": {
     "local_saint": "Santo local",
