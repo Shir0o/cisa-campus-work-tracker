@@ -2965,6 +2965,18 @@ describe('ContactDetailsModal — the kind of person', () => {
     expect(screen.queryByLabelText('In the church life')).toBeNull();
   });
 
+  it('reads a public sign-up as a Contact — the student box alone is not Our own', () => {
+    // A stranger's sign-up is a student (isStudent) who is not in the church
+    // life (inChurchLife false), so it is a Contact. The student box is the
+    // one that used to read "A student of ours" and look like Our own.
+    const signUp = { ...mockContact, inChurchLife: false, isStudent: true } as any;
+    render(<ContactDetailsModal isOpen onClose={mockOnClose} contact={signUp} />);
+    openEdit();
+    expect(screen.getByLabelText('A student')).toBeChecked();
+    expect(screen.getByLabelText('In the church life')).not.toBeChecked();
+    expect(screen.getByText('Reads as Contact')).toBeInTheDocument();
+  });
+
   it('writes the kind alone, with its stamp, and lands the change in History', async () => {
     render(<ContactDetailsModal isOpen onClose={mockOnClose} contact={mockContact} />);
     openEdit();

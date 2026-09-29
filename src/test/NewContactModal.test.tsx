@@ -215,7 +215,7 @@ describe('NewContactModal', () => {
 
     // #1152: the free-text "Status" field is gone; the form asks two plain
     // questions instead, and shows back the kind they add up to.
-    await mockUserAct.click(await screen.findByLabelText('A student of ours'));
+    await mockUserAct.click(await screen.findByLabelText('A student'));
 
     const email = await screen.findByPlaceholderText('alex@campus.edu');
     await mockUserAct.type(email, 'john@example.com');
@@ -532,7 +532,7 @@ describe('NewContactModal — the kind is a Full-timer decision', () => {
     } as any);
     render(<NewContactModal isOpen onClose={() => {}} />);
     fireEvent.click(await screen.findByText(/\+ Add the rest/i));
-    expect(await screen.findByLabelText('A student of ours')).toBeTruthy();
+    expect(await screen.findByLabelText('A student')).toBeTruthy();
   });
 
   it('does not offer them to a Trainee', async () => {
@@ -541,7 +541,7 @@ describe('NewContactModal — the kind is a Full-timer decision', () => {
     } as any);
     render(<NewContactModal isOpen onClose={() => {}} />);
     fireEvent.click(await screen.findByText(/\+ Add the rest/i));
-    expect(screen.queryByLabelText('A student of ours')).toBeNull();
+    expect(screen.queryByLabelText('A student')).toBeNull();
     expect(screen.queryByLabelText('In the church life')).toBeNull();
   });
 });
