@@ -251,6 +251,27 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(contactRef, { name: 'Test', email: 'test@example.com' }));
     });
 
+    it('allows contact creation and update with null or absent email', async () => {
+      const db = getFirestore({ uid: 'admin1', email: 'yilongwang05@gmail.com', email_verified: true });
+
+      // Unauthenticated create with null email (e.g. from public /signup form)
+      const unauthDb = getFirestore();
+      await assertSucceeds(setDoc(doc(unauthDb, 'contacts', 'contact_no_email'), {
+        name: 'Brandon Labra',
+        email: null,
+        phone: '1234567890',
+        inChurchLife: false,
+      }));
+
+      // Approved user can update tags on a contact that has null or absent email (e.g. Combine tags)
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact_no_email'), {
+        tags: ['Fall 2026'],
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'admin1',
+        updatedByName: 'Admin',
+      }));
+    });
+
     it('lets an operator stamp the last-contacted trio when logging an interaction', async () => {
       // Mirrors the contact update inside LogInteractionModal's writeBatch and
       // ContactDetailsModal.handleAddInteraction: both stamp lastContactedBy /
