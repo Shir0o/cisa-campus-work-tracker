@@ -17,6 +17,7 @@ import { cn, getUserInitials, relTime, firstName } from '../../lib/utils';
 import { convReplies } from '../../services/chat';
 import ContactPill from '../ui/ContactPill';
 import { useTranslate } from '../../hooks/useTranslate';
+import { useLanguage } from '../LanguageProvider';
 
 function canRemoveForEveryone(msg: ChatMessage, uid: string | undefined, isAdmin: boolean): boolean {
   return !!msg && !msg.deleted && (msg.senderId === uid || isAdmin);
@@ -80,6 +81,7 @@ export function MsgThreadPane({
   roomMembers,
   canPost,
 }: MsgThreadPaneProps) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [menuConfirm, setMenuConfirm] = useState(false);
@@ -311,7 +313,7 @@ export function MsgThreadPane({
         </div>
       ) : (
         <div className="msgs-readonly">
-          <span>This one's an announcement — replies go to the team directly.</span>
+          <span>{t('modals.thread_readonly_announcement', "This one's an announcement — only channel members can reply in a thread.")}</span>
         </div>
       )}
     </div>

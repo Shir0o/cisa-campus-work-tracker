@@ -76,10 +76,13 @@ export async function sendMessage(
   sender: { uid: string; displayName: string; photoURL?: string },
   attachments: ChatAttachment[] | undefined,
   memberIds: string[],
+  room?: { type?: ChatRoom['type']; name?: string },
 ): Promise<void> {
   try {
     await core.sendMessage(db, roomId, text, sender, attachments, {
       memberIds,
+      roomType: room?.type,
+      roomName: room?.name,
       // The bell entry is pushed to the recipient's devices by the
       // notification function (#270).
       onNotify: (payload) => void sendNotification(payload),

@@ -22,6 +22,7 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: vi.fn(() => 'SERVER_TS'),
   arrayUnion: vi.fn((...args: any[]) => ({ type: 'arrayUnion', args })),
   arrayRemove: vi.fn((...args: any[]) => ({ type: 'arrayRemove', args })),
+  deleteField: vi.fn(() => 'DELETE_FIELD'),
 }));
 
 const mockSendNotification = vi.fn().mockResolvedValue(undefined);
@@ -267,6 +268,27 @@ describe('chat.ts services', () => {
         attachments: [],
         parentId: null,
         pinned: true,
+        pinnedBy: 'u1',
+      });
+    });
+
+    it('sends the first post as an announcement push titled with the channel name, not the bare channel notice (#1243)', async () => {
+      await createAnnouncementRoom(
+        'Campus News',
+        ['u1', 'u2'],
+        { uid: 'u1', displayName: 'Naomi' },
+        'custom',
+        { text: 'Retreat is Saturday' }
+      );
+
+      expect(mockSendNotification).toHaveBeenCalledTimes(1);
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'Campus News',
+        message: 'Naomi posted an announcement: Retreat is Saturday',
+        type: 'info',
+        targetId: 'new-doc-id',
+        link: '/messages/new-doc-id',
       });
     });
   });
@@ -421,6 +443,35 @@ describe('chat.ts services', () => {
       });
     });
 
+    it("reconciles an 'everyone' announcement's audience even when the caller passes memberIds (#1243)", async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ memberIds: ['u1', 'u2'], audiencePreset: 'everyone' }),
+      });
+      mockGetDocs.mockResolvedValueOnce({
+        docs: [
+          { id: 'u1', data: () => ({ email: 'a@example.org', displayName: 'Naomi' }) },
+          { id: 'u2', data: () => ({ email: 'b@example.org', displayName: 'Bob' }) },
+          { id: 'u9', data: () => ({ email: 'n@example.org', displayName: 'New Person' }) },
+        ],
+      });
+
+      await sendMessage(
+        'r-ann',
+        'Welcome all',
+        { uid: 'u1', displayName: 'Naomi' },
+        undefined,
+        ['u1', 'u2'],
+        null,
+        'announcement',
+        'Campus Updates'
+      );
+
+      expect(mockSendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'u9', title: 'Campus Updates' })
+      );
+    });
+
     it('routes announcement thread reply notification only to author and thread participants (#743)', async () => {
       // Mock getDocs to return replies in thread
       mockGetDocs.mockResolvedValueOnce({
@@ -527,11 +578,14 @@ describe('chat.ts services', () => {
 
   describe('togglePinMessage', () => {
     it('writes the pinned flag through', async () => {
-      await togglePinMessage('r1', 'm1', true);
-      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', { pinned: true });
+      await togglePinMessage('r1', 'm1', true, 'u1');
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', { pinned: true, pinnedBy: 'u1' });
 
-      await togglePinMessage('r1', 'm1', false);
-      expect(mockUpdateDoc).toHaveBeenLastCalledWith('doc:chatRooms/r1/messages/m1', { pinned: false });
+      await togglePinMessage('r1', 'm1', false, 'u1');
+      expect(mockUpdateDoc).toHaveBeenLastCalledWith('doc:chatRooms/r1/messages/m1', {
+        pinned: false,
+        pinnedBy: 'DELETE_FIELD',
+      });
     });
   });
 

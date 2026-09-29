@@ -208,6 +208,10 @@ describe('MsgThreadPane (#563)', () => {
 
   it('displays read-only state when canPost is false', () => {
     render(<MsgThreadPane {...defaultProps} canPost={false} />);
-    expect(screen.getByText("This one's an announcement — replies go to the team directly.")).toBeInTheDocument();
+    // #1243: replies go into open threads — there is no "team directly" route.
+    expect(screen.queryByText(/team directly/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText("This one's an announcement — only channel members can reply in a thread.")
+    ).toBeInTheDocument();
   });
 });

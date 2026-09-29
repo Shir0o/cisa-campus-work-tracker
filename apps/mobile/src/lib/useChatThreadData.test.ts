@@ -5,6 +5,7 @@
 // assertions below run against the very first post-change render.
 import { act, renderHook } from '@testing-library/react-native';
 import { useChatThreadData } from './useChatThreadData';
+import { sendMessage } from './data/chat';
 
 type TestState = { uid: string | null; user: null };
 type TestCbs = Record<string, unknown>;
@@ -47,6 +48,7 @@ const cbs: TestCbs = {};
 (globalThis as unknown as { __cisaAuth: TestState }).__cisaAuth = authState;
 (globalThis as unknown as { __chatThreadCbs: TestCbs }).__chatThreadCbs = cbs;
 
+const emitRoom = (room: unknown) => (cbs.room as (r: unknown) => void)(room);
 const emitMessages = (messages: unknown[]) => (cbs.messages as (m: unknown[]) => void)(messages);
 
 const message = (id: string) => ({
@@ -110,5 +112,28 @@ describe('useChatThreadData', () => {
 
     expect(result.current.loading).toBe(true);
     expect(result.current.dayGroups).toHaveLength(0);
+  });
+
+  // #1243: the push for an announcement post is titled with the channel name —
+  // core can only do that if the hook tells it which room type it is sending to.
+  it('sends with the room type and name so an announcement push is titled with the channel', async () => {
+    authState.uid = 'user1';
+    const { result } = await renderHook(() => useChatThreadData('room1'));
+    await act(() => {
+      emitRoom({ id: 'room1', type: 'announcement', name: 'Campus Updates', memberIds: ['user1', 'user2'] });
+    });
+
+    await act(async () => {
+      await result.current.send('Retreat is Saturday');
+    });
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      'room1',
+      'Retreat is Saturday',
+      expect.objectContaining({ uid: 'user1' }),
+      undefined,
+      ['user1', 'user2'],
+      { type: 'announcement', name: 'Campus Updates' },
+    );
   });
 });

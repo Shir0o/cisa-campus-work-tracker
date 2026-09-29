@@ -284,16 +284,6 @@ export default function Messages() {
       // Mark as read in LocalStorage
       localStorage.setItem(`chat_read_${activeRoomId}`, Date.now().toString());
 
-      // If announcement room, mark unread announcement posts as read by current user
-      const currentRoom = rooms.find(r => r.id === activeRoomId);
-      if (currentRoom?.type === 'announcement' && effectiveUid) {
-        roomMsgs.forEach((m) => {
-          if (m.type !== 'system' && !m.deleted && !m.readBy?.includes(effectiveUid)) {
-            void markAnnouncementRead(activeRoomId, m.id, effectiveUid);
-          }
-        });
-      }
-
       // Scroll messages stream container to bottom without jumping page
       setTimeout(() => {
         if (messagesContainerRef.current) {
@@ -420,7 +410,10 @@ export default function Messages() {
           photoURL: senderPhoto
         },
         attachments,
-        activeRoom?.memberIds
+        activeRoom?.memberIds,
+        null,
+        activeRoom?.type,
+        activeRoom?.name
       );
       setInputText('');
       setAttachments([]);
@@ -557,6 +550,55 @@ export default function Messages() {
   });
   const topLevelMsgs = useMemo(() => convTopLevel(visibleMsgs), [visibleMsgs]);
   const pinned = messages.filter((m) => m.pinned && !m.deleted);
+  // An announcement room holds its pinned posts at the top of the stream,
+  // otherwise in date order; every other room keeps plain date order.
+  const streamMsgs = useMemo(
+    () =>
+      activeRoom?.type === 'announcement'
+        ? [...topLevelMsgs.filter((m) => m.pinned && !m.deleted), ...topLevelMsgs.filter((m) => !(m.pinned && !m.deleted))]
+        : topLevelMsgs,
+    [topLevelMsgs, activeRoom?.type]
+  );
+  // Who to credit on a pinned post's strip: the pinner when known, else the
+  // post's author (a post pinned from the create wizard, or before `pinnedBy`).
+  const pinnerName = (m: ChatMessage) =>
+    (m.pinnedBy && (m.pinnedBy === currentUser?.uid ? currentUser.displayName : usersCache[m.pinnedBy]?.displayName)) ||
+    m.senderName;
+
+  // An announcement post is "read" when it enters view, not when the room
+  // loads — so the "new to you" treatment survives until the reader gets to it.
+  // The observer starts after the stream's scroll-to-bottom (100ms, above) so
+  // posts parked off-screen at the top during load are not swept up.
+  const announcementRoomId = activeRoom?.type === 'announcement' ? activeRoom.id : null;
+  const markedReadRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!announcementRoomId || !effectiveUid || typeof IntersectionObserver === 'undefined') return;
+    const root = messagesContainerRef.current;
+    let cleanup = () => {};
+    const timer = window.setTimeout(() => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            const id = entry.target.id.replace(/^msgb-/, '');
+            if (!entry.isIntersecting || markedReadRef.current.has(`${announcementRoomId}/${id}`)) continue;
+            markedReadRef.current.add(`${announcementRoomId}/${id}`);
+            observer.unobserve(entry.target);
+            void markAnnouncementRead(announcementRoomId, id, effectiveUid);
+          }
+        },
+        // Shrink the viewport a little so a post has to be properly on screen.
+        { root, rootMargin: '-10% 0px -10% 0px' }
+      );
+      root?.querySelectorAll('.post.fresh').forEach((el) => {
+        if (!markedReadRef.current.has(`${announcementRoomId}/${el.id.replace(/^msgb-/, '')}`)) observer.observe(el);
+      });
+      cleanup = () => observer.disconnect();
+    }, 150);
+    return () => {
+      window.clearTimeout(timer);
+      cleanup();
+    };
+  }, [announcementRoomId, effectiveUid, messages]);
   const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
 
   const jumpTo = (messageId: string) => {
@@ -954,7 +996,7 @@ export default function Messages() {
                 ) : topLevelMsgs.length === 0 && threadSearch ? (
                   <div className="msgs-people-empty">Nothing matches “{threadSearch}”.</div>
                 ) : (
-                  topLevelMsgs.map((msg) => {
+                  streamMsgs.map((msg) => {
                   const isMe = msg.senderId === effectiveUid;
                   const isSys = msg.type === 'system';
                   const gone = !!msg.deleted;
@@ -974,7 +1016,10 @@ export default function Messages() {
                       {msg.pinned && (
                         <div className="post-strip">
                           <Pin className="w-3 h-3 shrink-0" />
-                          <span>Pinned</span>
+                          <span>
+                            {t('modals.pinned_by_strip', 'Pinned by {name} · stays at the top until they unpin it')
+                              .replace('{name}', pinnerName(msg))}
+                          </span>
                         </div>
                       )}
                       <div className="post-head">
@@ -1198,7 +1243,7 @@ export default function Messages() {
                           {/* hover tools: pin + ⋯ menu */}
                           {!gone && (
                             <div className="msgb-tools">
-                              <button className="msgb-pin-btn" title={msg.pinned ? "Unpin" : "Pin"} onClick={() => togglePinMessage(activeRoomId!, msg.id, !msg.pinned)}>
+                              <button className="msgb-pin-btn" title={msg.pinned ? "Unpin" : "Pin"} onClick={() => togglePinMessage(activeRoomId!, msg.id, !msg.pinned, currentUser?.uid)}>
                                 <Pin className="w-3 h-3" />
                               </button>
                               <button
@@ -1301,8 +1346,10 @@ export default function Messages() {
                   <div className="postbar">
                     <Bell className="w-3.5 h-3.5 shrink-0" />
                     <span>
-                      {t('modals.composer_audience_note', 'Posting to everyone on Campus — {n} people')
-                        .replace('{n}', String(activeRoom.memberIds?.length || 0))}
+                      {(activeRoom.audiencePreset === 'everyone'
+                        ? t('modals.composer_audience_note', 'Posting to everyone on Campus — {n} people')
+                        : t('modals.composer_audience_note_custom', 'Posting to {n} people in this channel')
+                      ).replace('{n}', String(activeRoom.memberIds?.length || 0))}
                     </span>
                   </div>
                 )}
@@ -1400,7 +1447,7 @@ export default function Messages() {
             effectiveUid={effectiveUid}
             isAdmin={isAdmin}
             onClose={() => setThreadOf(null)}
-            onPin={(mid, pin) => togglePinMessage(activeRoom.id, mid, pin)}
+            onPin={(mid, pin) => togglePinMessage(activeRoom.id, mid, pin, currentUser?.uid)}
             onRemoveAll={(msg) => handleRemoveAll(msg)}
             onHide={(mid) => effectiveUid && MessageHides.hide(effectiveUid, mid)}
             onTodo={(msg) => setTodoFor(msg)}
@@ -1415,7 +1462,9 @@ export default function Messages() {
                 { uid: effectiveUid, displayName: senderName, photoURL: senderPhoto },
                 undefined,
                 activeRoom.memberIds,
-                parentMsg.id
+                parentMsg.id,
+                activeRoom.type,
+                activeRoom.name
               );
             }}
             roomMembers={roomMembers}
