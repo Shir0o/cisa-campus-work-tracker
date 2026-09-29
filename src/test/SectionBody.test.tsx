@@ -186,7 +186,7 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(word.closest('strong')).toBeNull();
   });
 
-  it('renders a Passage with its citation and a Prompt with its kind label', () => {
+  it('renders a Passage without its legacy citation and a Prompt with its kind label', () => {
     const s = section({
       content: [
         { kind: 'passage', passage: { before: 'In the beginning' }, ref: 'Genesis 1:1' },
@@ -195,7 +195,8 @@ describe('SectionBody (ordered content, read as written)', () => {
     });
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
     expect(screen.getByText('In the beginning')).toBeInTheDocument();
-    expect(screen.getByText('Genesis 1:1')).toBeInTheDocument();
+    // The citation line is retired: a stored Section's legacy ref is not shown.
+    expect(screen.queryByText('Genesis 1:1')).not.toBeInTheDocument();
     expect(screen.getByText('Activity')).toBeInTheDocument();
     expect(screen.getByText('Turn to your neighbor')).toBeInTheDocument();
   });
@@ -213,7 +214,7 @@ describe('SectionBody (ordered content, read as written)', () => {
     // The ochre tone from the existing palette — warm against the sage,
     // clay and slate already in use.
     const card = screen.getByText('Apply').closest('[data-block-kind="prompt"]')!;
-    expect(card.className).toContain('border-l-[var(--t-ochre)]');
+    expect(card.className).toContain('bg-[var(--t-ochre-soft)]');
     expect(screen.getByText('Apply').className).toContain('text-[var(--t-ochre)]');
   });
 
@@ -269,10 +270,11 @@ describe('SectionBody (ordered content, read as written)', () => {
     const order = Array.from(body.children).map((el) => el.getAttribute('data-block-kind'));
     expect(order).toEqual(['prose', 'verse']);
 
-    // The reference leads and is emphasised; the words follow at body size.
+    // The reference leads as a label above; the words follow at body size.
     const ref = screen.getByText('Rom. 5:6');
-    expect(ref.tagName).toBe('STRONG');
-    expect(screen.getByText('while we were still weak.')).toBeInTheDocument();
+    expect(ref.tagName).toBe('CITE');
+    const words = screen.getByText('while we were still weak.');
+    expect(ref.compareDocumentPosition(words) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // In the flow: no figure, no rule above, no trailing citation — the
     // reference is inline, not a figcaption.
     expect(screen.queryByRole('figure')).toBeNull();
@@ -287,12 +289,14 @@ describe('SectionBody (ordered content, read as written)', () => {
     });
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
 
-    // Passage: figure with a trailing figcaption citation.
+    // Passage: a figure, set in the scripture face, with no citation.
     const figure = screen.getByRole('figure');
-    expect(figure.querySelector('figcaption')?.textContent).toBe('Genesis 1:1');
-    // Verse: no figure — the reference is a leading inline strong.
+    expect(figure.querySelector('figcaption')).toBeNull();
+    expect(figure.querySelector('p')?.className).toContain('font-scripture');
+    // Verse: no figure, and not in the scripture face — it stays in the flow.
     expect(screen.queryAllByRole('figure')).toHaveLength(1);
-    expect(screen.getByText('Rom. 5:6').tagName).toBe('STRONG');
+    const verse = screen.getByText('Rom. 5:6').closest('[data-block-kind="verse"]')!;
+    expect(verse.innerHTML).not.toContain('font-scripture');
   });
 
   it('inline emphasis and Blanks work inside a Verse (#918)', () => {
@@ -349,10 +353,12 @@ describe('SectionBody (ordered content, read as written)', () => {
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
 
     const ref = screen.getByText('mark 3:24-27');
-    expect(ref.tagName).toBe('STRONG');
+    expect(ref.tagName).toBe('CITE');
     const block = ref.closest('[data-block-kind="verse"]')!;
     const sups = Array.from(block.querySelectorAll('sup')).map((el) => el.textContent);
     expect(sups).toEqual(['24', '25', '26', '27']);
+    // The range runs on as one paragraph, like a printed Bible.
+    expect(block.querySelectorAll('p')).toHaveLength(1);
     expect(block.textContent).toContain('And if a kingdom is divided against itself.');
     expect(block.textContent).toContain("But no one can enter a strong man's house.");
     // No figure — a Verse stays visually distinct from a Passage.
@@ -420,6 +426,41 @@ describe('SectionBody (ordered content, read as written)', () => {
     render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={onRevealBlank} />);
     fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
     expect(onRevealBlank).toHaveBeenCalledWith('0:vr0');
+  });
+
+  it('renders a Key line in the scripture face with its reference trailing', () => {
+    const s = section({
+      content: [
+        { kind: 'prose', md: 'Before.' },
+        { kind: 'keyline', line: { before: 'No one can enter a strong man’s house.' }, ref: 'Mark 3:27' },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    const order = Array.from(screen.getByTestId('section-body').children).map((el) => el.getAttribute('data-block-kind'));
+    expect(order).toEqual(['prose', 'keyline']);
+    const key = screen.getByText('No one can enter a strong man’s house.').closest('[data-block-kind="keyline"]')!;
+    expect(key.querySelector('blockquote')?.className).toContain('font-scripture');
+    expect(key.querySelector('figcaption')?.textContent).toBe('Mark 3:27');
+  });
+
+  it('a Key line with no reference has no caption', () => {
+    const s = section({ content: [{ kind: 'keyline', line: { before: 'You can’t serve two kingdoms.' } }] });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+    const key = screen.getByText('You can’t serve two kingdoms.').closest('[data-block-kind="keyline"]')!;
+    expect(key.querySelector('figcaption')).toBeNull();
+  });
+
+  it('a Blank inside a Key line reveals with a key unique to its block', () => {
+    const onRevealBlank = vi.fn();
+    const s = section({
+      content: [
+        { kind: 'keyline', line: { before: 'First.' } },
+        { kind: 'keyline', line: { before: 'You can’t serve two ', word: 'kingdoms', after: '.' } },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={2} openBlanks={{}} onRevealBlank={onRevealBlank} />);
+    fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
+    expect(onRevealBlank).toHaveBeenCalledWith('2:k1');
   });
 
   it('an empty-content Section renders nothing in the body', () => {

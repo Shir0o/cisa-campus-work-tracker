@@ -576,6 +576,12 @@ export default function BibleStudyEditor() {
                   onSelect: () => insertTextAtCursor('Verse: '),
                 },
                 {
+                  // A whole-line block, so it lands on the next line like a Prompt (#1182).
+                  id: 'keyline',
+                  label: 'Key line',
+                  onSelect: () => insertPromptAtNextLine('Key: '),
+                },
+                {
                   id: 'blank',
                   label: 'Blank',
                   onSelect: () => insertTextAtCursor('[[', ']]'),

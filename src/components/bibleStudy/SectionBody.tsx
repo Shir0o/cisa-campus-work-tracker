@@ -134,7 +134,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
         <li key={path} className="text-[length:var(--reader-fs)] leading-[1.55] text-on-surface-variant">
           {inline}
           {pt.children && pt.children.length > 0 && (
-            <Tag className={`flex flex-col gap-3 py-1 ${block.kind === 'number-list' ? 'list-decimal' : 'list-disc'} pl-5 marker:text-on-surface-variant`}>
+            <Tag className={`flex flex-col gap-1.5 py-1 ${block.kind === 'number-list' ? 'list-decimal' : 'list-disc'} pl-5 marker:text-on-surface-variant`}>
               {pt.children.map((child, cIdx) => renderPoint(child, `${path}.${cIdx}`))}
             </Tag>
           )}
@@ -146,7 +146,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
         key={bIdx}
         data-block-kind={block.kind}
         start={block.kind === 'number-list' ? block.start : undefined}
-        className={`flex flex-col gap-3 py-1 ${
+        className={`flex flex-col gap-1.5 py-1 ${
           block.kind === 'number-list' ? 'list-decimal' : 'list-disc'
         } pl-5 marker:text-on-surface-variant`}
       >
@@ -154,6 +154,22 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
       </Tag>
     );
   };
+
+  // One line of scripture or a Key line: inline markdown around at most one Blank.
+  const renderLine = (v: Blank | Text, blankKey: string): React.ReactNode =>
+    'word' in v ? (
+      <>
+        {v.before && <InlineMd text={v.before} />}
+        <BlankSpan
+          part={{ kind: 'blank', blank: v, n: 0 }}
+          isOpen={!!openBlanks[blankKey]}
+          onReveal={() => onRevealBlank(blankKey)}
+        />
+        {v.after && <InlineMd text={v.after} />}
+      </>
+    ) : (
+      <InlineMd text={v.before} />
+    );
 
   return (
     <div data-testid="section-body" className="flex flex-col gap-5">
@@ -163,9 +179,12 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
           case 'number-list':
             return renderList(block, bIdx);
           case 'passage':
+            // The reading, set large in the scripture face. The citation line
+            // is retired: a stored Section's legacy `ref` is deliberately not
+            // shown, so old and new Meetings read the same.
             return (
-              <figure key={bIdx} data-block-kind="passage" className="m-0 pt-4 border-t border-outline-variant">
-                <p className="m-0 text-[length:calc(var(--reader-fs)+2px)] leading-[1.62] text-on-surface">
+              <figure key={bIdx} data-block-kind="passage" className="m-0">
+                <p className="m-0 font-scripture text-[length:calc(var(--reader-fs)+3px)] leading-[1.6] text-on-surface">
                   {block.passage && typeof block.passage === 'object' && 'word' in block.passage ? (
                     <BlankSpan
                       part={{ kind: 'blank', blank: block.passage, n: 0 }}
@@ -176,90 +195,98 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                     <InlineMd text={block.passage.before} />
                   ) : null}
                 </p>
-
+              </figure>
+            );
+          case 'keyline':
+            // The one sentence a Section turns on, set apart and centred. Its
+            // reference is optional — absent when it is the author's own words.
+            return (
+              <figure key={bIdx} data-block-kind="keyline" className="m-0 py-2 text-center">
+                <span aria-hidden="true" className="block font-scripture text-[44px] leading-[0.6] text-on-surface-variant">
+                  “
+                </span>
+                <blockquote className="m-0 mt-2 font-scripture font-medium text-[length:calc(var(--reader-fs)*1.3)] leading-[1.35] text-on-surface text-balance">
+                  {renderLine(block.line, `${sectionIndex}:k${bIdx}`)}
+                </blockquote>
                 {block.ref && (
-                  <figcaption className="mt-3 text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70">
+                  <figcaption className="mt-2 text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant">
                     {block.ref}
                   </figcaption>
                 )}
               </figure>
             );
           case 'verse': {
-            // A proof-text in the flow (#918): the reference leads, at body
-            // size, emphasised in sage; the words follow. No figure, no rule
-            // above, no trailing citation — visibly distinct from a Passage.
-            // A range (#1187) renders the same leading ref, then one line per
-            // verse, each prefixed with its verse number as a superscript.
-            const renderVerseText = (v: Blank | Text, blankKey: string): React.ReactNode =>
-              'word' in v ? (
-                <>
-                  {v.before && <InlineMd text={v.before} />}
-                  <BlankSpan
-                    part={{ kind: 'blank', blank: v, n: 0 }}
-                    isOpen={!!openBlanks[blankKey]}
-                    onReveal={() => onRevealBlank(blankKey)}
-                  />
-                  {v.after && <InlineMd text={v.after} />}
-                </>
-              ) : (
-                <InlineMd text={v.before} />
-              );
-            if (block.verses && block.verses.length > 0) {
-              return (
-                <div
-                  key={bIdx}
-                  data-block-kind="verse"
-                  className="flex flex-col gap-2 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface"
-                >
-                  <strong className="font-semibold text-[var(--accent)]">{block.ref}</strong>
+            // A proof-text in the flow (#918): the reference leads as a small
+            // sage label, the words follow at body size in the body face — no
+            // figure, no scripture face, visibly distinct from a Passage. A
+            // range (#1187) runs on as one paragraph, like a printed Bible,
+            // each verse led by its number as a small superscript.
+            const refLabel = (
+              <cite
+                data-verse-ref
+                className="block not-italic text-[11px] font-semibold tracking-wider uppercase text-[var(--t-sage)]"
+              >
+                {block.ref}
+              </cite>
+            );
+            const words =
+              block.verses && block.verses.length > 0 ? (
+                <p className="m-0">
                   {block.verses.map((v, i) => (
-                    <p key={i} className="m-0">
-                      <sup>{verseStart(block.ref) + i}</sup> {renderVerseText(v, `${sectionIndex}:vr${i}`)}
-                    </p>
+                    <React.Fragment key={i}>
+                      {i > 0 && ' '}
+                      <sup className="mr-0.5 text-[0.62em] font-semibold leading-[0] text-on-surface-variant">
+                        {verseStart(block.ref) + i}
+                      </sup>
+                      {renderLine(v, `${sectionIndex}:vr${i}`)}
+                    </React.Fragment>
                   ))}
-                </div>
-              );
-            }
-            const v = block.verse;
+                </p>
+              ) : block.verse ? (
+                <p className="m-0">{renderLine(block.verse, `${sectionIndex}:vs`)}</p>
+              ) : null;
             return (
-              <p key={bIdx} data-block-kind="verse" className="m-0 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface">
-                <strong className="font-semibold text-[var(--accent)]">{block.ref}</strong>
-                {v && (
-                  <>
-                    {' '}
-                    {renderVerseText(v, `${sectionIndex}:vs`)}
-                  </>
-                )}
-              </p>
+              <div
+                key={bIdx}
+                data-block-kind="verse"
+                className="flex flex-col gap-1 text-[length:var(--reader-fs)] leading-[1.55] text-on-surface"
+              >
+                {refLabel}
+                {words}
+              </div>
             );
           }
           case 'prompt': {
             const k = block.prompt.kind;
+            // A soft tint of the kind's tone carries the Prompt — no border,
+            // no side stripe — and a dot of the full tone leads its label.
+            const tone = k === 'discuss' ? 'sage' : k === 'activity' ? 'clay' : k === 'apply' ? 'ochre' : 'slate';
+            const toneClass = {
+              sage: { bg: 'bg-[var(--t-sage-soft)]', text: 'text-[var(--t-sage)]', dot: 'bg-[var(--t-sage)]' },
+              clay: { bg: 'bg-[var(--t-clay-soft)]', text: 'text-[var(--t-clay)]', dot: 'bg-[var(--t-clay)]' },
+              ochre: { bg: 'bg-[var(--t-ochre-soft)]', text: 'text-[var(--t-ochre)]', dot: 'bg-[var(--t-ochre)]' },
+              slate: { bg: 'bg-[var(--t-slate-soft)]', text: 'text-[var(--t-slate)]', dot: 'bg-[var(--t-slate)]' },
+            }[tone];
             return (
               <div
                 key={bIdx}
                 data-block-kind="prompt"
-                className={`bg-[var(--reader-well)] border border-outline-variant rounded-[20px] p-4 sm:p-5 flex flex-col gap-2 ${
-                  k === 'discuss' ? 'border-l-4 border-l-[var(--t-sage)]' : k === 'activity' ? 'border-l-4 border-l-[var(--t-clay)]' : k === 'apply' ? 'border-l-4 border-l-[var(--t-ochre)]' : 'border-l-4 border-l-[var(--t-slate)]'
-                }`}
+                className={`${toneClass.bg} rounded-[20px] p-4 sm:p-5 flex flex-col gap-2`}
               >
-                <div
-                  className={`text-[11px] font-bold tracking-widest uppercase ${
-                    k === 'discuss' ? 'text-[var(--t-sage)]' : k === 'activity' ? 'text-[var(--t-clay)]' : k === 'apply' ? 'text-[var(--t-ochre)]' : 'text-[var(--t-slate)]'
-                  }`}
-                >
+                <div className={`flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase ${toneClass.text}`}>
+                  <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${toneClass.dot}`} />
                   {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : k === 'apply' ? 'Apply' : 'Question'}
                 </div>
                 {block.prompt.points && block.prompt.points.length > 0 ? (
                   <ul className="flex flex-col gap-2 py-1 list-disc pl-5 marker:text-on-surface-variant m-0">
                     {block.prompt.points.map((pt, pIdx) => (
-                      <li key={pIdx} className="text-[length:calc(var(--reader-fs)-1px)] leading-relaxed text-on-surface">
+                      <li key={pIdx} className="text-[length:var(--reader-fs)] leading-relaxed text-on-surface">
                         {pt}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="m-0 text-[length:calc(var(--reader-fs)-1px)] leading-relaxed text-on-surface">{block.prompt.text}</p>
+                  <p className="m-0 text-[length:var(--reader-fs)] leading-relaxed text-on-surface">{block.prompt.text}</p>
                 )}
               </div>
             );

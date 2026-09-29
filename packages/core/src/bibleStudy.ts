@@ -14,11 +14,14 @@ export type ProseBlock = { kind: "prose"; md: string };
 export type ListItem = (Blank | Text) & { children?: ListItem[] };
 export type ListBlock = { kind: "bullet-list" | "number-list"; points: ListItem[]; start?: number };
 
+/** `ref` is legacy: stored Sections from before the citation line was retired still carry it; the reader ignores it. */
 export type PassageBlock = { kind: "passage"; passage: Blank | Text; ref?: string };
 /** A proof-text in the flow: the reference leads, the words follow at body size (#918). */
 export type VerseBlock = { kind: "verse"; ref: string; verse?: Blank | Text; verses?: (Blank | Text)[] };
 export type PromptBlock = { kind: "prompt"; prompt: { kind: PromptKind; text?: string; points?: string[] } };
-export type SectionBlock = ProseBlock | ListBlock | PassageBlock | VerseBlock | PromptBlock;
+/** The one sentence a Section turns on, set large on its own; the reference is optional. */
+export type KeyLineBlock = { kind: "keyline"; line: Blank | Text; ref?: string };
+export type SectionBlock = ProseBlock | ListBlock | PassageBlock | VerseBlock | PromptBlock | KeyLineBlock;
 
 export type Section = {
   id: string;
@@ -157,7 +160,6 @@ export function parseMeeting(md: string): Section[] {
       content,
       points,
       ...(firstPassage?.passage !== undefined && { passage: firstPassage.passage }),
-      ...(firstPassage?.ref !== undefined && { ref: firstPassage.ref }),
       ...(lastPrompt?.prompt !== undefined && { prompt: lastPrompt.prompt }),
     };
   });
@@ -167,7 +169,8 @@ export function parseMeeting(md: string): Section[] {
 
 /**
  * The Section body grammar (ADR 0013 — read as written): consecutive `>`
- * lines are one Passage block (last line = citation), `Verse:` lines are
+ * lines are one Passage block (every line is scripture — no citation line), `Key:`
+ * lines are Key line blocks (optional reference after the last em dash), `Verse:` lines are
  * Verse blocks (reference leading, text following — #918), `Question:/Discuss:/`
  * `Activity:/Apply:` lines are Prompt blocks, `- `/`* ` runs are bullet-list blocks,
  * `1.`-style runs are number-list blocks (each point loses its number
@@ -240,13 +243,7 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
   };
   const flushQuote = () => {
     if (quoteLines && quoteLines.length > 0) {
-      const passageText =
-        quoteLines.length > 1 ? quoteLines.slice(0, -1).join(" ").trim() : quoteLines.join(" ").trim();
-      content.push({
-        kind: "passage",
-        passage: parseBlankOrText(passageText),
-        ...(quoteLines.length > 1 ? { ref: quoteLines[quoteLines.length - 1].trim() } : {}),
-      });
+      content.push({ kind: "passage", passage: parseBlankOrText(quoteLines.join(" ").trim()) });
     }
     quoteLines = null;
   };
@@ -334,6 +331,22 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
           ...(text ? { verse: parseBlankOrText(text) } : {}),
         });
       }
+      continue;
+    }
+
+    // A Key line: `Key: <sentence> — <reference>`, the reference optional.
+    // It splits on the LAST em dash, so a dash inside the sentence stays in
+    // the text; no dash means the author"s own words, with no reference.
+    const keyMatch = line.match(/^key:\s*(.*)$/i);
+    if (keyMatch) {
+      flushList();
+      flushProse();
+      flushVerseRange();
+      const rest = keyMatch[1].trim();
+      const sep = rest.lastIndexOf("—");
+      const text = (sep === -1 ? rest : rest.slice(0, sep)).trim();
+      const ref = sep === -1 ? "" : rest.slice(sep + 1).trim();
+      content.push({ kind: "keyline", line: parseBlankOrText(text), ...(ref ? { ref } : {}) });
       continue;
     }
 
@@ -650,7 +663,6 @@ export const MEETING_SKELETON_MD = `## This week's title
 - First point — hide a word by wrapping it in double brackets: a [[blank]]
 
 > The passage goes here, a verse at a time.
-> Reference · Version
 
 Discuss: The prompt the room answers out loud.
 `;

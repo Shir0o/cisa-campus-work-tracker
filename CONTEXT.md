@@ -123,12 +123,16 @@ One movement of a Meeting: some outline points, a Passage, and a Prompt. Section
 _Avoid_: Slide, step, chapter, block
 
 **Passage**:
-The portion of scripture a Section is built around, shown in full on the page rather than cited for the reader to look up elsewhere. The words are set large and foregrounded; the citation is subordinate and trailing underneath. Distinct from **Verse**, which is a proof-text in the flow with the reference leading.
+The portion of scripture a Section is built around, shown in full on the page rather than cited for the reader to look up elsewhere. The words are set large and foregrounded, and a Passage carries no citation: every line of it is scripture. Distinct from **Verse**, which is a proof-text in the flow with the reference leading, and from **Key line**, which is one sentence lifted out on its own.
 _Avoid_: reading, scripture reference, excerpt
 
 **Verse**:
 A proof-text cited mid-thought — scripture where the reference leads and the words follow at body size, sitting in the flow of the Section rather than pulling out of it. Written with the `Verse:` prefix, reference and text separated by an em dash; the prefix is the one marker, never shape detection of a reference. A Verse may cite a single reference or a range (e.g. `mark 3:24-27`); a range is written with the reference alone on the first line and one verse per following line, rendered with superscript verse numbers. Distinct from **Passage**, which sets the words large with the citation trailing.
 _Avoid_: Passage, quotation, pull quote
+
+**Key line**:
+The one sentence a Section turns on, lifted out and set large on its own — either a line of scripture from the reading or the author's own words for the Section's big idea. Written with the `Key:` prefix; a reference after an em dash is optional, and its absence is how the author's own words are written. It sits wherever the author puts it, and a Section may carry any number, though one is the convention. Distinct from **Passage**, which is the whole reading rather than one line of it, and from **Verse**, which stays in the flow at body size.
+_Avoid_: Highlight, pull quote, takeaway, big idea
 
 **Prompt**:
 The part of a Section that puts something to the room, in one of four kinds — **Question** (answered), **Discuss** (opened up), **Activity** (done), **Apply** (the move the room names it will actually make). Prompts are for the people in the room to work through out loud; the page never collects an answer to one. Unrelated to "Questions for the team" at `/questions`, which is trainees asking Full-timers.

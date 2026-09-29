@@ -97,7 +97,9 @@ describe('reader card-on-ground guardrail (#922)', () => {
       .slice(promptIdx, promptIdx + 3)
       .find((line) => line.includes('className'));
     expect(promptClassLine, 'prompt className should exist').toBeDefined();
-    expect(promptClassLine!).toMatch(/bg-\[var\(--reader-well\)\]/);
+    // A soft tint of the Prompt kind's tone, not a bordered well.
+    expect(promptClassLine!).toMatch(/toneClass\.bg/);
+    expect(body).toMatch(/bg-\[var\(--t-sage-soft\)\]/);
     // The prompt's radius descends from the card's (24px card → 20px
     // sub-container, ADR 0009) so it reads as an inset.
     expect(promptClassLine!).toMatch(/rounded-\[20px\]/);

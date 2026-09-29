@@ -26,7 +26,6 @@ describe('bibleStudy core module', () => {
 - What we stand in now is what we will stand in at the end.
 
 > Being therefore justified by faith, we have peace with God through our Lord Jesus Christ; through whom we also have our access by faith into this grace in which we stand.
-> Romans 5:1–2 · WEB
 
 Discuss: Where do you catch yourself treating peace with God as a feeling that comes and goes?`;
 
@@ -34,7 +33,7 @@ Discuss: Where do you catch yourself treating peace with God as a feeling that c
       expect(sections).toHaveLength(1);
       const s = sections[0];
       expect(s.title).toBe('Where peace starts');
-      expect(s.ref).toBe('Romans 5:1–2 · WEB');
+      expect(s).not.toHaveProperty('ref');
       expect(s.points).toHaveLength(3);
       expect(s.points[0]).toEqual({
         before: 'Peace with God is a ',
@@ -61,8 +60,7 @@ Discuss: Where do you catch yourself treating peace with God as a feeling that c
 
     it('parses blanks inside a passage', () => {
       const md = `## What suffering is doing
-> We also rejoice in our sufferings, knowing that suffering produces perseverance; and perseverance, proven character; and proven character, [[hope]].
-> Romans 5:3–4 · WEB`;
+> We also rejoice in our sufferings, knowing that suffering produces perseverance; and perseverance, proven character; and proven character, [[hope]].`;
 
       const sections = parseMeeting(md);
       expect(sections).toHaveLength(1);
@@ -520,6 +518,54 @@ And if a kingdom is divided against a [[house]], that kingdom cannot stand.`;
         { before: 'And if a kingdom is divided against a ', word: 'house', after: ', that kingdom cannot stand.' },
       ]);
     });
+    it('a multi-line blockquote is all scripture — the last line is no longer a citation', () => {
+      const s = parseMeeting('## Alpha\n> In the beginning was the Word,\n> and the Word was with God.')[0];
+      const passage = s.content.find((b) => b.kind === 'passage');
+      expect(passage).toEqual({
+        kind: 'passage',
+        passage: { before: 'In the beginning was the Word, and the Word was with God.' },
+      });
+      expect(s).not.toHaveProperty('ref');
+    });
+
+    it('parses a Key line with its reference after the em dash', () => {
+      const s = parseMeeting('## Strong man\nKey: No one can enter a strong man’s house unless he first binds him. — Mark 3:27')[0];
+      expect(s.content).toEqual([
+        { kind: 'keyline', line: { before: 'No one can enter a strong man’s house unless he first binds him.' }, ref: 'Mark 3:27' },
+      ]);
+    });
+
+    it('a Key line without an em dash is the author’s own words, with no reference', () => {
+      const s = parseMeeting('## Strong man\nKey: You can’t plunder the house until the strong man is bound.')[0];
+      expect(s.content).toEqual([
+        { kind: 'keyline', line: { before: 'You can’t plunder the house until the strong man is bound.' } },
+      ]);
+    });
+
+    it('a Key line splits on its last em dash, so a dash inside the sentence stays in the text', () => {
+      const s = parseMeeting('## Vine\nKey: I am the vine — you are the branches. — John 15:5')[0];
+      expect(s.content[0]).toEqual({
+        kind: 'keyline',
+        line: { before: 'I am the vine — you are the branches.' },
+        ref: 'John 15:5',
+      });
+    });
+
+    it('Blanks work inside a Key line, and the prefix is case-insensitive', () => {
+      const s = parseMeeting('## Kingdoms\nkey: You can’t serve two [[kingdoms]].')[0];
+      expect(s.content[0]).toEqual({
+        kind: 'keyline',
+        line: { before: 'You can’t serve two ', word: 'kingdoms', after: '.' },
+      });
+    });
+
+    it('a Key line sits where the author wrote it and closes the block before it', () => {
+      const md = '## Order\n- a point\nKey: The big idea.\nSome prose.\nVerse: mark 3:24-25\nFirst verse.\nKey: Another one.';
+      const s = parseMeeting(md)[0];
+      expect(s.content.map((b) => b.kind)).toEqual(['bullet-list', 'keyline', 'prose', 'verse', 'keyline']);
+      expect((s.content[3] as { verses: unknown[] }).verses).toHaveLength(1);
+    });
+
   });
 
   describe('blockInsertionPoint (#921 — block inserters land at the end of the caret\'s Section)', () => {
