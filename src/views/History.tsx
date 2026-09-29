@@ -40,12 +40,12 @@ import { useLanguage } from '../components/LanguageProvider';
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
 
-const KINDS: { id: "all" | Bucket; label: string }[] = [
-  { id: "all", label: "Everything" },
-  { id: "steps", label: "Steps forward" },
-  { id: "prayer", label: "Prayer" },
-  { id: "talk", label: "Conversations" },
-  { id: "gather", label: "Gatherings" },
+const KINDS: { id: "all" | Bucket; label: string; i18nKey: string }[] = [
+  { id: "all", label: "Everything", i18nKey: "history.everything" },
+  { id: "steps", label: "Steps forward", i18nKey: "history.steps_forward" },
+  { id: "prayer", label: "Prayer", i18nKey: "history.prayer" },
+  { id: "talk", label: "Conversations", i18nKey: "history.conversations" },
+  { id: "gather", label: "Gatherings", i18nKey: "history.gatherings" },
 ];
 
 // Static class strings (so Tailwind keeps them) for each bucket's tonal node.
@@ -433,7 +433,7 @@ export default function History() {
                   : "text-on-surface-variant hover:text-on-surface",
               )}
             >
-              {t('history.' + k.id)}
+              {t(k.i18nKey, k.label)}
             </button>
           ))}
         </div>

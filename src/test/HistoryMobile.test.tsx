@@ -95,7 +95,14 @@ describe('HistoryMobile', () => {
     render(<HistoryMobile {...baseProps} setKind={setKind} />);
     fireEvent.click(screen.getByText('Filter history'));
     expect(screen.getByText('Team member')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Prayer'));
+
+    expect(screen.getByRole('button', { name: 'Everything' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Steps forward' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prayer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conversations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gatherings' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prayer' }));
     expect(setKind).toHaveBeenCalledWith('prayer');
   });
 
@@ -105,6 +112,26 @@ describe('HistoryMobile', () => {
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Prayer'));
     expect(setKind).toHaveBeenCalledWith('all');
+  });
+
+  it('renders Spanish localized labels in mobile filter sheet when language is es', async () => {
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+    localStorage.setItem('cisa_language', 'es');
+    try {
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <HistoryMobile {...baseProps} />
+        </LanguageProvider>
+      );
+      fireEvent.click(screen.getByText('Filtrar historial'));
+      expect(screen.getByRole('button', { name: 'Todo' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Pasos hacia adelante' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Oración' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Conversaciones' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Reuniones' })).toBeInTheDocument();
+    } finally {
+      localStorage.clear();
+    }
   });
 
   it('resets all filters from the bottom sheet', () => {
