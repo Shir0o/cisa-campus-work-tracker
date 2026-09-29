@@ -184,7 +184,8 @@ jobs:
           # Play notes do.
           npx eas-cli submit --platform ios --profile production \
             --path ./artifacts/app-release.ipa \
-            --non-interactive
+            --non-interactive \
+            --no-wait
 
       - name: Attach artefacts to the GitHub Release
         env:
