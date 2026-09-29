@@ -4,6 +4,7 @@ export * from './permissions';
 export * from './impersonate';
 export * from './walking';
 export * from './threads';
+export * from './stream';
 export * from './asks';
 export * from './goal';
 export * from './whatsNew';

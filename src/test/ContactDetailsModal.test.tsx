@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
-import { addThreadMessage } from '../lib/threads';
+import { addThreadMessage, closeFollowUpAsk } from '../lib/threads';
 import { useAuth } from '../components/AuthProvider';
 import { handleFirestoreError, logActivity } from '../lib/firebase';
 import { Frecency, __resetFrecencyCache } from '../lib/frecency';
@@ -22,6 +22,8 @@ vi.mock('../lib/threads', () => ({
   countFor: (msgs: any[]) => msgs.length,
   repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
   addThreadMessage: vi.fn(() => Promise.resolve()),
+  closeFollowUpAsk: vi.fn(() => Promise.resolve()),
+  deleteThreadMessage: vi.fn(() => Promise.resolve()),
   contactStakeholdersOf: vi.fn((c) => c || {}),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
 }));
@@ -638,31 +640,28 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('allows replying to a comment', async () => {
+  it('allows replying to a comment in its Thread', async () => {
     hoisted.messages = [
       {
         id: 'comment-1',
+        interactionId: null,
         from: 'user-abc',
         fromName: 'Alice',
+        kind: 'comment',
         body: 'Hello world',
-        createdAt: new Date().toISOString(),
+        at: new Date().toISOString(),
       },
     ];
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
 
-    // Click Reply on Alice's comment
-    const replyBtn = screen.getByRole('button', { name: /^Reply$/ });
-    fireEvent.click(replyBtn);
+    // Reply in thread on Alice's comment: the Thread replaces the drawer.
+    fireEvent.click(screen.getByRole('button', { name: 'Reply in thread' }));
+    const thread = screen.getByRole('region', { name: 'Thread' });
+    expect(within(thread).getByText('in Conversation · John Doe')).toBeInTheDocument();
 
-    // Type reply
-    const replyInput = screen.getByPlaceholderText('Write a reply…');
-    fireEvent.change(replyInput, { target: { value: 'This is a reply' } });
-
-    // Submit reply (the submit button in reply form)
-    const replyFormBtns = screen.getAllByRole('button', { name: /^Reply$/ });
-    const submitBtn = replyFormBtns[replyFormBtns.length - 1];
-    fireEvent.click(submitBtn);
+    fireEvent.change(within(thread).getByPlaceholderText('Reply…'), { target: { value: 'This is a reply' } });
+    fireEvent.click(within(thread).getByRole('button', { name: 'Reply' }));
 
     await waitFor(() => {
       expect(addThreadMessage).toHaveBeenCalledWith(
@@ -3065,17 +3064,74 @@ describe('desktop story layout (design D)', () => {
     expect(screen.queryByRole('button', { name: /^History/ })).toBeNull();
   });
 
-  it('opens the Conversation thread in a drawer, and closes it', async () => {
+  it('opens the Conversation in a drawer on the shared stream, and closes it', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
 
     const drawer = screen.getByRole('dialog', { name: 'Conversation' });
-    expect(drawer.querySelector('[data-thread-pane]')).toBeTruthy();
+    expect(drawer.querySelector('[data-stream-list]')).toBeTruthy();
+    expect(drawer.querySelector('[data-thread-pane]')).toBeNull();
 
     fireEvent.click(within(drawer).getByRole('button', { name: 'Close Conversation' }));
     expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
+  });
+
+  it('the Conversation drawer names its audience in the header and above the box, and offers the kinds', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    expect(within(drawer).getAllByText('Everyone tied to John sees this.')).toHaveLength(2);
+    expect(within(drawer).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
+    expect(within(drawer).getByText('Nothing here yet — leave the first comment below.')).toBeInTheDocument();
+  });
+
+  it('posts a Follow-up ask from the drawer to everyone tied', async () => {
+    const contact = { ...mockContact, createdBy: 'user-9', carers: ['user-7'] };
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} initialTab="thread" />);
+    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Ask a follow-up' }));
+    expect(within(drawer).getByText('Everyone tied to John sees this and can say they followed up.')).toBeInTheDocument();
+    fireEvent.change(within(drawer).getByPlaceholderText(/What wants doing/), { target: { value: 'Text John about Thursday' } });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Post' }));
+
+    expect(addThreadMessage).toHaveBeenCalledWith(
+      'contact-abc',
+      expect.objectContaining({ kind: 'nudge', body: 'Text John about Thursday', parentId: null, from: 'user-123', fromName: 'Admin Tony' }),
+      expect.objectContaining({ contactName: 'John Doe', stakeholders: contact }),
+    );
+  });
+
+  it('closes an open Follow-up ask right in the stream', () => {
+    hoisted.messages = [
+      { id: 'ask-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'nudge', body: 'Can someone text him?', at: new Date(Date.now() - 2 * 86_400_000).toISOString() },
+    ];
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+
+    expect(within(drawer).getByText('Follow-up ask')).toBeInTheDocument();
+    expect(within(drawer).getByText('Open 2 days')).toBeInTheDocument();
+    // A Full-timer who is not the asker may follow up, not withdraw.
+    expect(within(drawer).queryByRole('button', { name: 'Never mind' })).toBeNull();
+    fireEvent.click(within(drawer).getByRole('button', { name: 'I followed up' }));
+    expect(closeFollowUpAsk).toHaveBeenCalledWith('contact-abc', 'ask-1', { uid: 'user-123', name: 'Admin Tony' });
+  });
+
+  it('a read-only viewer reads the Conversation but gets no composer', () => {
+    asRole('viewer');
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, createdBy: 'user-123' }} initialTab="thread" />);
+    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    expect(within(drawer).queryByRole('button', { name: 'Post' })).toBeNull();
+  });
+
+  it('makes a to-do from a Conversation message', () => {
+    hoisted.messages = [
+      { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'Invite him to the retreat', at: new Date().toISOString() },
+    ];
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Make a to-do' }));
+    expect(screen.getByDisplayValue('Invite him to the retreat')).toBeInTheDocument();
   });
 
   it('offers the Full-timers thread to Full-timers only', () => {

@@ -59,8 +59,11 @@ import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
+import Stream from "../stream/Stream";
+import { conversationAdapter } from "../stream/conversationAdapter";
+import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { contactStakeholdersOf } from "../../lib/threads";
-import { useThreads, countFor } from "../../lib/threads";
+import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
 import { unhidePrayerContact } from "../../lib/prayers";
 import { Translate } from "../Translate";
@@ -341,6 +344,8 @@ export default function ContactDetailsModal({
   // inline thread is expanded.
   const threadMessages = useThreads(contact?.id, { includeTeam: isAdmin });
   const [openThread, setOpenThread] = useState<string | null>(null);
+  // The Conversation message a to-do is being made from (the stream's toolbar).
+  const [todoFrom, setTodoFrom] = useState<ThreadMessage | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
   const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
   useEffect(() => subscribeInteractionRemovals(() => setPendingRemovalIds(getPendingRemovalIds())), []);
@@ -2033,6 +2038,31 @@ export default function ContactDetailsModal({
 
   const drawerOpen = !isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread));
   const drawerLabel = drawer === "discussion" ? t('modals.contactDetails.discussion') : walkLabel;
+  const closeDrawerLabel = t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel);
+  const closeDrawerButton = (
+    <button
+      type="button"
+      onClick={() => setDrawer(null)}
+      title={closeDrawerLabel}
+      aria-label={closeDrawerLabel}
+      className="w-9 h-9 shrink-0 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
+    >
+      <X className="w-4 h-4" />
+    </button>
+  );
+
+  // The Conversation drawer runs on the shared stream (ADR 0033); Full-timers
+  // and the per-Interaction threads move over in #1258.
+  const conversation = conversationAdapter({
+    contactId: contact.id,
+    contactName: contact.name,
+    messages: threadMessages,
+    me: { uid: currentUid ?? "", name: user?.displayName || "Someone", role },
+    recipientUid: threadRecipient,
+    stakeholders: contactStakeholdersOf(contact),
+    teamMembers,
+    t,
+  });
 
   return (
     <AnimatePresence>
@@ -3132,31 +3162,53 @@ export default function ContactDetailsModal({
               </button>
             </div>
 
-            {drawerOpen && (
+            {drawerOpen && drawer === "thread" && (
+              <div className="cd-drawer cd-drawer-stream" role="dialog" aria-label={drawerLabel}>
+                <Stream
+                  adapter={conversation}
+                  viewer={{ uid: currentUid ?? "", role }}
+                  threadMode="replace"
+                  onClose={() => setDrawer(null)}
+                  onMakeTodo={(m) => setTodoFrom(m)}
+                  header={
+                    <div className="cd-drawer-head">
+                      <div>
+                        <h3 className="cd-sec-title">{drawerLabel}</h3>
+                        <span className="cd-sec-sub">{conversation.audience}</span>
+                      </div>
+                      {closeDrawerButton}
+                    </div>
+                  }
+                />
+              </div>
+            )}
+            {drawerOpen && drawer === "discussion" && (
               <div className="cd-drawer" role="dialog" aria-label={drawerLabel}>
                 <div className="cd-drawer-head">
                   <div>
                     <h3 className="cd-sec-title">{drawerLabel}</h3>
                     <span className="cd-sec-sub">
-                      {drawer === "discussion"
-                        ? `Full-timers only — how the team is thinking about caring for ${firstName}.`
-                        : t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
+                      {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setDrawer(null)}
-                    title={t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel)}
-                    aria-label={t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel)}
-                    className="w-9 h-9 shrink-0 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  {closeDrawerButton}
                 </div>
                 <div className="cd-drawer-body">
-                  {drawer === "discussion" ? renderThread("team") : renderThread()}
+                  {renderThread("team")}
                 </div>
               </div>
+            )}
+            {todoFrom && (
+              <FromEntryTodoComposer
+                text={todoFrom.body}
+                contactId={contact.id}
+                contactName={contact.name}
+                source={null}
+                team={teamMembers.map((m) => ({ uid: m.id, name: m.name }))}
+                meUid={currentUid ?? ""}
+                meName={user?.displayName || "Someone"}
+                onClose={() => setTodoFrom(null)}
+              />
             )}
           </div>
         </div>
