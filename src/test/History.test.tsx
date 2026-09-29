@@ -599,23 +599,27 @@ describe('History View', () => {
 
   it('renders Spanish localized labels when language is es', async () => {
     const mediaQuery = await import('../lib/useMediaQuery');
-    vi.spyOn(mediaQuery, 'useMediaQuery').mockReturnValue(false);
+    const spy = vi.spyOn(mediaQuery, 'useMediaQuery').mockReturnValue(false);
     const { LanguageProvider } = await import('../components/LanguageProvider');
     localStorage.setItem('cisa_language', 'es');
-    render(
-      <LanguageProvider defaultLanguage="es">
-        <HistoryView />
-      </LanguageProvider>
-    );
+    try {
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <HistoryView />
+        </LanguageProvider>
+      );
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Todo' })).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Todo' })).toBeInTheDocument();
+      });
 
-    expect(screen.getByRole('button', { name: 'Pasos hacia adelante' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Oración' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Conversaciones' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reuniones' })).toBeInTheDocument();
-    localStorage.clear();
+      expect(screen.getByRole('button', { name: 'Pasos hacia adelante' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Oración' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Conversaciones' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Reuniones' })).toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+      localStorage.clear();
+    }
   });
 });
