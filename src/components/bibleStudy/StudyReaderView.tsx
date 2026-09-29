@@ -548,7 +548,6 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
                 </div>
                 <div className="min-w-0 flex flex-col">
                   <div className="text-[15px] font-medium text-on-surface truncate">{sec.title}</div>
-                  {sec.ref && <div className="text-xs text-on-surface-variant/70">{sec.ref}</div>}
                 </div>
               </div>
             ))}

@@ -433,6 +433,53 @@ Discuss: Single line prompt text
     });
     expect(s.content[1].kind).toBe('bullet-list');
   });
+  it('a multi-line blockquote is all scripture — the last line is no longer a citation', () => {
+    const s = parseMeeting('## Alpha\n> In the beginning was the Word,\n> and the Word was with God.')[0];
+    const passage = s.content.find((b) => b.kind === 'passage');
+    expect(passage).toEqual({
+      kind: 'passage',
+      passage: { before: 'In the beginning was the Word, and the Word was with God.' },
+    });
+    expect(s).not.toHaveProperty('ref');
+  });
+
+  it('parses a Key line with its reference after the em dash', () => {
+    const s = parseMeeting('## Strong man\nKey: No one can enter a strong man’s house unless he first binds him. — Mark 3:27')[0];
+    expect(s.content).toEqual([
+      { kind: 'keyline', line: { before: 'No one can enter a strong man’s house unless he first binds him.' }, ref: 'Mark 3:27' },
+    ]);
+  });
+
+  it('a Key line without an em dash is the author’s own words, with no reference', () => {
+    const s = parseMeeting('## Strong man\nKey: You can’t plunder the house until the strong man is bound.')[0];
+    expect(s.content).toEqual([
+      { kind: 'keyline', line: { before: 'You can’t plunder the house until the strong man is bound.' } },
+    ]);
+  });
+
+  it('a Key line splits on its last em dash, so a dash inside the sentence stays in the text', () => {
+    const s = parseMeeting('## Vine\nKey: I am the vine — you are the branches. — John 15:5')[0];
+    expect(s.content[0]).toEqual({
+      kind: 'keyline',
+      line: { before: 'I am the vine — you are the branches.' },
+      ref: 'John 15:5',
+    });
+  });
+
+  it('Blanks work inside a Key line, and the prefix is case-insensitive', () => {
+    const s = parseMeeting('## Kingdoms\nkey: You can’t serve two [[kingdoms]].')[0];
+    expect(s.content[0]).toEqual({
+      kind: 'keyline',
+      line: { before: 'You can’t serve two ', word: 'kingdoms', after: '.' },
+    });
+  });
+
+  it('a Key line sits where the author wrote it and closes the block before it', () => {
+    const md = '## Order\n- a point\nKey: The big idea.\nSome prose.\nVerse: mark 3:24-25\nFirst verse.\nKey: Another one.';
+    const s = parseMeeting(md)[0];
+    expect(s.content.map((b) => b.kind)).toEqual(['bullet-list', 'keyline', 'prose', 'verse', 'keyline']);
+    expect((s.content[3] as { verses: unknown[] }).verses).toHaveLength(1);
+  });
 });
 
 describe('nextMeetingDate', () => {

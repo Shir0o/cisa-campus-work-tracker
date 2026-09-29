@@ -453,6 +453,25 @@ describe('BibleStudyEditor view', () => {
       });
     });
 
+    it('inserts a Key line on the next line after the cursor line, like a Prompt', async () => {
+      renderAt();
+      await screen.findByDisplayValue('Initial Meeting');
+
+      const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+      area.focus();
+      const point1Offset = MEETING_MD.indexOf('Point 1') + 2;
+      area.setSelectionRange(point1Offset, point1Offset);
+
+      openMenu('Insert');
+      fireEvent.click(screen.getByRole('menuitem', { name: /Key line/i }));
+
+      await waitFor(() => {
+        expect(area.value).toBe(
+          '## Section 1\n- Point 1\n\nKey: \n\n## Section 2\n- Point 2',
+        );
+      });
+    });
+
     it('separates the inserted block from the preceding content by exactly one blank line', async () => {
       renderAt();
       await screen.findByDisplayValue('Initial Meeting');

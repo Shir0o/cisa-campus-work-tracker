@@ -186,6 +186,15 @@ describe('StudyReaderView (the scrolling deck)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('does not show a stored Section\'s legacy citation in the Section index', () => {
+    const m = meeting({});
+    m.sections[1] = { ...m.sections[1], ref: 'Romans 5:3–4 · WEB' };
+    render(<StudyReaderView meeting={m} staleDateLabel={null} />);
+
+    fireEvent.click(screen.getByLabelText('Open section index'));
+    expect(screen.queryByText('Romans 5:3–4 · WEB')).toBeNull();
+  });
+
   it('offers no distraction-free control — the chrome it hid is no longer busy', () => {
     render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 

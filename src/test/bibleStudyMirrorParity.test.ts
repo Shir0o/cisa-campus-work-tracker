@@ -151,6 +151,15 @@ Activity: The last prompt wins.`,
 Discuss:
   - First point of prompt
   - Second point with [[blank]] as text`,
+
+  // Key lines (with and without a reference, a Blank, a mid-sentence dash)
+  // and a multi-line Passage with no citation line.
+  `## The strong man
+Key: No one can enter a strong man’s house unless he first binds him. — Mark 3:27
+> If a kingdom is divided against itself,
+> that kingdom cannot stand.
+key: I am the vine — you are the [[branches]].
+Key: You can’t serve two kingdoms.`,
 ];
 
 describe('parser mirror parity (ADR 0013 keep-in-step)', () => {
