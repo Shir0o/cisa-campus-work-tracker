@@ -99,9 +99,9 @@ function useFormatters() {
       if (y !== new Date().getFullYear()) opts.year = "numeric";
       return date.toLocaleDateString(locale, opts);
     };
-    /** A reply's time: the clock today, else the date and the clock. */
-    const replyTime = (iso: string) =>
-      new Date(iso).toDateString() === new Date().toDateString() ? time(iso) : dateTime(iso);
+    /** A reply's time: the clock on the parent's day, else the date too. */
+    const replyTime = (iso: string, parentIso: string) =>
+      new Date(iso).toDateString() === new Date(parentIso).toDateString() ? time(iso) : dateTime(iso);
     return { time, dateTime, ago, day, replyTime };
   }, [t, locale]);
 }
@@ -357,7 +357,7 @@ export default function Stream<M extends StreamSourceMessage>({
           </div>
         )}
         {thread.replies.map((r) => (
-          <Row key={r.message.id} row={r} when={f.replyTime(r.message.at)} canReply={false} showChip={false} {...rowProps(r)} />
+          <Row key={r.message.id} row={r} when={f.replyTime(r.message.at, thread.parent.message.at)} canReply={false} showChip={false} {...rowProps(r)} />
         ))}
       </div>
       {can.canReply && (
