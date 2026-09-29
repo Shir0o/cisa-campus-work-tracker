@@ -72,6 +72,24 @@ describe("i18n dictionary and helper", () => {
     expect(unresolved, "contactDetails keys rendered with no translation").toEqual([]);
   });
 
+  it("resolves every modals key LogVisitModal actually renders", () => {
+    const src = readFileSync(
+      join(process.cwd(), "src/components/modals/LogVisitModal.tsx"),
+      "utf8",
+    );
+    const used = [
+      ...new Set(
+        [...src.matchAll(/t\(\s*['"](modals\.[a-z0-9_]+)['"]/gi)].map(
+          (m) => m[1],
+        ),
+      ),
+    ].sort();
+    expect(used.length).toBeGreaterThan(15);
+
+    const unresolved = used.filter((key) => t(key, "en") === key);
+    expect(unresolved, "LogVisitModal keys rendered with no translation").toEqual([]);
+  });
+
   it("returns the dictionary object for a given language", () => {
     expect(getDictionary("en")).toEqual(en);
     expect(getDictionary("es")).toEqual(es);

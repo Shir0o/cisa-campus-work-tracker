@@ -116,6 +116,23 @@ describe('LogVisitModal', () => {
     await waitFor(() => expect(screen.getByLabelText('Where')).toHaveValue(''));
   });
 
+  it('shows localized saving state when submit is processing', async () => {
+    let resolveSave: () => void = () => {};
+    (addVisit as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveSave = () => resolve('new-visit-id'); }),
+    );
+
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+    fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+    expect(screen.getByRole('button', { name: /Saving…/ })).toBeInTheDocument();
+    expect(screen.queryByText('modals.saving')).not.toBeInTheDocument();
+
+    resolveSave();
+    await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+  });
+
   it('logs the visit with everyone on it and records the activity', async () => {
     render(<LogVisitModal {...baseProps} />);
     pick('Ama');
