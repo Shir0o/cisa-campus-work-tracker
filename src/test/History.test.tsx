@@ -525,6 +525,34 @@ describe('History View', () => {
     });
   });
 
+  it('lists every approved team member in the Who dropdown, even with no logged activity', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 1 });
+      } else if (ref?.path === 'activities') {
+        callback({ docs: mockActivities, size: 1 });
+      } else if (ref?.path === 'users') {
+        callback({
+          docs: [
+            { id: 'u-diana', data: () => ({ displayName: 'Diana Prince', role: 'Full-timer', approved: true }) },
+            { id: 'u-ghost', data: () => ({ displayName: 'cisa-qa', approved: true }) },
+          ],
+          size: 2,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Diana Prince' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('option', { name: 'cisa-qa' })).not.toBeInTheDocument();
+  });
+
   // ── Footer statistics ──────────────────────────────────────────────
 
   it('renders footer statistics with moments, people, hands', async () => {

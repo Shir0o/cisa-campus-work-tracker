@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
-import { Filter, X, ChevronRight } from 'lucide-react';
+import { Filter, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact } from '../types';
 
@@ -280,9 +280,10 @@ export default function HistoryMobile({
                       </option>
                     ))}
                   </select>
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/70">
-                    ▾
-                  </span>
+                  <ChevronDown
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-on-surface-variant"
+                    aria-hidden
+                  />
                 </div>
               </div>
 
