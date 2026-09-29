@@ -157,7 +157,7 @@ describe('Contact Management', () => {
     fireEvent.change(screen.getByPlaceholderText(/alex@campus.edu/i), { target: { value: 'bob@build.it' } });
     // #730: the new-contact form no longer exposes the ADDRESS / "How we met" fields.
     // #1152: nor the free-text "Status" — it asks who the person is instead.
-    fireEvent.click(screen.getByLabelText('A student of ours'));
+    fireEvent.click(screen.getByLabelText('A student'));
 
     // Submit
     const form = document.getElementById('new-contact-form');

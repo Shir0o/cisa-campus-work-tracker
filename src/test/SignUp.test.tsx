@@ -210,6 +210,12 @@ describe('SignUp View', () => {
     expect(contactArg?.stage).toBe('');
     expect(contactArg?.createdBy).toBe('ft-123');
     expect(contactArg?.createdByName).toBe('Staff Tester');
+    // #1152: a stranger's submission may never assert membership — always a
+    // Contact (a student, not in the church life), with no decision stamp.
+    expect(contactArg?.isStudent).toBe(true);
+    expect(contactArg?.inChurchLife).toBe(false);
+    expect(contactArg?.kindSetBy).toBeUndefined();
+    expect(contactArg?.kindSetAt).toBeUndefined();
     expect(contactArg?.tags).toEqual(
       expect.arrayContaining(['New Sign Up', 'Summer 2026']),
     );

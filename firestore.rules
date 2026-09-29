@@ -342,10 +342,19 @@ service cloud.firestore {
           // Trainee's ordinary edit could carry the kind through with it. The
           // stamp moves with the fields it records, so a kind can never be set
           // without saying who decided it.
+          //
+          // Presence, not change: `affectedKeys()` excludes a key whose value
+          // did not change, so requiring the stamp to be *affected* denied a
+          // Full-timer re-setting a kind they had already stamped (the bulk-set
+          // case) — the write then fell through every remaining branch and
+          // exhausted the 1000-expression budget. Checking the incoming map
+          // still refuses a kind written with no stamp, and binding kindSetBy to
+          // the caller keeps the who-decided-it guarantee.
           (keys.hasOnly([
             'inChurchLife', 'isStudent', 'kindSetBy', 'kindSetAt',
             'updatedAt', 'updatedBy', 'updatedByName'
-          ]) && keys.hasAll(['kindSetBy', 'kindSetAt']) && admin) ||
+          ]) && incoming().keys().hasAll(['kindSetBy', 'kindSetAt']) &&
+            incoming().kindSetBy == request.auth.uid && admin) ||
 
           // Share / unshare: the access list moves in lockstep with the tie it
           // mirrors, so neither can be rewritten as a lone ghost field.

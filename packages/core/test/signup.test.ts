@@ -210,6 +210,19 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     expect(data.metVia).toBeUndefined();
   });
 
+  it('marks the public sign-up as a Contact: a student, never in the church life, no stamp (#1152)', async () => {
+    const mockDb: any = {};
+    await submitSignUp(mockDb, form(), []);
+
+    const contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall).toBeDefined();
+    const data = contactCall![1];
+    expect(data.isStudent).toBe(true);
+    expect(data.inChurchLife).toBe(false);
+    expect(data.kindSetBy).toBeUndefined();
+    expect(data.kindSetAt).toBeUndefined();
+  });
+
   it('writes the contact stage as "Unassigned" regardless of configured stages (#678)', async () => {
     // #678: sign-up contacts land in the "Unassigned" bucket so the Journey
     // board isn't cluttered with raw form leads. Even when the project has

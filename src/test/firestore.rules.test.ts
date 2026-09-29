@@ -3727,6 +3727,36 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets a Full-timer re-set a kind they already stamped (bulk-set case)', async () => {
+      // A bulk-set often includes people the Full-timer already sorted, so
+      // `kindSetBy` is written with the same value and is absent from
+      // `affectedKeys()`. The branch must accept presence, not change.
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'contacts', 'k9'), {
+          name: 'Already Ours', email: 'ours@example.com',
+          inChurchLife: true, isStudent: true,
+          kindSetBy: 'ft1', kindSetAt: '2026-09-01T00:00:00.000Z',
+          createdBy: 'ft1', coCreators: [], carers: [], visibleTo: ['ft1'],
+        });
+      });
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'k9'), {
+        inChurchLife: false, ...stamp('ft1'),
+      }));
+    });
+
+    it('refuses a kind attributed to somebody other than the caller', async () => {
+      await seedKind();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'k1'), {
+        inChurchLife: true, isStudent: false,
+        kindSetBy: 'op1', kindSetAt: '2026-09-23T00:00:00.000Z',
+        updatedAt: serverTimestamp(), updatedBy: 'ft1', updatedByName: 'ft1',
+      }));
+    });
+
     it('refuses a Trainee', async () => {
       await seedKind();
       const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });

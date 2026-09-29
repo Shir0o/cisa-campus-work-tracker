@@ -43,6 +43,12 @@ export async function submitSignUp(
     email: form.email.trim(),
     role: "Student",
     stage,
+    // The public form is filled in by a stranger, so nothing it submits may
+    // assert membership (#1152): they are a student, and never in the church
+    // life — always a Contact, never Our own or a Local saint. No stamp:
+    // nobody has decided about them yet, so they land in Not sorted yet.
+    isStudent: true,
+    inChurchLife: false,
     initials: getUserInitials(form.name),
     notes: form.notes.trim(),
     spiritualBackground: form.spiritualBackground,
