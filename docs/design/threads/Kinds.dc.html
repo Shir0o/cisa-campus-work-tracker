@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Where the kind shows</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Lexend:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:#131316}a:hover{color:#52525B}
+button{font-family:inherit;cursor:pointer}
+svg{display:block;flex:none}
+.root{font-family:Lexend,ui-sans-serif,system-ui,sans-serif;color:#0A0A0B;background:#FAFAFA;-webkit-font-smoothing:antialiased;padding:48px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start}
+.colk{display:flex;flex-direction:column;gap:14px}
+.cap{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.015em;margin:0}
+.capsub{font-size:12.5px;color:#52525B;margin:4px 0 0;line-height:1.5}
+.panel{border:1px solid #F0F0F2;border-radius:24px;padding:14px 22px 20px;background:#FFFFFF;display:flex;flex-direction:column;gap:6px}
+.av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12.5px;font-weight:600}
+.p-m{background:#E0E7FF;color:#3730A3}.p-j{background:#DCFCE7;color:#166534}.p-g{background:#FCE7F3;color:#9D174D}.p-r{background:#FEF3C7;color:#92400E}
+.m{display:flex;gap:10px;padding:8px 8px;margin:0 -8px;border-radius:10px;position:relative}
+.m.rule{padding-left:18px}
+.m.rule::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px}
+.m.r-ask::before{background:#D97706}
+.m.r-done::before{background:#16A34A}
+.m.r-gone::before{background:#D4D4D8}
+.m.r-q::before{background:#2563EB}
+.mb{flex:1;min-width:0}
+.mh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:20px}
+.who{font-size:14px;font-weight:600}
+.when{font-size:11.5px;color:#71717A}
+.tx{font-size:14px;line-height:1.5;margin:1px 0 0;color:#18181B}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600}
+.tag.q{background:#DBEAFE;color:#1E40AF}
+.tag.ask{background:#FEF3C7;color:#92400E}
+.tag.muted{background:#F4F4F5;color:#52525B}
+.status{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;font-weight:500}
+.s-open{color:#92400E}
+.s-done{color:#016A1C;display:inline-flex;align-items:center;gap:5px}
+.s-gone{color:#71717A}
+.s-q{color:#1E40AF;display:inline-flex;align-items:center;gap:5px}
+.btn{height:32px;border-radius:999px;padding:0 14px;font-size:12.5px;font-weight:600;border:1px solid #E4E4E7;background:#FFFFFF;color:#0A0A0B;display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:#131316;color:#FFFFFF;border-color:#131316}
+.btn.ghost{border-color:transparent;background:transparent;color:#52525B}
+.sep{height:1px;background:#F0F0F2;margin:2px 0}
+</style>
+</helmet>
+<div class="root" style="width: 1320px; height: 860px;">
+
+  <div class="colk">
+    <div><h2 class="cap">1 · Tag beside the name</h2><p class="capsub">The kind is read with the author, before the body. State sits in a line under it.</p></div>
+    <div class="panel">
+      <div class="m"><span class="av p-m">MS</span><div class="mb">
+        <div class="mh"><span class="who">Maria Santos</span><span class="tag ask">Follow-up ask</span><span class="when">Yesterday</span></div>
+        <p class="tx">Can someone text Daniel before Thursday? He didn't have a ride last week.</p>
+        <div class="status"><span class="s-open">Open 1 day</span><button class="btn pri">I followed up</button><button class="btn ghost">Never mind</button></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m"><span class="av p-r">RC</span><div class="mb">
+        <div class="mh"><span class="who">Ruth Chen</span><span class="tag ask">Follow-up ask</span><span class="when">Mon</span></div>
+        <p class="tx">Could someone email Priya the Bible study link? She asked twice.</p>
+        <div class="status"><span class="s-done"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Josh followed up · 2h ago</span></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m"><span class="av p-m">MS</span><div class="mb">
+        <div class="mh"><span class="who">Maria Santos</span><span class="tag muted">Follow-up ask</span><span class="when">Sun</span></div>
+        <p class="tx">Can someone check whether Daniel found a ride Sunday?</p>
+        <div class="status"><span class="s-gone">Maria withdrew this · Sun</span></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m"><span class="av p-g">GL</span><div class="mb">
+        <div class="mh"><span class="who">Grace Liu</span><span class="tag q">Question</span><span class="when">9:12 AM</span></div>
+        <p class="tx">Is Daniel's roommate the one who came to the cookout?</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="colk">
+    <div><h2 class="cap">2 · Rule in the gutter</h2><p class="capsub">A 3px rule coloured by kind and state; the words live only in the status line.</p></div>
+    <div class="panel">
+      <div class="m rule r-ask"><span class="av p-m">MS</span><div class="mb">
+        <div class="mh"><span class="who">Maria Santos</span><span class="when">Yesterday</span></div>
+        <p class="tx">Can someone text Daniel before Thursday? He didn't have a ride last week.</p>
+        <div class="status"><span class="s-open">Follow-up ask · open 1 day</span><button class="btn pri">I followed up</button><button class="btn ghost">Never mind</button></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m rule r-done"><span class="av p-r">RC</span><div class="mb">
+        <div class="mh"><span class="who">Ruth Chen</span><span class="when">Mon</span></div>
+        <p class="tx">Could someone email Priya the Bible study link? She asked twice.</p>
+        <div class="status"><span class="s-done"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Josh followed up · 2h ago</span></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m rule r-gone"><span class="av p-m">MS</span><div class="mb">
+        <div class="mh"><span class="who">Maria Santos</span><span class="when">Sun</span></div>
+        <p class="tx">Can someone check whether Daniel found a ride Sunday?</p>
+        <div class="status"><span class="s-gone">Follow-up ask · Maria withdrew this</span></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m rule r-q"><span class="av p-g">GL</span><div class="mb">
+        <div class="mh"><span class="who">Grace Liu</span><span class="when">9:12 AM</span></div>
+        <p class="tx">Is Daniel's roommate the one who came to the cookout?</p>
+        <div class="status"><span class="s-q">Question</span></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="colk">
+    <div><h2 class="cap">3 · Status line only</h2><p class="capsub">Nothing above the body. The line underneath names the kind and carries its state.</p></div>
+    <div class="panel">
+      <div class="m"><span class="av p-m">MS</span><div class="mb">
+        <div class="mh"><span class="who">Maria Santos</span><span class="when">Yesterday</span></div>
+        <p class="tx">Can someone text Daniel before Thursday? He didn't have a ride last week.</p>
+        <div class="status"><span class="s-open">Follow-up ask · open 1 day</span><button class="btn pri">I followed up</button><button class="btn ghost">Never mind</button></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m"><span class="av p-r">RC</span><div class="mb">
+        <div class="mh"><span class="who">Ruth Chen</span><span class="when">Mon</span></div>
+        <p class="tx">Could someone email Priya the Bible study link? She asked twice.</p>
+        <div class="status"><span class="s-done"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Follow-up ask · Josh followed up 2h ago</span></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m"><span class="av p-m">MS</span><div class="mb">
+        <div class="mh"><span class="who">Maria Santos</span><span class="when">Sun</span></div>
+        <p class="tx">Can someone check whether Daniel found a ride Sunday?</p>
+        <div class="status"><span class="s-gone">Follow-up ask · Maria withdrew this</span></div>
+      </div></div>
+      <div class="sep"></div>
+      <div class="m"><span class="av p-g">GL</span><div class="mb">
+        <div class="mh"><span class="who">Grace Liu</span><span class="when">9:12 AM</span></div>
+        <p class="tx">Is Daniel's roommate the one who came to the cookout?</p>
+        <div class="status"><span class="s-q"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>Question</span></div>
+      </div></div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1320,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

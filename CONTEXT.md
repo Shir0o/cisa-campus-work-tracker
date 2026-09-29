@@ -183,13 +183,13 @@ What everyone who is not a Full-timer reaches at `/bible-study/read` — the new
 _Avoid_: The reader, scan view, bible study page, the study (bare)
 
 **Full-timers (contact tab)**:
-The Full-timers-only thread on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. The tab is named for its audience on purpose: it sits beside **Conversation**, which is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
+The Full-timers-only stream of messages on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. The tab is named for its audience on purpose: it sits beside **Conversation**, which is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
 _Avoid_: Discussion, Private, Comments, internal thread, chat
 
 Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for the team** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
 
 **Mention**:
-Explicitly tagging a teammate in a Conversation thread, the Full-timers tab, or a chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
+Explicitly tagging a teammate in a Conversation, the Full-timers tab, or a chat message using `@DisplayName`. Emits a direct notification to that teammate's notification bell, system push notifications (if enabled), and surfaces under their My Day "On you" Attention Feed stack. In team-scope Discussions, mentions are strictly restricted to Full-timers.
 _Avoid_: Tag, ping, callout
 
 **Test Account Purge**:
@@ -212,12 +212,16 @@ Texting or emailing a contact after the first encounter — or, less often, doin
 _Avoid_: Replying, responding, chasing, touching base
 
 **Follow-up ask**:
-One staff member saying a **Follow up** wants doing, written into a contact's **Conversation** thread. It reaches everyone tied to that contact, carries no owner and no deadline, and stays open — showing how long it has been open as a plain fact — until someone tied presses "I followed up" or the asker retracts it with "Never mind". Deliberately *not* a to-do: a to-do is a personal list with an assignee, and putting someone else's name and date on an errand creates an obligation this is meant to avoid. Nothing closes it implicitly — not logging an Interaction, not replying in the thread.
+One staff member saying a **Follow up** wants doing, written into a contact's **Conversation**. It reaches everyone tied to that contact, carries no owner and no deadline, and stays open — showing how long it has been open as a plain fact — until someone tied presses "I followed up" or the asker retracts it with "Never mind". Deliberately *not* a to-do: a to-do is a personal list with an assignee, and putting someone else's name and date on an errand creates an obligation this is meant to avoid. Nothing closes it implicitly — not logging an Interaction, not replying to it in its **Thread**.
 _Avoid_: Nudge, reminder, assigned follow-up, task
 
 **Conversation (contact tab)**:
-The staff thread on a contact, open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** tab, which is the same kind of thread restricted to staff.
+The stream of staff messages on a contact, open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** tab, which is the same kind of stream restricted to staff.
 _Avoid_: Follow-up, Thread, Comments, Walking together
+
+**Thread (replies to one message)**:
+The replies gathered under a single message, one level deep, read and written in a pane beside the stream rather than inline in it. Every written stream in the product has them the same way: a **Conversation**, the **Full-timers** tab, an Interaction's "think this through together", a chat, an announcement. The word means only this — never the stream itself.
+_Avoid_: Sub-thread, nested replies, comments, discussion
 
 **Tied to a contact**:
 The relationships that make someone a recipient of what is written on a person: they added them, they founded the person (`founders`), they were deliberately added as a collaborator (`coCreators`), or they hold the person in their sheep (`carers`). These live on the contact document and can be resolved by whoever is posting. Everything written in a **Conversation** reaches them unless an `@mention` narrows it to one person.
