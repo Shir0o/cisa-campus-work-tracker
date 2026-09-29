@@ -24,9 +24,10 @@ import {
   Users,
   ArrowRightLeft,
   Search,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
-import { cn, relTime } from "../lib/utils";
+import { cn, relTime, isServiceAccountName } from "../lib/utils";
 import { bucketFor, bucketLabel } from "../components/landing/dateBuckets";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
@@ -256,6 +257,7 @@ export default function History() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [team, setTeam] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -279,6 +281,24 @@ export default function History() {
         setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
       },
       (e) => onLoadError(e, "contacts"),
+    );
+
+    // The "Whole team" select lists every approved teammate, not only the people
+    // who happen to appear in the recent activity window.
+    const unsubscribeUsers = onSnapshot(
+      query(collection(db, "users")),
+      (snapshot) => {
+        setTeam(
+          snapshot.docs
+            .map((d) => {
+              const u = d.data() as { displayName?: string; email?: string; approved?: boolean };
+              return { name: (u.displayName || u.email || "").trim(), approved: u.approved };
+            })
+            .filter((u) => u.approved !== false && !!u.name && !isServiceAccountName(u.name))
+            .map((u) => u.name),
+        );
+      },
+      (e) => onLoadError(e, "users"),
     );
 
     const unsubscribeActivities = onSnapshot(
@@ -307,6 +327,7 @@ export default function History() {
 
     return () => {
       unsubscribeContacts();
+      unsubscribeUsers();
       unsubscribeActivities();
     };
   }, []);
@@ -320,12 +341,13 @@ export default function History() {
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!selectedContact);
 
-  // Distinct staff for the "Whole team ▾" select.
+  // The "Whole team ▾" select: every approved teammate, plus any legacy
+  // activity author not (or no longer) in the users collection.
   const staff = useMemo(() => {
-    const names = new Set<string>();
+    const names = new Set<string>(team);
     activities.forEach((a) => a.user && names.add(a.user));
-    return [...names].sort();
-  }, [activities]);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [activities, team]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -443,7 +465,7 @@ export default function History() {
           <select
             value={who}
             onChange={(e) => setWho(e.target.value)}
-            className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer"
+            className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer appearance-none"
           >
             <option value="all">{t('history.whole_team')}</option>
             {staff.map((s) => (
@@ -452,6 +474,7 @@ export default function History() {
               </option>
             ))}
           </select>
+          <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant shrink-0 pointer-events-none" aria-hidden />
         </label>
 
         <div className="relative flex-1 min-w-[180px] max-w-xs">
