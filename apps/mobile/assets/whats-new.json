@@ -1,6 +1,214 @@
 {
-  "latestReleaseId": "2026-09-23-v1.8.3",
+  "latestReleaseId": "2026-09-29-v1.8.4",
   "releases": [
+    {
+      "id": "2026-09-29-v1.8.4",
+      "version": "1.8.4",
+      "title": "Release 1.8.4",
+      "date": "2026-09-29",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Keep client firebase module out of server.ts import graph.",
+        "Localize category filter pill labels.",
+        "Add Key line, retire Passage citation, refresh reader styling.",
+        "Add missing modals.saving localization key."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Keep client firebase module out of server.ts import graph",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Localize category filter pill labels",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add Key line, retire Passage citation, refresh reader styling",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add missing modals.saving localization key",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Remove pastoral from share doc modal copy",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Manage and generate attd sync token from web settings",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Attribute GroupMe sender as contact creator",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make toolbar menus click-only and insert prompts on next line",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Jump live preview to newly added section",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Migrate-team-threads filters in memory, needing no index",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Move Full-timers Discussion to its own teamThreads subcollection",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scroll outline section into view and respect ordered list start index",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Partition untied questions into aroundTeam instead of onYou",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scope contacts query to visibleTo for trainees",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scope threads reads to the contact's visibility",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Suppress stale date chip on permalink reader",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Render bullet list body for prompt card",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Desktop contact page tells the person's story (design D)",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scope interactions and comments reads to the contact's visibility",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Scope activities reads to the target contact's visibility",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Fix trailing brace in who-else-can-see empty state",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Make contact search word-boundary and name-first",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add Homes and \"Who we haven't seen\" reading",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Validate web push subscription keys before registering device",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Tell Local saints, Our own and Contacts apart",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Enhance TOTP MFA QR code contrast and quiet zone",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add skeleton loader and widen container on Your notes page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-09-23-v1.8.3",
       "version": "1.8.3",
