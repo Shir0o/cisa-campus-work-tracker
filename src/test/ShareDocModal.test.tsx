@@ -92,11 +92,11 @@ describe('ShareDocModal', () => {
 
   it('warns before sharing a Team-only page and stays quiet for an open page', () => {
     const first = render(<ShareDocModal doc={baseDoc({ audience: 'team' })} currentUserId="u-1" onClose={() => {}} />);
-    expect(screen.getByText('This page is Team only. Anyone with the link can read the pastoral notes on it.')).toBeTruthy();
+    expect(screen.getByText('This page is Team only. Anyone with the link can read the notes on it.')).toBeTruthy();
     first.unmount();
 
     render(<ShareDocModal doc={baseDoc({ audience: 'everyone' })} currentUserId="u-1" onClose={() => {}} />);
-    expect(screen.queryByText('This page is Team only. Anyone with the link can read the pastoral notes on it.')).toBeNull();
+    expect(screen.queryByText('This page is Team only. Anyone with the link can read the notes on it.')).toBeNull();
   });
 
   it('surfaces a write failure and closes on request', async () => {

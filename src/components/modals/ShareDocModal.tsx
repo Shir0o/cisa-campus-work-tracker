@@ -96,7 +96,7 @@ export default function ShareDocModal({
         {teamOnly && (
           <div className="mt-4 flex items-start gap-2 rounded-xl border border-stage-amber/40 bg-stage-amber-soft px-3 py-2 text-xs text-on-surface">
             <Lock className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-            <span>{t('coordination.share.team_warning', 'This page is Team only. Anyone with the link can read the pastoral notes on it.')}</span>
+            <span>{t('coordination.share.team_warning', 'This page is Team only. Anyone with the link can read the notes on it.')}</span>
           </div>
         )}
 
