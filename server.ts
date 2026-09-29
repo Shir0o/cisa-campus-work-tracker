@@ -20,7 +20,7 @@ import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/l
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
-import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partners";
+import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();

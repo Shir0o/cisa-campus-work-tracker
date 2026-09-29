@@ -1,6 +1,7 @@
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType } from "./firebase";
+import { SEASONS, seasonForDate, type SeasonId, type SeasonMeta } from "./seasonCalendar";
 import type { SeasonSettings } from "../types";
 
 // Seasons — the term we're in, auto-derived from today. Drives club-rush intake:
@@ -10,33 +11,9 @@ import type { SeasonSettings } from "../types";
 // Both live in a single team-wide doc (settings/season), publicly readable so the
 // public sign-up reflects them.
 
-export type SeasonId = "spring" | "summer" | "fall" | "winter";
-
-export interface SeasonMeta {
-  id: SeasonId;
-  label: string;
-  tone: "sage" | "amber" | "accent" | "teal";
-  blurb: string;
-}
-
-export const SEASONS: Record<SeasonId, SeasonMeta> = {
-  spring: { id: "spring", label: "Spring", tone: "sage", blurb: "A new term, fresh starts." },
-  summer: { id: "summer", label: "Summer", tone: "amber", blurb: "A quieter campus, deeper roots." },
-  fall: { id: "fall", label: "Fall", tone: "accent", blurb: "The big welcome — new faces everywhere." },
-  winter: { id: "winter", label: "Winter", tone: "teal", blurb: "Slowing down before the new year." },
-};
+export { SEASONS, seasonForDate, type SeasonId, type SeasonMeta } from "./seasonCalendar";
 
 export const SEASON_ORDER: SeasonId[] = ["spring", "summer", "fall", "winter"];
-
-// 0-indexed month → season. Jan–Feb winter, Mar–May spring, Jun–Jul summer, Aug–Dec fall.
-const SEASON_BY_MONTH: SeasonId[] = [
-  "winter", "winter", "spring", "spring", "spring", "summer",
-  "summer", "fall", "fall", "fall", "fall", "fall",
-];
-
-export function seasonForDate(d: Date = new Date()): SeasonId {
-  return SEASON_BY_MONTH[d.getMonth()];
-}
 
 export function seasonYear(d: Date = new Date()): string {
   return String(d.getFullYear()).slice(2);
