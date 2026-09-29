@@ -1701,7 +1701,8 @@
     "drop_photos": "Suelta las fotos aquí o haz clic para elegir",
     "cmd_save": "⌘↵ para guardar",
     "pick_one_person": "Elige al menos a una persona.",
-    "add_someone_new": "Añadir a {name} — alguien nuevo"
+    "add_someone_new": "Añadir a {name} — alguien nuevo",
+    "saving": "Guardando…"
   },
   "visitCard": {
     "no_address_noted": "sin dirección anotada",

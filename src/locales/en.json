@@ -1701,7 +1701,8 @@
     "drop_photos": "Drop photos here, or click to choose",
     "cmd_save": "⌘↵ to save",
     "pick_one_person": "Pick at least one person.",
-    "add_someone_new": "Add {name} — someone new"
+    "add_someone_new": "Add {name} — someone new",
+    "saving": "Saving…"
   },
   "visitCard": {
     "no_address_noted": "no address noted",
