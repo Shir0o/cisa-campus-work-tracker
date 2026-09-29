@@ -510,7 +510,7 @@ write("Announce-FT.dc.html", "Announcement channel · Full-timer", 1440, 900, sh
 # ── Composer states ────────────────────────────────────────────────
 def frame(cap, sub, inner, h):
     return f'<div><h2 class="cap">{cap}</h2><p class="capsub">{sub}</p><div class="frame" style="height: {h}px; display: flex; flex-direction: column; justify-content: flex-end;">{inner}</div></div>'
-mpop = f'''<div class="pop" role="listbox" aria-label="Mention"><div class="ph2">Tied to Daniel</div>
+mpop = f'''<div class="pop" role="listbox" aria-label="Mention"><div class="ph2">Teammates</div>
 <button class="opt on" role="option" aria-selected="true"><span class="av s p-j">JP</span>Josh Park<span class="os">Trainee</span></button>
 <button class="opt" role="option" aria-selected="false"><span class="av s p-g">GL</span>Grace Liu<span class="os">Full-timer</span></button></div>'''
 ftpop = f'''<div class="pop" role="listbox" aria-label="Mention"><div class="ph2">Full-timers only</div>
@@ -520,7 +520,7 @@ sheet = f'''<div class="root sheet" style="width: 1320px; height: 900px; grid-te
 {frame("Conversation · Comment", "The default. Kind chips sit inside the box, so choosing one is part of writing.", composer(kinds=True, aud="Everyone tied to Daniel sees this.", label="Comment", cid="k1"), 250)}
 {frame("Conversation · Ask a follow-up", "The chip takes the ask's colour; the placeholder says what a good ask carries.", composer(kinds=True, kind_on="ask", placeholder="What wants doing — text them, email them? Say enough that anyone could pick it up.", tall=True, aud="Everyone tied to Daniel sees this and can say they followed up.", focus=True, label="Ask a follow-up", cid="k2"), 250)}
 {frame("Conversation · Question", "Same box; the question reaches everyone tied, not one person.", composer(kinds=True, kind_on="question", placeholder="What do you want to know? Everyone tied to this person will see it.", tall=True, aud="Everyone tied to Daniel sees this.", label="Question", cid="k3"), 250)}
-{frame("@mention in a Conversation", "Candidates are the people tied to the contact.", composer(kinds=True, typed='<span class="at">@Jo</span>', pop=mpop, focus=True, aud="Everyone tied to Daniel sees this."), 340)}
+{frame("@mention in a Conversation", "Any teammate, as today (ADR 0007).", composer(kinds=True, typed='<span class="at">@Jo</span>', pop=mpop, focus=True, aud="Everyone tied to Daniel sees this."), 340)}
 {frame("@mention in Full-timers", "No kinds; mentions are Full-timers only.", composer(kinds=False, typed='<span class="at">@Ru</span>', pop=ftpop, focus=True, aud=ic(P["lock"],12) + "Only Full-timers see this."), 340)}
 {frame("Chat · staged attachments", "A file and a contact card, staged above the text; each can be removed before sending.", composer(kinds=False, staged=stg, placeholder="Message Thursday table crew", attach=True, hint="⌘↵ to send", label="Message", cid="k6"), 340)}
 </div>'''

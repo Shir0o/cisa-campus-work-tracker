@@ -84,7 +84,7 @@ held it to its canvas (#1243).
 - [ ] **C1** One box everywhere: the text, then a tools row — attach where the source supports it, @, the shortcut hint, send.
 - [ ] **C2** Kind chips (Comment · Question · Ask a follow-up) sit inside the box on a Conversation only. A selected ask chip takes the amber; each kind keeps its placeholder.
 - [ ] **C3** An audience line above the box on every contact stream — "Everyone tied to Daniel sees this." / a lock and "Only Full-timers see this." — and above an announcement composer, naming the real audience.
-- [ ] **C4** @mention candidates: the people tied to the contact on a Conversation; Full-timers only on Full-timers; the members of a chat.
+- [ ] **C4** @mention candidates are unchanged from ADR 0007: any teammate on a Conversation, Full-timers only on Full-timers, the members of a chat.
 - [ ] **C5** Chat stages files and contact cards above the text, each removable before sending.
 
 ### Surfaces
