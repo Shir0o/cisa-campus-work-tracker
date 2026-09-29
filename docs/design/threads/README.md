@@ -104,7 +104,7 @@ held it to its canvas (#1243).
 - **The phone merges every contact stream into one list.** `ContactScreen.tsx` builds "Alongside" from `mergedContactThread(feedVisibleThreads(...))`, which for a Full-timer includes `scope: "team"` messages, unmarked. S7 and T4 undo that.
 - **`MsgThreadPane` re-implements the bubble renderer** (`renderBody`, `canRemoveForEveryone`, `messageGoneLabel` copied from `Messages.tsx`). The shared row replaces both.
 - **Four sources, one UI.** `contacts/{id}/threads`, `contacts/{id}/teamThreads`, `chatRooms/{id}/messages` and `feedback/{id}/replies` keep their paths and rules; each gets an adapter. Contact-thread rules sit near the expression ceiling — nothing here needs a rules change.
-- **Web and React Native share no components.** Grouping (G2), dividers (G5, G6), ask state (K2, K3) and the row model live in `packages/core`, test-first.
+- **Web and React Native share no components, and the web app takes no `@cisa/core` dependency.** Grouping (G2), dividers (G5, G6), ask state (K2, K3) and the row model are one pure stream model in `packages/core`, mirrored in `src/lib` and held in step by a mirror-parity test — test-first.
 - Values are Ink, lifted from `src/index.css`: Lexend over Plus Jakarta Sans, `#F4F4F5` surfaces, `#F0F0F2` hairlines, the ADR 0009 radius ladder, the 460px `.cd-drawer`, `.page.msgs`'s 328px rail column. Sample people; no real record is depicted.
 
 ## Shipping order

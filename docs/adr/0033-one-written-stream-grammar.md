@@ -24,7 +24,7 @@ The glossary had held that a contact's staff stream is "not chat". Three densiti
 3. **The kind is a tag beside the name**, with state in a line under the body (treatment 1). An open Follow-up ask says how long it has been open and carries **I followed up** / **Never mind** in the stream itself. A gutter rule and a status-line-only treatment were rejected.
 4. **A Thread is replies to one message, one level deep**, read in a pane *beside* the stream when there is width and *replacing* it, with a back arrow, when there is not — the contact drawer, an Around card, a phone. No "also send to channel".
 5. **Grammar, not navigation.** Every surface keeps its home; no contact appears as a channel in Messages. ADR 0015 and 0022 stand.
-6. **One UI over per-source adapters.** `contacts/{id}/threads`, `teamThreads`, `chatRooms/…/messages` and `feedback/{id}/replies` keep their paths and rules; no data migration. Web and React Native cannot share components, so the shared part — grouping, dividers, ask state, the row model — lives in `packages/core`.
+6. **One UI over per-source adapters.** `contacts/{id}/threads`, `teamThreads`, `chatRooms/…/messages` and `feedback/{id}/replies` keep their paths and rules; no data migration. Web and React Native cannot share components, so the shared part — grouping, dividers, ask state, the row model — is one pure stream model. It lives in `packages/core` for the phone and is mirrored in the web app's own `src/lib`, because the web app deliberately takes no `@cisa/core` dependency; a mirror-parity test corpus is the contract between the two copies, as for `feedVisibleThreads`.
 7. **No reactions.** #1107 removed them; explicit state (Got it, I followed up) does what 👀 and ✅ would.
 
 ## Consequences
