@@ -1,0 +1,416 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "A-Messages.dc.html": {
+      "x": 0,
+      "y": 2422,
+      "w": 1440,
+      "h": 900,
+      "title": "Announcement channel, a Trainee's view — Thread beside",
+      "page": "web"
+    },
+    "B-Contact.dc.html": {
+      "h": 662,
+      "title": "B · Contact Conversation — 1107×662 drawer",
+      "w": 1107,
+      "x": 0,
+      "y": 1280,
+      "page": "directions"
+    },
+    "B-Messages.dc.html": {
+      "h": 900,
+      "title": "B · Announcement channel + Thread beside — 1440",
+      "w": 1440,
+      "x": 1187,
+      "y": 1280,
+      "page": "directions"
+    },
+    "C-Contact.dc.html": {
+      "h": 662,
+      "title": "C · Contact Conversation — 1107×662 drawer",
+      "w": 1107,
+      "x": 0,
+      "y": 2560,
+      "page": "directions"
+    },
+    "C-Messages.dc.html": {
+      "h": 900,
+      "title": "C · Announcement channel + Thread beside — 1440",
+      "w": 1440,
+      "x": 1187,
+      "y": 2560,
+      "page": "directions"
+    },
+    "Kinds.dc.html": {
+      "h": 860,
+      "title": "Where the kind shows — three treatments, A density",
+      "w": 1320,
+      "x": 0,
+      "y": 3840,
+      "page": "directions"
+    },
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Conversation — the drawer at 1107×662",
+      "page": "web"
+    },
+    "FT-Drawer.dc.html": {
+      "x": 1187,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "Full-timers — no kinds, audience in the header",
+      "page": "web"
+    },
+    "Drawer-Thread.dc.html": {
+      "x": 2374,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "A Thread replaces the drawer, with back",
+      "page": "web"
+    },
+    "Interaction-Thread.dc.html": {
+      "x": 3561,
+      "y": 0,
+      "w": 1107,
+      "h": 662,
+      "title": "An interaction's Thread — the log entry is the parent",
+      "page": "web"
+    },
+    "Around.dc.html": {
+      "x": 0,
+      "y": 1042,
+      "w": 1440,
+      "h": 1000,
+      "title": "Around the team — one card open, reading in place",
+      "page": "web"
+    },
+    "Around-Thread.dc.html": {
+      "x": 1520,
+      "y": 1042,
+      "w": 420,
+      "h": 760,
+      "title": "Around — a Thread replaces the strip",
+      "page": "web"
+    },
+    "Announce-FT.dc.html": {
+      "x": 1520,
+      "y": 2422,
+      "w": 1440,
+      "h": 900,
+      "title": "Announcement channel, the poster's view",
+      "page": "web"
+    },
+    "Chat.dc.html": {
+      "x": 3040,
+      "y": 2422,
+      "w": 1440,
+      "h": 900,
+      "title": "Group chat — everyone left-aligned, @mention open",
+      "page": "web"
+    },
+    "Composer.dc.html": {
+      "x": 0,
+      "y": 3702,
+      "w": 1320,
+      "h": 900,
+      "title": "Composer states",
+      "page": "web"
+    },
+    "Followups.dc.html": {
+      "x": 1400,
+      "y": 3702,
+      "w": 1440,
+      "h": 1000,
+      "title": "Your notes — Follow-ups as rows",
+      "page": "web"
+    },
+    "M-Person.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Person · Conversation, with the Full-timers switch",
+      "page": "mobile"
+    },
+    "M-Person-FT.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Person · Full-timers",
+      "page": "mobile"
+    },
+    "M-Thread.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "A Thread, pushed",
+      "page": "mobile"
+    },
+    "M-Story.dc.html": {
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Story · an interaction's replies chip",
+      "page": "mobile"
+    },
+    "M-LongPress.dc.html": {
+      "x": 1880,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Long-press — the hover toolbar on a phone",
+      "page": "mobile"
+    },
+    "M-DM.dc.html": {
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "DM — left-aligned",
+      "page": "mobile"
+    },
+    "M-Announce.dc.html": {
+      "x": 2820,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Announcement, a member's view",
+      "page": "mobile"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-28T17:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas",
+    "page": "web"
+  },
+  "notes": {
+    "brief": {
+      "fill": "gray",
+      "size": 24,
+      "text": "The fork to pick before the full set is drawn.\n\nEvery written stream — a contact's Conversation and Full-timers, an interaction's thread, the Around card, DMs, groups, announcements — moves to one Slack-style grammar: oldest at top, composer pinned at the foot, author grouping, day dividers, everything left-aligned, replies one level deep in a Thread pane.\n\nWhat is still open is density: how much container a message gets. Each row draws the same two moments in one direction:\n\n• the contact's Conversation in the real 460px drawer at the reported 1107×662 laptop — viewer Maria, a Full-timer;\n• the Everyone on Campus announcement channel at 1440 with its Thread open beside — viewer Josh, a Trainee.\n\nThe composer is identical in every row on purpose, so only the stream varies. Sample people; no real record is depicted.",
+      "w": 600,
+      "x": -700,
+      "y": -260,
+      "page": "directions"
+    },
+    "noteA": {
+      "fill": "blue",
+      "size": 24,
+      "text": "A · No containers. 36px avatar, name and time on one line, body beneath; a second message from the same author within a few minutes drops its avatar. The row lights on hover and grows a toolbar (Josh's row shows it).\n\nMost messages per screen — in the 460px drawer you read five exchanges before the composer. Asks and questions are told apart only by a tag and a status line, so they can be scrolled past.\n\nAn announcement is a row like any other; the New line and the pin strip carry what the card used to.",
+      "w": 600,
+      "x": -700,
+      "y": 420,
+      "page": "directions"
+    },
+    "noteB": {
+      "fill": "purple",
+      "size": 24,
+      "text": "B · Every message, or run of messages from one author, sits in a #F4F4F5 card — the shipped announcement .post, generalised.\n\nEach card is unmistakably one thing, and actions have an obvious home in the card foot. The cost is density: the same drawer shows about three cards. A plain \"Yeah, I'll sit with him\" gets as much frame as a follow-up ask.\n\nThe Thread pane is cards too, so a reply looks exactly like a post.",
+      "w": 600,
+      "x": -700,
+      "y": 1700,
+      "page": "directions"
+    },
+    "noteC": {
+      "fill": "green",
+      "size": 24,
+      "text": "C · Rows by default; a card only where the message is a thing with state — a follow-up ask, a question, an announcement post.\n\nChatter stays dense, and the messages someone has to act on stand out of it without a colour. The rule is learnable: a card means \"this wants something from someone\".\n\nIn the Thread pane the announcement is a card and its replies are rows, which reads as \"the post, and people talking about it\".",
+      "w": 600,
+      "x": -700,
+      "y": 2980,
+      "page": "directions"
+    },
+    "noteK": {
+      "fill": "orange",
+      "size": 24,
+      "text": "Independent of density: where does an ask say it is an ask?\n\n1 · A tag beside the name, and a status line under the body.\n2 · A rule in the gutter, coloured by kind, with the status line.\n3 · No tag — the status line alone names it.\n\nEach column shows the same four messages: an open ask seen by its asker (both buttons), an ask someone followed up, an ask its asker withdrew, and a question. A question carries no state in the model today, so it has only its label.\n\nThe buttons are the real verbs from CONTEXT.md: I followed up, Never mind.",
+      "w": 600,
+      "x": -700,
+      "y": 3840,
+      "page": "directions"
+    },
+    "titleA": {
+      "kind": "title1",
+      "maxW": 2627,
+      "text": "A · picked — its boards lead the Full set page",
+      "w": 240,
+      "x": 0,
+      "y": -260,
+      "page": "directions"
+    },
+    "titleB": {
+      "kind": "title1",
+      "maxW": 2627,
+      "text": "B · Ink post cards",
+      "w": 240,
+      "x": 0,
+      "y": 1020,
+      "page": "directions"
+    },
+    "titleC": {
+      "kind": "title1",
+      "maxW": 2627,
+      "text": "C · Rows, with cards for announcements and asks",
+      "w": 240,
+      "x": 0,
+      "y": 2300,
+      "page": "directions"
+    },
+    "titleK": {
+      "kind": "title1",
+      "maxW": 1320,
+      "text": "Where the kind shows",
+      "w": 240,
+      "x": 0,
+      "y": 3580,
+      "page": "directions"
+    },
+    "wT1": {
+      "x": 0,
+      "y": -260,
+      "text": "The contact page",
+      "kind": "title1",
+      "maxW": 4668,
+      "page": "web"
+    },
+    "wT2": {
+      "x": 0,
+      "y": 782,
+      "text": "Around the team",
+      "kind": "title1",
+      "maxW": 1940,
+      "page": "web"
+    },
+    "wT3": {
+      "x": 0,
+      "y": 2162,
+      "text": "Messages",
+      "kind": "title1",
+      "maxW": 4480,
+      "page": "web"
+    },
+    "wT4": {
+      "x": 0,
+      "y": 3442,
+      "text": "Composer and Your notes",
+      "kind": "title1",
+      "maxW": 2840,
+      "page": "web"
+    },
+    "wBrief": {
+      "x": -660,
+      "y": -260,
+      "w": 560,
+      "size": "m",
+      "fill": "gray",
+      "text": "Direction A (Slack-literal rows) with the kind as a tag beside the name — picked 2026-09-29. ADR 0033.\n\nEvery board is drawn in the one grammar: 36px avatar, name and time on a line, body beneath; the same author within a few minutes drops the avatar; left-aligned throughout; hover toolbar; day dividers and a New line; oldest at top with the composer pinned.\n\nA Thread opens beside the stream where there is width (Messages at 1440) and replaces it, with a back arrow, where there isn't (the 460px drawer, an Around card).",
+      "page": "web"
+    },
+    "wN1": {
+      "x": -660,
+      "y": 420,
+      "w": 560,
+      "size": "m",
+      "fill": "gray",
+      "text": "Full-timers: the lock and \"Trainees can't\" sit in the header, because the header is the only thing that tells a Full-timer which of the two streams a Trainee reads. The composer has no kind chips — asks belong on the Conversation.\n\nCopy change: \"Add to the Full-timers thread…\" becomes \"Write something only Full-timers will see…\" — thread now means replies to one message only.\n\nInteraction threads stay on the log entry (Q8a): the story row carries a replies chip and the drawer opens on the interaction quoted as the parent.",
+      "page": "web"
+    },
+    "wN2": {
+      "x": -660,
+      "y": 1042,
+      "w": 560,
+      "size": "m",
+      "fill": "gray",
+      "text": "Around keeps its rules (ADR 0022): one card open, reading in place, Conversation and Full-timers as a segment, the composer posting into the open one and naming its audience, the just-posted message landing above the composer.\n\nInside a card avatars step down to 28px — the only size change in the grammar. \"I followed up\" works right on the card; there is no Never mind here because the viewer is not the asker.",
+      "page": "web"
+    },
+    "wN3": {
+      "x": -660,
+      "y": 2422,
+      "w": 560,
+      "size": "m",
+      "fill": "gray",
+      "text": "Messages: DMs and groups lose mine-on-the-right. Josh's own message is a row like Ruth's.\n\nThe poster's view shows \"Read by 21 of 24 · 17 said got it\" as one link to the receipts; a member sees Got it. The audience line above the composer replaces the hardcoded \"Posting to everyone on Campus\" (#1243).\n\nThe pin strip names who pinned and what unpinning does; the pinned post stays first.",
+      "page": "web"
+    },
+    "wN4": {
+      "x": -660,
+      "y": 3702,
+      "w": 560,
+      "size": "m",
+      "fill": "gray",
+      "text": "The composer is one box everywhere. Kind chips live inside it on a Conversation only; the audience line sits above it on every contact stream.\n\nYour notes: Follow-ups become rows in the same grammar — the team posts as \"The team\", your own can be edited, and the public-tracker line stays under the box because every Follow-up is mirrored to GitHub.\n\nMobile at 390 is not drawn yet — two questions about the person screen are open.",
+      "page": "web"
+    },
+    "mT": {
+      "x": 0,
+      "y": -260,
+      "text": "The phone at 390",
+      "kind": "title1",
+      "maxW": 3200,
+      "page": "mobile"
+    },
+    "mN": {
+      "x": -660,
+      "y": -260,
+      "w": 560,
+      "size": "m",
+      "fill": "gray",
+      "page": "mobile",
+      "text": "The same grammar at 390, every target 44px.\n\nThe person screen's \"Alongside\" tab becomes Conversation (Q21a). It used to merge the Conversation, every interaction's thread and — for a Full-timer — the staff-only Full-timers messages into one unmarked list. A Full-timer now gets the same Conversation / Full-timers switch the Around card uses; a Trainee never sees the switch.\n\nInteraction threads move to their Story entry (Q22): a replies chip, or \"Think it through together\" when there are none, opening a pushed Thread.\n\nA Thread is a pushed screen with back. Long-press stands in for the hover toolbar. Members can finally reply in an announcement's thread and say Got it on the phone — neither exists in the app today."
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "FT-Drawer.dc.html",
+    "Drawer-Thread.dc.html",
+    "Interaction-Thread.dc.html",
+    "Around.dc.html",
+    "Around-Thread.dc.html",
+    "A-Messages.dc.html",
+    "Announce-FT.dc.html",
+    "Chat.dc.html",
+    "Composer.dc.html",
+    "Followups.dc.html",
+    "B-Contact.dc.html",
+    "B-Messages.dc.html",
+    "C-Contact.dc.html",
+    "C-Messages.dc.html",
+    "Kinds.dc.html",
+    "M-Person.dc.html",
+    "M-Person-FT.dc.html",
+    "M-Thread.dc.html",
+    "M-Story.dc.html",
+    "M-LongPress.dc.html",
+    "M-DM.dc.html",
+    "M-Announce.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "web",
+      "name": "Full set — web"
+    },
+    {
+      "id": "mobile",
+      "name": "Full set — phone"
+    },
+    {
+      "id": "directions",
+      "name": "Directions compared"
+    }
+  ],
+  "title": "Streams & threads — directions"
+}
