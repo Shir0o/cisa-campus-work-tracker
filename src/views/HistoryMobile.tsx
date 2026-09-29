@@ -52,11 +52,11 @@ const BUCKET_NODE: Record<string, string> = {
 };
 
 const KINDS = [
-  { id: "all", label: "Everything" },
-  { id: "steps", label: "Steps forward" },
-  { id: "prayer", label: "Prayer" },
-  { id: "talk", label: "Conversations" },
-  { id: "gather", label: "Gatherings" },
+  { id: "all", label: "Everything", i18nKey: "history.everything" },
+  { id: "steps", label: "Steps forward", i18nKey: "history.steps_forward" },
+  { id: "prayer", label: "Prayer", i18nKey: "history.prayer" },
+  { id: "talk", label: "Conversations", i18nKey: "history.conversations" },
+  { id: "gather", label: "Gatherings", i18nKey: "history.gatherings" },
 ];
 
 export default function HistoryMobile({
@@ -79,7 +79,8 @@ export default function HistoryMobile({
   const [filterOpen, setFilterOpen] = useState(false);
 
   const activeCount = (kind !== 'all' ? 1 : 0) + (who !== 'all' ? 1 : 0);
-  const kindLabel = KINDS.find((k) => k.id === kind)?.label;
+  const activeKindEntry = KINDS.find((k) => k.id === kind);
+  const kindLabel = activeKindEntry ? t(activeKindEntry.i18nKey, activeKindEntry.label) : undefined;
   const whoLabel = who === 'all' ? null : firstName(who);
 
   return (
@@ -255,7 +256,7 @@ export default function HistoryMobile({
                           : "bg-surface border-outline-variant/60 text-on-surface-variant hover:bg-surface-variant"
                       )}
                     >
-                      {t('history.' + k.id)}
+                      {t(k.i18nKey, k.label)}
                     </button>
                   ))}
                 </div>

@@ -95,7 +95,14 @@ describe('HistoryMobile', () => {
     render(<HistoryMobile {...baseProps} setKind={setKind} />);
     fireEvent.click(screen.getByText('Filter history'));
     expect(screen.getByText('Team member')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Prayer'));
+
+    expect(screen.getByRole('button', { name: 'Everything' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Steps forward' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prayer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conversations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gatherings' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prayer' }));
     expect(setKind).toHaveBeenCalledWith('prayer');
   });
 

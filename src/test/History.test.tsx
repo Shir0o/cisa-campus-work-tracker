@@ -151,12 +151,19 @@ describe('History View', () => {
     });
   });
 
-  it('filters activities based on category buttons', async () => {
+  it('filters activities based on category buttons and renders localized labels', async () => {
     render(<HistoryView />);
 
     await waitFor(() => {
       expect(screen.getByText(/started walking with Alice/i)).toBeInTheDocument();
     });
+
+    // Check all category filter buttons render localized labels instead of missing keys (e.g. history.all)
+    expect(screen.getByRole('button', { name: 'Everything' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Steps forward' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prayer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conversations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gatherings' })).toBeInTheDocument();
 
     // Click 'Prayer' category button (which is type 'prayer')
     const prayerButton = screen.getByRole('button', { name: 'Prayer' });
@@ -588,5 +595,27 @@ describe('History View', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
     errSpy.mockRestore();
     onSnapshotMock.mockImplementation(original!);
+  });
+
+  it('renders Spanish localized labels when language is es', async () => {
+    const mediaQuery = await import('../lib/useMediaQuery');
+    vi.spyOn(mediaQuery, 'useMediaQuery').mockReturnValue(false);
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+    localStorage.setItem('cisa_language', 'es');
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <HistoryView />
+      </LanguageProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Todo' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: 'Pasos hacia adelante' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Oración' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Conversaciones' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reuniones' })).toBeInTheDocument();
+    localStorage.clear();
   });
 });
