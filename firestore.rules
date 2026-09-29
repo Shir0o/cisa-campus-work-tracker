@@ -215,7 +215,7 @@ service cloud.firestore {
         // omit an optional key, and `data.x == null` errors ("Property x is
         // undefined") on an absent key rather than returning false.
         return data.name is string && data.name.size() <= 128 &&
-               data.email is string && data.email.size() <= 128 &&
+               (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 128)) &&
                (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
                (!('role' in data) || data.role == null || (data.role is string && data.role.size() <= 64)) &&
                (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 128)) &&
