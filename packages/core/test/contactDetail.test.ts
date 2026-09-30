@@ -10,11 +10,8 @@ import {
   storyRowLine,
   splitContactPrayers,
   prayerCardKicker,
-  mergedContactThread,
   feedVisibleThreads,
-  composeKindsFor,
 } from '../src/contactDetail';
-import { THREAD_KINDS } from '../src/threads';
 import type { Contact, ContactEditFields, Interaction, PrayerRecord, ThreadMessage } from '../src';
 
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
@@ -333,23 +330,6 @@ describe('prayerCardKicker', () => {
   });
 });
 
-describe('mergedContactThread', () => {
-  it('merges both levels into one list, oldest first', () => {
-    const merged = mergedContactThread([
-      message('m2', daysBefore(1)),
-      message('m1', daysBefore(5), 'i1'),
-      message('m3', daysBefore(0)),
-    ]);
-    expect(merged.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
-  });
-
-  it('does not mutate its input', () => {
-    const input = [message('m2', daysBefore(1)), message('m1', daysBefore(5))];
-    mergedContactThread(input);
-    expect(input.map((m) => m.id)).toEqual(['m2', 'm1']);
-  });
-});
-
 describe('feedVisibleThreads', () => {
   const open = message('m-open', daysBefore(1));
   const team: ThreadMessage = { ...message('m-team', daysBefore(2)), scope: 'team' };
@@ -370,27 +350,5 @@ describe('feedVisibleThreads', () => {
     const input = [open, team];
     feedVisibleThreads(input, 'manager');
     expect(input.map((m) => m.id)).toEqual(['m-open', 'm-team']);
-  });
-});
-
-describe('composeKindsFor', () => {
-  it('gives the full-timer the kinds they write in', () => {
-    expect(composeKindsFor(true)).toEqual(['comment', 'encouragement', 'nudge']);
-  });
-
-  it('gives everyone else note and question', () => {
-    expect(composeKindsFor(false)).toEqual(['note', 'question']);
-  });
-
-  it('has a v2 label for every kind it offers, without disturbing the Material one', () => {
-    expect([...composeKindsFor(true), ...composeKindsFor(false)].map((k) => THREAD_KINDS[k].v2Label)).toEqual([
-      'Wrote back',
-      'Encouragement',
-      'Follow-up',
-      'Note',
-      'A question',
-    ]);
-    expect(THREAD_KINDS.comment.label).toBe('Comment');
-    expect(THREAD_KINDS.question.label).toBe('Question');
   });
 });

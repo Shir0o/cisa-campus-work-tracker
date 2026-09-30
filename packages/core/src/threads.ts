@@ -15,6 +15,8 @@ export type ThreadTone = "accent" | "teal" | "amber" | "violet" | "warn";
 export interface ThreadMessage {
   id: string;
   interactionId: string | null;
+  /** A reply in a Thread (ADR 0033): the message it answers. One level deep. */
+  parentId?: string | null;
   /** Team-scoped discussion is a Full-timer surface; undefined/null = walking-together thread. */
   scope?: 'team' | null;
   from: string; // staff uid
@@ -75,6 +77,10 @@ export const THREAD_NOTIFY_TITLE: Record<ThreadKind, (who: string, contact: stri
   encouragement: (who, c) => `${who} encouraged you about ${c}`,
   nudge: (who, c) => `${who} asked for a follow-up on ${c}`,
 };
+
+/** The bell title for a Full-timers message, whatever its kind. */
+export const TEAM_THREAD_NOTIFY_TITLE = (who: string, contact: string) =>
+  `${who} posted in the Full-timers thread on ${contact}`;
 
 /** Everyone tied to a contact: they added them, they are the adder's gospel
  *  partner, or they are a co-creator. The fourth tie — teammates keeping this

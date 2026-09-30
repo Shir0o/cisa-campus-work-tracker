@@ -12,6 +12,8 @@ interface FtTodoSheetProps {
   visible: boolean;
   /** Opened from a person's row — prefills the text and links the to-do. */
   contact: Contact | null;
+  /** Opened from a stream message (Make a to-do) — its words seed the text. */
+  initialTitle?: string;
   me: string;
   assignees: AppUser[];
   onClose: () => void;
@@ -84,10 +86,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtTodoSheetProps) {
+function TodoSheetBody({ visible, contact, initialTitle, me, assignees, onClose, onSave }: FtTodoSheetProps) {
   // Remounted per contact by the caller's `key`, so the draft starts fresh.
   const { c, font, radius, fs } = useV2Theme();
-  const [title, setTitle] = React.useState(contact ? `Check in with ${firstName(contact.name)}` : '');
+  const [title, setTitle] = React.useState(
+    initialTitle ?? (contact ? `Check in with ${firstName(contact.name)}` : ''),
+  );
   const [who, setWho] = React.useState(me);
   const [days, setDays] = React.useState(1);
 

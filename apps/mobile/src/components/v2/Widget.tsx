@@ -429,6 +429,8 @@ export function V2Seg<T extends string>({
         return (
           <Pressable
             key={item.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
             onPress={() => onChange(item.id)}
             style={({ pressed }) => ({
               flex: 1,

@@ -42,7 +42,12 @@ import {
   subscribeContactPrayers,
   updatePrayerStatus,
 } from './data/prayers';
-import { addThreadMessage, deleteThreadMessage as deleteThreadMessageApi, subscribeThreads } from './data/threads';
+import {
+  addThreadMessage,
+  closeFollowUpAsk,
+  deleteThreadMessage as deleteThreadMessageApi,
+  subscribeThreads,
+} from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
@@ -111,14 +116,18 @@ export function useContactDetailData(contactId: string) {
         },
         (e) => onLoadError(e, 'prayers'),
       ),
-      subscribeThreads(contactId, setThreadMessages, (e) => onLoadError(e, `contacts/${contactId}/threads`)),
+      // The Full-timers stream only for a Full-timer, on the EFFECTIVE role:
+      // "See it as they do" never reads it (#1024 phase 2).
+      subscribeThreads(contactId, setThreadMessages, (e) => onLoadError(e, `contacts/${contactId}/threads`), {
+        includeTeam: role === 'admin',
+      }),
       // "In your care" — the picker's choice, else the people I added. The same
       // notion of ownership People, My Day and the full-timer's home all read.
       subscribeUserPreferences(uid, (prefs) => setPrefContactIds(prefs.personalContactIds ?? null)),
     ];
 
     return () => unsubs.forEach((unsub) => unsub());
-  }, [uid, contactId]);
+  }, [uid, contactId, role]);
 
   // "Alongside" tab label + who gets pinged on the bell when the viewer
   // posts a thread message — mirrors ContactDetailsModal's inline derivations.
@@ -212,11 +221,25 @@ export function useContactDetailData(contactId: string) {
       });
     },
 
-    postThreadMessage: async (input: { interactionId?: string | null; kind: ThreadKind; body: string }) => {
+    postThreadMessage: async (input: {
+      interactionId?: string | null;
+      parentId?: string | null;
+      scope?: 'team' | null;
+      kind: ThreadKind;
+      body: string;
+    }) => {
       if (!contact || !uid) return;
       await addThreadMessage(
         contactId,
-        { interactionId: input.interactionId ?? null, from: uid, fromName: by.name, kind: input.kind, body: input.body },
+        {
+          interactionId: input.interactionId ?? null,
+          parentId: input.parentId ?? null,
+          scope: input.scope ?? null,
+          from: uid,
+          fromName: by.name,
+          kind: input.kind,
+          body: input.body,
+        },
         {
           to: threadRecipient,
           contactName: contact.name,
@@ -229,7 +252,14 @@ export function useContactDetailData(contactId: string) {
 
     deleteThreadMessage: async (message: ThreadMessage) => {
       if (!contact || !uid) return;
-      await deleteThreadMessageApi(contactId, message.id);
+      await deleteThreadMessageApi(contactId, message.id, message.scope);
+    },
+
+    // I followed up / Never mind — both close the ask as the viewer; one
+    // closed by its own asker reads as withdrawn (#813).
+    closeAsk: async (message: ThreadMessage) => {
+      if (!contact || !uid) return;
+      await closeFollowUpAsk(contactId, message.id, { uid, name: by.name });
     },
 
     addCollaborator: async (staffId: string, staffName: string) => {

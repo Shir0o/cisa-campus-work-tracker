@@ -215,3 +215,20 @@ code they replace. T4 (web), K4, C4, S2 and S3 are ticked.
 | 41 | `Around-Thread.dc.html` draws the Thread header inside a card on one line — a back arrow, "Thread" and "in Conversation" side by side. The shared stream draws its Thread header as a title over a line ("Thread" / "in Conversation · {name}"), which is what `Drawer-Thread.dc.html` draws and what T3 spells out; the card uses the same header at the compact size. | **Neither — the boards disagree** | Built as one header everywhere (title over the "in …" line), at 13.5px in a card. A one-line variant is a small change in `Stream.tsx` if the card should differ. |
 | 42 | No board draws the contact page below 768px. Its Conversation and Full-timers tabs now hold the stream (Full-timers with a lock in its title, its audience line above the box), but the tab picker stays the page's dropdown rather than the phone app's Conversation / Full-timers switch (S7), and an Interaction's Thread covers the page as the drawer does on desktop rather than as a pushed screen (`M-Thread.dc.html`). | **Design** | Deferred: S7 and the pushed Thread belong to the phone app, in the #1255 series. Web below 768px gets the grammar, not the phone's navigation. |
 | 43 | An Interaction's messages are contact-level threads with `interactionId` set, and a legacy message there can carry its own replies. A Thread is one level deep, so the Interaction Thread shows every message on the Interaction as a reply to it and flattens any legacy nesting; a notification deep-link to an Interaction (`initialInteractionId`) now opens its Thread in the drawer instead of expanding the entry inline. | **Design** — T1 (one level deep) | Built as the checklist says; the data is not migrated, so a legacy nested reply reads as a plain reply. |
+
+### 2026-09-30 — the phone person screen on the shared stream
+
+Found building [#1261](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1261),
+the phone's person screen on the stream model of
+[ADR 0033](../adr/0033-one-written-stream-grammar.md), by reading
+`M-Person`, `M-Person-FT`, `M-Thread`, `M-Story` and `M-LongPress` against the
+build. S7 and G7 are ticked, and the phone halves of T4 and K4 (ticked in #1258) are done. Row 36's phone
+half is delivered here: the long-press sheet carries Reply in thread, Make a
+to-do (the phone's existing "Something to carry" sheet, seeded with the
+message), Copy text, and Delete where the stream model allows it.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 44 | **C1** draws a tools row of @, the shortcut hint and send. The phone composer has only send: the phone has never offered @mention candidates on a person, and "⌘↵ to post" means nothing on a touch keyboard (`M-Thread.dc.html` already drops the hint). | **Design** for @; **the build** for the hint | The hint stays off the phone. @mentions on the phone are deferred — ADR 0007's candidates (any teammate on a Conversation, Full-timers only on Full-timers) apply unchanged when they come. |
+| 45 | `M-Person.dc.html` draws the audience line under the Conversation / Full-timers switch and a 36px-tall switch. Row 37 settled the audience line above the composer only, and every phone tap target is at least 44px. | **Row 37 and the 44px rule** | Built with the audience line above the composer (with a lock on Full-timers) and a 44px switch. The count sits on the stream you are not reading, as the board draws it. |
+| 46 | Staff-only messages were read on the phone from `contacts/{id}/threads` alone, and `@cisa/core`'s thread subscription dropped `scope`, `parentId` and the ask's close fields — so the phone could neither find the Full-timers stream (which lives in `teamThreads`) nor tell a reply or a closed ask from a message. | **Neither — the core data layer had fallen behind the web's** | `@cisa/core` now reads `teamThreads` for a Full-timer (on the effective role), keeps `scope`, `parentId` and `closedBy*`, writes replies and Full-timers messages to the right collection, and gains `closeFollowUpAsk` — mirrors of `src/lib/threads.ts`. No path or rule changed. |

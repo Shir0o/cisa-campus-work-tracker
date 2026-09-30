@@ -8,7 +8,6 @@
 // six-tab modal this file was first written for.
 import { firstName } from "./history";
 import { daysSince, parseMs, touchWords } from "./myday";
-import type { ThreadKind, ThreadMessage } from "./threads";
 import type { Activity, Contact, Interaction, PrayerRecord } from "./types";
 
 export interface ContactEditFields {
@@ -204,14 +203,6 @@ export function prayerCardKicker(prayer: PrayerRecord, now: number = Date.now())
   return said ? `${lead} · ${said}` : lead;
 }
 
-/** Every message on a person — contact-level AND interaction-level — in one
- * list, oldest first. This is what the design's Alongside tab shows; Story
- * shows the interaction-level ones again, under the conversation they're about
- * (`threadsFor`). */
-export function mergedContactThread(messages: ThreadMessage[]): ThreadMessage[] {
-  return [...messages].sort((a, b) => (parseMs(a.at) ?? 0) - (parseMs(b.at) ?? 0));
-}
-
 /** The messages a role may show on a person, or in any feed built from thread
  * messages: team-scope discussion is Full-timer-only (#727). The cut is on the
  * reader's EFFECTIVE role, so "See it as they do" hides it even though the
@@ -226,11 +217,4 @@ export function feedVisibleThreads<T extends { scope?: 'team' | null }>(
   role?: string | null,
 ): T[] {
   return threads.filter((m) => m.scope !== 'team' || role === 'admin');
-}
-
-/** The kinds a viewer can post. The full-timer writes back, encourages and
- * nudges; the trainee notes and asks. Was `TRAINEE_KINDS`/`FULLTIMER_KINDS`,
- * local to the Material `AlongsideThreadView`. */
-export function composeKindsFor(isFullTimer: boolean): ThreadKind[] {
-  return isFullTimer ? ["comment", "encouragement", "nudge"] : ["note", "question"];
 }
