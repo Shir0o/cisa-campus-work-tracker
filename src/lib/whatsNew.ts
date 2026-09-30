@@ -5,11 +5,16 @@
 // deliberately has no @cisa/core dependency, so this is a standalone copy
 // (mirroring src/lib/asks.ts). src/lib/whatsNew.test.ts asserts the two
 // agree, so the copies cannot drift.
+import { useState, useEffect } from 'react';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from './firebase';
 import type {
   PlatformTarget,
   WhatsNewManifest,
   WhatsNewRelease,
 } from '../scripts/compile-whats-new';
+import type { WhatsNewSettings } from '../types';
+
 
 export const WHATS_NEW_STORAGE_KEY = 'cisa.whats_new.last_seen_id';
 
@@ -78,3 +83,69 @@ export function createWhatsNewState(
     },
   };
 }
+
+const whatsNewDoc = () => doc(db, 'settings', 'whats_new');
+
+/** Live subscription to the team-wide What's New settings (settings/whats_new). */
+export function subscribeWhatsNewSettings(
+  cb: (settings: WhatsNewSettings) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    whatsNewDoc(),
+    (snap) => {
+      const data = typeof snap?.data === 'function' ? (snap.data() as WhatsNewSettings | undefined) : undefined;
+      cb(data ?? {});
+    },
+    (e) => (onError ? onError(e) : console.error("What's New settings subscription error", e)),
+  );
+}
+
+/** Merge-write the What's New settings (create-or-update). Rules gate it to full-timers. */
+export async function saveWhatsNewSettings(
+  patch: Partial<WhatsNewSettings>,
+  updatedBy?: string | null,
+): Promise<void> {
+  try {
+    await setDoc(
+      whatsNewDoc(),
+      {
+        ...patch,
+        updatedAt: serverTimestamp(),
+        ...(updatedBy ? { updatedBy } : {}),
+      },
+      { merge: true },
+    );
+  } catch (e) {
+    handleFirestoreError(e, OperationType.WRITE, 'settings/whats_new');
+  }
+}
+
+export interface WhatsNewSettingsView {
+  settings: WhatsNewSettings;
+  videoUrl: string;
+  videoRoles: string[] | null;
+  setVideoUrl: (url: string | null, updatedBy?: string | null) => Promise<void>;
+  setVideoSettings: (
+    settings: { videoUrl?: string | null; videoRoles?: string[] | null },
+    updatedBy?: string | null,
+  ) => Promise<void>;
+}
+
+/** Hook for accessing and updating What's New settings live. */
+export function useWhatsNewSettings(): WhatsNewSettingsView {
+  const [settings, setSettings] = useState<WhatsNewSettings>({});
+
+  useEffect(() => {
+    return subscribeWhatsNewSettings(setSettings);
+  }, []);
+
+  return {
+    settings,
+    videoUrl: settings.videoUrl || '',
+    videoRoles: settings.videoRoles ?? null,
+    setVideoUrl: (url, updatedBy) => saveWhatsNewSettings({ videoUrl: url }, updatedBy),
+    setVideoSettings: (patch, updatedBy) => saveWhatsNewSettings(patch, updatedBy),
+  };
+}
+

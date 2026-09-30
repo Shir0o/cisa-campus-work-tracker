@@ -642,12 +642,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         />
 
         <FeedbackFAB />
-        <WhatsNewModal
-          isOpen={isWhatsNewOpen}
-          onClose={() => setIsWhatsNewOpen(false)}
-          manifest={whatsNewManifest as WhatsNewManifest}
-          platform="web"
-        />
+        {isWhatsNewOpen && (
+          <WhatsNewModal
+            isOpen={isWhatsNewOpen}
+            onClose={() => setIsWhatsNewOpen(false)}
+            manifest={whatsNewManifest as WhatsNewManifest}
+            platform="web"
+            currentRole={role}
+          />
+        )}
         <NotificationPermissionBanner />
         <Toaster />
       </div>

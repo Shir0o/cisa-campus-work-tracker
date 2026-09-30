@@ -1426,6 +1426,46 @@ describe('Settings', () => {
     });
   });
 
+  describe("What's New Video & IAM settings", () => {
+    it('allows an admin to configure video URL and audience visibility', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      expect(screen.getByText('Video Walkthrough Companion')).toBeInTheDocument();
+      const input = screen.getByPlaceholderText('https://drive.google.com/file/d/.../view');
+      const select = screen.getByLabelText('Video audience');
+      const saveBtn = screen.getByRole('button', { name: /save video settings/i });
+
+      fireEvent.change(input, {
+        target: { value: 'https://drive.google.com/file/d/testAdminVideo/view' },
+      });
+      fireEvent.change(select, { target: { value: 'admin' } });
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          { path: 'settings/whats_new', id: 'whats_new' },
+          {
+            videoUrl: 'https://drive.google.com/file/d/testAdminVideo/view',
+            videoRoles: ['admin'],
+            updatedAt: 'mock-timestamp',
+            updatedBy: 'admin@test.com',
+          },
+          { merge: true },
+        );
+      });
+    });
+
+    it('does not display video configuration form for non-admins', () => {
+      setupNonManagerAuth();
+      render(<Settings />);
+
+      expect(screen.getByText("What's New")).toBeInTheDocument();
+      expect(screen.queryByText('Video Walkthrough Companion')).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText('https://drive.google.com/file/d/.../view')).not.toBeInTheDocument();
+    });
+  });
+
   describe('SecuritySection (second factor)', () => {
     beforeEach(() => {
       vi.clearAllMocks();

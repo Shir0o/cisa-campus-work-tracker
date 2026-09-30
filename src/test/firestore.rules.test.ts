@@ -3045,6 +3045,138 @@ describeRules('Firestore Security Rules', () => {
       // The documented canonical shape is accepted.
       await assertSucceeds(setDoc(doc(db, 'settings', 'partners'), { pairings: [{ id: 'p1', members: ['trainee1', 'trainee2'], startDate: '2026-09-01' }] }));
     });
+
+    it('SWN1: Anyone (even unauthenticated) can read settings/whats_new', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/whats-new.mp4',
+          updatedAt: serverTimestamp(),
+          updatedBy: 'admin1',
+        });
+      });
+      const db = getFirestore(); // unauthenticated
+      await assertSucceeds(getDoc(doc(db, 'settings', 'whats_new')));
+    });
+
+    it('SWN2: Non-admin cannot write settings/whats_new', async () => {
+      await seedRoles();
+      const managerDb = getFirestore({ uid: 'manager1' });
+      await assertFails(
+        setDoc(doc(managerDb, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/whats-new.mp4',
+        }),
+      );
+
+      const unauthDb = getFirestore();
+      await assertFails(
+        setDoc(doc(unauthDb, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/whats-new.mp4',
+        }),
+      );
+    });
+
+    it('SWN3: Admin can create and update settings/whats_new with valid fields', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+
+      // Create with valid fields including videoRoles
+      await assertSucceeds(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/whats-new.mp4',
+          videoRoles: ['admin', 'manager'],
+          updatedAt: serverTimestamp(),
+          updatedBy: 'admin1',
+        }),
+      );
+
+      // Update with valid fields / nulls
+      await assertSucceeds(
+        updateDoc(doc(db, 'settings', 'whats_new'), {
+          videoUrl: null,
+          videoRoles: ['admin'],
+          updatedBy: null,
+        }),
+      );
+
+      // Update with videoRoles: null
+      await assertSucceeds(
+        updateDoc(doc(db, 'settings', 'whats_new'), {
+          videoRoles: null,
+        }),
+      );
+    });
+
+    it('SWN4: Rejects write if extra fields are provided', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/whats-new.mp4',
+          extraField: 'not_allowed',
+        }),
+      );
+    });
+
+    it('SWN5: Rejects write if field types or sizes are invalid', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+
+      // videoUrl not string or null
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          videoUrl: 12345,
+        }),
+      );
+
+      // videoUrl size > 1024
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          videoUrl: 'https://example.com/' + 'a'.repeat(1025),
+        }),
+      );
+
+      // videoRoles not list or null
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          videoRoles: 'admin',
+        }),
+      );
+
+      // videoRoles size > 10 items
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          videoRoles: ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8', 'r9', 'r10', 'r11'],
+        }),
+      );
+
+      // updatedAt not timestamp or null
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          updatedAt: '2026-09-30T00:00:00Z',
+        }),
+      );
+
+      // updatedBy size > 128
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          updatedBy: 'a'.repeat(129),
+        }),
+      );
+
+      // updatedBy not string or null
+      await assertFails(
+        setDoc(doc(db, 'settings', 'whats_new'), {
+          updatedBy: 999,
+        }),
+      );
+    });
   });
 
   describe('Notifications', () => {

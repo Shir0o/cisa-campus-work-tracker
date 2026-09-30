@@ -7,8 +7,8 @@ This document explains how to record, host, and attach a **What's New Video** co
 ## Overview
 
 A **What's New Video** is a short companion video (typically 30–90 seconds) accompanying an app release.
-- **Web App**: The video is embedded directly inside the in-app **What's New Announcement** modal via a responsive YouTube iframe.
-- **Mobile App**: A "Watch what's new" button links out to YouTube so users can watch in their native player.
+- **Web App**: The video is embedded directly inside the in-app **What's New Announcement** modal via a responsive Google Drive preview iframe, with an "Open video in Google Drive" link.
+- **Mobile App**: A "Watch what's new" button links out to Google Drive so users can watch in their native app or browser.
 - **Single Source of Truth**: The video link is declared in the release markdown file's frontmatter (`content/whats-new/<date>-v<version>.md`) via the `video_url` property. If omitted, no empty video player or link is shown.
 
 ---
@@ -30,15 +30,14 @@ Industry standard for crisp release walkthroughs prioritizes human intent, smoot
 
 ---
 
-## 2. Hosting on YouTube
+## 2. Hosting on Google Drive
 
-All release companion videos are hosted on **YouTube** to ensure zero infrastructure overhead, zero bandwidth costs, and multi-device playback:
+All release companion videos are hosted on **Google Drive** internally for organizational privacy without external ad tracking or recommendations:
 
 1. Export the recording as an `.mp4` file.
-2. Upload to the official YouTube channel or maintainer account.
-3. Set the visibility to **Unlisted** (or **Public** if public release marketing is desired).
-   - *Unlisted* ensures anyone with the in-app link can watch it without indexing or channel clutter.
-4. Copy the video link (e.g. `https://youtu.be/abc123xyz` or `https://www.youtube.com/watch?v=abc123xyz`).
+2. Upload the file to the team's shared Google Drive.
+3. Set the sharing visibility to **internal organization members** (or anyone with the link if cross-org access is needed).
+4. Copy the shareable link (e.g. `https://drive.google.com/file/d/<fileId>/view?usp=sharing`).
 
 ---
 

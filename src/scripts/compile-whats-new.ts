@@ -19,6 +19,8 @@ export interface WhatsNewRelease {
   lines?: string[];
   /** The What's New Video companion - a YouTube link. Absent = no video. */
   video_url?: string;
+  /** Allowed roles for video companion. Absent / empty = everyone. */
+  video_roles?: string[];
   overview?: string;
   items: WhatsNewItem[];
 }
@@ -125,6 +127,7 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     ? (frontmatter.platforms as PlatformTarget[])
     : ['web', 'mobile'];
   const parsedRoles = Array.isArray(frontmatter.roles) ? (frontmatter.roles as string[]) : undefined;
+  const parsedVideoRoles = Array.isArray(frontmatter.video_roles) ? (frontmatter.video_roles as string[]) : undefined;
   const parsedLines = Array.isArray(frontmatter.lines) ? (frontmatter.lines as string[]) : undefined;
   const videoUrl = frontmatter.video_url || undefined;
 
@@ -205,6 +208,7 @@ export function parseWhatsNewMarkdown(raw: string): WhatsNewRelease {
     ...(parsedRoles ? { roles: parsedRoles } : {}),
     ...(parsedLines ? { lines: parsedLines } : {}),
     ...(videoUrl ? { video_url: videoUrl } : {}),
+    ...(parsedVideoRoles ? { video_roles: parsedVideoRoles } : {}),
     overview: overviewLines.length > 0 ? overviewLines.join('\n') : undefined,
     items,
   };
