@@ -61,7 +61,7 @@ held it to its canvas (#1243).
 - [ ] **G3** Everything left-aligned, your own messages included; your own name shows, not "You".
 - [ ] **G4** Oldest at top, composer pinned at the foot; the stream opens on the newest message.
 - [ ] **G5** Day dividers: Today, Yesterday, then weekday and date.
-- [ ] **G6** A "New" line above the first unread, where read state exists (chat, announcements).
+- [x] **G6** A "New" line above the first unread, where read state exists (chat, announcements).
 - [ ] **G7** Hover lights the row and shows a toolbar — Reply in thread, Make a to-do, More. On a phone, long-press opens a sheet with those plus Copy text, and Delete for the author or a Full-timer.
 - [ ] **G8** No reactions anywhere (#1107 stands).
 
@@ -85,15 +85,15 @@ held it to its canvas (#1243).
 - [ ] **C2** Kind chips (Comment · Question · Ask a follow-up) sit inside the box on a Conversation only. A selected ask chip takes the amber; each kind keeps its placeholder.
 - [ ] **C3** An audience line above the box on every contact stream — "Everyone tied to Daniel sees this." / a lock and "Only Full-timers see this." — and above an announcement composer, naming the real audience.
 - [x] **C4** @mention candidates are unchanged from ADR 0007: any teammate on a Conversation, Full-timers only on Full-timers, the members of a chat.
-- [ ] **C5** Chat stages files and contact cards above the text, each removable before sending.
+- [x] **C5** Chat stages files and contact cards above the text, each removable before sending.
 
 ### Surfaces
 
 - [ ] **S1** Contact drawer headers: the stream's title only (Full-timers carries a lock icon); the audience line lives above the composer (C3).
 - [x] **S2** Copy: the Full-timers placeholder becomes "Write something only Full-timers will see…" (en + es).
 - [x] **S3** Around: ADR 0022 unchanged — one card open, reading in place, the Conversation / Full-timers segment, the composer posting into the open one, the just-posted message landing above the composer, marked "Just posted".
-- [ ] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.
-- [ ] **S5** Chat headers: a group says "Group · N people"; an announcement says "Announcement · N people · {names} post here".
+- [x] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.
+- [x] **S5** Chat headers: a group says "Group · N people"; an announcement says "Announcement · N people · {names} post here".
 - [x] **S6** Your notes: Follow-ups are rows; the team posts as "The team"; your own can be edited and then say "Edited"; the public-tracker line stays under the composer.
 - [ ] **S7** Phone person screen: "Alongside" becomes **Conversation**; a Full-timer gets a Conversation / Full-timers switch at its top; a Trainee never sees the switch.
 - [ ] **S8** Phone announcements: a member can say Got it and reply in a thread.

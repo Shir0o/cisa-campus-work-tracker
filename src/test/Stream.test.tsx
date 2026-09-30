@@ -598,3 +598,137 @@ describe("Stream — an adapter that is itself one Thread (an Interaction's)", (
     expect(screen.queryByPlaceholderText("Think it through together…")).toBeNull();
   });
 });
+
+// The adapter's optional hooks a chat room needs (#1259). Each is generic: a
+// source that leaves one out keeps the behaviour above.
+describe("Stream — what a chat room adds", () => {
+  const chat = (over: Partial<StreamAdapter> = {}) =>
+    fakeAdapter({ capabilities: { kinds: false, attachments: true, canPost: true, canReply: true }, audience: "", ...over });
+
+  it("holds a pinned message first under its strip, out of date order", () => {
+    renderStream(
+      chat({
+        messages: [
+          message({ id: "a", body: "older", at: yesterdayAt(9) }),
+          message({ id: "b", body: "pinned one", at: yesterdayAt(10), from: "grace", fromName: "Grace Liu" }),
+          message({ id: "c", body: "newer", at: ago(60_000), from: "ruth", fromName: "Ruth Chen" }),
+        ],
+        pinnedLabel: (m) => (m.id === "b" ? "Pinned by Grace Liu · stays at the top until they unpin it" : null),
+      }),
+    );
+    const rows = Array.from(document.querySelectorAll("[data-stream-row]")).map((el) => el.getAttribute("data-stream-row"));
+    expect(rows).toEqual(["b", "a", "c"]);
+    const strip = screen.getByText("Pinned by Grace Liu · stays at the top until they unpin it");
+    expect(strip.compareDocumentPosition(row("pinned one")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("a stream of only a pinned message is not empty", () => {
+    renderStream(chat({ messages: [message({ id: "p", body: "only" })], pinnedLabel: () => "Pinned", empty: "Nothing yet" }));
+    expect(screen.queryByText("Nothing yet")).toBeNull();
+    expect(row("only")).toBeInTheDocument();
+  });
+
+  it("draws a badge beside the name, and a system notice centred rather than as a row", () => {
+    renderStream(
+      chat({
+        messages: [
+          message({ id: "n", from: "system", fromName: "System", body: "Josh joined the group", at: yesterdayAt(8) }),
+          message({ id: "p", body: "post" }),
+        ],
+        badge: (m) => (m.id === "p" ? "Full-timer" : null),
+        notice: (m) => m.from === "system",
+      }),
+    );
+    expect(within(row("post")).getByText("Full-timer")).toBeInTheDocument();
+    expect(screen.getByText("Josh joined the group")).toHaveAttribute("role", "note");
+    expect(screen.queryByText("System")).toBeNull();
+  });
+
+  it("a taken-back message reads as its gone line, with no body and no actions", () => {
+    renderStream(chat({ messages: [message({ id: "g", body: "secret" })], goneLabel: () => "You took this message back." }));
+    expect(screen.queryByText("secret")).toBeNull();
+    const gone = row("You took this message back.");
+    expect(within(gone).queryByRole("toolbar")).toBeNull();
+  });
+
+  it("More carries the source's own actions, and a soft delete with its words and a confirm step", () => {
+    const pin = vi.fn();
+    const adapter = chat({
+      messages: [message({ id: "mine", from: "maria", body: "oops" })],
+      moreActions: () => [{ label: "Pin", run: pin }],
+      deleteLabel: () => "Take back for everyone",
+      deleteConfirm: { prompt: "Take this back?", yes: "Yes, remove it", no: "Keep it" },
+    });
+    renderStream(adapter);
+    const more = () => fireEvent.click(within(row("oops")).getByRole("button", { name: "More actions" }));
+    more();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Pin" }));
+    expect(pin).toHaveBeenCalled();
+    more();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Take back for everyone" }));
+    expect(screen.getByText("Take this back?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Keep it" }));
+    expect(adapter.delete).not.toHaveBeenCalled();
+    expect(screen.queryByText("Take this back?")).toBeNull();
+    // Keep it steps back to the menu, still open.
+    fireEvent.click(screen.getByRole("menuitem", { name: "Take back for everyone" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Yes, remove it" }));
+    expect(adapter.delete).toHaveBeenCalledWith(expect.objectContaining({ id: "mine" }));
+  });
+
+  it("renders the surface's extra under the body and its actions beside the Thread chip, which can open the Thread", () => {
+    renderStream(
+      chat({ messages: [message({ id: "p", body: "retreat" })] }),
+      {
+        threadMode: "beside",
+        renderExtra: (m) => <span>attachment of {m.id}</span>,
+        renderActions: (m, { openThread }) => (
+          <button type="button" onClick={openThread}>
+            Open {m.id}
+          </button>
+        ),
+      },
+    );
+    expect(within(row("retreat")).getByText("attachment of p")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open p" }));
+    expect(screen.getByRole("region", { name: "Thread" })).toBeInTheDocument();
+  });
+
+  it("a viewer who may not post reads the surface's footer in the composer's place", () => {
+    renderStream(chat({ capabilities: { kinds: false, attachments: true, canPost: false, canReply: true } }), {
+      footer: <div>Only Full-timers post here. Anyone can reply in a thread.</div>,
+    });
+    expect(screen.getByText("Only Full-timers post here. Anyone can reply in a thread.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Post" })).toBeNull();
+  });
+
+  it("stages files and cards above the text, each removable; the paperclip asks the source; a post may be only attachments (C5)", () => {
+    const attach = vi.fn();
+    const unstage = vi.fn();
+    const adapter = chat({
+      staged: [
+        { key: "0", label: "Retreat packing list", kind: "file" },
+        { key: "1", label: "Daniel Reyes", kind: "contact" },
+      ],
+      attach,
+      unstage,
+    });
+    renderStream(adapter);
+    fireEvent.click(screen.getByRole("button", { name: "Attach" }));
+    expect(attach).toHaveBeenCalled();
+    const staged = screen.getByRole("list", { name: "Staged to send" });
+    expect(within(staged).getByText("Retreat packing list")).toBeInTheDocument();
+    expect(within(staged).getByText("DR")).toBeInTheDocument();
+    fireEvent.click(within(staged).getByRole("button", { name: "Remove Daniel Reyes" }));
+    expect(unstage).toHaveBeenCalledWith("1");
+    const send = screen.getByRole("button", { name: "Post" });
+    expect(send).not.toBeDisabled();
+    fireEvent.click(send);
+    expect(adapter.post).toHaveBeenCalledWith({ body: "", kind: "comment", mentionedUserIds: [] });
+  });
+
+  it("no paperclip where the source takes no attachments", () => {
+    renderStream(fakeAdapter());
+    expect(screen.queryByRole("button", { name: "Attach" })).toBeNull();
+  });
+});

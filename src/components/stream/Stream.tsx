@@ -1,11 +1,12 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Reply, SquareCheckBig, X } from "lucide-react";
+import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Pin, Reply, SquareCheckBig, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
+import { useTranslate } from "../../hooks/useTranslate";
 import { buildStream, buildThread, type StreamRow, type StreamViewer, type ThreadSummary } from "../../lib/stream";
 import type { MentionUser } from "../../lib/mentions";
 import StreamComposer from "./StreamComposer";
-import type { StreamAdapter, StreamSourceMessage } from "./types";
+import type { StreamAdapter, StreamMenuAction, StreamSourceMessage } from "./types";
 
 // One written stream in the grammar ADR 0033 settled: Slack-literal rows,
 // everyone left-aligned, day dividers, a hover toolbar, a Thread chip, and the
@@ -31,6 +32,13 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   compact?: boolean;
   /** Messages to mark "Just posted" — the viewer's own, for a moment. */
   highlightIds?: ReadonlySet<string> | null;
+  /** What the surface draws under a message's body — a chat's attachments. */
+  renderExtra?: (message: M) => React.ReactNode;
+  /** What the surface draws beside a message's Thread chip — an
+   *  announcement's Got it and read receipts. */
+  renderActions?: (message: M, ctx: { openThread: () => void; replies: number }) => React.ReactNode;
+  /** Show bodies in the reader's language, as chat always has. */
+  translate?: boolean;
 }
 
 const TONES = 8;
@@ -57,7 +65,8 @@ export function Avatar({ uid, name, size, initials }: { uid: string; name: strin
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** The body, with each @mention of a candidate picked out. */
-function Body({ text, candidates }: { text: string; candidates: MentionUser[] }) {
+function Body({ text: raw, candidates, translate }: { text: string; candidates: MentionUser[]; translate?: boolean }) {
+  const { translatedText: text } = useTranslate(raw, { enabled: !!translate });
   const re = useMemo(() => {
     const names = candidates.map((c) => c.name).filter(Boolean).sort((a, b) => b.length - a.length);
     return names.length ? new RegExp(`(@(?:${names.map(escapeRe).join("|")}))`, "g") : null;
@@ -153,6 +162,15 @@ interface RowProps<M extends StreamSourceMessage> {
   maxLength?: number;
   onDelete: () => void;
   onCloseAsk: (how: "followedUp" | "neverMind") => void;
+  /** Source extras (#1259): each optional, each off by default. */
+  badge?: string | null;
+  gone?: string | null;
+  deleteLabel?: string;
+  deleteConfirm?: { prompt: string; yes: string; no: string };
+  moreActions?: StreamMenuAction[];
+  extra?: React.ReactNode;
+  actions?: React.ReactNode;
+  translate?: boolean;
 }
 
 function Row<M extends StreamSourceMessage>({
@@ -173,6 +191,14 @@ function Row<M extends StreamSourceMessage>({
   maxLength,
   onDelete,
   onCloseAsk,
+  badge,
+  gone,
+  deleteLabel,
+  deleteConfirm,
+  moreActions,
+  extra,
+  actions,
+  translate,
 }: RowProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
@@ -180,6 +206,7 @@ function Row<M extends StreamSourceMessage>({
   // A message that was just posted names its author so the marker has a place.
   const continuation = row.continuation && !justPosted;
   const [menu, setMenu] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -212,6 +239,11 @@ function Row<M extends StreamSourceMessage>({
   }, [menu]);
 
   const canCopy = typeof navigator !== "undefined" && !!navigator.clipboard;
+  const closeMenu = () => {
+    setMenu(false);
+    setConfirming(false);
+  };
+  const chip = showChip && thread && <ThreadChip summary={thread} open={threadOpen} onClick={() => onOpenThread?.(false)} />;
 
   return (
     <div className={cn("strm-m", continuation && "strm-cont", menu && "strm-m-menu")} data-stream-row={m.id}>
@@ -220,8 +252,9 @@ function Row<M extends StreamSourceMessage>({
         {!continuation && (
           <div className="strm-mh">
             <span className="strm-who">{m.fromName}</span>
-            {tag === "question" && <span className="strm-tag strm-tag-q">{t("stream.tag_question")}</span>}
-            {tag === "ask" && (
+            {badge && <span className="strm-tag strm-tag-role">{badge}</span>}
+            {!gone && tag === "question" && <span className="strm-tag strm-tag-q">{t("stream.tag_question")}</span>}
+            {!gone && tag === "ask" && (
               <span className={cn("strm-tag", ask?.status === "withdrawn" ? "strm-tag-muted" : "strm-tag-ask")}>
                 {t("stream.tag_ask")}
               </span>
@@ -256,12 +289,19 @@ function Row<M extends StreamSourceMessage>({
               </button>
             </div>
           </div>
+        ) : gone ? (
+          <p className="strm-tx strm-gone">{gone}</p>
         ) : (
-          <p className="strm-tx">
-            <Body text={m.body} candidates={candidates} />
-          </p>
+          <>
+            {m.body && (
+              <p className="strm-tx">
+                <Body text={m.body} candidates={candidates} translate={translate} />
+              </p>
+            )}
+            {extra}
+          </>
         )}
-        {ask && (
+        {!gone && ask && (
           <div className="strm-status">
             {ask.status === "open" && (
               <>
@@ -297,7 +337,7 @@ function Row<M extends StreamSourceMessage>({
             )}
           </div>
         )}
-        {!editing && (m.editedAt || canEdit) && (
+        {!editing && !gone && (m.editedAt || canEdit) && (
           <div className="strm-status">
             {m.editedAt && <span className="strm-edited">{t("stream.edited")}</span>}
             {canEdit && (
@@ -316,8 +356,16 @@ function Row<M extends StreamSourceMessage>({
             )}
           </div>
         )}
-        {showChip && thread && <ThreadChip summary={thread} open={threadOpen} onClick={() => onOpenThread?.(false)} />}
+        {!gone && actions ? (
+          <div className="strm-acts">
+            {actions}
+            {chip}
+          </div>
+        ) : (
+          chip
+        )}
       </div>
+      {!gone && (
       <div className="strm-tools" role="toolbar" aria-label={t("stream.message_actions")} ref={menuRef}>
         {canReply && onOpenThread && (
           <button type="button" className="strm-tool" aria-label={t("stream.reply_in_thread")} title={t("stream.reply_in_thread")} onClick={() => onOpenThread(true)}>
@@ -336,40 +384,77 @@ function Row<M extends StreamSourceMessage>({
           title={t("stream.more_actions")}
           aria-haspopup="menu"
           aria-expanded={menu}
-          onClick={() => setMenu((v) => !v)}
+          onClick={() => (menu ? closeMenu() : setMenu(true))}
         >
           <Ellipsis className="w-4 h-4" />
         </button>
         {menu && (
-          <div className="strm-menu" role="menu" onKeyDown={(e) => e.key === "Escape" && setMenu(false)}>
-            {canCopy && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  void navigator.clipboard.writeText(m.body);
-                  setMenu(false);
-                }}
-              >
-                {t("stream.copy_text")}
-              </button>
-            )}
-            {deletable && (
-              <button
-                type="button"
-                role="menuitem"
-                className="strm-danger"
-                onClick={() => {
-                  onDelete();
-                  setMenu(false);
-                }}
-              >
-                {t("stream.delete_message")}
-              </button>
+          <div className="strm-menu" role="menu" onKeyDown={(e) => e.key === "Escape" && closeMenu()}>
+            {confirming && deleteConfirm ? (
+              <>
+                <p className="strm-menu-note">{deleteConfirm.prompt}</p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="strm-danger"
+                  onClick={() => {
+                    onDelete();
+                    closeMenu();
+                  }}
+                >
+                  {deleteConfirm.yes}
+                </button>
+                <button type="button" role="menuitem" onClick={() => setConfirming(false)}>
+                  {deleteConfirm.no}
+                </button>
+              </>
+            ) : (
+              <>
+                {moreActions?.map((a) => (
+                  <button
+                    key={a.label}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      a.run();
+                      closeMenu();
+                    }}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+                {canCopy && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(m.body);
+                      closeMenu();
+                    }}
+                  >
+                    {t("stream.copy_text")}
+                  </button>
+                )}
+                {deletable && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="strm-danger"
+                    onClick={() => {
+                      if (deleteConfirm) return setConfirming(true);
+                      onDelete();
+                      closeMenu();
+                    }}
+                  >
+                    {deleteLabel ?? t("stream.delete_message")}
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -384,6 +469,9 @@ export default function Stream<M extends StreamSourceMessage>({
   onMakeTodo,
   compact,
   highlightIds,
+  renderExtra,
+  renderActions,
+  translate,
 }: StreamProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
@@ -402,10 +490,22 @@ export default function Stream<M extends StreamSourceMessage>({
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
   }, []);
-  const items = buildStream({ messages, viewer, now, lastReadAt: adapter.lastReadAt });
+  // Messages the source holds first leave date order, each under its strip
+  // (an announcement's pinned post, #1243).
+  const held = adapter.pinnedLabel
+    ? messages.filter((m) => !m.parentId && adapter.pinnedLabel!(m)).sort((a, b) => a.at.localeCompare(b.at))
+    : [];
+  const heldIds = new Set(held.map((m) => m.id));
+  const items = buildStream({
+    messages: held.length ? messages.filter((m) => !heldIds.has(m.id)) : messages,
+    viewer,
+    now,
+    lastReadAt: adapter.lastReadAt,
+  });
+  const heldRows = held.map((m) => buildThread({ messages, viewer, now }, m.id)!.parent);
   const thread = openId ? buildThread({ messages, viewer, now }, openId) : null;
   const replacing = (threadMode === "replace" || !!pinned) && !!thread;
-  const topCount = items.length;
+  const topCount = items.length + heldRows.length;
 
   // Open on — and stay with — the newest message (G4).
   useLayoutEffect(() => {
@@ -429,7 +529,39 @@ export default function Stream<M extends StreamSourceMessage>({
     onMakeTodo: onMakeTodo ? () => onMakeTodo(row.message) : undefined,
     onDelete: () => void adapter.delete(row.message),
     onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
+    gone: adapter.goneLabel?.(row.message) ?? null,
+    deleteLabel: adapter.deleteLabel?.(row.message),
+    deleteConfirm: adapter.deleteConfirm,
+    moreActions: adapter.moreActions?.(row.message),
+    extra: renderExtra?.(row.message),
+    translate,
   });
+
+  /** A row of the stream itself: its badge, its Thread, the surface's actions. */
+  const streamRow = (row: StreamRow<M>, when: string) => {
+    const openThread = (focus: boolean) => setOpen({ id: row.message.id, focus });
+    if (adapter.notice?.(row.message)) {
+      return (
+        <p key={row.message.id} role="note" className="strm-notice" data-stream-row={row.message.id}>
+          {row.message.body}
+        </p>
+      );
+    }
+    return (
+      <Row
+        key={row.message.id}
+        row={row}
+        when={when}
+        canReply={can.canReply}
+        showChip
+        threadOpen={open?.id === row.message.id}
+        onOpenThread={openThread}
+        badge={adapter.badge?.(row.message)}
+        actions={renderActions?.(row.message, { openThread: () => openThread(true), replies: row.thread?.count ?? 0 })}
+        {...rowProps(row)}
+      />
+    );
+  };
 
   const replaceMode = threadMode === "replace" || !!pinned;
   const threadPane = thread && (
@@ -510,7 +642,16 @@ export default function Stream<M extends StreamSourceMessage>({
       {header}
       <div className="strm-list" ref={listRef} data-stream-list="">
         <div className="strm-flow">
-          {items.length === 0 && adapter.empty && <p className="strm-empty">{adapter.empty}</p>}
+          {topCount === 0 && adapter.empty && <p className="strm-empty">{adapter.empty}</p>}
+          {heldRows.map((row) => (
+            <React.Fragment key={`pin:${row.message.id}`}>
+              <div className="strm-pinstrip">
+                <Pin className="w-3.5 h-3.5" aria-hidden />
+                {adapter.pinnedLabel!(row.message)}
+              </div>
+              {streamRow(row, f.dateTime(row.message.at))}
+            </React.Fragment>
+          ))}
           {items.map((item) =>
             item.type === "day" ? (
               <div key={`day:${item.day}`} role="separator" className="strm-day">
@@ -521,16 +662,7 @@ export default function Stream<M extends StreamSourceMessage>({
                 {t("stream.new")}
               </div>
             ) : (
-              <Row
-                key={item.message.id}
-                row={item}
-                when={f.time(item.message.at)}
-                canReply={can.canReply}
-                showChip
-                threadOpen={open?.id === item.message.id}
-                onOpenThread={(focus) => setOpen({ id: item.message.id, focus })}
-                {...rowProps(item)}
-              />
+              streamRow(item, f.time(item.message.at))
             ),
           )}
         </div>
@@ -553,6 +685,9 @@ export default function Stream<M extends StreamSourceMessage>({
             submitLabel={words?.submitLabel ?? t("stream.post")}
             candidates={mentionCandidates}
             maxLength={words?.maxLength}
+            staged={can.attachments ? adapter.staged : undefined}
+            onAttach={can.attachments ? adapter.attach : undefined}
+            onUnstage={adapter.unstage}
             onSubmit={(input) => {
               if (!failure) {
                 void adapter.post(input);

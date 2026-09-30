@@ -215,3 +215,24 @@ code they replace. T4 (web), K4, C4, S2 and S3 are ticked.
 | 41 | `Around-Thread.dc.html` draws the Thread header inside a card on one line — a back arrow, "Thread" and "in Conversation" side by side. The shared stream draws its Thread header as a title over a line ("Thread" / "in Conversation · {name}"), which is what `Drawer-Thread.dc.html` draws and what T3 spells out; the card uses the same header at the compact size. | **Neither — the boards disagree** | Built as one header everywhere (title over the "in …" line), at 13.5px in a card. A one-line variant is a small change in `Stream.tsx` if the card should differ. |
 | 42 | No board draws the contact page below 768px. Its Conversation and Full-timers tabs now hold the stream (Full-timers with a lock in its title, its audience line above the box), but the tab picker stays the page's dropdown rather than the phone app's Conversation / Full-timers switch (S7), and an Interaction's Thread covers the page as the drawer does on desktop rather than as a pushed screen (`M-Thread.dc.html`). | **Design** | Deferred: S7 and the pushed Thread belong to the phone app, in the #1255 series. Web below 768px gets the grammar, not the phone's navigation. |
 | 43 | An Interaction's messages are contact-level threads with `interactionId` set, and a legacy message there can carry its own replies. A Thread is one level deep, so the Interaction Thread shows every message on the Interaction as a reply to it and flattens any legacy nesting; a notification deep-link to an Interaction (`initialInteractionId`) now opens its Thread in the drawer instead of expanding the entry inline. | **Design** — T1 (one level deep) | Built as the checklist says; the data is not migrated, so a legacy nested reply reads as a plain reply. |
+
+### 2026-09-30 — Messages on the shared stream
+
+Found building [#1259](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1259),
+DMs, groups and announcements on the stream of
+[ADR 0033](../adr/0033-one-written-stream-grammar.md), by reading
+[`threads/A-Messages.dc.html`](threads/A-Messages.dc.html),
+[`Announce-FT.dc.html`](threads/Announce-FT.dc.html),
+[`Chat.dc.html`](threads/Chat.dc.html) and
+[`Composer.dc.html`](threads/Composer.dc.html) against the page they replaced.
+G6, C5, S4 and S5 are ticked.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 44 | S4 says a member sees "Reply in thread" on each post; `A-Messages.dc.html` draws a member's posts with Got it and the Thread chip only — a post with no replies has no way into its Thread except the hover toolbar. | **Checklist** — a member reading on a laptop without hovering should still see how to ask about a post | A member's post carries Got it and, while it has no replies, a "Reply in thread" button; once it has replies the chip takes that place. A Full-timer's rows carry the receipt link instead and reach the Thread through the chip or the toolbar, as `Announce-FT.dc.html` draws. |
+| 45 | T2 draws the Thread beside the stream at 1440 and says nothing about the widths between that and the phone. | **Neither — the canvas is silent** | Messages puts the Thread beside at 1280px and up (the width at which the full rail, the 328px list, the channel and the 340px pane all fit) and replaces the channel, with back, below that. |
+| 46 | The chat pane let the author or a Full-timer take back a parent that still had replies. The stream model forbids deleting a parent whose replies remain (user story 19). | **Design** (ADR 0033) | "Take back for everyone" is offered only on a message with no replies. A take-back is a tombstone, so nothing was ever orphaned, but one rule across every stream is the point of the grammar. |
+| 47 | `Chat.dc.html` and `Composer.dc.html` show the chat placeholder as "Message {room}". | **Build, for now** | The placeholders stay "Write a message…" / "Write an announcement…", which the e2e and the rest of the page already use. The hint does follow the canvas: "⌘↵ to send" in a chat, "⌘↵ to post" in an announcement. |
+| 48 | S4's strip reads "…until {they} unpin it", and `A-Messages.dc.html` draws "until she unpins it". The app holds no pronouns. | **Build** | The strip says "Pinned by you · stays at the top until you unpin it" for the viewer's own pin and "…until they unpin it" for anyone else's. |
+| 49 | G1's avatar is initials on a tone. Chat bubbles used to show a sender's profile photo where they had one. | **Design** | Rows show initials, as every other stream does; the photo is dropped. The room header's DM avatar still shows the photo. |
+| 50 | Chat bodies used to highlight any "@Firstname" matching a member's first name. The stream highlights @mentions of a candidate's full name, which is what the composer has always inserted. | **Design** (ADR 0007: a mention is the name picked) | Messages typed by hand as "@Firstname" no longer light up. Nothing is notified either way — chat mentions have never notified. |

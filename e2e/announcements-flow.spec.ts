@@ -83,7 +83,7 @@ test.describe('Announcements UI/UX Rework (#743)', () => {
     await expect(page.locator('.msgs-thread-title')).toContainText(announcementTitle, { timeout: 10_000 });
 
     // Verify top-level post card renders with Pinned strip & Full-timer badge
-    await expect(page.locator('.post.pinned')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.strm-pinstrip')).toContainText('Pinned', { timeout: 10_000 });
     await expect(page.getByText('Full-timer').first()).toBeVisible();
     await expect(page.getByText(announcementBody).first()).toBeVisible();
 
@@ -112,50 +112,50 @@ test.describe('Announcements UI/UX Rework (#743)', () => {
     await announceCard.click();
 
     // 6. Verify Post Card layout (User Stories 24, 25, 38)
-    const postCard = page.locator('.post', { hasText: announcementBody });
+    const postCard = page.locator('.strm-flow [data-stream-row]', { hasText: announcementBody });
     await expect(postCard).toBeVisible({ timeout: 10_000 });
-    await expect(postCard.locator('.rolechip')).toContainText('Full-timer');
-    await expect(postCard.locator('.post-strip')).toContainText('Pinned');
+    await expect(postCard.locator('.strm-tag-role')).toContainText('Full-timer');
+    await expect(page.locator('.strm-pinstrip')).toContainText('Pinned');
 
     // 7. Verify Guidance bar replaces the composer for non-admin Trainee (User Stories 36, 45)
     await expect(page.getByText(/only full-timers post here\. anyone can reply in a thread\./i)).toBeVisible();
-    await expect(page.locator('.msgs-composer textarea')).not.toBeVisible();
+    await expect(page.getByPlaceholder(/write an announcement/i)).toHaveCount(0);
 
     // 8. Test "Got it" acknowledgement toggle (User Stories 29, 30, 31)
-    const ackBtn = postCard.locator('.ack');
+    const ackBtn = postCard.getByRole('button', { name: /got it/i });
     await expect(ackBtn).toBeVisible();
     await expect(ackBtn).toContainText('Got it');
 
     // Click "Got it"
     await ackBtn.click();
-    await expect(ackBtn).toHaveClass(/done/, { timeout: 5_000 });
+    await expect(ackBtn).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
 
     // Click again to toggle off
     await ackBtn.click();
-    await expect(ackBtn).not.toHaveClass(/done/, { timeout: 5_000 });
+    await expect(ackBtn).toHaveAttribute('aria-pressed', 'false', { timeout: 5_000 });
 
     // Toggle back on
     await ackBtn.click();
-    await expect(ackBtn).toHaveClass(/done/, { timeout: 5_000 });
+    await expect(ackBtn).toHaveAttribute('aria-pressed', 'true', { timeout: 5_000 });
 
     // 9. Test Reply in Thread (User Stories 16, 32, 33, 34, 35)
-    const threadReplyBtn = postCard.getByRole('button', { name: /reply in thread/i });
+    const threadReplyBtn = postCard.getByRole('button', { name: /reply in thread/i }).first();
     await expect(threadReplyBtn).toBeVisible();
     await threadReplyBtn.click();
 
     // Thread pane opens
-    await expect(page.locator('.msgs-pane')).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('.msgs-pane')).toContainText('Thread');
+    await expect(page.getByRole('region', { name: 'Thread' })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('region', { name: 'Thread' })).toContainText('Thread');
 
     // Trainee posts a reply in thread
-    const threadComposer = page.locator('.msgs-pane textarea');
+    const threadComposer = page.getByRole('region', { name: 'Thread' }).locator('textarea');
     await expect(threadComposer).toBeVisible();
     await threadComposer.fill(traineeReply);
     await threadComposer.press('Meta+Enter');
 
     // Reply appears inside the thread pane (also still in the composer input, so
 // target the posted bubble explicitly).
-    await expect(page.locator('.msgs-pane').getByText(traineeReply).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('region', { name: 'Thread' }).getByText(traineeReply).first()).toBeVisible({ timeout: 10_000 });
 
     // Main stream post footer updates to show "1 reply"
     await expect(postCard.getByText('1 reply')).toBeVisible({ timeout: 10_000 });
@@ -173,18 +173,18 @@ test.describe('Announcements UI/UX Rework (#743)', () => {
     await expect(announceCard).toBeVisible({ timeout: 10_000 });
     await announceCard.click();
 
-    const postCard = page.locator('.post', { hasText: announcementBody });
+    const postCard = page.locator('.strm-flow [data-stream-row]', { hasText: announcementBody });
     await expect(postCard).toBeVisible({ timeout: 10_000 });
 
     // 3. Check thread replies count & open thread to read Trainee reply (User Stories 16, 18)
     await expect(postCard.getByText('1 reply')).toBeVisible({ timeout: 5_000 });
     await postCard.getByText('1 reply').click();
 
-    await expect(page.locator('.msgs-pane')).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('.msgs-pane').getByText(traineeReply)).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Thread' })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('region', { name: 'Thread' }).getByText(traineeReply)).toBeVisible();
 
     // 4. Open Read receipts modal (User Stories 12, 13, 14)
-    const readReceiptBtn = postCard.locator('.readcount');
+    const readReceiptBtn = postCard.getByRole('button', { name: /read by/i });
     await expect(readReceiptBtn).toBeVisible();
     await readReceiptBtn.click();
 
