@@ -18,6 +18,8 @@ import type { StreamComposeKind } from "./types";
 // inside it where the source has kinds, the text, and a tools row of @, the
 // shortcut hint and send. ⌘/Ctrl+Enter sends; Enter picks a mention.
 
+type SubmitResult = void | Promise<void>;
+
 interface StreamComposerProps {
   /** Offer Comment · Question · Ask a follow-up inside the box. */
   kinds: boolean;
@@ -31,7 +33,10 @@ interface StreamComposerProps {
   submitLabel: string;
   candidates: MentionUser[];
   autoFocus?: boolean;
-  onSubmit: (input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }) => void;
+  maxLength?: number;
+  /** A promise makes the box wait: the draft clears when it resolves and stays
+   *  where it was if it rejects, so a failed send loses nothing. */
+  onSubmit: (input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }) => SubmitResult;
 }
 
 export default function StreamComposer({
@@ -45,6 +50,7 @@ export default function StreamComposer({
   submitLabel,
   candidates,
   autoFocus,
+  maxLength,
   onSubmit,
 }: StreamComposerProps) {
   const { t } = useLanguage();
@@ -61,6 +67,7 @@ export default function StreamComposer({
   const [mention, setMention] = useState<MentionMatch | null>(null);
   const [selected, setSelected] = useState(0);
   const [picked, setPicked] = useState<Array<{ uid: string; name: string }>>([]);
+  const [busy, setBusy] = useState(false);
 
   const matches = useMemo(
     () => (mention ? filterMentionCandidates(candidates, mention.query, false) : []),
@@ -113,17 +120,27 @@ export default function StreamComposer({
 
   const submit = () => {
     const body = draft.trim();
+    if (busy) return;
     if (!body) {
       taRef.current?.focus();
       return;
     }
+    const clear = () => {
+      setDraft("");
+      setPicked([]);
+      setMention(null);
+      setKind("comment");
+    };
     // Mentions reconcile against the body as sent (ADR 0007): a name picked
     // and then edited out notifies nobody.
-    onSubmit({ body, kind: kinds ? kind : "comment", mentionedUserIds: reconcileMentionedUsers(body, picked) });
-    setDraft("");
-    setPicked([]);
-    setMention(null);
-    setKind("comment");
+    const result = onSubmit({ body, kind: kinds ? kind : "comment", mentionedUserIds: reconcileMentionedUsers(body, picked) });
+    if (result && typeof result.then === "function") {
+      setBusy(true);
+      // A rejection keeps the draft; whoever returned the promise says why.
+      result.then(clear, () => undefined).finally(() => setBusy(false));
+      return;
+    }
+    clear();
   };
 
   useCommand({
@@ -177,21 +194,24 @@ export default function StreamComposer({
           rows={kind === "comment" ? 1 : 2}
           placeholder={ph}
           autoFocus={autoFocus}
+          maxLength={maxLength}
           onChange={(e) => change(e.target.value, e.target.selectionStart || 0)}
           onKeyDown={onKeyDown}
           className="strm-ta"
         />
         <div className="strm-ctools">
-          <button type="button" className="strm-tool" aria-label={t("stream.mention")} onClick={startMention}>
-            <AtSign className="w-4 h-4" />
-          </button>
+          {candidates.length > 0 && (
+            <button type="button" className="strm-tool" aria-label={t("stream.mention")} onClick={startMention}>
+              <AtSign className="w-4 h-4" />
+            </button>
+          )}
           <span className="strm-hint">{hint}</span>
           <button
             type="button"
             className="strm-send"
             aria-label={submitLabel}
             title={submitLabel}
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || busy}
             onClick={submit}
           >
             <Send className="w-4 h-4" />

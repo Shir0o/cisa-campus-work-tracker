@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Loader2, Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe, Pencil } from 'lucide-react';
+import { Clock, CheckCircle, Ban, Sparkles, AlertTriangle, MessageSquare, ChevronDown, Globe } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { kindMeta, outcomeCopy, outcomeLabel, TONE_CLASSES } from '../lib/feedbackKinds';
@@ -10,6 +10,8 @@ import { isAppOwner } from '../lib/permissions';
 import { Feedback, FeedbackReply } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
+import Stream from '../components/stream/Stream';
+import { followUpAdapter } from '../components/stream/followUpAdapter';
 
 /**
  * "Your notes" — the submitter's own side of the feedback loop (ADR 0019).
@@ -247,18 +249,11 @@ function NoteCard({
 }
 
 function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: boolean }) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { t } = useLanguage();
 
   const [replies, setReplies] = useState<FeedbackReply[]>([]);
   const [threadError, setThreadError] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'feedback', noteId, 'replies'), orderBy('createdAt', 'asc'));
@@ -272,6 +267,7 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
             id: d.id,
             ...data,
             createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || new Date().toISOString(),
+            ...(data.editedAt ? { editedAt: data.editedAt.toDate?.()?.toISOString() || data.editedAt } : {}),
           } as FeedbackReply);
         });
         setReplies(items);
@@ -285,210 +281,36 @@ function FollowUpThread({ noteId, asSubmitter }: { noteId: string; asSubmitter: 
     return () => unsubscribe();
   }, [noteId]);
 
-  const send = useCallback(async () => {
-    const body = draft.trim();
-    if (!body || sending || !user) return;
-
-    setSending(true);
-    setSendError(null);
-    try {
-      let token: string | null = null;
-      try {
-        if (typeof user.getIdToken === 'function') token = await user.getIdToken();
-      } catch (tokenErr) {
-        console.error('Failed to get Firebase ID token:', tokenErr);
-      }
-
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const response = await fetch('/api/feedback/reply', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ id: noteId, body }),
-      });
-      if (!response.ok) throw new Error(`Server returned ${response.status} ${response.statusText}`);
-
-      setDraft('');
-    } catch (error) {
-      console.error('Failed to post a follow-up:', error);
-      setSendError(t('feedback.follow_up_failed'));
-    } finally {
-      setSending(false);
-    }
-  }, [draft, sending, user, noteId, t]);
-
-  const saveEdit = useCallback(async () => {
-    const body = editDraft.trim();
-    if (!body || editing || !user || !editingId) return;
-
-    setEditing(true);
-    setEditError(null);
-    try {
-      let token: string | null = null;
-      try {
-        if (typeof user.getIdToken === 'function') token = await user.getIdToken();
-      } catch (tokenErr) {
-        console.error('Failed to get Firebase ID token:', tokenErr);
-      }
-
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const response = await fetch('/api/feedback/reply/edit', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ id: noteId, replyId: editingId, body }),
-      });
-      if (!response.ok) throw new Error(`Server returned ${response.status} ${response.statusText}`);
-
-      setEditingId(null);
-      setEditDraft('');
-    } catch (error) {
-      console.error('Failed to edit a follow-up:', error);
-      setEditError(t('feedback.edit_failed'));
-    } finally {
-      setEditing(false);
-    }
-  }, [editDraft, editing, editingId, user, noteId, t]);
+  const adapter = followUpAdapter({
+    noteId,
+    replies,
+    me: { uid: user?.uid ?? '', name: user?.displayName ?? '', role },
+    asSubmitter,
+    getIdToken: user && typeof user.getIdToken === 'function' ? () => user.getIdToken() : undefined,
+    t,
+  });
 
   return (
-    <div className="space-y-3 pt-3">
+    <div className="pt-3">
       {threadError && (
-        <p role="alert" className="text-xs text-on-surface-variant">
+        <p role="alert" className="text-xs text-on-surface-variant pb-2">
           {t('feedback.follow_ups_load_failed')}
         </p>
       )}
-
-      {replies.length === 0 && !threadError && (
-        <p className="text-xs text-on-surface-variant/80">{t('feedback.no_follow_ups')}</p>
-      )}
-
-      {replies.map((reply) => {
-        const mine = reply.authorRole === 'submitter';
-        // On the owner's own Notes a relayed comment is stored raw with the
-        // restatement beside it, so the submitter's view has something to show.
-        const shown = asSubmitter ? reply.launderedBody || reply.body : reply.body;
-        // Only the reply's author may rewrite it — and a relayed reply belongs
-        // to the issue, not to the app (server-side, this is enforced again).
-        const editable = !!user && reply.authorId === user.uid && !reply.relayed;
-        return (
-          <div
-            key={reply.id}
-            className={`text-xs rounded-lg p-3 space-y-1 ${
-              mine ? 'bg-surface border border-outline-variant' : 'bg-surface-variant/60'
-            }`}
-          >
-            <div className="font-semibold text-on-surface-variant">
-              {mine ? t('feedback.you') : reply.authorName || t('feedback.the_team')}
-            </div>
-            {editingId === reply.id ? (
-              <div className="space-y-2">
-                <textarea
-                  rows={3}
-                  maxLength={5000}
-                  value={editDraft}
-                  disabled={editing}
-                  onChange={(e) => setEditDraft(e.target.value)}
-                  aria-label={t('feedback.edit_follow_up')}
-                  className="w-full bg-surface border border-outline-variant rounded-sm p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
-                />
-
-                {/* An edit rewrites the public comment too. */}
-                <p className="flex items-start gap-1.5 text-[11px] text-on-surface-variant/80 leading-relaxed">
-                  <Globe className="w-3 h-3 mt-0.5 shrink-0" />
-                  <span>{t('feedback.reply_is_public')}</span>
-                </p>
-
-                {editError && (
-                  <p role="alert" className="text-[11px] text-stage-amber">
-                    {editError}
-                  </p>
-                )}
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(null);
-                      setEditDraft('');
-                      setEditError(null);
-                    }}
-                    disabled={editing}
-                    className="py-1.5 px-4 border border-outline-variant text-on-surface-variant font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors disabled:opacity-50"
-                  >
-                    {t('actions.cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveEdit}
-                    disabled={editing || !editDraft.trim()}
-                    className="py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
-                  >
-                    {editing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    <span>{t('actions.save')}</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-2">
-                <p className="text-on-surface whitespace-pre-wrap leading-relaxed flex-1">{shown}</p>
-                {editable && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(reply.id);
-                      setEditDraft(reply.body);
-                      setEditError(null);
-                    }}
-                    aria-label={t('feedback.edit')}
-                    className="text-on-surface-variant hover:text-accent transition-colors shrink-0 mt-0.5 cursor-pointer"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      <div className="space-y-2 pt-1">
-        <textarea
-          rows={3}
-          maxLength={5000}
-          value={draft}
-          disabled={sending}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={t('feedback.follow_up_placeholder')}
-          aria-label={t('feedback.follow_up_placeholder')}
-          className="w-full bg-surface border border-outline-variant rounded-sm p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
+      <div className="strm-inline">
+        <Stream
+          adapter={adapter}
+          viewer={{ uid: user?.uid ?? '', role }}
+          threadMode="replace"
+          footer={
+            // The thread mirrors onto a public issue tracker. Someone typing
+            // into what looks like a private app has no way to know that.
+            <p className="strm-foot">
+              <Globe className="w-3 h-3 mt-0.5 shrink-0" aria-hidden />
+              <span>{t('feedback.reply_is_public')}</span>
+            </p>
+          }
         />
-
-        {/* The thread mirrors onto a public issue tracker. Someone typing into
-            what looks like a private app has no way to know that. */}
-        <p className="flex items-start gap-1.5 text-[11px] text-on-surface-variant/80 leading-relaxed">
-          <Globe className="w-3 h-3 mt-0.5 shrink-0" />
-          <span>{t('feedback.reply_is_public')}</span>
-        </p>
-
-        {sendError && (
-          <p role="alert" className="text-[11px] text-stage-amber">
-            {sendError}
-          </p>
-        )}
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={send}
-            disabled={sending || !draft.trim()}
-            className="py-2 px-5 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
-          >
-            {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            <span>{sending ? t('feedback.sending') : t('feedback.send')}</span>
-          </button>
-        </div>
       </div>
     </div>
   );

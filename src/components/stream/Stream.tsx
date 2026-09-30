@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Ellipsis, Reply, SquareCheckBig, X } from "lucide-react";
+import { ArrowLeft, Check, Ellipsis, Loader2, Pencil, Reply, SquareCheckBig, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
 import { buildStream, buildThread, type StreamRow, type StreamViewer } from "../../lib/stream";
@@ -24,6 +24,8 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   header?: React.ReactNode;
   /** Shut the whole surface — the replacing Thread's close control. */
   onClose?: () => void;
+  /** Drawn under the composer — a line the composer can't say alone. */
+  footer?: React.ReactNode;
   onMakeTodo?: (message: M) => void;
 }
 
@@ -40,10 +42,10 @@ function initialsOf(name: string): string {
   return (parts[0] || "?").slice(0, 2).toUpperCase();
 }
 
-function Avatar({ uid, name, size }: { uid: string; name: string; size?: "xs" }) {
+function Avatar({ uid, name, size, initials }: { uid: string; name: string; size?: "xs"; initials?: string }) {
   return (
     <span className={cn("strm-av", `strm-tone-${toneOf(uid)}`, size && `strm-av-${size}`)} data-stream-avatar="" aria-hidden>
-      {initialsOf(name)}
+      {initials ?? initialsOf(name)}
     </span>
   );
 }
@@ -117,6 +119,14 @@ interface RowProps<M extends StreamSourceMessage> {
   showChip: boolean;
   onOpenThread?: (focus: boolean) => void;
   onMakeTodo?: () => void;
+  /** The model allows it and the adapter doesn't forbid it. */
+  deletable: boolean;
+  /** The adapter lets this viewer rewrite this message. */
+  canEdit?: boolean;
+  onEdit?: (body: string) => unknown;
+  editLabel?: string;
+  editFailure?: string;
+  maxLength?: number;
   onDelete: () => void;
   onCloseAsk: (how: "followedUp" | "neverMind") => void;
 }
@@ -130,6 +140,12 @@ function Row<M extends StreamSourceMessage>({
   showChip,
   onOpenThread,
   onMakeTodo,
+  deletable,
+  canEdit,
+  onEdit,
+  editLabel,
+  editFailure,
+  maxLength,
   onDelete,
   onCloseAsk,
 }: RowProps<M>) {
@@ -138,6 +154,26 @@ function Row<M extends StreamSourceMessage>({
   const { message: m, continuation, tag, ask, askActions, thread } = row;
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState(false);
+
+  const save = async () => {
+    const body = draft.trim();
+    if (!body || saving || !onEdit) return;
+    setSaving(true);
+    setEditError(false);
+    try {
+      await onEdit(body);
+      setEditing(false);
+    } catch (err) {
+      console.error("Failed to save an edit:", err);
+      setEditError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!menu) return;
@@ -152,7 +188,7 @@ function Row<M extends StreamSourceMessage>({
 
   return (
     <div className={cn("strm-m", continuation && "strm-cont", menu && "strm-m-menu")} data-stream-row={m.id}>
-      {!continuation && <Avatar uid={m.from} name={m.fromName} />}
+      {!continuation && <Avatar uid={m.from} name={m.fromName} initials={m.initials} />}
       <div className="strm-mb">
         {!continuation && (
           <div className="strm-mh">
@@ -166,9 +202,37 @@ function Row<M extends StreamSourceMessage>({
             <span className="strm-when">{when}</span>
           </div>
         )}
-        <p className="strm-tx">
-          <Body text={m.body} candidates={candidates} />
-        </p>
+        {editing ? (
+          <div className="strm-edit">
+            <textarea
+              rows={3}
+              maxLength={maxLength}
+              value={draft}
+              disabled={saving}
+              aria-label={editLabel ?? t("stream.edit_label")}
+              onChange={(e) => setDraft(e.target.value)}
+              className="strm-edit-ta"
+            />
+            {editError && editFailure && (
+              <p role="alert" className="strm-err">
+                {editFailure}
+              </p>
+            )}
+            <div className="strm-edit-btns">
+              <button type="button" className="strm-btn strm-btn-ghost" disabled={saving} onClick={() => setEditing(false)}>
+                {t("actions.cancel")}
+              </button>
+              <button type="button" className="strm-btn strm-btn-pri" disabled={saving || !draft.trim()} onClick={() => void save()}>
+                {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />}
+                {t("actions.save")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="strm-tx">
+            <Body text={m.body} candidates={candidates} />
+          </p>
+        )}
         {ask && (
           <div className="strm-status">
             {ask.status === "open" && (
@@ -202,6 +266,25 @@ function Row<M extends StreamSourceMessage>({
               <span className="strm-s-gone">
                 {t("stream.ask_withdrawn").replace("{name}", ask.by.name).replace("{when}", f.ago(ask.at))}
               </span>
+            )}
+          </div>
+        )}
+        {!editing && (m.editedAt || canEdit) && (
+          <div className="strm-status">
+            {m.editedAt && <span className="strm-edited">{t("stream.edited")}</span>}
+            {canEdit && (
+              <button
+                type="button"
+                className="strm-btn strm-btn-ghost strm-btn-sm"
+                onClick={() => {
+                  setDraft(m.body);
+                  setEditError(false);
+                  setEditing(true);
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" aria-hidden />
+                {t("stream.edit")}
+              </button>
             )}
           </div>
         )}
@@ -258,7 +341,7 @@ function Row<M extends StreamSourceMessage>({
                 {t("stream.copy_text")}
               </button>
             )}
-            {row.canDelete && (
+            {deletable && (
               <button
                 type="button"
                 role="menuitem"
@@ -284,6 +367,7 @@ export default function Stream<M extends StreamSourceMessage>({
   threadMode,
   header,
   onClose,
+  footer,
   onMakeTodo,
 }: StreamProps<M>) {
   const { t } = useLanguage();
@@ -310,8 +394,18 @@ export default function Stream<M extends StreamSourceMessage>({
     if (el) el.scrollTop = el.scrollHeight;
   }, [topCount, replacing]);
 
+  const [postError, setPostError] = useState<string | null>(null);
+  const failure = adapter.failure;
+  const words = adapter.composer;
+
   const rowProps = (row: StreamRow<M>) => ({
     candidates: mentionCandidates,
+    deletable: row.canDelete && (adapter.canDelete ? adapter.canDelete(row.message) : true),
+    canEdit: !!adapter.edit && !!adapter.canEdit?.(row.message),
+    onEdit: adapter.edit ? (body: string) => adapter.edit!(row.message, body) : undefined,
+    editLabel: words?.editLabel,
+    editFailure: failure?.edit,
+    maxLength: words?.maxLength,
     onMakeTodo: onMakeTodo ? () => onMakeTodo(row.message) : undefined,
     onDelete: () => void adapter.delete(row.message),
     onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
@@ -409,18 +503,43 @@ export default function Stream<M extends StreamSourceMessage>({
         </div>
       </div>
       {can.canPost && (
-        <StreamComposer
-          kinds={can.kinds}
-          audience={adapter.audience}
-          askAudience={adapter.askAudience}
-          locked={adapter.locked}
-          hint={t("stream.post_hint")}
-          label={t("stream.compose_label")}
-          submitLabel={t("stream.post")}
-          candidates={mentionCandidates}
-          onSubmit={(input) => void adapter.post(input)}
-        />
+        <>
+          {postError && (
+            <p role="alert" className="strm-err strm-err-composer">
+              {postError}
+            </p>
+          )}
+          <StreamComposer
+            kinds={can.kinds}
+            audience={adapter.audience}
+            askAudience={adapter.askAudience}
+            locked={adapter.locked}
+            placeholder={words?.placeholder}
+            hint={words?.hint ?? t("stream.post_hint")}
+            label={words?.label ?? t("stream.compose_label")}
+            submitLabel={words?.submitLabel ?? t("stream.post")}
+            candidates={mentionCandidates}
+            maxLength={words?.maxLength}
+            onSubmit={(input) => {
+              if (!failure) {
+                void adapter.post(input);
+                return;
+              }
+              // A confirmed write: the composer keeps the draft until it lands.
+              setPostError(null);
+              return Promise.resolve(adapter.post(input)).then(
+                () => undefined,
+                (err) => {
+                  console.error("Failed to post:", err);
+                  setPostError(failure.post);
+                  throw err;
+                },
+              );
+            }}
+          />
+        </>
       )}
+      {footer}
     </>
   );
 

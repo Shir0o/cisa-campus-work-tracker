@@ -4490,6 +4490,24 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-hint { font-size: 11.5px; color: var(--strm-mute); margin-left: auto; margin-right: 8px; }
 .strm-send { width: 36px; height: 36px; border-radius: 999px; background: var(--accent-strong); color: var(--accent-on); display: grid; place-items: center; border: 0; flex: none; cursor: pointer; }
 .strm-send:disabled { opacity: 0.4; cursor: default; }
+.strm-foot { display: flex; align-items: flex-start; gap: 6px; padding: 0 22px 16px; margin-top: -8px; font-size: 11.5px; line-height: 1.45; color: var(--text-dim); }
+
+/* A stream inside another surface's card (Your notes): the card pads it. */
+.strm-inline .strm-list { overflow: visible; padding: 0 8px 6px; }
+.strm-inline .strm-composer { padding: 10px 0 16px; }
+.strm-inline .strm-foot { padding: 0 2px 4px; margin-top: -8px; }
+.strm-inline .strm-err-composer { padding: 0; }
+
+/* Optional adapter capabilities: edit in place, "Edited", a failed write. */
+.strm-edited { font-size: 11px; color: var(--strm-mute); }
+.strm-btn-sm { height: 28px; padding: 0 8px; }
+.strm-btn:disabled { opacity: 0.5; cursor: default; }
+.strm-edit { margin-top: 4px; }
+.strm-edit-ta { display: block; width: 100%; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); padding: 8px 10px; resize: none; }
+.strm-edit-ta:focus { outline: 0; border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); }
+.strm-edit-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.strm-err { font-size: 12px; color: var(--strm-ask-fg); margin: 6px 0 0; }
+.strm-err-composer { padding: 0 22px; margin: 0; }
 
 /* ── container queries ──
    The edit form and Overview field groups size against the column's real

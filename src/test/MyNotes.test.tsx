@@ -288,8 +288,66 @@ describe('MyNotes — your own notes and their follow-ups', () => {
       ];
       render(<MyNotes />);
       await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
-      expect(screen.getByText('You')).toBeInTheDocument();
-      expect(screen.getByText('Tony Wang')).toBeInTheDocument();
+      // Rows, not bubbles: your own name shows (never "You"), and the team
+      // is "The team" rather than whoever on it happened to write.
+      expect(screen.queryByText('You')).not.toBeInTheDocument();
+      expect(screen.getByText('Jane Student')).toBeInTheDocument();
+      expect(screen.getByText('The team')).toBeInTheDocument();
+      expect(screen.queryByText('Tony Wang')).not.toBeInTheDocument();
+    });
+
+    it('draws them as stream rows: a burst continues, and days are divided', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'First thought', createdAt: '2026-09-02T12:00:00.000Z' },
+        { id: 'r2', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'And another', createdAt: '2026-09-02T12:02:00.000Z' },
+        { id: 'r3', authorRole: 'team', authorName: 'Tony Wang', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
+      ];
+      const { container } = render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      expect(container.querySelectorAll('[data-stream-row]')).toHaveLength(3);
+      // The second message within five minutes drops the name.
+      expect(screen.getAllByText('Jane Student')).toHaveLength(1);
+      expect(screen.getAllByRole('separator')).toHaveLength(2);
+    });
+
+    it('says Edited on a follow-up that has been edited, and only on that one', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z', editedAt: '2026-09-02T13:00:00.000Z' },
+        { id: 'r2', authorRole: 'team', body: 'Shipping this week.', createdAt: '2026-09-03T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      expect(screen.getAllByText('Edited')).toHaveLength(1);
+    });
+
+    it('keeps the public-tracker line under the composer', async () => {
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      const box = screen.getByRole('textbox');
+      const line = screen.getByText(/posted to our public issue tracker/i);
+      expect(box.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('keeps what you typed when the send fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Server Error' });
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      await userEvent.type(screen.getByRole('textbox'), 'Any news?');
+      await userEvent.click(screen.getByRole('button', { name: /^Send$/i }));
+      await screen.findByRole('alert');
+      expect(screen.getByRole('textbox')).toHaveValue('Any news?');
+    });
+
+    it('offers no @-mention button, thread reply or delete on a follow-up', async () => {
+      replyDocs = [
+        { id: 'r1', authorRole: 'submitter', authorId: 'u1', authorName: 'Jane Student', body: 'Any news?', createdAt: '2026-09-02T12:00:00.000Z' },
+      ];
+      render(<MyNotes />);
+      await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
+      expect(screen.queryByRole('button', { name: /mention/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /reply in thread/i })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: /more actions/i }));
+      expect(screen.queryByRole('menuitem', { name: /delete/i })).not.toBeInTheDocument();
     });
 
     it('offers to edit only the author\'s own submitter replies', async () => {
@@ -334,7 +392,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
           })
         );
       });
-      expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('button', { name: /^Save$/i })).not.toBeInTheDocument());
     });
 
     it('cancel leaves the reply untouched and never calls the server', async () => {

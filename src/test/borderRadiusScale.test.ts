@@ -58,13 +58,12 @@ describe('Border radius scale — monotonic ladder (issue #688, ADR 0009)', () =
 
   // The dedicated page composer was retired with ADR 0019 — the FAB above is
   // now the only one, and `/feedback` is the submitter's own notes instead.
-  it('enforces 3-tier nesting in MyNotes: note card (rounded-xl), reply bubbles (rounded-lg), and textarea (rounded-sm)', () => {
+  // Follow-ups are stream rows now (ADR 0033): no bubble, no page-owned
+  // textarea — the note card is the one rounded container left on this page.
+  it('keeps MyNotes to the note card (rounded-xl); Follow-ups are rows, not bubbles', () => {
     const myNotesSource = read(join('src', 'views', 'MyNotes.tsx'));
-    // Outer note card is rounded-xl (24px)
     expect(myNotesSource).toContain('rounded-xl');
-    // Follow-up bubbles nest one step in at rounded-lg
-    expect(myNotesSource).toMatch(/text-xs rounded-lg p-3/);
-    // The reply textarea is rounded-sm (10px)
-    expect(myNotesSource).toMatch(/<textarea[\s\S]*?rounded-sm/);
+    expect(myNotesSource).not.toMatch(/text-xs rounded-lg p-3/);
+    expect(myNotesSource).not.toMatch(/<textarea/);
   });
 });

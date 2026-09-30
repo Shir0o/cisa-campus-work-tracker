@@ -9,7 +9,13 @@ import type { MentionUser } from "../../lib/mentions";
 
 /** What an adapter hands the component: the model's fields, plus whatever the
  *  source carries (the component gives the message back as it came). */
-export type StreamSourceMessage = StreamMessage;
+export type StreamSourceMessage = StreamMessage & {
+  /** When the author last rewrote it; a row shows "Edited" when set. */
+  editedAt?: string | null;
+  /** The avatar's letters where the name's own initials would mislead — a
+   *  voice rather than a person ("The team" is "T", not "TT"). */
+  initials?: string;
+};
 
 /** The three kinds a Conversation composer offers (#813); `nudge` is a
  *  Follow-up ask. A source without kinds only ever posts `comment`. */
@@ -51,4 +57,29 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   /** Close a Follow-up ask: someone followed up, or the asker withdrew it. */
   closeAsk(message: M, how: "followedUp" | "neverMind"): unknown;
   delete(message: M): unknown;
+
+  // Optional capabilities: a source that sets none of these reads exactly as
+  // before. Feedback Follow-ups (Your notes) were the first to use them.
+
+  /** Rewrite a message's body. Where `failure` is set, reject on failure. */
+  edit?(message: M, body: string): unknown;
+  /** Whether this viewer may edit this message; no Edit control without it. */
+  canEdit?(message: M): boolean;
+  /** Narrows Delete beyond the model's author-or-Full-timer rule; false hides it. */
+  canDelete?(message: M): boolean;
+  /** Set when post and edit reject on failure. The stream then keeps a draft
+   *  until its write lands, and says this if it doesn't. */
+  failure?: { post: string; edit: string };
+  /** The composer's own words, where the defaults ("Post", "Write a message")
+   *  don't fit. Anything left out keeps the default. */
+  composer?: {
+    placeholder?: string;
+    label?: string;
+    submitLabel?: string;
+    hint?: string;
+    /** The accessible name of the inline editor. */
+    editLabel?: string;
+    /** Applies to the composer and the inline editor. */
+    maxLength?: number;
+  };
 }
