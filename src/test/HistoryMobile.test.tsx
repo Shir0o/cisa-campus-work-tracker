@@ -28,6 +28,8 @@ const baseProps = {
   humanize,
   dayInfo,
   firstName,
+  hasMore: false,
+  onShowOlder: vi.fn(),
 };
 
 const itemRow = (over: any = {}) => ({
@@ -56,6 +58,15 @@ describe('HistoryMobile', () => {
   it('shows the empty state when there are no rows', () => {
     render(<HistoryMobile {...baseProps} />);
     expect(screen.getByText('No logged moments match these filters.')).toBeInTheDocument();
+  });
+
+  it('shows a Show older control only when more may exist', () => {
+    const onShowOlder = vi.fn();
+    const { rerender } = render(<HistoryMobile {...baseProps} hasMore onShowOlder={onShowOlder} />);
+    fireEvent.click(screen.getByText('Show older moments'));
+    expect(onShowOlder).toHaveBeenCalled();
+    rerender(<HistoryMobile {...baseProps} hasMore={false} />);
+    expect(screen.queryByText('Show older moments')).not.toBeInTheDocument();
   });
 
   it('renders date marks and humanized items', () => {

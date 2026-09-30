@@ -42,6 +42,8 @@ interface HistoryMobileProps {
   humanize: (a: Hist) => Humanized;
   dayInfo: (iso: string) => { label: string; sub: string };
   firstName: (name: string) => string;
+  hasMore: boolean;
+  onShowOlder: () => void;
 }
 
 const BUCKET_NODE: Record<string, string> = {
@@ -74,6 +76,8 @@ export default function HistoryMobile({
   humanize,
   dayInfo,
   firstName,
+  hasMore,
+  onShowOlder,
 }: HistoryMobileProps) {
   const { t } = useLanguage();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -210,6 +214,18 @@ export default function HistoryMobile({
           </div>
         )}
       </section>
+
+      {hasMore && (
+        <div className="px-5 mt-5 text-center">
+          <button
+            type="button"
+            onClick={onShowOlder}
+            className="text-sm font-semibold text-accent hover:underline"
+          >
+            {t('history.show_older')}
+          </button>
+        </div>
+      )}
 
       {/* ── Filter bottom sheet ── */}
       {filterOpen && (

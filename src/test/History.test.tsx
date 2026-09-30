@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot } from 'firebase/firestore';
+import { onSnapshot, limit } from 'firebase/firestore';
 import HistoryView from '../views/History';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -551,6 +551,100 @@ describe('History View', () => {
       expect(screen.getByRole('option', { name: 'Diana Prince' })).toBeInTheDocument();
     });
     expect(screen.queryByRole('option', { name: 'cisa-qa' })).not.toBeInTheDocument();
+  });
+
+  it('filters a Trainee\'s activity by their listed name even when it was logged as Anonymous', async () => {
+    // A Trainee is typically invited by an admin, so their Firebase Auth
+    // profile has no displayName while the users doc holds their real name:
+    // activities are stamped "Anonymous". Filtering must match on the stable
+    // id, not the mutable name (#1254 follow-up).
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 1 });
+      } else if (ref?.path === 'activities') {
+        callback({
+          docs: [
+            {
+              id: 'a1',
+              data: () => ({
+                userId: 'u-zion',
+                userName: 'Anonymous',
+                action: 'created a new contact',
+                targetName: 'Bob',
+                targetType: 'contact',
+                targetId: 'c1',
+                type: 'create',
+                description: '',
+                createdAt: new Date().toISOString(),
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'users') {
+        callback({
+          docs: [
+            { id: 'u-zion', data: () => ({ displayName: 'Zion Adeyemi', role: 'manager', approved: true }) },
+          ],
+          size: 1,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<HistoryView />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+    });
+    // The activity's stamped name is folded into the teammate by id, so no
+    // stray "Anonymous" option is offered.
+    expect(screen.queryByRole('option', { name: 'Anonymous' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue('Whole team'), { target: { value: 'Zion Adeyemi' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+    });
+  });
+
+  it('offers older moments when the newest page is full and widens the window', async () => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({
+      id: `a${i}`,
+      data: () => ({
+        userId: 'u1',
+        userName: 'Staff member',
+        action: 'created a new contact',
+        targetName: 'Alice Johnson',
+        targetType: 'contact',
+        targetId: 'c1',
+        type: 'create',
+        description: '',
+        createdAt: new Date(Date.now() - i * 1000).toISOString(),
+      }),
+    }));
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 1 });
+      } else if (ref?.path === 'activities') {
+        callback({ docs: fullPage, size: fullPage.length });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<HistoryView />);
+
+    const button = await screen.findByRole('button', { name: 'Show older moments' });
+    vi.mocked(limit).mockClear();
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(limit).toHaveBeenCalledWith(200);
+    });
   });
 
   // ── Footer statistics ──────────────────────────────────────────────

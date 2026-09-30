@@ -773,7 +773,8 @@
     "moments": "momentos",
     "touching": "tocando",
     "find_moment": "Buscar un momento o un nombre…",
-    "we_write_it_down": "Lo escribimos para que nada — y nadie — quede en el olvido."
+    "we_write_it_down": "Lo escribimos para que nada — y nadie — quede en el olvido.",
+    "show_older": "Ver momentos más antiguos"
   },
   "coordinationTrash": {
     "coordination_notes": "Notas de coordinación",
