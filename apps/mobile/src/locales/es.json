@@ -1469,7 +1469,16 @@
       "announcement_footer": "Solo los de tiempo completo publican aquí. Cualquiera puede responder en un hilo.",
       "announcement_audience": "Publicando para {n} personas en este canal",
       "compose_label": "Mensaje",
-      "placeholder_announcement": "Escribe un anuncio…"
+      "placeholder_announcement": "Escribe un anuncio…",
+      "read_by_n": "Leído por {read} de {total}",
+      "read_by_acked": "Leído por {read} de {total} · {n} dijeron entendido",
+      "receipts_title": "Confirmaciones de lectura",
+      "receipts_summary": "{read} / {total} leído",
+      "receipts_read": "Leído",
+      "receipts_not_yet": "Aún no",
+      "receipts_no_one": "Nadie todavía",
+      "receipts_everyone": "Todos han leído esto",
+      "member": "Miembro"
     },
     "member": {
       "you": "Tú",

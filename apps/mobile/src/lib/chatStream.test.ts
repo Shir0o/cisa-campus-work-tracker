@@ -6,7 +6,9 @@ import {
   mentionParts,
   pinnedLabelOf,
   readMarkOf,
+  rowsInView,
   toChatStreamMessage,
+  unreadAnnouncementPosts,
 } from './chatStream';
 
 const msg = (id: string, over: Partial<ChatMessage> = {}): ChatMessage => ({
@@ -103,6 +105,43 @@ describe('the New line mark', () => {
   it("is the room's last-read as an ISO time, or nothing if it was never opened", () => {
     expect(readMarkOf(Date.parse('2026-09-28T10:00:00.000Z'))).toBe('2026-09-28T10:00:00.000Z');
     expect(readMarkOf(null)).toBeNull();
+  });
+});
+
+describe('read-on-view (#1277)', () => {
+  it('owes a receipt for a top-level live post the viewer has not read', () => {
+    const read = toChatStreamMessage(msg('a1', { readBy: ['tony'] }));
+    const mine = toChatStreamMessage(msg('a2', { senderId: 'tony' }));
+    const live = toChatStreamMessage(msg('a3'));
+    expect(unreadAnnouncementPosts([read, mine, live], 'tony').map((m) => m.id)).toEqual(['a2', 'a3']);
+  });
+
+  it('leaves out replies, taken-back posts and system notices', () => {
+    const reply = toChatStreamMessage(msg('r', { parentId: 'a1' }));
+    const gone = toChatStreamMessage(msg('g', { deleted: { by: 'maria', at: null } }));
+    const notice = toChatStreamMessage(msg('n', { type: 'system' }));
+    expect(unreadAnnouncementPosts([reply, gone, notice], 'tony')).toEqual([]);
+  });
+});
+
+describe('rowsInView', () => {
+  const boxes = [
+    { id: 'a1', top: 0, height: 100 },
+    { id: 'a2', top: 120, height: 100 },
+    { id: 'a3', top: 400, height: 100 },
+  ];
+
+  it('names only the rows inside the window, shrunk 10% top and bottom', () => {
+    // window 0–400 → 40–360: a1's bottom (100) clears the top, a3's top (400) misses the bottom.
+    expect(rowsInView(boxes, 0, 400)).toEqual(['a1', 'a2']);
+  });
+
+  it('follows the scroll offset', () => {
+    expect(rowsInView(boxes, 100, 400)).toEqual(['a2', 'a3']);
+  });
+
+  it('is nothing when the viewport is not measured yet', () => {
+    expect(rowsInView(boxes, 0, 0)).toEqual([]);
   });
 });
 

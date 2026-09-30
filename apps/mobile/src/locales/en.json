@@ -1469,7 +1469,16 @@
       "announcement_footer": "Only Full-timers post here. Anyone can reply in a thread.",
       "announcement_audience": "Posting to {n} people in this channel",
       "compose_label": "Message",
-      "placeholder_announcement": "Write an announcement…"
+      "placeholder_announcement": "Write an announcement…",
+      "read_by_n": "Read by {read} of {total}",
+      "read_by_acked": "Read by {read} of {total} · {n} said got it",
+      "receipts_title": "Read receipts",
+      "receipts_summary": "{read} / {total} read",
+      "receipts_read": "Read",
+      "receipts_not_yet": "Not yet",
+      "receipts_no_one": "No one yet",
+      "receipts_everyone": "Everyone has read this",
+      "member": "Member"
     },
     "member": {
       "you": "You",

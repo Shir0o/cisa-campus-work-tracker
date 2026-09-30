@@ -18,6 +18,7 @@ import { useAuth } from './AuthProvider';
 import { handleFirestoreError, OperationType } from './firebase';
 import {
   acknowledgeAnnouncement,
+  markAnnouncementRead,
   removeMessageForEveryone,
   sendMessage as sendMessageApi,
   subscribeChatRoom,
@@ -143,6 +144,10 @@ export function useChatThreadData(roomId: string) {
     /** Toggles the viewer's "Got it" on an announcement post. */
     acknowledge: async (message: ChatMessage) => {
       if (uid) await acknowledgeAnnouncement(roomId, message.id, uid, message.acknowledged ?? []);
+    },
+    /** A passive read receipt when an announcement post comes into view (#1277). */
+    markRead: async (messageId: string) => {
+      if (uid) await markAnnouncementRead(roomId, messageId, uid);
     },
     pin: async (messageId: string, pinned: boolean) => {
       if (uid) await togglePinMessage(roomId, messageId, pinned, uid);

@@ -68,6 +68,39 @@ export function goneLabelOf(m: ChatStreamMessage, { me, nameOf, t }: Who): strin
 
 export const isPostAcknowledged = (m: ChatMessage, uid: string) => !!m.acknowledged?.includes(uid);
 
+/** The announcement posts a viewer still owes a read receipt (#1243, #1277):
+ *  top-level, live, not a system notice, and not already in `readBy`. The web's
+ *  read-on-view candidates, minus the centred notices it never observes. */
+export function unreadAnnouncementPosts(messages: ChatStreamMessage[], uid: string): ChatStreamMessage[] {
+  return messages.filter(
+    (m) => !m.parentId && !m.source.deleted && m.source.type !== 'system' && !(m.source.readBy ?? []).includes(uid),
+  );
+}
+
+/** A laid-out row: its id, top and height, in the stream's own coordinates. */
+export interface RowBox {
+  id: string;
+  top: number;
+  height: number;
+}
+
+/** Which rows sit inside the viewport, given each row's laid-out box and the
+ *  scroll window. The window is shrunk 10% top and bottom — the web's
+ *  read-on-view `rootMargin` — so a post must be properly on screen, not caught
+ *  at an edge. Nothing is in view until the viewport has been measured. */
+export function rowsInView(boxes: RowBox[], scrollY: number, viewportH: number): string[] {
+  if (viewportH <= 0) return [];
+  const top = scrollY + viewportH * 0.1;
+  const bottom = scrollY + viewportH * 0.9;
+  return boxes
+    .filter((b) => {
+      const startsBelowTop = top < b.top + b.height;
+      const endsAboveBottom = b.top < bottom;
+      return startsBelowTop && endsAboveBottom;
+    })
+    .map((b) => b.id);
+}
+
 /** The room's last-read (this device's, in ms) as the stream model's
  *  `lastReadAt`; null if the room was never opened. */
 export const readMarkOf = (ms: number | null): string | null => (ms == null ? null : new Date(ms).toISOString());
