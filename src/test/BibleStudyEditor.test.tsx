@@ -625,7 +625,7 @@ describe('BibleStudyEditor view', () => {
     expect(screen.getByRole('menuitem', { name: /Passage/i })).toBeInTheDocument();
   });
 
-  it('inserts Verse at the cursor (#946)', async () => {
+  it('inserts Verse at the cursor with filler for multi-verse lines (#946)', async () => {
     renderAt();
     await screen.findByDisplayValue('Initial Meeting');
 
@@ -639,12 +639,34 @@ describe('BibleStudyEditor view', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /Verse/i }));
 
     await waitFor(() => {
-      // Verse is inserted at the cursor, not at the end of the Section.
+      // Verse is inserted at the cursor with multi-verse filler text, selecting the reference.
       expect(area.value).toBe(
-        '## Section 1\n- Point 1Verse: \n\n## Section 2\n- Point 2',
+        '## Section 1\n- Point 1Verse: Book 1:1-2\nFirst verse text\nSecond verse text\n\n## Section 2\n- Point 2',
       );
     });
     expect(area.selectionStart).toBe(pos + 'Verse: '.length);
+    expect(area.selectionEnd).toBe(pos + 'Verse: Book 1:1-2'.length);
+  });
+
+  it('inserts Verse keeping selected text as the reference', async () => {
+    renderAt();
+    await screen.findByDisplayValue('Initial Meeting');
+
+    const area = screen.getByPlaceholderText(/markdown/i) as HTMLTextAreaElement;
+    area.focus();
+    const pos = area.value.indexOf('- Point 1');
+    area.setSelectionRange(pos, pos + '- Point 1'.length);
+
+    openMenu('Insert');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Verse/i }));
+
+    await waitFor(() => {
+      expect(area.value).toBe(
+        '## Section 1\nVerse: - Point 1\nFirst verse text\nSecond verse text\n\n## Section 2\n- Point 2',
+      );
+    });
+    expect(area.selectionStart).toBe(pos + 'Verse: '.length);
+    expect(area.selectionEnd).toBe(pos + 'Verse: - Point 1'.length);
   });
 
   it('offers Apply alongside Question, Discuss and Activity in the toolbar (#919)', async () => {
