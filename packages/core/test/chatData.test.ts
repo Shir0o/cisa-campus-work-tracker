@@ -19,7 +19,7 @@ const firestoreMock = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { subscribeChatRooms, deleteChatMessage } from '../src/data/chat';
+import { subscribeChatRooms, deleteChatMessage, sendMessage } from '../src/data/chat';
 
 const COLLECTION = { __collection: 'chatRooms' };
 const WHERE_RESULT = { __where: true };
@@ -68,5 +68,44 @@ describe('deleteChatMessage', () => {
 
     expect(firestoreMock.doc).toHaveBeenCalledWith(mockDb, 'chatRooms', 'r1', 'messages', 'm1');
     expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(docRef);
+  });
+});
+
+describe('sendMessage notifications', () => {
+  const sender = { uid: 'u1', displayName: 'Naomi' };
+
+  beforeEach(() => {
+    firestoreMock.addDoc.mockResolvedValue({ id: 'm1' });
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
+  });
+
+  it('titles a regular room push "New message"', async () => {
+    const onNotify = vi.fn();
+    await sendMessage({} as never, 'r1', 'hi', sender, undefined, {
+      memberIds: ['u1', 'u2'],
+      onNotify,
+    });
+    expect(onNotify).toHaveBeenCalledTimes(1);
+    expect(onNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u2', title: 'New message', message: 'Naomi: hi' }),
+    );
+  });
+
+  it('titles an announcement push with the channel name and the announcement body (#1243)', async () => {
+    const onNotify = vi.fn();
+    await sendMessage({} as never, 'r1', 'Retreat is Saturday', sender, undefined, {
+      memberIds: ['u1', 'u2'],
+      onNotify,
+      roomType: 'announcement',
+      roomName: 'Campus Updates',
+    });
+    expect(onNotify).toHaveBeenCalledTimes(1);
+    expect(onNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u2',
+        title: 'Campus Updates',
+        message: 'Naomi posted an announcement: Retreat is Saturday',
+      }),
+    );
   });
 });

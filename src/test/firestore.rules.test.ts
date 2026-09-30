@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   arrayRemove,
   arrayUnion,
+  deleteField,
   collectionGroup,
   query,
   where,
@@ -2059,6 +2060,27 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(
         updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
           pinned: true,
+        }),
+      );
+    });
+
+    it("MSG1b: a pin may record the pinner's own uid as pinnedBy, and unpinning may clear it (#1243)", async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      const ref = doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1');
+      await assertSucceeds(updateDoc(ref, { pinned: true, pinnedBy: 'student1' }));
+      await assertSucceeds(updateDoc(ref, { pinned: false, pinnedBy: deleteField() }));
+    });
+
+    it('MSG1c: a pin cannot credit someone else as pinnedBy (#1243)', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          pinned: true,
+          pinnedBy: 'ft1',
         }),
       );
     });

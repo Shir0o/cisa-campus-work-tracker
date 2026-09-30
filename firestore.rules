@@ -1147,8 +1147,11 @@ service cloud.firestore {
                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted']) &&
                          resource.data.get('deleted', null) == null && request.resource.data.get('deleted', null) != null &&
                          (request.auth.uid == resource.data.senderId || isAdmin())) ||
-                        // a plain pin toggle on a live message
-                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned']) &&
+                        // a plain pin toggle on a live message; `pinnedBy` records who
+                        // pinned it (the announcement strip names them) and may only
+                        // ever be the caller's own uid, or absent once unpinned (#1243)
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned', 'pinnedBy']) &&
+                         request.resource.data.get('pinnedBy', request.auth.uid) == request.auth.uid &&
                          resource.data.get('deleted', null) == null && request.resource.data.get('deleted', null) == null) ||
                         // acknowledgement on a live message — only own entry may be added/removed (#743)
                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acknowledged']) &&

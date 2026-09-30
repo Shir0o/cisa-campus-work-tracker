@@ -118,6 +118,7 @@ export function useChatThreadData(roomId: string) {
         { uid, displayName: user?.displayName || 'Member', photoURL: user?.photoURL || '' },
         undefined,
         room.memberIds,
+        { type: room.type, name: room.name },
       );
     },
   };

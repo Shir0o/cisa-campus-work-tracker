@@ -10,6 +10,7 @@ import {
   updateDoc,
   deleteDoc,
   arrayUnion,
+  deleteField,
   arrayRemove,
   serverTimestamp
 } from 'firebase/firestore';
@@ -184,16 +185,27 @@ export async function createAnnouncementRoom(
       attachments: initialPost.attachments || [],
       parentId: null,
       pinned: !!initialPost.pinned,
+      ...(initialPost.pinned ? { pinnedBy: currentUser.uid } : {}),
     });
   }
 
-  // Notify members added to announcement channel
+  // Notify members added to announcement channel. When the wizard also wrote a
+  // first post, the push is that post — titled with the channel name, like any
+  // later post — instead of the bare "new channel" notice.
+  const wroteFirstPost = hasPostText || hasPostFiles;
+  const firstPostPreview = hasPostText
+    ? initialPost!.text.trim()
+    : hasPostFiles
+      ? `Shared ${initialPost!.attachments![0].type}`
+      : '';
   for (const memberId of memberUids) {
     if (memberId === currentUser.uid) continue;
     void sendNotification({
       userId: memberId,
-      title: 'New announcement channel',
-      message: `${currentUser.displayName} started announcements for "${name}"`,
+      title: wroteFirstPost ? name : 'New announcement channel',
+      message: wroteFirstPost
+        ? `${currentUser.displayName} posted an announcement: ${firstPostPreview}`
+        : `${currentUser.displayName} started announcements for "${name}"`,
       type: 'info',
       targetId: roomRef.id,
       link: `/messages/${roomRef.id}`,
@@ -254,12 +266,18 @@ export async function sendMessage(
   // Notify recipient(s) in room
   let recipients = memberIds;
   let audiencePreset: string | undefined;
-  if (!recipients || recipients.length === 0) {
+  // A top-level announcement post reads the room even when the caller passed
+  // memberIds — the audience preset lives only on the room doc, and the
+  // "everyone" reconciliation below needs it.
+  const needsRoomDoc = !recipients || recipients.length === 0 || (roomType === 'announcement' && !parentId);
+  if (needsRoomDoc) {
     try {
       const roomDoc = await getDoc(doc(db, 'chatRooms', roomId));
       if (roomDoc.exists()) {
         const data = roomDoc.data();
-        recipients = Array.isArray(data?.memberIds) ? data.memberIds : [];
+        if (!recipients || recipients.length === 0) {
+          recipients = Array.isArray(data?.memberIds) ? data.memberIds : [];
+        }
         audiencePreset = data?.audiencePreset;
       }
     } catch (e) {
@@ -453,8 +471,18 @@ export async function leaveGroup(
  * Pin or unpin a message. Anyone in the room can do it — the pinned strip is a
  * conversation-level convenience, not a permission boundary.
  */
-export async function togglePinMessage(roomId: string, messageId: string, pinned: boolean): Promise<void> {
-  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), { pinned });
+export async function togglePinMessage(
+  roomId: string,
+  messageId: string,
+  pinned: boolean,
+  by?: string
+): Promise<void> {
+  // `pinnedBy` is the uid of whoever pinned it, so the announcement strip can
+  // say "Pinned by {name}"; it goes away when the post is unpinned.
+  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), {
+    pinned,
+    pinnedBy: pinned && by ? by : deleteField(),
+  });
 }
 
 /**

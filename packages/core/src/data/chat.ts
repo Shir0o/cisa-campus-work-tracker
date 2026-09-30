@@ -224,7 +224,13 @@ export async function sendMessage(
   text: string,
   sender: { uid: string; displayName: string; photoURL?: string },
   attachments?: ChatAttachment[],
-  opts?: { memberIds?: string[]; onNotify?: (payload: ChatNotifyPayload) => void },
+  opts?: {
+    memberIds?: string[];
+    onNotify?: (payload: ChatNotifyPayload) => void;
+    /** An announcement room's push is titled with its name, not "New message". */
+    roomType?: "direct" | "group" | "announcement";
+    roomName?: string;
+  },
 ): Promise<void> {
   const msgText = text.trim();
   if (!msgText && (!attachments || attachments.length === 0)) return;
@@ -256,10 +262,13 @@ export async function sendMessage(
   if (opts?.onNotify && opts.memberIds) {
     for (const memberId of opts.memberIds) {
       if (memberId === sender.uid) continue;
+      const isAnnounce = opts.roomType === "announcement";
       opts.onNotify({
         userId: memberId,
-        title: "New message",
-        message: `${sender.displayName}: ${previewText}`,
+        title: isAnnounce ? opts.roomName || "Announcement" : "New message",
+        message: isAnnounce
+          ? `${sender.displayName} posted an announcement: ${previewText}`
+          : `${sender.displayName}: ${previewText}`,
         type: "info",
         targetId: roomId,
         link: `/messages/${roomId}`,

@@ -255,7 +255,10 @@ describe('Messages View Component', () => {
         'Welcome to the team!',
         { uid: 'u1', displayName: 'Current User', photoURL: 'photo-url' },
         [],
-        ['u1', 'u2']
+        ['u1', 'u2'],
+        null,
+        'group',
+        'Trainees Chat'
       );
     });
   });
@@ -831,7 +834,10 @@ describe('Messages View Component', () => {
         'Press Enter message',
         expect.any(Object),
         [],
-        ['u1', 'u2']
+        ['u1', 'u2'],
+        null,
+        'group',
+        'Trainees Chat'
       );
     });
   });
@@ -925,6 +931,7 @@ describe('Messages View Component', () => {
       createdById: 'u2',
       createdByName: 'Mei',
       createdAt: { seconds: 100000 },
+      audiencePreset: 'everyone' as 'everyone' | 'custom' | undefined,
       lastMessage: {
         text: 'Reading week is coming',
         senderId: 'u2',
@@ -1106,7 +1113,7 @@ describe('Messages View Component', () => {
       openTheRoom();
 
       await waitFor(() => {
-        expect(screen.getByText('Pinned')).toBeInTheDocument();
+        expect(screen.getByText('Pinned by Alice · stays at the top until they unpin it')).toBeInTheDocument();
         expect(document.querySelector('.post.pinned')).toBeInTheDocument();
         expect(screen.getByText('Task 1')).toBeInTheDocument();
       });
@@ -1117,6 +1124,168 @@ describe('Messages View Component', () => {
       });
       fireEvent.click(document.querySelector('.modal-backdrop')!);
       expect(screen.queryByText('Read receipts')).not.toBeInTheDocument();
+    });
+
+    // ── #1243: behaviour the announcements rework promised ────────────────────
+    const renderAnnouncementWith = (msgs: any[], room: any = announcementRoom) => {
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? msgs : [room];
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item: any) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+      const view = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      openTheRoom();
+      return view;
+    };
+
+    const post = (id: string, over: Record<string, unknown> = {}) => ({
+      id,
+      roomId: 'room-ann',
+      text: `Post ${id}`,
+      senderId: 'u2',
+      senderName: 'Mei',
+      timestamp: { seconds: 100005 },
+      type: 'text' as const,
+      ...over,
+    });
+
+    it('passes roomType and roomName from the main composer so the push is titled with the channel', async () => {
+      renderAnnouncementWith([post('m1')]);
+      const textarea = await screen.findByPlaceholderText(/Write an announcement/i);
+      fireEvent.change(textarea, { target: { value: 'Retreat is Saturday' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(chatService.sendMessage).toHaveBeenCalledWith(
+          'room-ann',
+          'Retreat is Saturday',
+          expect.objectContaining({ uid: 'u1' }),
+          [],
+          ['u1', 'u2'],
+          null,
+          'announcement',
+          'Weekly notes'
+        );
+      });
+    });
+
+    it('passes roomType and roomName on a thread reply so only thread participants are notified', async () => {
+      renderAnnouncementWith([post('m1')]);
+      fireEvent.click(await screen.findByText('Reply in thread'));
+      const reply = await screen.findByPlaceholderText(/Reply to Mei/i);
+      fireEvent.change(reply, { target: { value: 'Is transport provided?' } });
+      fireEvent.keyDown(reply, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(chatService.sendMessage).toHaveBeenCalledWith(
+          'room-ann',
+          'Is transport provided?',
+          expect.objectContaining({ uid: 'u1' }),
+          undefined,
+          ['u1', 'u2'],
+          'm1',
+          'announcement',
+          'Weekly notes'
+        );
+      });
+    });
+
+    describe('read-on-view', () => {
+      type Observed = { el: Element; cb: IntersectionObserverCallback };
+      let observed: Observed[];
+
+      beforeEach(() => {
+        observed = [];
+        class StubObserver {
+          constructor(private cb: IntersectionObserverCallback) {}
+          observe = (el: Element) => { observed.push({ el, cb: this.cb }); };
+          unobserve = () => {};
+          disconnect = () => {};
+          takeRecords = () => [];
+        }
+        vi.stubGlobal('IntersectionObserver', StubObserver);
+      });
+
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      const enterView = (id: string) => {
+        const hit = observed.find((o) => o.el.id === `msgb-${id}`);
+        if (!hit) throw new Error(`post ${id} is not observed`);
+        act(() => {
+          hit.cb([{ isIntersecting: true, target: hit.el } as IntersectionObserverEntry], {} as IntersectionObserver);
+        });
+      };
+
+      it('does not mark posts read when the room loads — an off-screen post stays fresh', async () => {
+        renderAnnouncementWith([post('m1'), post('m2')]);
+        await waitFor(() => expect(observed.length).toBeGreaterThan(0));
+
+        expect(chatService.markAnnouncementRead).not.toHaveBeenCalled();
+        expect(document.querySelectorAll('.post.fresh')).toHaveLength(2);
+      });
+
+      it('marks only the post that enters view as read', async () => {
+        renderAnnouncementWith([post('m1'), post('m2')]);
+        await waitFor(() => expect(observed.length).toBeGreaterThan(0));
+
+        enterView('m2');
+
+        expect(chatService.markAnnouncementRead).toHaveBeenCalledTimes(1);
+        expect(chatService.markAnnouncementRead).toHaveBeenCalledWith('room-ann', 'm2', 'u1');
+      });
+
+      it('does not observe posts the viewer has already read', async () => {
+        renderAnnouncementWith([post('m1', { readBy: ['u1'] }), post('m2')]);
+        await waitFor(() => expect(observed.length).toBeGreaterThan(0));
+
+        expect(observed.some((o) => o.el.id === 'msgb-m1')).toBe(false);
+        expect(observed.some((o) => o.el.id === 'msgb-m2')).toBe(true);
+      });
+    });
+
+    it('holds a pinned post at the top of the stream with a strip that names who pinned it', async () => {
+      renderAnnouncementWith([
+        post('m1', { timestamp: { seconds: 100001 } }),
+        post('m2', { timestamp: { seconds: 100002 }, pinned: true, pinnedBy: 'u1' }),
+        post('m3', { timestamp: { seconds: 100003 } }),
+      ]);
+
+      await waitFor(() => expect(document.querySelectorAll('.post').length).toBe(3));
+      const order = Array.from(document.querySelectorAll('.post')).map((el) => el.id);
+      expect(order).toEqual(['msgb-m2', 'msgb-m1', 'msgb-m3']);
+      expect(screen.getByText('Pinned by Current User · stays at the top until they unpin it')).toBeInTheDocument();
+    });
+
+    it('states the real audience in the composer strip', async () => {
+      renderAnnouncementWith([post('m1')], { ...announcementRoom, audiencePreset: 'custom' });
+      await screen.findByPlaceholderText(/Write an announcement/i);
+      expect(screen.queryByText(/everyone on Campus/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Posting to 2 people in this channel')).toBeInTheDocument();
+    });
+
+    it('says everyone on Campus only when the room is audience "everyone"', async () => {
+      renderAnnouncementWith([post('m1')], { ...announcementRoom, audiencePreset: 'everyone' });
+      await screen.findByPlaceholderText(/Write an announcement/i);
+      expect(screen.getByText('Posting to everyone on Campus — 2 people')).toBeInTheDocument();
     });
   });
 
@@ -1143,7 +1312,7 @@ describe('Messages View Component', () => {
       fireEvent.click(pin!);
 
       await waitFor(() => {
-        expect(chatService.togglePinMessage).toHaveBeenCalledWith('room1', 'm1', true);
+        expect(chatService.togglePinMessage).toHaveBeenCalledWith('room1', 'm1', true, 'u1');
       });
     });
 
