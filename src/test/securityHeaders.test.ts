@@ -88,4 +88,12 @@ describe('public/_headers', () => {
     expect(robots).toMatch(/^\s*Disallow:\s*\/\s*$/m);
     expect(blocks['/*']['x-robots-tag']).toContain('noindex');
   });
+
+  it.each(['/manifest.json', '/manifest-es.json'])(
+    'ensures %s has Cache-Control: no-cache for prompt PWA updates',
+    (manifestPath) => {
+      expect(blocks[manifestPath]).toBeDefined();
+      expect(blocks[manifestPath]['cache-control']).toBe('no-cache');
+    },
+  );
 });

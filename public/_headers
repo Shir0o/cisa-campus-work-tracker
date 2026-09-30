@@ -28,3 +28,9 @@
   Referrer-Policy: no-referrer
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Permissions-Policy: geolocation=(), camera=(), microphone=()
+
+/manifest.json
+  Cache-Control: no-cache
+
+/manifest-es.json
+  Cache-Control: no-cache
