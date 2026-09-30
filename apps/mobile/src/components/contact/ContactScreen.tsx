@@ -1,14 +1,22 @@
 // Mobile v2 — the person screen. The design's `M2Contact`
 // (views/mobile/contact.jsx): a back row, a white hero, Text / Call / Log, then
-// segmented Story · Prayers · Alongside. The only deep screen the queue links
+// segmented Story · Prayers · Conversation. The only deep screen the queue links
 // into, and the last one in the app still wearing the Material language.
+//
+// Conversation is the contact-level open stream in the one written-stream
+// grammar (ADR 0033, #1261): rows from the core stream model, the composer
+// pinned at the foot, the stream opening on its newest message. A Full-timer
+// switches between it and the staff-only Full-timers stream; a Trainee never
+// sees the switch. An Interaction's Thread hangs off its Story entry and opens
+// as a pushed screen — it is not part of the Conversation.
 //
 // The design's three tabs are all there is: Discussion (team comments), the
 // per-contact History timeline and the admin edit form have no counterpart here
 // and are desktop work now — see MIGRATION.md. Contact details survive as
 // Story's "Details, notes, how to reach them" disclosure, read-only.
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
@@ -16,36 +24,36 @@ import {
   canManageCollaborators,
   canRemoveContactMember,
   canSeeContact,
-  composeKindsFor,
+  buildStream,
   contactCareLine,
   contactConnectedLine,
   countFor,
   daysSince,
   feedVisibleThreads,
   firstName,
+  ftAssignees,
   hasMinRole,
-  interactionSnippet,
-  isTrainee,
   lastTimeLine,
-  mergedContactThread,
   parseMs,
   prayerCardKicker,
   roleLabel,
   splitContactPrayers,
   stageToneKey,
   storyRowLine,
-  threadsFor,
   type AppUser,
   type Contact,
   type Interaction,
   type PrayerRecord,
-  type ThreadKind,
+  type StreamRow,
   type ThreadMessage,
+  type ThreadSummary,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { Translate } from '../Translate';
 import { useContactDetailData } from '../../lib/useContactDetailData';
+import { conversationMessages, fullTimersMessages, interactionThread } from '../../lib/contactStreams';
+import { addTodo } from '../../lib/data/todos';
 import type { JourneyStage } from '../../lib/useJourneyData';
 import { prayerCardId } from '../../lib/useFtHomeData';
 import { useQueueState } from '../../lib/queueState';
@@ -69,18 +77,28 @@ import { MoveStepSheet } from '../journey/MoveStepSheet';
 import { AddCollaboratorSheet } from './AddCollaboratorSheet';
 import { ContactPrayerSheet } from './ContactPrayerSheet';
 import { EditContactSheet } from './EditContactSheet';
-import { ThreadCompose } from './ThreadCompose';
-import { ThreadMessageRow } from './ThreadMessageRow';
+import { FtTodoSheet } from '../ft/FtTodoSheet';
+import { StreamList } from '../stream/StreamList';
+import { StreamComposer } from '../stream/StreamComposer';
+import { StreamActionSheet } from '../stream/StreamActionSheet';
+import { ThreadChip } from '../stream/StreamRow';
 
-export type ContactV2Tab = 'story' | 'prayers' | 'alongside';
+export type ContactV2Tab = 'story' | 'prayers' | 'conversation';
+/** Which of a contact's two streams the Conversation tab is showing. */
+type ContactStream = 'open' | 'team';
 
 interface ContactScreenProps {
   contactId: string;
   initialTab: ContactV2Tab;
-  /** A deep link into one logged conversation's own thread (a queue card's
-   * "Open the conversation"), which opens Story with that card unfolded. */
+  /** A deep link into one logged conversation's own Thread (a queue card's
+   * "Open the conversation"), pushed over Story on arrival. */
   initialInteractionId?: string | null;
 }
+
+/** Where a Thread opens: a pushed screen over this one (T2). */
+export const threadHref = (contactId: string, q: { parent?: string; interaction?: string; team?: boolean }) =>
+  `/contact/${contactId}/thread?` +
+  (q.interaction ? `interaction=${q.interaction}` : `parent=${q.parent}${q.team ? '&stream=team' : ''}`);
 
 export function ContactScreen(props: ContactScreenProps) {
   const { role } = useAuth();
@@ -100,7 +118,10 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const queueState = useQueueState(uid ?? null);
 
   const [tab, setTab] = useState<ContactV2Tab>(initialTab);
-  const [openStoryId, setOpenStoryId] = useState<string | null>(initialInteractionId ?? null);
+  const [stream, setStream] = useState<ContactStream>('open');
+  const [held, setHeld] = useState<StreamRow<ThreadMessage> | null>(null);
+  const [todoFrom, setTodoFrom] = useState<string | null>(null);
+  const scroller = useRef<ScrollView>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [sheet, setSheet] = useState<'log' | 'pray' | 'edit' | 'addCollaborator' | null>(null);
   const [moving, setMoving] = useState<Contact | null>(null);
@@ -115,9 +136,16 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   }, []);
 
   const canWrite = role !== 'viewer' && !isImpersonating;
-  const isAdmin = role === 'admin';
+  // The Full-timers switch is cut on the EFFECTIVE role, as feedVisibleThreads
+  // is, so "See it as they do" shows a Trainee's screen (#1024 phase 2).
+  const isFullTimer = role === 'admin';
   const canShare = !isImpersonating && canManageCollaborators(role, uid, data.contact);
-  const kinds = useMemo(() => composeKindsFor(!isTrainee(uid)), [uid]);
+
+  useEffect(() => {
+    if (initialInteractionId) router.push(threadHref(contactId, { interaction: initialInteractionId }) as never);
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Newest first, and the newest is what the hero quotes.
   const story = useMemo(
@@ -134,7 +162,18 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   // Team-scope Discussion is Full-timer-only, cut on the reader's EFFECTIVE
   // role so the preview hides it (#1024 phase 2).
   const visibleThreads = useMemo(() => feedVisibleThreads(data.threadMessages, role), [data.threadMessages, role]);
-  const alongside = useMemo(() => mergedContactThread(visibleThreads), [visibleThreads]);
+  const conversation = useMemo(() => conversationMessages(visibleThreads), [visibleThreads]);
+  const fullTimers = useMemo(
+    () => (isFullTimer ? fullTimersMessages(visibleThreads) : []),
+    [visibleThreads, isFullTimer],
+  );
+  const showing = isFullTimer && stream === 'team' ? 'team' : 'open';
+  // Read once per visit: "Today" and "Open N days" are said against it.
+  const [now] = useState(Date.now);
+  // A viewer who may not write gets no ask actions from the model.
+  const viewer = { uid: uid ?? '', role: canWrite ? role : null };
+  const items = buildStream({ messages: showing === 'team' ? fullTimers : conversation, viewer, now });
+  const topLevel = (list: ThreadMessage[]) => list.filter((m) => !m.parentId).length;
   const { open: openPrayers, closed: closedPrayers } = useMemo(
     () => splitContactPrayers(data.prayers),
     [data.prayers],
@@ -153,13 +192,11 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   }, [data.stages, currentContact]);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
-  const post = (interactionId: string | null) => (input: { kind: ThreadKind; body: string }) =>
-    void data.postThreadMessage({ interactionId, ...input });
+  const openThread = (q: Parameters<typeof threadHref>[1]) => router.push(threadHref(contactId, q) as never);
+  const openRowThread = (row: StreamRow<ThreadMessage>) =>
+    openThread({ parent: row.message.id, team: row.message.scope === 'team' });
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith('visit_') && (uid === interaction.userId || hasMinRole(role, 'manager'));
-  // #1126 — a viewer may delete their own message; an admin may delete any.
-  const canDeleteMessage = (message: ThreadMessage) => uid === message.from || isAdmin;
-  const deleteMessage = (message: ThreadMessage) => void data.deleteThreadMessage(message);
 
   const handleRemoveInteraction = (interaction: Interaction) => {
     // Match the web gate: team-scoped discussion messages don't count toward
@@ -256,10 +293,16 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         onEdit={() => setSheet('edit')}
       />
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 30 }}
+        ref={scroller}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: tab === 'conversation' ? 12 : 30 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        // A stream opens on its newest message, just above the pinned composer (G4).
+        onContentSizeChange={() => {
+          if (tab === 'conversation') scroller.current?.scrollToEnd({ animated: false });
+        }}
       >
         {/* ── the hero ─────────────────────────────────────────────────── */}
         <View style={{ backgroundColor: c.card.bg, borderRadius: radius.hero, padding: 20, ...shadow.soft }}>
@@ -322,7 +365,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           items={[
             { id: 'story', label: t('mobile.contact.story'), count: story.length },
             { id: 'prayers', label: t('mobile.contact.prayers'), count: openPrayers.length },
-            { id: 'alongside', label: t('mobile.contact.alongside'), count: alongside.length },
+            { id: 'conversation', label: t('mobile.contact.conversation'), count: topLevel(conversation) },
           ]}
         />
 
@@ -339,24 +382,12 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                   key={interaction.id}
                   interaction={interaction}
                   meUid={uid ?? ''}
-                  threadCount={countFor(visibleThreads, interaction.id)}
-                  open={openStoryId === interaction.id}
-                  onToggle={() => setOpenStoryId(openStoryId === interaction.id ? null : interaction.id)}
+                  thread={interactionThread({ interaction, messages: visibleThreads, viewer, now }).parent.thread}
+                  now={now}
+                  onOpenThread={() => openThread({ interaction: interaction.id })}
                   canRemove={canRemoveInteraction(interaction)}
                   onRemove={() => handleRemoveInteraction(interaction)}
-                >
-                  {threadsFor(visibleThreads, interaction.id).map((m) => (
-                    <ThreadMessageRow
-                      key={m.id}
-                      message={m}
-                      meUid={uid ?? ''}
-                      nested
-                      canDelete={canDeleteMessage(m)}
-                      onDelete={deleteMessage}
-                    />
-                  ))}
-                  {canWrite && <ThreadCompose kinds={kinds} onPost={post(interaction.id)} />}
-                </StoryCard>
+                />
               ))
             )}
 
@@ -421,32 +452,105 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           </View>
         )}
 
-        {/* ── Alongside ────────────────────────────────────────────────── */}
-        {tab === 'alongside' && (
+        {/* ── Conversation ─────────────────────────────────────────────── */}
+        {tab === 'conversation' && (
           <View style={{ gap: 10 }}>
-            <V2Empty>
-              {alongside.length === 0
-                ? t('mobile.contact.nothing_here_yet').replace('{name}', first)
-                : t('mobile.contact.thinking_out_loud').replace('{name}', first)}
-            </V2Empty>
-            {alongside.map((m) => (
-              <ThreadMessageRow
-                key={m.id}
-                message={m}
-                meUid={uid ?? ''}
-                about={
-                  m.interactionId
-                    ? interactionSnippet(story.find((i) => i.id === m.interactionId))
-                    : null
-                }
-                canDelete={canDeleteMessage(m)}
-                onDelete={deleteMessage}
+            {isFullTimer && (
+              <StreamSwitch
+                value={showing}
+                onChange={setStream}
+                items={[
+                  { id: 'open', label: t('mobile.contact.conversation'), count: topLevel(conversation) },
+                  { id: 'team', label: t('mobile.contact.full_timers'), count: topLevel(fullTimers) },
+                ]}
               />
-            ))}
-            {canWrite && <ThreadCompose kinds={kinds} onPost={post(null)} minHeight={104} onRoom />}
+            )}
+            {items.length === 0 ? (
+              <V2Empty>
+                {showing === 'team' ? t('mobile.contact.empty_full_timers') : t('mobile.contact.empty_conversation')}
+              </V2Empty>
+            ) : (
+              <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 8 }}>
+                <StreamList
+                  items={items}
+                  now={now}
+                  readOnly={!canWrite}
+                  onLongPress={(row) => setHeld(row)}
+                  onOpenThread={openRowThread}
+                  onCloseAsk={(row) => void data.closeAsk(row.message)}
+                />
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
+
+      {tab === 'conversation' && canWrite && (
+        <StreamComposer
+          key={showing}
+          kinds={showing === 'open'}
+          audience={
+            showing === 'team'
+              ? t('mobile.contact.audience_full_timers')
+              : t('mobile.contact.audience_conversation').replace('{name}', first)
+          }
+          askAudience={t('mobile.contact.audience_conversation_ask').replace('{name}', first)}
+          locked={showing === 'team'}
+          placeholder={t('mobile.contact.placeholder_full_timers')}
+          label={
+            showing === 'team'
+              ? t('mobile.contact.compose_full_timers')
+              : t('mobile.contact.compose_conversation').replace('{name}', first)
+          }
+          onSend={({ body, kind }) =>
+            void data.postThreadMessage(
+              showing === 'team'
+                ? { interactionId: null, scope: 'team', kind: 'comment', body }
+                : { interactionId: null, scope: null, kind, body },
+            )
+          }
+        />
+      )}
+      </KeyboardAvoidingView>
+
+      {/* Long-press on a row (G7): the hover toolbar's actions, phone-shaped. */}
+      <StreamActionSheet
+        row={held}
+        visible={!!held}
+        onClose={() => setHeld(null)}
+        onReply={openRowThread}
+        onMakeTodo={canWrite ? (row) => setTodoFrom(row.message.body) : undefined}
+        onCopy={(row) => {
+          void Clipboard.setStringAsync(row.message.body);
+          setToast(t('mobile.stream.copied'));
+        }}
+        onDelete={canWrite ? (row) => void data.deleteThreadMessage(row.message) : undefined}
+      />
+
+      <FtTodoSheet
+        key={todoFrom ?? 'none'}
+        visible={todoFrom !== null}
+        contact={contact}
+        initialTitle={todoFrom ?? undefined}
+        me={uid ?? ''}
+        assignees={ftAssignees(teamMembers, uid)}
+        onClose={() => setTodoFrom(null)}
+        onSave={(input) => {
+          setTodoFrom(null);
+          void addTodo(
+            { ...input, contactId: contact.id, contactName: contact.name },
+            { uid: uid ?? '', name: user?.displayName || 'Someone' },
+          );
+          setToast(
+            input.assigneeId === uid
+              ? t('mobile.stream.todo_mine')
+              : t('mobile.stream.todo_theirs').replace(
+                  '{name}',
+                  firstName(teamMembers.find((m) => m.uid === input.assigneeId)?.displayName ?? ''),
+                ),
+          );
+        }}
+      />
 
       {/* The hero's Log — the design's `M2LogSheet init={{contact}}`, which
           opens straight on the conversation because it already knows who. */}
@@ -621,7 +725,9 @@ function HeroAction({
   );
 }
 
-/** One logged conversation (`.m2c-cv`), unfolding into its own thread.
+/** One logged conversation (`.m2c-cv`). Its Thread hangs off it (T4): a
+ * replies chip when there are replies, "Think it through together" when there
+ * are none — either opens the Thread as a pushed screen.
  *
  * The design's mock splits a conversation into a short `title` and a `body`; an
  * `Interaction` here has one `content` field of the staffer's own prose, so the
@@ -629,26 +735,24 @@ function HeroAction({
 function StoryCard({
   interaction,
   meUid,
-  threadCount,
-  open,
-  onToggle,
+  thread,
+  now,
+  onOpenThread,
   canRemove,
   onRemove,
-  children,
 }: {
   interaction: Interaction;
   meUid: string;
-  threadCount: number;
-  open: boolean;
-  onToggle: () => void;
+  thread: ThreadSummary | null;
+  now: number;
+  onOpenThread: () => void;
   canRemove?: boolean;
   onRemove?: () => void;
-  children: React.ReactNode;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
   return (
-    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingVertical: 16 }}>
+    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Kicker>{storyRowLine(interaction, meUid)}</Kicker>
@@ -668,20 +772,71 @@ function StoryCard({
         {interaction.content}
       </Text>
 
-      <Pressable
-        onPress={onToggle}
-        style={({ pressed }) => ({ minHeight: 44, justifyContent: 'flex-end', paddingTop: 14, paddingBottom: 2, opacity: pressed ? 0.6 : 1 })}
-      >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
-          {open ? 'Hide' : threadCount ? `Alongside · ${threadCount}` : 'Think this through together'}
-        </Text>
-      </Pressable>
-
-      {open && (
-        <View style={{ borderTopWidth: 1, borderTopColor: c.card.line, marginTop: 8, paddingTop: 14, gap: 10 }}>
-          {children}
+      {thread ? (
+        <View style={{ marginTop: 6, marginBottom: 6 }}>
+          <ThreadChip thread={thread} now={now} onPress={onOpenThread} />
         </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('mobile.contact.think_it_through')}
+          onPress={onOpenThread}
+          style={({ pressed }) => ({ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={15} color={c.card.ink2} />
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>{t('mobile.contact.think_it_through')}</Text>
+        </Pressable>
       )}
+    </View>
+  );
+}
+
+/** The Conversation / Full-timers switch at the top of the tab — a Full-timer's
+ * only. The count sits on the stream you are not reading. */
+function StreamSwitch({
+  value,
+  onChange,
+  items,
+}: {
+  value: ContactStream;
+  onChange: (next: ContactStream) => void;
+  items: { id: ContactStream; label: string; count: number }[];
+}) {
+  const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
+  return (
+    <View
+      accessibilityRole="tablist"
+      accessibilityLabel={t('mobile.contact.which_stream')}
+      style={{ flexDirection: 'row', alignSelf: 'flex-start', gap: 2, padding: 3, borderRadius: 999, backgroundColor: c.room.chip }}
+    >
+      {items.map((item) => {
+        const on = item.id === value;
+        return (
+          <Pressable
+            key={item.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            onPress={() => onChange(item.id)}
+            style={({ pressed }) => ({
+              minHeight: 44,
+              paddingHorizontal: 16,
+              borderRadius: 999,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: on ? c.card.bg : 'transparent',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            {item.id === 'team' && <Ionicons name="lock-closed" size={12} color={on ? c.card.ink : c.room.ink2} />}
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: on ? c.card.ink : c.room.ink2 }}>{item.label}</Text>
+            {!on && item.count > 0 && (
+              <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.room.ink3 }}>{item.count}</Text>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

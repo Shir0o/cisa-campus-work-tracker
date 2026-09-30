@@ -11,6 +11,26 @@ jest.mock('../../lib/AuthProvider', () => ({
   useAuth: jest.fn(),
 }));
 
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
+}));
+
+jest.mock('expo-clipboard', () => ({
+  setStringAsync: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../lib/data/todos', () => ({
+  addTodo: jest.fn().mockResolvedValue('t1'),
+}));
+
+jest.mock('../ft/FtTodoSheet', () => {
+  const { Text } = require('react-native');
+  return {
+    FtTodoSheet: ({ visible, initialTitle }: any) => (visible ? <Text testID="todo-sheet">{initialTitle}</Text> : null),
+  };
+});
+
 jest.mock('../../lib/useFtHomeData', () => ({
   prayerCardId: (id: string) => `pray:${id}`,
 }));
@@ -138,6 +158,7 @@ describe('ContactScreen', () => {
     markPrayerAnswered: jest.fn(),
     postThreadMessage: jest.fn(),
     deleteThreadMessage: jest.fn(),
+    closeAsk: jest.fn(),
     deleteInteraction: jest.fn(),
     addCollaborator: jest.fn().mockResolvedValue(undefined),
     removeCollaborator: jest.fn().mockResolvedValue(undefined),
@@ -637,7 +658,7 @@ describe('ContactScreen', () => {
 
       const { queryByText } = await render(
         <ThemeProvider>
-          <ContactScreen contactId="amy" initialTab="alongside" />
+          <ContactScreen contactId="amy" initialTab="conversation" />
         </ThemeProvider>,
       );
 
@@ -666,7 +687,7 @@ describe('ContactScreen', () => {
 
       const asTrainee = await render(
         <ThemeProvider>
-          <ContactScreen contactId="mine" initialTab="alongside" />
+          <ContactScreen contactId="mine" initialTab="conversation" />
         </ThemeProvider>,
       );
       expect(asTrainee.getByText('My Person')).toBeTruthy();
@@ -676,14 +697,29 @@ describe('ContactScreen', () => {
       (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
       const asFullTimer = await render(
         <ThemeProvider>
-          <ContactScreen contactId="mine" initialTab="alongside" />
+          <ContactScreen contactId="mine" initialTab="conversation" />
         </ThemeProvider>,
       );
+      // Never in the Conversation list — only behind the Full-timers switch.
+      expect(asFullTimer.queryByText('FULLTIMER-ONLY-DISCUSSION')).toBeNull();
+      await fireEvent.press(asFullTimer.getByRole('tab', { name: /Full-timers/ }));
       expect(asFullTimer.getByText('FULLTIMER-ONLY-DISCUSSION')).toBeTruthy();
+      expect(asFullTimer.queryByText('ORDINARY-COMMENT')).toBeNull();
     });
   });
 
-  describe('deleting a thread message (#1126)', () => {
+  // ADR 0033 / #1261: the phone person screen in the one stream grammar.
+  describe('the Conversation tab (#1261)', () => {
+    const at = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const graceSays: ThreadMessage = {
+      id: 'm-grace',
+      interactionId: null,
+      from: 'grace',
+      fromName: 'Grace Liu',
+      kind: 'comment',
+      body: 'GRACE-OPEN',
+      at: at(3),
+    };
     const mine: ThreadMessage = {
       id: 'm-mine',
       interactionId: null,
@@ -691,55 +727,239 @@ describe('ContactScreen', () => {
       fromName: 'Staffer',
       kind: 'comment',
       body: 'MINE',
-      at: '2026-09-10T12:00:00.000Z',
+      at: at(2),
     };
-    const theirs: ThreadMessage = {
-      id: 'm-theirs',
+    const staffOnly: ThreadMessage = {
+      id: 'm-team',
+      interactionId: null,
+      scope: 'team',
+      from: 'tony',
+      fromName: 'Tony Wang',
+      kind: 'comment',
+      body: 'STAFF-ONLY',
+      at: at(1),
+    };
+    const onInteraction: ThreadMessage = {
+      id: 'm-int',
+      interactionId: 'int-coffee',
+      from: 'grace',
+      fromName: 'Grace Liu',
+      kind: 'comment',
+      body: 'ABOUT-THE-COFFEE',
+      at: at(1),
+    };
+    const ask: ThreadMessage = {
+      id: 'm-ask',
       interactionId: null,
       from: 'grace',
-      fromName: 'Grace Lee',
-      kind: 'comment',
-      body: 'THEIRS',
-      at: '2026-09-11T12:00:00.000Z',
+      fromName: 'Grace Liu',
+      kind: 'nudge',
+      body: 'Can someone text Sarah before Thursday?',
+      at: at(30),
+    };
+    const coffee = {
+      id: 'int-coffee',
+      userId: 'user1',
+      userName: 'Staffer',
+      content: 'Coffee chat',
+      dateTime: '2026-08-01T12:00:00.000Z',
+      createdAt: '2026-08-01T11:00:00.000Z',
+      type: 'chat',
+    };
+    const walk = { ...coffee, id: 'int-walk', content: 'Walk to class', dateTime: '2026-08-02T12:00:00.000Z' };
+
+    const renderAs = async (
+      auth: { uid: string; role: string; isImpersonating?: boolean },
+      threadMessages: ThreadMessage[],
+      initialTab: 'story' | 'conversation' = 'conversation',
+      interactions: Interaction[] = [],
+    ) => {
+      (useAuth as jest.Mock).mockReturnValue({ user: { displayName: auth.uid }, ...auth });
+      (useContactDetailData as jest.Mock).mockReturnValue({ ...baseLoadedData, threadMessages, interactions });
+      return render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab={initialTab} />
+        </ThemeProvider>,
+      );
     };
 
-    it('shows a delete affordance on the viewer\'s own message and deletes it', async () => {
-      (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'trainee' });
-      (useContactDetailData as jest.Mock).mockReturnValue({
-        ...baseLoadedData,
-        contact: mockContact,
-        threadMessages: [mine, theirs],
-      });
-
-      const { getAllByLabelText } = await render(
-        <ThemeProvider>
-          <ContactScreen contactId="contact1" initialTab="alongside" />
-        </ThemeProvider>,
-      );
-
-      // Only the viewer's own message (MINE) is deletable — theirs is not.
-      const deletes = getAllByLabelText('Delete message');
-      expect(deletes).toHaveLength(1);
-      await fireEvent.press(deletes[0]);
-      expect(baseLoadedData.deleteThreadMessage).toHaveBeenCalledWith(mine);
+    it('is called Conversation, not Alongside', async () => {
+      const { getByRole, queryByText } = await renderAs({ uid: 'user1', role: 'manager' }, []);
+      expect(getByRole('tab', { name: /Conversation/ })).toBeTruthy();
+      expect(queryByText(/Alongside/)).toBeNull();
     });
 
-    it('lets an admin delete anyone\'s message', async () => {
-      (useAuth as jest.Mock).mockReturnValue({ uid: 'tony', user: { displayName: 'Tony' }, role: 'admin' });
-      (useContactDetailData as jest.Mock).mockReturnValue({
-        ...baseLoadedData,
-        contact: mockContact,
-        threadMessages: [mine, theirs],
-      });
+    it('gives a Full-timer the Conversation / Full-timers switch, and a Trainee none', async () => {
+      const ft = await renderAs({ uid: 'tony', role: 'admin' }, [graceSays, staffOnly]);
+      expect(ft.getByRole('tab', { name: /Full-timers/ })).toBeTruthy();
 
-      const { getAllByLabelText } = await render(
+      const trainee = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, staffOnly]);
+      expect(trainee.queryByRole('tab', { name: /Full-timers/ })).toBeNull();
+    });
+
+    it('cuts the switch on the effective role, so "See it as they do" hides it', async () => {
+      const { queryByRole } = await renderAs({ uid: 'user1', role: 'manager', isImpersonating: true }, [graceSays]);
+      expect(queryByRole('tab', { name: /Full-timers/ })).toBeNull();
+    });
+
+    it('lists only the contact-level open stream — never staff-only messages or Interaction threads', async () => {
+      const { getByText, queryByText } = await renderAs(
+        { uid: 'tony', role: 'admin' },
+        [graceSays, staffOnly, onInteraction],
+        'conversation',
+        [coffee],
+      );
+      expect(getByText('GRACE-OPEN')).toBeTruthy();
+      expect(queryByText('STAFF-ONLY')).toBeNull();
+      expect(queryByText('ABOUT-THE-COFFEE')).toBeNull();
+      expect(getByText('Everyone tied to Sarah sees this.')).toBeTruthy();
+    });
+
+    it('shows the Full-timers stream behind a lock that says Trainees cannot see it', async () => {
+      const { getByRole, getByText, queryByText, queryByRole } = await renderAs({ uid: 'tony', role: 'admin' }, [graceSays, staffOnly]);
+      await fireEvent.press(getByRole('tab', { name: /Full-timers/ }));
+      expect(getByText('STAFF-ONLY')).toBeTruthy();
+      expect(queryByText('GRACE-OPEN')).toBeNull();
+      expect(getByText("Only Full-timers see this — Trainees can't.")).toBeTruthy();
+      // No kind chips on Full-timers.
+      expect(queryByRole('button', { name: 'Ask a follow-up' })).toBeNull();
+    });
+
+    it('offers Comment, Question and Ask a follow-up on the Conversation composer, and posts the chosen kind', async () => {
+      const post = jest.fn();
+      (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'manager' });
+      (useContactDetailData as jest.Mock).mockReturnValue({ ...baseLoadedData, postThreadMessage: post });
+      const { getByRole, getByLabelText } = await render(
         <ThemeProvider>
-          <ContactScreen contactId="contact1" initialTab="alongside" />
+          <ContactScreen contactId="contact1" initialTab="conversation" />
         </ThemeProvider>,
       );
+      await fireEvent.press(getByRole('button', { name: 'Ask a follow-up' }));
+      await fireEvent.changeText(getByLabelText('Write to everyone tied to Sarah'), 'Text her Thursday');
+      await fireEvent.press(getByRole('button', { name: 'Send' }));
+      expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'nudge', body: 'Text her Thursday' });
+    });
 
-      const deletes = getAllByLabelText('Delete message');
-      expect(deletes).toHaveLength(2);
+    it('names your own messages with your name, not "You"', async () => {
+      const { getByText, queryByText } = await renderAs({ uid: 'user1', role: 'manager' }, [mine]);
+      expect(getByText('Staffer')).toBeTruthy();
+      expect(queryByText('You')).toBeNull();
+    });
+
+    describe('Story Threads', () => {
+      it('carries a replies chip on an Interaction with replies, and "Think it through together" on one without', async () => {
+        const { getByText, getByRole } = await renderAs(
+          { uid: 'user1', role: 'manager' },
+          [onInteraction],
+          'story',
+          [coffee, walk],
+        );
+        expect(getByText('1 reply')).toBeTruthy();
+        expect(getByRole('button', { name: 'Think it through together' })).toBeTruthy();
+      });
+
+      it('opens the Interaction Thread as a pushed screen', async () => {
+        const { getByText, getByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [onInteraction], 'story', [coffee, walk]);
+        await fireEvent.press(getByText('1 reply'));
+        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?interaction=int-coffee');
+        await fireEvent.press(getByRole('button', { name: 'Think it through together' }));
+        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?interaction=int-walk');
+      });
+    });
+
+    describe('Follow-up asks', () => {
+      it('shows the tag, how long it has been open, and both actions to the asker', async () => {
+        const closeAsk = jest.fn();
+        const own = { ...ask, from: 'user1', fromName: 'Staffer' };
+        (useAuth as jest.Mock).mockReturnValue({ uid: 'user1', user: { displayName: 'Staffer' }, role: 'manager' });
+        (useContactDetailData as jest.Mock).mockReturnValue({ ...baseLoadedData, threadMessages: [own], closeAsk });
+        const { getByText, getByRole } = await render(
+          <ThemeProvider>
+            <ContactScreen contactId="contact1" initialTab="conversation" />
+          </ThemeProvider>,
+        );
+        expect(getByText('Follow-up ask')).toBeTruthy();
+        expect(getByText(/^Open (1 day|2 days)$/)).toBeTruthy();
+        expect(getByRole('button', { name: 'Never mind' })).toBeTruthy();
+        await fireEvent.press(getByRole('button', { name: 'I followed up' }));
+        expect(closeAsk).toHaveBeenCalledWith(own);
+      });
+
+      it('offers anyone else tied only I followed up', async () => {
+        const { getByRole, queryByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [ask]);
+        expect(getByRole('button', { name: 'I followed up' })).toBeTruthy();
+        expect(queryByRole('button', { name: 'Never mind' })).toBeNull();
+      });
+
+      it('offers no actions to someone who cannot write, or while seeing it as someone else', async () => {
+        const viewer = await renderAs({ uid: 'v1', role: 'viewer' }, [ask]);
+        expect(viewer.queryByRole('button', { name: 'I followed up' })).toBeNull();
+        const seeing = await renderAs({ uid: 'user1', role: 'manager', isImpersonating: true }, [ask]);
+        expect(seeing.queryByRole('button', { name: 'I followed up' })).toBeNull();
+      });
+
+      it('says who followed up once it is closed', async () => {
+        const { getByText, queryByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [
+          { ...ask, closedBy: 'tony', closedByName: 'Tony Wang', closedAt: at(1) },
+        ]);
+        expect(getByText(/Tony Wang followed up/)).toBeTruthy();
+        expect(queryByRole('button', { name: 'I followed up' })).toBeNull();
+      });
+    });
+
+    describe('long-press', () => {
+      it('opens Reply in thread, Make a to-do and Copy text — and Delete only for the author', async () => {
+        const { getByText, getByRole, queryByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, mine]);
+
+        await fireEvent(getByText('GRACE-OPEN'), 'longPress');
+        expect(getByRole('button', { name: 'Reply in thread' })).toBeTruthy();
+        expect(getByRole('button', { name: 'Make a to-do' })).toBeTruthy();
+        expect(getByRole('button', { name: 'Copy text' })).toBeTruthy();
+        expect(queryByRole('button', { name: 'Delete message' })).toBeNull();
+      });
+
+      it('lets the author delete their own message', async () => {
+        const { getByText, getByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, mine]);
+        await fireEvent(getByText('MINE'), 'longPress');
+        await fireEvent.press(getByRole('button', { name: 'Delete message' }));
+        expect(baseLoadedData.deleteThreadMessage).toHaveBeenCalledWith(mine);
+      });
+
+      it("lets a Full-timer delete anyone's message", async () => {
+        const { getByText, getByRole } = await renderAs({ uid: 'tony', role: 'admin' }, [graceSays]);
+        await fireEvent(getByText('GRACE-OPEN'), 'longPress');
+        expect(getByRole('button', { name: 'Delete message' })).toBeTruthy();
+      });
+
+      it('copies the text', async () => {
+        const Clipboard = require('expo-clipboard');
+        const { getByText, getByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays]);
+        await fireEvent(getByText('GRACE-OPEN'), 'longPress');
+        await fireEvent.press(getByRole('button', { name: 'Copy text' }));
+        expect(Clipboard.setStringAsync).toHaveBeenCalledWith('GRACE-OPEN');
+      });
+
+      it('opens the Thread for Reply in thread', async () => {
+        const { getByText, getByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays]);
+        await fireEvent(getByText('GRACE-OPEN'), 'longPress');
+        await fireEvent.press(getByRole('button', { name: 'Reply in thread' }));
+        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?parent=m-grace');
+      });
+
+      it('opens the Full-timers Thread on its own stream', async () => {
+        const { getByText, getByRole } = await renderAs({ uid: 'tony', role: 'admin' }, [staffOnly]);
+        await fireEvent.press(getByRole('tab', { name: /Full-timers/ }));
+        await fireEvent(getByText('STAFF-ONLY'), 'longPress');
+        await fireEvent.press(getByRole('button', { name: 'Reply in thread' }));
+        expect(mockPush).toHaveBeenCalledWith('/contact/contact1/thread?parent=m-team&stream=team');
+      });
+
+      it('starts a to-do from the message', async () => {
+        const { getByText, getByRole, getByTestId } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays]);
+        await fireEvent(getByText('GRACE-OPEN'), 'longPress');
+        await fireEvent.press(getByRole('button', { name: 'Make a to-do' }));
+        expect(getByTestId('todo-sheet').props.children).toBe('GRACE-OPEN');
+      });
     });
   });
 });
