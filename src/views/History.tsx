@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   collection,
   query,
@@ -41,6 +41,11 @@ import { useLanguage } from '../components/LanguageProvider';
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
 
+// The stream loads in pages of this many; "Show older moments" grows the
+// window, so the whole record stays reachable instead of stopping at the
+// newest page.
+const PAGE_SIZE = 100;
+
 const KINDS: { id: "all" | Bucket; label: string; i18nKey: string }[] = [
   { id: "all", label: "Everything", i18nKey: "history.everything" },
   { id: "steps", label: "Steps forward", i18nKey: "history.steps_forward" },
@@ -59,6 +64,7 @@ const BUCKET_NODE: Record<Bucket, string> = {
 
 interface Hist {
   id: string;
+  userId?: string;
   user: string;
   userPhoto?: string;
   action: string;
@@ -67,6 +73,11 @@ interface Hist {
   type: Activity["type"];
   description?: string;
   createdAt: string;
+}
+
+interface StaffOption {
+  id: string;
+  name: string;
 }
 
 interface Humanized {
@@ -257,7 +268,7 @@ export default function History() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [team, setTeam] = useState<string[]>([]);
+  const [team, setTeam] = useState<StaffOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -265,16 +276,17 @@ export default function History() {
   const [kind, setKind] = useState<"all" | Bucket>("all");
   const [who, setWho] = useState("all");
   const [q, setQ] = useState("");
+  const [windowSize, setWindowSize] = useState(PAGE_SIZE);
+
+  // Clear state before handleFirestoreError (which throws), so the skeleton always
+  // clears and the failure surfaces instead of a stuck/partial view.
+  const onLoadError = useCallback((e: unknown, path: string) => {
+    setError("history");
+    setLoading(false);
+    handleFirestoreError(e, OperationType.LIST, path);
+  }, []);
 
   useEffect(() => {
-    // Clear state before handleFirestoreError (which throws), so the skeleton always
-    // clears and the failure surfaces instead of a stuck/partial view.
-    const onLoadError = (e: unknown, path: string) => {
-      setError("history");
-      setLoading(false);
-      handleFirestoreError(e, OperationType.LIST, path);
-    };
-
     const unsubscribeContacts = onSnapshot(
       query(collection(db, "contacts")),
       (snapshot) => {
@@ -292,23 +304,34 @@ export default function History() {
           snapshot.docs
             .map((d) => {
               const u = d.data() as { displayName?: string; email?: string; approved?: boolean };
-              return { name: (u.displayName || u.email || "").trim(), approved: u.approved };
+              return { id: d.id, name: (u.displayName || u.email || "").trim(), approved: u.approved };
             })
             .filter((u) => u.approved !== false && !!u.name && !isServiceAccountName(u.name))
-            .map((u) => u.name),
+            .map((u) => ({ id: u.id, name: u.name })),
         );
       },
       (e) => onLoadError(e, "users"),
     );
 
+    return () => {
+      unsubscribeContacts();
+      unsubscribeUsers();
+    };
+  }, [onLoadError]);
+
+  // The activity stream is paged, not capped: growing the window is how older
+  // moments — and a teammate whose activity sits beyond the newest page — stay
+  // reachable.
+  useEffect(() => {
     const unsubscribeActivities = onSnapshot(
-      query(collection(db, "activities"), orderBy("createdAt", "desc"), limit(100)),
+      query(collection(db, "activities"), orderBy("createdAt", "desc"), limit(windowSize)),
       (snapshot) => {
         setActivities(
           snapshot.docs.map((d) => {
             const data = d.data() as SystemActivity;
             return {
               id: d.id,
+              userId: data.userId,
               user: data.userName,
               userPhoto: data.userPhoto,
               action: data.action,
@@ -326,11 +349,9 @@ export default function History() {
     );
 
     return () => {
-      unsubscribeContacts();
-      unsubscribeUsers();
       unsubscribeActivities();
     };
-  }, []);
+  }, [windowSize, onLoadError]);
 
   const openContact = (contactId?: string) => {
     if (!contactId) return;
@@ -342,17 +363,37 @@ export default function History() {
   usePreserveScroll(!!selectedContact);
 
   // The "Whole team ▾" select: every approved teammate, plus any legacy
-  // activity author not (or no longer) in the users collection.
-  const staff = useMemo(() => {
-    const names = new Set<string>(team);
-    activities.forEach((a) => a.user && names.add(a.user));
-    return [...names].sort((a, b) => a.localeCompare(b));
+  // activity author not (or no longer) in the users collection. Each option
+  // carries the author's stable id, so filtering survives a display-name
+  // change: activities are stamped with the name at write time, which may no
+  // longer match the name shown here (#1254 follow-up).
+  const staffOptions = useMemo<StaffOption[]>(() => {
+    const byId = new Map<string, StaffOption>();
+    const names = new Set<string>();
+    team.forEach((u) => {
+      byId.set(u.id, u);
+      names.add(u.name);
+    });
+    activities.forEach((a) => {
+      if (!a.user || (a.userId && byId.has(a.userId)) || names.has(a.user)) return;
+      const id = a.userId || `legacy:${a.user}`;
+      byId.set(id, { id, name: a.user });
+      names.add(a.user);
+    });
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [activities, team]);
+
+  const staff = useMemo(() => [...new Set(staffOptions.map((o) => o.name))], [staffOptions]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const selected = who === "all" ? undefined : staffOptions.find((o) => o.name === who);
     return activities.filter((a) => {
-      if (who !== "all" && a.user !== who) return false;
+      if (who !== "all") {
+        const matchId = !!selected && !selected.id.startsWith("legacy:") && a.userId === selected.id;
+        const matchName = a.user === who;
+        if (!matchId && !matchName) return false;
+      }
       if (kind !== "all" && humanize(a).bucket !== kind) return false;
       if (needle) {
         const hay = `${a.user} ${a.action} ${a.target} ${a.description || ""}`.toLowerCase();
@@ -360,7 +401,7 @@ export default function History() {
       }
       return true;
     });
-  }, [activities, who, kind, q]);
+  }, [activities, who, kind, q, staffOptions]);
 
   // One continuous stream, with a small marker wherever the day changes.
   const rows = useMemo(() => {
@@ -381,6 +422,10 @@ export default function History() {
     () => new Set(activities.filter((a) => a.contactId).map((a) => a.contactId)).size,
     [activities],
   );
+  // A full window means the newest page is saturated — there may be older
+  // moments to reach. Once a wider window comes back short, this goes false.
+  const hasMore = activities.length >= windowSize;
+  const showOlder = () => setWindowSize((s) => s + PAGE_SIZE);
   const todayLong = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
@@ -421,6 +466,8 @@ export default function History() {
           humanize={humanize}
           dayInfo={dayInfo}
           firstName={firstName}
+          hasMore={hasMore}
+          onShowOlder={showOlder}
         />
       </>
     );
@@ -565,6 +612,18 @@ export default function History() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={showOlder}
+            className="text-sm font-medium text-accent hover:underline"
+          >
+            {t('history.show_older')}
+          </button>
         </div>
       )}
 

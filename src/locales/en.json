@@ -773,7 +773,8 @@
     "moments": "moments",
     "touching": "touching",
     "find_moment": "Find a moment or a name…",
-    "we_write_it_down": "We write it down so nothing — and no one — is forgotten."
+    "we_write_it_down": "We write it down so nothing — and no one — is forgotten.",
+    "show_older": "Show older moments"
   },
   "coordinationTrash": {
     "coordination_notes": "Coordination Notes",
