@@ -489,3 +489,112 @@ describe("Stream — optional adapter capabilities", () => {
     expect(screen.queryByRole("button", { name: "Mention someone" })).toBeNull();
   });
 });
+
+describe("Stream — what a source can set (#1258)", () => {
+  it("uses the adapter's own placeholder where there are no kind chips, and locks the audience line", () => {
+    renderStream(
+      fakeAdapter({
+        capabilities: { kinds: false, attachments: false, canPost: true, canReply: true },
+        composer: { placeholder: "Write something only Full-timers will see…" },
+        audience: "Only Full-timers see this — Trainees can't.",
+        locked: true,
+      }),
+    );
+    expect(screen.getByPlaceholderText("Write something only Full-timers will see…")).toBeInTheDocument();
+    expect(screen.getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
+  });
+
+  it("marks a message just posted, even one that would have continued its author's burst", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ id: "a", from: "maria", fromName: "Maria Santos", body: "first", at: ago(120_000) }),
+          message({ id: "b", from: "maria", fromName: "Maria Santos", body: "second", at: ago(60_000) }),
+        ],
+      }),
+      { highlightIds: new Set(["b"]) },
+    );
+    expect(within(row("second")).getByText("Just posted")).toBeInTheDocument();
+    expect(within(row("second")).getByText("Maria Santos")).toBeInTheDocument();
+    expect(within(row("first")).queryByText("Just posted")).toBeNull();
+  });
+
+  it("draws in the compact size inside a card", () => {
+    const { container } = renderStream(fakeAdapter(), { compact: true });
+    expect(container.querySelector(".strm.strm-compact")).toBeTruthy();
+  });
+
+  it("gives a reply box the adapter's own placeholder", () => {
+    renderStream(
+      fakeAdapter({
+        replyPlaceholder: "Think it through together…",
+        messages: [message({ id: "p", body: "parent" }), message({ id: "r", parentId: "p", body: "reply" })],
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /1 reply/ }));
+    expect(screen.getByPlaceholderText("Think it through together…")).toBeInTheDocument();
+  });
+});
+
+describe("Stream — an adapter that is itself one Thread (an Interaction's)", () => {
+  const PARENT = "interaction:i1";
+  const interactionAdapter = (over: Partial<StreamAdapter> = {}) =>
+    fakeAdapter({
+      name: "Thread",
+      where: "Interaction · Daniel Reyes",
+      capabilities: { kinds: false, attachments: false, canPost: true, canReply: true },
+      replyPlaceholder: "Think it through together…",
+      empty: "No comments on this interaction yet.",
+      thread: {
+        parentId: PARENT,
+        subtitle: "On an interaction · everyone tied to Daniel sees this.",
+        quote: { label: "Josh's conversation · Thu, Sep 17", body: "Sat with Daniel at the Thursday gathering." },
+      },
+      messages: [
+        message({ id: PARENT, from: "josh", fromName: "Josh Park", body: "Sat with Daniel at the Thursday gathering.", at: yesterdayAt(9) }),
+        message({ id: "r1", parentId: PARENT, from: "maria", fromName: "Maria Santos", body: "Film photography — good second friend.", at: yesterdayAt(21) }),
+      ],
+      ...over,
+    });
+
+  it("opens straight on the Thread: the Interaction quoted as its parent, the replies below, no way back to a stream", () => {
+    renderStream(interactionAdapter());
+    const thread = screen.getByRole("region", { name: "Thread" });
+    expect(within(thread).getByText("On an interaction · everyone tied to Daniel sees this.")).toBeInTheDocument();
+    expect(within(thread).getByText("Josh's conversation · Thu, Sep 17")).toBeInTheDocument();
+    // The quote is not a message row: only the one reply is.
+    expect(thread.querySelectorAll("[data-stream-row]")).toHaveLength(1);
+    expect(within(thread).getByText("Sat with Daniel at the Thursday gathering.")).toBeInTheDocument();
+    expect(within(thread).getByText("1 reply")).toBeInTheDocument();
+    expect(within(thread).getByText("Film photography — good second friend.")).toBeInTheDocument();
+    expect(within(thread).queryByRole("button", { name: /^Back to/ })).toBeNull();
+  });
+
+  it("closes the surface, and replies to the Interaction with the adapter's placeholder", async () => {
+    const adapter = interactionAdapter();
+    const onClose = vi.fn();
+    renderStream(adapter, { onClose });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalled();
+
+    const box = screen.getByPlaceholderText("Think it through together…");
+    await userEvent.type(box, "I will mention the scholarship");
+    fireEvent.click(screen.getByRole("button", { name: "Reply" }));
+    expect(adapter.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ id: PARENT }),
+      { body: "I will mention the scholarship", mentionedUserIds: [] },
+    );
+  });
+
+  it("says so when nobody has replied yet", () => {
+    renderStream(interactionAdapter({ messages: [message({ id: PARENT, body: "Sat with Daniel." })] }));
+    expect(screen.getByText("No comments on this interaction yet.")).toBeInTheDocument();
+  });
+
+  it("offers no reply box to a viewer who may not reply", () => {
+    renderStream(
+      interactionAdapter({ capabilities: { kinds: false, attachments: false, canPost: false, canReply: false } }),
+    );
+    expect(screen.queryByPlaceholderText("Think it through together…")).toBeNull();
+  });
+});

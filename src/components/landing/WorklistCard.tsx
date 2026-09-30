@@ -42,7 +42,7 @@ import {
   type ThreadMessage,
 } from "../../lib/threads";
 import { CardConversation, useCardThread } from "./CardConversation";
-import type { TeamMemberLike } from "../Thread";
+import type { TeamMemberLike } from "../stream/types";
 import KindChip from "../ui/KindChip";
 
 // ── The worklist card (#813, #1012) ─────────────────────────────────────────

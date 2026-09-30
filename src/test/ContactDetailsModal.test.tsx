@@ -281,7 +281,7 @@ describe('ContactDetailsModal Component', () => {
     expect(document.querySelector('.min-h-\\[400px\\]')).toBeNull();
   });
 
-  it('Full-timers tab renders the composer as a direct child of the pane', async () => {
+  it('Full-timers drawer lays the stream out with the composer pinned after the list', async () => {
     (useAuth as any).mockReturnValue({
       isAdmin: true,
       role: 'admin',
@@ -294,11 +294,11 @@ describe('ContactDetailsModal Component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Full-timers/i }));
 
-    const pane = (await screen.findByPlaceholderText(/Add to the Full-timers thread…/i))
-      .closest('[data-thread-pane]');
+    const pane = (await screen.findByPlaceholderText('Write something only Full-timers will see…'))
+      .closest('.strm');
     expect(pane).toBeTruthy();
-    const list = pane!.querySelector('[data-thread-list]');
-    const composer = pane!.querySelector('[data-thread-composer]');
+    const list = pane!.querySelector('[data-stream-list]');
+    const composer = pane!.querySelector('[data-stream-composer]');
     expect(list).toBeTruthy();
     expect(composer).toBeTruthy();
     // DOM order: list before composer so the flex column can lay them out as a fill pane.
@@ -317,7 +317,7 @@ describe('ContactDetailsModal Component', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
     });
-    expect(await screen.findByPlaceholderText(/Add to the Full-timers thread…/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
   });
 
   it('allows adding a tag', async () => {
@@ -358,7 +358,7 @@ describe('ContactDetailsModal Component', () => {
     });
 
     // Type comment
-    const commentInput = await screen.findByPlaceholderText(/Add to the Full-timers thread…/i);
+    const commentInput = await screen.findByPlaceholderText("Write something only Full-timers will see…");
     await act(async () => {
       fireEvent.change(commentInput, { target: { value: 'John is doing great!' } });
     });
@@ -870,7 +870,7 @@ describe('ContactDetailsModal Component', () => {
     const commentsTab = screen.getByRole('button', { name: /Full-timers/i });
     fireEvent.click(commentsTab);
 
-    const commentInput = await screen.findByPlaceholderText(/Add to the Full-timers thread…/i);
+    const commentInput = await screen.findByPlaceholderText("Write something only Full-timers will see…");
 
     // Type comment
     await act(async () => {
@@ -2626,7 +2626,9 @@ describe('removing interactions (#650)', () => {
 
   it('proceeds past the thread confirmation and removes', async () => {
     vi.useFakeTimers();
-    hoisted.messages = [{ id: 'm1', interactionId: 'int-1' }];
+    hoisted.messages = [
+      { id: 'm1', interactionId: 'int-1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z' },
+    ];
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderWithInteractions(interactionDoc('int-1'));
 
@@ -3164,6 +3166,185 @@ describe('desktop story layout (design D)', () => {
   it('opens the Conversation drawer when deep-linked to the thread', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
     expect(screen.getByRole('dialog', { name: 'Conversation' })).toBeInTheDocument();
+  });
+
+  describe('Full-timers drawer on the shared stream', () => {
+    const roster = () =>
+      feed({
+        users: [
+          docOf('u-ft', { name: 'Ruth Chen', role: 'admin' }),
+          docOf('u-tr', { name: 'Josh Park', role: 'manager' }),
+        ],
+      });
+    const openDrawer = () => {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
+      return screen.getByRole('dialog', { name: 'Full-timers' });
+    };
+
+    it('titles the drawer with a lock and says who sees it once, above the box', () => {
+      const drawer = openDrawer();
+      expect(within(drawer).getByRole('heading', { name: 'Full-timers' })).toBeInTheDocument();
+      expect(within(drawer).getAllByText("Only Full-timers see this — Trainees can't.")).toHaveLength(1);
+      expect(drawer.querySelector('[data-stream-composer]')).toContainElement(
+        within(drawer).getByText("Only Full-timers see this — Trainees can't."),
+      );
+      expect(within(drawer).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
+      expect(within(drawer).getByText('Nothing here yet — start the team\'s discussion below.')).toBeInTheDocument();
+    });
+
+    it('offers no kind chips', () => {
+      const drawer = openDrawer();
+      expect(within(drawer).queryByRole('group', { name: 'What are you writing' })).toBeNull();
+    });
+
+    it('offers only Full-timers as @mentions (ADR 0007)', () => {
+      roster();
+      const drawer = openDrawer();
+      fireEvent.click(within(drawer).getByRole('button', { name: 'Mention someone' }));
+      const list = screen.getByRole('listbox', { name: 'Teammate mentions' });
+      expect(list).toHaveTextContent('Ruth Chen');
+      expect(list).not.toHaveTextContent('Josh Park');
+    });
+
+    it('posts into the team scope', () => {
+      const drawer = openDrawer();
+      fireEvent.change(within(drawer).getByPlaceholderText('Write something only Full-timers will see…'), {
+        target: { value: 'Gentle with him for a few weeks' },
+      });
+      fireEvent.click(within(drawer).getByRole('button', { name: 'Post' }));
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        'contact-abc',
+        expect.objectContaining({ scope: 'team', kind: 'comment', parentId: null, interactionId: null, body: 'Gentle with him for a few weeks' }),
+        expect.anything(),
+      );
+    });
+
+    it('offers no to-do from a Full-timers message', () => {
+      hoisted.messages = [
+        { id: 'ft-1', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Staff only', at: new Date().toISOString() },
+      ];
+      const drawer = openDrawer();
+      expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
+      expect(within(drawer).queryByRole('button', { name: 'Make a to-do' })).toBeNull();
+    });
+  });
+
+  describe('Interaction Threads', () => {
+    const interactions = () =>
+      feed({
+        interactions: [
+          docOf('inter-1', { userId: 'user-9', userName: 'Josh Park', content: 'Sat with him at the Thursday gathering', dateTime: '2026-09-17T12:00', createdAt: '2026-09-17T12:05:00.000Z' }),
+        ],
+      });
+    const story = () => screen.getByRole('region', { name: 'The story so far' });
+
+    it('invites a first reply on an entry with none, and opens a Thread that quotes the Interaction', () => {
+      interactions();
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
+
+      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      expect(within(thread).getByText(/^Josh's conversation · /)).toBeInTheDocument();
+      expect(within(thread).getByText('Sat with him at the Thursday gathering')).toBeInTheDocument();
+      expect(within(thread).getByText('On an interaction · everyone tied to John sees this.')).toBeInTheDocument();
+      expect(within(thread).queryByRole('group', { name: 'What are you writing' })).toBeNull();
+      expect(within(thread).queryByRole('button', { name: /^Back to/ })).toBeNull();
+
+      fireEvent.click(within(thread).getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog', { name: 'Thread' })).toBeNull();
+    });
+
+    it('replies on the Interaction through the existing data layer', () => {
+      interactions();
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
+      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      fireEvent.change(within(thread).getByPlaceholderText('Think it through together…'), { target: { value: 'Mention the scholarship' } });
+      fireEvent.click(within(thread).getByRole('button', { name: 'Reply' }));
+
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        'contact-abc',
+        expect.objectContaining({ interactionId: 'inter-1', scope: null, parentId: null, kind: 'comment', body: 'Mention the scholarship' }),
+        expect.anything(),
+      );
+    });
+
+    it('carries a replies chip once someone has replied, marked while its Thread is open', () => {
+      interactions();
+      hoisted.messages = [
+        { id: 'r1', interactionId: 'inter-1', from: 'user-9', fromName: 'Josh Park', kind: 'comment', body: 'First', at: '2026-09-17T13:00:00.000Z' },
+        { id: 'r2', interactionId: 'inter-1', from: 'user-7', fromName: 'Maria Santos', kind: 'comment', body: 'Second', at: '2026-09-18T13:00:00.000Z' },
+      ];
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      expect(within(story()).queryByRole('button', { name: 'Think it through together' })).toBeNull();
+
+      const chip = within(story()).getByRole('button', { name: /2 replies/ });
+      expect(chip).toHaveAttribute('aria-pressed', 'false');
+      fireEvent.click(chip);
+      expect(within(story()).getByRole('button', { name: /2 replies/ })).toHaveAttribute('aria-pressed', 'true');
+
+      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      expect(within(thread).getByText('First')).toBeInTheDocument();
+      expect(within(thread).getByText('Second')).toBeInTheDocument();
+    });
+
+    it('keeps an Interaction\'s messages out of the Conversation stream', () => {
+      interactions();
+      hoisted.messages = [
+        { id: 'r1', interactionId: 'inter-1', from: 'user-9', fromName: 'Josh Park', kind: 'comment', body: 'On the interaction', at: '2026-09-17T13:00:00.000Z' },
+      ];
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+      expect(within(screen.getByRole('dialog', { name: 'Conversation' })).queryByText('On the interaction')).toBeNull();
+    });
+  });
+
+  describe('on a phone (≤768px)', () => {
+    let restore: (() => void) | null = null;
+    afterEach(() => {
+      restore?.();
+      restore = null;
+    });
+    const renderOnPhone = () => {
+      const original = window.matchMedia;
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+          matches: query === '(max-width: 768px)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+      restore = () => Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    };
+    const pickTab = (value: string) =>
+      fireEvent.change(document.querySelector('.cdm-select') as HTMLSelectElement, { target: { value } });
+
+    it('reads the Conversation tab on the shared stream, with the kinds and its audience above the box', () => {
+      renderOnPhone();
+      pickTab('thread');
+      const pane = document.querySelector('.cdm-stream') as HTMLElement;
+      expect(pane.querySelector('[data-stream-list]')).toBeTruthy();
+      expect(pane.querySelector('[data-thread-pane]')).toBeNull();
+      expect(within(pane).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
+      expect(within(pane).getByText('Everyone tied to John sees this.')).toBeInTheDocument();
+    });
+
+    it('reads the Full-timers tab on the shared stream, locked and with no kinds', () => {
+      renderOnPhone();
+      pickTab('discussion');
+      const pane = document.querySelector('.cdm-stream') as HTMLElement;
+      expect(within(pane).getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
+      expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
+      expect(within(pane).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
+    });
   });
 });
 

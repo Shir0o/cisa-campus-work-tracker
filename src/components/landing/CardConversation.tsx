@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import type { Contact } from "../../types";
-import Thread, { firstName, type TeamMemberLike } from "../Thread";
+import Stream from "../stream/Stream";
+import { conversationAdapter } from "../stream/conversationAdapter";
+import { fullTimersAdapter } from "../stream/fullTimersAdapter";
+import type { TeamMemberLike } from "../stream/types";
 import { contactStakeholdersOf, countFor, type ThreadMessage } from "../../lib/threads";
+import { useAuth } from "../AuthProvider";
 import { useLanguage } from "../LanguageProvider";
 
 // ── The conversation strip on a card (#1012) ────────────────────────────────
@@ -111,20 +115,33 @@ export function CardConversation({
   teamMembers?: TeamMemberLike[];
 }) {
   const { t } = useLanguage();
+  const { user, role } = useAuth();
   const [tab, setTab] = useState<Tab>("conversation");
 
   const conversationCount = countFor(messages, null, null);
   const teamCount = countFor(messages, null, "team");
 
-  const who = firstName(contact.name);
+  // The strip reads through the same adapters as the contact page, over the
+  // messages this card was handed — no second subscription (#1012).
+  const adapterInput = {
+    contactId: contact.id,
+    contactName: contact.name,
+    messages,
+    me: { uid, name: user?.displayName || "Someone", role },
+    stakeholders: contactStakeholdersOf(contact),
+    teamMembers: teamMembers ?? [],
+    onPosted,
+    t,
+  };
+  const adapter = tab === "team" ? fullTimersAdapter(adapterInput) : conversationAdapter(adapterInput);
 
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "conversation", label: t("modals.contactDetails.follow_up"), count: conversationCount },
     { id: "team", label: t("modals.contactDetails.discussion"), count: teamCount },
   ];
 
-  return (
-    <div className="mt-3 pt-3 border-t border-outline-variant/60">
+  const segment = (
+    <div className="pb-2">
       <div
         role="tablist"
         aria-label={t("whatsNew.which_thread")}
@@ -153,32 +170,24 @@ export function CardConversation({
         ))}
       </div>
 
-      {/* Whose eyes this reaches, said before Post rather than after. The two
-          audiences differ in exactly the way that matters: one is everyone
-          tied to the person, the other is staff only. */}
-      <p className="text-[11px] text-on-surface-variant/80 mt-2 mb-2">
-        {tab === "team"
-          ? t("whatsNew.audience_full_timers")
-          : t("whatsNew.audience_conversation").replace("{name}", who)}
-      </p>
+    </div>
+  );
 
+  return (
+    <div className="mt-3 pt-3 border-t border-outline-variant/60">
       {/* Keyed on the tab, so switching audience starts a fresh composer: a
           half-written note for staff must not follow the reader into the
-          thread everyone tied to the person can read. */}
-      <Thread
+          thread everyone tied to the person can read. The audience line sits
+          above the box, where it is read before Post rather than after. A
+          Thread replaces the strip (segment and all) with a back arrow. */}
+      <Stream
         key={tab}
-        contactId={contact.id}
-        interactionId={null}
-        scope={tab === "team" ? "team" : null}
-        meStaffId={uid}
-        contactName={contact.name}
+        adapter={adapter}
+        viewer={{ uid, role }}
+        threadMode="replace"
         compact
-        teamMembers={teamMembers}
-        messages={messages}
         highlightIds={justPosted}
-        highlightLabel={t("whatsNew.just_posted")}
-        contactStakeholders={contactStakeholdersOf(contact)}
-        onPosted={onPosted}
+        header={segment}
       />
     </div>
   );

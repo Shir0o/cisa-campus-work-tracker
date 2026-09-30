@@ -1877,7 +1877,17 @@
     "where_conversation": "Conversación · {name}",
     "edit": "Editar",
     "edited": "Editado",
-    "edit_label": "Editar mensaje"
+    "edit_label": "Editar mensaje",
+    "where_full_timers": "Tiempo completo · {name}",
+    "where_interaction": "Interacción · {name}",
+    "audience_full_timers": "Solo el tiempo completo ve esto; los aprendices no.",
+    "placeholder_full_timers": "Escribe algo que solo el tiempo completo verá…",
+    "just_posted": "Recién publicado",
+    "interaction_quote": "Conversación de {name} · {date}",
+    "interaction_quote_anon": "Conversación · {date}",
+    "thread_on_interaction": "Sobre una interacción · todos los vinculados a {name} ven esto.",
+    "think_together": "Piénsalo juntos",
+    "think_together_placeholder": "Piénsalo juntos…"
   },
   "study": {
     "loading": "Cargando el estudio bíblico…",

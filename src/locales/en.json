@@ -1877,7 +1877,17 @@
     "where_conversation": "Conversation · {name}",
     "edit": "Edit",
     "edited": "Edited",
-    "edit_label": "Edit message"
+    "edit_label": "Edit message",
+    "where_full_timers": "Full-timers · {name}",
+    "where_interaction": "Interaction · {name}",
+    "audience_full_timers": "Only Full-timers see this — Trainees can't.",
+    "placeholder_full_timers": "Write something only Full-timers will see…",
+    "just_posted": "Just posted",
+    "interaction_quote": "{name}'s conversation · {date}",
+    "interaction_quote_anon": "Conversation · {date}",
+    "thread_on_interaction": "On an interaction · everyone tied to {name} sees this.",
+    "think_together": "Think it through together",
+    "think_together_placeholder": "Think it through together…"
   },
   "study": {
     "loading": "Loading Bible Study…",
