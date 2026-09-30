@@ -3078,10 +3078,13 @@ describe('desktop story layout (design D)', () => {
     expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
   });
 
-  it('the Conversation drawer names its audience in the header and above the box, and offers the kinds', () => {
+  it('the Conversation drawer names its audience above the box only — the header is the title alone — and offers the kinds', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
     const drawer = screen.getByRole('dialog', { name: 'Conversation' });
-    expect(within(drawer).getAllByText('Everyone tied to John sees this.')).toHaveLength(2);
+    const audience = within(drawer).getByText('Everyone tied to John sees this.');
+    expect(audience.closest('[data-stream-composer]')).not.toBeNull();
+    const header = within(drawer).getByRole('heading', { name: 'Conversation' }).closest('.cd-drawer-head') as HTMLElement;
+    expect(header.textContent).toBe('Conversation');
     expect(within(drawer).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
     expect(within(drawer).getByText('Nothing here yet — leave the first comment below.')).toBeInTheDocument();
   });

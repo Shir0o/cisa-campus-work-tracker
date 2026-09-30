@@ -3171,11 +3171,9 @@ export default function ContactDetailsModal({
                   onClose={() => setDrawer(null)}
                   onMakeTodo={(m) => setTodoFrom(m)}
                   header={
+                    // The title alone: who reads it is said above the composer (C3).
                     <div className="cd-drawer-head">
-                      <div>
-                        <h3 className="cd-sec-title">{drawerLabel}</h3>
-                        <span className="cd-sec-sub">{conversation.audience}</span>
-                      </div>
+                      <h3 className="cd-sec-title">{drawerLabel}</h3>
                       {closeDrawerButton}
                     </div>
                   }

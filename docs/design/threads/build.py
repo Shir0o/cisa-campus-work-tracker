@@ -350,9 +350,9 @@ ft_stream = "".join([
     msg("RC", "p-r", "Ruth Chen", "10:31 AM", '<span class="at">@Maria Santos</span> should we invite him to the retreat, or is that too much this soon?'),
 ])
 ft_drawer = f'''<section class="drawer" aria-label="Full-timers">
-<div class="dh"><div style="flex-grow: 1;"><h3>{ic(P["lock"],15)}Full-timers</h3><p class="lockline">Only Full-timers see this — Trainees can't.</p></div><button class="icon-btn" aria-label="Close Full-timers">{ic(P["x"])}</button></div>
+<div class="dh"><div style="flex-grow: 1;"><h3>{ic(P["lock"],15)}Full-timers</h3></div><button class="icon-btn" aria-label="Close Full-timers">{ic(P["x"])}</button></div>
 <div class="stream">{ft_stream}</div>
-{composer(kinds=False, placeholder="Write something only Full-timers will see…", label="Write to Full-timers", cid="ft")}
+{composer(kinds=False, placeholder="Write something only Full-timers will see…", aud=ic(P["lock"],12) + "Only Full-timers see this — Trainees can't.", label="Write to Full-timers", cid="ft")}
 </section>'''
 write("FT-Drawer.dc.html", "Contact · Full-timers", 1107, 662, shell(1107, 662, "People", "p-m", "MS", contact_page(ft_drawer)))
 
