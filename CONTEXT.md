@@ -235,6 +235,10 @@ _Avoid_: Not contacted, uncontacted, cold, new lead
 An **Interaction** a Full-timer records for the teammate who actually reached the person — typically after asking a Trainee in person and hearing that they did. The story reads it as the teammate's act ("Jae messaged him · logged by Anna"), the person's last connection names the teammate, and the teammate is told, so a wrong entry cannot sit in their name unnoticed. Only Full-timers may log on someone else's behalf.
 _Avoid_: Proxy log, impersonate, log as
 
+**Weekly reminders**:
+The two team-wide notifications that keep the week's rhythm. A Full-timer is told on Tuesday and Wednesday at 5 pm how many people are waiting **to work through** on **Around the team**; a Trainee is told at 6 pm — Tuesday for the YP team, Tuesday and Wednesday for the Campus team — what is waiting on their own people (**Not reached yet**, open **Follow-up asks**). Each goes out only when something is waiting, so a quiet week or a break stays quiet. The days and times are one schedule for the whole team, which only Full-timers change; anyone may turn their own reminder off. A Trainee with no team gets none, and is shown as unassigned so a Full-timer notices.
+_Avoid_: Nudge, digest, cron, check-in
+
 **Thread (replies to one message)**:
 The replies gathered under a single message, one level deep, read and written in a pane beside the stream rather than inline in it. Every written stream in the product has them the same way: a **Conversation**, the **Full-timers** stream, an Interaction's "think this through together", a chat, an announcement. The word means only this — never the stream itself.
 _Avoid_: Sub-thread, nested replies, comments, discussion
