@@ -5,10 +5,9 @@
 // Inviting and leaving are gone with the Material details sheet: mobile v2 has
 // no room administration (the design's `M2Thread` is read-and-reply), so that
 // stays on the desktop site.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   contactIdForEmail,
-  groupMessagesByDay,
   type AppUser,
   type ChatMessage,
   type ChatRoom,
@@ -17,7 +16,15 @@ import {
 } from '@cisa/core';
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, OperationType } from './firebase';
-import { sendMessage as sendMessageApi, subscribeChatRoom, subscribeRoomMessages } from './data/chat';
+import {
+  acknowledgeAnnouncement,
+  removeMessageForEveryone,
+  sendMessage as sendMessageApi,
+  subscribeChatRoom,
+  subscribeRoomMessages,
+  togglePinMessage,
+} from './data/chat';
+import { readMarkOf } from './chatStream';
 import { subscribeContacts } from './data/contacts';
 import { subscribeUsers } from './data/users';
 import { ChatReads } from './data/chatReads';
@@ -32,6 +39,10 @@ export function useChatThreadData(roomId: string) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // The room's last-read from before this visit, kept for the New line: opening
+  // the room marks it read, which would otherwise erase the line at once.
+  const [lastReadAt, setLastReadAt] = useState<string | null>(null);
+  const readCaptured = useRef(false);
 
   // When the identity changes — impersonation's "See it as they do" most
   // loudly — the previous viewer's content must not stay rendered until the
@@ -43,6 +54,8 @@ export function useChatThreadData(roomId: string) {
     setMessages([]);
     setLoading(true);
     setError(null);
+    setLastReadAt(null);
+    readCaptured.current = false;
   });
 
   useEffect(() => {
@@ -55,6 +68,10 @@ export function useChatThreadData(roomId: string) {
     const unsubMessages = subscribeRoomMessages(
       roomId,
       (list) => {
+        if (!readCaptured.current) {
+          readCaptured.current = true;
+          setLastReadAt(readMarkOf(ChatReads.getLastRead(uid, roomId)));
+        }
         setMessages(list);
         setLoading(false);
         ChatReads.markRead(uid, roomId);
@@ -74,8 +91,6 @@ export function useChatThreadData(roomId: string) {
     for (const u of users) map[u.uid] = { displayName: u.displayName, photoURL: u.photoURL };
     return map;
   }, [users]);
-
-  const dayGroups = useMemo(() => groupMessagesByDay(messages), [messages]);
 
   // The design offers "Open {first}'s page →" in a direct chat. A room is
   // user-to-user and a Contact has no uid, so the join is the address they
@@ -105,12 +120,14 @@ export function useChatThreadData(roomId: string) {
   return {
     room,
     usersCache,
-    dayGroups,
+    messages,
+    users,
+    lastReadAt,
     partnerContactId,
     loading: shownLoading,
     error,
 
-    send: async (text: string) => {
+    send: async (text: string, parentId?: string | null) => {
       if (!uid || !room || !text.trim()) return;
       await sendMessageApi(
         roomId,
@@ -119,7 +136,20 @@ export function useChatThreadData(roomId: string) {
         undefined,
         room.memberIds,
         { type: room.type, name: room.name },
+        parentId ?? null,
       );
+    },
+
+    /** Toggles the viewer's "Got it" on an announcement post. */
+    acknowledge: async (message: ChatMessage) => {
+      if (uid) await acknowledgeAnnouncement(roomId, message.id, uid, message.acknowledged ?? []);
+    },
+    pin: async (messageId: string, pinned: boolean) => {
+      if (uid) await togglePinMessage(roomId, messageId, pinned, uid);
+    },
+    /** Takes a message back for everyone. */
+    remove: async (messageId: string) => {
+      if (uid) await removeMessageForEveryone(roomId, messageId, uid);
     },
   };
 }

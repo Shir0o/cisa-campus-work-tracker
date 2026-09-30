@@ -58,7 +58,7 @@ held it to its canvas (#1243).
 
 - [ ] **G1** No bubble. A message is a row: 36px avatar (28px inside an Around card), name and time on one line, the body beneath.
 - [ ] **G2** A message from the same author within 5 minutes of their last continues without avatar or name.
-- [ ] **G3** Everything left-aligned, your own messages included; your own name shows, not "You".
+- [x] **G3** Everything left-aligned, your own messages included; your own name shows, not "You".
 - [ ] **G4** Oldest at top, composer pinned at the foot; the stream opens on the newest message.
 - [ ] **G5** Day dividers: Today, Yesterday, then weekday and date.
 - [x] **G6** A "New" line above the first unread, where read state exists (chat, announcements).
@@ -96,7 +96,7 @@ held it to its canvas (#1243).
 - [x] **S5** Chat headers: a group says "Group · N people"; an announcement says "Announcement · N people · {names} post here".
 - [x] **S6** Your notes: Follow-ups are rows; the team posts as "The team"; your own can be edited and then say "Edited"; the public-tracker line stays under the composer.
 - [x] **S7** Phone person screen: "Alongside" becomes **Conversation**; a Full-timer gets a Conversation / Full-timers switch at its top; a Trainee never sees the switch.
-- [ ] **S8** Phone announcements: a member can say Got it and reply in a thread.
+- [x] **S8** Phone announcements: a member can say Got it and reply in a thread.
 
 ## What the drawings assume about the code
 

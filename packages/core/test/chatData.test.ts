@@ -10,6 +10,8 @@ const firestoreMock = vi.hoisted(() => ({
   arrayRemove: vi.fn(),
   arrayUnion: vi.fn(),
   deleteDoc: vi.fn(),
+  deleteField: vi.fn(),
+  getDocs: vi.fn(),
   doc: vi.fn(),
   getDoc: vi.fn(),
   serverTimestamp: vi.fn(),
@@ -19,7 +21,14 @@ const firestoreMock = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { subscribeChatRooms, deleteChatMessage, sendMessage } from '../src/data/chat';
+import {
+  acknowledgeAnnouncement,
+  removeMessageForEveryone,
+  sendMessage,
+  subscribeChatRooms,
+  subscribeRoomMessages,
+  togglePinMessage,
+} from '../src/data/chat';
 
 const COLLECTION = { __collection: 'chatRooms' };
 const WHERE_RESULT = { __where: true };
@@ -57,17 +66,81 @@ describe('subscribeChatRooms', () => {
   });
 });
 
-describe('deleteChatMessage', () => {
-  it('calls deleteDoc on the specific chat message document', async () => {
-    const mockDb = {};
-    const docRef = { __docRef: true };
+describe('subscribeRoomMessages', () => {
+  it('keeps the thread, pin, tombstone and receipt fields the rules let people write (#1262)', () => {
+    const at = { toDate: () => new Date('2026-09-30T10:00:00.000Z') };
+    firestoreMock.onSnapshot.mockImplementation((_q: unknown, cb: (snap: { docs: unknown[] }) => void) => {
+      cb({
+        docs: [
+          {
+            id: 'm1',
+            data: () => ({
+              roomId: 'r1',
+              text: 'hi',
+              senderId: 'u1',
+              senderName: 'Naomi',
+              senderPhoto: 'https://x/p.png',
+              timestamp: at,
+              type: 'text',
+              parentId: 'm0',
+              pinned: true,
+              pinnedBy: 'u2',
+              readBy: ['u3'],
+              acknowledged: ['u3'],
+              deleted: { by: 'u2', at },
+            }),
+          },
+          { id: 'm2', data: () => ({ roomId: 'r1', text: 'plain', senderId: 'u1', senderName: 'N', timestamp: at }) },
+        ],
+      });
+      return () => {};
+    });
+    const cb = vi.fn();
+    subscribeRoomMessages({} as never, 'r1', cb);
+    const [first, second] = cb.mock.calls[0][0];
+    expect(first).toMatchObject({
+      parentId: 'm0',
+      pinned: true,
+      pinnedBy: 'u2',
+      readBy: ['u3'],
+      acknowledged: ['u3'],
+      senderPhoto: 'https://x/p.png',
+      deleted: { by: 'u2', at: '2026-09-30T10:00:00.000Z' },
+    });
+    expect(second.parentId).toBeNull();
+    expect(second.deleted).toBeUndefined();
+    expect(second.acknowledged).toBeUndefined();
+  });
+});
+
+describe('message acts (the field-level writes firestore.rules allows)', () => {
+  const docRef = { __docRef: true };
+  beforeEach(() => {
     firestoreMock.doc.mockReturnValue(docRef);
-    firestoreMock.deleteDoc.mockResolvedValue(undefined);
+    firestoreMock.updateDoc.mockResolvedValue(undefined);
+    firestoreMock.serverTimestamp.mockReturnValue('SERVER_TIME');
+    firestoreMock.deleteField.mockReturnValue('DELETE_FIELD');
+  });
 
-    await deleteChatMessage(mockDb as never, 'r1', 'm1');
+  it('takes a message back with a tombstone rather than deleting it', async () => {
+    await removeMessageForEveryone({} as never, 'r1', 'm1', 'u1');
+    expect(firestoreMock.doc).toHaveBeenCalledWith({}, 'chatRooms', 'r1', 'messages', 'm1');
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(docRef, { deleted: { by: 'u1', at: 'SERVER_TIME' } });
+    expect(firestoreMock.deleteDoc).not.toHaveBeenCalled();
+  });
 
-    expect(firestoreMock.doc).toHaveBeenCalledWith(mockDb, 'chatRooms', 'r1', 'messages', 'm1');
-    expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(docRef);
+  it('says got it by adding only the viewer to acknowledged, and takes it back by removing only them', async () => {
+    await acknowledgeAnnouncement({} as never, 'r1', 'm1', 'u1', ['u2']);
+    expect(firestoreMock.updateDoc).toHaveBeenLastCalledWith(docRef, { acknowledged: ['u2', 'u1'] });
+    await acknowledgeAnnouncement({} as never, 'r1', 'm1', 'u1', ['u2', 'u1']);
+    expect(firestoreMock.updateDoc).toHaveBeenLastCalledWith(docRef, { acknowledged: ['u2'] });
+  });
+
+  it('pins naming who pinned, and unpins by clearing pinnedBy', async () => {
+    await togglePinMessage({} as never, 'r1', 'm1', true, 'u1');
+    expect(firestoreMock.updateDoc).toHaveBeenLastCalledWith(docRef, { pinned: true, pinnedBy: 'u1' });
+    await togglePinMessage({} as never, 'r1', 'm1', false, 'u1');
+    expect(firestoreMock.updateDoc).toHaveBeenLastCalledWith(docRef, { pinned: false, pinnedBy: 'DELETE_FIELD' });
   });
 });
 
@@ -107,5 +180,39 @@ describe('sendMessage notifications', () => {
         message: 'Naomi posted an announcement: Retreat is Saturday',
       }),
     );
+  });
+
+  it('writes a reply with its parent, null for a top-level message, and says so in the preview', async () => {
+    await sendMessage({} as never, 'r1', 'hi', sender, undefined, { memberIds: ['u1'], parentId: 'm0' });
+    expect(firestoreMock.addDoc.mock.calls[0][1]).toMatchObject({ text: 'hi', parentId: 'm0' });
+    expect(firestoreMock.updateDoc.mock.calls[0][1].lastMessage.text).toBe('in a thread: hi');
+    await sendMessage({} as never, 'r1', 'top', sender, undefined, { memberIds: ['u1'] });
+    expect(firestoreMock.addDoc.mock.calls[1][1].parentId).toBeNull();
+  });
+
+  it('tells the whole room about a reply in a group', async () => {
+    const onNotify = vi.fn();
+    await sendMessage({} as never, 'r1', 'yes', sender, undefined, {
+      memberIds: ['u1', 'u2', 'u3'],
+      onNotify,
+      roomType: 'group',
+      parentId: 'm0',
+    });
+    expect(onNotify.mock.calls.map((c) => c[0].userId)).toEqual(['u2', 'u3']);
+  });
+
+  it("tells only the post's author and its thread's repliers about a reply in an announcement (as the web does)", async () => {
+    firestoreMock.getDocs.mockResolvedValue({ docs: [{ data: () => ({ senderId: 'u3' }) }, { data: () => ({ senderId: 'u1' }) }] });
+    firestoreMock.getDoc.mockResolvedValue({ exists: () => true, data: () => ({ senderId: 'u2' }) });
+    const onNotify = vi.fn();
+    await sendMessage({} as never, 'r1', 'Got a question', sender, undefined, {
+      memberIds: ['u1', 'u2', 'u3', 'u4'],
+      onNotify,
+      roomType: 'announcement',
+      roomName: 'Campus Updates',
+      parentId: 'm0',
+    });
+    expect(onNotify.mock.calls.map((c) => c[0].userId).sort()).toEqual(['u2', 'u3']);
+    expect(onNotify.mock.calls[0][0]).toMatchObject({ title: 'Campus Updates', message: 'Naomi: in a thread: Got a question' });
   });
 });

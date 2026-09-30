@@ -1,7 +1,7 @@
 // Mobile v2 — the member home's announcements. Rooms the whole audience reads
 // and only Full-timers post to (firestore.rules enforces it; ChatRoom.type
-// 'announcement'). Tapping one opens the thread, where the composer is
-// replaced by "replies go to the team directly".
+// 'announcement'). Tapping one opens the room, where the composer is replaced
+// by the footer "Only Full-timers post here. Anyone can reply in a thread."
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { memberAgo, type MemberAnnouncement } from '@cisa/core';
