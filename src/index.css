@@ -4371,6 +4371,126 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   padding: 20px 20px 14px 24px; border-bottom: 1px solid var(--outline-variant); flex: none;
 }
 .cd-drawer-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 16px 24px; }
+/* The Conversation drawer on the shared stream (ADR 0033, threads/Main.dc.html). */
+.cd-drawer-stream { background: var(--bg); }
+.cd-drawer-stream .cd-drawer-head { padding: 16px 12px 12px 24px; border-bottom-color: var(--border-soft); gap: 8px; }
+.cd-drawer-stream .cd-sec-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.cd-drawer-stream .cd-sec-sub { display: block; margin-top: 2px; font-size: 12px; line-height: 1.45; }
+
+/* ── Written streams (ADR 0033; docs/design/threads/) ──
+   Slack-literal rows: no container around a message, everyone left-aligned.
+   Values are the canvas's; the kind and ask hues get dark-theme twins below. */
+.strm {
+  --strm-q-bg: #DBEAFE; --strm-q-fg: #1E40AF;
+  --strm-ask-bg: #FEF3C7; --strm-ask-fg: #92400E; --strm-ask-line: #FDE68A;
+  --strm-at-bg: #EFF6FF; --strm-at-fg: #1E40AF;
+  --strm-new: #B45309; --strm-new-line: #F59E0B;
+  --strm-body: #18181B; --strm-mute: #71717A;
+  display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0;
+  font-family: var(--font-sans); color: var(--text);
+}
+.dark .strm {
+  --strm-q-bg: rgba(96, 165, 250, 0.18); --strm-q-fg: #93C5FD;
+  --strm-ask-bg: rgba(245, 158, 11, 0.18); --strm-ask-fg: #FCD34D; --strm-ask-line: rgba(245, 158, 11, 0.4);
+  --strm-at-bg: rgba(96, 165, 250, 0.14); --strm-at-fg: #93C5FD;
+  --strm-new: #FBBF24; --strm-new-line: #F59E0B;
+  --strm-body: #E4E4E7; --strm-mute: #A1A1AA;
+}
+.strm-beside { flex-direction: row; gap: 16px; }
+.strm-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; min-height: 0; }
+.strm-pane { width: 340px; flex: none; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border-soft); border-radius: 24px; overflow: hidden; }
+.strm-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 0 24px 6px; }
+.strm-list.strm-top { padding-top: 8px; }
+/* Oldest at the top, but a short stream sits down on the composer. */
+.strm-flow { margin-top: auto; display: flex; flex-direction: column; }
+.strm-empty { font-size: 14px; color: var(--text-dim); padding: 12px 0; margin: 0; }
+.strm-day { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 11.5px; font-weight: 600; color: var(--text-dim); }
+.strm-day::before, .strm-day::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+.strm-newline { display: flex; align-items: center; gap: 8px; color: var(--strm-new); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin: 14px 0 4px; }
+.strm-newline::after { content: ""; flex: 1; height: 1px; background: var(--strm-new-line); }
+.strm-rc { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--text-dim); margin: 12px 0 6px; }
+.strm-rc::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+
+.strm-m { display: flex; gap: 10px; padding: 6px 8px; margin: 0 -8px; border-radius: 10px; position: relative; }
+.strm-m.strm-cont { padding: 1px 8px 4px 54px; }
+.strm-m:hover, .strm-m:focus-within, .strm-m-menu { background: var(--panel); }
+.strm-mb { flex: 1; min-width: 0; }
+.strm-mh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 20px; }
+.strm-who { font-size: 14px; font-weight: 600; }
+.strm-when { font-size: 11.5px; color: var(--strm-mute); }
+.strm-tx { font-size: 14px; line-height: 1.5; margin: 1px 0 0; color: var(--strm-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.strm-at { color: var(--strm-at-fg); background: var(--strm-at-bg); border-radius: 4px; padding: 0 3px; font-weight: 500; }
+
+.strm-av { width: 36px; height: 36px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; }
+.strm-av-xs { width: 20px; height: 20px; font-size: 8.5px; border: 2px solid var(--bg); }
+.strm-tone-0 { background: var(--t-indigo-soft); color: var(--t-indigo); }
+.strm-tone-1 { background: var(--t-sage-soft); color: var(--t-sage); }
+.strm-tone-2 { background: var(--t-plum-soft); color: var(--t-plum); }
+.strm-tone-3 { background: var(--t-ochre-soft); color: var(--t-clay); }
+.strm-tone-4 { background: var(--t-teal-soft); color: var(--t-teal); }
+.strm-tone-5 { background: var(--t-rose-soft); color: var(--t-rose); }
+.strm-tone-6 { background: var(--t-slate-soft); color: var(--t-slate); }
+.strm-tone-7 { background: var(--panel-2); color: var(--text-dim); }
+
+.strm-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.strm-tag-q { background: var(--strm-q-bg); color: var(--strm-q-fg); }
+.strm-tag-ask { background: var(--strm-ask-bg); color: var(--strm-ask-fg); }
+.strm-tag-muted { background: var(--panel); color: var(--text-dim); }
+
+.strm-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; font-weight: 500; }
+.strm-s-open { color: var(--strm-ask-fg); margin-right: 2px; }
+.strm-s-done { color: var(--success); display: inline-flex; align-items: center; gap: 5px; }
+.strm-s-gone { color: var(--strm-mute); }
+.strm-btn { height: 32px; border-radius: 999px; padding: 0 14px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.strm-btn-pri { background: var(--accent-strong); color: var(--accent-on); border-color: var(--accent-strong); }
+.strm-btn-pri:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.strm-btn-ghost { border-color: transparent; background: transparent; color: var(--text-dim); }
+.strm-btn-ghost:hover { background: var(--hover); color: var(--text); }
+
+.strm-thr { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; height: 30px; padding: 0 10px 0 4px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); font-size: 12.5px; color: var(--text); cursor: pointer; }
+.strm-thr:hover { border-color: var(--accent-line); }
+.strm-thr.on { border-color: var(--accent-strong); box-shadow: 0 0 0 1px var(--accent-strong); }
+.strm-thr b { font-weight: 600; }
+.strm-last { color: var(--strm-mute); }
+.strm-minis { display: flex; }
+.strm-minis .strm-av + .strm-av { margin-left: -6px; }
+
+/* The toolbar grows on hover (or keyboard focus) and floats over the row's top edge. */
+.strm-tools { position: absolute; top: -14px; right: 8px; display: none; gap: 2px; padding: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 12px rgba(10, 10, 11, 0.08); z-index: 3; }
+.strm-m:hover .strm-tools, .strm-m:focus-within .strm-tools, .strm-m-menu .strm-tools { display: flex; }
+.strm-tool { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--text-dim); background: transparent; border: 0; cursor: pointer; }
+.strm-tool:hover, .strm-tool.on { background: var(--panel); color: var(--text); }
+.strm-menu { position: absolute; top: calc(100% + 4px); right: 0; min-width: 168px; display: flex; flex-direction: column; padding: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-pop); }
+.strm-menu button { text-align: left; padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--text); background: transparent; border: 0; cursor: pointer; }
+.strm-menu button:hover { background: var(--panel); }
+.strm-menu .strm-danger { color: var(--danger); }
+
+/* A Thread's header: back (when it replaced the stream), where it lives, close. */
+.strm-thread { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.strm-th-head { display: flex; align-items: flex-start; gap: 8px; padding: 16px 12px 12px 24px; border-bottom: 1px solid var(--border-soft); flex: none; }
+.strm-th-head.back { padding-left: 12px; }
+.strm-th-title { flex: 1; min-width: 0; padding-top: 2px; }
+.strm-th-title h3 { font-family: var(--font-serif); font-weight: 700; font-size: 16px; letter-spacing: -0.01em; margin: 0; }
+.strm-th-title p { margin: 2px 0 0; font-size: 12px; color: var(--text-dim); line-height: 1.45; }
+.strm-icon-btn { width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; flex: none; color: var(--text-dim); background: transparent; border: 0; cursor: pointer; }
+.strm-icon-btn:hover { background: var(--hover); color: var(--text); }
+
+/* The one composer box (C1–C3). */
+.strm-composer { padding: 8px 20px 16px; flex: none; position: relative; }
+.strm-aud { font-size: 11.5px; color: var(--text-dim); margin: 0 0 6px 2px; display: flex; align-items: center; gap: 6px; }
+.strm-cbox { border: 1px solid var(--border); border-radius: 16px; background: var(--bg); padding: 8px 8px 8px 12px; box-shadow: 0 1px 2px rgba(10, 10, 11, 0.04); }
+.strm-cbox:focus-within { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-soft); }
+.strm-kinds { display: flex; gap: 4px; margin: 0 0 2px -4px; flex-wrap: wrap; }
+.strm-kind { height: 28px; border-radius: 999px; border: 1px solid transparent; background: transparent; padding: 0 10px; font-size: 12px; font-weight: 500; color: var(--text-dim); cursor: pointer; }
+.strm-kind:hover { color: var(--text); }
+.strm-kind.on { background: var(--panel); color: var(--text); border-color: var(--border); }
+.strm-kind.on.ask { background: var(--strm-ask-bg); color: var(--strm-ask-fg); border-color: var(--strm-ask-line); }
+.strm-ta { display: block; width: 100%; border: 0; outline: 0; resize: none; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); padding: 6px 0 4px; min-height: 40px; max-height: 160px; background: transparent; field-sizing: content; }
+.strm-ta::placeholder { color: var(--strm-mute); }
+.strm-ctools { display: flex; align-items: center; gap: 4px; }
+.strm-hint { font-size: 11.5px; color: var(--strm-mute); margin-left: auto; margin-right: 8px; }
+.strm-send { width: 36px; height: 36px; border-radius: 999px; background: var(--accent-strong); color: var(--accent-on); display: grid; place-items: center; border: 0; flex: none; cursor: pointer; }
+.strm-send:disabled { opacity: 0.4; cursor: default; }
 
 /* ── container queries ──
    The edit form and Overview field groups size against the column's real
