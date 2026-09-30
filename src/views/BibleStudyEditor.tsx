@@ -322,6 +322,27 @@ export default function BibleStudyEditor() {
     }, 0);
   };
 
+  const insertVerseAtCursor = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const current = el.value;
+    const selected = current.substring(start, end).trim();
+    const ref = selected || 'Book 1:1-2';
+    const text = `Verse: ${ref}\nFirst verse text\nSecond verse text`;
+    const capturedScrollTop = el.scrollTop;
+    editMarkdown(start, end, text);
+    setTimeout(() => {
+      el.focus();
+      const selStart = start + 'Verse: '.length;
+      const selEnd = selStart + ref.length;
+      el.setSelectionRange(selStart, selEnd);
+      syncCaretSection(el);
+      restoreScrollAfterEdit(el, capturedScrollTop, selStart);
+    }, 0);
+  };
+
   // Block inserters (#921): a Prompt, a Passage, etc. all live INSIDE
   // a Section, so the block lands at the END of the caret's Section — never
   // at the caret, which would split the line the author is mid-way through —
@@ -573,7 +594,7 @@ export default function BibleStudyEditor() {
                 {
                   id: 'verse',
                   label: 'Verse',
-                  onSelect: () => insertTextAtCursor('Verse: '),
+                  onSelect: () => insertVerseAtCursor(),
                 },
                 {
                   // A whole-line block, so it lands on the next line like a Prompt (#1182).
