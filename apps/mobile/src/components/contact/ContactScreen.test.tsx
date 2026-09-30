@@ -150,6 +150,7 @@ describe('ContactScreen', () => {
     prayers: [],
     prayersLoading: false,
     threadMessages: [] as ThreadMessage[],
+    teamMembers: [],
     walkLabel: 'Alongside',
     inYourCare: true,
     carerNames: [],
@@ -837,7 +838,7 @@ describe('ContactScreen', () => {
       await fireEvent.press(getByRole('button', { name: 'Ask a follow-up' }));
       await fireEvent.changeText(getByLabelText('Write to everyone tied to Sarah'), 'Text her Thursday');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
-      expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'nudge', body: 'Text her Thursday' });
+      expect(post).toHaveBeenCalledWith({ interactionId: null, scope: null, kind: 'nudge', body: 'Text her Thursday', mentionedUserIds: [] });
     });
 
     it('names your own messages with your name, not "You"', async () => {

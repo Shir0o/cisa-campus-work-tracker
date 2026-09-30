@@ -28,6 +28,10 @@ export interface ThreadMessage {
   closedBy?: string | null;
   closedByName?: string | null;
   closedAt?: string | null;
+  /** Teammates explicitly @mentioned when this was written (ADR 0007), already
+   *  reconciled against the body — a name edited out before sending notifies
+   *  nobody. */
+  mentionedUserIds?: string[];
 }
 
 /** A thread message tagged with the contact it belongs to. */

@@ -10,6 +10,9 @@ jest.mock('../../lib/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('../../lib/useChatThreadData', () => ({ useChatThreadData: jest.fn() }));
 jest.mock('../../lib/data/chat', () => ({}));
 jest.mock('../../lib/data/todos', () => ({ addTodo: jest.fn() }));
+jest.mock('../../lib/data/contacts', () => ({ subscribeContacts: jest.fn(() => () => {}) }));
+jest.mock('../../lib/data/events', () => ({ subscribeEvents: jest.fn(() => () => {}) }));
+jest.mock('../../lib/data/prayers', () => ({ subscribeAllPrayers: jest.fn(() => () => {}) }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn().mockResolvedValue(true) }));
 const mockBack = jest.fn();
 jest.mock('expo-router', () => ({

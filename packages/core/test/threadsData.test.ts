@@ -83,6 +83,60 @@ describe('addThreadMessage', () => {
     expect(data).toMatchObject({ interactionId: null, parentId: 'p1', scope: null, body: 'hi' });
   });
 
+  it('writes a picked mention and notifies them — never the author (ADR 0007)', async () => {
+    applyRoster([
+      { uid: 'u1', role: 'admin' },
+      { uid: 'u2', role: 'manager' },
+    ]);
+    const onNotify = vi.fn();
+
+    await addThreadMessage(
+      db,
+      'c1',
+      {
+        interactionId: null,
+        from: 'u1',
+        fromName: 'Grace Liu',
+        kind: 'comment',
+        body: 'Hey @Zion Park, can you look?',
+        mentionedUserIds: ['u2', 'u1'],
+      },
+      { contactName: 'Daniel', stakeholders: {} },
+      onNotify,
+    );
+
+    const [, data] = firestoreMock.addDoc.mock.calls[0];
+    expect(data).toMatchObject({ mentionedUserIds: ['u2', 'u1'] });
+    expect(onNotify.mock.calls.map(([p]) => p.userId)).toEqual(['u2']);
+    expect(onNotify.mock.calls[0][0].title).toBe('Grace mentioned you on Daniel');
+  });
+
+  it('never mentions a Trainee into the Full-timers stream', async () => {
+    applyRoster([
+      { uid: 'ft1', role: 'admin' },
+      { uid: 'tr1', role: 'manager' },
+    ]);
+    const onNotify = vi.fn();
+
+    await addThreadMessage(
+      db,
+      'c1',
+      {
+        interactionId: null,
+        scope: 'team',
+        from: 'ft1',
+        fromName: 'Ruth Chen',
+        kind: 'comment',
+        body: 'Be gentle',
+        mentionedUserIds: ['tr1'],
+      },
+      { contactName: 'Daniel' },
+      onNotify,
+    );
+
+    expect(onNotify).not.toHaveBeenCalled();
+  });
+
   it('writes a Full-timers message to teamThreads and tells only Full-timers', async () => {
     applyRoster([
       { uid: 'ft1', role: 'admin' },

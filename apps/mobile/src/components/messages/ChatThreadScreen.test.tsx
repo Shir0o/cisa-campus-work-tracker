@@ -11,6 +11,14 @@ jest.mock('../../lib/AuthProvider', () => ({ useAuth: jest.fn() }));
 jest.mock('../../lib/useChatThreadData', () => ({ useChatThreadData: jest.fn() }));
 jest.mock('../../lib/data/chat', () => ({}));
 jest.mock('../../lib/data/todos', () => ({ addTodo: jest.fn().mockResolvedValue('t1') }));
+jest.mock('../../lib/data/contacts', () => ({
+  subscribeContacts: jest.fn((cb: (list: unknown[]) => void) => {
+    cb([{ id: 'c1', name: 'Daniel Reyes', role: 'Student', location: 'UCLA' }]);
+    return () => {};
+  }),
+}));
+jest.mock('../../lib/data/events', () => ({ subscribeEvents: jest.fn(() => () => {}) }));
+jest.mock('../../lib/data/prayers', () => ({ subscribeAllPrayers: jest.fn(() => () => {}) }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn().mockResolvedValue(true) }));
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
@@ -227,13 +235,51 @@ describe('ChatThreadScreen', () => {
     });
   });
 
-  describe('composer (C3)', () => {
+  describe('composer (C3, C4, C5)', () => {
     it('sends into the room', async () => {
       const { getByLabelText, getByRole, d } = await renderAs(trainee, { messages: [graceSays] });
       await fireEvent.changeText(getByLabelText('Message'), 'Yes, I can');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
       expect(d.send).toHaveBeenCalledWith('Yes, I can');
     });
+
+    it("offers the chat's members as @mention candidates (ADR 0007)", async () => {
+      const { getByLabelText } = await renderAs(trainee, {
+        messages: [graceSays],
+        usersCache: { grace: { displayName: 'Grace Liu' }, maria: { displayName: 'Maria Santos' } },
+      });
+      const input = getByLabelText('Message');
+      await fireEvent.changeText(input, '@Gra');
+      await fireEvent(input, 'selectionChange', { nativeEvent: { selection: { start: 4, end: 4 } } });
+      expect(getByLabelText('@Grace Liu')).toBeTruthy();
+    });
+
+    it('stages a contact card, then posts it under the message (C5)', async () => {
+      const { getByLabelText, getByText, getByRole, d } = await renderAs(trainee, { messages: [graceSays] });
+      await fireEvent.press(getByLabelText('Attach'));
+      await fireEvent.press(getByText('Daniel Reyes'));
+      await fireEvent.changeText(getByLabelText('Message'), 'Meet Daniel');
+      await fireEvent.press(getByRole('button', { name: 'Send' }));
+      expect(d.send).toHaveBeenCalledWith('Meet Daniel', null, [
+        { type: 'contact', id: 'c1', name: 'Daniel Reyes', subtitle: 'Student' },
+      ]);
+    });
+
+    it('removes a staged card before sending, so it is not posted', async () => {
+      const { getByLabelText, getByText, getByRole, d } = await renderAs(trainee, { messages: [graceSays] });
+      await fireEvent.press(getByLabelText('Attach'));
+      await fireEvent.press(getByText('Daniel Reyes'));
+      await fireEvent.press(getByLabelText('Remove Daniel Reyes'));
+      await fireEvent.changeText(getByLabelText('Message'), 'Never mind');
+      await fireEvent.press(getByRole('button', { name: 'Send' }));
+      expect(d.send).toHaveBeenCalledWith('Never mind');
+    });
+  });
+
+  it('shows an attached contact card under a message, for members too', async () => {
+    const withCard = msg('a1', { text: 'MEET-HIM', attachments: [{ type: 'contact', id: 'c1', name: 'Daniel Reyes' }] });
+    const { getByText } = await renderAs(trainee, { messages: [withCard] });
+    expect(getByText('Daniel Reyes')).toBeTruthy();
   });
 
   describe('an announcement', () => {

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   contactIdForEmail,
   type AppUser,
+  type ChatAttachment,
   type ChatMessage,
   type ChatRoom,
   type ChatUserSummary,
@@ -128,13 +129,13 @@ export function useChatThreadData(roomId: string) {
     loading: shownLoading,
     error,
 
-    send: async (text: string, parentId?: string | null) => {
-      if (!uid || !room || !text.trim()) return;
+    send: async (text: string, parentId?: string | null, attachments?: ChatAttachment[]) => {
+      if (!uid || !room || (!text.trim() && !(attachments && attachments.length > 0))) return;
       await sendMessageApi(
         roomId,
         text,
         { uid, displayName: user?.displayName || 'Member', photoURL: user?.photoURL || '' },
-        undefined,
+        attachments,
         room.memberIds,
         { type: room.type, name: room.name },
         parentId ?? null,

@@ -77,6 +77,8 @@ export async function addThreadMessage(
     fromName: string;
     kind: ThreadKind;
     body: string;
+    /** Teammates @mentioned, already reconciled against the body (ADR 0007). */
+    mentionedUserIds?: string[];
   },
   notify?: {
     to?: string | null;

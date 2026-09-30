@@ -53,6 +53,7 @@ const data = (over: Record<string, unknown> = {}) => ({
   error: null,
   interactions: [coffee],
   threadMessages: [parent, r1, r2, onCoffee],
+  teamMembers: [],
   postThreadMessage: jest.fn(),
   deleteThreadMessage: jest.fn(),
   closeAsk: jest.fn(),
@@ -95,7 +96,7 @@ describe('a Thread on the phone (#1261)', () => {
     const { getByLabelText, getByRole, d } = await renderThread({ contactId: 'c1', parentId: 'p1' });
     await fireEvent.changeText(getByLabelText('Reply in thread'), 'Count me in');
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'p1', scope: null, kind: 'comment', body: 'Count me in' });
+    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'p1', scope: null, kind: 'comment', body: 'Count me in', mentionedUserIds: [] });
   });
 
   it('replies to a Full-timers message in the Full-timers stream', async () => {
@@ -107,7 +108,7 @@ describe('a Thread on the phone (#1261)', () => {
     expect(getByText('STAFF-ONLY')).toBeTruthy();
     await fireEvent.changeText(getByLabelText('Reply in thread'), 'Agreed');
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'tp', scope: 'team', kind: 'comment', body: 'Agreed' });
+    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: null, parentId: 'tp', scope: 'team', kind: 'comment', body: 'Agreed', mentionedUserIds: [] });
   });
 
   it("quotes an Interaction as its Thread's parent and replies onto that Interaction", async () => {
@@ -118,7 +119,7 @@ describe('a Thread on the phone (#1261)', () => {
     expect(getByRole('button', { name: 'Back to Interactions' })).toBeTruthy();
     await fireEvent.changeText(getByLabelText('Reply in thread'), 'Ask him Sunday');
     await fireEvent.press(getByRole('button', { name: 'Send' }));
-    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: 'int-coffee', parentId: null, scope: null, kind: 'comment', body: 'Ask him Sunday' });
+    expect(d.postThreadMessage).toHaveBeenCalledWith({ interactionId: 'int-coffee', parentId: null, scope: null, kind: 'comment', body: 'Ask him Sunday', mentionedUserIds: [] });
   });
 
   it('says the message is gone once its parent is deleted', async () => {
@@ -146,5 +147,36 @@ describe('a Thread on the phone (#1261)', () => {
   it('offers no reply box to someone who cannot write', async () => {
     const { queryByLabelText } = await renderThread({ contactId: 'c1', parentId: 'p1' }, {}, { uid: 'v1', role: 'viewer' });
     expect(queryByLabelText('Reply in thread')).toBeNull();
+  });
+
+  const roster = [
+    { uid: 'ruth', displayName: 'Ruth Chen', role: 'admin' },
+    { uid: 'sam', displayName: 'Sam Lee', role: 'manager' },
+  ];
+
+  const openMentions = async (input: unknown) => {
+    await fireEvent.changeText(input as never, '@');
+    await fireEvent(input as never, 'selectionChange', { nativeEvent: { selection: { start: 1, end: 1 } } });
+  };
+
+  it('offers only Full-timers as @mentions in the Full-timers stream (ADR 0007)', async () => {
+    const { getByLabelText, queryByLabelText } = await renderThread(
+      { contactId: 'c1', parentId: 'tp', team: true },
+      { threadMessages: [teamParent], teamMembers: roster },
+      { uid: 'tony', role: 'admin' },
+    );
+    await openMentions(getByLabelText('Reply in thread'));
+    expect(getByLabelText('@Ruth Chen')).toBeTruthy();
+    expect(queryByLabelText('@Sam Lee')).toBeNull();
+  });
+
+  it('offers any teammate as @mentions on a Conversation', async () => {
+    const { getByLabelText } = await renderThread(
+      { contactId: 'c1', parentId: 'p1' },
+      { teamMembers: roster },
+    );
+    await openMentions(getByLabelText('Reply in thread'));
+    expect(getByLabelText('@Ruth Chen')).toBeTruthy();
+    expect(getByLabelText('@Sam Lee')).toBeTruthy();
   });
 });
