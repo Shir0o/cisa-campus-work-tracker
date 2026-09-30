@@ -230,7 +230,7 @@ describe('Messages View Component', () => {
 
     // Verify chat messages rendered
     await waitFor(() => {
-      const messagesStream = container.querySelector('.msgs-stream');
+      const messagesStream = container.querySelector('[data-stream-list]');
       expect(messagesStream).toBeTruthy();
       expect(within(messagesStream as HTMLElement).queryByText('Hello trainees')).not.toBeNull();
     });
@@ -240,8 +240,7 @@ describe('Messages View Component', () => {
     fireEvent.change(textarea, { target: { value: 'Welcome to the team!' } });
 
     // Wait for the send button to be enabled
-    const sendButton = container.querySelector('.msgs-send');
-    expect(sendButton).toBeTruthy();
+    const sendButton = screen.getByRole('button', { name: 'Post' });
     await waitFor(() => {
       expect(sendButton).not.toHaveAttribute('disabled');
     });
@@ -293,24 +292,17 @@ describe('Messages View Component', () => {
     fireEvent.click(roomBtn!);
 
     await waitFor(() => {
-      const messagesStream = container.querySelector('.msgs-stream');
+      const messagesStream = container.querySelector('[data-stream-list]');
       expect(messagesStream).toBeTruthy();
       expect(within(messagesStream as HTMLElement).queryByText('Hello trainees')).not.toBeNull();
     }, { timeout: 500 });
 
+    // The room's members are the mention candidates (ADR 0007).
     const textarea = screen.getByPlaceholderText(/Write a message/i) as HTMLTextAreaElement;
-    textarea.selectionStart = 1;
-    textarea.selectionEnd = 1;
     fireEvent.change(textarea, { target: { value: '@' } });
 
-    await waitFor(() => {
-      const mentionDropdown = container.querySelector('.msgs-mention-pop');
-      expect(mentionDropdown).toBeTruthy();
-      expect(within(mentionDropdown as HTMLElement).queryByText('Alice')).not.toBeNull();
-    }, { timeout: 500 });
-
-    const mentionDropdown = container.querySelector('.msgs-mention-pop');
-    fireEvent.click(within(mentionDropdown as HTMLElement).getByText('Alice'));
+    const list = await screen.findByRole('listbox', { name: 'Teammate mentions' });
+    fireEvent.mouseDown(within(list).getByText('Alice'));
     expect(textarea.value).toBe('@Alice ');
   });
 
@@ -325,33 +317,40 @@ describe('Messages View Component', () => {
     fireEvent.click(roomBtn!);
 
     await waitFor(() => {
-      const messagesStream = container.querySelector('.msgs-stream');
+      const messagesStream = container.querySelector('[data-stream-list]');
       expect(messagesStream).toBeTruthy();
       expect(within(messagesStream as HTMLElement).queryByText('Hello trainees')).not.toBeNull();
     }, { timeout: 500 });
 
-    const attachTrigger = screen.getByTitle('Attach reference data');
-    fireEvent.click(attachTrigger);
+    // The paperclip opens AttachDataModal; what it attaches is staged above
+    // the text and removable before sending (C5).
+    fireEvent.click(screen.getByRole('button', { name: 'Attach' }));
+    const modal = await screen.findByTestId('attach-data-modal');
+    fireEvent.click(within(modal).getByText('Attach'));
 
+    const tray = await screen.findByRole('list', { name: 'Staged to send' });
+    expect(within(tray).getByText('Alice')).toBeInTheDocument();
+    fireEvent.click(within(tray).getByRole('button', { name: 'Remove Alice' }));
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Staged to send' })).toBeNull());
+
+    // Staged again, it goes with the post — which needs no text — and the stage clears.
+    fireEvent.click(within(modal).getByText('Attach'));
+    await screen.findByRole('list', { name: 'Staged to send' });
+    fireEvent.click(screen.getByRole('button', { name: 'Post' }));
     await waitFor(() => {
-      expect(screen.queryByText('Attach')).not.toBeNull();
-    }, { timeout: 500 });
-    fireEvent.click(screen.getByText('Attach'));
-
-    await waitFor(() => {
-      const attachTray = container.querySelector('.flex.flex-wrap.gap-2.py-2');
-      expect(attachTray).toBeTruthy();
-      expect(within(attachTray as HTMLElement).queryByText('Alice')).not.toBeNull();
-    }, { timeout: 500 });
-
-    const removeCardBtn = container.querySelector('.flex.flex-wrap.gap-2.py-2 button');
-    expect(removeCardBtn).toBeTruthy();
-    fireEvent.click(removeCardBtn!);
-
-    await waitFor(() => {
-      const attachTray = container.querySelector('.flex.flex-wrap.gap-2.py-2');
-      expect(attachTray).toBeNull();
-    }, { timeout: 500 });
+      expect(chatService.sendMessage).toHaveBeenCalledWith(
+        'room1',
+        '',
+        expect.objectContaining({ uid: 'u1' }),
+        [{ type: 'contact', id: 'c1', name: 'Alice' }],
+        ['u1', 'u2'],
+        null,
+        'group',
+        'Trainees Chat'
+      );
+    });
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Staged to send' })).toBeNull());
+    expect(container.querySelector('[data-stream-list]')).toBeTruthy();
   });
 
   it('restricts room queries by membership for both admin and non-admin users', async () => {
@@ -582,27 +581,27 @@ describe('Messages View Component', () => {
     });
 
     // 2. Interaction attachment click
-    const interactionBtn = screen.getByText('Interaction Attachment').closest('.rounded-xl');
+    const interactionBtn = screen.getByText('Interaction Attachment').closest('button');
     fireEvent.click(interactionBtn!);
     expect(mockNavigate).toHaveBeenCalledWith('/history');
 
     // 3. Event attachment click
-    const eventBtn = screen.getByText('Event Attachment').closest('.rounded-xl');
+    const eventBtn = screen.getByText('Event Attachment').closest('button');
     fireEvent.click(eventBtn!);
     expect(mockNavigate).toHaveBeenCalledWith('/attendance');
 
     // 4. Prayer attachment click
-    const prayerBtn = screen.getByText('Prayer Attachment').closest('.rounded-xl');
+    const prayerBtn = screen.getByText('Prayer Attachment').closest('button');
     fireEvent.click(prayerBtn!);
     expect(mockNavigate).toHaveBeenCalledWith('/prayer');
 
     // 5. Note attachment click
-    const noteBtn = screen.getByText('Note Attachment').closest('.rounded-xl');
+    const noteBtn = screen.getByText('Note Attachment').closest('button');
     fireEvent.click(noteBtn!);
     expect(mockNavigate).toHaveBeenCalledWith('/coordination');
 
     // 6. Feedback attachment click
-    const feedbackBtn = screen.getByText('Feedback Attachment').closest('.rounded-xl');
+    const feedbackBtn = screen.getByText('Feedback Attachment').closest('button');
     fireEvent.click(feedbackBtn!);
     expect(mockNavigate).toHaveBeenCalledWith('/admin/feedback');
   });
@@ -1019,7 +1018,7 @@ describe('Messages View Component', () => {
       openTheRoom();
 
       await waitFor(() => {
-        const messagesStream = container.querySelector('.msgs-stream');
+        const messagesStream = container.querySelector('[data-stream-list]');
         expect(messagesStream).toBeTruthy();
       });
 
@@ -1027,47 +1026,67 @@ describe('Messages View Component', () => {
       expect(scrollIntoViewSpy).not.toHaveBeenCalled();
     });
 
-    it('renders announcement post card with Full-timer badge, acknowledgement and thread reply button', async () => {
+    const postRow = (text: string | HTMLElement) =>
+      (typeof text === 'string' ? within(document.querySelector('[data-stream-list]') as HTMLElement).getByText(text) : text).closest('[data-stream-row]') as HTMLElement;
+
+    it('a member sees the Full-timer tag, Got it and Reply in thread on a post — and no receipts (S4)', async () => {
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
       renderWithAnnouncement();
       openTheRoom();
 
-      await waitFor(() => {
-        expect(screen.getAllByText('Weekly notes').length).toBeGreaterThanOrEqual(1);
-        expect(document.querySelector('.post')).toBeInTheDocument();
-      });
+      await screen.findAllByText('Hello trainees');
+      const row = postRow('Hello trainees');
+      expect(within(row).getByText('Full-timer')).toBeInTheDocument();
+      expect(within(row).queryByText(/Read by/)).toBeNull();
 
-      // Post card rendered
-      expect(document.querySelector('.post')).toBeInTheDocument();
-      expect(screen.getByText('Full-timer')).toBeInTheDocument();
-      expect(screen.getByText('Got it')).toBeInTheDocument();
-      expect(screen.getByText('Reply in thread')).toBeInTheDocument();
+      fireEvent.click(within(row).getByRole('button', { name: 'Got it' }));
+      expect(chatService.acknowledgeAnnouncement).toHaveBeenCalledWith('room-ann', 'm1', 'u1', []);
 
-      // Click Got it
-      fireEvent.click(screen.getByText('Got it'));
-      expect(chatService.acknowledgeAnnouncement).toHaveBeenCalledWith(
-        'room-ann',
-        'm1',
-        'u1',
-        []
-      );
+      fireEvent.click(within(row).getAllByRole('button', { name: 'Reply in thread' })[0]);
+      expect(await screen.findByRole('region', { name: 'Thread' })).toBeInTheDocument();
+    });
 
-      // Click Reply in thread
-      fireEvent.click(screen.getByText('Reply in thread'));
-      await waitFor(() => {
-        expect(screen.getByText('Thread')).toBeInTheDocument();
-      });
+    it('a member who said got it sees "You said got it"', async () => {
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
+      renderAnnouncementWith([post('m1', { acknowledged: ['u1'] })]);
+      const row = postRow(await screen.findByText('Post m1'));
+      expect(within(row).getByRole('button', { name: 'You said got it' })).toHaveAttribute('aria-pressed', 'true');
+    });
 
-      // Click Read receipts
-      fireEvent.click(screen.getByTitle('View read receipts'));
-      await waitFor(() => {
-        expect(screen.getByText('Read receipts')).toBeInTheDocument();
-      });
-      // Verify Read and Not yet sections
+    it('the poster sees "Read by X of Y · N said got it" as one link to the receipts, and no Got it on their own post (S4)', async () => {
+      renderAnnouncementWith([
+        post('mine', { senderId: 'u1', senderName: 'Current User', readBy: ['u1', 'u2'], acknowledged: ['u2'] }),
+        post('theirs', { timestamp: { seconds: 100006 }, readBy: ['u2'] }),
+      ]);
+      const mine = postRow(await screen.findByText('Post mine'));
+      expect(within(mine).queryByRole('button', { name: 'Got it' })).toBeNull();
+      expect(within(mine).queryByText('Reply in thread')).toBeNull();
+      const receipt = within(mine).getByRole('button', { name: 'Read by 2 of 2 · 1 said got it' });
+      // Nobody has said got it yet: just the read count.
+      expect(within(postRow('Post theirs')).getByRole('button', { name: 'Read by 1 of 2' })).toBeInTheDocument();
+
+      fireEvent.click(receipt);
+      expect(await screen.findByText('Read receipts')).toBeInTheDocument();
       expect(screen.getByText('Read')).toBeInTheDocument();
       expect(screen.getByText('Not yet')).toBeInTheDocument();
-      // Close popover
       fireEvent.click(screen.getByText('Close'));
       expect(screen.queryByText('Read receipts')).not.toBeInTheDocument();
+    });
+
+    it('sets the footer in the place of the composer for a member, and names who posts in the header (S5)', async () => {
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
+      (firestore.getDoc as any).mockResolvedValue({
+        exists: () => true,
+        data: () => ({ displayName: 'Mei Lin', role: 'admin' }),
+      });
+      renderWithAnnouncement();
+      openTheRoom();
+      expect(await screen.findByText('Announcement · 2 people · Mei posts here')).toBeInTheDocument();
+      expect(screen.getByText('Only Full-timers post here. Anyone can reply in a thread.')).toBeInTheDocument();
+      (firestore.getDoc as any).mockResolvedValue({
+        exists: () => true,
+        data: () => ({ displayName: 'Alice', photoURL: '' }),
+      });
     });
 
     it('renders pinned announcement strip when post is pinned and shows new unread dot in rail', async () => {
@@ -1114,7 +1133,6 @@ describe('Messages View Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Pinned by Alice · stays at the top until they unpin it')).toBeInTheDocument();
-        expect(document.querySelector('.post.pinned')).toBeInTheDocument();
         expect(screen.getByText('Task 1')).toBeInTheDocument();
       });
       // Test closing read receipts modal via backdrop click
@@ -1187,9 +1205,10 @@ describe('Messages View Component', () => {
     });
 
     it('passes roomType and roomName on a thread reply so only thread participants are notified', async () => {
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
       renderAnnouncementWith([post('m1')]);
-      fireEvent.click(await screen.findByText('Reply in thread'));
-      const reply = await screen.findByPlaceholderText(/Reply to Mei/i);
+      fireEvent.click(within(postRow(await screen.findByText('Post m1'))).getAllByRole('button', { name: 'Reply in thread' })[0]);
+      const reply = await screen.findByPlaceholderText('Reply…');
       fireEvent.change(reply, { target: { value: 'Is transport provided?' } });
       fireEvent.keyDown(reply, { key: 'Enter', metaKey: true });
 
@@ -1228,7 +1247,7 @@ describe('Messages View Component', () => {
       });
 
       const enterView = (id: string) => {
-        const hit = observed.find((o) => o.el.id === `msgb-${id}`);
+        const hit = observed.find((o) => o.el.getAttribute('data-stream-row') === id);
         if (!hit) throw new Error(`post ${id} is not observed`);
         act(() => {
           hit.cb([{ isIntersecting: true, target: hit.el } as IntersectionObserverEntry], {} as IntersectionObserver);
@@ -1240,7 +1259,7 @@ describe('Messages View Component', () => {
         await waitFor(() => expect(observed.length).toBeGreaterThan(0));
 
         expect(chatService.markAnnouncementRead).not.toHaveBeenCalled();
-        expect(document.querySelectorAll('.post.fresh')).toHaveLength(2);
+        expect(observed.map((o) => o.el.getAttribute('data-stream-row'))).toEqual(['m1', 'm2']);
       });
 
       it('marks only the post that enters view as read', async () => {
@@ -1257,9 +1276,24 @@ describe('Messages View Component', () => {
         renderAnnouncementWith([post('m1', { readBy: ['u1'] }), post('m2')]);
         await waitFor(() => expect(observed.length).toBeGreaterThan(0));
 
-        expect(observed.some((o) => o.el.id === 'msgb-m1')).toBe(false);
-        expect(observed.some((o) => o.el.id === 'msgb-m2')).toBe(true);
+        expect(observed.some((o) => o.el.getAttribute('data-stream-row') === 'm1')).toBe(false);
+        expect(observed.some((o) => o.el.getAttribute('data-stream-row') === 'm2')).toBe(true);
       });
+    });
+
+    // G6: announcements keep their own read state — the New line sits above
+    // the first post this viewer has not read, and stays put while they read.
+    it('draws the New line above the first unread post', async () => {
+      renderAnnouncementWith([
+        post('m1', { timestamp: { seconds: 100001 }, readBy: ['u1'] }),
+        post('m2', { timestamp: { seconds: 100002 } }),
+        post('m3', { timestamp: { seconds: 100003 } }),
+      ]);
+      await screen.findByText('Post m2');
+      const flow = Array.from(document.querySelectorAll('[data-stream-row], .strm-newline')).map(
+        (el) => el.getAttribute('data-stream-row') ?? 'NEW'
+      );
+      expect(flow).toEqual(['m1', 'NEW', 'm2', 'm3']);
     });
 
     it('holds a pinned post at the top of the stream with a strip that names who pinned it', async () => {
@@ -1269,10 +1303,10 @@ describe('Messages View Component', () => {
         post('m3', { timestamp: { seconds: 100003 } }),
       ]);
 
-      await waitFor(() => expect(document.querySelectorAll('.post').length).toBe(3));
-      const order = Array.from(document.querySelectorAll('.post')).map((el) => el.id);
-      expect(order).toEqual(['msgb-m2', 'msgb-m1', 'msgb-m3']);
-      expect(screen.getByText('Pinned by Current User · stays at the top until they unpin it')).toBeInTheDocument();
+      await waitFor(() => expect(document.querySelectorAll('[data-stream-row]').length).toBe(3));
+      const order = Array.from(document.querySelectorAll('[data-stream-row]')).map((el) => el.getAttribute('data-stream-row'));
+      expect(order).toEqual(['m2', 'm1', 'm3']);
+      expect(screen.getByText('Pinned by you · stays at the top until you unpin it')).toBeInTheDocument();
     });
 
     it('states the real audience in the composer strip', async () => {
@@ -1293,12 +1327,17 @@ describe('Messages View Component', () => {
   // view / take back for everyone) are schema-backed acts on the message.
   describe('pin and the message menu', () => {
     const streamOf = (container: HTMLElement) => {
-      const stream = container.querySelector('.msgs-stream');
-      if (!stream) throw new Error('no .msgs-stream in container');
+      const stream = container.querySelector('[data-stream-list]');
+      if (!stream) throw new Error('no stream list in container');
       return stream as HTMLElement;
     };
 
-    it('pins a message from the hover tools', async () => {
+    const moreOn = (text: string) =>
+      fireEvent.click(
+        within(within(document.querySelector('[data-stream-list]') as HTMLElement).getByText(text).closest('[data-stream-row]') as HTMLElement).getByRole('button', { name: 'More actions' })
+      );
+
+    it('pins a message from the More menu', async () => {
       const { container } = render(
         <MemoryRouter>
           <Messages />
@@ -1307,9 +1346,8 @@ describe('Messages View Component', () => {
       fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
       await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
 
-      const pin = container.querySelector('.msgb-pin-btn');
-      expect(pin).toBeTruthy();
-      fireEvent.click(pin!);
+      moreOn('Hello trainees');
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Pin' }));
 
       await waitFor(() => {
         expect(chatService.togglePinMessage).toHaveBeenCalledWith('room1', 'm1', true, 'u1');
@@ -1325,8 +1363,8 @@ describe('Messages View Component', () => {
       fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
       await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
 
-      fireEvent.click(container.querySelector('.msgb-menu-wrap button[title="More"]')!);
-      fireEvent.click(screen.getByText('Hide from my view'));
+      moreOn('Hello trainees');
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Hide from my view' }));
 
       // The bubble is gone for this viewer and the hidden-note appears.
       await waitFor(() => {
@@ -1341,7 +1379,7 @@ describe('Messages View Component', () => {
       });
     });
 
-    it('turns a message into a to-do via the ⋯ menu (issue #336)', async () => {
+    it('turns a message into a to-do from the hover toolbar (issue #336)', async () => {
       const { container } = render(
         <MemoryRouter>
           <Messages />
@@ -1350,8 +1388,8 @@ describe('Messages View Component', () => {
       fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
       await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
 
-      fireEvent.click(container.querySelector('.msgb-menu-wrap button[title="More"]')!);
-      fireEvent.click(screen.getByText('Make a to-do'));
+      const row = within(streamOf(container)).getByText('Hello trainees').closest('[data-stream-row]') as HTMLElement;
+      fireEvent.click(within(row).getByRole('button', { name: 'Make a to-do' }));
 
       // The composer opens pre-filled with the message and the message as source.
       expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Hello trainees');
@@ -1368,14 +1406,14 @@ describe('Messages View Component', () => {
       await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
 
       const composer = screen.getByPlaceholderText(/Write a message/i);
-      fireEvent.change(composer, { target: { value: 'Hey @Al', selectionStart: 6 } });
+      fireEvent.change(composer, { target: { value: 'Hey @Al' } });
 
-      // Check if mention popup appears with Alice Green
-      expect(await screen.findByText('Alice Green')).toBeInTheDocument();
-
-      // Click Alice Green
-      fireEvent.click(screen.getByText('Alice Green'));
-      expect(composer).toHaveValue('Hey @Alice Green ');
+      // The room's member is offered; picking them writes their full name.
+      const list = await screen.findByRole('listbox', { name: 'Teammate mentions' });
+      const option = within(list).getAllByRole('option')[0];
+      const name = option.textContent?.match(/Alice[\w ]*/)?.[0].trim();
+      fireEvent.mouseDown(within(list).getByText(name!));
+      expect(composer).toHaveValue(`Hey @${name} `);
     });
 
     it('renders system messages in the message stream', async () => {
@@ -1486,9 +1524,9 @@ describe('Messages View Component', () => {
         expect(avatarEl).toBeTruthy();
       });
 
-      // Verify composer textarea has msgs-ta li-input without li-textarea
-      const textarea = screen.getByPlaceholderText(/Write a message/i);
-      expect(textarea.className).toBe('msgs-ta li-input');
+      // A DM says it is just the two of you, over the one stream composer.
+      expect(screen.getByText('Just the two of you')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument();
     });
 
     it('handles room hiding, unhiding via banner, and deleting room for everyone', async () => {
@@ -1624,14 +1662,18 @@ describe('Messages View Component', () => {
 
     it('highlights @mentions of room members in message text', async () => {
       const mentionMsgs = [
-        { id: 'm2', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: '@Alice please call me', type: 'text' },
+        { id: 'm2', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: '@Alice Moss please call me', type: 'text' },
+        // Typed by hand, first name only: highlighted as chat always did.
+        { id: 'm3', roomId: 'room1', senderId: 'u1', senderName: 'Current User', text: 'on it @alice', type: 'text' },
       ];
+      (firestore.getDoc as any).mockResolvedValueOnce({ exists: () => true, data: () => ({ displayName: 'Alice Moss' }) });
       const container = renderWith(mentionMsgs);
 
       await waitFor(() => {
-        const hit = container.querySelector('.msgb-bubble .text-accent');
+        const hit = container.querySelector('[data-stream-row="m2"] [data-stream-mention]');
         expect(hit).toBeTruthy();
-        expect(hit!.textContent).toBe('@Alice');
+        expect(hit!.textContent).toBe('@Alice Moss');
+        expect(container.querySelector('[data-stream-row="m3"] [data-stream-mention]')?.textContent).toBe('@alice');
       });
     });
 
@@ -1655,12 +1697,15 @@ describe('Messages View Component', () => {
       const container = renderWith(removeMsgs);
 
       await waitFor(() =>
-        expect(within(container.querySelector('.msgs-stream') as HTMLElement).queryByText('oops')).not.toBeNull(),
+        expect(within(container.querySelector('[data-stream-list]') as HTMLElement).queryByText('oops')).not.toBeNull(),
       );
 
-      fireEvent.click(container.querySelector('.msgb-menu-wrap button[title="More"]')!);
-      fireEvent.click(screen.getByText('Take back for everyone'));
-      fireEvent.click(screen.getByText('Yes, remove it'));
+      fireEvent.click(
+        within(screen.getByText('oops').closest('[data-stream-row]') as HTMLElement).getByRole('button', { name: 'More actions' })
+      );
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Take back for everyone' }));
+      expect(screen.getByText(/Take this back for everyone\?/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Yes, remove it' }));
 
       await waitFor(() => {
         expect(chatService.removeMessageForEveryone).toHaveBeenCalledWith('room1', 'm1', 'u1');
@@ -1697,7 +1742,7 @@ describe('Messages View Component', () => {
       const container = renderWith([...mockMessages]);
 
       await waitFor(() =>
-        expect(within(container.querySelector('.msgs-stream') as HTMLElement).queryByText('Hello trainees')).not.toBeNull(),
+        expect(within(container.querySelector('[data-stream-list]') as HTMLElement).queryByText('Hello trainees')).not.toBeNull(),
       );
 
       // Cmd+Enter with an empty composer hits the send guard.
@@ -1708,7 +1753,7 @@ describe('Messages View Component', () => {
       // A rejected send is reported.
       (chatService.sendMessage as any).mockRejectedValueOnce(new Error('network down'));
       fireEvent.change(textarea, { target: { value: 'will fail' } });
-      fireEvent.click(container.querySelector('.msgs-send')!);
+      fireEvent.click(screen.getByRole('button', { name: 'Post' }));
       await waitFor(() =>
         expect(consoleSpy).toHaveBeenCalledWith('Failed to send message:', expect.any(Error)),
       );
@@ -1790,7 +1835,7 @@ describe('Messages View Component', () => {
 
       const container = renderWith([...mockMessages]);
       await waitFor(() =>
-        expect(within(container.querySelector('.msgs-stream') as HTMLElement).queryByText('Hello trainees')).not.toBeNull(),
+        expect(within(container.querySelector('[data-stream-list]') as HTMLElement).queryByText('Hello trainees')).not.toBeNull(),
       );
 
       await waitFor(() => expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error)));
@@ -1841,7 +1886,7 @@ describe('Messages View Component', () => {
         },
       ];
       const container = renderWith(attachMsgs);
-      await waitFor(() => expect(container.querySelector('.msgs-stream')).toBeTruthy());
+      await waitFor(() => expect(container.querySelector('[data-stream-list]')).toBeTruthy());
 
       // Unknown attachment type renders the Paperclip fallback without crashing.
       expect(screen.getByText('Odd link')).toBeInTheDocument();
@@ -1853,7 +1898,7 @@ describe('Messages View Component', () => {
 
       // Todo toggle failure is reported.
       (setTodoDone as any).mockRejectedValueOnce(new Error('no todo'));
-      fireEvent.click(screen.getByText('Todo item').closest('div')!.parentElement!.querySelector('input[type="checkbox"]')!);
+      fireEvent.click(screen.getByText('Todo item').closest('label')!.querySelector('input[type="checkbox"]')!);
       await waitFor(() => expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error)));
       consoleSpy.mockRestore();
     });
@@ -1959,6 +2004,163 @@ describe('Messages View Component', () => {
 
       fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
       expect(mockNavigate).toHaveBeenCalledWith('/messages/room1');
+    });
+  });
+
+  // ── #1259: DMs, groups and announcements on the one stream (ADR 0033) ──
+  describe('on the written stream', () => {
+    const at = (iso: string) => ({ seconds: Math.floor(new Date(iso).getTime() / 1000) });
+    const chatMsg = (id: string, over: Record<string, unknown> = {}) => ({
+      id,
+      roomId: 'room1',
+      text: `Message ${id}`,
+      senderId: 'u2',
+      senderName: 'Alice',
+      timestamp: at('2026-09-20T10:00:00Z'),
+      type: 'text',
+      ...over,
+    });
+
+    const openWith = (msgs: any[]) => {
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? msgs : mockRooms;
+        successCallback({
+          forEach: (fn: any) => dataList.forEach((item: any) => {
+            const { id, ...rest } = item;
+            fn({ id, data: () => rest });
+          }),
+        });
+        return vi.fn();
+      });
+      const view = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      return view;
+    };
+
+    const wideScreen = () =>
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+          matches: query === '(min-width: 1280px)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+
+    const rowOf = (text: string) =>
+      within(document.querySelector('[data-stream-list]') as HTMLElement).getByText(text).closest('[data-stream-row]') as HTMLElement;
+
+    it('draws every message as a left-aligned row under its author, your own included, with no bubble (G3)', async () => {
+      openWith([chatMsg('a'), chatMsg('b', { senderId: 'u1', senderName: 'Current User', timestamp: at('2026-09-20T11:00:00Z') })]);
+      await screen.findByText('Message b');
+      const mine = rowOf('Message b');
+      expect(within(mine).getByText('Current User')).toBeInTheDocument();
+      expect(mine.className).not.toMatch(/mine/);
+      expect(document.querySelector('.msgb, .msgb-bubble')).toBeNull();
+      expect(screen.getByText('Group · 2 people')).toBeInTheDocument();
+    });
+
+    it("draws the New line above the first message after the room's last-read (G6)", async () => {
+      localStorage.setItem('chat_read_room1', String(new Date('2026-09-20T10:30:00Z').getTime()));
+      openWith([
+        chatMsg('a', { timestamp: at('2026-09-20T10:00:00Z') }),
+        chatMsg('b', { timestamp: at('2026-09-20T11:00:00Z') }),
+      ]);
+      await screen.findByText('Message b');
+      const flow = Array.from(document.querySelectorAll('[data-stream-row], .strm-newline')).map(
+        (el) => el.getAttribute('data-stream-row') ?? 'NEW'
+      );
+      expect(flow).toEqual(['a', 'NEW', 'b']);
+      localStorage.removeItem('chat_read_room1');
+    });
+
+    it('draws a system line as a notice, not a row', async () => {
+      openWith([chatMsg('s', { type: 'system', senderId: 'system', senderName: 'System', text: 'Alice joined the group' })]);
+      expect(await screen.findByText('Alice joined the group')).toHaveAttribute('role', 'note');
+      expect(screen.queryByText('System')).toBeNull();
+    });
+
+    describe('the Thread', () => {
+      const original = window.matchMedia;
+      afterEach(() => {
+        Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+      });
+
+      const thread = [
+        chatMsg('p', {
+          senderId: 'u1',
+          senderName: 'Current User',
+          text: 'Table plan for Thursday',
+          attachments: [
+            { id: 'c9', type: 'contact', name: 'Daniel Reyes' },
+            { id: 'e9', type: 'event', name: 'Team Dinner' },
+          ],
+        }),
+        chatMsg('r1', { parentId: 'p', text: 'I can take the first hour', timestamp: at('2026-09-20T10:05:00Z') }),
+        chatMsg('r2', {
+          parentId: 'p',
+          senderId: 'u1',
+          senderName: 'Current User',
+          text: 'gone',
+          timestamp: at('2026-09-20T10:06:00Z'),
+          deleted: { by: 'u1', at: null },
+        }),
+      ];
+
+      it('opens beside the stream at desktop width, with the parent, its attachments, the replies and a take-back (T2)', async () => {
+        wideScreen();
+        const { container } = openWith(thread);
+        await screen.findByText('Table plan for Thursday');
+        // The parent carries its Thread chip; replies never sit in the stream.
+        expect(within(container.querySelector('[data-stream-list]') as HTMLElement).queryByText('I can take the first hour')).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: /2 replies/ }));
+
+        const pane = await screen.findByRole('region', { name: 'Thread' });
+        expect(pane.closest('.strm-pane')).toBeTruthy();
+        // The channel stays, beside it.
+        expect(screen.getByText('Group · 2 people')).toBeInTheDocument();
+        expect(within(pane).getByText('in Trainees Chat')).toBeInTheDocument();
+        expect(within(pane).getByText('Table plan for Thursday')).toBeInTheDocument();
+        expect(within(pane).getByText('Daniel Reyes')).toBeInTheDocument();
+        expect(within(pane).getByText('Team Dinner')).toBeInTheDocument();
+        expect(within(pane).getByText('I can take the first hour')).toBeInTheDocument();
+        expect(within(pane).getByText('You took this message back.')).toBeInTheDocument();
+
+        // Reply from the pane.
+        const box = within(pane).getByPlaceholderText('Reply…');
+        fireEvent.change(box, { target: { value: 'Thanks!' } });
+        fireEvent.keyDown(box, { key: 'Enter', metaKey: true });
+        await waitFor(() =>
+          expect(chatService.sendMessage).toHaveBeenCalledWith(
+            'room1', 'Thanks!', expect.objectContaining({ uid: 'u1' }), undefined, ['u1', 'u2'], 'p', 'group', 'Trainees Chat'
+          )
+        );
+
+        // Close it.
+        fireEvent.click(within(pane).getByRole('button', { name: 'Close Thread' }));
+        expect(screen.queryByRole('region', { name: 'Thread' })).toBeNull();
+      });
+
+      it('replaces the stream, with back, where there is no room beside it', async () => {
+        openWith(thread);
+        await screen.findByText('Table plan for Thursday');
+        fireEvent.click(screen.getByRole('button', { name: /2 replies/ }));
+        const pane = await screen.findByRole('region', { name: 'Thread' });
+        expect(pane.closest('.strm-pane')).toBeNull();
+        expect(screen.queryByText('Group · 2 people')).toBeNull();
+        fireEvent.click(within(pane).getByRole('button', { name: 'Back to Trainees Chat' }));
+        expect(await screen.findByText('Group · 2 people')).toBeInTheDocument();
+      });
     });
   });
 });

@@ -29,6 +29,21 @@ export interface TeamMemberLike {
  *  Follow-up ask. A source without kinds only ever posts `comment`. */
 export type StreamComposeKind = "comment" | "question" | "nudge";
 
+/** Something staged in the composer to go with the next post (C5): a chat's
+ *  contact card or reference data. Each is removable before sending. */
+export interface StreamStagedItem {
+  key: string;
+  label: string;
+  /** A contact reads as a card with its initials; anything else as a file. */
+  kind: "contact" | "file";
+}
+
+/** A source's own entry in a row's More menu (a chat's Pin, Hide from my view). */
+export interface StreamMenuAction {
+  label: string;
+  run(): void;
+}
+
 export interface StreamCapabilities {
   /** Comment · Question · Ask a follow-up chips in the composer. */
   kinds: boolean;
@@ -75,6 +90,29 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   mentionCandidates: MentionUser[];
   /** The viewer's last-read point, where the source has read state. */
   lastReadAt?: string | null;
+  /** Held first, above the stream, under this strip ("Pinned by …"); null
+   *  keeps the message in date order. */
+  pinnedLabel?(message: M): string | null;
+  /** A neutral tag beside the author's name ("Full-timer"). */
+  badge?(message: M): string | null;
+  /** The author's photo, where the source has one. The row falls back to
+   *  initials without it, or when it fails to load. */
+  avatarUrl?(message: M): string | null;
+  /** A message taken back: the line that reads in its place. It has no actions. */
+  goneLabel?(message: M): string | null;
+  /** A line from the system ("Josh joined"), drawn centred rather than as a row. */
+  notice?(message: M): boolean;
+  /** The More menu's delete item, where delete is softer than "Delete message". */
+  deleteLabel?(message: M): string;
+  /** Ask before deleting. */
+  deleteConfirm?: { prompt: string; yes: string; no: string };
+  /** Source-specific More menu entries, above Delete. */
+  moreActions?(message: M): StreamMenuAction[];
+  /** With `capabilities.attachments`: what is staged to go with the next post,
+   *  the paperclip, and removing one item. A post may then have no text. */
+  staged?: StreamStagedItem[];
+  attach?(): void;
+  unstage?(key: string): void;
   post(input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }): unknown;
   reply(parent: M, input: { body: string; mentionedUserIds: string[] }): unknown;
   /** Close a Follow-up ask: someone followed up, or the asker withdrew it. */

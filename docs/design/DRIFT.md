@@ -232,3 +232,22 @@ message), Copy text, and Delete where the stream model allows it.
 | 44 | **C1** draws a tools row of @, the shortcut hint and send. The phone composer has only send: the phone has never offered @mention candidates on a person, and "⌘↵ to post" means nothing on a touch keyboard (`M-Thread.dc.html` already drops the hint). | **Design** for @; **the build** for the hint | The hint stays off the phone. @mentions on the phone are deferred — ADR 0007's candidates (any teammate on a Conversation, Full-timers only on Full-timers) apply unchanged when they come. |
 | 45 | `M-Person.dc.html` draws the audience line under the Conversation / Full-timers switch and a 36px-tall switch. Row 37 settled the audience line above the composer only, and every phone tap target is at least 44px. | **Row 37 and the 44px rule** | Built with the audience line above the composer (with a lock on Full-timers) and a 44px switch. The count sits on the stream you are not reading, as the board draws it. |
 | 46 | Staff-only messages were read on the phone from `contacts/{id}/threads` alone, and `@cisa/core`'s thread subscription dropped `scope`, `parentId` and the ask's close fields — so the phone could neither find the Full-timers stream (which lives in `teamThreads`) nor tell a reply or a closed ask from a message. | **Neither — the core data layer had fallen behind the web's** | `@cisa/core` now reads `teamThreads` for a Full-timer (on the effective role), keeps `scope`, `parentId` and `closedBy*`, writes replies and Full-timers messages to the right collection, and gains `closeFollowUpAsk` — mirrors of `src/lib/threads.ts`. No path or rule changed. |
+
+### 2026-09-30 — Messages on the shared stream
+
+Found building [#1259](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1259),
+DMs, groups and announcements on the stream of
+[ADR 0033](../adr/0033-one-written-stream-grammar.md), by reading
+[`threads/A-Messages.dc.html`](threads/A-Messages.dc.html),
+[`Announce-FT.dc.html`](threads/Announce-FT.dc.html),
+[`Chat.dc.html`](threads/Chat.dc.html) and
+[`Composer.dc.html`](threads/Composer.dc.html) against the page they replaced.
+G6, C5, S4 and S5 are ticked.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 47 | S4 says a member sees "Reply in thread" on each post; `A-Messages.dc.html` draws a member's posts with Got it and the Thread chip only — a post with no replies has no way into its Thread except the hover toolbar. | **Checklist** — a member reading on a laptop without hovering should still see how to ask about a post | A member's post carries Got it and, while it has no replies, a "Reply in thread" button; once it has replies the chip takes that place. A Full-timer's rows carry the receipt link instead and reach the Thread through the chip or the toolbar, as `Announce-FT.dc.html` draws. |
+| 48 | T2 draws the Thread beside the stream at 1440 and says nothing about the widths between that and the phone. | **Neither — the canvas is silent** | Messages puts the Thread beside at 1280px and up (the width at which the full rail, the 328px list, the channel and the 340px pane all fit) and replaces the channel, with back, below that. |
+| 49 | The chat pane let the author or a Full-timer take back a parent that still had replies. The stream model forbids deleting a parent whose replies remain (user story 19). | **Design** (ADR 0033) | "Take back for everyone" is offered only on a message with no replies. A take-back is a tombstone, so nothing was ever orphaned, but one rule across every stream is the point of the grammar. |
+| 50 | `Chat.dc.html` and `Composer.dc.html` show the chat placeholder as "Message {room}". | **Build, for now** | The placeholders stay "Write a message…" / "Write an announcement…", which the e2e and the rest of the page already use. The hint does follow the canvas: "⌘↵ to send" in a chat, "⌘↵ to post" in an announcement. |
+| 51 | S4's strip reads "…until {they} unpin it", and `A-Messages.dc.html` draws "until she unpins it". The app holds no pronouns. | **Build** | The strip says "Pinned by you · stays at the top until you unpin it" for the viewer's own pin and "…until they unpin it" for anyone else's. |

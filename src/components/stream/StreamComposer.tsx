@@ -1,5 +1,5 @@
 import React, { useCallback, useId, useMemo, useRef, useState } from "react";
-import { AtSign, Lock, Send } from "lucide-react";
+import { AtSign, FileText, Lock, Paperclip, Send, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useCommand } from "../../lib/commands";
 import { useLanguage } from "../LanguageProvider";
@@ -12,7 +12,7 @@ import {
   type MentionUser,
 } from "../../lib/mentions";
 import { COMPOSE_KINDS, COMPOSE_ORDER } from "../ComposeKindPicker";
-import type { StreamComposeKind } from "./types";
+import type { StreamComposeKind, StreamStagedItem } from "./types";
 
 // The one composer box (C1–C3): the audience above, then the box — kind chips
 // inside it where the source has kinds, the text, and a tools row of @, the
@@ -34,9 +34,19 @@ interface StreamComposerProps {
   candidates: MentionUser[];
   autoFocus?: boolean;
   maxLength?: number;
+  /** C5: what is staged to go with the post, above the text; each removable. */
+  staged?: StreamStagedItem[];
+  /** The paperclip — only where the source takes attachments. */
+  onAttach?: () => void;
+  onUnstage?: (key: string) => void;
   /** A promise makes the box wait: the draft clears when it resolves and stays
    *  where it was if it rejects, so a failed send loses nothing. */
   onSubmit: (input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }) => SubmitResult;
+}
+
+function initials(name: string): string {
+  const parts = (name || "?").trim().split(/\s+/);
+  return (parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : (parts[0] || "?").slice(0, 2)).toUpperCase();
 }
 
 export default function StreamComposer({
@@ -51,8 +61,12 @@ export default function StreamComposer({
   candidates,
   autoFocus,
   maxLength,
+  staged,
+  onAttach,
+  onUnstage,
   onSubmit,
 }: StreamComposerProps) {
+  const hasStaged = !!staged && staged.length > 0;
   const { t } = useLanguage();
   const id = useId();
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -121,7 +135,7 @@ export default function StreamComposer({
   const submit = () => {
     const body = draft.trim();
     if (busy) return;
-    if (!body) {
+    if (!body && !hasStaged) {
       taRef.current?.focus();
       return;
     }
@@ -184,6 +198,33 @@ export default function StreamComposer({
             ))}
           </div>
         )}
+        {hasStaged && (
+          <div className="strm-staged" role="list" aria-label={t("stream.staged")}>
+            {staged!.map((s) => (
+              <span key={s.key} className="strm-stg" role="listitem">
+                {s.kind === "contact" ? (
+                  <span className="strm-stg-av" aria-hidden>
+                    {initials(s.label)}
+                  </span>
+                ) : (
+                  <span className="strm-stg-fi" aria-hidden>
+                    <FileText className="w-3.5 h-3.5" />
+                  </span>
+                )}
+                <span className="strm-stg-name">{s.label}</span>
+                <button
+                  type="button"
+                  className="strm-tool"
+                  aria-label={t("stream.remove_staged").replace("{name}", s.label)}
+                  title={t("stream.remove_staged").replace("{name}", s.label)}
+                  onClick={() => onUnstage?.(s.key)}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
         <label className="sr-only" htmlFor={id}>
           {label}
         </label>
@@ -200,6 +241,11 @@ export default function StreamComposer({
           className="strm-ta"
         />
         <div className="strm-ctools">
+          {onAttach && (
+            <button type="button" className="strm-tool" aria-label={t("stream.attach")} title={t("stream.attach")} onClick={onAttach}>
+              <Paperclip className="w-4 h-4" />
+            </button>
+          )}
           {candidates.length > 0 && (
             <button type="button" className="strm-tool" aria-label={t("stream.mention")} onClick={startMention}>
               <AtSign className="w-4 h-4" />
@@ -211,7 +257,7 @@ export default function StreamComposer({
             className="strm-send"
             aria-label={submitLabel}
             title={submitLabel}
-            disabled={!draft.trim() || busy}
+            disabled={(!draft.trim() && !hasStaged) || busy}
             onClick={submit}
           >
             <Send className="w-4 h-4" />

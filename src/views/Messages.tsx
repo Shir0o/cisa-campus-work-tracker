@@ -14,7 +14,6 @@ import {
 import {
   MessageSquare,
   Plus,
-  Send,
   Paperclip,
   Info,
   ChevronLeft,
@@ -26,13 +25,9 @@ import {
   History,
   HeartHandshake,
   FileText,
-  Phone,
-  Trash2,
   Check,
-  X,
   Pin,
-  Bell,
-  Eye
+  Bell
 } from 'lucide-react';
 import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
 import { db } from '../lib/firebase';
@@ -43,7 +38,6 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
 import {
-  sendMessage,
   togglePinMessage,
   removeMessageForEveryone,
   deleteChatRoom,
@@ -62,45 +56,14 @@ import CreateChatModal from '../components/modals/CreateChatModal';
 import ChatDetailsModal from '../components/modals/ChatDetailsModal';
 import AttachDataModal from '../components/modals/AttachDataModal';
 import ContactPill from '../components/ui/ContactPill';
-import { Translate } from '../components/Translate';
-import { useTranslate } from '../hooks/useTranslate';
-import { MsgThreadPane } from '../components/messages/MsgThreadPane';
-import { convTopLevel, convReplyCount, convRepliers, convLastReply } from '../services/chat';
-
-/** Can this viewer take the message back for everyone? Its author, or a
- *  Full-timer — the same gate firestore.rules applies to the `deleted` field. */
-function canRemoveForEveryone(msg: ChatMessage, uid: string | undefined, isAdmin: boolean): boolean {
-  return !!msg && !msg.deleted && (msg.senderId === uid || isAdmin);
-}
-
-/** What a taken-back message reads as ("You took this message back." /
- *  "Removed by Mei.") — the design's `messageGoneLabel`. */
-function messageGoneLabel(msg: ChatMessage, uid: string | undefined): string {
-  if (!msg.deleted) return "";
-  if (msg.deleted.by === uid) {
-    return msg.senderId === uid ? "You took this message back." : "You removed this message.";
-  }
-  const who = firstName(msg.senderName);
-  return msg.deleted.by === msg.senderId ? `${who} took this message back.` : `Removed by ${firstName(msg.deleted.by)}.`;
-}
-
-/** Bubble body with @mentions highlighted against the room's first names —
- *  the design's `renderBody`. */
-function renderBody(text: string, memberFirstNames: string[]): React.ReactNode[] {
-  const parts = text.split(/(@[A-Za-z]+)/g);
-  return parts.map((part, i) => {
-    if (/^@[A-Za-z]+$/.test(part)) {
-      const hit = memberFirstNames.some((n) => n.toLowerCase() === part.slice(1).toLowerCase());
-      if (hit) return <span key={i} className="text-accent font-semibold">{part}</span>;
-    }
-    return <React.Fragment key={i}>{part}</React.Fragment>;
-  });
-}
-
-function MessageBody({ text, memberFirstNames }: { text: string; memberFirstNames: string[] }) {
-  const { translatedText } = useTranslate(text);
-  return <>{renderBody(translatedText, memberFirstNames)}</>;
-}
+import Stream from '../components/stream/Stream';
+import {
+  announcementReadMark,
+  chatAdapter,
+  chatReadMark,
+  chatRoomSubtitle,
+  type ChatStreamMessage,
+} from '../components/stream/chatAdapter';
 
 export default function Messages() {
   const { roomId } = useParams<{ roomId?: string }>();
@@ -109,6 +72,9 @@ export default function Messages() {
   const { setSelectedContact, openLogInteraction } = useLayout();
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
+  // A Thread opens beside the channel where both fit (T2); below that it
+  // replaces the channel, with back.
+  const threadBeside = useMediaQuery("(min-width: 1280px)");
   const isAdmin = userRole === 'admin';
 
   // Modals state
@@ -121,8 +87,12 @@ export default function Messages() {
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(roomId || null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputText, setInputText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  // Where the "New" line goes (G6), fixed when the room opens: a chat's
+  // per-device last-read, an announcement's first unread post. Reading moves
+  // both on, and the line should not chase the reader down the stream.
+  const [readMark, setReadMark] = useState<string | null>(null);
+  const readMarkRoomRef = useRef<string | null>(null);
   const [roomSearch, setRoomSearch] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
   const { language, t } = useLanguage();
@@ -155,25 +125,19 @@ export default function Messages() {
   const [threadSearchOpen, setThreadSearchOpen] = useState(false);
   const [threadSearch, setThreadSearch] = useState('');
   const [pinnedOpen, setPinnedOpen] = useState(false);
-  const [threadOf, setThreadOf] = useState<string | null>(null);
-
-  // Message ⋯ menu (which message, and whether the confirm step is showing)
-  const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [menuConfirm, setMenuConfirm] = useState(false);
 
   // "Make a to-do" — the message being turned into a follow-up task.
   const [todoFor, setTodoFor] = useState<ChatMessage | null>(null);
 
-  // User details cache (to show correct names for direct chats)
-  const [usersCache, setUsersCache] = useState<Record<string, { displayName: string; photoURL?: string }>>({});
+  // User details cache (to show correct names for direct chats; the role
+  // says who posts in an announcement)
+  const [usersCache, setUsersCache] = useState<Record<string, { displayName: string; photoURL?: string; role?: string }>>({});
 
-  // Auto-scroll ref for messages stream container
+  // The open conversation — the stream inside it holds the scrolling list.
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Mention system state
-  const [mentionSearch, setMentionSearch] = useState<string | null>(null);
-  const [mentionIndex, setMentionIndex] = useState(0);
-  const [roomMembers, setRoomMembers] = useState<{ uid: string; displayName: string }[]>([]);
+  // The room's other members: mention candidates and the header's posters.
+  const [roomMembers, setRoomMembers] = useState<{ uid: string; displayName: string; role?: string }[]>([]);
 
   // Hidden-from-view messages & conversations (client-only, per viewer — MessageHides / ConvHides)
   const [, setHideNonce] = useState(0);
@@ -256,18 +220,18 @@ export default function Messages() {
       const exists = rooms.some((r) => r.id === activeRoomId);
       if (!exists) {
         setActiveRoomId(null);
-        setThreadOf(null);
       }
     }
   }, [rooms, activeRoomId, loadingRooms]);
 
   // 2. Fetch Active Room Messages
   useEffect(() => {
-    setThreadOf(null);
     if (!activeRoomId) {
       setMessages([]);
+      readMarkRoomRef.current = null;
       return;
     }
+    const activeRoom = rooms.find(r => r.id === activeRoomId);
 
     const messagesQuery = query(
       collection(db, 'chatRooms', activeRoomId, 'messages'),
@@ -281,28 +245,31 @@ export default function Messages() {
       });
       setMessages(roomMsgs);
 
+      // The New line's place, once per room visit — read before this visit
+      // marks the room read.
+      if (readMarkRoomRef.current !== activeRoomId) {
+        readMarkRoomRef.current = activeRoomId;
+        setReadMark(
+          activeRoom?.type === 'announcement'
+            ? announcementReadMark(roomMsgs, effectiveUid || '')
+            : chatReadMark(localStorage.getItem(`chat_read_${activeRoomId}`))
+        );
+      }
+
       // Mark as read in LocalStorage
       localStorage.setItem(`chat_read_${activeRoomId}`, Date.now().toString());
-
-      // Scroll messages stream container to bottom without jumping page
-      setTimeout(() => {
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-      }, 100);
     }, (error) => {
       console.error('Error fetching messages:', error);
     });
 
     // Populate room members for autocomplete
-    const activeRoom = rooms.find(r => r.id === activeRoomId);
     if (activeRoom) {
-      const membersList: { uid: string; displayName: string }[] = [];
+      const membersList: { uid: string; displayName: string; role?: string }[] = [];
       activeRoom.memberIds.forEach(async (uid) => {
         if (uid === currentUser?.uid) return;
         const cached = usersCache[uid];
         if (cached) {
-          membersList.push({ uid, displayName: cached.displayName });
+          membersList.push({ uid, displayName: cached.displayName, role: cached.role });
         } else {
           try {
             const userDoc = await getDoc(doc(db, 'users', uid));
@@ -310,9 +277,9 @@ export default function Messages() {
               const uData = userDoc.data();
               setUsersCache(prev => ({
                 ...prev,
-                [uid]: { displayName: uData.displayName, photoURL: uData.photoURL }
+                [uid]: { displayName: uData.displayName, photoURL: uData.photoURL, role: uData.role }
               }));
-              membersList.push({ uid, displayName: uData.displayName });
+              membersList.push({ uid, displayName: uData.displayName, role: uData.role });
             }
           } catch (e) {
             console.error(e);
@@ -376,89 +343,11 @@ export default function Messages() {
     return otherUid ? usersCache[otherUid]?.photoURL || '' : '';
   };
 
-  // The thread's kind note — the design's `convSub`.
+  // The line under the room's name (S5): "Group · 4 people", or who posts in
+  // an announcement.
   const threadSub = activeRoom
-    ? activeRoom.type === 'group'
-      ? `${activeRoom.memberIds.length} ${activeRoom.memberIds.length === 1 ? 'member' : 'members'}`
-      : activeRoom.type === 'announcement'
-        ? `Announcement · ${activeRoom.memberIds.length} people`
-        : 'Just the two of you'
+    ? chatRoomSubtitle(activeRoom, { members: roomMembers, meIsFullTimer: isAdmin, t })
     : '';
-
-  // Only a Full-timer posts in an announcement room — the same gate
-  // firestore.rules applies, so a member sees a note instead of a composer
-  // whose send would be denied. Mirrors canPostToRoom in @cisa/core.
-  const canPostToActiveRoom = !activeRoom || activeRoom.type !== 'announcement' || isAdmin;
-
-  const handleSend = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!effectiveUid || !activeRoomId) return;
-
-    const textToSend = inputText.trim();
-    if (!textToSend && attachments.length === 0) return;
-
-    const senderName = impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member');
-    const senderPhoto = impersonateTarget ? '' : (currentUser?.photoURL || '');
-
-    try {
-      await sendMessage(
-        activeRoomId,
-        textToSend,
-        {
-          uid: effectiveUid,
-          displayName: senderName,
-          photoURL: senderPhoto
-        },
-        attachments,
-        activeRoom?.memberIds,
-        null,
-        activeRoom?.type,
-        activeRoom?.name
-      );
-      setInputText('');
-      setAttachments([]);
-      setMentionSearch(null);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
-  };
-
-  // Design's composer: Cmd/Ctrl+Enter sends, plain Enter makes a new line.
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  // Mention autocomplete trigger
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setInputText(val);
-
-    const cursor = e.target.selectionStart;
-    const beforeCursor = val.slice(0, cursor);
-    const lastAt = beforeCursor.lastIndexOf('@');
-
-    if (lastAt !== -1 && (lastAt === 0 || /\s/.test(beforeCursor[lastAt - 1]))) {
-      const query = beforeCursor.slice(lastAt + 1);
-      if (!/\s/.test(query)) {
-        setMentionSearch(query);
-        setMentionIndex(0);
-        return;
-      }
-    }
-    setMentionSearch(null);
-  };
-
-  const handleSelectMention = (displayName: string) => {
-    if (mentionSearch === null) return;
-    const cursor = inputText.slice(0, inputText.lastIndexOf('@') + 1).length;
-    const before = inputText.slice(0, cursor);
-    const after = inputText.slice(cursor + mentionSearch.length);
-    setInputText(`${before}${displayName} `);
-    setMentionSearch(null);
-  };
 
   // Filtered and deduplicated room list (the design's msgs-filters + search)
   const seenDirectUids = new Set<string>();
@@ -543,43 +432,35 @@ export default function Messages() {
   // ── the thread's visible messages (the design's visibleMessages: hidden
   //    messages are filtered out for THIS viewer only, and can be brought back)
   const hiddenHere = effectiveUid ? messages.filter((m) => MessageHides.has(effectiveUid, m.id)) : [];
+  // A search narrows the top-level messages; a Thread keeps all its replies.
   const visibleMsgs = messages.filter((m) => {
     if (effectiveUid && MessageHides.has(effectiveUid, m.id)) return false;
-    if (threadSearch) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
+    if (threadSearch && !m.parentId) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
     return true;
   });
-  const topLevelMsgs = useMemo(() => convTopLevel(visibleMsgs), [visibleMsgs]);
   const pinned = messages.filter((m) => m.pinned && !m.deleted);
-  // An announcement room holds its pinned posts at the top of the stream,
-  // otherwise in date order; every other room keeps plain date order.
-  const streamMsgs = useMemo(
-    () =>
-      activeRoom?.type === 'announcement'
-        ? [...topLevelMsgs.filter((m) => m.pinned && !m.deleted), ...topLevelMsgs.filter((m) => !(m.pinned && !m.deleted))]
-        : topLevelMsgs,
-    [topLevelMsgs, activeRoom?.type]
-  );
-  // Who to credit on a pinned post's strip: the pinner when known, else the
-  // post's author (a post pinned from the create wizard, or before `pinnedBy`).
-  const pinnerName = (m: ChatMessage) =>
-    (m.pinnedBy && (m.pinnedBy === currentUser?.uid ? currentUser.displayName : usersCache[m.pinnedBy]?.displayName)) ||
-    m.senderName;
+
+  // The stream's scrolling list, inside the open conversation.
+  const streamList = () => (messagesContainerRef.current?.querySelector('[data-stream-list]') ?? null) as HTMLElement | null;
 
   // An announcement post is "read" when it enters view, not when the room
   // loads — so the "new to you" treatment survives until the reader gets to it.
-  // The observer starts after the stream's scroll-to-bottom (100ms, above) so
+  // The observer starts after the stream has opened on its newest message, so
   // posts parked off-screen at the top during load are not swept up.
   const announcementRoomId = activeRoom?.type === 'announcement' ? activeRoom.id : null;
   const markedReadRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!announcementRoomId || !effectiveUid || typeof IntersectionObserver === 'undefined') return;
-    const root = messagesContainerRef.current;
+    const unread = new Set(
+      messages.filter((m) => !m.parentId && !m.deleted && !m.readBy?.includes(effectiveUid)).map((m) => m.id)
+    );
+    const root = (messagesContainerRef.current?.querySelector('[data-stream-list]') ?? null) as HTMLElement | null;
     let cleanup = () => {};
     const timer = window.setTimeout(() => {
       const observer = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
-            const id = entry.target.id.replace(/^msgb-/, '');
+            const id = entry.target.getAttribute('data-stream-row') || '';
             if (!entry.isIntersecting || markedReadRef.current.has(`${announcementRoomId}/${id}`)) continue;
             markedReadRef.current.add(`${announcementRoomId}/${id}`);
             observer.unobserve(entry.target);
@@ -589,8 +470,9 @@ export default function Messages() {
         // Shrink the viewport a little so a post has to be properly on screen.
         { root, rootMargin: '-10% 0px -10% 0px' }
       );
-      root?.querySelectorAll('.post.fresh').forEach((el) => {
-        if (!markedReadRef.current.has(`${announcementRoomId}/${el.id.replace(/^msgb-/, '')}`)) observer.observe(el);
+      root?.querySelectorAll('[data-stream-row]').forEach((el) => {
+        const id = el.getAttribute('data-stream-row') || '';
+        if (unread.has(id) && !markedReadRef.current.has(`${announcementRoomId}/${id}`)) observer.observe(el);
       });
       cleanup = () => observer.disconnect();
     }, 150);
@@ -599,12 +481,12 @@ export default function Messages() {
       cleanup();
     };
   }, [announcementRoomId, effectiveUid, messages]);
-  const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
 
   const jumpTo = (messageId: string) => {
-    const el = document.getElementById(`msgb-${messageId}`);
-    if (el && messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = el.offsetTop - 24;
+    const list = streamList();
+    const el = list?.querySelector(`[data-stream-row="${messageId}"]`) as HTMLElement | null | undefined;
+    if (el && list) {
+      list.scrollTop = el.offsetTop - 24;
     }
     setPinnedOpen(false);
   };
@@ -624,11 +506,7 @@ export default function Messages() {
         },
       });
     }
-    setMenuFor(null);
-    setMenuConfirm(false);
   };
-
-  const activeRoomIsGroupish = !!activeRoom && activeRoom.type !== 'direct';
 
   // Team for the "make a to-do" composer: the room's members plus the viewer.
   const todoTeam: TodoPerson[] = useMemo(() => {
@@ -638,6 +516,123 @@ export default function Messages() {
     }
     return people;
   }, [roomMembers, currentUser]);
+
+  // The open room as a written stream (ADR 0033): DM, group or announcement.
+  const adapter = activeRoom && effectiveUid
+    ? chatAdapter({
+        room: activeRoom,
+        roomName: getRoomName(activeRoom),
+        messages: visibleMsgs,
+        me: {
+          uid: effectiveUid,
+          displayName: impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member'),
+          photoURL: impersonateTarget ? '' : (currentUser?.photoURL || ''),
+          isFullTimer: isAdmin,
+        },
+        members: roomMembers,
+        lastReadAt: readMark,
+        staged: attachments,
+        search: threadSearch,
+        t,
+        onAttach: () => setAttachDataOpen(true),
+        onUnstage: (i) => setAttachments((prev) => prev.filter((_, n) => n !== i)),
+        onSent: () => setAttachments([]),
+        onPin: (m, pin) => void togglePinMessage(activeRoom.id, m.id, pin, currentUser?.uid),
+        onHide: (m) => MessageHides.hide(effectiveUid, m.id),
+        onRemove: (m) => handleRemoveAll(m),
+      })
+    : null;
+
+  /** A message's attachments, under its body: contact cards open the
+   *  person; to-dos tick; the rest go where they live. */
+  const renderAttachments = (m: ChatStreamMessage) => {
+    const list = m.source.attachments;
+    if (!list || list.length === 0) return null;
+    return (
+      <div className="strm-files">
+        {list.map((attach, idx) => {
+          if (attach.type === 'contact') {
+            return (
+              <ContactPill
+                key={idx}
+                contactId={attach.id}
+                fallbackName={attach.name}
+                fallbackSubtitle={attach.subtitle}
+                onOpenContact={(contact) => setSelectedContact(contact)}
+              />
+            );
+          }
+          const AttachIcon = getAttachmentIcon(attach.type);
+          const body = (
+            <span className="min-w-0">
+              <span className={cn(attach.type === 'todo' && attach.status === 'completed' && "line-through opacity-70")}>{attach.name}</span>
+              {attach.subtitle && <span className="strm-file-sub">{attach.subtitle}</span>}
+            </span>
+          );
+          if (attach.type === 'todo') {
+            return (
+              <label key={idx} className="strm-file">
+                <input
+                  type="checkbox"
+                  checked={attach.status === 'completed'}
+                  onChange={(e) => handleToggleTodo(attach, e.target.checked)}
+                  className="w-4 h-4 rounded accent-primary cursor-pointer shrink-0"
+                />
+                {body}
+              </label>
+            );
+          }
+          return (
+            <button key={idx} type="button" className="strm-file" onClick={() => handleAttachmentClick(attach)}>
+              <AttachIcon className="w-4 h-4 shrink-0 text-on-surface-variant" />
+              {body}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  /** Beside an announcement post's Thread chip (S4): a member says Got it and
+   *  can reply in a thread; a Full-timer sees who has read it, as one link to
+   *  the receipts. */
+  const renderPostActions = (m: ChatStreamMessage, { openThread, replies }: { openThread: () => void; replies: number }) => {
+    const s = m.source;
+    if (m.parentId || !activeRoom || !effectiveUid) return null;
+    const acked = !!s.acknowledged?.includes(effectiveUid);
+    const read = String(s.readBy?.length || 0);
+    const total = String(activeRoom.memberIds?.length || 0);
+    const said = s.acknowledged?.length || 0;
+    return (
+      <>
+        {s.senderId !== effectiveUid && (
+          <button
+            type="button"
+            className={cn("strm-btn", acked && "strm-btn-done")}
+            aria-pressed={acked}
+            onClick={() => void acknowledgeAnnouncement(activeRoom.id, s.id, effectiveUid, s.acknowledged || [])}
+          >
+            <Check className="w-3.5 h-3.5" aria-hidden />
+            {acked ? t('modals.you_said_got_it') : t('modals.got_it')}
+          </button>
+        )}
+        {isAdmin ? (
+          <button type="button" className="strm-receipt" title={t('chat.view_receipts')} onClick={() => setReadReceiptMsg(s)}>
+            {said > 0
+              ? t('chat.read_by_acked').replace('{read}', read).replace('{total}', total).replace('{n}', String(said))
+              : t('modals.read_by_n').replace('{read}', read).replace('{total}', total)}
+          </button>
+        ) : (
+          replies === 0 && (
+            <button type="button" className="strm-btn" onClick={openThread}>
+              <MessageSquare className="w-3.5 h-3.5" aria-hidden />
+              {t('modals.reply_in_thread')}
+            </button>
+          )
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="page msgs flex flex-1 h-full min-h-0 w-full overflow-hidden bg-background">
@@ -899,11 +894,12 @@ export default function Messages() {
       </div>
 
       {/* 2. Right — the thread (the design's msgs-thread) */}
-        <div className={cn(
+        <div ref={messagesContainerRef} className={cn(
           "msgs-thread flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
-          activeRoomId ? "flex" : "hidden md:flex"
+          activeRoomId ? "flex" : "hidden md:flex",
+          adapter && "msgs-streamed"
         )}>
-          {!activeRoom ? (
+          {!activeRoom || !adapter ? (
             /* Empty Chat Area Placeholder */
             <div className="msgs-empty">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 text-accent flex items-center justify-center mb-1">
@@ -913,7 +909,18 @@ export default function Messages() {
               <div className="ntf-empty-sub">Or start a new one — everyone in the app is reachable from here.</div>
             </div>
           ) : (
-            <>
+            <Stream
+              key={activeRoom.id}
+              adapter={adapter}
+              viewer={{ uid: effectiveUid || '', role: userRole }}
+              threadMode={threadBeside ? 'beside' : 'replace'}
+              onMakeTodo={(m) => setTodoFor(m.source)}
+              renderExtra={renderAttachments}
+              renderActions={activeRoom.type === 'announcement' ? renderPostActions : undefined}
+              translate
+              footer={adapter.readOnlyNote && <div className="msgs-postnote">{adapter.readOnlyNote}</div>}
+              header={
+              <>
               {/* Active Room Header */}
               <div className="msgs-thread-head">
                 {isMobile && (
@@ -973,8 +980,6 @@ export default function Messages() {
                 </div>
               )}
 
-              {/* Messages Stream */}
-              <div ref={messagesContainerRef} className="msgs-stream">
                 {hiddenHere.length > 0 && (
                   <div className="msgs-hidden-note">
                     <span>
@@ -987,492 +992,11 @@ export default function Messages() {
                     </button>
                   </div>
                 )}
-
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center gap-2 text-on-surface-variant">
-                    <MessageSquare className="w-10 h-10 text-outline" />
-                    <p className="text-sm">{t('common.empty_messages', 'No messages yet. Send a message to start the conversation!')}</p>
-                  </div>
-                ) : topLevelMsgs.length === 0 && threadSearch ? (
-                  <div className="msgs-people-empty">Nothing matches “{threadSearch}”.</div>
-                ) : (
-                  streamMsgs.map((msg) => {
-                  const isMe = msg.senderId === effectiveUid;
-                  const isSys = msg.type === 'system';
-                  const gone = !!msg.deleted;
-                  const canAll = canRemoveForEveryone(msg, effectiveUid, isAdmin);
-                  const menuOpen = menuFor === msg.id;
-
-                  if (isSys) {
-                    return (
-                      <div key={msg.id} className="flex justify-center select-none">
-                        <Translate as="span" className="text-[11px] font-medium bg-surface-container-low/60 text-on-surface-variant border border-outline-variant/10 rounded-full px-3 py-0.5" text={msg.text} />
-                      </div>
-                    );
-                  }
-
-                  return activeRoom?.type === 'announcement' ? (
-                    <div key={msg.id} id={`msgb-${msg.id}`} className={cn("post", !gone && !msg.readBy?.includes(effectiveUid || '') && "fresh", msg.pinned && "pinned")}>
-                      {msg.pinned && (
-                        <div className="post-strip">
-                          <Pin className="w-3 h-3 shrink-0" />
-                          <span>
-                            {t('modals.pinned_by_strip', 'Pinned by {name} · stays at the top until they unpin it')
-                              .replace('{name}', pinnerName(msg))}
-                          </span>
-                        </div>
-                      )}
-                      <div className="post-head">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-xs shrink-0 border border-outline-variant/20">
-                          {msg.senderPhoto ? (
-                            <img src={msg.senderPhoto} alt={msg.senderName} className="w-full h-full object-cover rounded-full" />
-                          ) : (
-                            getUserInitials(msg.senderName)
-                          )}
-                        </div>
-                        <span className="post-who">{msg.senderName}</span>
-                        <span className="rolechip">{t('modals.full_timer_badge', 'Full-timer')}</span>
-                        <span className="post-when">
-                          {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
-                        </span>
-                      </div>
-
-                      <div className="post-body">
-                        {gone ? (
-                          <div className="msgb-gone">{messageGoneLabel(msg, effectiveUid)}</div>
-                        ) : (
-                          <MessageBody text={msg.text} memberFirstNames={memberFirstNames} />
-                        )}
-                      </div>
-
-                      {/* Attachments inside announcement post */}
-                      {!gone && msg.attachments && msg.attachments.length > 0 && (
-                        <div className="px-4 pb-3 space-y-1.5">
-                          {msg.attachments.map((attach, idx) => {
-                            if (attach.type === 'contact') {
-                              return (
-                                <div key={idx} className="my-1">
-                                  <ContactPill
-                                    contactId={attach.id}
-                                    fallbackName={attach.name}
-                                    fallbackSubtitle={attach.subtitle}
-                                    onOpenContact={(contact) => setSelectedContact(contact)}
-                                  />
-                                </div>
-                              );
-                            }
-
-                            const AttachIcon = getAttachmentIcon(attach.type);
-                            const isTodo = attach.type === 'todo';
-                            const isTodoChecked = attach.status === 'completed';
-
-                            return (
-                              <div
-                                key={idx}
-                                onClick={() => !isTodo && handleAttachmentClick(attach)}
-                                className="attach cursor-pointer hover:bg-surface-container-high transition-colors"
-                              >
-                                {isTodo ? (
-                                  <input
-                                    type="checkbox"
-                                    checked={isTodoChecked}
-                                    onChange={(e) => handleToggleTodo(attach, e.target.checked)}
-                                    className="w-4 h-4 rounded text-accent border-outline accent-primary cursor-pointer shrink-0"
-                                  />
-                                ) : (
-                                  <AttachIcon className="w-3.5 h-3.5 shrink-0" />
-                                )}
-                                <span className={cn("font-medium text-xs", isTodo && isTodoChecked && "line-through opacity-70")}>
-                                  {attach.name}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {!gone && (
-                        <div className="post-foot">
-                          {/* Got it acknowledgement */}
-                          <button
-                            type="button"
-                            className={cn("ack", msg.acknowledged?.includes(effectiveUid || '') && "done")}
-                            onClick={() => {
-                              if (effectiveUid && activeRoomId) {
-                                void acknowledgeAnnouncement(
-                                  activeRoomId,
-                                  msg.id,
-                                  effectiveUid,
-                                  msg.acknowledged || []
-                                );
-                              }
-                            }}
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            {msg.acknowledged?.includes(effectiveUid || '')
-                              ? t('modals.you_said_got_it', 'You said got it')
-                              : t('modals.got_it', 'Got it')}
-                          </button>
-
-                          {/* Reply in thread */}
-                          <button
-                            type="button"
-                            className="react ml-1 font-medium"
-                            onClick={() => setThreadOf(msg.id)}
-                          >
-                            <MessageSquare className="w-3 h-3 inline mr-1" />
-                            {convReplyCount(messages, msg.id) > 0
-                              ? (convReplyCount(messages, msg.id) === 1
-                                  ? t('modals.one_reply', '1 reply')
-                                  : t('modals.replies_count', '{n} replies').replace('{n}', String(convReplyCount(messages, msg.id))))
-                              : t('modals.reply_in_thread', 'Reply in thread')}
-                          </button>
-
-                          {/* Read receipts */}
-                          <div
-                            className={cn("readcount", msg.acknowledged?.includes(effectiveUid || '') && "done")}
-                            onClick={() => {
-                              if (isAdmin) setReadReceiptMsg(msg);
-                            }}
-                            title={isAdmin ? "View read receipts" : undefined}
-                          >
-                            <Eye className="w-3.5 h-3.5 inline mr-1" />
-                            <span>
-                              {t('modals.read_by_n', 'Read by {read} of {total}')
-                                .replace('{read}', String(msg.readBy?.length || 0))
-                                .replace('{total}', String(activeRoom?.memberIds?.length || 0))}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div key={msg.id} id={`msgb-${msg.id}`} className={cn("msgb", isMe && "mine")}>
-                      {!isMe && (
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20">
-                          {msg.senderPhoto ? (
-                            <img src={msg.senderPhoto} alt={msg.senderName} className="w-full h-full object-cover rounded-full" />
-                          ) : (
-                            getUserInitials(msg.senderName)
-                          )}
-                        </div>
-                      )}
-                      <div className="msgb-col">
-                        {activeRoomIsGroupish && !isMe && (
-                          <div className="msgb-name">{firstName(msg.senderName)}</div>
-                        )}
-                        <div className="msgb-row">
-                          {gone ? (
-                            <div className="msgb-gone">{messageGoneLabel(msg, effectiveUid)}</div>
-                          ) : (
-                            <div className={cn("msgb-bubble", msg.pinned && "pinned")}>
-                              <MessageBody text={msg.text} memberFirstNames={memberFirstNames} />
-
-                              {/* Attachments inside bubble */}
-                              {msg.attachments && msg.attachments.length > 0 && (
-                                <div className="mt-2.5 space-y-1.5 border-t border-outline-variant/10 pt-2.5">
-                                  {msg.attachments.map((attach, idx) => {
-                                    if (attach.type === 'contact') {
-                                      return (
-                                        <div key={idx} className="my-1">
-                                          <ContactPill
-                                            contactId={attach.id}
-                                            fallbackName={attach.name}
-                                            fallbackSubtitle={attach.subtitle}
-                                            onOpenContact={(contact) => setSelectedContact(contact)}
-                                          />
-                                        </div>
-                                      );
-                                    }
-
-                                    const AttachIcon = getAttachmentIcon(attach.type);
-                                    const isTodo = attach.type === 'todo';
-                                    const isTodoChecked = attach.status === 'completed';
-
-                                    return (
-                                      <div
-                                        key={idx}
-                                        onClick={() => !isTodo && handleAttachmentClick(attach)}
-                                        className={cn(
-                                          "p-2.5 rounded-xl border flex items-start gap-3 transition-all text-left",
-                                          isMe
-                                            ? "bg-primary/10 border-primary/20 hover:bg-primary/15"
-                                            : "bg-surface-container-low border-outline-variant/60 text-on-surface hover:bg-surface-container-high"
-                                        )}
-                                        style={{ cursor: isTodo ? 'default' : 'pointer' }}
-                                      >
-                                        {isTodo ? (
-                                          <input
-                                            type="checkbox"
-                                            checked={isTodoChecked}
-                                            onChange={(e) => handleToggleTodo(attach, e.target.checked)}
-                                            className="w-4 h-4 rounded text-accent border-outline accent-primary cursor-pointer shrink-0 mt-0.5"
-                                          />
-                                        ) : (
-                                          <div className={cn(
-                                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border",
-                                            isMe ? "bg-primary/20 border-primary/30 text-on-primary" : "bg-surface-container-high text-on-surface-variant border-outline-variant/30"
-                                          )}>
-                                            <AttachIcon className="w-3.5 h-3.5" />
-                                          </div>
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                          <h5 className={cn(
-                                            "text-xs font-semibold leading-normal",
-                                            isTodo && isTodoChecked && "line-through opacity-70"
-                                          )}>
-                                            {attach.name}
-                                          </h5>
-                                          {attach.subtitle && (
-                                            <p className={cn(
-                                              "text-[10px] mt-0.5 leading-normal",
-                                              isMe ? "text-on-surface-variant/80" : "text-on-surface-variant"
-                                            )}>
-                                              {attach.subtitle}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* hover tools: pin + ⋯ menu */}
-                          {!gone && (
-                            <div className="msgb-tools">
-                              <button className="msgb-pin-btn" title={msg.pinned ? "Unpin" : "Pin"} onClick={() => togglePinMessage(activeRoomId!, msg.id, !msg.pinned, currentUser?.uid)}>
-                                <Pin className="w-3 h-3" />
-                              </button>
-                              <button
-                                type="button"
-                                className="msgb-pin-btn"
-                                title="Reply in thread"
-                                onClick={() => setThreadOf(msg.id)}
-                              >
-                                <MessageSquare className="w-3 h-3" />
-                              </button>
-                              <span className="msgb-menu-wrap">
-                                <button
-                                  className="msgb-pin-btn"
-                                  title="More"
-                                  onClick={() => {
-                                    setMenuFor(menuOpen ? null : msg.id);
-                                    setMenuConfirm(false);
-                                  }}
-                                >⋯</button>
-                                {menuOpen && (
-                                  <>
-                                    <div className="msgb-menu-away" onClick={() => { setMenuFor(null); setMenuConfirm(false); }} />
-                                    <div className="msgb-menu">
-                                      {menuConfirm ? (
-                                        <>
-                                          <p>Take this back for everyone? They'll see that a message was removed — not what it said.</p>
-                                          <button className="msgb-menu-danger" onClick={() => void handleRemoveAll(msg)}>Yes, remove it</button>
-                                          <button onClick={() => setMenuConfirm(false)}>Keep it</button>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <button onClick={() => { setMenuFor(null); setMenuConfirm(false); effectiveUid && MessageHides.hide(effectiveUid, msg.id); }}>
-                                            Hide from my view
-                                          </button>
-                                          <button onClick={() => { setMenuFor(null); setMenuConfirm(false); setTodoFor(msg); }}>
-                                            Make a to-do
-                                          </button>
-                                          {canAll && (
-                                            <button className="msgb-menu-danger" onClick={() => setMenuConfirm(true)}>
-                                              {isMe ? "Take back for everyone" : "Remove for everyone"}
-                                            </button>
-                                          )}
-                                          {!canAll && (
-                                            <p>Only {firstName(msg.senderName)} or a full-timer can remove it for everyone.</p>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        {!gone && convReplyCount(messages, msg.id) > 0 && (
-                          <button
-                            type="button"
-                            className="msgb-thread has"
-                            onClick={() => setThreadOf(msg.id)}
-                          >
-                            <span className="msgb-thread-who">
-                              {convRepliers(messages, msg.id).slice(0, 3).map((uid, i) => {
-                                const u = usersCache[uid];
-                                return (
-                                  <div
-                                    key={i}
-                                    className="w-5 h-5 rounded-full bg-primary/20 text-accent font-semibold flex items-center justify-center text-[9px] border border-surface shadow-sm"
-                                  >
-                                    {getUserInitials(u?.displayName || uid)}
-                                  </div>
-                                );
-                              })}
-                            </span>
-                            <span className="msgb-thread-l">
-                              {convReplyCount(messages, msg.id) === 1 ? '1 reply' : `${convReplyCount(messages, msg.id)} replies`}
-                            </span>
-                            {convLastReply(messages, msg.id)?.timestamp?.seconds && (
-                              <span className="msgb-thread-when">
-                                last {relTime(new Date(convLastReply(messages, msg.id)!.timestamp.seconds * 1000).toISOString())}
-                              </span>
-                            )}
-                          </button>
-                        )}
-                        <div className="msgb-foot">
-                          <span className="msgb-when">
-                            {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Composer / readonly announcement guidance bar */}
-            {canPostToActiveRoom ? (
-              <div>
-                {activeRoom?.type === 'announcement' && (
-                  <div className="postbar">
-                    <Bell className="w-3.5 h-3.5 shrink-0" />
-                    <span>
-                      {(activeRoom.audiencePreset === 'everyone'
-                        ? t('modals.composer_audience_note', 'Posting to everyone on Campus — {n} people')
-                        : t('modals.composer_audience_note_custom', 'Posting to {n} people in this channel')
-                      ).replace('{n}', String(activeRoom.memberIds?.length || 0))}
-                    </span>
-                  </div>
-                )}
-                <div className="msgs-composer">
-                  {mentionSearch !== null && (
-                    <div className="msgs-mention-pop">
-                      {roomMembers
-                        .filter((m) => m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()))
-                        .map((m, idx) => (
-                          <div
-                            key={m.uid}
-                            className={cn("msgs-mention-row", idx === mentionIndex && "bg-surface-container-high")}
-                            onClick={() => handleSelectMention(m.displayName)}
-                          >
-                            <User className="w-3.5 h-3.5 shrink-0 text-on-surface-variant" />
-                            {m.displayName}
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                  {attachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 py-2">
-                      {attachments.map((attach, idx) => {
-                        const AttachIcon = getAttachmentIcon(attach.type);
-                        return (
-                          <div
-                            key={idx}
-                            className="py-1.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant/60 text-xs font-semibold flex items-center gap-2"
-                          >
-                            <AttachIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span className="max-w-[120px] truncate">{attach.name}</span>
-                            <button
-                              onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
-                              className="p-0.5 rounded-full hover:bg-surface-container-high cursor-pointer text-on-surface-variant"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="msgs-composer-row">
-                    <button
-                      type="button"
-                      onClick={() => setAttachDataOpen(true)}
-                      className="icon-btn"
-                      title="Attach reference data"
-                    >
-                      <Paperclip className="w-4 h-4" />
-                    </button>
-                    <textarea
-                      placeholder={activeRoom?.type === 'announcement' ? "Write an announcement…" : "Write a message… (@ to mention)"}
-                      value={inputText}
-                      onChange={handleInputChange}
-                      onKeyDown={handleKeyPress}
-                      rows={1}
-                      className="msgs-ta li-input"
-                    />
-                    <button
-                      type="button"
-                      disabled={!inputText.trim() && attachments.length === 0}
-                      className="msgs-send"
-                      title="Send"
-                      onClick={handleSend}
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="foot">
-                <div className="foot-note">
-                  <Bell className="w-3.5 h-3.5 shrink-0" />
-                  <span>{t('modals.guidance_announcement_bar', 'Only Full-timers post here. Anyone can reply in a thread.')}</span>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+              </>
+              }
+            />
+          )}
       </div>
-
-      {/* Slack-shaped Thread Pane (#563) */}
-      {activeRoom && threadOf && (() => {
-        const parentMsg = messages.find((m) => m.id === threadOf);
-        if (!parentMsg) return null;
-        return (
-          <MsgThreadPane
-            room={activeRoom}
-            parentMsg={parentMsg}
-            allMessages={messages}
-            effectiveUid={effectiveUid}
-            isAdmin={isAdmin}
-            onClose={() => setThreadOf(null)}
-            onPin={(mid, pin) => togglePinMessage(activeRoom.id, mid, pin, currentUser?.uid)}
-            onRemoveAll={(msg) => handleRemoveAll(msg)}
-            onHide={(mid) => effectiveUid && MessageHides.hide(effectiveUid, mid)}
-            onTodo={(msg) => setTodoFor(msg)}
-            onOpenContact={(contact) => setSelectedContact(contact)}
-            onSendReply={async (text) => {
-              if (!effectiveUid) return;
-              const senderName = impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member');
-              const senderPhoto = impersonateTarget ? '' : (currentUser?.photoURL || '');
-              await sendMessage(
-                activeRoom.id,
-                text,
-                { uid: effectiveUid, displayName: senderName, photoURL: senderPhoto },
-                undefined,
-                activeRoom.memberIds,
-                parentMsg.id,
-                activeRoom.type,
-                activeRoom.name
-              );
-            }}
-            roomMembers={roomMembers}
-            canPost={activeRoom.type === 'announcement' ? activeRoom.memberIds.includes(effectiveUid || '') : canPostToActiveRoom}
-          />
-        );
-      })()}
-
 
       {/* Modals overlay */}
       <CreateChatModal
