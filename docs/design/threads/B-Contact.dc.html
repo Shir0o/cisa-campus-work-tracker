@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>B · Contact Conversation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&amp;family=Lexend:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{color:#131316}a:hover{color:#52525B}
+button{font-family:inherit;cursor:pointer}
+svg{display:block;flex:none}
+.root{font-family:Lexend,ui-sans-serif,system-ui,sans-serif;color:#0A0A0B;background:#FFFFFF;-webkit-font-smoothing:antialiased;position:relative;overflow:hidden;display:flex;gap:16px;padding:16px}
+.rail{width:232px;flex:none;background:#0A0A0B;border-radius:32px;padding:20px 14px;display:flex;flex-direction:column;gap:4px;color:#A1A1AA}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px 18px;color:#FAFAFA;font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:15px;letter-spacing:-0.01em}
+.logo{width:32px;height:32px;border-radius:10px;background:#FAFAFA;color:#0A0A0B;display:grid;place-items:center;font-size:12px;font-weight:800}
+.ri{height:44px;border-radius:14px;display:flex;align-items:center;gap:12px;padding:0 12px;font-size:14px;font-weight:500;color:#A1A1AA;text-decoration:none}
+.ri.on{background:#FAFAFA;color:#0A0A0B}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.chrome{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 4px 12px}
+.search{flex:1;max-width:400px;height:40px;border-radius:999px;background:#F4F4F5;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:13.5px;color:#71717A}
+.kbd{margin-left:auto;font-size:11px;color:#52525B;border:1px solid #E4E4E7;border-radius:6px;padding:1px 6px;background:#FFFFFF}
+.chrome-r{margin-left:auto;display:flex;align-items:center;gap:6px}
+.icon-btn{width:40px;height:40px;border-radius:999px;display:grid;place-items:center;color:#52525B;background:transparent;border:0}
+.av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12.5px;font-weight:600}
+.av.s{width:28px;height:28px;font-size:10.5px}
+.av.xs{width:20px;height:20px;font-size:8.5px;border:2px solid #FFFFFF}
+.p-m{background:#E0E7FF;color:#3730A3}.p-j{background:#DCFCE7;color:#166534}.p-g{background:#FCE7F3;color:#9D174D}.p-r{background:#FEF3C7;color:#92400E}.p-d{background:#E4E4E7;color:#3F3F46}
+.page{flex:1;min-height:0;background:#F4F4F5;border:1px solid #F0F0F2;border-radius:24px;position:relative;overflow:hidden}
+.cd-head{height:64px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid #E4E4E7}
+.cd-name{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.02em}
+.cd-sub{font-size:12px;color:#52525B}
+.band{display:flex;gap:8px;padding:14px 24px;border-bottom:1px solid #E4E4E7}
+.step{height:30px;border-radius:999px;padding:0 12px;font-size:12px;display:flex;align-items:center;background:#FFFFFF;color:#52525B;border:1px solid #E4E4E7;white-space:nowrap}
+.step.on{background:#131316;color:#FFFFFF;border-color:#131316}
+.story{padding:20px 24px;display:flex;flex-direction:column;gap:16px;width:360px}
+.entry{display:grid;grid-template-columns:52px 1fr;gap:12px;font-size:12.5px;color:#52525B;line-height:1.5}
+.entry b{color:#0A0A0B;font-weight:600}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:460px;background:#FFFFFF;border-left:1px solid #E4E4E7;box-shadow:-16px 0 40px rgba(10,10,11,0.08);display:flex;flex-direction:column}
+.dh{display:flex;align-items:flex-start;gap:12px;padding:16px 12px 12px 24px;border-bottom:1px solid #F0F0F2;flex:none}
+.dh h3{font-family:"Plus Jakarta Sans",sans-serif;font-weight:700;font-size:16px;margin:0;letter-spacing:-0.01em}
+.dh p{margin:2px 0 0;font-size:12px;color:#52525B;line-height:1.45}
+.stream{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:0 24px 6px;position:relative}
+.fade{position:absolute;left:0;right:0;top:0;height:28px;background:linear-gradient(#FFFFFF,rgba(255,255,255,0));z-index:2}
+.day{display:flex;align-items:center;gap:10px;margin:12px 0 6px;font-size:11.5px;font-weight:600;color:#52525B}
+.day::before,.day::after{content:"";flex:1;height:1px;background:#F0F0F2}
+.m{display:flex;gap:10px;padding:6px 8px;margin:0 -8px;border-radius:10px;position:relative}
+.m.hover{background:#F4F4F5}
+.mb{flex:1;min-width:0}
+.mh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:20px}
+.who{font-size:14px;font-weight:600}
+.when{font-size:11.5px;color:#71717A}
+.tx{font-size:14px;line-height:1.5;margin:1px 0 0;color:#18181B}
+.cont{padding:1px 8px 4px 54px;margin:0 -8px}
+.at{color:#1E40AF;background:#EFF6FF;border-radius:4px;padding:0 3px;font-weight:500}
+.thr{display:inline-flex;align-items:center;gap:8px;margin-top:6px;height:30px;padding:0 10px 0 4px;border-radius:10px;border:1px solid #E4E4E7;background:#FFFFFF;font-size:12.5px;color:#0A0A0B}
+.minis{display:flex}
+.minis .av + .av{margin-left:-6px}
+.thr b{font-weight:600}
+.thr .last{color:#71717A}
+.tools{position:absolute;top:-14px;right:8px;display:flex;gap:2px;padding:3px;background:#FFFFFF;border:1px solid #E4E4E7;border-radius:12px;box-shadow:0 4px 12px rgba(10,10,11,0.08)}
+.tool{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#52525B;background:transparent;border:0}
+.tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600}
+.tag.q{background:#DBEAFE;color:#1E40AF}
+.tag.ask{background:#FEF3C7;color:#92400E}
+.status{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.open{font-size:12px;color:#92400E;font-weight:500;margin-right:2px}
+.btn{height:32px;border-radius:999px;padding:0 14px;font-size:12.5px;font-weight:600;border:1px solid #E4E4E7;background:#FFFFFF;color:#0A0A0B;display:inline-flex;align-items:center;gap:6px}
+.btn.pri{background:#131316;color:#FFFFFF;border-color:#131316}
+.btn.ghost{border-color:transparent;background:transparent;color:#52525B}
+.composer{padding:8px 20px 16px;flex:none}
+.cbox{border:1px solid #E4E4E7;border-radius:16px;background:#FFFFFF;padding:8px 8px 8px 12px;box-shadow:0 1px 2px rgba(10,10,11,0.04)}
+.kinds{display:flex;gap:4px;margin:0 0 2px -4px}
+.kind{height:28px;border-radius:999px;border:1px solid transparent;background:transparent;padding:0 10px;font-size:12px;font-weight:500;color:#52525B}
+.kind.on{background:#F4F4F5;color:#0A0A0B;border-color:#E4E4E7}
+.ta{display:block;width:100%;border:0;outline:0;resize:none;font-family:inherit;font-size:14px;line-height:1.5;color:#0A0A0B;padding:6px 0 4px;height:40px;background:transparent}
+.ta::placeholder{color:#71717A}
+.ctools{display:flex;align-items:center;gap:4px}
+.hint{font-size:11.5px;color:#71717A;margin-left:auto;margin-right:8px}
+.send{width:36px;height:36px;border-radius:999px;background:#131316;color:#FFFFFF;display:grid;place-items:center;border:0}
+.card{background:#F4F4F5;border-radius:16px;padding:12px 14px;margin:2px 0 4px}
+.card + .card{margin-top:10px}
+.ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .tx{margin-top:6px}
+.cfoot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #E4E4E7;flex-wrap:wrap}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</helmet>
+<div class="root" style="width: 1107px; height: 662px;">
+  <nav class="rail" aria-label="Main">
+    <div class="brand"><span class="logo">CW</span>Campus Work</div>
+    <a class="ri" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"></path></svg>My Day</a>
+    <a class="ri on" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>People</a>
+    <a class="ri" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Messages</a>
+    <a class="ri" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>Prayer</a>
+    <a class="ri" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Gatherings</a>
+    <a class="ri" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15Z"></path><path d="M20 17v5H6.5A2.5 2.5 0 0 1 4 19.5"></path></svg>Bible study</a>
+  </nav>
+  <div class="col">
+    <div class="chrome">
+      <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search or jump to…<span class="kbd">⌘K</span></div>
+      <div class="chrome-r">
+        <button class="icon-btn" aria-label="Notifications"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></button>
+        <span class="av s p-m">MS</span>
+      </div>
+    </div>
+    <main class="page">
+      <div class="cd-head">
+        <span class="av p-d">DR</span>
+        <div>
+          <div class="cd-name">Daniel Reyes</div>
+          <div class="cd-sub">Last connected 2 days ago · Cared for by Maria</div>
+        </div>
+      </div>
+      <div class="band">
+        <span class="step">Met</span><span class="step on">Came once</span><span class="step">Coming</span>
+      </div>
+      <div class="story">
+        <div class="entry"><span>Sep 22</span><span><b>Maria</b> met Daniel at the welcome table.</span></div>
+        <div class="entry"><span>Sep 17</span><span><b>Josh</b> sat with Daniel at the Thursday gathering.</span></div>
+        <div class="entry"><span>Sep 12</span><span><b>Maria</b> added Daniel.</span></div>
+      </div>
+
+      <section class="drawer" aria-label="Conversation">
+        <div class="dh">
+          <div style="flex-grow: 1;">
+            <h3>Conversation</h3>
+            <p>Everyone tied to Daniel sees this.</p>
+          </div>
+          <button class="icon-btn" aria-label="Close Conversation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+        </div>
+
+        <div class="stream">
+          <div class="fade"></div>
+          <div class="day">Tuesday, September 22</div>
+          <article class="card">
+            <div class="ch"><span class="av s p-m">MS</span><span class="who">Maria Santos</span><span class="when">10:14 AM</span></div>
+            <p class="tx">Met Daniel at the welcome table — transfer from Fresno State, living in West Village. Said he might come Thursday.</p>
+            <p class="tx"><span class="at">@Josh Park</span> didn't you have econ with him last spring?</p>
+          </article>
+          <article class="card" style="position: relative;">
+            <div class="ch"><span class="av s p-j">JP</span><span class="who">Josh Park</span><span class="when">11:02 AM</span></div>
+            <p class="tx">I did! Quiet, really thoughtful. I'll sit with him Thursday.</p>
+            <div class="cfoot"><button class="thr" style="margin-top: 0;"><span class="minis"><span class="av xs p-m">MS</span><span class="av xs p-g">GL</span></span><b>2 replies</b><span class="last">Last reply 2 days ago</span></button></div>
+          </article>
+          <div class="day">Yesterday</div>
+          <article class="card">
+            <div class="ch"><span class="av s p-m">MS</span><span class="who">Maria Santos</span><span class="tag ask">Follow-up ask</span><span class="when">4:40 PM</span></div>
+            <p class="tx">Can someone text Daniel before Thursday? He didn't have a ride last week and might not ask.</p>
+            <div class="cfoot"><span class="open">Open 1 day</span><button class="btn pri">I followed up</button><button class="btn ghost">Never mind</button></div>
+          </article>
+          <div class="day">Today</div>
+          <article class="card">
+            <div class="ch"><span class="av s p-g">GL</span><span class="who">Grace Liu</span><span class="tag q">Question</span><span class="when">9:12 AM</span></div>
+            <p class="tx">Is Daniel's roommate the one who came to the cookout? Might be an easy way in.</p>
+            <div class="cfoot"><button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17 4 12l5-5"></path><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>Reply</button></div>
+          </article>
+        </div>
+
+        <div class="composer">
+          <div class="cbox">
+            <div class="kinds" role="group" aria-label="What are you writing">
+              <button class="kind on" aria-pressed="true">Comment</button>
+              <button class="kind" aria-pressed="false">Question</button>
+              <button class="kind" aria-pressed="false">Ask a follow-up</button>
+            </div>
+            <label class="sr" for="b-compose">Write to everyone tied to Daniel</label>
+            <textarea id="b-compose" class="ta" placeholder="Write something…"></textarea>
+            <div class="ctools">
+              <button class="tool" aria-label="Mention someone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path></svg></button>
+              <span class="hint">⌘↵ to post</span>
+              <button class="send" aria-label="Post"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1107,"height":662}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

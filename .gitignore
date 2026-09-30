@@ -42,6 +42,9 @@ tmp/
 
 # Design canvas payloads are generated from the .dc.html sources beside them
 docs/design/**/[a-z]*-*.html
+# ...but never the .dc.html sources themselves: on a case-insensitive disk the
+# pattern above also matches hyphenated board names like FT-Drawer.dc.html.
+!docs/design/**/*.dc.html
 
 # impeccable design-hook cache (local only)
 .impeccable/hook.cache.json
