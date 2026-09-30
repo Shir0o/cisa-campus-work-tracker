@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
 import { isFullTimer } from "./walking";
 import { subscribeTiedSubcollection } from "./contactQueries";
+import { calendarDaysOpen } from "./stream";
 
 // "Walking together" threads — the single per-person conversation surface,
 // attached to a contact and (optionally) to one logged interaction. Stored as:
@@ -447,13 +448,12 @@ export function isOpenAsk(m: Pick<ThreadMessage, "kind" | "closedAt">): boolean 
   return m.kind === "nudge" && !m.closedAt;
 }
 
-/** Whole days an ask has been open — the card states it as a fact and does
+/** Calendar days an ask has been open — the card states it as a fact and does
  *  nothing else with it. An open item that shouts louder every day is the
- *  accumulation problem wearing a different coat. */
+ *  accumulation problem wearing a different coat. Counted by the stream
+ *  model's helper, so the card and the stream never disagree (DRIFT row 38). */
 export function daysOpen(m: Pick<ThreadMessage, "at">, now: number = Date.now()): number {
-  const t = new Date(m.at).getTime();
-  if (Number.isNaN(t)) return 0;
-  return Math.max(0, Math.floor((now - t) / 86_400_000));
+  return calendarDaysOpen(m.at, now);
 }
 
 /** Delete a single thread message. The Firestore rule permits only the author

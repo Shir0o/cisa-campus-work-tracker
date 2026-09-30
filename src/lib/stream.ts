@@ -119,6 +119,15 @@ function calendarDaysBetween(from: number, to: number): number {
 
 const toMs = (now: number | Date) => (typeof now === 'number' ? now : now.getTime());
 
+/** Whole local calendar days a Follow-up ask has been open: raised yesterday
+ *  reads 1 day however few hours ago that was. The one count every surface
+ *  uses — the stream's status line and My Day's worklist card alike. */
+export function calendarDaysOpen(atIso: string, now: number | Date): number {
+  const t = new Date(atIso).getTime();
+  if (Number.isNaN(t)) return 0;
+  return Math.max(0, calendarDaysBetween(t, toMs(now)));
+}
+
 const time = (iso: string) => {
   const t = new Date(iso).getTime();
   return Number.isNaN(t) ? 0 : t;
@@ -137,7 +146,7 @@ const canWrite = (v: StreamViewer) => v.role === 'admin' || v.role === 'manager'
 
 function askStateOf(m: StreamMessage, nowMs: number): AskState | null {
   if (m.kind !== 'nudge') return null;
-  if (!m.closedAt) return { status: 'open', daysOpen: Math.max(0, calendarDaysBetween(time(m.at), nowMs)) };
+  if (!m.closedAt) return { status: 'open', daysOpen: calendarDaysOpen(m.at, nowMs) };
   const by = { uid: m.closedBy ?? '', name: m.closedByName ?? '' };
   return { status: m.closedBy === m.from ? 'withdrawn' : 'followedUp', by, at: m.closedAt };
 }

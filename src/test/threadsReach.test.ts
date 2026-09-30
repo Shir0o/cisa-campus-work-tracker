@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { buildStream } from "../lib/stream";
 import { stakeholderUidsOf, isOpenAsk, daysOpen, THREAD_KINDS } from "../lib/threads";
 
 // #813 — who a message on a contact reaches, and when a follow-up ask is done.
@@ -47,6 +48,19 @@ describe("a follow-up ask is open until someone says they did it", () => {
   it("states its age in whole days as a plain fact", () => {
     const now = new Date("2026-09-07T06:00:00.000Z").getTime();
     expect(daysOpen({ at }, now)).toBe(6);
+  });
+
+  it("counts calendar days, as the stream does: raised 20 hours ago but yesterday reads 1 day in both", () => {
+    const now = new Date(2026, 8, 24, 12, 0).getTime();
+    const ask = { id: "ask", from: "maria", fromName: "Maria", kind: "nudge" as const, body: "?", at: new Date(2026, 8, 23, 16, 0).toISOString() };
+    const [, row] = buildStream({ messages: [ask], viewer: { uid: "josh", role: "manager" }, now });
+    expect(row.type === "row" && row.ask).toEqual({ status: "open", daysOpen: 1 });
+    expect(daysOpen(ask, now)).toBe(1);
+  });
+
+  it("an ask raised this morning is open 0 days", () => {
+    const now = new Date(2026, 8, 24, 12, 0).getTime();
+    expect(daysOpen({ at: new Date(2026, 8, 24, 0, 30).toISOString() }, now)).toBe(0);
   });
 
   it("never reports a negative age for a clock skew", () => {

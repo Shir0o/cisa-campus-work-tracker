@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>A · Contact Conversation</title>
+<title>B · Contact Conversation</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -83,6 +83,11 @@ svg{display:block;flex:none}
 .ctools{display:flex;align-items:center;gap:4px}
 .hint{font-size:11.5px;color:#71717A;margin-left:auto;margin-right:8px}
 .send{width:36px;height:36px;border-radius:999px;background:#131316;color:#FFFFFF;display:grid;place-items:center;border:0}
+.card{background:#F4F4F5;border-radius:16px;padding:12px 14px;margin:2px 0 4px}
+.card + .card{margin-top:10px}
+.ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .tx{margin-top:6px}
+.cfoot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #E4E4E7;flex-wrap:wrap}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </helmet>
@@ -125,6 +130,7 @@ svg{display:block;flex:none}
         <div class="dh">
           <div style="flex-grow: 1;">
             <h3>Conversation</h3>
+            <p>Everyone tied to Daniel sees this.</p>
           </div>
           <button class="icon-btn" aria-label="Close Conversation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
         </div>
@@ -132,56 +138,39 @@ svg{display:block;flex:none}
         <div class="stream">
           <div class="fade"></div>
           <div class="day">Tuesday, September 22</div>
-          <div class="m">
-            <span class="av p-m">MS</span>
-            <div class="mb">
-              <div class="mh"><span class="who">Maria Santos</span><span class="when">10:14 AM</span></div>
-              <p class="tx">Met Daniel at the welcome table — transfer from Fresno State, living in West Village. Said he might come Thursday.</p>
-            </div>
-          </div>
-          <div class="cont"><p class="tx"><span class="at">@Josh Park</span> didn't you have econ with him last spring?</p></div>
-          <div class="m hover">
-            <span class="av p-j">JP</span>
-            <div class="mb">
-              <div class="mh"><span class="who">Josh Park</span><span class="when">11:02 AM</span></div>
-              <p class="tx">I did! Quiet, really thoughtful. I'll sit with him Thursday.</p>
-              <button class="thr"><span class="minis"><span class="av xs p-m">MS</span><span class="av xs p-g">GL</span></span><b>2 replies</b><span class="last">Last reply 2 days ago</span></button>
-            </div>
-            <div class="tools">
-              <button class="tool" aria-label="Reply in thread"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17 4 12l5-5"></path><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg></button>
-              <button class="tool" aria-label="Make a to-do"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></button>
-              <button class="tool" aria-label="More actions"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg></button>
-            </div>
-          </div>
+          <article class="card">
+            <div class="ch"><span class="av s p-m">MS</span><span class="who">Maria Santos</span><span class="when">10:14 AM</span></div>
+            <p class="tx">Met Daniel at the welcome table — transfer from Fresno State, living in West Village. Said he might come Thursday.</p>
+            <p class="tx"><span class="at">@Josh Park</span> didn't you have econ with him last spring?</p>
+          </article>
+          <article class="card" style="position: relative;">
+            <div class="ch"><span class="av s p-j">JP</span><span class="who">Josh Park</span><span class="when">11:02 AM</span></div>
+            <p class="tx">I did! Quiet, really thoughtful. I'll sit with him Thursday.</p>
+            <div class="cfoot"><button class="thr" style="margin-top: 0;"><span class="minis"><span class="av xs p-m">MS</span><span class="av xs p-g">GL</span></span><b>2 replies</b><span class="last">Last reply 2 days ago</span></button></div>
+          </article>
           <div class="day">Yesterday</div>
-          <div class="m">
-            <span class="av p-m">MS</span>
-            <div class="mb">
-              <div class="mh"><span class="who">Maria Santos</span><span class="tag ask">Follow-up ask</span><span class="when">4:40 PM</span></div>
-              <p class="tx">Can someone text Daniel before Thursday? He didn't have a ride last week and might not ask.</p>
-              <div class="status"><span class="open">Open 1 day</span><button class="btn pri">I followed up</button><button class="btn ghost">Never mind</button></div>
-            </div>
-          </div>
+          <article class="card">
+            <div class="ch"><span class="av s p-m">MS</span><span class="who">Maria Santos</span><span class="tag ask">Follow-up ask</span><span class="when">4:40 PM</span></div>
+            <p class="tx">Can someone text Daniel before Thursday? He didn't have a ride last week and might not ask.</p>
+            <div class="cfoot"><span class="open">Open 1 day</span><button class="btn pri">I followed up</button><button class="btn ghost">Never mind</button></div>
+          </article>
           <div class="day">Today</div>
-          <div class="m">
-            <span class="av p-g">GL</span>
-            <div class="mb">
-              <div class="mh"><span class="who">Grace Liu</span><span class="tag q">Question</span><span class="when">9:12 AM</span></div>
-              <p class="tx">Is Daniel's roommate the one who came to the cookout? Might be an easy way in.</p>
-            </div>
-          </div>
+          <article class="card">
+            <div class="ch"><span class="av s p-g">GL</span><span class="who">Grace Liu</span><span class="tag q">Question</span><span class="when">9:12 AM</span></div>
+            <p class="tx">Is Daniel's roommate the one who came to the cookout? Might be an easy way in.</p>
+            <div class="cfoot"><button class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17 4 12l5-5"></path><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>Reply</button></div>
+          </article>
         </div>
 
         <div class="composer">
-          <div style="font-size: 11.5px; color: #52525B; margin: 0 0 6px 2px;">Everyone tied to Daniel sees this.</div>
           <div class="cbox">
             <div class="kinds" role="group" aria-label="What are you writing">
               <button class="kind on" aria-pressed="true">Comment</button>
               <button class="kind" aria-pressed="false">Question</button>
               <button class="kind" aria-pressed="false">Ask a follow-up</button>
             </div>
-            <label class="sr" for="a-compose">Write to everyone tied to Daniel</label>
-            <textarea id="a-compose" class="ta" placeholder="Write something…"></textarea>
+            <label class="sr" for="b-compose">Write to everyone tied to Daniel</label>
+            <textarea id="b-compose" class="ta" placeholder="Write something…"></textarea>
             <div class="ctools">
               <button class="tool" aria-label="Mention someone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path></svg></button>
               <span class="hint">⌘↵ to post</span>

@@ -89,7 +89,7 @@ held it to its canvas (#1243).
 
 ### Surfaces
 
-- [ ] **S1** Contact drawer headers: "Conversation" + its audience; "Full-timers" + lock + "Only Full-timers see this — Trainees can't."
+- [ ] **S1** Contact drawer headers: the stream's title only (Full-timers carries a lock icon); the audience line lives above the composer (C3).
 - [ ] **S2** Copy: the Full-timers placeholder becomes "Write something only Full-timers will see…" (en + es).
 - [ ] **S3** Around: ADR 0022 unchanged — one card open, reading in place, the Conversation / Full-timers segment, the composer posting into the open one, the just-posted message landing above the composer, marked "Just posted".
 - [ ] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.
