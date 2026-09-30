@@ -1,8 +1,8 @@
 import { useLocalSearchParams } from 'expo-router';
 import { memberRoleOf } from '@cisa/core';
-import { useAuth } from '../../../src/lib/AuthProvider';
-import { MemberThreadScreen } from '../../../src/components/member/MemberThreadScreen';
-import { ChatThreadScreen } from '../../../src/components/messages/ChatThreadScreen';
+import { useAuth } from '../../../../src/lib/AuthProvider';
+import { MemberThreadScreen } from '../../../../src/components/member/MemberThreadScreen';
+import { ChatThreadScreen } from '../../../../src/components/messages/ChatThreadScreen';
 
 // One Messages thread. Members get the member thread, staff the design's
 // `M2Thread`; see messages/index.tsx for why the fork lives on the route rather

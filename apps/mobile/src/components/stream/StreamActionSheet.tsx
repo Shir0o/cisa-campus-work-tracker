@@ -21,6 +21,8 @@ export function StreamActionSheet<M extends StreamMessage>({
   onMakeTodo,
   onCopy,
   onDelete,
+  onPin,
+  pinned,
 }: {
   /** The row pressed. */
   row: StreamRow<M> | null;
@@ -31,6 +33,10 @@ export function StreamActionSheet<M extends StreamMessage>({
   onCopy: (row: StreamRow<M>) => void;
   /** Offered only where `row.canDelete`. */
   onDelete?: (row: StreamRow<M>) => void;
+  /** Offered where the source can pin (a chat). */
+  onPin?: (row: StreamRow<M>) => void;
+  /** The pressed row is pinned already: the action reads Unpin. */
+  pinned?: boolean;
 }) {
   const { c, font, fs } = useV2Theme();
   const { t, language } = useLanguage();
@@ -55,6 +61,13 @@ export function StreamActionSheet<M extends StreamMessage>({
           </View>
           {onReply && <Action icon="chatbubble-outline" label={t('mobile.stream.reply_in_thread')} onPress={act(onReply)} />}
           {onMakeTodo && <Action icon="checkbox-outline" label={t('mobile.stream.make_todo')} onPress={act(onMakeTodo)} />}
+          {onPin && (
+            <Action
+              icon={pinned ? 'pin' : 'pin-outline'}
+              label={t(pinned ? 'mobile.stream.unpin' : 'mobile.stream.pin')}
+              onPress={act(onPin)}
+            />
+          )}
           <Action icon="copy-outline" label={t('mobile.stream.copy_text')} onPress={act(onCopy)} />
           {onDelete && row.canDelete && (
             <Action icon="trash-outline" label={t('mobile.stream.delete_message')} danger onPress={act(onDelete)} />

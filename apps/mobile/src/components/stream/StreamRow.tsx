@@ -7,7 +7,8 @@
 //
 // Source-agnostic: it draws a core `StreamRow` and hands events back, so the
 // person screen, a Thread and the phone's chat all use it.
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, Text, View, type TextStyle } from 'react-native';
 import type { AskAction, StreamMessage, StreamRow as StreamRowModel, ThreadSummary } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
@@ -26,6 +27,20 @@ export interface StreamRowProps<M extends StreamMessage> {
   /** Present where the stream has Threads; the chip opens it. */
   onOpenThread?: (row: StreamRowModel<M>) => void;
   onCloseAsk?: (row: StreamRowModel<M>, how: AskAction) => void;
+  // What a source adds to its rows. Each is optional, so a stream that has none
+  // of them (the person screen) draws as before.
+  /** The sender's profile photo, where they have one; initials otherwise. */
+  avatarUrl?: (m: M) => string | null | undefined;
+  /** A neutral badge beside the name — a Full-timer's post in an announcement. */
+  badge?: (m: M) => string | null;
+  /** A taken-back message: this label stands where the body was. */
+  goneLabel?: (m: M) => string | null;
+  /** A system notice, drawn centred and plain. */
+  notice?: (m: M) => boolean;
+  /** The body, where the source draws it itself (translation, attachments). */
+  renderBody?: (row: StreamRowModel<M>, style: TextStyle) => React.ReactNode;
+  /** Under the body in place of the Thread chip (an announcement's Got it). */
+  renderFooter?: (row: StreamRowModel<M>) => React.ReactNode;
 }
 
 export function StreamRowView<M extends StreamMessage>({
@@ -35,6 +50,12 @@ export function StreamRowView<M extends StreamMessage>({
   onLongPress,
   onOpenThread,
   onCloseAsk,
+  avatarUrl,
+  badge,
+  goneLabel,
+  notice,
+  renderBody,
+  renderFooter,
 }: StreamRowProps<M>) {
   const { c, font, fs } = useV2Theme();
   const { t, language } = useLanguage();
@@ -42,12 +63,26 @@ export function StreamRowView<M extends StreamMessage>({
   const actions = readOnly ? [] : row.askActions;
   const withdrawn = ask?.status === 'withdrawn';
   const tone = tag === 'question' ? c.card.tones.ask : c.card.tones.due;
+  const gone = goneLabel?.(m) ?? null;
+  const badgeText = badge?.(m) ?? null;
+  const bodyStyle: TextStyle = { fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.5), color: c.card.ink, marginTop: 1 };
+
+  if (notice?.(m)) {
+    return (
+      <Text
+        accessibilityRole="text"
+        style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink3, textAlign: 'center', marginVertical: 8 }}
+      >
+        {m.body}
+      </Text>
+    );
+  }
 
   return (
     <Pressable
-      onLongPress={onLongPress ? () => onLongPress(row) : undefined}
+      onLongPress={onLongPress && !gone ? () => onLongPress(row) : undefined}
       delayLongPress={350}
-      accessibilityHint={onLongPress ? t('mobile.stream.message_actions') : undefined}
+      accessibilityHint={onLongPress && !gone ? t('mobile.stream.message_actions') : undefined}
       style={({ pressed }) => ({
         flexDirection: 'row',
         gap: GAP,
@@ -55,16 +90,21 @@ export function StreamRowView<M extends StreamMessage>({
         paddingHorizontal: 8,
         marginHorizontal: -8,
         borderRadius: 12,
-        backgroundColor: pressed && onLongPress ? c.card.bg2 : 'transparent',
+        backgroundColor: pressed && onLongPress && !gone ? c.card.bg2 : 'transparent',
       })}
     >
       <View style={{ width: AVATAR }}>
-        {!continuation && <PersonMark name={m.fromName} id={m.from} size={AVATAR} radius={AVATAR / 2} fontSize={12} />}
+        {!continuation && <Avatar name={m.fromName} id={m.from} photoURL={avatarUrl?.(m)} />}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         {!continuation && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 20 }}>
             <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>{m.fromName}</Text>
+            {!!badgeText && (
+              <View style={{ height: 20, paddingHorizontal: 8, borderRadius: 999, justifyContent: 'center', backgroundColor: c.card.bg2 }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.card.ink2 }}>{badgeText}</Text>
+              </View>
+            )}
             {!!tag && (
               <View
                 style={{
@@ -83,11 +123,15 @@ export function StreamRowView<M extends StreamMessage>({
             <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.card.ink3 }}>{timeOf(m.at, language)}</Text>
           </View>
         )}
-        <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.5), color: c.card.ink, marginTop: 1 }}>
-          {m.body}
-        </Text>
+        {gone ? (
+          <Text style={{ ...bodyStyle, fontFamily: font.medium, fontStyle: 'italic', color: c.card.ink3 }}>{gone}</Text>
+        ) : renderBody ? (
+          renderBody(row, bodyStyle)
+        ) : (
+          <Text style={bodyStyle}>{m.body}</Text>
+        )}
 
-        {!!ask && (
+        {!gone && !!ask && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <Text
               style={{
@@ -107,9 +151,26 @@ export function StreamRowView<M extends StreamMessage>({
           </View>
         )}
 
-        {!!thread && onOpenThread && <ThreadChip thread={thread} now={now} onPress={() => onOpenThread(row)} />}
+        {gone || !renderFooter
+          ? !!thread && onOpenThread && <ThreadChip thread={thread} now={now} onPress={() => onOpenThread(row)} />
+          : renderFooter(row)}
       </View>
     </Pressable>
+  );
+}
+
+/** A person's mark: their photo where they have one, initials otherwise — and
+ *  initials again if the photo will not load. */
+function Avatar({ name, id, photoURL }: { name: string; id: string; photoURL?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!photoURL || failed) return <PersonMark name={name} id={id} size={AVATAR} radius={AVATAR / 2} fontSize={12} />;
+  return (
+    <Image
+      accessibilityLabel={`${name} photo`}
+      source={{ uri: photoURL }}
+      onError={() => setFailed(true)}
+      style={{ width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 }}
+    />
   );
 }
 

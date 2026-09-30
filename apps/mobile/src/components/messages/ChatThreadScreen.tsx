@@ -1,58 +1,29 @@
-// Mobile v2 — one conversation, staff-side. The design's `M2Thread`
-// (views/mobile/screens2.jsx): bubbles, mine on the right, a sender chip where
-// more than two people are talking, and a way into the person's page from a DM.
-//
-// The "kept" pin exists in the shared schema now (`packages/core` —
-// `ChatMessage.pinned`, with `firestore.rules` allowing that field-level
-// update), and the desktop web app ports it, but this screen deliberately stays
-// as the design's core thread: the design's pin strip lives on the desktop
-// messages page, and the mobile port keeps M2Thread minimal. When the mobile
-// app grows them, it can read `message.pinned` off the same docs.
-import React, { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+// Mobile v2 — one conversation, staff-side. A DM, a group or an announcement
+// read as the shared written stream (ADR 0033): left-aligned rows, day dividers,
+// a New line, Threads as pushed screens. This screen owns the header and, in a
+// DM, the way into the person's page; ChatStreamPane draws the stream.
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
-import { canPostToRoom, chatKindNote, getRoomName, memberSenderName } from '@cisa/core';
+import { chatKindNote, getRoomName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
-import { deleteChatMessage } from '../../lib/data/chat';
 import { useChatThreadData } from '../../lib/useChatThreadData';
-import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
-import { Translate } from '../Translate';
-import { ThreadSkeleton } from './ThreadSkeleton';
+import { ChatStreamPane } from './ChatStreamPane';
 
 export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {}) {
   const params = useLocalSearchParams<{ id?: string; roomId?: string }>();
-  const roomId = propRoomId ?? params.id ?? params.roomId;
+  const roomId = propRoomId ?? params.id ?? params.roomId ?? '';
   const { c, font, radius, fs } = useV2Theme();
-  const { colors } = useTheme();
   const router = useRouter();
-  const { uid, role } = useAuth();
+  const { uid } = useAuth();
   const { t } = useLanguage();
-  const data = useChatThreadData(roomId ?? '');
-  const [text, setText] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; text: string } | null>(null);
+  const data = useChatThreadData(roomId);
 
   const name = data.room ? getRoomName(data.room, uid, data.usersCache) : '';
-  const canPost = !data.room || canPostToRoom(data.room, uid, role === 'admin');
-  const isGroupish = !!data.room && (data.room.type === 'group' || data.room.type === 'announcement');
-
-  const send = async () => {
-    if (!text.trim()) return;
-    const toSend = text;
-    setText('');
-    await data.send(toSend);
-  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -81,16 +52,11 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8, flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {!!data.partnerContactId && (
+      <ChatStreamPane
+        roomId={roomId}
+        data={data}
+        top={
+          !!data.partnerContactId && (
             <Pressable
               onPress={() => router.push(`/contact/${data.partnerContactId}`)}
               style={({ pressed }) => ({
@@ -112,218 +78,9 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                 </Text>
               </View>
             </Pressable>
-          )}
-
-          {data.error ? (
-            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>{data.error}</Text>
-          ) : data.loading ? (
-            <ThreadSkeleton />
-          ) : data.dayGroups.length === 0 ? (
-            <Text
-              style={{
-                fontFamily: font.medium,
-                fontSize: fs(14.5),
-                lineHeight: fs(21),
-                color: c.room.ink2,
-                textAlign: 'center',
-                paddingVertical: 24,
-              }}
-            >
-              {t('mobile.messages.nothing_here_yet')}
-            </Text>
-          ) : (
-            data.dayGroups.map((group) => (
-              <View key={group.key} style={{ gap: 8 }}>
-                <Text
-                  style={{
-                    fontFamily: font.bold,
-                    fontSize: fs(10.5),
-                    
-                    
-                    color: c.room.ink3,
-                    textAlign: 'center',
-                    marginVertical: 8,
-                  }}
-                >
-                  {group.label}
-                </Text>
-                {group.messages.map((m) => {
-                  const mine = m.senderId === uid;
-                  const canDeleteMsg = mine || role === 'admin';
-                  return (
-                    <Pressable
-                      key={m.id}
-                      onLongPress={canDeleteMsg ? () => setDeleteTarget({ id: m.id, text: m.text }) : undefined}
-                      style={{
-                        alignSelf: mine ? 'flex-end' : 'flex-start',
-                        maxWidth: '82%',
-                        backgroundColor: mine ? c.card.primary : c.card.bg,
-                        borderRadius: radius.note,
-                        paddingHorizontal: 14,
-                        paddingVertical: 11,
-                      }}
-                    >
-                      {isGroupish && !mine && (
-                        <Text
-                          style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink3, marginBottom: 3 }}
-                        >
-                          {memberSenderName(m, uid)}
-                        </Text>
-                      )}
-                      <Translate
-                        style={{
-                          fontFamily: font.medium,
-                          fontSize: fs(15),
-                          lineHeight: fs(21),
-                          color: mine ? c.card.onPrimary : c.card.said,
-                        }}
-                        text={m.text}
-                      />
-                      {(m.attachments ?? []).map((a) => {
-                        const isContact = a.type === 'contact';
-                        return (
-                          <Pressable
-                            key={`${a.type}:${a.id}`}
-                            onPress={isContact ? () => router.push(`/contact/${a.id}`) : undefined}
-                            style={({ pressed }) => ({
-                              alignSelf: 'flex-start',
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 6,
-                              marginTop: 7,
-                              paddingHorizontal: 10,
-                              paddingVertical: 5,
-                              borderRadius: radius.chip,
-                              backgroundColor: mine ? c.room.chip : c.card.bg2,
-                              opacity: pressed && isContact ? 0.75 : 1,
-                            })}
-                          >
-                            <Text
-                              style={{ fontFamily: font.semi, fontSize: fs(11.5), color: mine ? c.card.onPrimary : c.card.ink2 }}
-                            >
-                              {a.name}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))
-          )}
-        </ScrollView>
-
-        {canPost ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              backgroundColor: c.room.bg,
-            }}
-          >
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder={t('mobile.messages.write_a_message')}
-              placeholderTextColor={c.room.ink3}
-              multiline
-              style={{
-                flex: 1,
-                minHeight: 44,
-                maxHeight: 110,
-                backgroundColor: c.card.bg,
-                borderRadius: radius.row,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                fontFamily: font.medium,
-                fontSize: fs(15),
-                lineHeight: fs(21),
-                color: c.room.ink,
-              }}
-              onSubmitEditing={() => void send()}
-            />
-            <Pressable
-              onPress={() => void send()}
-              disabled={!text.trim()}
-              style={({ pressed }) => ({
-                height: 44,
-                paddingHorizontal: 18,
-                borderRadius: radius.row,
-                backgroundColor: text.trim() ? c.card.primary : c.room.chip,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.75 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  fontFamily: font.bold,
-                  fontSize: fs(14),
-                  color: text.trim() ? c.card.onPrimary : c.room.ink3,
-                }}
-              >
-                {t('mobile.common.send')}
-              </Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-            <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.room.ink3, textAlign: 'center' }}>
-              {t('mobile.messages.only_full_timers_post')}
-            </Text>
-          </View>
-        )}
-      </KeyboardAvoidingView>
-
-      {deleteTarget && (
-        <View
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: c.card.bg,
-              borderRadius: radius.tile,
-              padding: 20,
-              width: '100%',
-              gap: 12,
-            }}
-          >
-            <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.room.ink }}>{t('mobile.messages.delete_message')}</Text>
-            <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.room.ink2 }} numberOfLines={2}>
-              "{deleteTarget.text}"
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-              <Pressable
-                onPress={() => setDeleteTarget(null)}
-                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: c.room.chip }}
-              >
-                <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>{t('mobile.common.cancel')}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  const targetId = deleteTarget.id;
-                  setDeleteTarget(null);
-                  if (roomId) void deleteChatMessage(roomId, targetId);
-                }}
-                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.error }}
-              >
-                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>{t('mobile.common.delete')}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      )}
+          )
+        }
+      />
     </SafeAreaView>
   );
 }

@@ -462,6 +462,8 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
   /** A message pinned to the top of its conversation (thread's pinned strip). */
   pinned?: boolean;
+  /** Uid of whoever pinned it — the announcement strip says "Pinned by {name}". */
+  pinnedBy?: string;
   /** Tombstone for "take back for everyone": the author or a Full-timer sets
    *  it and the thread shows a gone label instead of the text. Once set it
    *  stays — a conversation never silently rewrites itself. */

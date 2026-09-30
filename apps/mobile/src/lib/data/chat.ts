@@ -77,12 +77,15 @@ export async function sendMessage(
   attachments: ChatAttachment[] | undefined,
   memberIds: string[],
   room?: { type?: ChatRoom['type']; name?: string },
+  /** Set to reply in a Thread. */
+  parentId?: string | null,
 ): Promise<void> {
   try {
     await core.sendMessage(db, roomId, text, sender, attachments, {
       memberIds,
       roomType: room?.type,
       roomName: room?.name,
+      parentId,
       // The bell entry is pushed to the recipient's devices by the
       // notification function (#270).
       onNotify: (payload) => void sendNotification(payload),
@@ -135,10 +138,33 @@ export async function deleteChatRoom(roomId: string): Promise<void> {
   }
 }
 
-export async function deleteChatMessage(roomId: string, messageId: string): Promise<void> {
+/** "Got it" on an announcement post — toggles the viewer's own entry. */
+export async function acknowledgeAnnouncement(
+  roomId: string,
+  messageId: string,
+  uid: string,
+  current: string[] = [],
+): Promise<void> {
   try {
-    await core.deleteChatMessage(db, roomId, messageId);
+    await core.acknowledgeAnnouncement(db, roomId, messageId, uid, current);
   } catch (e) {
-    handleFirestoreError(e, OperationType.DELETE, `chatRooms/${roomId}/messages/${messageId}`);
+    handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}/messages/${messageId}`);
+  }
+}
+
+export async function togglePinMessage(roomId: string, messageId: string, pinned: boolean, by?: string): Promise<void> {
+  try {
+    await core.togglePinMessage(db, roomId, messageId, pinned, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}/messages/${messageId}`);
+  }
+}
+
+/** Takes a message back for everyone — a tombstone; the rules refuse a delete. */
+export async function removeMessageForEveryone(roomId: string, messageId: string, by: string): Promise<void> {
+  try {
+    await core.removeMessageForEveryone(db, roomId, messageId, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}/messages/${messageId}`);
   }
 }

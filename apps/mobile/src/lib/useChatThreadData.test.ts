@@ -5,7 +5,8 @@
 // assertions below run against the very first post-change render.
 import { act, renderHook } from '@testing-library/react-native';
 import { useChatThreadData } from './useChatThreadData';
-import { sendMessage } from './data/chat';
+import { acknowledgeAnnouncement, removeMessageForEveryone, sendMessage, togglePinMessage } from './data/chat';
+import { ChatReads } from './data/chatReads';
 
 type TestState = { uid: string | null; user: null };
 type TestCbs = Record<string, unknown>;
@@ -24,6 +25,9 @@ jest.mock('./data/chat', () => ({
     return () => undefined;
   },
   sendMessage: jest.fn(),
+  acknowledgeAnnouncement: jest.fn(),
+  togglePinMessage: jest.fn(),
+  removeMessageForEveryone: jest.fn(),
 }));
 
 jest.mock('./data/users', () => ({
@@ -35,7 +39,7 @@ jest.mock('./data/contacts', () => ({
 }));
 
 jest.mock('./data/chatReads', () => ({
-  ChatReads: { markRead: jest.fn(), getLastRead: () => null },
+  ChatReads: { markRead: jest.fn(), getLastRead: jest.fn(() => null) },
 }));
 
 jest.mock('./firebase', () => ({
@@ -85,13 +89,13 @@ describe('useChatThreadData', () => {
       jest.advanceTimersByTime(500);
     });
     expect(result.current.loading).toBe(false);
-    expect(result.current.dayGroups[0].messages).toHaveLength(1);
+    expect(result.current.messages).toHaveLength(1);
 
     authState.uid = 'user2';
     await rerender({ roomId: 'room1' });
 
     expect(result.current.loading).toBe(true);
-    expect(result.current.dayGroups).toHaveLength(0);
+    expect(result.current.messages).toHaveLength(0);
     expect(result.current.room).toBeNull();
   });
 
@@ -106,12 +110,12 @@ describe('useChatThreadData', () => {
     await act(() => {
       jest.advanceTimersByTime(500);
     });
-    expect(result.current.dayGroups[0].messages).toHaveLength(1);
+    expect(result.current.messages).toHaveLength(1);
 
     await rerender({ roomId: 'room2' });
 
     expect(result.current.loading).toBe(true);
-    expect(result.current.dayGroups).toHaveLength(0);
+    expect(result.current.messages).toHaveLength(0);
   });
 
   // #1243: the push for an announcement post is titled with the channel name —
@@ -134,6 +138,46 @@ describe('useChatThreadData', () => {
       undefined,
       ['user1', 'user2'],
       { type: 'announcement', name: 'Campus Updates' },
+      null,
     );
+  });
+
+  it('sends a reply with its parent (#1262)', async () => {
+    const { result } = await renderHook(() => useChatThreadData('room1'));
+    await act(() => {
+      emitRoom({ id: 'room1', type: 'group', name: 'Team', memberIds: ['user1', 'user2'] });
+    });
+    await act(async () => {
+      await result.current.send('Count me in', 'm0');
+    });
+    expect((sendMessage as jest.Mock).mock.calls.at(-1)[6]).toBe('m0');
+  });
+
+  it("keeps the room's last-read from before this visit for the New line, though opening it marks it read", async () => {
+    (ChatReads.getLastRead as jest.Mock).mockReturnValue(Date.parse('2026-09-28T10:00:00.000Z'));
+    const { result } = await renderHook(() => useChatThreadData('room1'));
+    await act(() => {
+      emitMessages([message('m1')]);
+    });
+    (ChatReads.getLastRead as jest.Mock).mockReturnValue(Date.now());
+    await act(() => {
+      emitMessages([message('m1'), message('m2')]);
+    });
+    expect(result.current.lastReadAt).toBe('2026-09-28T10:00:00.000Z');
+    expect(ChatReads.markRead).toHaveBeenCalled();
+    (ChatReads.getLastRead as jest.Mock).mockReturnValue(null);
+  });
+
+  it('says Got it, pins and takes back through the chat data layer, as the viewer', async () => {
+    const { result } = await renderHook(() => useChatThreadData('room1'));
+    const post = { ...message('m1'), acknowledged: ['user2'] };
+    await act(async () => {
+      await result.current.acknowledge(post as never);
+      await result.current.pin('m1', true);
+      await result.current.remove('m1');
+    });
+    expect(acknowledgeAnnouncement).toHaveBeenCalledWith('room1', 'm1', 'user1', ['user2']);
+    expect(togglePinMessage).toHaveBeenCalledWith('room1', 'm1', true, 'user1');
+    expect(removeMessageForEveryone).toHaveBeenCalledWith('room1', 'm1', 'user1');
   });
 });

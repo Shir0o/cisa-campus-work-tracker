@@ -8,6 +8,8 @@ import {
   arrayUnion,
   collection,
   deleteDoc,
+  deleteField,
+  getDocs,
   doc,
   getDoc,
   onSnapshot,
@@ -67,6 +69,14 @@ function mapMessage(d: { id: string; data: () => Record<string, any> }): ChatMes
     timestamp: normalizeTimestamp(data.timestamp),
     type: data.type ?? "text",
     attachments: data.attachments ?? [],
+    // What the web's rules let people write on a live message (#563, #743,
+    // #1243): its thread, its pin, its take-back tombstone, its receipts.
+    parentId: data.parentId ?? null,
+    ...(data.pinned ? { pinned: true } : {}),
+    ...(data.pinnedBy ? { pinnedBy: data.pinnedBy } : {}),
+    ...(data.deleted ? { deleted: { by: data.deleted.by, at: normalizeTimestamp(data.deleted.at) } } : {}),
+    ...(data.readBy ? { readBy: data.readBy } : {}),
+    ...(data.acknowledged ? { acknowledged: data.acknowledged } : {}),
   };
 }
 
@@ -230,6 +240,8 @@ export async function sendMessage(
     /** An announcement room's push is titled with its name, not "New message". */
     roomType?: "direct" | "group" | "announcement";
     roomName?: string;
+    /** Set to reply in a Thread (one level deep, #563). */
+    parentId?: string | null;
   },
 ): Promise<void> {
   const msgText = text.trim();
@@ -244,9 +256,11 @@ export async function sendMessage(
     timestamp: serverTimestamp(),
     type: "text",
     attachments: attachments || [],
+    parentId: opts?.parentId ?? null,
   });
 
-  const previewText = messagePreviewText(msgText, attachments);
+  const basePreview = messagePreviewText(msgText, attachments);
+  const previewText = opts?.parentId ? `in a thread: ${basePreview}` : basePreview;
   await updateDoc(doc(db, "chatRooms", roomId), {
     lastMessage: {
       text: previewText,
@@ -260,13 +274,19 @@ export async function sendMessage(
   });
 
   if (opts?.onNotify && opts.memberIds) {
-    for (const memberId of opts.memberIds) {
+    const isAnnounce = opts.roomType === "announcement";
+    // A reply in an announcement tells the post's author and the Thread's
+    // other repliers, not all of the channel (mirrors the web's sendMessage).
+    const recipients =
+      isAnnounce && opts.parentId
+        ? await threadParticipants(db, roomId, opts.parentId)
+        : opts.memberIds;
+    for (const memberId of recipients) {
       if (memberId === sender.uid) continue;
-      const isAnnounce = opts.roomType === "announcement";
       opts.onNotify({
         userId: memberId,
         title: isAnnounce ? opts.roomName || "Announcement" : "New message",
-        message: isAnnounce
+        message: isAnnounce && !opts.parentId
           ? `${sender.displayName} posted an announcement: ${previewText}`
           : `${sender.displayName}: ${previewText}`,
         type: "info",
@@ -275,6 +295,25 @@ export async function sendMessage(
       });
     }
   }
+}
+
+async function threadParticipants(db: Firestore, roomId: string, parentId: string): Promise<string[]> {
+  const who = new Set<string>();
+  try {
+    const replies = await getDocs(
+      query(collection(db, "chatRooms", roomId, "messages"), where("parentId", "==", parentId)),
+    );
+    replies.docs.forEach((d) => {
+      const senderId = d.data().senderId;
+      if (senderId) who.add(senderId);
+    });
+    const parent = await getDoc(doc(db, "chatRooms", roomId, "messages", parentId));
+    const author = parent.exists() ? parent.data()?.senderId : null;
+    if (author) who.add(author);
+  } catch (e) {
+    console.error("Error fetching thread participants for notification:", e);
+  }
+  return [...who];
 }
 
 export async function inviteToGroup(
@@ -331,12 +370,43 @@ export async function deleteChatRoom(db: Firestore, roomId: string): Promise<voi
   await deleteDoc(doc(db, "chatRooms", roomId));
 }
 
-/** Deletes a specific message document from a room. Only author or admin may call this. */
-export async function deleteChatMessage(
+/** Toggles the viewer's "Got it" on an announcement post. The rules let a
+ *  member add or remove only their own entry. */
+export async function acknowledgeAnnouncement(
   db: Firestore,
   roomId: string,
   messageId: string,
+  uid: string,
+  current: string[] = [],
 ): Promise<void> {
-  await deleteDoc(doc(db, "chatRooms", roomId, "messages", messageId));
+  const acknowledged = current.includes(uid) ? current.filter((id) => id !== uid) : [...current, uid];
+  await updateDoc(doc(db, "chatRooms", roomId, "messages", messageId), { acknowledged });
 }
 
+/** Pins or unpins a message; anyone in the room can. `pinnedBy` names who, so
+ *  an announcement's strip can say "Pinned by {name}". */
+export async function togglePinMessage(
+  db: Firestore,
+  roomId: string,
+  messageId: string,
+  pinned: boolean,
+  by?: string,
+): Promise<void> {
+  await updateDoc(doc(db, "chatRooms", roomId, "messages", messageId), {
+    pinned,
+    pinnedBy: pinned && by ? by : deleteField(),
+  });
+}
+
+/** Takes a message back for everyone: a `deleted` tombstone, never a delete —
+ *  the rules refuse `delete` on a message. Only its author or a Full-timer. */
+export async function removeMessageForEveryone(
+  db: Firestore,
+  roomId: string,
+  messageId: string,
+  by: string,
+): Promise<void> {
+  await updateDoc(doc(db, "chatRooms", roomId, "messages", messageId), {
+    deleted: { by, at: serverTimestamp() },
+  });
+}
