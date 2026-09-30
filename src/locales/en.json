@@ -1874,7 +1874,10 @@
     "mention": "Mention someone",
     "audience_conversation": "Everyone tied to {name} sees this.",
     "audience_conversation_ask": "Everyone tied to {name} sees this and can say they followed up.",
-    "where_conversation": "Conversation · {name}"
+    "where_conversation": "Conversation · {name}",
+    "edit": "Edit",
+    "edited": "Edited",
+    "edit_label": "Edit message"
   },
   "study": {
     "loading": "Loading Bible Study…",

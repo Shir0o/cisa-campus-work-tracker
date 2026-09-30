@@ -1874,7 +1874,10 @@
     "mention": "Mencionar a alguien",
     "audience_conversation": "Todos los vinculados a {name} ven esto.",
     "audience_conversation_ask": "Todos los vinculados a {name} ven esto y pueden decir que hicieron el seguimiento.",
-    "where_conversation": "Conversación · {name}"
+    "where_conversation": "Conversación · {name}",
+    "edit": "Editar",
+    "edited": "Editado",
+    "edit_label": "Editar mensaje"
   },
   "study": {
     "loading": "Cargando el estudio bíblico…",

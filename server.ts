@@ -1001,7 +1001,7 @@ export async function createApp() {
         mirrored = await editIssueComment(note.githubIssueUrl, reply.githubCommentId, `${prefix}\n\n${text}`);
       }
 
-      await replyRef.update({ body: text });
+      await replyRef.update({ body: text, editedAt: FieldValue.serverTimestamp() });
 
       res.status(200).json({ success: true, mirroredToGitHub: mirrored });
     } catch (error: any) {

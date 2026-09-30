@@ -2090,6 +2090,8 @@ describe("POST /api/feedback/reply/edit", () => {
     expect(res.body.mirroredToGitHub).toBe(false);
     const reply: any = getCollection("feedback/fb-1/replies")["r1"];
     expect(reply.body).toBe("Which screen — the roster?");
+    // Marks it so Your notes can say "Edited"; an untouched reply has none.
+    expect(reply.editedAt).toEqual({ __mockServerTimestamp: true });
     expect(reply).toMatchObject({
       authorRole: "submitter",
       authorId: "user-ada",

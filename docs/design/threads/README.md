@@ -94,7 +94,7 @@ held it to its canvas (#1243).
 - [ ] **S3** Around: ADR 0022 unchanged — one card open, reading in place, the Conversation / Full-timers segment, the composer posting into the open one, the just-posted message landing above the composer, marked "Just posted".
 - [ ] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.
 - [ ] **S5** Chat headers: a group says "Group · N people"; an announcement says "Announcement · N people · {names} post here".
-- [ ] **S6** Your notes: Follow-ups are rows; the team posts as "The team"; your own can be edited and then say "Edited"; the public-tracker line stays under the composer.
+- [x] **S6** Your notes: Follow-ups are rows; the team posts as "The team"; your own can be edited and then say "Edited"; the public-tracker line stays under the composer.
 - [ ] **S7** Phone person screen: "Alongside" becomes **Conversation**; a Full-timer gets a Conversation / Full-timers switch at its top; a Trainee never sees the switch.
 - [ ] **S8** Phone announcements: a member can say Got it and reply in a thread.
 

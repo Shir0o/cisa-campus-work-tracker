@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import Stream from "../components/stream/Stream";
@@ -356,5 +356,136 @@ describe("Stream — the composer (C1–C3)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mention someone" }));
     expect(screen.getByPlaceholderText("Write something…")).toHaveValue("@");
     expect(screen.getByRole("listbox", { name: "Teammate mentions" })).toBeInTheDocument();
+  });
+});
+
+// Optional adapter capabilities a source can opt into (Your notes' Follow-ups
+// were the first): editing your own message, confirmed writes, a footer line,
+// the composer's own words. A source that sets none of them reads as before.
+describe("Stream — optional adapter capabilities", () => {
+  const mine = () => message({ id: "mine", from: "maria", fromName: "Maria Santos", body: "my words" });
+  const editable = (over: Partial<StreamAdapter> = {}) =>
+    fakeAdapter({
+      messages: [mine(), message({ id: "his", from: "josh", body: "his words" })],
+      edit: vi.fn(() => Promise.resolve()),
+      canEdit: (m) => m.from === "maria",
+      failure: { post: "That didn't send.", edit: "That didn't save." },
+      ...over,
+    });
+
+  it("offers Edit only where the adapter says the viewer may, and no Edit at all without an edit capability", () => {
+    const { unmount } = renderStream(editable());
+    expect(within(row("my words")).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(within(row("his words")).queryByRole("button", { name: "Edit" })).toBeNull();
+    unmount();
+    renderStream(fakeAdapter({ messages: [mine()] }));
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+
+  it("saves an edit through the adapter and closes the editor", async () => {
+    const adapter = editable();
+    renderStream(adapter);
+    fireEvent.click(within(row("my words")).getByRole("button", { name: "Edit" }));
+    const box = screen.getByRole("textbox", { name: "Edit message" });
+    expect(box).toHaveValue("my words");
+    await userEvent.clear(box);
+    await userEvent.type(box, "better words");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(adapter.edit).toHaveBeenCalledWith(expect.objectContaining({ id: "mine" }), "better words");
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Save" })).toBeNull());
+  });
+
+  it("Cancel leaves the message alone and never calls the adapter", async () => {
+    const adapter = editable();
+    renderStream(adapter);
+    fireEvent.click(within(row("my words")).getByRole("button", { name: "Edit" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Edit message" }), " extra");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(adapter.edit).not.toHaveBeenCalled();
+    expect(screen.getByText("my words")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+
+  it("says so, and keeps the editor open, when the edit fails", async () => {
+    const adapter = editable({ edit: vi.fn(() => Promise.reject(new Error("500"))) });
+    renderStream(adapter);
+    fireEvent.click(within(row("my words")).getByRole("button", { name: "Edit" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Edit message" }), "!");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("That didn't save.");
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("marks an edited message Edited, whoever wrote it", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ from: "josh", body: "fixed", editedAt: ago(1000) }),
+          message({ from: "josh", body: "untouched", at: yesterdayAt(12) }),
+        ],
+      }),
+    );
+    expect(within(row("fixed")).getByText("Edited")).toBeInTheDocument();
+    expect(within(row("untouched")).queryByText("Edited")).toBeNull();
+  });
+
+  it("draws a message's own initials in its avatar when the source gives them, else the name's", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ from: "team", fromName: "The team", initials: "T", body: "from us" }),
+          message({ from: "josh", fromName: "Josh Park", body: "from him", at: yesterdayAt(12) }),
+        ],
+      }),
+    );
+    expect(row("from us").querySelector("[data-stream-avatar]")).toHaveTextContent(/^T$/);
+    expect(row("from him").querySelector("[data-stream-avatar]")).toHaveTextContent(/^JP$/);
+  });
+
+  it("hides Delete where the adapter says nothing here can be deleted, even for the author", () => {
+    renderStream(fakeAdapter({ messages: [mine()], canDelete: () => false }));
+    fireEvent.click(within(row("my words")).getByRole("button", { name: "More actions" }));
+    expect(screen.queryByRole("menuitem", { name: "Delete message" })).toBeNull();
+  });
+
+  it("draws the adapter's footer under the composer, and the composer's own words", () => {
+    renderStream(
+      fakeAdapter({
+        composer: { placeholder: "Ask a follow-up…", label: "Ask a follow-up", submitLabel: "Send", hint: "⌘↵ to send" },
+        capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+      }),
+      { footer: <p>Replies are public.</p> },
+    );
+    const box = screen.getByPlaceholderText("Ask a follow-up…");
+    expect(screen.getByRole("textbox", { name: "Ask a follow-up" })).toBe(box);
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+    expect(screen.getByText("⌘↵ to send")).toBeInTheDocument();
+    const footer = screen.getByText("Replies are public.");
+    expect(box.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the draft and says so when a confirmed post fails; clears it once a post lands", async () => {
+    const post = vi.fn().mockRejectedValueOnce(new Error("500")).mockResolvedValueOnce(undefined);
+    renderStream(
+      fakeAdapter({
+        post,
+        failure: { post: "That didn't send.", edit: "That didn't save." },
+        capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+        composer: { placeholder: "Ask a follow-up…" },
+      }),
+    );
+    const box = screen.getByPlaceholderText("Ask a follow-up…");
+    await userEvent.type(box, "Any news?");
+    await userEvent.click(screen.getByRole("button", { name: "Post" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("That didn't send.");
+    expect(box).toHaveValue("Any news?");
+    await userEvent.click(screen.getByRole("button", { name: "Post" }));
+    await waitFor(() => expect(box).toHaveValue(""));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("offers no @ button where nobody can be mentioned", () => {
+    renderStream(fakeAdapter({ mentionCandidates: [] }));
+    expect(screen.queryByRole("button", { name: "Mention someone" })).toBeNull();
   });
 });

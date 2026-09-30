@@ -454,6 +454,8 @@ export interface FeedbackReply {
   relayed?: boolean;
   /** GitHub comment id — the mirror's dedupe key. */
   githubCommentId?: number;
+  /** When the author last rewrote it; absent on a reply never edited. */
+  editedAt?: string;
 }
 
 export interface ChatAttachment {
