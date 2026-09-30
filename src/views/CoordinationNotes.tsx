@@ -919,12 +919,27 @@ export default function CoordinationNotes() {
   const location = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
 
+  // Deep-link jumps run on a short delay so the target has rendered. Track the
+  // timers so unmount cancels them — otherwise a late callback touches
+  // `document` after the owner is gone (a jsdom teardown crash in tests).
+  const jumpTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const scheduleJump = (fn: () => void, ms: number) => {
+    jumpTimers.current.push(setTimeout(fn, ms));
+  };
+  useEffect(() => {
+    const timers = jumpTimers.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      timers.length = 0;
+    };
+  }, []);
+
   const jumpToAnchor = (docId?: string, anchorId?: string, noteId?: string) => {
     if (docId) {
       if (docs.some((d) => d.id === docId)) {
         setActiveId(docId);
         if (anchorId) {
-          setTimeout(() => {
+          scheduleJump(() => {
             let el = document.getElementById(anchorId);
             if (!el) {
               const headings = Array.from(
@@ -942,7 +957,7 @@ export default function CoordinationNotes() {
               el.classList.remove('bdoc-anchor-highlight');
               void el.offsetWidth;
               el.classList.add('bdoc-anchor-highlight');
-              setTimeout(() => el?.classList.remove('bdoc-anchor-highlight'), 2200);
+              scheduleJump(() => el?.classList.remove('bdoc-anchor-highlight'), 2200);
             } else {
               document.getElementById('coordination-notes-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -954,14 +969,14 @@ export default function CoordinationNotes() {
         showToast(t('coordination.page_no_longer_here'));
       }
     } else if (noteId) {
-      setTimeout(() => {
+      scheduleJump(() => {
         const noteEl = document.getElementById(`note-${noteId}`);
         if (noteEl) {
           noteEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
           noteEl.classList.remove('bdoc-anchor-highlight');
           void noteEl.offsetWidth;
           noteEl.classList.add('bdoc-anchor-highlight');
-          setTimeout(() => noteEl.classList.remove('bdoc-anchor-highlight'), 2200);
+          scheduleJump(() => noteEl.classList.remove('bdoc-anchor-highlight'), 2200);
         } else {
           document.getElementById('board-notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
