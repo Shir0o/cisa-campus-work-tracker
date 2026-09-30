@@ -105,7 +105,7 @@ export function StreamComposer({
   };
 
   const startMention = () => {
-    const at = sel >= 0 && sel <= body.length ? sel : body.length;
+    const at = Math.min(Math.max(sel, 0), body.length);
     const before = body.slice(0, at);
     const after = body.slice(at);
     const lead = before && !/\s$/.test(before) ? ' @' : '@';
