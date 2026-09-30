@@ -4117,23 +4117,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   flex: none;
   min-height: 52px;
 }
-/* `cd-pane-thread` opts Thread into fill-pane layout: list flexes inside the
-   pane while the composer is pinned at the bottom. Used by Discussion and
-   Follow up so the composer is always visible (#780). */
-.cd-pane-thread {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-.cd-pane-thread > [data-thread-list] {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-.cd-pane-thread > [data-thread-composer] {
-  flex: none;
-}
-
 /* Mobile keeps the full-screen sheet (no popup card); same body reflow. */
 .cdm-page {
   position: fixed; inset: 0; z-index: 100;
@@ -4508,6 +4491,36 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .strm-edit-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .strm-err { font-size: 12px; color: var(--strm-ask-fg); margin: 6px 0 0; }
 .strm-err-composer { padding: 0 22px; margin: 0; }
+
+/* "Just posted" — the writer's own message, marked for a moment (ADR 0022). */
+.strm-tag-just { background: var(--accent-soft); color: var(--accent-strong); }
+
+/* An Interaction's Thread quotes the Interaction as its parent
+   (threads/Interaction-Thread.dc.html). */
+.strm-quote { margin: 4px 0 2px; padding: 10px 12px; border-radius: 12px; background: var(--panel); border-left: 3px solid var(--border); }
+.strm-qh { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; }
+.strm-quote .strm-tx { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+/* The chip also sits on a story entry, outside any .strm. */
+.strm-last { color: var(--strm-mute, var(--text-dim)); }
+
+/* Inside a card (Around): 28px avatars, tighter rhythm, a list that scrolls
+   rather than growing the card without end (threads/Around.dc.html). */
+.strm-compact .strm-list { padding: 0; max-height: 340px; }
+.strm-compact .strm-av { width: 28px; height: 28px; font-size: 10.5px; }
+.strm-compact .strm-m { gap: 8px; }
+.strm-compact .strm-m.strm-cont { padding-left: 44px; }
+.strm-compact .strm-who, .strm-compact .strm-tx { font-size: 13px; }
+.strm-compact .strm-composer { padding: 8px 0 0; }
+.strm-compact .strm-th-head { padding: 0 0 8px; }
+.strm-compact .strm-th-head.back { padding-left: 0; }
+.strm-compact .strm-th-title h3 { font-size: 13.5px; font-family: var(--font-sans); }
+.strm-compact .strm-th-title { padding-top: 0; }
+.strm-compact .strm-icon-btn { width: 32px; height: 32px; }
+
+/* The phone-width contact page: the Conversation and Full-timers tabs run the
+   stream in the page body, and an Interaction's Thread covers the page. */
+.cdm-stream { display: flex; flex-direction: column; min-height: 60vh; max-height: 75dvh; }
+.cdm-page .cd-drawer { width: 100%; }
 
 /* ── container queries ──
    The edit form and Overview field groups size against the column's real

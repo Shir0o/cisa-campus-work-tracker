@@ -70,28 +70,28 @@ held it to its canvas (#1243).
 - [ ] **T1** Replies are one level deep. A parent with replies carries a chip: up to three replier avatars, "N replies", "Last reply …". The chip of the Thread that is open is marked.
 - [ ] **T2** A Thread opens *beside* the stream where there is width (Messages at 1440, a 340px pane) and *replaces* it, with a back arrow, where there isn't — the contact drawer, an Around card, the phone (a pushed screen).
 - [ ] **T3** The Thread header says where it lives: "Thread · in Conversation · Daniel Reyes".
-- [ ] **T4** An Interaction's Thread hangs off its log / Story entry — a replies chip, or "Think it through together" when there are none — and quotes the interaction as its parent. It no longer appears in the Conversation stream (the phone merged them).
+- [x] **T4** An Interaction's Thread hangs off its log / Story entry — a replies chip, or "Think it through together" when there are none — and quotes the interaction as its parent. It no longer appears in the Conversation stream (the phone merged them).
 
 ### Kinds
 
 - [ ] **K1** A Question or a Follow-up ask shows a tag beside the author's name: Question in blue, Follow-up ask in amber.
 - [ ] **K2** An open ask shows "Open N days" under the body with **I followed up** (anyone tied) and **Never mind** (the asker only).
 - [ ] **K3** A closed ask reads "✓ {name} followed up · {when}"; a withdrawn one mutes its tag and reads "{asker} withdrew this".
-- [ ] **K4** An ask can be closed in the stream, on an Around card, and on the phone — not only from My Day.
+- [x] **K4** An ask can be closed in the stream, on an Around card, and on the phone — not only from My Day.
 
 ### Composer
 
 - [ ] **C1** One box everywhere: the text, then a tools row — attach where the source supports it, @, the shortcut hint, send.
 - [ ] **C2** Kind chips (Comment · Question · Ask a follow-up) sit inside the box on a Conversation only. A selected ask chip takes the amber; each kind keeps its placeholder.
 - [ ] **C3** An audience line above the box on every contact stream — "Everyone tied to Daniel sees this." / a lock and "Only Full-timers see this." — and above an announcement composer, naming the real audience.
-- [ ] **C4** @mention candidates are unchanged from ADR 0007: any teammate on a Conversation, Full-timers only on Full-timers, the members of a chat.
+- [x] **C4** @mention candidates are unchanged from ADR 0007: any teammate on a Conversation, Full-timers only on Full-timers, the members of a chat.
 - [ ] **C5** Chat stages files and contact cards above the text, each removable before sending.
 
 ### Surfaces
 
 - [ ] **S1** Contact drawer headers: the stream's title only (Full-timers carries a lock icon); the audience line lives above the composer (C3).
-- [ ] **S2** Copy: the Full-timers placeholder becomes "Write something only Full-timers will see…" (en + es).
-- [ ] **S3** Around: ADR 0022 unchanged — one card open, reading in place, the Conversation / Full-timers segment, the composer posting into the open one, the just-posted message landing above the composer, marked "Just posted".
+- [x] **S2** Copy: the Full-timers placeholder becomes "Write something only Full-timers will see…" (en + es).
+- [x] **S3** Around: ADR 0022 unchanged — one card open, reading in place, the Conversation / Full-timers segment, the composer posting into the open one, the just-posted message landing above the composer, marked "Just posted".
 - [ ] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.
 - [ ] **S5** Chat headers: a group says "Group · N people"; an announcement says "Announcement · N people · {names} post here".
 - [x] **S6** Your notes: Follow-ups are rows; the team posts as "The team"; your own can be edited and then say "Edited"; the public-tracker line stays under the composer.

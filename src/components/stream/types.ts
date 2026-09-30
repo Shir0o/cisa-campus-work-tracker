@@ -17,6 +17,14 @@ export type StreamSourceMessage = StreamMessage & {
   initials?: string;
 };
 
+/** A roster entry as a surface holds it, for @mentions. */
+export interface TeamMemberLike {
+  id: string;
+  name: string;
+  role?: string;
+  initials?: string;
+}
+
 /** The three kinds a Conversation composer offers (#813); `nudge` is a
  *  Follow-up ask. A source without kinds only ever posts `comment`. */
 export type StreamComposeKind = "comment" | "question" | "nudge";
@@ -30,6 +38,15 @@ export interface StreamCapabilities {
   canPost: boolean;
   /** This viewer may reply in a Thread. */
   canReply: boolean;
+}
+
+/** An adapter that is one Thread. `parentId` names the message in `messages`
+ *  the replies hang off; the parent is drawn as a quote, not as a row. */
+export interface StreamThreadOf {
+  parentId: string;
+  /** The line under the Thread's title: where it lives and who reads it. */
+  subtitle: string;
+  quote: { label: string; body: string };
 }
 
 export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessage> {
@@ -47,6 +64,12 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   locked?: boolean;
   /** What an empty stream says. */
   empty?: string;
+  /** Placeholder in a Thread's reply box, where the default is "Reply…". */
+  replyPlaceholder?: string;
+  /** Set when the adapter is itself one Thread — an Interaction's: the stream
+   *  opens straight on it, quoting `quote` as the parent, with no stream
+   *  behind it to go back to. */
+  thread?: StreamThreadOf;
   capabilities: StreamCapabilities;
   /** Who may be @mentioned here (ADR 0007), already cut to this stream. */
   mentionCandidates: MentionUser[];

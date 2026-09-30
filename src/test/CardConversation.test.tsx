@@ -56,4 +56,34 @@ describe("CardConversation", () => {
       carers: ["t4"],
     });
   });
+
+  const kofi = { id: "c1", name: "Kofi Mensah", createdBy: "t1" } as Contact;
+  const roster = [
+    { id: "ruth", name: "Ruth Chen", role: "Full-timer" },
+    { id: "josh", name: "Josh Park", role: "Trainee" },
+  ];
+  const renderStrip = () =>
+    render(
+      <CardConversation contact={kofi} uid="ft1" messages={[]} justPosted={new Set()} onPosted={vi.fn()} teamMembers={roster} />,
+    );
+
+  it("reads the Conversation with kind chips and its audience above the box, in the compact stream", () => {
+    const { container } = renderStrip();
+    expect(screen.getByRole("group", { name: "What are you writing" })).toBeInTheDocument();
+    expect(screen.getByText("Everyone tied to Kofi sees this.")).toBeInTheDocument();
+    expect(container.querySelector(".strm-compact")).toBeTruthy();
+  });
+
+  it("offers Full-timers with no kinds, a lock, its own placeholder and only Full-timers to @mention", () => {
+    renderStrip();
+    fireEvent.click(screen.getByRole("tab", { name: /Full-timers/ }));
+
+    expect(screen.queryByRole("group", { name: "What are you writing" })).not.toBeInTheDocument();
+    expect(screen.getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
+    const box = screen.getByPlaceholderText("Write something only Full-timers will see…");
+    fireEvent.change(box, { target: { value: "@" , selectionStart: 1 } });
+    const list = screen.getByRole("listbox", { name: "Teammate mentions" });
+    expect(list).toHaveTextContent("Ruth Chen");
+    expect(list).not.toHaveTextContent("Josh Park");
+  });
 });

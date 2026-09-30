@@ -24,6 +24,7 @@ import {
   Check,
   Tag,
   MoreHorizontal,
+  Lock,
 } from "lucide-react";
 import {
   db,
@@ -58,9 +59,10 @@ import { partnersOf } from "../../lib/partners";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
-import Thread from "../Thread";
-import Stream from "../stream/Stream";
+import Stream, { ThreadChip } from "../stream/Stream";
 import { conversationAdapter } from "../stream/conversationAdapter";
+import { fullTimersAdapter } from "../stream/fullTimersAdapter";
+import { interactionAdapter, interactionThreadSummary } from "../stream/interactionAdapter";
 import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
@@ -281,7 +283,7 @@ export default function ContactDetailsModal({
   initialInteractionId,
 }: ContactDetailsModalProps) {
   const { user, isAdmin, role, effectiveUserId, isImpersonating } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -292,7 +294,9 @@ export default function ContactDetailsModal({
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [prayersLoading, setPrayersLoading] = useState(true);
-  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string; initials: string }[]>([]);
+  const [teamMembers, setTeamMembers] = useState<
+    { id: string; name: string; role: string; initials: string; fullTimer: boolean }[]
+  >([]);
 
   // True while the mobile "Where is {name} now?" stage sheet is open (#677).
   const [movingStage, setMovingStage] = useState(false);
@@ -301,8 +305,9 @@ export default function ContactDetailsModal({
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
   >("overview");
-  // Desktop has no tabs: the two conversation threads open in a side drawer.
-  const [drawer, setDrawer] = useState<null | "thread" | "discussion">(null);
+  // Desktop has no tabs: the two conversation streams, and an Interaction's
+  // Thread (openThread names the Interaction), open in a side drawer.
+  const [drawer, setDrawer] = useState<null | "thread" | "discussion" | "interaction">(null);
 
   const [liveContact, setLiveContact] = useState<Contact | null>(contact);
 
@@ -334,14 +339,15 @@ export default function ContactDetailsModal({
             name,
             role: data.role === "admin" ? t('modals.contactDetails.full_timer') : data.role === "manager" ? t('modals.contactDetails.trainee') : t('modals.contactDetails.staff_role'),
             initials,
+            fullTimer: data.role === "admin",
           };
         })
       );
     });
     return () => unsub();
   }, [isOpen]);
-  // Walking-together threads on this contact (live), + which interaction's
-  // inline thread is expanded.
+  // Walking-together threads on this contact (live), + which Interaction's
+  // Thread the drawer is open on.
   const threadMessages = useThreads(contact?.id, { includeTeam: isAdmin });
   const [openThread, setOpenThread] = useState<string | null>(null);
   // The Conversation message a to-do is being made from (the stream's toolbar).
@@ -594,12 +600,13 @@ export default function ContactDetailsModal({
     setTagInput("");
     setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
-    // On desktop the contact-level thread deep-link opens its drawer.
-    setDrawer(!initialInteractionId && initialTab === "thread" ? "thread" : null);
+    // A thread deep-link opens its drawer: the contact-level Conversation, or
+    // the Interaction's own Thread.
+    setDrawer(initialInteractionId ? "interaction" : initialTab === "thread" ? "thread" : null);
   }, [contact?.id, isOpen, initialTab, initialInteractionId]);
 
   // An interaction deep-link on desktop scrolls the story to that
-  // conversation, whose thread is already expanded (openThread above).
+  // conversation, whose Thread is open in the drawer (openThread above).
   useEffect(() => {
     if (!isOpen || isMobile || !initialInteractionId || interactionsLoading) return;
     document.getElementById(`story-${initialInteractionId}`)?.scrollIntoView?.({ block: "center" });
@@ -612,6 +619,26 @@ export default function ContactDetailsModal({
 
   const walkLabel = t('modals.contactDetails.follow_up');
   const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
+
+  // Every written surface on this page runs on the shared stream (ADR 0033),
+  // each through its own adapter over the one subscription above.
+  const streamViewer = { uid: currentUid ?? "", role };
+  const adapterBase = {
+    contactId: contact.id,
+    contactName: contact.name,
+    messages: threadMessages,
+    me: { uid: currentUid ?? "", name: user?.displayName || "Someone", role },
+    recipientUid: threadRecipient,
+    stakeholders: contactStakeholdersOf(contact),
+    teamMembers,
+    t,
+  };
+  const conversation = conversationAdapter(adapterBase);
+  const fullTimers = fullTimersAdapter(adapterBase);
+  const interactionAdapterFor = (interaction: Interaction) =>
+    interactionAdapter({ ...adapterBase, interaction, locale: language === "es" ? "es" : "en-US" });
+  const openInteraction = interactions.find((i) => i.id === openThread) ?? null;
+  const interactionThread = openInteraction ? interactionAdapterFor(openInteraction) : null;
 
   const founders = contact.founders || [];
   const coCreators = contact.coCreators || [];
@@ -1642,37 +1669,29 @@ export default function ContactDetailsModal({
                 </span>
               )}
             </div>
-            {/* Walk through this interaction together */}
+            {/* The team's Thread on this interaction: a replies chip, or an
+                invitation to start one. Either opens the Thread in the drawer. */}
             <div className="mt-2">
-              <button
-                onClick={() =>
-                  setOpenThread(
-                    openThread === interaction.id
-                      ? null
-                      : interaction.id,
-                  )
-                }
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold   text-on-surface-variant/60 hover:text-accent transition-colors"
-              >
-                <Footprints className="w-3.5 h-3.5" />
-                {countFor(threadMessages, interaction.id) > 0
-                  ? `${t('modals.contactDetails.alongside')} · ${countFor(threadMessages, interaction.id)}`
-                  : t('modals.contactDetails.think_this_through_together')}
-              </button>
-              {openThread === interaction.id && (
-                <div className="mt-2 pl-3 border-l-2 border-outline-variant/40">
-                  <Thread
-                    contactId={contact.id}
-                    interactionId={interaction.id}
-                    meStaffId={currentUid ?? ""}
-                    recipientUid={threadRecipient}
-                    contactName={contact.name}
-                    compact
-                    teamMembers={teamMembers}
-                    contactStakeholders={contactStakeholdersOf(contact)}
-                  />
-                </div>
-              )}
+              {(() => {
+                const summary = interactionThreadSummary(interactionAdapterFor(interaction), streamViewer, Date.now());
+                const opened = drawer === "interaction" && openThread === interaction.id;
+                const open = () => {
+                  setOpenThread(interaction.id);
+                  setDrawer("interaction");
+                };
+                return summary ? (
+                  <ThreadChip summary={summary} open={opened} onClick={open} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={open}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant/60 hover:text-accent transition-colors"
+                  >
+                    <Footprints className="w-3.5 h-3.5" />
+                    {t('stream.think_together')}
+                  </button>
+                );
+              })()}
             </div>
           </>
         )}
@@ -1868,18 +1887,12 @@ export default function ContactDetailsModal({
     </div>
   );
 
-  const renderThread = (scope?: "team") => (
-    <Thread
-      contactId={contact.id}
-      interactionId={null}
-      meStaffId={currentUid ?? ""}
-      recipientUid={threadRecipient}
-      contactName={contact.name}
-      scope={scope}
-      pane
-      teamMembers={teamMembers}
-      contactStakeholders={contactStakeholdersOf(contact)}
-    />
+  // The phone-width Conversation and Full-timers tabs: the same stream, in the
+  // page body, its Threads replacing it with a back arrow.
+  const renderStreamTab = (adapter: typeof conversation, onMakeTodo?: (m: ThreadMessage) => void) => (
+    <div className="cdm-stream">
+      <Stream adapter={adapter} viewer={streamViewer} threadMode="replace" onMakeTodo={onMakeTodo} />
+    </div>
   );
 
   // ── Desktop story page (design D) ──
@@ -2036,7 +2049,11 @@ export default function ContactDetailsModal({
       </>
     );
 
-  const drawerOpen = !isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread));
+  // An Interaction's Thread also opens on a phone, over the page: its entry is
+  // on the phone's Interactions tab too.
+  const drawerOpen =
+    (drawer === "interaction" && !!interactionThread) ||
+    (!isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread)));
   const drawerLabel = drawer === "discussion" ? t('modals.contactDetails.discussion') : walkLabel;
   const closeDrawerLabel = t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel);
   const closeDrawerButton = (
@@ -2050,19 +2067,6 @@ export default function ContactDetailsModal({
       <X className="w-4 h-4" />
     </button>
   );
-
-  // The Conversation drawer runs on the shared stream (ADR 0033); Full-timers
-  // and the per-Interaction threads move over in #1258.
-  const conversation = conversationAdapter({
-    contactId: contact.id,
-    contactName: contact.name,
-    messages: threadMessages,
-    me: { uid: currentUid ?? "", name: user?.displayName || "Someone", role },
-    recipientUid: threadRecipient,
-    stakeholders: contactStakeholdersOf(contact),
-    teamMembers,
-    t,
-  });
 
   return (
     <AnimatePresence>
@@ -3009,12 +3013,8 @@ export default function ContactDetailsModal({
                     <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
-                        <span className="cd-sec-sub">
-                          {t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
-                        </span>
                       </div>
-                      {renderThread()}
-
+                      {renderStreamTab(conversation, (m) => setTodoFrom(m))}
                     </div>
                   )}
 
@@ -3064,13 +3064,12 @@ export default function ContactDetailsModal({
                   {isMobile && activeTab === "discussion" && (role === "admin" || isAdmin) && (
                     <div className="cd-pane cd-sec">
                       <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">{t('modals.contactDetails.discussion')}</h3>
-                        <span className="cd-sec-sub">
-                          {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
-                        </span>
+                        <h3 className="cd-sec-title inline-flex items-center gap-2">
+                          <Lock className="w-4 h-4" aria-hidden />
+                          {t('modals.contactDetails.discussion')}
+                        </h3>
                       </div>
-                      {renderThread("team")}
-
+                      {renderStreamTab(fullTimers)}
                     </div>
                   )}
 
@@ -3181,19 +3180,34 @@ export default function ContactDetailsModal({
               </div>
             )}
             {drawerOpen && drawer === "discussion" && (
-              <div className="cd-drawer" role="dialog" aria-label={drawerLabel}>
-                <div className="cd-drawer-head">
-                  <div>
-                    <h3 className="cd-sec-title">{drawerLabel}</h3>
-                    <span className="cd-sec-sub">
-                      {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
-                    </span>
-                  </div>
-                  {closeDrawerButton}
-                </div>
-                <div className="cd-drawer-body">
-                  {renderThread("team")}
-                </div>
+              <div className="cd-drawer cd-drawer-stream" role="dialog" aria-label={drawerLabel}>
+                <Stream
+                  adapter={fullTimers}
+                  viewer={streamViewer}
+                  threadMode="replace"
+                  onClose={() => setDrawer(null)}
+                  header={
+                    <div className="cd-drawer-head">
+                      <div>
+                        <h3 className="cd-sec-title inline-flex items-center gap-2">
+                          <Lock className="w-4 h-4" aria-hidden />
+                          {drawerLabel}
+                        </h3>
+                      </div>
+                      {closeDrawerButton}
+                    </div>
+                  }
+                />
+              </div>
+            )}
+            {drawerOpen && drawer === "interaction" && interactionThread && (
+              <div className="cd-drawer cd-drawer-stream" role="dialog" aria-label={t('stream.thread_title')}>
+                <Stream
+                  adapter={interactionThread}
+                  viewer={streamViewer}
+                  threadMode="replace"
+                  onClose={() => setDrawer(null)}
+                />
               </div>
             )}
             {todoFrom && (

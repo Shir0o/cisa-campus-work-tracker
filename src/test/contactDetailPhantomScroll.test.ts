@@ -15,9 +15,9 @@
  *   - The `min-h-[400px]` floor that forced a scrollbar on an empty tab is gone.
  *   - `.cd-page-content` is a flex container, so a tab can opt into fill layout
  *     with `.cd-pane`.
- *   - `.cd-pane-thread` keeps the message list above the composer — the pane
- *     layout is wired so the composer pins to the bottom of Discussion and
- *     Follow up.
+ *   - The stream keeps the message list above the composer — the layout is
+ *     wired so the composer pins to the bottom of Full-timers and the
+ *     Conversation (`.cd-pane-thread` did this for `Thread.tsx`, now retired).
  *   - Every `cd-*` class the contact-detail markup renders has a rule in
  *     `index.css`. #780 pasted its new rules over the `sections` / `header` /
  *     `aside` blocks and deleted 24 classes the same commit's markup still
@@ -38,10 +38,7 @@ import { join } from 'node:path';
 
 const CSS_PATH = join(process.cwd(), 'src/index.css');
 /** The markup that renders the contact-detail page, desktop and mobile. */
-const MARKUP_PATHS = [
-  'src/components/modals/ContactDetailsModal.tsx',
-  'src/components/Thread.tsx',
-].map((p) => join(process.cwd(), p));
+const MARKUP_PATHS = ['src/components/modals/ContactDetailsModal.tsx'].map((p) => join(process.cwd(), p));
 
 /**
  * Extract the body of a top-level rule with the given selector. Tolerant
@@ -94,19 +91,21 @@ describe('contact-detail phantom-scroll guardrail (#780)', () => {
     expect(body!).toMatch(/flex-direction:\s*column/);
   });
 
-  it('.cd-pane-thread pins the message list above the composer', () => {
-    // (list flexes, composer is non-flex and pins to the bottom).
-    const pane = ruleBody(css, '.cd-pane-thread');
-    expect(pane, '.cd-pane-thread rule should exist').not.toBeNull();
+  it('the stream pins the message list above the composer', () => {
+    // (list flexes and scrolls, composer is non-flex and pins to the bottom).
+    // `Thread.tsx`'s `.cd-pane-thread` retired with it; the stream's own
+    // classes carry the same layout for Conversation and Full-timers.
+    const pane = ruleBody(css, '.strm');
+    expect(pane, '.strm rule should exist').not.toBeNull();
     expect(pane!).toMatch(/flex:\s*1\s+1\s+auto/);
-    expect(pane!).toMatch(/overflow:\s*hidden/);
 
-    const list = ruleBody(css, '.cd-pane-thread > [data-thread-list]');
-    expect(list, '.cd-pane-thread > [data-thread-list] rule should exist').not.toBeNull();
+    const list = ruleBody(css, '.strm-list');
+    expect(list, '.strm-list rule should exist').not.toBeNull();
     expect(list!).toMatch(/flex:\s*1\s+1\s+auto/);
+    expect(list!).toMatch(/overflow-y:\s*auto/);
 
-    const composer = ruleBody(css, '.cd-pane-thread > [data-thread-composer]');
-    expect(composer, '.cd-pane-thread > [data-thread-composer] rule should exist').not.toBeNull();
+    const composer = ruleBody(css, '.strm-composer');
+    expect(composer, '.strm-composer rule should exist').not.toBeNull();
     expect(composer!).toMatch(/flex:\s*none/);
   });
   it('container query sizes the form grid against the column (not the viewport)', () => {

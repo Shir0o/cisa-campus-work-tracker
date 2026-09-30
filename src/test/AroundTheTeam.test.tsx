@@ -15,7 +15,7 @@ import { __resetUserEntityStateCache } from '../lib/userEntityState';
 import { InboxState, __resetInboxState } from '../lib/inboxState';
 import { applyTeams } from '../lib/teams';
 import type { Contact, Interaction } from '../types';
-import type { ThreadMessageWithContact } from '../lib/threads';
+import { closeFollowUpAsk, type ThreadMessageWithContact } from '../lib/threads';
 
 const h = vi.hoisted(() => ({
   layout: undefined as { setSelectedContact: (c: any) => void } | undefined,
@@ -764,7 +764,44 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     expect(screen.getByText('Everyone tied to Kofi sees this.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
-    expect(screen.getByText('Full-timers only.')).toBeInTheDocument();
+    expect(screen.getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
+    expect(screen.queryByText('Everyone tied to Kofi sees this.')).not.toBeInTheDocument();
+  });
+
+  it('closes an open Follow-up ask right on the card — I followed up', () => {
+    renderOne([
+      msg({
+        id: 'ask1',
+        from: 'mei',
+        fromName: 'Mei Tanaka',
+        kind: 'nudge',
+        body: 'Can someone text Kofi before Thursday?',
+        at: new Date(Date.now() - 86_400_000).toISOString(),
+      }),
+    ]);
+    openStrip();
+
+    expect(screen.getByText('Follow-up ask')).toBeInTheDocument();
+    // The card's own "I followed up" (a worklist verb) is a different control
+    // from the one in the stream; scope to the strip.
+    const strip = screen.getByRole('tablist').parentElement!.parentElement!;
+    fireEvent.click(within(strip).getByRole('button', { name: 'I followed up' }));
+    expect(closeFollowUpAsk).toHaveBeenCalledWith('kofi', 'ask1', { uid: 'u1', name: 'Ruth' });
+  });
+
+  it('opens a Thread inside the card in place of the strip, with a back arrow', () => {
+    renderOne([
+      msg({ id: 'p', body: 'Parent message.' }),
+      msg({ id: 'r', parentId: 'p', from: 'grace', fromName: 'Grace Lim', body: 'A reply.' }),
+    ]);
+    openStrip();
+    fireEvent.click(screen.getByRole('button', { name: /1 reply/ }));
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    const thread = screen.getByRole('region', { name: 'Thread' });
+    expect(within(thread).getByText('A reply.')).toBeInTheDocument();
+    fireEvent.click(within(thread).getByRole('button', { name: 'Back to Conversation' }));
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
   });
 
   it('opens an empty strip with the composer ready when nothing has been written', () => {
@@ -892,7 +929,7 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     openStrip();
     fireEvent.click(screen.getByRole('tab', { name: /Full-timers/ }));
 
-    fireEvent.change(screen.getByPlaceholderText(/full-timers thread/i), {
+    fireEvent.change(screen.getByPlaceholderText(/only full-timers will see/i), {
       target: { value: 'Let us not pair him with a first-termer.' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^post$/i }));

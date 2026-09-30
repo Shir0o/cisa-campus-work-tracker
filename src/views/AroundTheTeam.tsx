@@ -26,7 +26,7 @@ import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
 import { closeFollowUpAsk, reopenFollowUpAsk, subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
 import { WorklistCard, VERB_SNACK } from "../components/landing/WorklistCard";
-import type { TeamMemberLike } from "../components/Thread";
+import type { TeamMemberLike } from "../components/stream/types";
 import PageContainer from "../components/layout/PageContainer";
 import { currentHref } from "../lib/navTrail";
 import { useMediaQuery } from "../lib/useMediaQuery";

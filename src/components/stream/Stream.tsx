@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Ellipsis, Loader2, Pencil, Reply, SquareCheckBig, X } from "lucide-react";
+import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Reply, SquareCheckBig, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
-import { buildStream, buildThread, type StreamRow, type StreamViewer } from "../../lib/stream";
+import { buildStream, buildThread, type StreamRow, type StreamViewer, type ThreadSummary } from "../../lib/stream";
 import type { MentionUser } from "../../lib/mentions";
 import StreamComposer from "./StreamComposer";
 import type { StreamAdapter, StreamSourceMessage } from "./types";
@@ -27,6 +27,10 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   /** Drawn under the composer — a line the composer can't say alone. */
   footer?: React.ReactNode;
   onMakeTodo?: (message: M) => void;
+  /** Inside a card: 28px avatars and the tighter rhythm (G1). */
+  compact?: boolean;
+  /** Messages to mark "Just posted" — the viewer's own, for a moment. */
+  highlightIds?: ReadonlySet<string> | null;
 }
 
 const TONES = 8;
@@ -42,7 +46,7 @@ function initialsOf(name: string): string {
   return (parts[0] || "?").slice(0, 2).toUpperCase();
 }
 
-function Avatar({ uid, name, size, initials }: { uid: string; name: string; size?: "xs"; initials?: string }) {
+export function Avatar({ uid, name, size, initials }: { uid: string; name: string; size?: "xs"; initials?: string }) {
   return (
     <span className={cn("strm-av", `strm-tone-${toneOf(uid)}`, size && `strm-av-${size}`)} data-stream-avatar="" aria-hidden>
       {initials ?? initialsOf(name)}
@@ -108,11 +112,31 @@ function useFormatters() {
   }, [t, locale]);
 }
 
+/** A parent's chip: who replied, how many, and when the last one was. Drawn
+ *  under the message in a stream, and on an Interaction's log entry. */
+export function ThreadChip({ summary, open, onClick }: { summary: ThreadSummary; open?: boolean; onClick: () => void }) {
+  const { t } = useLanguage();
+  const f = useFormatters();
+  return (
+    <button type="button" className={cn("strm-thr", open && "on")} aria-pressed={!!open} onClick={onClick}>
+      <span className="strm-minis" aria-hidden>
+        {summary.repliers.map((r) => (
+          <Avatar key={r.uid} uid={r.uid} name={r.name} size="xs" />
+        ))}
+      </span>
+      <b>{summary.count === 1 ? t("stream.replies_one") : t("stream.replies_many").replace("{n}", String(summary.count))}</b>
+      <span className="strm-last">{t("stream.last_reply").replace("{when}", f.ago(summary.lastReplyAt))}</span>
+    </button>
+  );
+}
+
 interface RowProps<M extends StreamSourceMessage> {
   row: StreamRow<M>;
   when: string;
   candidates: MentionUser[];
   canReply: boolean;
+  /** Just written by the viewer: wears a marker beside the name for a moment. */
+  justPosted?: boolean;
   /** The chip of the Thread that is open (beside mode). */
   threadOpen?: boolean;
   /** Draw the chip — not on the parent inside its own Thread. */
@@ -136,6 +160,7 @@ function Row<M extends StreamSourceMessage>({
   when,
   candidates,
   canReply,
+  justPosted,
   threadOpen,
   showChip,
   onOpenThread,
@@ -151,7 +176,9 @@ function Row<M extends StreamSourceMessage>({
 }: RowProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
-  const { message: m, continuation, tag, ask, askActions, thread } = row;
+  const { message: m, tag, ask, askActions, thread } = row;
+  // A message that was just posted names its author so the marker has a place.
+  const continuation = row.continuation && !justPosted;
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [editing, setEditing] = useState(false);
@@ -199,6 +226,7 @@ function Row<M extends StreamSourceMessage>({
                 {t("stream.tag_ask")}
               </span>
             )}
+            {justPosted && <span className="strm-tag strm-tag-just">{t("stream.just_posted")}</span>}
             <span className="strm-when">{when}</span>
           </div>
         )}
@@ -288,22 +316,7 @@ function Row<M extends StreamSourceMessage>({
             )}
           </div>
         )}
-        {showChip && thread && (
-          <button
-            type="button"
-            className={cn("strm-thr", threadOpen && "on")}
-            aria-pressed={!!threadOpen}
-            onClick={() => onOpenThread?.(false)}
-          >
-            <span className="strm-minis" aria-hidden>
-              {thread.repliers.map((r) => (
-                <Avatar key={r.uid} uid={r.uid} name={r.name} size="xs" />
-              ))}
-            </span>
-            <b>{thread.count === 1 ? t("stream.replies_one") : t("stream.replies_many").replace("{n}", String(thread.count))}</b>
-            <span className="strm-last">{t("stream.last_reply").replace("{when}", f.ago(thread.lastReplyAt))}</span>
-          </button>
-        )}
+        {showChip && thread && <ThreadChip summary={thread} open={threadOpen} onClick={() => onOpenThread?.(false)} />}
       </div>
       <div className="strm-tools" role="toolbar" aria-label={t("stream.message_actions")} ref={menuRef}>
         {canReply && onOpenThread && (
@@ -369,12 +382,18 @@ export default function Stream<M extends StreamSourceMessage>({
   onClose,
   footer,
   onMakeTodo,
+  compact,
+  highlightIds,
 }: StreamProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
   const [open, setOpen] = useState<{ id: string; focus: boolean } | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { messages, capabilities: can, mentionCandidates } = adapter;
+  // An adapter that is one Thread (an Interaction's) is always open on it, and
+  // there is no stream behind it to go back to.
+  const pinned = adapter.thread ?? null;
+  const openId = pinned ? pinned.parentId : (open?.id ?? null);
 
   // "Today" and "Open N days" are read against a clock that ticks each
   // minute, so a drawer left open across midnight relabels itself.
@@ -384,8 +403,8 @@ export default function Stream<M extends StreamSourceMessage>({
     return () => clearInterval(id);
   }, []);
   const items = buildStream({ messages, viewer, now, lastReadAt: adapter.lastReadAt });
-  const thread = open ? buildThread({ messages, viewer, now }, open.id) : null;
-  const replacing = threadMode === "replace" && !!thread;
+  const thread = openId ? buildThread({ messages, viewer, now }, openId) : null;
+  const replacing = (threadMode === "replace" || !!pinned) && !!thread;
   const topCount = items.length;
 
   // Open on — and stay with — the newest message (G4).
@@ -406,15 +425,17 @@ export default function Stream<M extends StreamSourceMessage>({
     editLabel: words?.editLabel,
     editFailure: failure?.edit,
     maxLength: words?.maxLength,
+    justPosted: !!highlightIds?.has(row.message.id),
     onMakeTodo: onMakeTodo ? () => onMakeTodo(row.message) : undefined,
     onDelete: () => void adapter.delete(row.message),
     onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
   });
 
+  const replaceMode = threadMode === "replace" || !!pinned;
   const threadPane = thread && (
     <section className="strm-thread" aria-label={t("stream.thread_title")}>
-      <div className={cn("strm-th-head", threadMode === "replace" && "back")}>
-        {threadMode === "replace" && (
+      <div className={cn("strm-th-head", replaceMode && !pinned && "back")}>
+        {replaceMode && !pinned && (
           <button
             type="button"
             className="strm-icon-btn"
@@ -427,9 +448,9 @@ export default function Stream<M extends StreamSourceMessage>({
         )}
         <div className="strm-th-title">
           <h3>{t("stream.thread_title")}</h3>
-          <p>{t("stream.thread_where").replace("{where}", adapter.where)}</p>
+          <p>{pinned ? pinned.subtitle : t("stream.thread_where").replace("{where}", adapter.where)}</p>
         </div>
-        {threadMode === "beside" ? (
+        {!replaceMode ? (
           <button type="button" className="strm-icon-btn" aria-label={t("stream.close_thread")} title={t("stream.close_thread")} onClick={() => setOpen(null)}>
             <X className="w-[18px] h-[18px]" />
           </button>
@@ -442,7 +463,18 @@ export default function Stream<M extends StreamSourceMessage>({
         )}
       </div>
       <div className="strm-list strm-top" data-stream-list="">
-        <Row row={thread.parent} when={f.dateTime(thread.parent.message.at)} canReply={false} showChip={false} {...rowProps(thread.parent)} />
+        {pinned ? (
+          <div className="strm-quote">
+            <div className="strm-qh">
+              <Footprints className="w-3.5 h-3.5" aria-hidden />
+              {pinned.quote.label}
+            </div>
+            <p className="strm-tx">{pinned.quote.body}</p>
+          </div>
+        ) : (
+          <Row row={thread.parent} when={f.dateTime(thread.parent.message.at)} canReply={false} showChip={false} {...rowProps(thread.parent)} />
+        )}
+        {pinned && thread.replies.length === 0 && adapter.empty && <p className="strm-empty">{adapter.empty}</p>}
         {thread.replies.length > 0 && (
           <div className="strm-rc">
             {thread.replies.length === 1
@@ -458,19 +490,20 @@ export default function Stream<M extends StreamSourceMessage>({
         <StreamComposer
           key={thread.parent.message.id}
           kinds={false}
-          placeholder={t("stream.reply_placeholder")}
+          placeholder={adapter.replyPlaceholder ?? t("stream.reply_placeholder")}
           hint={t("stream.reply_hint")}
           label={t("stream.reply_label")}
           submitLabel={t("stream.send_reply")}
           candidates={mentionCandidates}
-          autoFocus={open?.focus}
+          autoFocus={pinned ? thread.replies.length === 0 : open?.focus}
           onSubmit={({ body, mentionedUserIds }) => void adapter.reply(thread.parent.message, { body, mentionedUserIds })}
         />
       )}
     </section>
   );
 
-  if (replacing) return <div className="strm">{threadPane}</div>;
+  const root = cn("strm", compact && "strm-compact");
+  if (replacing) return <div className={root}>{threadPane}</div>;
 
   const main = (
     <>
@@ -545,11 +578,11 @@ export default function Stream<M extends StreamSourceMessage>({
 
   if (threadMode === "beside") {
     return (
-      <div className="strm strm-beside">
+      <div className={cn(root, "strm-beside")}>
         <div className="strm-main">{main}</div>
         {threadPane && <div className="strm-pane">{threadPane}</div>}
       </div>
     );
   }
-  return <div className="strm">{main}</div>;
+  return <div className={root}>{main}</div>;
 }
