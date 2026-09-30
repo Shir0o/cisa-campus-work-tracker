@@ -54,7 +54,7 @@ describe('WhatsNewModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('embeds the What\'s New Video iframe when the release carries a video_url', () => {
+  it('embeds the What\'s New Video iframe when the release carries a Google Drive video_url', () => {
     const withVideo: WhatsNewManifest = {
       latestReleaseId: '2026-09-17-v1.6.0',
       releases: [
@@ -64,7 +64,7 @@ describe('WhatsNewModal', () => {
           title: 'With Video',
           date: '2026-09-17',
           platforms: ['web', 'mobile'],
-          video_url: 'https://www.youtube.com/watch?v=abc123',
+          video_url: 'https://drive.google.com/file/d/1a2b3c4d5e/view?usp=sharing',
           items: [{ text: 'A change', platforms: ['web', 'mobile'] }],
         },
       ],
@@ -81,7 +81,12 @@ describe('WhatsNewModal', () => {
 
     const iframe = screen.getByTitle(/what's new video/i) as HTMLIFrameElement;
     expect(iframe).toBeInTheDocument();
-    expect(iframe.src).toContain('youtube.com/embed/abc123');
+    expect(iframe.src).toBe('https://drive.google.com/file/d/1a2b3c4d5e/preview');
+
+    const fallbackLink = screen.getByRole('link', { name: /open video in google drive/i });
+    expect(fallbackLink).toBeInTheDocument();
+    expect(fallbackLink).toHaveAttribute('href', 'https://drive.google.com/file/d/1a2b3c4d5e/view?usp=sharing');
+    expect(fallbackLink).toHaveAttribute('target', '_blank');
   });
 
   it('renders no video when the release has no video_url', () => {
@@ -96,6 +101,133 @@ describe('WhatsNewModal', () => {
 
     expect(screen.queryByTitle(/what's new video/i)).not.toBeInTheDocument();
   });
+
+  it('prefers videoUrlOverride prop over release video_url', () => {
+    const withVideo: WhatsNewManifest = {
+      latestReleaseId: '2026-09-17-v1.6.0',
+      releases: [
+        {
+          id: '2026-09-17-v1.6.0',
+          version: '1.6.0',
+          title: 'With Video',
+          date: '2026-09-17',
+          platforms: ['web'],
+          video_url: 'https://drive.google.com/file/d/manifestId/view',
+          items: [{ text: 'Change', platforms: ['web'] }],
+        },
+      ],
+    };
+
+    render(
+      <WhatsNewModal
+        manifest={withVideo}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+        videoUrlOverride="https://drive.google.com/file/d/overrideId/view"
+      />
+    );
+
+    const iframe = screen.getByTitle(/what's new video/i) as HTMLIFrameElement;
+    expect(iframe).toBeInTheDocument();
+    expect(iframe.src).toBe('https://drive.google.com/file/d/overrideId/preview');
+
+    const fallbackLink = screen.getByRole('link', { name: /open video in google drive/i });
+    expect(fallbackLink).toHaveAttribute('href', 'https://drive.google.com/file/d/overrideId/view');
+  });
+
+  it('uses videoUrlOverride when release has no video_url', () => {
+    render(
+      <WhatsNewModal
+        manifest={sampleManifest}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+        videoUrlOverride="https://drive.google.com/file/d/customId/view"
+      />
+    );
+
+    const iframe = screen.getByTitle(/what's new video/i) as HTMLIFrameElement;
+    expect(iframe).toBeInTheDocument();
+    expect(iframe.src).toBe('https://drive.google.com/file/d/customId/preview');
+  });
+
+  it('hides video when user role is not permitted by videoRolesOverride or video_roles', () => {
+    const withVideo: WhatsNewManifest = {
+      latestReleaseId: '2026-09-17-v1.6.0',
+      releases: [
+        {
+          id: '2026-09-17-v1.6.0',
+          version: '1.6.0',
+          title: 'Full-timer Only Feature',
+          date: '2026-09-17',
+          platforms: ['web'],
+          video_url: 'https://drive.google.com/file/d/ftVideo/view',
+          video_roles: ['admin'],
+          items: [{ text: 'Admin secret', platforms: ['web'] }],
+        },
+      ],
+    };
+
+    // User is trainee ('manager') -> should NOT see video
+    const { unmount } = render(
+      <WhatsNewModal
+        manifest={withVideo}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+        currentRole="manager"
+      />
+    );
+    expect(screen.queryByTitle(/what's new video/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /open video in google drive/i })).not.toBeInTheDocument();
+    unmount();
+
+    // User is admin ('admin') -> should see video
+    render(
+      <WhatsNewModal
+        manifest={withVideo}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+        currentRole="admin"
+      />
+    );
+    expect(screen.getByTitle(/what's new video/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /open video in google drive/i })).toBeInTheDocument();
+  });
+
+  it('respects dynamic videoRolesOverride over static video_roles', () => {
+    const withVideo: WhatsNewManifest = {
+      latestReleaseId: '2026-09-17-v1.6.0',
+      releases: [
+        {
+          id: '2026-09-17-v1.6.0',
+          version: '1.6.0',
+          title: 'Dynamic Roles Feature',
+          date: '2026-09-17',
+          platforms: ['web'],
+          video_url: 'https://drive.google.com/file/d/dynVideo/view',
+          video_roles: ['admin'],
+          items: [{ text: 'Info', platforms: ['web'] }],
+        },
+      ],
+    };
+
+    // Admin loosened permissions in Settings to allow ['admin', 'manager']
+    render(
+      <WhatsNewModal
+        manifest={withVideo}
+        platform="web"
+        isOpen={true}
+        onClose={vi.fn()}
+        currentRole="manager"
+        videoRolesOverride={['admin', 'manager']}
+      />
+    );
+    expect(screen.getByTitle(/what's new video/i)).toBeInTheDocument();
+  });
+
 
   it('renders categorized items in order (New Features, UI/UX Updates, Bug Fixes) with badges', () => {
     const categorizedManifest: WhatsNewManifest = {

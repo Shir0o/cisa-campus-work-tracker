@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Sparkles, CheckCircle2, Zap, Palette, Bug } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, Zap, Palette, Bug, ExternalLink } from 'lucide-react';
 import type { WhatsNewManifest, PlatformTarget, WhatsNewItem, WhatsNewCategory } from '../scripts/compile-whats-new';
 import { getWhatsNewForPlatform, markWhatsNewSeen } from '../lib/whatsNew';
 
@@ -8,17 +8,22 @@ interface WhatsNewModalProps {
   onClose: () => void;
   manifest: WhatsNewManifest;
   platform?: PlatformTarget;
+  videoUrlOverride?: string | null;
+  videoRolesOverride?: string[] | null;
+  currentRole?: string | null;
 }
+
 
 const CATEGORY_ORDER: WhatsNewCategory[] = ['feature', 'ui', 'fix'];
 
-/** Turn a YouTube watch/shorts URL into an embed URL; empty when not YouTube. */
+/** Turn a Google Drive file URL into an embed preview URL; empty when not Google Drive. */
 function toEmbedUrl(videoUrl: string): string {
   const idMatch =
-    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/.exec(
+    /(?:drive\.google\.com\/(?:file\/d\/([a-zA-Z0-9_-]+)|open\?id=([a-zA-Z0-9_-]+)))/.exec(
       videoUrl,
     );
-  return idMatch ? `https://www.youtube.com/embed/${idMatch[1]}` : '';
+  const fileId = idMatch ? (idMatch[1] || idMatch[2]) : '';
+  return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : '';
 }
 
 const CATEGORY_CONFIG: Record<
@@ -55,6 +60,9 @@ export default function WhatsNewModal({
   onClose,
   manifest,
   platform = 'web',
+  videoUrlOverride,
+  videoRolesOverride,
+  currentRole,
 }: WhatsNewModalProps) {
   if (!isOpen || !manifest.latestReleaseId) return null;
 
@@ -69,10 +77,20 @@ export default function WhatsNewModal({
     onClose();
   };
 
-  // Group items by category if any category is present, otherwise display as general highlights
-  const embedUrl = currentNotes.video_url ? toEmbedUrl(currentNotes.video_url) : '';
+  const effectiveVideoRoles =
+    videoRolesOverride !== undefined ? videoRolesOverride : currentNotes.video_roles;
+  const isVideoRoleAllowed =
+    !effectiveVideoRoles ||
+    effectiveVideoRoles.length === 0 ||
+    (!!currentRole && effectiveVideoRoles.includes(currentRole));
+
+  const effectiveVideoUrl = isVideoRoleAllowed
+    ? (videoUrlOverride !== undefined ? videoUrlOverride : currentNotes.video_url) || ''
+    : '';
+  const embedUrl = effectiveVideoUrl ? toEmbedUrl(effectiveVideoUrl) : '';
 
   const hasCategories = currentNotes.items.some((item) => item.category);
+
 
   // Categorized groups: New Features -> UI/UX -> Bug Fixes -> Uncategorized
   const categorizedGroups: { category?: WhatsNewCategory; items: WhatsNewItem[] }[] = [];
@@ -124,14 +142,28 @@ export default function WhatsNewModal({
         {/* Content */}
         <div className="px-6 pt-3.5 pb-5 overflow-y-auto space-y-4">
           {embedUrl && (
-            <div className="aspect-video w-full rounded-xl overflow-hidden border border-outline-variant/30">
-              <iframe
-                title="What's New Video"
-                src={embedUrl}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            <div className="space-y-1.5">
+              <div className="aspect-video w-full rounded-xl overflow-hidden border border-outline-variant/30">
+                <iframe
+                  title="What's New Video"
+                  src={embedUrl}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              <div className="flex justify-end">
+                <a
+                  href={effectiveVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
+                >
+                  <span>Open video in Google Drive</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+
+              </div>
             </div>
           )}
 

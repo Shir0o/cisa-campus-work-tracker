@@ -4,7 +4,7 @@ Date: 2026-09-21
 
 ## Status
 
-Accepted
+Accepted (Hosting superseded by [ADR 0034](0034-google-drive-video-hosting.md))
 
 ## Context
 

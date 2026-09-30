@@ -630,7 +630,18 @@ service cloud.firestore {
                  (data.attdSyncUrl is string && data.attdSyncUrl.size() <= 512));
       }
 
+      function isValidWhatsNewSettings(data) {
+        return data.keys().hasOnly(['videoUrl', 'videoRoles', 'updatedAt', 'updatedBy']) &&
+               (!('videoUrl' in data) || data.videoUrl == null ||
+                 (data.videoUrl is string && data.videoUrl.size() <= 1024)) &&
+               (!('videoRoles' in data) || data.videoRoles == null ||
+                 (data.videoRoles is list && data.videoRoles.size() <= 10)) &&
+               (!('updatedAt' in data) || data.updatedAt == null || data.updatedAt is timestamp) &&
+               (!('updatedBy' in data) || data.updatedBy == null || (data.updatedBy is string && data.updatedBy.size() <= 128));
+      }
+
       allow create, update: if docId == 'integrations' && isAdmin() && isValidIntegrationsSettings(incoming());
+      allow create, update: if docId == 'whats_new' && isAdmin() && isValidWhatsNewSettings(incoming());
 
       allow read: if docId != 'integrations' || isAdmin();
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());

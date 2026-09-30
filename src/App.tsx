@@ -37,7 +37,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import WhatsNewModal from "./components/WhatsNewModal";
 import whatsNewManifest from "./generated/whats-new.json";
-import { shouldShowAnnouncement, WHATS_NEW_STORAGE_KEY } from "./lib/whatsNew";
+import { shouldShowAnnouncement, WHATS_NEW_STORAGE_KEY, useWhatsNewSettings } from "./lib/whatsNew";
 import type { WhatsNewManifest } from "./scripts/compile-whats-new";
 import { NotificationPermissionBanner } from "./components/notifications/NotificationPermissionBanner";
 import { canAccessRoute, defaultRouteForRole, fallbackRouteFor, AppRole } from "./lib/permissions";
@@ -431,6 +431,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       return false;
     }
   });
+  const { videoUrl: currentVideoUrl, videoRoles: currentVideoRoles } = useWhatsNewSettings();
   const previousIdentityKey = React.useRef(effectiveIdentityKey);
 
   // Contact detail is now a real URL route (`/people/:contactId`), so the
@@ -647,6 +648,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           onClose={() => setIsWhatsNewOpen(false)}
           manifest={whatsNewManifest as WhatsNewManifest}
           platform="web"
+          currentRole={role}
+          videoUrlOverride={currentVideoUrl}
+          videoRolesOverride={currentVideoRoles}
         />
         <NotificationPermissionBanner />
         <Toaster />

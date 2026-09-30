@@ -50,6 +50,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  Video,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -65,6 +66,7 @@ import WhatsNewModal from '../components/WhatsNewModal';
 import { Select } from '../components/ui/Select';
 import whatsNewManifest from '../generated/whats-new.json';
 import type { WhatsNewManifest } from '../scripts/compile-whats-new';
+import { useWhatsNewSettings } from '../lib/whatsNew';
 import {
   subscribePartners,
   savePartners,
@@ -985,8 +987,66 @@ function LanguageSection() {
 
 // ── What's New ─────────────────────────────────────────────────────────
 
-function WhatsNewSection({ onOpen }: { onOpen: () => void }) {
+function WhatsNewSection({
+  onOpen,
+  isAdmin,
+  userEmail,
+}: {
+  onOpen: () => void;
+  isAdmin?: boolean;
+  userEmail?: string | null;
+}) {
   const { t } = useLanguage();
+  const { videoUrl: savedVideoUrl, videoRoles: savedVideoRoles, setVideoSettings } = useWhatsNewSettings();
+
+  const [inputUrl, setInputUrl] = useState<string | null>(null);
+  const [targetAudience, setTargetAudience] = useState<'everyone' | 'admin' | 'staff' | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const effectiveInputUrl = inputUrl ?? (savedVideoUrl || '');
+  const effectiveTargetAudience: 'everyone' | 'admin' | 'staff' =
+    targetAudience ??
+    (!savedVideoRoles || savedVideoRoles.length === 0
+      ? 'everyone'
+      : savedVideoRoles.length === 2 &&
+          savedVideoRoles.includes('admin') &&
+          savedVideoRoles.includes('manager')
+        ? 'staff'
+        : savedVideoRoles.length === 1 && savedVideoRoles.includes('admin')
+          ? 'admin'
+          : 'everyone');
+
+  const handleSaveVideo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSaveSuccess(false);
+
+    let rolesToSave: string[] | null = null;
+    if (effectiveTargetAudience === 'admin') {
+      rolesToSave = ['admin'];
+    } else if (effectiveTargetAudience === 'staff') {
+      rolesToSave = ['admin', 'manager'];
+    }
+
+    try {
+      await setVideoSettings(
+        {
+          videoUrl: effectiveInputUrl.trim() || null,
+          videoRoles: rolesToSave,
+        },
+        userEmail || null,
+      );
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save What’s New video settings');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <section className="mt-10">
@@ -994,27 +1054,89 @@ function WhatsNewSection({ onOpen }: { onOpen: () => void }) {
         title={t('settings.whats_new', "What's New")}
         sub={t('settings.whats_new_sub', 'See the latest updates, features, and improvements added to CISA.')}
       />
-      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-2xl">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-accent shrink-0">
-            <Sparkles className="w-5 h-5" />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-accent shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-serif text-base text-on-surface leading-tight">
+                {whatsNewManifest.latestReleaseId ? `v${(whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? 'Latest'}` : t('settings.whats_new', "What's New")}
+              </h3>
+              <p className="text-[13px] text-on-surface-variant mt-0.5">
+                {(whatsNewManifest as WhatsNewManifest).releases[0]?.title ?? t('settings.whats_new_sub', 'Latest release notes')}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-serif text-base text-on-surface leading-tight">
-              {whatsNewManifest.latestReleaseId ? `v${(whatsNewManifest as WhatsNewManifest).releases[0]?.version ?? 'Latest'}` : t('settings.whats_new', "What's New")}
-            </h3>
-            <p className="text-[13px] text-on-surface-variant mt-0.5">
-              {(whatsNewManifest as WhatsNewManifest).releases[0]?.title ?? t('settings.whats_new_sub', 'Latest release notes')}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onOpen}
+            className="px-5 py-2.5 rounded-xl bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer shrink-0"
+          >
+            {t('settings.whats_new_button', 'View latest release notes')}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onOpen}
-          className="px-5 py-2.5 rounded-xl bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer shrink-0"
-        >
-          {t('settings.whats_new_button', 'View latest release notes')}
-        </button>
+
+        {isAdmin && (
+          <form
+            onSubmit={handleSaveVideo}
+            className="pt-5 border-t border-outline-variant/30 flex flex-col gap-3"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium text-on-surface">
+              <Video className="w-4 h-4 text-primary" />
+              <span>{t('settings.whats_new_video_title', 'Video Walkthrough Companion')}</span>
+            </div>
+            <p className="text-xs text-on-surface-variant">
+              {t(
+                'settings.whats_new_video_help',
+                'Paste a shared Google Drive video link to accompany the latest release notes, and restrict visibility if the video covers restricted workflows.',
+              )}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="url"
+                placeholder="https://drive.google.com/file/d/.../view"
+                value={effectiveInputUrl}
+                onChange={(e) => setInputUrl(e.target.value)}
+                className="flex-1 px-3.5 py-2 text-sm bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none text-on-surface"
+              />
+              <div className="w-full sm:w-56">
+                <Select
+                  value={effectiveTargetAudience}
+                  onChange={(e) =>
+                    setTargetAudience(e.target.value as 'everyone' | 'admin' | 'staff')
+                  }
+                  aria-label="Video audience"
+                >
+                  <option value="everyone">Everyone</option>
+                  <option value="staff">Full-timers & Trainees</option>
+                  <option value="admin">Full-timers only</option>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 mt-1">
+              <div className="text-xs">
+                {saveSuccess && (
+                  <span className="text-success font-medium inline-flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" />
+                    {t('settings.whats_new_saved', 'Video settings saved')}
+                  </span>
+                )}
+                {error && <span className="text-error">{error}</span>}
+              </div>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 text-xs font-medium rounded-xl bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                {saving ? t('settings.saving', 'Saving...') : t('settings.save_video', 'Save video settings')}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </section>
   );
@@ -2848,6 +2970,7 @@ export default function Settings() {
   const [removeTarget, setRemoveTarget] = useState<AppUser | null>(null);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const { videoUrl: currentVideoUrl, videoRoles: currentVideoRoles } = useWhatsNewSettings();
 
   useEffect(() => {
     if (!isManager) return;
@@ -3018,7 +3141,11 @@ export default function Settings() {
         <NavigationSection />
         <NotificationsSection />
         <LanguageSection />
-        <WhatsNewSection onOpen={() => setWhatsNewOpen(true)} />
+        <WhatsNewSection
+          onOpen={() => setWhatsNewOpen(true)}
+          isAdmin={isAdmin}
+          userEmail={currentUser?.email}
+        />
         <GettingStartedSection />
 
         <WhatsNewModal
@@ -3026,6 +3153,9 @@ export default function Settings() {
           onClose={() => setWhatsNewOpen(false)}
           manifest={whatsNewManifest as WhatsNewManifest}
           platform="web"
+          currentRole={role}
+          videoUrlOverride={currentVideoUrl}
+          videoRolesOverride={currentVideoRoles}
         />
 
         <p className="mt-12 text-center text-[13px] text-on-surface-variant/70 italic">
@@ -3052,7 +3182,11 @@ export default function Settings() {
       <NavigationSection />
       <NotificationsSection />
       <LanguageSection />
-      <WhatsNewSection onOpen={() => setWhatsNewOpen(true)} />
+      <WhatsNewSection
+        onOpen={() => setWhatsNewOpen(true)}
+        isAdmin={isAdmin}
+        userEmail={currentUser?.email}
+      />
       <GettingStartedSection />
 
       <section className="mt-10">
@@ -3242,6 +3376,9 @@ export default function Settings() {
           onClose={() => setWhatsNewOpen(false)}
           manifest={whatsNewManifest as WhatsNewManifest}
           platform="web"
+          currentRole={role}
+          videoUrlOverride={currentVideoUrl}
+          videoRolesOverride={currentVideoRoles}
         />
       </AnimatePresence>
     </PageContainer>

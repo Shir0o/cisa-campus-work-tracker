@@ -140,6 +140,25 @@ date: "2026-09-06"
 `;
     const release = parseWhatsNewMarkdown(md);
     expect(release.video_url).toBeUndefined();
+    expect(release.video_roles).toBeUndefined();
+  });
+
+  it('parses video_roles for What\'s New video companion', () => {
+    const md = `---
+id: 2026-09-07-v1.6.0
+version: 1.6.0
+title: "Admin Tools"
+date: "2026-09-07"
+video_url: "https://drive.google.com/file/d/testVideoId/view"
+video_roles:
+  - admin
+---
+
+- New administrative console
+`;
+    const release = parseWhatsNewMarkdown(md);
+    expect(release.video_url).toBe('https://drive.google.com/file/d/testVideoId/view');
+    expect(release.video_roles).toEqual(['admin']);
   });
 
   it('parses the personal layer (roles + lines) for the Release Nudge', () => {

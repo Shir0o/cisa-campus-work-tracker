@@ -311,6 +311,17 @@ export interface SeasonSettings {
   bfa?: boolean;
 }
 
+// Team-wide What's New video override settings (one doc: settings/whats_new).
+// Allows full-timers to specify or update the Google Drive video link shown
+// in the What's New dialog.
+export interface WhatsNewSettings {
+  videoUrl?: string | null;
+  videoRoles?: string[] | null;
+  updatedAt?: unknown;
+  updatedBy?: string | null;
+}
+
+
 // Team-wide gospel partners (one doc: settings/partners). The map is keyed by
 // term ("Fall 2026") and values are groups of trainee uids who go out as one.
 // Admin-only writes; readable by the app so both sides of a pair resolve
