@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CoordinationNotes from '../views/CoordinationNotes';
 import CoordinationNotesMobile from '../views/CoordinationNotesMobile';
@@ -260,6 +260,31 @@ describe('Coordination Notes Search & Jump to Anchor', () => {
     await waitFor(() => {
       expect(scrollIntoViewMock).toHaveBeenCalled();
     });
+  });
+
+  it('cancels a pending deep-link jump when the view unmounts', async () => {
+    vi.useFakeTimers();
+    try {
+      const anchor = document.createElement('div');
+      anchor.id = 'small-groups';
+      const anchorScroll = vi.fn();
+      anchor.scrollIntoView = anchorScroll;
+      document.body.appendChild(anchor);
+      mockLocation = { state: { focusDocId: 'doc-1', focusAnchorId: 'small-groups' }, search: '' };
+
+      const { unmount } = render(<CoordinationNotes />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      unmount();
+
+      vi.advanceTimersByTime(5000);
+
+      expect(anchorScroll).not.toHaveBeenCalled();
+      document.body.removeChild(anchor);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders SearchBarComponent in CoordinationNotesMobile', () => {
