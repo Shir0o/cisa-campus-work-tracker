@@ -62,7 +62,7 @@ held it to its canvas (#1243).
 - [ ] **G4** Oldest at top, composer pinned at the foot; the stream opens on the newest message.
 - [ ] **G5** Day dividers: Today, Yesterday, then weekday and date.
 - [x] **G6** A "New" line above the first unread, where read state exists (chat, announcements).
-- [ ] **G7** Hover lights the row and shows a toolbar — Reply in thread, Make a to-do, More. On a phone, long-press opens a sheet with those plus Copy text, and Delete for the author or a Full-timer.
+- [x] **G7** Hover lights the row and shows a toolbar — Reply in thread, Make a to-do, More. On a phone, long-press opens a sheet with those plus Copy text, and Delete for the author or a Full-timer.
 - [ ] **G8** No reactions anywhere (#1107 stands).
 
 ### Threads
@@ -95,7 +95,7 @@ held it to its canvas (#1243).
 - [x] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.
 - [x] **S5** Chat headers: a group says "Group · N people"; an announcement says "Announcement · N people · {names} post here".
 - [x] **S6** Your notes: Follow-ups are rows; the team posts as "The team"; your own can be edited and then say "Edited"; the public-tracker line stays under the composer.
-- [ ] **S7** Phone person screen: "Alongside" becomes **Conversation**; a Full-timer gets a Conversation / Full-timers switch at its top; a Trainee never sees the switch.
+- [x] **S7** Phone person screen: "Alongside" becomes **Conversation**; a Full-timer gets a Conversation / Full-timers switch at its top; a Trainee never sees the switch.
 - [ ] **S8** Phone announcements: a member can say Got it and reply in a thread.
 
 ## What the drawings assume about the code

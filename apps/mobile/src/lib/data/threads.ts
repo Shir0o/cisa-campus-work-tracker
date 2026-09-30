@@ -23,22 +23,43 @@ export function subscribeTiedThreads(
   return core.subscribeTiedThreads(db, staffId, cb, onError);
 }
 
-/** Live subscription to a single contact's thread messages (Contact Detail's
- * "Alongside" tab). */
+/** Live subscription to a single contact's thread messages — the person
+ * screen's Conversation and Story Threads, plus the Full-timers stream when
+ * `includeTeam` (a Full-timer only; the rules refuse anyone else). */
 export function subscribeThreads(
   contactId: string,
   cb: (messages: ThreadMessage[]) => void,
   onError?: (e: unknown) => void,
+  options?: core.ThreadSubscribeOptions,
 ): () => void {
-  return core.subscribeThreads(db, contactId, cb, onError);
+  return core.subscribeThreads(db, contactId, cb, onError, options);
 }
 
+const sub = (scope?: 'team' | null) => (scope === 'team' ? 'teamThreads' : 'threads');
+
 /** Delete a single thread message — the author or an admin (per firestore.rules). */
-export async function deleteThreadMessage(contactId: string, messageId: string): Promise<void> {
+export async function deleteThreadMessage(
+  contactId: string,
+  messageId: string,
+  scope?: 'team' | null,
+): Promise<void> {
   try {
-    await core.deleteThreadMessage(db, contactId, messageId);
+    await core.deleteThreadMessage(db, contactId, messageId, scope);
   } catch (e) {
-    handleFirestoreError(e, OperationType.DELETE, `contacts/${contactId}/threads/${messageId}`);
+    handleFirestoreError(e, OperationType.DELETE, `contacts/${contactId}/${sub(scope)}/${messageId}`);
+  }
+}
+
+/** I followed up / Never mind on a Follow-up ask, as `by` (#813). */
+export async function closeFollowUpAsk(
+  contactId: string,
+  messageId: string,
+  by: { uid: string; name?: string | null },
+): Promise<void> {
+  try {
+    await core.closeFollowUpAsk(db, contactId, messageId, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/threads/${messageId}`);
   }
 }
 
@@ -48,7 +69,15 @@ export async function deleteThreadMessage(contactId: string, messageId: string):
  *  (#813). */
 export async function addThreadMessage(
   contactId: string,
-  input: { interactionId?: string | null; from: string; fromName: string; kind: ThreadKind; body: string },
+  input: {
+    interactionId?: string | null;
+    parentId?: string | null;
+    scope?: 'team' | null;
+    from: string;
+    fromName: string;
+    kind: ThreadKind;
+    body: string;
+  },
   notify?: {
     to?: string | null;
     contactName?: string;
@@ -59,11 +88,11 @@ export async function addThreadMessage(
     await core.addThreadMessage(db, contactId, input, notify, (payload) => {
       void sendNotification({
         ...payload,
-        link: `/people/${contactId}?tab=thread`,
+        link: `/people/${contactId}?tab=${input.scope === 'team' ? 'discussion' : 'thread'}`,
         coalesceKey: `contact:${contactId}`,
       });
     });
   } catch (e) {
-    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
+    handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/${sub(input.scope)}`);
   }
 }
