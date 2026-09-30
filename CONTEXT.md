@@ -182,8 +182,8 @@ _Avoid_: Bible study (bare), study list
 What everyone who is not a Full-timer reaches at `/bible-study/read` — the newest published Meeting of the Entry point's active Study, resolved by exactly the chain a scan follows, rendered by the same reader a student sees. It is one week, the current one, never an archive: the **Weeks index** stays Full-timers-only and no other week is reachable from here. It is a signed-in destination rather than a scan, so it keeps the app's own chrome and a way back, and it carries Show QR and Copy link so anyone in the room can pass the study on without a Full-timer present. A Full-timer also gets an Edit chip from it into that week's editor and straight back.
 _Avoid_: The reader, scan view, bible study page, the study (bare)
 
-**Full-timers (contact tab)**:
-The Full-timers-only stream of messages on a contact, where staff reason together about how to care for that person. It is one of the tabs on the contact detail page and is not visible to Trainees. The tab is named for its audience on purpose: it sits beside **Conversation**, which is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
+**Full-timers (on a contact)**:
+The Full-timers-only stream of messages on a contact, where staff reason together about how to care for that person. It shares the side pane of the contact detail page with **Conversation**, behind a switch, and a Trainee's pane has no switch because they cannot see it. It is named for its audience on purpose: **Conversation** is open to everyone tied to the contact, and the label is the only thing telling a Full-timer which of the two a Trainee can read. Formerly titled "Discussion", which said nothing about who could see it.
 _Avoid_: Discussion, Private, Comments, internal thread, chat
 
 Three other things in this product carry the word and are not this: a **Prompt** of kind *Discuss* is what a Bible study Section puts to the room; **Questions for the team** at `/questions` is Trainees asking Full-timers something that isn't about one person; and a **Coordination note** is neither.
@@ -212,15 +212,31 @@ Texting or emailing a contact after the first encounter — or, less often, doin
 _Avoid_: Replying, responding, chasing, touching base
 
 **Follow-up ask**:
-One staff member saying a **Follow up** wants doing, written into a contact's **Conversation**. It reaches everyone tied to that contact, carries no owner and no deadline, and stays open — showing how long it has been open as a plain fact — until someone tied presses "I followed up" or the asker retracts it with "Never mind". Deliberately *not* a to-do: a to-do is a personal list with an assignee, and putting someone else's name and date on an errand creates an obligation this is meant to avoid. Nothing closes it implicitly — not logging an Interaction, not replying to it in its **Thread**.
+One staff member saying a **Follow up** wants doing, written into a contact's **Conversation**. It reaches everyone tied to that contact, carries no owner and no deadline, and stays open — showing how long it has been open as a plain fact — until someone tied presses "I followed up" or the asker retracts it with "Never mind". Deliberately *not* a to-do: a to-do is a personal list with an assignee, and putting someone else's name and date on an errand creates an obligation this is meant to avoid. Nothing closes it implicitly — not logging an Interaction, not replying in the thread. If it is still open three calendar days after it was raised, the asker alone is told once — "nobody followed up" — and it waits in their **On you** from then until closed; that returns the loop to the person who asked without handing the errand to anyone. A question nobody has replied to in its Thread after three days tells its asker the same way.
 _Avoid_: Nudge, reminder, assigned follow-up, task
 
-**Conversation (contact tab)**:
-The stream of staff messages on a contact, open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** tab, which is the same kind of stream restricted to staff.
+**Conversation (on a contact)**:
+The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** tab, which is the same kind of thread restricted to staff.
 _Avoid_: Follow-up, Thread, Comments, Walking together
 
+**The story so far**:
+What has happened *with* a person, in one list, newest first: logged **Interactions**, every **Gathering** they came to, prayers, messages someone chose to **Add to story**, and every change anyone made — step, kind, shares, **Delegates**, carers, tags, profile edits — each showing what it was and what it became. Things people did stand as full entries; things people changed are one-line entries, and a run of changes by one person folds into one. Coming to a Gathering is read from its attendance rather than logged separately, so unmarking someone takes it back out; weeks in a row at the same Rhythm fold into one entry ("came to College Meeting · 6 weeks running"), and absences are never shown. What staff *say about* the person is not in it: that is the **Conversation**, read beside the story rather than inside it, because a conversation has to read top-down to be answered and a story reads best newest first. Whoever can see the person sees all of it. There is exactly one story per person — no separate history, interactions, or prayer list beside it.
+_Avoid_: History, timeline, activity log, feed
+
+**Add to story**:
+Taking one message from a person's **Conversation** into **The story so far**, because what it says is part of their history ("did he come to the appointment?" — "yes"). The message stays where it was said; the story shows it quoted, with who said it and when, and opens its place in the Conversation. Anyone who can see the person may do it. A **Full-timers** message can never be added, because a Trainee can read the story.
+_Avoid_: Pin, promote, save, bookmark
+
+**Not reached yet**:
+A person nobody has connected with since they were added: no **Interaction** has been logged with them and they have never been marked present at a **Gathering**. An Interaction **logged on behalf** of a teammate counts. It applies to **Contacts** (the kind): the My Day card and each tag's count show only Contacts added in the last 30 days, so the list stays one people can still act on, while the Directory filter reaches back to everyone. A Trainee's card shows the people they are tied to; a Full-timer can switch it to the whole team, each person shown with who is tied to them. Tapping Call or Text does not by itself, because nothing proves the call or text happened. Distinct from **Who we haven't seen**, which measures time since a visit and never declares anyone missed.
+_Avoid_: Not contacted, uncontacted, cold, new lead
+
+**Logged on behalf**:
+An **Interaction** a Full-timer records for the teammate who actually reached the person — typically after asking a Trainee in person and hearing that they did. The story reads it as the teammate's act ("Jae messaged him · logged by Anna"), the person's last connection names the teammate, and the teammate is told, so a wrong entry cannot sit in their name unnoticed. Only Full-timers may log on someone else's behalf.
+_Avoid_: Proxy log, impersonate, log as
+
 **Thread (replies to one message)**:
-The replies gathered under a single message, one level deep, read and written in a pane beside the stream rather than inline in it. Every written stream in the product has them the same way: a **Conversation**, the **Full-timers** tab, an Interaction's "think this through together", a chat, an announcement. The word means only this — never the stream itself.
+The replies gathered under a single message, one level deep, read and written in a pane beside the stream rather than inline in it. Every written stream in the product has them the same way: a **Conversation**, the **Full-timers** stream, an Interaction's "think this through together", a chat, an announcement. The word means only this — never the stream itself.
 _Avoid_: Sub-thread, nested replies, comments, discussion
 
 **Tied to a contact**:
@@ -230,6 +246,14 @@ _Avoid_: Stakeholder, watcher, subscriber, assigned
 **Co-creator**:
 A teammate who co-creates a contact with you — the person either of you brings in is founded by both, and the founding set (`founders`) is written on the contact at creation, so each of you is a co-equal creator of that person, not a guest on the other's contact. Co-creators can add and remove deliberately added collaborators (`coCreators`) on web and mobile, and a founder can be removed only by a Full-timer, for the genuine-mistake case. Distinct from a deliberately added collaborator, whom anyone with sharing rights can remove.
 _Avoid_: Guest, guest collaborator, delegate
+
+**Share**:
+Adding a teammate to the people who can see a contact, as a deliberately added collaborator, without telling them. It ties them to the person and nothing more: no message is written and nothing lands in their **On you**. Removed the same way it was added, by anyone with sharing rights.
+_Avoid_: Invite, grant access, add someone
+
+**Delegate**:
+Bringing a teammate onto a contact *and* asking them to act: it **Shares** the person with them and writes an `@mention` of them, with an optional note, into the person's **Conversation**, so it reaches their bell and their **On you** like any other mention. Nothing transfers: whoever delegates stays tied, the teammate is not made a carer, and no owner or deadline is set — the ask is only as strong as the note. A **Co-creator** is never called a delegate; they founded the person rather than being brought in.
+_Avoid_: Assign, hand off, transfer, reassign
 
 **Cared for by**:
 The people who hold a person in **Your sheep** — derived from the contact's `carers` tie, and so naming zero, one, or several people at once. It is not an owner and nothing transfers: whoever carries the person simply shows up here. Shown on the contact's Overview and promoted into the contact-detail head (ADR 0006).
