@@ -169,6 +169,7 @@ export function chatAdapter(i: ChatAdapterInput): ChatStreamAdapter {
       const name = s.pinnedBy ? nameOf(s.pinnedBy, s.senderName) : s.senderName;
       return t("modals.pinned_by_strip").replace("{name}", name);
     },
+    avatarUrl: (m) => m.source.senderPhoto || null,
     badge: (m) => (isAnnouncement && !m.parentId ? t("modals.full_timer_badge") : null),
     goneLabel: (m) => {
       const gone = m.source.deleted;

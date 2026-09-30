@@ -381,3 +381,11 @@ describe("header line (S5)", () => {
     ).toBe("Announcement · 4 people · Grace and 2 others post here");
   });
 });
+
+describe("avatar photos", () => {
+  it("offers the sender's photo where the message carries one", () => {
+    const a = chatAdapter(input({ messages: [msg({ senderPhoto: "https://example.com/j.jpg" }), msg({ id: "m2", senderPhoto: "" })] }));
+    expect(a.avatarUrl!(a.messages[0])).toBe("https://example.com/j.jpg");
+    expect(a.avatarUrl!(a.messages[1])).toBeNull();
+  });
+});

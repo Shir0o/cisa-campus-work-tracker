@@ -1663,6 +1663,8 @@ describe('Messages View Component', () => {
     it('highlights @mentions of room members in message text', async () => {
       const mentionMsgs = [
         { id: 'm2', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: '@Alice Moss please call me', type: 'text' },
+        // Typed by hand, first name only: highlighted as chat always did.
+        { id: 'm3', roomId: 'room1', senderId: 'u1', senderName: 'Current User', text: 'on it @alice', type: 'text' },
       ];
       (firestore.getDoc as any).mockResolvedValueOnce({ exists: () => true, data: () => ({ displayName: 'Alice Moss' }) });
       const container = renderWith(mentionMsgs);
@@ -1671,6 +1673,7 @@ describe('Messages View Component', () => {
         const hit = container.querySelector('[data-stream-row="m2"] [data-stream-mention]');
         expect(hit).toBeTruthy();
         expect(hit!.textContent).toBe('@Alice Moss');
+        expect(container.querySelector('[data-stream-row="m3"] [data-stream-mention]')?.textContent).toBe('@alice');
       });
     });
 

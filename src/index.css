@@ -4387,6 +4387,8 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cdm-page .cd-drawer { width: 100%; }
 
 /* What a chat room adds (#1259; threads/A-Messages, Announce-FT, Chat, Composer). */
+.strm-av-photo { overflow: hidden; background: var(--panel-2); }
+.strm-av-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .strm-tag-role { background: var(--panel); color: var(--text-dim); border: 1px solid var(--border); }
 .strm-tx.strm-gone { font-style: italic; color: var(--strm-mute); }
 .strm-notice { align-self: center; margin: 8px 0; padding: 2px 12px; border-radius: 999px; background: var(--panel); font-size: 11.5px; font-weight: 500; color: var(--text-dim); }

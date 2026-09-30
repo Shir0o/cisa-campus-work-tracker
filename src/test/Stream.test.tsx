@@ -115,6 +115,21 @@ describe("Stream — rows (G1–G5)", () => {
     renderStream(fakeAdapter({ messages: [message({ body: "@Grace Liu can you sit with him?" })] }));
     expect(screen.getByText("@Grace Liu")).toHaveAttribute("data-stream-mention");
   });
+
+  it("highlights a hand-typed @Firstname of a candidate too, in any case — but not a longer word", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ id: "a", body: "@Grace can you sit with him?" }),
+          message({ id: "b", body: "ask @josh first", at: yesterdayAt(10) }),
+          message({ id: "c", body: "@Graceful exit", at: yesterdayAt(11) }),
+        ],
+      }),
+    );
+    expect(screen.getByText("@Grace")).toHaveAttribute("data-stream-mention");
+    expect(screen.getByText("@josh")).toHaveAttribute("data-stream-mention");
+    expect(row("@Graceful exit").querySelector("[data-stream-mention]")).toBeNull();
+  });
 });
 
 describe("Stream — the hover toolbar (G7)", () => {
@@ -730,5 +745,56 @@ describe("Stream — what a chat room adds", () => {
   it("no paperclip where the source takes no attachments", () => {
     renderStream(fakeAdapter());
     expect(screen.queryByRole("button", { name: "Attach" })).toBeNull();
+  });
+});
+
+// G1 with a face (#1259): a row shows the sender's photo where the source has
+// one, and falls back to initials otherwise.
+describe("Stream — avatar photos", () => {
+  const avatarOf = (text: string) => row(text).querySelector("[data-stream-avatar]") as HTMLElement;
+
+  it("shows the sender's photo, decorative like the initials it replaces", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [message({ id: "a", body: "with photo" })],
+        avatarUrl: (m) => (m.id === "a" ? "https://example.com/josh.jpg" : null),
+      }),
+    );
+    const av = avatarOf("with photo");
+    expect(av).toHaveAttribute("aria-hidden");
+    const img = av.querySelector("img") as HTMLImageElement;
+    expect(img).toHaveAttribute("src", "https://example.com/josh.jpg");
+    expect(img).toHaveAttribute("alt", "");
+    expect(av).not.toHaveTextContent("JP");
+  });
+
+  it("falls back to initials when there is no photo, or the image fails to load", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ id: "none", body: "no photo", from: "grace", fromName: "Grace Liu" }),
+          message({ id: "bad", body: "broken photo", from: "josh", fromName: "Josh Park", at: yesterdayAt(11) }),
+        ],
+        avatarUrl: (m) => (m.id === "bad" ? "https://example.com/broken.jpg" : null),
+      }),
+    );
+    expect(avatarOf("no photo").querySelector("img")).toBeNull();
+    expect(avatarOf("no photo")).toHaveTextContent("GL");
+    fireEvent.error(avatarOf("broken photo").querySelector("img")!);
+    expect(avatarOf("broken photo").querySelector("img")).toBeNull();
+    expect(avatarOf("broken photo")).toHaveTextContent("JP");
+  });
+
+  it("a continuation still hides the avatar", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ id: "a", body: "first", at: yesterdayAt(9, 0) }),
+          message({ id: "b", body: "second", at: yesterdayAt(9, 2) }),
+        ],
+        avatarUrl: () => "https://example.com/josh.jpg",
+      }),
+    );
+    expect(row("second").querySelector("[data-stream-avatar]")).toBeNull();
   });
 });

@@ -54,10 +54,29 @@ function initialsOf(name: string): string {
   return (parts[0] || "?").slice(0, 2).toUpperCase();
 }
 
-export function Avatar({ uid, name, size, initials }: { uid: string; name: string; size?: "xs"; initials?: string }) {
+export function Avatar({
+  uid,
+  name,
+  size,
+  initials,
+  photo,
+}: {
+  uid: string;
+  name: string;
+  size?: "xs";
+  initials?: string;
+  /** Shown in place of the initials; a photo that fails to load falls back. */
+  photo?: string | null;
+}) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const showPhoto = !!photo && failed !== photo;
   return (
-    <span className={cn("strm-av", `strm-tone-${toneOf(uid)}`, size && `strm-av-${size}`)} data-stream-avatar="" aria-hidden>
-      {initials ?? initialsOf(name)}
+    <span
+      className={cn("strm-av", `strm-tone-${toneOf(uid)}`, size && `strm-av-${size}`, showPhoto && "strm-av-photo")}
+      data-stream-avatar=""
+      aria-hidden
+    >
+      {showPhoto ? <img src={photo!} alt="" onError={() => setFailed(photo!)} /> : initials ?? initialsOf(name)}
     </span>
   );
 }
@@ -67,9 +86,14 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** The body, with each @mention of a candidate picked out. */
 function Body({ text: raw, candidates, translate }: { text: string; candidates: MentionUser[]; translate?: boolean }) {
   const { translatedText: text } = useTranslate(raw, { enabled: !!translate });
+  // A picked mention carries the full name; one typed by hand is often just
+  // the first name, in any case (as chat always highlighted it). Display
+  // only: who is notified is settled by the picked mentions (ADR 0007).
   const re = useMemo(() => {
-    const names = candidates.map((c) => c.name).filter(Boolean).sort((a, b) => b.length - a.length);
-    return names.length ? new RegExp(`(@(?:${names.map(escapeRe).join("|")}))`, "g") : null;
+    const names = [
+      ...new Set(candidates.flatMap((c) => [c.name, (c.name || "").trim().split(/\s+/)[0]]).filter(Boolean)),
+    ].sort((a, b) => b.length - a.length);
+    return names.length ? new RegExp(`(@(?:${names.map(escapeRe).join("|")})(?![\\p{L}\\p{N}_]))`, "giu") : null;
   }, [candidates]);
   if (!re) return <>{text}</>;
   return (
@@ -164,6 +188,7 @@ interface RowProps<M extends StreamSourceMessage> {
   onCloseAsk: (how: "followedUp" | "neverMind") => void;
   /** Source extras (#1259): each optional, each off by default. */
   badge?: string | null;
+  photo?: string | null;
   gone?: string | null;
   deleteLabel?: string;
   deleteConfirm?: { prompt: string; yes: string; no: string };
@@ -192,6 +217,7 @@ function Row<M extends StreamSourceMessage>({
   onDelete,
   onCloseAsk,
   badge,
+  photo,
   gone,
   deleteLabel,
   deleteConfirm,
@@ -247,7 +273,7 @@ function Row<M extends StreamSourceMessage>({
 
   return (
     <div className={cn("strm-m", continuation && "strm-cont", menu && "strm-m-menu")} data-stream-row={m.id}>
-      {!continuation && <Avatar uid={m.from} name={m.fromName} initials={m.initials} />}
+      {!continuation && <Avatar uid={m.from} name={m.fromName} initials={m.initials} photo={photo} />}
       <div className="strm-mb">
         {!continuation && (
           <div className="strm-mh">
@@ -529,6 +555,7 @@ export default function Stream<M extends StreamSourceMessage>({
     onMakeTodo: onMakeTodo ? () => onMakeTodo(row.message) : undefined,
     onDelete: () => void adapter.delete(row.message),
     onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
+    photo: adapter.avatarUrl?.(row.message) ?? null,
     gone: adapter.goneLabel?.(row.message) ?? null,
     deleteLabel: adapter.deleteLabel?.(row.message),
     deleteConfirm: adapter.deleteConfirm,

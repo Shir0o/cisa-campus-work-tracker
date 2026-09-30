@@ -95,6 +95,9 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   pinnedLabel?(message: M): string | null;
   /** A neutral tag beside the author's name ("Full-timer"). */
   badge?(message: M): string | null;
+  /** The author's photo, where the source has one. The row falls back to
+   *  initials without it, or when it fails to load. */
+  avatarUrl?(message: M): string | null;
   /** A message taken back: the line that reads in its place. It has no actions. */
   goneLabel?(message: M): string | null;
   /** A line from the system ("Josh joined"), drawn centred rather than as a row. */
