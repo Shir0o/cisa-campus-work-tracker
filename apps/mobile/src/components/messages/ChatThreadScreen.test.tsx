@@ -51,6 +51,7 @@ const data = (overrides: Record<string, unknown> = {}) => ({
   error: null,
   send: jest.fn(),
   acknowledge: jest.fn(),
+  markRead: jest.fn(),
   pin: jest.fn(),
   remove: jest.fn(),
   ...overrides,
@@ -308,6 +309,69 @@ describe('ChatThreadScreen', () => {
       await fireEvent(getByText('PINNED-POST'), 'longPress');
       await fireEvent.press(getByRole('button', { name: 'Unpin' }));
       expect(d.pin).toHaveBeenCalledWith('a0', false);
+    });
+  });
+
+  describe('read-on-view and receipts (#1277)', () => {
+    const announced = (id: string, over: Partial<ChatMessage> = {}) =>
+      msg(id, { text: `POST-${id}`, senderId: 'maria', senderName: 'Maria Santos', acknowledged: [], ...over });
+
+    const layout = async (getByText: (t: string) => unknown, text: string, y: number, height = 100) =>
+      fireEvent(await getByText(text) as never, 'layout', { nativeEvent: { layout: { y, height } } });
+    const scroll = async (getByTestId: (t: string) => unknown, y: number, height = 400) =>
+      fireEvent.scroll(await getByTestId('chat-stream') as never, { nativeEvent: { contentOffset: { y }, layoutMeasurement: { height } } });
+
+    it('marks nothing read when the room loads', async () => {
+      const { d } = await renderAs(trainee, { room: announcement, messages: [announced('a1'), announced('a2')] });
+      expect(d.markRead).not.toHaveBeenCalled();
+    });
+
+    it('marks only the post scrolled into view, and only once', async () => {
+      const { getByText, getByTestId, d } = await renderAs(trainee, {
+        room: announcement,
+        messages: [announced('a1'), announced('a2')],
+      });
+      await layout(getByText, 'POST-a1', 0);
+      await layout(getByText, 'POST-a2', 120);
+      await scroll(getByTestId, 100);
+      expect(d.markRead).toHaveBeenCalledTimes(1);
+      expect(d.markRead).toHaveBeenCalledWith('a2');
+      await scroll(getByTestId, 100);
+      expect(d.markRead).toHaveBeenCalledTimes(1);
+    });
+
+    it('never writes a post the viewer has already read', async () => {
+      const { getByText, getByTestId, d } = await renderAs(trainee, {
+        room: announcement,
+        messages: [announced('a1', { readBy: ['user1'] }), announced('a2')],
+      });
+      await layout(getByText, 'POST-a1', 0);
+      await layout(getByText, 'POST-a2', 120);
+      await scroll(getByTestId, 0);
+      expect(d.markRead).toHaveBeenCalledTimes(1);
+      expect(d.markRead).toHaveBeenCalledWith('a2');
+    });
+
+    it('gives a member Got it and Reply in thread, but no receipts (S4)', async () => {
+      const { getByRole, queryByText } = await renderAs(trainee, { room: announcement, messages: [announced('a1')] });
+      expect(getByRole('button', { name: 'Got it' })).toBeTruthy();
+      expect(getByRole('button', { name: 'Reply in thread' })).toBeTruthy();
+      expect(queryByText(/Read by/)).toBeNull();
+    });
+
+    it('shows a Full-timer the receipts link, opening the read / not-yet list (S4)', async () => {
+      const post = announced('a1', { readBy: ['maria', 'grace'], acknowledged: ['maria'] });
+      const { getByRole, getByText, getAllByText } = await renderAs(fullTimer, {
+        room: announcement,
+        messages: [post],
+        usersCache: { maria: { displayName: 'Maria Santos' }, grace: { displayName: 'Grace Liu' } },
+      });
+      await fireEvent.press(getByRole('button', { name: 'Read by 2 of 3 · 1 said got it' }));
+      expect(getByText('Read receipts')).toBeTruthy();
+      expect(getByText('2 / 3 read')).toBeTruthy();
+      expect(getAllByText('Maria Santos').length).toBeGreaterThanOrEqual(1);
+      expect(getByText('Grace Liu')).toBeTruthy();
+      expect(getByText('You')).toBeTruthy();
     });
   });
 

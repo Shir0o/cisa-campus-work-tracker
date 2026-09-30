@@ -1,6 +1,8 @@
 // A phone stream's body: the core model's items — day dividers, the "New"
 // line, rows — drawn in order, oldest first (G4–G6). It does not scroll
 // itself; the screen that holds it owns the scroll and the pinned composer.
+// Rendered as a sibling list (no wrapper box) so each row's onLayout y is
+// measured against the same parent — read-on-view needs that (announcements).
 import { Text, View } from 'react-native';
 import type { StreamItem, StreamMessage } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
@@ -13,7 +15,7 @@ export function StreamList<M extends StreamMessage>({
   ...events
 }: Omit<StreamRowProps<M>, 'row'> & { items: StreamItem<M>[] }) {
   return (
-    <View>
+    <>
       {items.map((item, i) =>
         item.type === 'row' ? (
           <StreamRowView key={item.message.id} row={item} {...events} />
@@ -23,7 +25,7 @@ export function StreamList<M extends StreamMessage>({
           <Divider key={`new-${i}`} label={<NewText />} accent />
         ),
       )}
-    </View>
+    </>
   );
 }
 

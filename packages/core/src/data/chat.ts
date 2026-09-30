@@ -383,6 +383,20 @@ export async function acknowledgeAnnouncement(
   await updateDoc(doc(db, "chatRooms", roomId, "messages", messageId), { acknowledged });
 }
 
+/** Records a passive read receipt for an announcement post — the viewer joins
+ *  `readBy` when the post comes into view (#1243, #1277). Mirrors the web's
+ *  `markAnnouncementRead`; the rules let a member add only their own entry. */
+export async function markAnnouncementRead(
+  db: Firestore,
+  roomId: string,
+  messageId: string,
+  uid: string,
+): Promise<void> {
+  await updateDoc(doc(db, "chatRooms", roomId, "messages", messageId), {
+    readBy: arrayUnion(uid),
+  });
+}
+
 /** Pins or unpins a message; anyone in the room can. `pinnedBy` names who, so
  *  an announcement's strip can say "Pinned by {name}". */
 export async function togglePinMessage(

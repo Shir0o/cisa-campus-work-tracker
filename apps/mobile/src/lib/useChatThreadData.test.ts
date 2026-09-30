@@ -5,7 +5,7 @@
 // assertions below run against the very first post-change render.
 import { act, renderHook } from '@testing-library/react-native';
 import { useChatThreadData } from './useChatThreadData';
-import { acknowledgeAnnouncement, removeMessageForEveryone, sendMessage, togglePinMessage } from './data/chat';
+import { acknowledgeAnnouncement, markAnnouncementRead, removeMessageForEveryone, sendMessage, togglePinMessage } from './data/chat';
 import { ChatReads } from './data/chatReads';
 
 type TestState = { uid: string | null; user: null };
@@ -26,6 +26,7 @@ jest.mock('./data/chat', () => ({
   },
   sendMessage: jest.fn(),
   acknowledgeAnnouncement: jest.fn(),
+  markAnnouncementRead: jest.fn(),
   togglePinMessage: jest.fn(),
   removeMessageForEveryone: jest.fn(),
 }));
@@ -179,5 +180,13 @@ describe('useChatThreadData', () => {
     expect(acknowledgeAnnouncement).toHaveBeenCalledWith('room1', 'm1', 'user1', ['user2']);
     expect(togglePinMessage).toHaveBeenCalledWith('room1', 'm1', true, 'user1');
     expect(removeMessageForEveryone).toHaveBeenCalledWith('room1', 'm1', 'user1');
+  });
+
+  it('records a read receipt through the chat data layer, as the viewer (#1277)', async () => {
+    const { result } = await renderHook(() => useChatThreadData('room1'));
+    await act(async () => {
+      await result.current.markRead('m1');
+    });
+    expect(markAnnouncementRead).toHaveBeenCalledWith('room1', 'm1', 'user1');
   });
 });

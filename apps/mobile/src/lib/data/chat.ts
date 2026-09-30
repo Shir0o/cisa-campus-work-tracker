@@ -138,6 +138,22 @@ export async function deleteChatRoom(roomId: string): Promise<void> {
   }
 }
 
+/** Records a passive read receipt for an announcement post (#1277): the
+ *  viewer joins `readBy` when the post scrolls into view. A lost receipt is not
+ *  worth interrupting the reader, so the error is swallowed — as the web's
+ *  `markAnnouncementRead` does. */
+export async function markAnnouncementRead(
+  roomId: string,
+  messageId: string,
+  uid: string,
+): Promise<void> {
+  try {
+    await core.markAnnouncementRead(db, roomId, messageId, uid);
+  } catch (e) {
+    console.debug('Failed to record announcement read receipt:', e);
+  }
+}
+
 /** "Got it" on an announcement post — toggles the viewer's own entry. */
 export async function acknowledgeAnnouncement(
   roomId: string,

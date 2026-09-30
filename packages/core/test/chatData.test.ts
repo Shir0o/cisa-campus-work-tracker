@@ -23,6 +23,7 @@ vi.mock('firebase/firestore', () => firestoreMock);
 
 import {
   acknowledgeAnnouncement,
+  markAnnouncementRead,
   removeMessageForEveryone,
   sendMessage,
   subscribeChatRooms,
@@ -134,6 +135,14 @@ describe('message acts (the field-level writes firestore.rules allows)', () => {
     expect(firestoreMock.updateDoc).toHaveBeenLastCalledWith(docRef, { acknowledged: ['u2', 'u1'] });
     await acknowledgeAnnouncement({} as never, 'r1', 'm1', 'u1', ['u2', 'u1']);
     expect(firestoreMock.updateDoc).toHaveBeenLastCalledWith(docRef, { acknowledged: ['u2'] });
+  });
+
+  it('records a passive read receipt by adding only the viewer to readBy (#1277)', async () => {
+    firestoreMock.arrayUnion.mockReturnValue('UNION');
+    await markAnnouncementRead({} as never, 'r1', 'm1', 'u1');
+    expect(firestoreMock.doc).toHaveBeenCalledWith({}, 'chatRooms', 'r1', 'messages', 'm1');
+    expect(firestoreMock.arrayUnion).toHaveBeenCalledWith('u1');
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(docRef, { readBy: 'UNION' });
   });
 
   it('pins naming who pinned, and unpins by clearing pinnedBy', async () => {

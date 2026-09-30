@@ -14,7 +14,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } fro
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type StreamRow } from '@cisa/core';
+import { buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type ChatUserSummary, type StreamRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import type { useChatThreadData } from '../../lib/useChatThreadData';
@@ -24,12 +24,16 @@ import {
   isPostAcknowledged,
   mentionParts,
   pinnedLabelOf,
+  rowsInView,
   toChatStreamMessage,
+  unreadAnnouncementPosts,
   type ChatStreamMessage,
+  type RowBox,
 } from '../../lib/chatStream';
 import { addTodo } from '../../lib/data/todos';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { FtTodoSheet } from '../ft/FtTodoSheet';
+import { PersonMark } from '../queue/atoms';
 import { Snackbar, Sheet } from '../ui';
 import { useTranslate } from '../Translate';
 import { StreamList, Divider } from '../stream/StreamList';
@@ -67,8 +71,22 @@ export function ChatStreamPane({
   const [takeBack, setTakeBack] = useState<ChatRow | null>(null);
   const [todoFrom, setTodoFrom] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [receiptsFor, setReceiptsFor] = useState<ChatStreamMessage | null>(null);
   // Read once per visit: "Today" is said against it.
   const [now] = useState(Date.now);
+  // Read-on-view (#1277): each post's laid-out box, the scroll window once the
+  // stream has actually moved, and the posts already receipted this visit.
+  const viewRef = useRef<{
+    win: { y: number; h: number } | null;
+    boxes: Map<string, { top: number; height: number }>;
+    cardY: number;
+    marked: Set<string>;
+  }>({
+    win: null,
+    boxes: new Map(),
+    cardY: 0,
+    marked: new Set(),
+  });
 
   const me = uid ?? '';
   const staff = !memberRoleOf(role);
@@ -96,6 +114,30 @@ export function ChatStreamPane({
 
   const openThread = (row: ChatRow) => router.push(chatThreadHref(roomId, row.message.id) as never);
 
+  // Read-on-view (#1277), the web's rule from #1267: an announcement post is
+  // receipted once it has actually been on screen — never on room load, where
+  // only the posts at the opened end count. The same `readBy` field and data
+  // path the web writes; a post already read is never written again.
+  const maybeMarkRead = () => {
+    if (!isAnnouncement || inThread || !me) return;
+    const view = viewRef.current;
+    if (!view.win) return;
+    const boxes: RowBox[] = [];
+    for (const m of unreadAnnouncementPosts(all, me)) {
+      const box = view.boxes.get(m.id);
+      if (box) boxes.push({ id: m.id, top: view.cardY + box.top, height: box.height });
+    }
+    for (const id of rowsInView(boxes, view.win.y, view.win.h)) {
+      if (view.marked.has(id)) continue;
+      view.marked.add(id);
+      void data.markRead(id);
+    }
+  };
+  const noteRowLayout = (id: string, box: { top: number; height: number }) => {
+    viewRef.current.boxes.set(id, box);
+    maybeMarkRead();
+  };
+
   const postActions = (row: ChatRow) => {
     const post = row.message.source;
     if (!isAnnouncement || row.message.parentId || post.type === 'system') return null;
@@ -106,7 +148,22 @@ export function ChatStreamPane({
     ) : canReply ? (
       <PostButton icon="arrow-undo-outline" label={t('mobile.stream.reply_in_thread')} onPress={() => openThread(row)} />
     ) : null;
-    if (!gotIt && !reply) return null;
+    // The poster (a Full-timer — announcements' only top-level writers) sees the
+    // receipts link (S4); a member does not.
+    const read = post.readBy?.length ?? 0;
+    const total = room?.memberIds.length ?? 0;
+    const said = post.acknowledged?.length ?? 0;
+    const receipts = isFullTimer ? (
+      <PostButton
+        label={
+          said > 0
+            ? t('mobile.messages.read_by_acked').replace('{read}', String(read)).replace('{total}', String(total)).replace('{n}', String(said))
+            : t('mobile.messages.read_by_n').replace('{read}', String(read)).replace('{total}', String(total))
+        }
+        onPress={() => setReceiptsFor(row.message)}
+      />
+    ) : null;
+    if (!gotIt && !reply && !receipts) return null;
     return (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6 }}>
         {gotIt && (
@@ -118,6 +175,7 @@ export function ChatStreamPane({
           />
         )}
         {reply}
+        {receipts}
       </View>
     );
   };
@@ -126,6 +184,7 @@ export function ChatStreamPane({
     now,
     onLongPress: setHeld,
     onOpenThread: inThread ? undefined : openThread,
+    onRowLayout: noteRowLayout,
     avatarUrl: (m) => m.source.senderPhoto || data.usersCache[m.source.senderId]?.photoURL,
     badge: (m) => (isAnnouncement && !m.parentId && m.source.type !== 'system' ? t('mobile.messages.full_timer_badge') : null),
     goneLabel: (m) => goneLabelOf(m, who),
@@ -152,9 +211,18 @@ export function ChatStreamPane({
       >
         <ScrollView
           ref={scroller}
+          testID="chat-stream"
           contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12, gap: 10, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            viewRef.current.win = {
+              y: e.nativeEvent.contentOffset.y,
+              h: e.nativeEvent.layoutMeasurement.height,
+            };
+            maybeMarkRead();
+          }}
           // A stream opens on its newest message, just above the composer (G4).
           onContentSizeChange={() => {
             if (!inThread) scroller.current?.scrollToEnd({ animated: false });
@@ -179,7 +247,13 @@ export function ChatStreamPane({
               {inThread ? t('mobile.stream.thread_gone') : t('mobile.messages.nothing_here_yet')}
             </Text>
           ) : (
-            <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 8 }}>
+            <View
+              style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 14, paddingVertical: 8 }}
+              onLayout={(e) => {
+                viewRef.current.cardY = e.nativeEvent.layout.y;
+                maybeMarkRead();
+              }}
+            >
               {thread ? (
                 <>
                   <StreamRowView row={thread.parent} {...rowProps} />
@@ -199,7 +273,12 @@ export function ChatStreamPane({
               ) : (
                 <>
                   {heldRows.map((row) => (
-                    <View key={`pin:${row.message.id}`}>
+                    <View
+                      key={`pin:${row.message.id}`}
+                      onLayout={(e) =>
+                        noteRowLayout(row.message.id, { top: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height })
+                      }
+                    >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 2 }}>
                         <Ionicons name="pin" size={13} color={c.card.ink2} />
                         <Text style={{ flex: 1, fontFamily: font.semi, fontSize: fs(12), color: c.card.ink2 }}>
@@ -269,6 +348,14 @@ export function ChatStreamPane({
           setTakeBack(null);
           if (id) void data.remove(id);
         }}
+      />
+
+      <ReceiptsSheet
+        post={receiptsFor}
+        members={room?.memberIds ?? []}
+        usersCache={data.usersCache}
+        me={me}
+        onClose={() => setReceiptsFor(null)}
       />
 
       {staff && (
@@ -423,6 +510,83 @@ function TakeBackSheet({ visible, onClose, onConfirm }: { visible: boolean; onCl
               <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.bg }}>{t('mobile.messages.take_back_yes')}</Text>
             </Pressable>
           </View>
+        </View>
+      )}
+    </Sheet>
+  );
+}
+
+/** Who has read an announcement post and who has not — the phone's take on the
+ *  web's read/could-not-yet receipts (S4, #1277), read from the same `readBy`
+ *  and `acknowledged` fields. */
+function ReceiptsSheet({
+  post,
+  members,
+  usersCache,
+  me,
+  onClose,
+}: {
+  post: ChatStreamMessage | null;
+  members: string[];
+  usersCache: Record<string, ChatUserSummary>;
+  me: string;
+  onClose: () => void;
+}) {
+  const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
+  const readBy = post?.source.readBy ?? [];
+  const readSet = new Set(readBy);
+  const notYet = members.filter((uid) => !readSet.has(uid));
+  const nameFor = (uid: string) =>
+    usersCache[uid]?.displayName || (uid === me ? t('mobile.member.you') : t('mobile.messages.member'));
+  const person = (uid: string, read: boolean) => (
+    <View key={uid} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 }}>
+      <PersonMark name={nameFor(uid)} id={uid} size={24} radius={12} fontSize={9} />
+      <Text
+        numberOfLines={1}
+        style={{ flex: 1, fontFamily: read ? font.semi : font.medium, fontSize: fs(13.5), color: read ? c.card.ink : c.card.ink2 }}
+      >
+        {nameFor(uid)}
+      </Text>
+      {read && post?.source.acknowledged?.includes(uid) && (
+        <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), color: c.card.green }}>{t('mobile.messages.got_it')}</Text>
+      )}
+    </View>
+  );
+  return (
+    <Sheet visible={!!post} onClose={onClose} maxHeightRatio={0.85} {...v2SheetChrome(c)}>
+      {!!post && (
+        <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.card.ink }}>
+              {t('mobile.messages.receipts_title')}
+            </Text>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink2 }}>
+              {t('mobile.messages.receipts_summary')
+                .replace('{read}', String(readBy.length))
+                .replace('{total}', String(members.length))}
+            </Text>
+          </View>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(11), letterSpacing: 0.6, textTransform: 'uppercase', color: c.card.ink3, marginTop: 8 }}>
+            {t('mobile.messages.receipts_read')}
+          </Text>
+          {readBy.length === 0 ? (
+            <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.card.ink3, paddingVertical: 6 }}>
+              {t('mobile.messages.receipts_no_one')}
+            </Text>
+          ) : (
+            readBy.map((uid) => person(uid, true))
+          )}
+          <Text style={{ fontFamily: font.bold, fontSize: fs(11), letterSpacing: 0.6, textTransform: 'uppercase', color: c.card.ink3, marginTop: 14 }}>
+            {t('mobile.messages.receipts_not_yet')}
+          </Text>
+          {notYet.length === 0 ? (
+            <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.card.ink3, paddingVertical: 6 }}>
+              {t('mobile.messages.receipts_everyone')}
+            </Text>
+          ) : (
+            notYet.map((uid) => person(uid, false))
+          )}
         </View>
       )}
     </Sheet>

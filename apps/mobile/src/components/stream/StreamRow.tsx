@@ -31,6 +31,8 @@ export interface StreamRowProps<M extends StreamMessage> {
   // of them (the person screen) draws as before.
   /** The sender's profile photo, where they have one; initials otherwise. */
   avatarUrl?: (m: M) => string | null | undefined;
+  /** Reports a row's laid-out box — read-on-view needs each post's position. */
+  onRowLayout?: (id: string, box: { top: number; height: number }) => void;
   /** A neutral badge beside the name — a Full-timer's post in an announcement. */
   badge?: (m: M) => string | null;
   /** A taken-back message: this label stands where the body was. */
@@ -56,6 +58,7 @@ export function StreamRowView<M extends StreamMessage>({
   notice,
   renderBody,
   renderFooter,
+  onRowLayout,
 }: StreamRowProps<M>) {
   const { c, font, fs } = useV2Theme();
   const { t, language } = useLanguage();
@@ -82,6 +85,7 @@ export function StreamRowView<M extends StreamMessage>({
     <Pressable
       onLongPress={onLongPress && !gone ? () => onLongPress(row) : undefined}
       delayLongPress={350}
+      onLayout={onRowLayout ? (e) => onRowLayout(m.id, { top: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height }) : undefined}
       accessibilityHint={onLongPress && !gone ? t('mobile.stream.message_actions') : undefined}
       style={({ pressed }) => ({
         flexDirection: 'row',
