@@ -1478,7 +1478,13 @@
       "receipts_not_yet": "Aún no",
       "receipts_no_one": "Nadie todavía",
       "receipts_everyone": "Todos han leído esto",
-      "member": "Miembro"
+      "member": "Miembro",
+      "attach_title": "Adjuntar",
+      "attach_search": "Buscar",
+      "attach_empty": "Nada que adjuntar todavía.",
+      "attach_contact": "Persona",
+      "attach_event": "Reunión",
+      "attach_prayer": "Oración"
     },
     "member": {
       "you": "Tú",
@@ -1612,6 +1618,11 @@
       "reply_placeholder": "Responder…",
       "reply_label": "Responder en el hilo",
       "send": "Enviar",
+      "attach": "Adjuntar",
+      "mention": "Mencionar a alguien",
+      "mention_list": "Menciones a compañeros",
+      "staged": "Adjuntado",
+      "remove_staged": "Quitar {name}",
       "kind_group": "Qué estás escribiendo",
       "kind_comment": "Comentario",
       "kind_question": "Pregunta",

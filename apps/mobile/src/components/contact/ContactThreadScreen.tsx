@@ -149,11 +149,25 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
             <StreamComposer
               placeholder={t('mobile.stream.reply_placeholder')}
               label={t('mobile.stream.reply_label')}
-              onSend={({ body }) =>
+              candidates={
+                (team ? data.teamMembers.filter((m) => m.role === 'admin') : data.teamMembers).map((m) => ({
+                  uid: m.uid,
+                  name: m.displayName,
+                  role: m.role,
+                }))
+              }
+              onSend={({ body, mentionedUserIds }) =>
                 void data.postThreadMessage(
                   interactionId
-                    ? { interactionId, parentId: null, scope: null, kind: 'comment', body }
-                    : { interactionId: null, parentId: parentId ?? null, scope: team ? 'team' : null, kind: 'comment', body },
+                    ? { interactionId, parentId: null, scope: null, kind: 'comment', body, mentionedUserIds }
+                    : {
+                        interactionId: null,
+                        parentId: parentId ?? null,
+                        scope: team ? 'team' : null,
+                        kind: 'comment',
+                        body,
+                        mentionedUserIds,
+                      },
                 )
               }
             />

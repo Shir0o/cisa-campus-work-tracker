@@ -16,6 +16,7 @@ import {
   walkingRecipient,
   carerNamesOf,
   contactStakeholdersOf,
+  type AppUser,
   type Contact,
   type PrayerRecord,
   type Stage,
@@ -49,6 +50,7 @@ import {
   subscribeThreads,
 } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
+import { subscribeUsers } from './data/users';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
 
@@ -67,6 +69,8 @@ export function useContactDetailData(contactId: string) {
   const [prayersLoading, setPrayersLoading] = useState(true);
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
+  /** The team roster, for @mention candidates (ADR 0007). */
+  const [teamMembers, setTeamMembers] = useState<AppUser[]>([]);
 
   // Drop the previous identity's content the moment it changes (impersonation)
   // instead of flashing it until the new snapshot lands.
@@ -124,6 +128,8 @@ export function useContactDetailData(contactId: string) {
       // "In your care" — the picker's choice, else the people I added. The same
       // notion of ownership People, My Day and the full-timer's home all read.
       subscribeUserPreferences(uid, (prefs) => setPrefContactIds(prefs.personalContactIds ?? null)),
+      // The roster behind the composer's @mention candidates (ADR 0007).
+      subscribeUsers(setTeamMembers, () => setTeamMembers([])),
     ];
 
     return () => unsubs.forEach((unsub) => unsub());
@@ -168,6 +174,7 @@ export function useContactDetailData(contactId: string) {
     prayers,
     prayersLoading,
     threadMessages: visibleThreadMessages,
+    teamMembers,
     walkLabel,
     inYourCare,
     carerNames,
@@ -227,6 +234,7 @@ export function useContactDetailData(contactId: string) {
       scope?: 'team' | null;
       kind: ThreadKind;
       body: string;
+      mentionedUserIds?: string[];
     }) => {
       if (!contact || !uid) return;
       await addThreadMessage(
@@ -239,6 +247,9 @@ export function useContactDetailData(contactId: string) {
           fromName: by.name,
           kind: input.kind,
           body: input.body,
+          ...(input.mentionedUserIds && input.mentionedUserIds.length > 0
+            ? { mentionedUserIds: input.mentionedUserIds }
+            : {}),
         },
         {
           to: threadRecipient,

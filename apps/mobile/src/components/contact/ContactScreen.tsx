@@ -134,6 +134,12 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   useEffect(() => {
     return subscribeUsers(setTeamMembers);
   }, []);
+  // @mention candidates (ADR 0007): any teammate on the Conversation, only
+  // Full-timers on the staff-only stream.
+  const mentionCandidates = useMemo(
+    () => teamMembers.map((m) => ({ uid: m.uid, name: m.displayName, role: m.role })),
+    [teamMembers],
+  );
 
   const canWrite = role !== 'viewer' && !isImpersonating;
   // The Full-timers switch is cut on the EFFECTIVE role, as feedVisibleThreads
@@ -497,16 +503,17 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           askAudience={t('mobile.contact.audience_conversation_ask').replace('{name}', first)}
           locked={showing === 'team'}
           placeholder={t('mobile.contact.placeholder_full_timers')}
+          candidates={showing === 'team' ? mentionCandidates.filter((m) => m.role === 'admin') : mentionCandidates}
           label={
             showing === 'team'
               ? t('mobile.contact.compose_full_timers')
               : t('mobile.contact.compose_conversation').replace('{name}', first)
           }
-          onSend={({ body, kind }) =>
+          onSend={({ body, kind, mentionedUserIds }) =>
             void data.postThreadMessage(
               showing === 'team'
-                ? { interactionId: null, scope: 'team', kind: 'comment', body }
-                : { interactionId: null, scope: null, kind, body },
+                ? { interactionId: null, scope: 'team', kind: 'comment', body, mentionedUserIds }
+                : { interactionId: null, scope: null, kind, body, mentionedUserIds },
             )
           }
         />

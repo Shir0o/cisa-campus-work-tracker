@@ -177,6 +177,8 @@ export async function addThreadMessage(
     fromName: string;
     kind: ThreadKind;
     body: string;
+    /** Teammates @mentioned, already reconciled against the body (ADR 0007). */
+    mentionedUserIds?: string[];
   },
   notify?: {
     to?: string | null;
@@ -187,6 +189,7 @@ export async function addThreadMessage(
 ): Promise<void> {
   const body = input.body.trim();
   const team = input.scope === "team";
+  const mentionedUserIds = (input.mentionedUserIds ?? []).filter(Boolean);
   await addDoc(col(db, contactId, input.scope), {
     interactionId: input.interactionId ?? null,
     parentId: input.parentId ?? null,
@@ -196,8 +199,32 @@ export async function addThreadMessage(
     kind: input.kind,
     body,
     at: new Date().toISOString(),
+    ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
   });
   if (!onNotify) return;
+
+  const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
+  const contactName = notify?.contactName || "this person";
+  const message = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
+  const notified = new Set<string>();
+
+  // A picked @mention is addressed to that person, so it notifies them with its
+  // own title — and never the author, nor a Trainee about a stream they can't
+  // open (ADR 0007).
+  for (const uid of mentionedUserIds) {
+    if (uid === input.from || notified.has(uid)) continue;
+    if (team && !isFullTimer(uid)) continue;
+    notified.add(uid);
+    onNotify({
+      userId: uid,
+      title: team
+        ? `${who} mentioned you in the Full-timers thread on ${contactName}`
+        : `${who} mentioned you on ${contactName}`,
+      message,
+      type: "info",
+      targetId: contactId,
+    });
+  }
 
   // Everyone tied to the contact, then the legacy single recipient — deduped, so
   // nobody is told twice. Before this, mobile passed only `to`, which
@@ -205,15 +232,12 @@ export async function addThreadMessage(
   // contact screen notified nobody at all (#813).
   const recipients = new Set(stakeholderUidsOf(notify?.stakeholders, input.from));
   if (notify?.to && notify.to !== input.from) recipients.add(notify.to);
-  // The Full-timers stream is never announced to a Trainee.
+  // The Full-timers stream is never announced to a Trainee, and a mention
+  // already carried its own buzz.
   if (team) for (const uid of recipients) if (!isFullTimer(uid)) recipients.delete(uid);
-  if (recipients.size === 0) return;
-
-  const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
-  const contactName = notify?.contactName || "this person";
   const title = team ? TEAM_THREAD_NOTIFY_TITLE(who, contactName) : THREAD_NOTIFY_TITLE[input.kind](who, contactName);
-  const message = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
   for (const userId of recipients) {
+    if (notified.has(userId)) continue;
     onNotify({ userId, title, message, type: "info", targetId: contactId });
   }
 }

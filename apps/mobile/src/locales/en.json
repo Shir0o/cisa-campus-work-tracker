@@ -1478,7 +1478,13 @@
       "receipts_not_yet": "Not yet",
       "receipts_no_one": "No one yet",
       "receipts_everyone": "Everyone has read this",
-      "member": "Member"
+      "member": "Member",
+      "attach_title": "Attach",
+      "attach_search": "Search",
+      "attach_empty": "Nothing to attach yet.",
+      "attach_contact": "Person",
+      "attach_event": "Gathering",
+      "attach_prayer": "Prayer"
     },
     "member": {
       "you": "You",
@@ -1612,6 +1618,11 @@
       "reply_placeholder": "Reply…",
       "reply_label": "Reply in thread",
       "send": "Send",
+      "attach": "Attach",
+      "mention": "Mention someone",
+      "mention_list": "Teammate mentions",
+      "staged": "Attached",
+      "remove_staged": "Remove {name}",
       "kind_group": "What are you writing",
       "kind_comment": "Comment",
       "kind_question": "Question",

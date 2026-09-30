@@ -14,7 +14,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } fro
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type ChatUserSummary, type StreamRow } from '@cisa/core';
+import { buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type ChatAttachment, type ChatUserSummary, type StreamRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import type { useChatThreadData } from '../../lib/useChatThreadData';
@@ -42,6 +42,7 @@ import { StreamComposer } from '../stream/StreamComposer';
 import { StreamActionSheet } from '../stream/StreamActionSheet';
 import { repliesLabel } from '../stream/format';
 import { ThreadSkeleton } from './ThreadSkeleton';
+import { AttachSheet } from './AttachSheet';
 
 type ChatThreadData = ReturnType<typeof useChatThreadData>;
 type ChatRow = StreamRow<ChatStreamMessage>;
@@ -72,6 +73,9 @@ export function ChatStreamPane({
   const [todoFrom, setTodoFrom] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [receiptsFor, setReceiptsFor] = useState<ChatStreamMessage | null>(null);
+  // C5: reference-data cards staged for the next post, each removable.
+  const [staged, setStaged] = useState<ChatAttachment[]>([]);
+  const [attachOpen, setAttachOpen] = useState(false);
   // Read once per visit: "Today" is said against it.
   const [now] = useState(Date.now);
   // Read-on-view (#1277): each post's laid-out box, the scroll window once the
@@ -102,6 +106,10 @@ export function ChatStreamPane({
   const who = { me, nameOf, t };
   // Whose @name lights up: the room's people, as the web's chat does.
   const mentionNames = (room?.memberIds ?? []).map((id) => data.usersCache[id]?.displayName ?? '').filter(Boolean);
+  // Who may be @mentioned here (ADR 0007): the members of the chat.
+  const mentionCandidates = (room?.memberIds ?? [])
+    .map((id) => ({ uid: id, name: data.usersCache[id]?.displayName ?? '' }))
+    .filter((c) => !!c.name);
 
   const all = useMemo(() => data.messages.map(toChatStreamMessage), [data.messages]);
   const pinnedHeld = inThread ? [] : heldPosts(all, isAnnouncement);
@@ -300,7 +308,16 @@ export function ChatStreamPane({
             <StreamComposer
               placeholder={t('mobile.stream.reply_placeholder')}
               label={t('mobile.stream.reply_label')}
-              onSend={({ body }) => void data.send(body, parentId)}
+              candidates={mentionCandidates}
+              staged={staged.map((a, n) => ({ key: String(n), label: a.name, kind: a.type === 'contact' ? ('contact' as const) : ('file' as const) }))}
+              onAttach={() => setAttachOpen(true)}
+              onUnstage={(key) => setStaged((prev) => prev.filter((_, n) => String(n) !== key))}
+              onSend={({ body }) => {
+                const files = staged.length > 0 ? staged : undefined;
+                setStaged([]);
+                if (files) void data.send(body, parentId, files);
+                else void data.send(body, parentId);
+              }}
             />
           )
         ) : canPost ? (
@@ -314,7 +331,16 @@ export function ChatStreamPane({
                   : t('mobile.messages.say_it_out_loud')
             }
             label={t('mobile.messages.compose_label')}
-            onSend={({ body }) => void data.send(body)}
+            candidates={mentionCandidates}
+            staged={staged.map((a, n) => ({ key: String(n), label: a.name, kind: a.type === 'contact' ? ('contact' as const) : ('file' as const) }))}
+            onAttach={() => setAttachOpen(true)}
+            onUnstage={(key) => setStaged((prev) => prev.filter((_, n) => String(n) !== key))}
+            onSend={({ body }) => {
+              const files = staged.length > 0 ? staged : undefined;
+              setStaged([]);
+              if (files) void data.send(body, null, files);
+              else void data.send(body);
+            }}
           />
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 18 }}>
@@ -356,6 +382,12 @@ export function ChatStreamPane({
         usersCache={data.usersCache}
         me={me}
         onClose={() => setReceiptsFor(null)}
+      />
+
+      <AttachSheet
+        visible={attachOpen}
+        onClose={() => setAttachOpen(false)}
+        onAttach={(attachment) => setStaged((prev) => [...prev, attachment])}
       />
 
       {staff && (
@@ -415,8 +447,7 @@ function Body({
           ),
         )}
       </Text>
-      {staff &&
-        (message.source.attachments ?? []).map((a) => {
+      {(message.source.attachments ?? []).map((a) => {
           const isContact = a.type === 'contact';
           return (
             <Pressable
