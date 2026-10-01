@@ -20,6 +20,7 @@ export * from './memberHome';
 export * from './shell';
 export * from './prayerThread';
 export * from './directory';
+export * from './reach';
 export * from './history';
 export * from './answered';
 export * from './landing';
