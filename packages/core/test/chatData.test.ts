@@ -26,6 +26,7 @@ import {
   markAnnouncementRead,
   removeMessageForEveryone,
   sendMessage,
+  subscribeChatRoom,
   subscribeChatRooms,
   subscribeRoomMessages,
   togglePinMessage,
@@ -111,6 +112,30 @@ describe('subscribeRoomMessages', () => {
     expect(second.parentId).toBeNull();
     expect(second.deleted).toBeUndefined();
     expect(second.acknowledged).toBeUndefined();
+  });
+});
+
+describe('subscribeChatRoom (the room reader carries the audience preset, #1279)', () => {
+  it('carries audiencePreset off the room doc so the reader can name the audience', () => {
+    firestoreMock.onSnapshot.mockImplementation((_q: unknown, cb: (snap: unknown) => void) => {
+      cb({
+        id: 'r1',
+        exists: () => true,
+        data: () => ({
+          type: 'announcement',
+          name: 'Campus Updates',
+          memberIds: ['u1', 'u2'],
+          createdById: 'u1',
+          createdByName: 'Mei',
+          createdAt: { toDate: () => new Date('2026-09-30T10:00:00.000Z') },
+          audiencePreset: 'everyone',
+        }),
+      });
+      return () => {};
+    });
+    const cb = vi.fn();
+    subscribeChatRoom({} as never, 'r1', cb);
+    expect(cb.mock.calls[0][0]).toMatchObject({ id: 'r1', audiencePreset: 'everyone' });
   });
 });
 

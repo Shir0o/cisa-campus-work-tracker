@@ -9,7 +9,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from '../ui/SafeArea';
 import { useRouter } from 'expo-router';
-import { getRoomName } from '@cisa/core';
+import { chatRoomSubtitle, getRoomName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useChatThreadData } from '../../lib/useChatThreadData';
@@ -27,13 +27,19 @@ export function MemberThreadScreen({ roomId }: { roomId: string }) {
 
 function MemberThread({ roomId }: { roomId: string }) {
   const { c, font, fs } = useV2Theme();
-  const { uid } = useAuth();
+  const { uid, role } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const data = useChatThreadData(roomId);
 
   const name = data.room ? getRoomName(data.room, uid, data.usersCache) : '';
-  const isGroupish = data.room && data.room.type !== 'direct';
+  // The line under the room's name (S5), matching the web (#1279).
+  const roleOf = new Map(data.users.map((u) => [u.uid, u.role]));
+  const members = (data.room?.memberIds ?? []).map((id) => ({
+    displayName: data.usersCache[id]?.displayName ?? '',
+    role: roleOf.get(id),
+  }));
+  const subtitle = data.room ? chatRoomSubtitle(data.room, { members, meIsFullTimer: role === 'admin', t }) : '';
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -60,11 +66,9 @@ function MemberThread({ roomId }: { roomId: string }) {
           >
             {name || t('mobile.common.loading')}
           </Text>
-          {isGroupish && (
-            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
-              {data.room!.type === 'announcement'
-                ? t('mobile.messages.announcement')
-                : `${data.room!.memberIds.length} ${data.room!.memberIds.length === 1 ? t('mobile.messages.person') : t('mobile.messages.people')}`}
+          {!!subtitle && (
+            <Text numberOfLines={1} style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
+              {subtitle}
             </Text>
           )}
         </View>

@@ -996,7 +996,19 @@
     "search_history_too": "Buscar también en el historial",
     "anywhere_navigate_open": "en cualquier lugar · ↑↓ navegar · ↵ abrir"
   },
+  "chat": {
+    "sub_direct": "Solo ustedes dos",
+    "sub_group": "Grupo · {n} personas",
+    "sub_announcement": "Anuncio · {n} personas",
+    "posters_you": "tú publicas aquí",
+    "posters_one": "{name} publica aquí",
+    "posters_two": "{a} y {b} publican aquí",
+    "posters_many": "{a} y {n} más publican aquí",
+    "you": "tú"
+  },
   "modals": {
+    "composer_audience_note": "Publicando para todos en Campus — {n} personas",
+    "composer_audience_note_custom": "Publicando para {n} personas en este canal",
     "smartImport": {
       "modal_title": "Importación inteligente de texto",
       "subtitle": "Pega notas, correos o chats: Gemini AI extrae contactos, 1 a 1 y discusiones con una revisión previa.",
@@ -1467,7 +1479,6 @@
       "take_back_yes": "Sí, quitarlo",
       "take_back_no": "Conservarlo",
       "announcement_footer": "Solo los de tiempo completo publican aquí. Cualquiera puede responder en un hilo.",
-      "announcement_audience": "Publicando para {n} personas en este canal",
       "compose_label": "Mensaje",
       "placeholder_announcement": "Escribe un anuncio…",
       "read_by_n": "Leído por {read} de {total}",

@@ -222,6 +222,53 @@ export function messagesScreenNote(total: number, unread: number): string {
   return unread > 0 ? `${unread} new` : String(total);
 }
 
+export interface ChatSubtitleMember {
+  displayName: string;
+  /** AppRole from the user doc: 'admin' is a Full-timer. */
+  role?: string;
+}
+
+/** The line under a room's name (S5): "Group · 4 people", or
+ *  "Announcement · 24 people · Maria and 2 others post here". Phone mirror of
+ *  the web's (src/components/stream/chatAdapter.ts), kept byte-identical by
+ *  src/test/chatSubtitleMirrorParity.test.ts. */
+export function chatRoomSubtitle(
+  room: ChatRoom,
+  { members, meIsFullTimer, t }: { members: ChatSubtitleMember[]; meIsFullTimer: boolean; t: (key: string) => string },
+): string {
+  const n = String(room.memberIds?.length ?? 0);
+  if (room.type === "direct") return t("chat.sub_direct");
+  if (room.type === "group") return t("chat.sub_group").replace("{n}", n);
+  const head = t("chat.sub_announcement").replace("{n}", n);
+  const others = members
+    .filter((m) => m.role === "admin")
+    .map((m) => firstName(m.displayName))
+    .sort((a, b) => a.localeCompare(b));
+  const names = meIsFullTimer ? [t("chat.you"), ...others] : others;
+  if (names.length === 0) return head;
+  const posters =
+    names.length === 1
+      ? meIsFullTimer
+        ? t("chat.posters_you")
+        : t("chat.posters_one").replace("{name}", names[0])
+      : names.length === 2
+        ? t("chat.posters_two").replace("{a}", names[0]).replace("{b}", names[1])
+        : t("chat.posters_many").replace("{a}", names[0]).replace("{n}", String(names.length - 1));
+  return `${head} · ${posters}`;
+}
+
+/** The line above an announcement composer naming its real audience (C3):
+ *  "Posting to everyone on Campus — 3 people" for the "everyone" preset, else
+ *  "Posting to 3 people in this channel". Empty for any other room. Phone
+ *  mirror of the web's chatAdapter audience; parity-tested. */
+export function announcementAudienceNote(room: ChatRoom, t: (key: string) => string): string {
+  if (!isAnnouncement(room)) return "";
+  return (room.audiencePreset === "everyone"
+    ? t("modals.composer_audience_note")
+    : t("modals.composer_audience_note_custom")
+  ).replace("{n}", String(room.memberIds.length));
+}
+
 // ── Slack-shaped threads (#563) ─────────────────────────────────────────────
 
 /** Top-level messages in a conversation (replies filtered out). */

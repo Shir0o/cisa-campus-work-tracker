@@ -996,7 +996,19 @@
     "search_history_too": "Search history too",
     "anywhere_navigate_open": "anywhere · ↑↓ navigate · ↵ open"
   },
+  "chat": {
+    "sub_direct": "Just the two of you",
+    "sub_group": "Group · {n} people",
+    "sub_announcement": "Announcement · {n} people",
+    "posters_you": "you post here",
+    "posters_one": "{name} posts here",
+    "posters_two": "{a} and {b} post here",
+    "posters_many": "{a} and {n} others post here",
+    "you": "you"
+  },
   "modals": {
+    "composer_audience_note": "Posting to everyone on Campus — {n} people",
+    "composer_audience_note_custom": "Posting to {n} people in this channel",
     "smartImport": {
       "modal_title": "Smart Text Import",
       "subtitle": "Paste notes, emails, or chat logs — Gemini AI parses contacts, 1-on-1s, and discussions with a dry-run review.",
@@ -1467,7 +1479,6 @@
       "take_back_yes": "Yes, remove it",
       "take_back_no": "Keep it",
       "announcement_footer": "Only Full-timers post here. Anyone can reply in a thread.",
-      "announcement_audience": "Posting to {n} people in this channel",
       "compose_label": "Message",
       "placeholder_announcement": "Write an announcement…",
       "read_by_n": "Read by {read} of {total}",

@@ -156,6 +156,46 @@ describe('ChatThreadScreen', () => {
     });
   });
 
+  describe('the room header (S5)', () => {
+    const roster = [
+      { uid: 'user1', displayName: 'Tony Wang', role: 'manager' },
+      { uid: 'grace', displayName: 'Grace Liu', role: 'admin' },
+      { uid: 'maria', displayName: 'Maria Santos', role: 'admin' },
+    ];
+    const names = { grace: { displayName: 'Grace Liu' }, maria: { displayName: 'Maria Santos' } };
+
+    it('counts a group', async () => {
+      const { getByText } = await renderAs(trainee, { room: group, messages: [graceSays] });
+      expect(getByText('Group · 3 people')).toBeTruthy();
+    });
+
+    it('says "Just the two of you" in a direct chat', async () => {
+      const direct: ChatRoom = { ...base, type: 'direct', memberIds: ['user1', 'grace'] };
+      const { getByText } = await renderAs(trainee, { room: direct, messages: [graceSays] });
+      expect(getByText('Just the two of you')).toBeTruthy();
+    });
+
+    it('names who posts in an announcement for a Trainee', async () => {
+      const { getByText } = await renderAs(trainee, {
+        room: announcement,
+        messages: [msg('a1', { senderId: 'grace' })],
+        users: roster,
+        usersCache: names,
+      });
+      expect(getByText('Announcement · 3 people · Grace and Maria post here')).toBeTruthy();
+    });
+
+    it('leads with "you" for a Full-timer', async () => {
+      const { getByText } = await renderAs(fullTimer, {
+        room: announcement,
+        messages: [msg('a1', { senderId: 'grace' })],
+        users: roster,
+        usersCache: names,
+      });
+      expect(getByText('Announcement · 3 people · you and 2 others post here')).toBeTruthy();
+    });
+  });
+
   describe('Threads (T1, T2)', () => {
     const reply = msg('r1', { parentId: 'g1', senderId: 'maria', senderName: 'Maria Santos', timestamp: hoursAgo(1) });
 
@@ -324,6 +364,18 @@ describe('ChatThreadScreen', () => {
       await fireEvent.changeText(getByLabelText('Message'), 'New time');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
       expect(d.send).toHaveBeenCalledWith('New time');
+    });
+
+    it('names the real audience for the "everyone" preset (C3)', async () => {
+      const everyone: ChatRoom = { ...announcement, audiencePreset: 'everyone' };
+      const { getByText } = await renderAs(fullTimer, { room: everyone, messages: [post] });
+      expect(getByText('Posting to everyone on Campus — 3 people')).toBeTruthy();
+    });
+
+    it('says "in this channel" for the "custom" preset (C3)', async () => {
+      const custom: ChatRoom = { ...announcement, audiencePreset: 'custom' };
+      const { getByText } = await renderAs(fullTimer, { room: custom, messages: [post] });
+      expect(getByText('Posting to 3 people in this channel')).toBeTruthy();
     });
 
     it('holds the pinned post first, under its strip, though it is not the oldest', async () => {

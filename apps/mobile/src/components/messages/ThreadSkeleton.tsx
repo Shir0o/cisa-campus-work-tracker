@@ -1,20 +1,20 @@
 // The shape of one conversation, drawn in placeholder blocks — what
 // ChatThreadScreen and MemberThreadScreen show while useChatThreadData's first
-// snapshot is in flight. Bubble shapes sit where bubbles would: a date chip,
-// then messages alternating between the room's translucent chip (theirs) and a
-// card-tone block (mine), sized like the real bubbles.
+// snapshot is in flight. Row shapes sit where rows would: a date chip, then
+// left-aligned blocks (G3), alternating between the room's translucent chip and
+// a card-tone block, sized like the rows.
 import React from 'react';
 import { View } from 'react-native';
 import { useV2Theme } from '../../theme/v2';
 import { Skeleton } from '../ui/Skeleton';
 
-const BUBBLES = [
-  { align: 'flex-start', width: '62%', height: 46 },
-  { align: 'flex-end', width: '48%', height: 40 },
-  { align: 'flex-start', width: '55%', height: 52 },
-  { align: 'flex-end', width: '70%', height: 44 },
-  { align: 'flex-start', width: '44%', height: 38 },
-  { align: 'flex-end', width: '58%', height: 46 },
+const ROWS = [
+  { width: '62%', height: 46 },
+  { width: '48%', height: 40 },
+  { width: '55%', height: 52 },
+  { width: '70%', height: 44 },
+  { width: '44%', height: 38 },
+  { width: '58%', height: 46 },
 ] as const;
 
 export function ThreadSkeleton() {
@@ -32,11 +32,11 @@ export function ThreadSkeleton() {
           marginVertical: 8,
         }}
       />
-      {BUBBLES.map((b, i) => (
+      {ROWS.map((b, i) => (
         <Skeleton
           key={i}
           style={{
-            alignSelf: b.align,
+            alignSelf: 'flex-start',
             width: b.width,
             height: b.height,
             borderRadius: radius.note,
