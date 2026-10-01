@@ -3222,6 +3222,136 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Settings (weekly reminder schedule)', () => {
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+      });
+    };
+
+    const validSchedule = {
+      fullTimers: { days: [2, 3], hour: 17 },
+      teams: { yp: { days: [2], hour: 18 }, campus: { days: [2, 3], hour: 18 } },
+    };
+
+    it('RS1: Anyone (even unauthenticated) can read the reminder schedule', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'reminder_schedule'), validSchedule);
+      });
+      const db = getFirestore(); // unauthenticated
+      await assertSucceeds(getDoc(doc(db, 'settings', 'reminder_schedule')));
+    });
+
+    it('RS2: Admin can write a valid schedule', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'settings', 'reminder_schedule'), validSchedule));
+    });
+
+    it('RS3: Manager cannot write the schedule', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'reminder_schedule'), validSchedule));
+    });
+
+    it('RS4: Operator cannot write the schedule', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(db, 'settings', 'reminder_schedule'), validSchedule));
+    });
+
+    it('RS5: Rejects stray top-level keys', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'settings', 'reminder_schedule'), { ...validSchedule, evil: true }));
+    });
+
+    it('RS6: Rejects an invalid hour or weekday', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(
+        setDoc(doc(db, 'settings', 'reminder_schedule'), {
+          ...validSchedule,
+          fullTimers: { days: [2], hour: 24 },
+        }),
+      );
+      await assertFails(
+        setDoc(doc(db, 'settings', 'reminder_schedule'), {
+          ...validSchedule,
+          fullTimers: { days: [7], hour: 17 },
+        }),
+      );
+    });
+
+    it('RS7: Rejects an unknown team key or stray time keys', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(
+        setDoc(doc(db, 'settings', 'reminder_schedule'), {
+          ...validSchedule,
+          teams: { ...validSchedule.teams, east: { days: [1], hour: 9 } },
+        }),
+      );
+      await assertFails(
+        setDoc(doc(db, 'settings', 'reminder_schedule'), {
+          ...validSchedule,
+          fullTimers: { days: [2], hour: 17, evil: true },
+        }),
+      );
+    });
+  });
+
+  describe('Users (weekly reminder switch)', () => {
+    const validUser = (over: Record<string, unknown> = {}) => ({
+      email: 'person@example.com',
+      displayName: 'Person Name',
+      photoURL: null,
+      role: 'manager',
+      approved: true,
+      ...over,
+    });
+
+    const seedUser = async (uid: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', uid), validUser({ displayName: uid, ...over }));
+      });
+    };
+
+    it('UW1: A person can turn their own weekly reminders off', async () => {
+      await seedUser('manager1');
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(db, 'users', 'manager1'), { weeklyRemindersOff: true }));
+    });
+
+    it('UW2: A person can turn them back on', async () => {
+      await seedUser('manager1', { weeklyRemindersOff: true });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(db, 'users', 'manager1'), { weeklyRemindersOff: false }));
+    });
+
+    it('UW3: An admin cannot change someone else’s switch', async () => {
+      await seedUser('manager1');
+      await seedUser('admin1', { role: 'admin' });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(updateDoc(doc(db, 'users', 'manager1'), { weeklyRemindersOff: true }));
+    });
+
+    it('UW4: A manager cannot change someone else’s switch', async () => {
+      await seedUser('manager1');
+      await seedUser('manager2');
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(db, 'users', 'manager2'), { weeklyRemindersOff: true }));
+    });
+
+    it('UW5: Rejects a non-boolean switch value', async () => {
+      await seedUser('manager1');
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(db, 'users', 'manager1'), { weeklyRemindersOff: 'yes' }));
+    });
+  });
+
   describe('Notifications', () => {
     const seedUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {

@@ -2067,5 +2067,24 @@
     "from_surnames": "from surnames",
     "unnamed_home": "Unnamed home",
     "close": "Close"
+  },
+  "reminders": {
+    "yours_title": "Your weekly reminders",
+    "yours_sub": "The rhythm reminders that reach your phone, on the campus clock.",
+    "yours_toggle": "Weekly reminders",
+    "yours_help": "Turn your own reminder on or off. Only when something is waiting, so a quiet week stays quiet.",
+    "schedule_title": "Weekly reminder schedule",
+    "schedule_sub": "When each reminder goes out, on the campus clock. Each fires only if something is waiting.",
+    "full_timers": "Full-timers",
+    "days_for": "Days for {name}",
+    "hour": "Time",
+    "hour_for": "Time for {name}",
+    "weekday_sun": "Sun",
+    "weekday_mon": "Mon",
+    "weekday_tue": "Tue",
+    "weekday_wed": "Wed",
+    "weekday_thu": "Thu",
+    "weekday_fri": "Fri",
+    "weekday_sat": "Sat"
   }
 }

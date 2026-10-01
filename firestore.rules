@@ -96,6 +96,7 @@ service cloud.firestore {
                (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 512)) &&
                data.role in ['admin', 'manager', 'operator', 'viewer'] &&
                data.approved is bool &&
+               (!('weeklyRemindersOff' in data) || data.weeklyRemindersOff is bool) &&
                hasValidTeam(data);
       }
 
@@ -112,6 +113,12 @@ service cloud.firestore {
       // teams the same way they arrange the pairs.
       function teamUnchanged() {
         return existing().get('team', null) == incoming().get('team', null);
+      }
+
+      // The weekly reminder switch is each person's own (#1301); even a manager
+      // changing someone else's record leaves it exactly as it was.
+      function weeklyRemindersOffUnchanged() {
+        return existing().get('weeklyRemindersOff', null) == incoming().get('weeklyRemindersOff', null);
       }
 
       allow get: if isValidId(userId) && (isOwner(userId) || isApprovedUser());
@@ -133,9 +140,9 @@ service cloud.firestore {
                       );
 
       allow update: if isValidId(userId) && (
-                      (isManager() && (isAdmin() || teamUnchanged()) && isValidUser(incoming())) ||
+                      (isManager() && (isAdmin() || teamUnchanged()) && weeklyRemindersOffUnchanged() && isValidUser(incoming())) ||
                       (isOwner(userId) &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'pushToken']) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'pushToken', 'weeklyRemindersOff']) &&
                        incoming().email == existing().email &&
                        incoming().role == existing().role &&
                        incoming().approved == existing().approved &&
@@ -625,6 +632,25 @@ service cloud.firestore {
                (!('count' in data) || (data.count is int && data.count >= 1 && data.count <= 20));
       }
 
+      // The weekly reminder schedule (#1301): one time (campus weekdays + hour)
+      // for Full-timers and one per team. The team ids match src/lib/teams.ts;
+      // the rule only insists each time is well-formed.
+      function isValidReminderTime(t) {
+        return t is map &&
+               t.keys().hasOnly(['days', 'hour']) &&
+               t.days is list && t.days.size() <= 7 &&
+               t.days.hasOnly([0, 1, 2, 3, 4, 5, 6]) &&
+               t.hour is int && t.hour >= 0 && t.hour <= 23;
+      }
+
+      function isValidReminderSchedule(data) {
+        return data.keys().hasOnly(['fullTimers', 'teams']) &&
+               isValidReminderTime(data.fullTimers) &&
+               data.teams is map && data.teams.keys().hasOnly(['yp', 'campus']) &&
+               (!('yp' in data.teams) || isValidReminderTime(data.teams.yp)) &&
+               (!('campus' in data.teams) || isValidReminderTime(data.teams.campus));
+      }
+
       function isValidIntegrationsSettings(data) {
         return data.keys().hasOnly(['attdSyncToken', 'attdSyncUrl', 'updatedAt', 'updatedBy']) &&
                (!('attdSyncToken' in data) || data.attdSyncToken == null ||
@@ -645,6 +671,7 @@ service cloud.firestore {
 
       allow create, update: if docId == 'integrations' && isAdmin() && isValidIntegrationsSettings(incoming());
       allow create, update: if docId == 'whats_new' && isAdmin() && isValidWhatsNewSettings(incoming());
+      allow create, update: if docId == 'reminder_schedule' && isAdmin() && isValidReminderSchedule(incoming());
 
       allow read: if docId != 'integrations' || isAdmin();
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());

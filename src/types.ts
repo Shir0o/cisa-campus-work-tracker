@@ -377,6 +377,10 @@ export interface AppUser {
    *  above the pairs; absent means unassigned. Set by a full-timer in Settings,
    *  read by the news feed's filter. Never trusted without `isKnownTeam`. */
   team?: string | null;
+  /** Their own weekly-reminder switch (#1301). Absent means on; only they may
+   *  change it (Firestore rules), and it is the one field the weekly cron
+   *  never reads as a team arrangement. */
+  weeklyRemindersOff?: boolean;
 }
 
 export interface Invitation {
