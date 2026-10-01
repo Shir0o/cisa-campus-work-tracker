@@ -1,7 +1,7 @@
 import "./useMediaQuery.mock";
 import "../lib/useMediaQuery";
 import { useMediaQuery } from '../lib/useMediaQuery';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
@@ -1147,5 +1147,85 @@ describe('MyDay', () => {
 
     expect(screen.queryByRole('link', { name: /Around the team/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
+  });
+
+  // ── Not reached yet card (#1287) ──────────────────────────────────────────
+  // People added in the last 30 days nobody has reached. A Trainee sees the
+  // people they are tied to and no switch; a Full-timer can switch to the whole
+  // team, each person shown with who is tied to them. The card is a labelled
+  // region with a five-row cap even when it is empty.
+  const unreachedContact = (id: string, data: Record<string, unknown>) =>
+    contactDoc(id, { inChurchLife: false, createdAt: new Date().toISOString(), ...data });
+
+  it('shows a Trainee only their own unreached people, with no scope switch', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'manager',
+    });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          unreachedContact('c-mine', { name: 'Mara', createdBy: 'u-test' }),
+          unreachedContact('c-theirs', { name: 'Nadia', createdBy: 'u-other' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+
+    const card = await screen.findByRole('region', { name: 'Not reached yet' });
+    expect(within(card).getByText('Mara')).toBeInTheDocument();
+    expect(within(card).queryByText('Nadia')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Team' })).not.toBeInTheDocument();
+  });
+
+  it('lets a Full-timer switch the card to the whole team, naming who is tied to each person', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [unreachedContact('c-theirs', { name: 'Nadia', createdBy: 'u-other' })],
+        users: [
+          { id: 'u-other', ref: { path: 'users/u-other' }, data: () => ({ displayName: 'Mei' }) },
+        ],
+      }),
+    );
+    render(<MyDay />);
+
+    const card = await screen.findByRole('region', { name: 'Not reached yet' });
+    // Defaults to Yours: nobody tied to the reader, so the plain empty state.
+    expect(within(card).getByText("No one's waiting to be reached.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
+    expect(within(card).getByText('Nadia')).toBeInTheDocument();
+    expect(within(card).getByText(/Tied to Mei/)).toBeInTheDocument();
+  });
+
+  it('marks the Not reached yet card as a labelled region even when empty', async () => {
+    render(<MyDay />);
+    const card = await screen.findByRole('region', { name: 'Not reached yet' });
+    expect(within(card).getByText("No one's waiting to be reached.")).toBeInTheDocument();
+  });
+
+  it('caps the Not reached yet card at five rows with a show-more control', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'manager',
+    });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: Array.from({ length: 7 }, (_, i) =>
+          unreachedContact(`c-${i}`, { name: `Person ${i}`, createdBy: 'u-test' }),
+        ),
+      }),
+    );
+    render(<MyDay />);
+
+    const card = await screen.findByRole('region', { name: 'Not reached yet' });
+    expect(within(card).getByText('Person 0')).toBeInTheDocument();
+    expect(within(card).queryByText('Person 5')).not.toBeInTheDocument();
+    fireEvent.click(within(card).getByRole('button', { name: /Show 2 more people/ }));
+    expect(within(card).getByText('Person 5')).toBeInTheDocument();
   });
 });

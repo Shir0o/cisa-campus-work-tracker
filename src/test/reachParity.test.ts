@@ -9,16 +9,30 @@
 import { describe, it, expect } from 'vitest';
 import {
   isReached as webReached,
+  isTiedTo as webTied,
   reachByContact as webReach,
+  tiedTeammateNames as webTiedNames,
+  unreachedContacts as webUnreached,
   unreachedTagCounts as webTagCounts,
 } from '../lib/reach';
 import {
   isReached as coreReached,
+  isTiedTo as coreTied,
   reachByContact as coreReach,
+  tiedTeammateNames as coreTiedNames,
+  unreachedContacts as coreUnreached,
   unreachedTagCounts as coreTagCounts,
 } from '../../packages/core/src/reach';
-import type { ReachSources as WebSources, TagCountPerson as WebTagCountPerson } from '../lib/reach';
-import type { ReachSources as CoreSources, TagCountPerson as CoreTagCountPerson } from '../../packages/core/src/reach';
+import type {
+  ReachPerson as WebReachPerson,
+  ReachSources as WebSources,
+  TagCountPerson as WebTagCountPerson,
+} from '../lib/reach';
+import type {
+  ReachPerson as CoreReachPerson,
+  ReachSources as CoreSources,
+  TagCountPerson as CoreTagCountPerson,
+} from '../../packages/core/src/reach';
 
 const INTERACTIONS = [
   { contactId: 'c1', ms: 1_700_000_000_000 },
@@ -75,5 +89,34 @@ describe('reach mirror parity (web vs core)', () => {
       PARITY_NOW,
     );
     expect([...webCounts.entries()].sort()).toEqual([...coreCounts.entries()].sort());
+  });
+
+  it('agrees on ties, tied teammate names, and the Not-reached-yet scopes (#1287)', () => {
+    const webSource: WebSources = { interactions: INTERACTIONS, gatherings: GATHERINGS };
+    const coreSource: CoreSources = { interactions: INTERACTIONS, gatherings: GATHERINGS };
+    const webMap = webReach(webSource);
+    const coreMap = coreReach(coreSource);
+    const people: WebReachPerson[] = [
+      { id: 'c1', kind: 'contact', createdAtMs: PARITY_NOW - DAY, createdBy: 'u1' },
+      { id: 'c2', kind: 'contact', createdAtMs: PARITY_NOW - 2 * DAY, founders: ['u1', 'u2'] },
+      { id: 'c5', kind: 'contact', createdAtMs: PARITY_NOW - 3 * DAY, carers: ['u2'] },
+      { id: 'c9', kind: 'our-own', createdAtMs: PARITY_NOW - DAY, createdBy: 'u1' },
+    ];
+    const names = { u1: 'Ana', u2: 'Bo' };
+
+    for (const person of people) {
+      expect(webTied(person, 'u1'), person.id).toBe(coreTied(person, 'u1'));
+      expect(webTiedNames(person, names), person.id).toEqual(coreTiedNames(person, names));
+    }
+
+    for (const scope of ['yours', 'team'] as const) {
+      const web = webUnreached(people, webMap, { scope, viewerUid: 'u1', nowMs: PARITY_NOW });
+      const core = coreUnreached(
+        people as unknown as CoreReachPerson[],
+        coreMap,
+        { scope, viewerUid: 'u1', nowMs: PARITY_NOW },
+      );
+      expect(web.map((p) => p.id), scope).toEqual(core.map((p) => p.id));
+    }
   });
 });

@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   isReached,
+  isTiedTo,
   reachByContact,
+  tiedTeammateNames,
+  unreachedContacts,
   unreachedTagCounts,
   UNREACHED_TAG_WINDOW_DAYS,
+  type ReachPerson,
   type ReachSources,
   type TagCountPerson,
 } from '../src/reach';
@@ -121,5 +125,94 @@ describe('unreached tag counts (#1300)', () => {
       person('b', NOW - DAY, ['BFA']),
     ];
     expect(unreachedTagCounts(people, new Map(), NOW).get('BFA')).toBe(1);
+  });
+});
+
+// The My Day card (#1287): people added in the last 30 days nobody has reached,
+// narrowed to the reader's ties ("yours") or the whole team, and the names of
+// the teammates tied to each.
+describe('not reached yet card (#1287)', () => {
+  const reachPerson = (
+    id: string,
+    createdAtMs: number | null,
+    ties: Partial<ReachPerson> = {},
+    kind: ContactKind = 'contact',
+  ): ReachPerson => ({ id, kind, createdAtMs, ...ties });
+
+  const reached = (id: string) =>
+    reachByContact({ interactions: [interaction(id, NOW)], gatherings: [] });
+  const opts = (scope: 'yours' | 'team', viewerUid: string) => ({ scope, viewerUid, nowMs: NOW });
+
+  describe('isTiedTo', () => {
+    it('counts each of the four ties that make a teammate a recipient', () => {
+      expect(isTiedTo({ createdBy: 'u1' }, 'u1')).toBe(true);
+      expect(isTiedTo({ addedBy: 'u1' }, 'u1')).toBe(true);
+      expect(isTiedTo({ founders: ['u1'] }, 'u1')).toBe(true);
+      expect(isTiedTo({ coCreators: ['u1'] }, 'u1')).toBe(true);
+      expect(isTiedTo({ carers: ['u1'] }, 'u1')).toBe(true);
+    });
+
+    it('is false for a teammate with no tie, and for a blank viewer', () => {
+      expect(isTiedTo({ createdBy: 'u2', founders: ['u3'] }, 'u1')).toBe(false);
+      expect(isTiedTo({ createdBy: 'u1' }, '')).toBe(false);
+      expect(isTiedTo(null, 'u1')).toBe(false);
+    });
+  });
+
+  describe('tiedTeammateNames', () => {
+    const names = { u1: 'Ana', u2: 'Bo', u3: 'Cy' };
+
+    it('names every tied teammate, de-duplicated across ties', () => {
+      expect(
+        tiedTeammateNames(
+          { createdBy: 'u1', founders: ['u1', 'u2'], coCreators: ['u3'], carers: ['u2'] },
+          names,
+        ),
+      ).toEqual(['Ana', 'Bo', 'Cy']);
+    });
+
+    it('drops a tie whose uid has no name', () => {
+      expect(tiedTeammateNames({ createdBy: 'ghost', founders: ['u2'] }, names)).toEqual(['Bo']);
+    });
+  });
+
+  describe('unreachedContacts', () => {
+    it('keeps only Contacts nobody has reached, added in the window', () => {
+      const people = [
+        reachPerson('fresh', NOW - DAY),
+        reachPerson('reached', NOW - DAY),
+        reachPerson('old', NOW - 31 * DAY),
+        reachPerson('saint', NOW - DAY, {}, 'local-saint'),
+      ];
+      const listed = unreachedContacts(people, reached('reached'), opts('team', 'u1'));
+      expect(listed.map((p) => p.id)).toEqual(['fresh']);
+    });
+
+    it('lists newest added first', () => {
+      const people = [
+        reachPerson('older', NOW - 20 * DAY),
+        reachPerson('newer', NOW - 2 * DAY),
+      ];
+      const listed = unreachedContacts(people, new Map(), opts('team', 'u1'));
+      expect(listed.map((p) => p.id)).toEqual(['newer', 'older']);
+    });
+
+    it('“yours” keeps only the people the reader is tied to', () => {
+      const people = [
+        reachPerson('mine', NOW - DAY, { createdBy: 'u1' }),
+        reachPerson('theirs', NOW - DAY, { createdBy: 'u2' }),
+      ];
+      const listed = unreachedContacts(people, new Map(), opts('yours', 'u1'));
+      expect(listed.map((p) => p.id)).toEqual(['mine']);
+    });
+
+    it('“team” keeps everyone, whatever the tie', () => {
+      const people = [
+        reachPerson('mine', NOW - DAY, { createdBy: 'u1' }),
+        reachPerson('theirs', NOW - DAY, { createdBy: 'u2' }),
+      ];
+      const listed = unreachedContacts(people, new Map(), opts('team', 'u1'));
+      expect(listed.map((p) => p.id)).toEqual(['mine', 'theirs']);
+    });
   });
 });

@@ -73,6 +73,7 @@ import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
 import { subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
 import { useDayGoal, goalNewToday } from "../lib/goal";
+import { reachByContact } from "../lib/reach";
 import {
   parseMs,
   daysSince,
@@ -89,6 +90,7 @@ import {
   AddPersonalPrayer,
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
+import NotReachedCard from "../components/landing/NotReachedCard";
 import OnYouCard from "../components/landing/OnYouCard";
 import PointerCard from "../components/landing/PointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
@@ -488,6 +490,7 @@ export default function MyDay() {
   const [personalPrayers, setPersonalPrayers] = useState<PersonalPrayer[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [desktopMessagingApp, setDesktopMessagingApp] = useState<DesktopMessagingApp | undefined>();
+  const [nameByUid, setNameByUid] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -663,6 +666,34 @@ export default function MyDay() {
       unsubInbox();
     };
   }, [uid]);
+
+  // Team display names, keyed by uid, for the Not-reached-yet card's "Tied to".
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+      const map: Record<string, string> = {};
+      snap.docs.forEach((d) => {
+        const data = d.data() as Record<string, unknown>;
+        const name = (data.name || data.displayName || data.email || "") as string;
+        if (name) map[d.id] = name;
+      });
+      setNameByUid(map);
+    });
+    return unsub;
+  }, []);
+
+  // Reach model (#1287): an interaction logged with someone, or their presence
+  // at a Gathering. Call or Text taps write nothing, so they never count.
+  const reach = useMemo(
+    () =>
+      reachByContact({
+        interactions: interactions.map((i) => ({
+          contactId: i.contactId ?? "",
+          ms: parseMs(i.dateTime || i.createdAt) ?? Number.NaN,
+        })),
+        gatherings: events,
+      }),
+    [interactions, events],
+  );
 
   // most-recent touch (+ its note) per contact
   const lastTouchByContact = useMemo(() => {
@@ -1315,6 +1346,16 @@ export default function MyDay() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
           {personalColumn}
           <div className="flex flex-col gap-10 min-w-0">
+            {uid && (
+              <NotReachedCard
+                contacts={contacts}
+                reach={reach}
+                nameByUid={nameByUid}
+                role={role}
+                uid={uid}
+                onOpenContact={openContact}
+              />
+            )}
             {sheepSection}
             {weekSection}
           </div>

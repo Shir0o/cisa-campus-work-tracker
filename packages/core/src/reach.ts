@@ -68,9 +68,10 @@ export function isReached(contactId: string, sources: ReachSources): boolean {
   return reachByContact(sources).get(contactId)?.reached ?? false;
 }
 
-/** The tag chips count only people added within this many days, so the list
- *  stays one the team can still act on. The Directory's Not-reached filter
- *  reads the reach map directly and has no such limit. */
+/** The tag chips and the My Day Not-reached-yet card show only people added
+ *  within this many days, so the list stays one the team can still act on. The
+ *  Directory's Not-reached filter reads the reach map directly and has no such
+ *  limit. */
 export const UNREACHED_TAG_WINDOW_DAYS = 30;
 
 /** One person the tag-count rule reads. `kind` is the derived kind of person,
@@ -101,4 +102,83 @@ export function unreachedTagCounts(
     }
   }
   return counts;
+}
+
+/** The tie fields the Not-reached-yet card reads: the persisted relationships
+ *  that make a teammate a recipient (glossary, "Tied to a contact"). */
+export interface ReachTies {
+  createdBy?: string | null;
+  addedBy?: string | null;
+  coCreators?: string[] | null;
+  founders?: string[] | null;
+  carers?: string[] | null;
+}
+
+/** One person the Not-reached-yet card reads: their kind, when they were added,
+ *  and every tie that makes a teammate a recipient. */
+export interface ReachPerson extends ReachTies {
+  id: string;
+  kind: ContactKind;
+  createdAtMs: number | null;
+}
+
+/** Which people the card shows: the reader's own ties, or the whole team. */
+export type ReachScope = "yours" | "team";
+
+/** Whether `viewerUid` is tied to a person — they added them, founded them,
+ *  co-created them, or carry them. */
+export function isTiedTo(person: ReachTies | null | undefined, viewerUid: string): boolean {
+  if (!person || !viewerUid) return false;
+  return (
+    person.createdBy === viewerUid ||
+    person.addedBy === viewerUid ||
+    (person.founders || []).includes(viewerUid) ||
+    (person.coCreators || []).includes(viewerUid) ||
+    (person.carers || []).includes(viewerUid)
+  );
+}
+
+/** The names of the teammates tied to a person, de-duplicated and in tie order
+ *  (creator/adder, founders, co-creators, carers). A tie whose uid carries no
+ *  name in the map is dropped, as in `carerNamesOf`. */
+export function tiedTeammateNames(
+  person: ReachTies | null | undefined,
+  nameByUid: Record<string, string | undefined> | null | undefined,
+): string[] {
+  if (!person) return [];
+  const ids = [
+    person.createdBy,
+    person.addedBy,
+    ...(person.founders || []),
+    ...(person.coCreators || []),
+    ...(person.carers || []),
+  ];
+  const names: string[] = [];
+  for (const id of ids) {
+    if (!id) continue;
+    const name = nameByUid?.[id]?.trim();
+    if (name) names.push(name);
+  }
+  return [...new Set(names)];
+}
+
+/** The My Day card's list: people nobody has reached, as Contacts added in the
+ *  last 30 days, narrowed to the reader's ties (`yours`) or the whole roster
+ *  (`team`), newest added first. */
+export function unreachedContacts(
+  people: readonly ReachPerson[],
+  reach: ReadonlyMap<string, ReachReading>,
+  opts: { scope: ReachScope; viewerUid: string; nowMs: number },
+): ReachPerson[] {
+  const floor = opts.nowMs - UNREACHED_TAG_WINDOW_DAYS * 86_400_000;
+  return people
+    .filter(
+      (person) =>
+        person.kind === "contact" &&
+        person.createdAtMs != null &&
+        person.createdAtMs >= floor &&
+        !(reach.get(person.id)?.reached ?? false) &&
+        (opts.scope === "team" || isTiedTo(person, opts.viewerUid)),
+    )
+    .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0));
 }
