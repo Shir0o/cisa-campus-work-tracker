@@ -20,6 +20,7 @@ export interface DirectoryFilterState {
   filterSpiritualBackground: string;
   kindSegment: KindSegment;
   filterUnsorted: boolean;
+  filterNotReached: boolean;
   filterAddedWhen: 'all' | 'today' | 'week' | 'month';
   customRange: { from: string; to: string };
   selectedTags: string[];
@@ -32,6 +33,7 @@ export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   filterSpiritualBackground: 'All',
   kindSegment: 'contact',
   filterUnsorted: false,
+  filterNotReached: false,
   filterAddedWhen: 'all',
   customRange: { from: '', to: '' },
   selectedTags: [],

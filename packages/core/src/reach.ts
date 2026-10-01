@@ -6,6 +6,7 @@
 // src/lib/reach.ts is a standalone mirror kept in step by
 // src/test/reachParity.test.ts.
 import { parseMs } from "./myday";
+import type { ContactKind } from "./directory";
 
 /** One logged Interaction, reduced to the person and its date. A `Touch` from
  *  `lastTouchByContact` is exactly this shape. */
@@ -65,4 +66,39 @@ export function reachByContact(sources: ReachSources): Map<string, ReachReading>
  *  rendering many rows should build the map once instead. */
 export function isReached(contactId: string, sources: ReachSources): boolean {
   return reachByContact(sources).get(contactId)?.reached ?? false;
+}
+
+/** The tag chips count only people added within this many days, so the list
+ *  stays one the team can still act on. The Directory's Not-reached filter
+ *  reads the reach map directly and has no such limit. */
+export const UNREACHED_TAG_WINDOW_DAYS = 30;
+
+/** One person the tag-count rule reads. `kind` is the derived kind of person,
+ *  `createdAtMs` their added date, and `tags` their effective tags (the
+ *  caller normalizes and injects the dynamic `new` tag first). */
+export interface TagCountPerson {
+  id: string;
+  kind: ContactKind;
+  createdAtMs: number | null;
+  tags: readonly string[];
+}
+
+/** Each tag's count of people nobody has reached — only Contacts added in the
+ *  last 30 days, per the glossary. */
+export function unreachedTagCounts(
+  people: readonly TagCountPerson[],
+  reach: ReadonlyMap<string, ReachReading>,
+  nowMs: number,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  const floor = nowMs - UNREACHED_TAG_WINDOW_DAYS * 86_400_000;
+  for (const person of people) {
+    if (person.kind !== "contact") continue;
+    if (person.createdAtMs == null || person.createdAtMs < floor) continue;
+    if (reach.get(person.id)?.reached) continue;
+    for (const tag of person.tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return counts;
 }
