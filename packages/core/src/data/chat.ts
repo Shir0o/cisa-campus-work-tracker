@@ -46,6 +46,8 @@ function mapRoom(d: { id: string; data: () => Record<string, any> }): ChatRoom {
     createdById: data.createdById,
     createdByName: data.createdByName,
     createdAt: normalizeTimestamp(data.createdAt),
+    // #1279: the reader names an announcement's real audience from this.
+    ...(data.audiencePreset ? { audiencePreset: data.audiencePreset } : {}),
     lastMessage: data.lastMessage
       ? {
           text: data.lastMessage.text,

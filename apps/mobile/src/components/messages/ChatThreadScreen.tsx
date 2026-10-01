@@ -6,7 +6,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
-import { chatKindNote, getRoomName } from '@cisa/core';
+import { chatRoomSubtitle, getRoomName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useChatThreadData } from '../../lib/useChatThreadData';
@@ -19,11 +19,19 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
   const roomId = propRoomId ?? params.id ?? params.roomId ?? '';
   const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
-  const { uid } = useAuth();
+  const { uid, role } = useAuth();
   const { t } = useLanguage();
   const data = useChatThreadData(roomId);
 
   const name = data.room ? getRoomName(data.room, uid, data.usersCache) : '';
+  // The line under the room's name (S5): "Group · N people", or who posts in
+  // an announcement (#1279), matching the web.
+  const roleOf = new Map(data.users.map((u) => [u.uid, u.role]));
+  const members = (data.room?.memberIds ?? []).map((id) => ({
+    displayName: data.usersCache[id]?.displayName ?? '',
+    role: roleOf.get(id),
+  }));
+  const subtitle = data.room ? chatRoomSubtitle(data.room, { members, meIsFullTimer: role === 'admin', t }) : '';
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -44,9 +52,9 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
           >
             {name || t('mobile.common.loading')}
           </Text>
-          {!!data.room && !!chatKindNote(data.room) && (
-            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
-              {chatKindNote(data.room)}
+          {!!subtitle && (
+            <Text numberOfLines={1} style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
+              {subtitle}
             </Text>
           )}
         </View>

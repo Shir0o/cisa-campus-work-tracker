@@ -18,6 +18,8 @@ import {
   memberLeftSystemMessage,
   chatRowPreview,
   chatKindNote,
+  chatRoomSubtitle,
+  announcementAudienceNote,
   messagesScreenNote,
   convTopLevel,
   convReplies,
@@ -332,6 +334,95 @@ describe('mobile v2 Messages copy', () => {
     expect(messagesScreenNote(7, 3)).toBe('3 new');
     expect(messagesScreenNote(1, 1)).toBe('1 new');
     expect(messagesScreenNote(0, 0)).toBe('0');
+  });
+});
+
+describe('chatRoomSubtitle (S5)', () => {
+  // The web's English copy for the keys the helper reads.
+  const en: Record<string, string> = {
+    'chat.sub_direct': 'Just the two of you',
+    'chat.sub_group': 'Group · {n} people',
+    'chat.sub_announcement': 'Announcement · {n} people',
+    'chat.posters_you': 'you post here',
+    'chat.posters_one': '{name} posts here',
+    'chat.posters_two': '{a} and {b} post here',
+    'chat.posters_many': '{a} and {n} others post here',
+    'chat.you': 'you',
+  };
+  const t = (key: string) => en[key] ?? key;
+  const member = (displayName: string, role?: string) => ({ displayName, role });
+
+  it('says "Just the two of you" for a direct chat', () => {
+    expect(chatRoomSubtitle(room(), { members: [], meIsFullTimer: false, t })).toBe('Just the two of you');
+  });
+
+  it('counts a group, singular or plural, without pluralising the noun', () => {
+    expect(chatRoomSubtitle(room({ type: 'group', memberIds: ['a', 'b', 'c', 'd'] }), { members: [], meIsFullTimer: false, t })).toBe('Group · 4 people');
+    expect(chatRoomSubtitle(room({ type: 'group', memberIds: ['a'] }), { members: [], meIsFullTimer: false, t })).toBe('Group · 1 people');
+  });
+
+  it('names who posts in an announcement: two posters read "A and B post here"', () => {
+    const ann = room({ type: 'announcement', memberIds: ['me', 'maria', 'grace'] });
+    const members = [member('Grace Liu', 'admin'), member('Maria Santos', 'admin')];
+    expect(chatRoomSubtitle(ann, { members, meIsFullTimer: false, t })).toBe(
+      'Announcement · 3 people · Grace and Maria post here',
+    );
+  });
+
+  it('leads with "you" for a Full-timer viewing an announcement', () => {
+    const ann = room({ type: 'announcement', memberIds: ['me', 'maria'] });
+    expect(chatRoomSubtitle(ann, { members: [member('Maria Santos', 'admin')], meIsFullTimer: true, t })).toBe(
+      'Announcement · 2 people · you and Maria post here',
+    );
+  });
+
+  it('uses "you post here" when the viewer is the only poster', () => {
+    const ann = room({ type: 'announcement', memberIds: ['me'] });
+    expect(chatRoomSubtitle(ann, { members: [], meIsFullTimer: true, t })).toBe('Announcement · 1 people · you post here');
+  });
+
+  it('names one or many posters the way the web does', () => {
+    const ann = room({ type: 'announcement', memberIds: ['a', 'b', 'c', 'd'] });
+    expect(
+      chatRoomSubtitle(ann, { members: [member('Maria Santos', 'admin')], meIsFullTimer: false, t }),
+    ).toBe('Announcement · 4 people · Maria posts here');
+    expect(
+      chatRoomSubtitle(ann, {
+        members: [member('Maria Santos', 'admin'), member('Grace Liu', 'admin'), member('Josh Park', 'admin')],
+        meIsFullTimer: false,
+        t,
+      }),
+    ).toBe('Announcement · 4 people · Grace and 2 others post here');
+  });
+
+  it('gives the head alone when nobody posts (no Full-timers among the members)', () => {
+    const ann = room({ type: 'announcement', memberIds: ['me', 'them'] });
+    expect(chatRoomSubtitle(ann, { members: [member('Them Person', 'manager')], meIsFullTimer: false, t })).toBe(
+      'Announcement · 2 people',
+    );
+  });
+});
+
+describe('announcementAudienceNote (C3)', () => {
+  const en: Record<string, string> = {
+    'modals.composer_audience_note': 'Posting to everyone on Campus — {n} people',
+    'modals.composer_audience_note_custom': 'Posting to {n} people in this channel',
+  };
+  const t = (key: string) => en[key] ?? key;
+
+  it('names the real audience for the "everyone" preset', () => {
+    const ann = room({ type: 'announcement', memberIds: ['a', 'b', 'c'], audiencePreset: 'everyone' });
+    expect(announcementAudienceNote(ann, t)).toBe('Posting to everyone on Campus — 3 people');
+  });
+
+  it('says "in this channel" for the "custom" preset', () => {
+    const ann = room({ type: 'announcement', memberIds: ['a', 'b'], audiencePreset: 'custom' });
+    expect(announcementAudienceNote(ann, t)).toBe('Posting to 2 people in this channel');
+  });
+
+  it('is empty for every room that is not an announcement', () => {
+    expect(announcementAudienceNote(room({ type: 'group' }), t)).toBe('');
+    expect(announcementAudienceNote(room(), t)).toBe('');
   });
 });
 

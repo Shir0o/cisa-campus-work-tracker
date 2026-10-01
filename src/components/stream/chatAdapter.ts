@@ -59,6 +59,16 @@ export function announcementReadMark(messages: ChatMessage[], uid: string): stri
   return first === undefined ? null : new Date(first - 1).toISOString();
 }
 
+/** The line above an announcement composer naming its real audience (C3),
+ *  mirroring @cisa/core's announcementAudienceNote; parity-tested. */
+export function chatAudienceNote(room: ChatRoom, t: (key: string) => string): string {
+  if (room.type !== "announcement") return "";
+  return (room.audiencePreset === "everyone"
+    ? t("modals.composer_audience_note")
+    : t("modals.composer_audience_note_custom")
+  ).replace("{n}", String(room.memberIds.length));
+}
+
 /** The line under a room's name (S5): "Group · 4 people", or
  *  "Announcement · 24 people · Maria and 2 others post here". */
 export function chatRoomSubtitle(
@@ -135,12 +145,7 @@ export function chatAdapter(i: ChatAdapterInput): ChatStreamAdapter {
     }
   };
 
-  const audience = !isAnnouncement
-    ? ""
-    : (room.audiencePreset === "everyone"
-        ? t("modals.composer_audience_note")
-        : t("modals.composer_audience_note_custom")
-      ).replace("{n}", String(room.memberIds.length));
+  const audience = chatAudienceNote(room, t);
 
   return {
     messages: i.messages.map(toStreamMessage),

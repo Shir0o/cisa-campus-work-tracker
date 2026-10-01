@@ -8,7 +8,7 @@ jest.mock('../../lib/AuthProvider', () => ({
 }));
 
 describe('ThreadSkeleton', () => {
-  it('renders a conversation-shaped set of bubble placeholders', async () => {
+  it('renders a conversation-shaped set of row placeholders', async () => {
     const { getByTestId, getAllByTestId } = await render(
       <ThemeProvider>
         <ThreadSkeleton />
@@ -16,5 +16,14 @@ describe('ThreadSkeleton', () => {
     );
     expect(getByTestId('thread-skeleton')).toBeTruthy();
     expect(getAllByTestId('skeleton').length).toBeGreaterThan(3);
+  });
+
+  it('keeps every placeholder on the left, like the rows it stands in for (G3)', async () => {
+    const { toJSON } = await render(
+      <ThemeProvider>
+        <ThreadSkeleton />
+      </ThemeProvider>,
+    );
+    expect(JSON.stringify(toJSON())).not.toContain('"alignSelf":"flex-end"');
   });
 });

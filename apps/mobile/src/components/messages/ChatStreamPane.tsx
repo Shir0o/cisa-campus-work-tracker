@@ -14,7 +14,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } fro
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type ChatAttachment, type ChatUserSummary, type StreamRow } from '@cisa/core';
+import { announcementAudienceNote, buildStream, buildThread, canPostToRoom, ftAssignees, firstName, memberRoleOf, type ChatAttachment, type ChatUserSummary, type StreamRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import type { useChatThreadData } from '../../lib/useChatThreadData';
@@ -322,7 +322,7 @@ export function ChatStreamPane({
           )
         ) : canPost ? (
           <StreamComposer
-            audience={isAnnouncement && room ? t('mobile.messages.announcement_audience').replace('{n}', String(room.memberIds.length)) : undefined}
+            audience={room ? announcementAudienceNote(room, t) || undefined : undefined}
             placeholder={
               isAnnouncement
                 ? t('mobile.messages.placeholder_announcement')
