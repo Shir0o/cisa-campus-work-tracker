@@ -2,6 +2,8 @@
 
 Expo / React Native mobile application for CISA Campus Work Tracker.
 
+[← Back to Root README](../../README.md) • [Mobile Setup Guide](SETUP.md) • [Build & Submit Reference](BUILD_AND_SUBMIT.md)
+
 ---
 
 ## E2E Testing with Maestro

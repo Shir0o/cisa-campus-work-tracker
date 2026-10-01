@@ -5,6 +5,10 @@ repo root) and the React Native app (`apps/mobile`). This is the "one codebase"
 win: business logic, types, and pure helpers live here once and are consumed by
 every platform.
 
+[← Back to Root README](../../README.md)
+
+---
+
 ## What belongs here
 
 Only **pure / platform-agnostic** code — no DOM, no `firebase/*` init, no
