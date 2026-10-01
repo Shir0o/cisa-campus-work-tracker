@@ -6,6 +6,7 @@
 import {
   closeFollowUpAsk,
   deleteThreadMessage,
+  editThreadMessage,
   type ThreadMessage,
   type ThreadStakeholders,
 } from "../../lib/threads";
@@ -114,6 +115,11 @@ export function interactionAdapter({
     // A message written when this composer still offered kinds may be an ask.
     closeAsk: (m) => closeFollowUpAsk(contactId, m.id, { uid: me.uid, name: me.name }),
     delete: (m) => deleteThreadMessage(contactId, m.id, m.scope),
+    // A reply is the author's to rewrite. The quoted Interaction stands where a
+    // message would, but it is not one: its id is synthetic and it can't be edited.
+    canEdit: (m) => !m.id.startsWith("interaction:") && m.from === me.uid,
+    edit: (m, body) => editThreadMessage(contactId, m.id, body),
+    failure: { post: t("stream.post_failed"), edit: t("stream.edit_failed") },
   };
 }
 

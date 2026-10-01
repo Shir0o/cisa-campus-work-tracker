@@ -23,6 +23,7 @@ export function StreamActionSheet<M extends StreamMessage>({
   onDelete,
   onPin,
   pinned,
+  onEdit,
 }: {
   /** The row pressed. */
   row: StreamRow<M> | null;
@@ -37,6 +38,8 @@ export function StreamActionSheet<M extends StreamMessage>({
   onPin?: (row: StreamRow<M>) => void;
   /** The pressed row is pinned already: the action reads Unpin. */
   pinned?: boolean;
+  /** Author-only: offered on the viewer's own message (ADR 0033). */
+  onEdit?: (row: StreamRow<M>) => void;
 }) {
   const { c, font, fs } = useV2Theme();
   const { t, language } = useLanguage();
@@ -67,6 +70,9 @@ export function StreamActionSheet<M extends StreamMessage>({
               label={t(pinned ? 'mobile.stream.unpin' : 'mobile.stream.pin')}
               onPress={act(onPin)}
             />
+          )}
+          {onEdit && (
+            <Action icon="create-outline" label={t('mobile.stream.edit')} onPress={act(onEdit)} />
           )}
           <Action icon="copy-outline" label={t('mobile.stream.copy_text')} onPress={act(onCopy)} />
           {onDelete && row.canDelete && (

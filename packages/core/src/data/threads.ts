@@ -48,6 +48,7 @@ function toMessage(id: string, data: Partial<ThreadMessage>, team: boolean): Thr
     kind: (data.kind as ThreadKind) ?? "comment",
     body: data.body ?? "",
     at: data.at ?? new Date().toISOString(),
+    editedAt: data.editedAt ?? null,
     closedBy: data.closedBy ?? null,
     closedByName: data.closedByName ?? null,
     closedAt: data.closedAt ?? null,
@@ -108,6 +109,21 @@ export async function closeFollowUpAsk(
     closedBy: by.uid,
     closedByName: by.name || null,
     closedAt: new Date().toISOString(),
+  });
+}
+
+/** Rewrite a message's body as its author, stamping `editedAt`. The Firestore
+ *  rule permits only the author to move `body` (and `editedAt`); this mirrors
+ *  the rule's own gate. Mirrors the web app's `editThreadMessage`. */
+export async function editThreadMessage(
+  db: Firestore,
+  contactId: string,
+  messageId: string,
+  body: string,
+): Promise<void> {
+  await updateDoc(msgRef(db, contactId, messageId), {
+    body: body.trim(),
+    editedAt: new Date().toISOString(),
   });
 }
 

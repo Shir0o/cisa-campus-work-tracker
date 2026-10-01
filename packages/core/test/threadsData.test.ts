@@ -18,6 +18,7 @@ import {
   addThreadMessage,
   closeFollowUpAsk,
   deleteThreadMessage,
+  editThreadMessage,
   subscribeThreads,
 } from '../src/data/threads';
 import { applyRoster } from '../src/walking';
@@ -63,6 +64,20 @@ describe('closeFollowUpAsk', () => {
       closedBy: 'u1',
       closedByName: 'Grace Liu',
       closedAt: expect.any(String),
+    });
+  });
+});
+
+describe('editThreadMessage', () => {
+  it("rewrites the body and stamps editedAt on the author's message", async () => {
+    firestoreMock.doc.mockReturnValue(DOC_REF);
+
+    await editThreadMessage(db, 'c1', 'm1', '  new words  ');
+
+    expect(firestoreMock.doc).toHaveBeenCalledWith(db, 'contacts', 'c1', 'threads', 'm1');
+    expect(firestoreMock.updateDoc).toHaveBeenCalledWith(DOC_REF, {
+      body: 'new words',
+      editedAt: expect.any(String),
     });
   });
 });
@@ -184,6 +199,7 @@ describe('subscribeThreads', () => {
               closedBy: 'u2',
               closedByName: 'M',
               closedAt: '2026-09-02T00:00:00.000Z',
+              editedAt: '2026-09-03T00:00:00.000Z',
             },
           },
         ]),
@@ -194,7 +210,7 @@ describe('subscribeThreads', () => {
     subscribeThreads(db, 'c1', cb);
 
     expect(cb).toHaveBeenCalledWith([
-      expect.objectContaining({ parentId: 'p1', scope: null, closedBy: 'u2', closedByName: 'M', closedAt: '2026-09-02T00:00:00.000Z' }),
+      expect.objectContaining({ parentId: 'p1', scope: null, closedBy: 'u2', closedByName: 'M', closedAt: '2026-09-02T00:00:00.000Z', editedAt: '2026-09-03T00:00:00.000Z' }),
     ]);
   });
 

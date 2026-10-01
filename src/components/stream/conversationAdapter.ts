@@ -4,6 +4,7 @@
 import {
   closeFollowUpAsk,
   deleteThreadMessage,
+  editThreadMessage,
   type ThreadMessage,
   type ThreadStakeholders,
 } from "../../lib/threads";
@@ -65,5 +66,10 @@ export function conversationAdapter({
     // and an ask closed by its own asker is what reads as withdrawn.
     closeAsk: (m) => closeFollowUpAsk(contactId, m.id, { uid: me.uid, name: me.name }),
     delete: (m) => deleteThreadMessage(contactId, m.id, m.scope),
+    // A rewrite is the author's alone — unlike delete, which a Full-timer may
+    // also do. The rule enforces the same; the control must not promise more.
+    canEdit: (m) => m.from === me.uid,
+    edit: (m, body) => editThreadMessage(contactId, m.id, body),
+    failure: { post: t("stream.post_failed"), edit: t("stream.edit_failed") },
   };
 }

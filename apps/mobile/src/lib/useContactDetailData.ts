@@ -47,6 +47,7 @@ import {
   addThreadMessage,
   closeFollowUpAsk,
   deleteThreadMessage as deleteThreadMessageApi,
+  editThreadMessage as editThreadMessageApi,
   subscribeThreads,
 } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
@@ -264,6 +265,12 @@ export function useContactDetailData(contactId: string) {
     deleteThreadMessage: async (message: ThreadMessage) => {
       if (!contact || !uid) return;
       await deleteThreadMessageApi(contactId, message.id, message.scope);
+    },
+
+    // The author rewrites their own message; the rules refuse anyone else.
+    editThreadMessage: async (message: ThreadMessage, body: string) => {
+      if (!contact || !uid) return;
+      await editThreadMessageApi(contactId, message.id, body);
     },
 
     // I followed up / Never mind — both close the ask as the viewer; one

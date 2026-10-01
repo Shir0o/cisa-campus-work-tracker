@@ -41,6 +41,8 @@ export interface ThreadMessage {
   kind: ThreadKind;
   body: string;
   at: string; // ISO
+  /** When the author last rewrote the body; a row shows "Edited" when set. */
+  editedAt?: string | null;
   mentionedUserIds?: string[];
   /** Follow-up asks only: who said they did it, and when. One shared close,
    *  written once and read by everyone tied — there is no per-person dismissal
@@ -84,6 +86,7 @@ function toMessage(d: QueryDocumentSnapshot, team: boolean): ThreadMessage {
     kind: (data.kind as ThreadKind) ?? "comment",
     body: data.body ?? "",
     at: data.at ?? new Date().toISOString(),
+    editedAt: data.editedAt ?? null,
     mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : undefined,
     closedBy: data.closedBy ?? null,
     closedByName: data.closedByName ?? null,
@@ -454,6 +457,29 @@ export function isOpenAsk(m: Pick<ThreadMessage, "kind" | "closedAt">): boolean 
  *  model's helper, so the card and the stream never disagree (DRIFT row 38). */
 export function daysOpen(m: Pick<ThreadMessage, "at">, now: number = Date.now()): number {
   return calendarDaysOpen(m.at, now);
+}
+
+/** Rewrite a message's body as its author, stamping `editedAt`. The Firestore
+ *  rule permits only the author to move `body` (and `editedAt`); this mirrors
+ *  the rule's own gate, and lets a failed write reject so an editor can stay
+ *  open and say so. */
+export async function editThreadMessage(
+  contactId: string,
+  messageId: string,
+  body: string,
+): Promise<void> {
+  try {
+    await updateDoc(ref(contactId, messageId), {
+      body: body.trim(),
+      editedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    handleFirestoreError(
+      e,
+      OperationType.UPDATE,
+      `contacts/${contactId}/threads/${messageId}`,
+    );
+  }
 }
 
 /** Delete a single thread message. The Firestore rule permits only the author

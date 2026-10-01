@@ -87,6 +87,27 @@ describe('StreamRowView — what a chat adds to the row', () => {
     expect(queryByText('body-a')).toBeNull();
     expect(getByText('the-footer')).toBeTruthy();
   });
+
+  it('shows an Edited marker when the message was rewritten', async () => {
+    const { getByText } = await wrap(<StreamRowView row={rowOf(m('a', { editedAt: '2026-09-30T11:00:00.000Z' }))} now={NOW} />);
+    expect(getByText('Edited')).toBeTruthy();
+  });
+
+  it('stands an inline editor in for the body when this row is being rewritten', async () => {
+    const onSaveEdit = jest.fn().mockResolvedValue(undefined);
+    const onCancelEdit = jest.fn();
+    const { getByLabelText, getByRole, getByText, queryByText } = await wrap(
+      <StreamRowView row={rowOf(m('a'))} now={NOW} editingId="a" onSaveEdit={onSaveEdit} onCancelEdit={onCancelEdit} />,
+    );
+    // The editor is prefilled with the body; the body text is not drawn twice.
+    expect(getByLabelText('Edit message').props.value).toBe('body-a');
+    expect(queryByText('body-a')).toBeNull();
+    await fireEvent.changeText(getByLabelText('Edit message'), 'rewritten');
+    await fireEvent.press(getByRole('button', { name: 'Save' }));
+    expect(onSaveEdit).toHaveBeenCalledWith('rewritten');
+    await fireEvent.press(getByRole('button', { name: 'Cancel' }));
+    expect(onCancelEdit).toHaveBeenCalled();
+  });
 });
 
 describe('StreamActionSheet — Pin', () => {
@@ -110,5 +131,20 @@ describe('StreamActionSheet — Pin', () => {
       </ThemeProvider>,
     );
     expect(getByRole('button', { name: 'Unpin' })).toBeTruthy();
+  });
+
+  it('offers Edit only when the caller gives a handler (the author)', async () => {
+    const onEdit = jest.fn();
+    const { getByRole, queryByRole, rerender } = await wrap(
+      <StreamActionSheet row={row} visible onClose={jest.fn()} onCopy={jest.fn()} />,
+    );
+    expect(queryByRole('button', { name: 'Edit' })).toBeNull();
+    await rerender(
+      <ThemeProvider>
+        <StreamActionSheet row={row} visible onClose={jest.fn()} onCopy={jest.fn()} onEdit={onEdit} />
+      </ThemeProvider>,
+    );
+    await fireEvent.press(getByRole('button', { name: 'Edit' }));
+    expect(onEdit).toHaveBeenCalledWith(row);
   });
 });

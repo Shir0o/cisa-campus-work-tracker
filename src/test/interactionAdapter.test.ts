@@ -4,12 +4,13 @@ import {
   interactionParentId,
   interactionThreadSummary,
 } from "../components/stream/interactionAdapter";
-import { addThreadMessage, closeFollowUpAsk, deleteThreadMessage, type ThreadMessage } from "../lib/threads";
+import { addThreadMessage, closeFollowUpAsk, deleteThreadMessage, editThreadMessage, type ThreadMessage } from "../lib/threads";
 
 vi.mock("../lib/threads", () => ({
   addThreadMessage: vi.fn(() => Promise.resolve("new-id")),
   closeFollowUpAsk: vi.fn(() => Promise.resolve()),
   deleteThreadMessage: vi.fn(() => Promise.resolve()),
+  editThreadMessage: vi.fn(() => Promise.resolve()),
 }));
 
 const t = (key: string) =>
@@ -19,6 +20,8 @@ const t = (key: string) =>
     "stream.interaction_quote_anon": "Conversation · {date}",
     "stream.think_together_placeholder":"Think it through together…",
     "thread.empty_interaction": "No comments on this interaction yet.",
+    "stream.edit_failed": "That didn't save. Try again in a moment.",
+    "stream.post_failed": "That didn't post. Try again in a moment.",
   })[key] ?? key;
 
 const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
@@ -128,6 +131,18 @@ describe("interactionAdapter", () => {
     expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "ask", { uid: "maria", name: "Maria Santos" });
     a.delete(msg({ id: "gone" }));
     expect(deleteThreadMessage).toHaveBeenCalledWith("c1", "gone", null);
+  });
+
+  it("lets the author rewrite their own reply, but never the quoted Interaction", () => {
+    const a = make();
+    const parent = interactionParentId("i1");
+    const mine = msg({ id: "mine", from: "maria" });
+    expect(a.canEdit!(mine)).toBe(true);
+    expect(a.canEdit!(msg({ id: "theirs", from: "josh" }))).toBe(false);
+    // The Interaction stands where a message would, but is not one to edit.
+    expect(a.canEdit!(msg({ id: parent, from: "maria" }))).toBe(false);
+    a.edit!(mine, "new words");
+    expect(editThreadMessage).toHaveBeenCalledWith("c1", "mine", "new words");
   });
 });
 

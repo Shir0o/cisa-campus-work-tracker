@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { addDoc, deleteDoc, onSnapshot } from "firebase/firestore";
+import { addDoc, deleteDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import {
   THREAD_KINDS,
   threadsFor,
@@ -8,6 +8,7 @@ import {
   countFor,
   addThreadMessage,
   deleteThreadMessage,
+  editThreadMessage,
   subscribeThreads,
   subscribeAllThreads,
   subscribeTiedThreads,
@@ -27,6 +28,7 @@ vi.mock("firebase/firestore", () => ({
   onSnapshot: vi.fn(),
   orderBy: vi.fn((field, dir) => ({ field, dir })),
   query: vi.fn((ref) => ref),
+  updateDoc: vi.fn(() => Promise.resolve()),
 }));
 
 const tiedMock = vi.hoisted(() => ({ subscribeTiedSubcollection: vi.fn(() => () => {}) }));
@@ -407,6 +409,32 @@ describe("deleteThreadMessage", () => {
     expect(handleFirestoreError).toHaveBeenCalledWith(
       expect.any(Error),
       "DELETE",
+      "contacts/C-1/threads/M-1",
+    );
+  });
+});
+
+describe("editThreadMessage", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("rewrites the body and stamps editedAt on the author's message", async () => {
+    await editThreadMessage("C-1", "M-1", "  new words  ");
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: "contacts/C-1/threads/M-1" },
+      { body: "new words", editedAt: expect.any(String) },
+    );
+  });
+
+  it("rejects on failure through handleFirestoreError, so an editor can stay open", async () => {
+    const { handleFirestoreError } = await import("../lib/firebase");
+    vi.mocked(handleFirestoreError).mockImplementationOnce(() => {
+      throw new Error("edit denied");
+    });
+    vi.mocked(updateDoc).mockRejectedValueOnce(new Error("permission denied"));
+    await expect(editThreadMessage("C-1", "M-1", "x")).rejects.toThrow("edit denied");
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "UPDATE",
       "contacts/C-1/threads/M-1",
     );
   });

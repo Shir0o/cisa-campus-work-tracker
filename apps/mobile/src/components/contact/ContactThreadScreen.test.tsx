@@ -56,6 +56,7 @@ const data = (over: Record<string, unknown> = {}) => ({
   teamMembers: [],
   postThreadMessage: jest.fn(),
   deleteThreadMessage: jest.fn(),
+  editThreadMessage: jest.fn(),
   closeAsk: jest.fn(),
   ...over,
 });
@@ -135,6 +136,22 @@ describe('a Thread on the phone (#1261)', () => {
     expect(queryByRole('button', { name: 'Reply in thread' })).toBeNull();
     await fireEvent.press(getByRole('button', { name: 'Delete message' }));
     expect(d.deleteThreadMessage).toHaveBeenCalledWith(r2);
+  });
+
+  it("offers Edit only on the author's own reply, and rewrites it inline", async () => {
+    const { getByText, getByRole, getByLabelText, d } = await renderThread({ contactId: 'c1', parentId: 'p1' });
+    await fireEvent(getByText('I can drive him.'), 'longPress');
+    await fireEvent.press(getByRole('button', { name: 'Edit' }));
+    expect(getByLabelText('Edit message').props.value).toBe('I can drive him.');
+    await fireEvent.changeText(getByLabelText('Edit message'), 'I can drive us both.');
+    await fireEvent.press(getByRole('button', { name: 'Save' }));
+    expect(d.editThreadMessage).toHaveBeenCalledWith(r2, 'I can drive us both.');
+  });
+
+  it("does not offer Edit on someone else's reply", async () => {
+    const { getByText, queryByRole } = await renderThread({ contactId: 'c1', parentId: 'p1' });
+    await fireEvent(getByText('Perfect.'), 'longPress');
+    expect(queryByRole('button', { name: 'Edit' })).toBeNull();
   });
 
   it('closes an ask on the parent from inside its Thread', async () => {

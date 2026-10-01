@@ -50,6 +50,20 @@ export async function deleteThreadMessage(
   }
 }
 
+/** Rewrite a message's body as its author, stamping `editedAt`. Only the author
+ *  may (per firestore.rules); the editor stays open when this rejects. */
+export async function editThreadMessage(
+  contactId: string,
+  messageId: string,
+  body: string,
+): Promise<void> {
+  try {
+    await core.editThreadMessage(db, contactId, messageId, body);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/threads/${messageId}`);
+  }
+}
+
 /** I followed up / Never mind on a Follow-up ask, as `by` (#813). */
 export async function closeFollowUpAsk(
   contactId: string,

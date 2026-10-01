@@ -486,8 +486,9 @@ service cloud.firestore {
                         isValidThread(incoming()) &&
                         incoming().get('scope', null) == null &&
                         incoming().from == request.auth.uid;
-        // Reactions have been removed. Body edits: author only (kind/from/at
-        // are immutable). Closing a follow-up ask (#813): a `nudge` is one
+        // Reactions have been removed. Body edits: author only, and the edit
+        // stamps `editedAt` (kind/from/at are immutable). Closing a follow-up
+        // ask (#813): a `nudge` is one
         // shared open item, so anyone who can see the contact may say they
         // followed up — it closes once, for everyone tied, rather than each of
         // them dismissing a copy. `closedBy` must be the caller (you cannot
@@ -511,9 +512,11 @@ service cloud.firestore {
 
         allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (
                         (
-                          incoming().diff(existing()).affectedKeys().hasOnly(['body']) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['body', 'editedAt']) &&
                           existing().from == request.auth.uid &&
-                          incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000
+                          incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000 &&
+                          (incoming().get('editedAt', null) == null ||
+                           (incoming().get('editedAt', null) is string && incoming().get('editedAt', null).size() <= 40))
                         )
                         || (
                           incoming().diff(existing()).affectedKeys().hasOnly(['closedBy', 'closedByName', 'closedAt']) &&

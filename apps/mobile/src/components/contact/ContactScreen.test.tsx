@@ -159,6 +159,7 @@ describe('ContactScreen', () => {
     markPrayerAnswered: jest.fn(),
     postThreadMessage: jest.fn(),
     deleteThreadMessage: jest.fn(),
+    editThreadMessage: jest.fn(),
     closeAsk: jest.fn(),
     deleteInteraction: jest.fn(),
     addCollaborator: jest.fn().mockResolvedValue(undefined),
@@ -924,6 +925,22 @@ describe('ContactScreen', () => {
         await fireEvent(getByText('MINE'), 'longPress');
         await fireEvent.press(getByRole('button', { name: 'Delete message' }));
         expect(baseLoadedData.deleteThreadMessage).toHaveBeenCalledWith(mine);
+      });
+
+      it('lets the author rewrite their own message, in place', async () => {
+        const { getByText, getByRole, getByLabelText } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, mine]);
+        await fireEvent(getByText('MINE'), 'longPress');
+        await fireEvent.press(getByRole('button', { name: 'Edit' }));
+        expect(getByLabelText('Edit message').props.value).toBe('MINE');
+        await fireEvent.changeText(getByLabelText('Edit message'), 'MINE FIXED');
+        await fireEvent.press(getByRole('button', { name: 'Save' }));
+        expect(baseLoadedData.editThreadMessage).toHaveBeenCalledWith(mine, 'MINE FIXED');
+      });
+
+      it("does not offer Edit on someone else's message", async () => {
+        const { getByText, queryByRole } = await renderAs({ uid: 'user1', role: 'manager' }, [graceSays, mine]);
+        await fireEvent(getByText('GRACE-OPEN'), 'longPress');
+        expect(queryByRole('button', { name: 'Edit' })).toBeNull();
       });
 
       it("lets a Full-timer delete anyone's message", async () => {

@@ -51,6 +51,8 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
   const data = useContactDetailData(contactId);
   const [held, setHeld] = useState<StreamRow<ThreadMessage> | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // The message being rewritten, if any (author-only, open threads only).
+  const [editingMessage, setEditingMessage] = useState<ThreadMessage | null>(null);
 
   const canWrite = role !== 'viewer' && !isImpersonating;
   const viewer = { uid: uid ?? '', role: canWrite ? role : null };
@@ -121,6 +123,14 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
                   readOnly={!canWrite}
                   onLongPress={setHeld}
                   onCloseAsk={(row) => void data.closeAsk(row.message)}
+                  editingId={editingMessage?.id ?? null}
+                  onSaveEdit={async (body) => {
+                    if (!editingMessage) return;
+                    await data.editThreadMessage(editingMessage, body);
+                    setEditingMessage(null);
+                  }}
+                  onCancelEdit={() => setEditingMessage(null)}
+                  editFailure={t('mobile.stream.edit_failed')}
                 />
               )}
               {thread.replies.length > 0 && (
@@ -140,6 +150,14 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
                   readOnly={!canWrite}
                   onLongPress={setHeld}
                   onCloseAsk={(r) => void data.closeAsk(r.message)}
+                  editingId={editingMessage?.id ?? null}
+                  onSaveEdit={async (body) => {
+                    if (!editingMessage) return;
+                    await data.editThreadMessage(editingMessage, body);
+                    setEditingMessage(null);
+                  }}
+                  onCancelEdit={() => setEditingMessage(null)}
+                  editFailure={t('mobile.stream.edit_failed')}
                 />
               ))}
             </View>
@@ -185,6 +203,12 @@ function ThreadBody({ contactId, parentId, team, interactionId }: ContactThreadS
           setToast(t('mobile.stream.copied'));
         }}
         onDelete={canWrite ? (row) => void data.deleteThreadMessage(row.message) : undefined}
+        // Author-only, and not the Full-timers stream (posted and removed, never edited).
+        onEdit={
+          canWrite && !team && held?.message.from === uid
+            ? (row) => setEditingMessage(row.message)
+            : undefined
+        }
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>

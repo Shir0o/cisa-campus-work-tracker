@@ -24,6 +24,8 @@ export interface ThreadMessage {
   kind: ThreadKind;
   body: string;
   at: string; // ISO
+  /** When the author last rewrote the body; a row shows "Edited" when set. */
+  editedAt?: string | null;
   /** Follow-up asks only: who said they did it, and when (#813). */
   closedBy?: string | null;
   closedByName?: string | null;

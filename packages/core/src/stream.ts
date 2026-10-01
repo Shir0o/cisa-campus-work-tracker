@@ -20,6 +20,8 @@ export interface StreamMessage {
   body: string;
   /** ISO timestamp. */
   at: string;
+  /** When the author last rewrote the body; a row shows "Edited" when set. */
+  editedAt?: string | null;
   closedBy?: string | null;
   closedByName?: string | null;
   closedAt?: string | null;

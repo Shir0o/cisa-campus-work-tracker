@@ -8,7 +8,7 @@
 // Source-agnostic: it draws a core `StreamRow` and hands events back, so the
 // person screen, a Thread and the phone's chat all use it.
 import { useState } from 'react';
-import { Image, Pressable, Text, View, type TextStyle } from 'react-native';
+import { Image, Pressable, Text, TextInput, View, type TextStyle } from 'react-native';
 import type { AskAction, StreamMessage, StreamRow as StreamRowModel, ThreadSummary } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
@@ -43,6 +43,15 @@ export interface StreamRowProps<M extends StreamMessage> {
   renderBody?: (row: StreamRowModel<M>, style: TextStyle) => React.ReactNode;
   /** Under the body in place of the Thread chip (an announcement's Got it). */
   renderFooter?: (row: StreamRowModel<M>) => React.ReactNode;
+  /** This row is being rewritten: an inline editor stands in for the body. */
+  editingId?: string | null;
+  /** Save the rewritten body. Rejecting keeps the editor open. */
+  onSaveEdit?: (body: string) =>
+    | void
+    | Promise<void>;
+  onCancelEdit?: () => void;
+  /** Shown under the editor when a save is refused. */
+  editFailure?: string;
 }
 
 export function StreamRowView<M extends StreamMessage>({
@@ -59,10 +68,15 @@ export function StreamRowView<M extends StreamMessage>({
   renderBody,
   renderFooter,
   onRowLayout,
+  editingId,
+  onSaveEdit,
+  onCancelEdit,
+  editFailure,
 }: StreamRowProps<M>) {
   const { c, font, fs } = useV2Theme();
   const { t, language } = useLanguage();
   const { message: m, continuation, tag, ask, thread } = row;
+  const editing = !!editingId && editingId === m.id;
   const actions = readOnly ? [] : row.askActions;
   const withdrawn = ask?.status === 'withdrawn';
   const tone = tag === 'question' ? c.card.tones.ask : c.card.tones.due;
@@ -83,10 +97,10 @@ export function StreamRowView<M extends StreamMessage>({
 
   return (
     <Pressable
-      onLongPress={onLongPress && !gone ? () => onLongPress(row) : undefined}
+      onLongPress={onLongPress && !gone && !editing ? () => onLongPress(row) : undefined}
       delayLongPress={350}
       onLayout={onRowLayout ? (e) => onRowLayout(m.id, { top: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height }) : undefined}
-      accessibilityHint={onLongPress && !gone ? t('mobile.stream.message_actions') : undefined}
+      accessibilityHint={onLongPress && !gone && !editing ? t('mobile.stream.message_actions') : undefined}
       style={({ pressed }) => ({
         flexDirection: 'row',
         gap: GAP,
@@ -94,7 +108,7 @@ export function StreamRowView<M extends StreamMessage>({
         paddingHorizontal: 8,
         marginHorizontal: -8,
         borderRadius: 12,
-        backgroundColor: pressed && onLongPress && !gone ? c.card.bg2 : 'transparent',
+        backgroundColor: pressed && onLongPress && !gone && !editing ? c.card.bg2 : 'transparent',
       })}
     >
       <View style={{ width: AVATAR }}>
@@ -127,7 +141,9 @@ export function StreamRowView<M extends StreamMessage>({
             <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.card.ink3 }}>{timeOf(m.at, language)}</Text>
           </View>
         )}
-        {gone ? (
+        {editing && onSaveEdit ? (
+          <EditBody initial={m.body} onSave={onSaveEdit} onCancel={onCancelEdit} failure={editFailure} />
+        ) : gone ? (
           <Text style={{ ...bodyStyle, fontFamily: font.medium, fontStyle: 'italic', color: c.card.ink3 }}>{gone}</Text>
         ) : renderBody ? (
           renderBody(row, bodyStyle)
@@ -135,7 +151,11 @@ export function StreamRowView<M extends StreamMessage>({
           <Text style={bodyStyle}>{m.body}</Text>
         )}
 
-        {!gone && !!ask && (
+        {!editing && !gone && !!m.editedAt && (
+          <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.card.ink3, marginTop: 2 }}>{t('mobile.stream.edited')}</Text>
+        )}
+
+        {!editing && !gone && !!ask && (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
             <Text
               style={{
@@ -155,11 +175,104 @@ export function StreamRowView<M extends StreamMessage>({
           </View>
         )}
 
-        {gone || !renderFooter
-          ? !!thread && onOpenThread && <ThreadChip thread={thread} now={now} onPress={() => onOpenThread(row)} />
-          : renderFooter(row)}
+        {!editing &&
+          (gone || !renderFooter
+            ? !!thread && onOpenThread && <ThreadChip thread={thread} now={now} onPress={() => onOpenThread(row)} />
+            : renderFooter(row))}
       </View>
     </Pressable>
+  );
+}
+
+/** The inline editor a row swaps in for its body while being rewritten. It
+ *  mounts fresh each time (keyed by the row), so its draft starts from the
+ *  message as it stands; a refused save keeps it open and says why. */
+function EditBody({
+  initial,
+  onSave,
+  onCancel,
+  failure,
+}: {
+  initial: string;
+  onSave: (body: string) =>
+    | void
+    | Promise<void>;
+  onCancel?: () => void;
+  failure?: string;
+}) {
+  const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
+  const [draft, setDraft] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const save = async () => {
+    const body = draft.trim();
+    if (!body || saving) return;
+    setSaving(true);
+    setFailed(false);
+    try {
+      await onSave(body);
+    } catch (err) {
+      console.error('Failed to save an edit:', err);
+      setFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <View style={{ gap: 8, marginTop: 4 }}>
+      <TextInput
+        multiline
+        value={draft}
+        onChangeText={setDraft}
+        editable={!saving}
+        accessibilityLabel={t('mobile.stream.edit_label')}
+        autoFocus
+        style={{
+          borderWidth: 1,
+          borderColor: failed ? c.card.tones.follow.text : c.card.border,
+          borderRadius: 12,
+          padding: 10,
+          fontSize: fs(14.5),
+          lineHeight: fs(21.5),
+          fontFamily: font.medium,
+          color: c.card.ink,
+          backgroundColor: c.card.bg,
+          minHeight: 64,
+          textAlignVertical: 'top',
+        }}
+      />
+      {failed && !!failure && (
+        <Text accessibilityRole="alert" style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.tones.follow.text }}>
+          {failure}
+        </Text>
+      )}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCancel}
+          disabled={saving}
+          style={({ pressed }) => ({ minHeight: 40, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 999, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>{t('actions.cancel')}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void save()}
+          disabled={saving || !draft.trim()}
+          style={({ pressed }) => ({
+            minHeight: 40,
+            paddingHorizontal: 16,
+            justifyContent: 'center',
+            borderRadius: 999,
+            backgroundColor: c.card.inverse,
+            opacity: saving || !draft.trim() ? 0.5 : pressed ? 0.7 : 1,
+          })}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.onInverse }}>{t('actions.save')}</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
