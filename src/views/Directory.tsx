@@ -54,7 +54,7 @@ import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContac
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
 import { contactKind, kindLabelKey, isKindSorted, type ContactKind } from '../lib/contactKind';
-import { reachByContact } from '../lib/reach';
+import { reachByContact, unreachedTagCounts } from '../lib/reach';
 import { matchContact, matchTier, type ContactMatch } from '../lib/contactMatch';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
@@ -376,6 +376,7 @@ export default function Directory() {
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
   const [kindSegment, setKindSegment] = useState<KindSegment>(restoredFilters.kindSegment);
   const [filterUnsorted, setFilterUnsorted] = useState<boolean>(restoredFilters.filterUnsorted);
+  const [filterNotReached, setFilterNotReached] = useState<boolean>(restoredFilters.filterNotReached);
   const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
   const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
@@ -425,11 +426,12 @@ export default function Directory() {
       filterSpiritualBackground,
       kindSegment,
       filterUnsorted,
+      filterNotReached,
       filterAddedWhen,
       customRange,
       selectedTags,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterAddedWhen, customRange, selectedTags]);
+  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -559,6 +561,13 @@ export default function Directory() {
       });
     }
 
+    // Not reached yet (#1300): nobody has logged an Interaction with them or
+    // marked them present at a Gathering. Unlike the tag chips' counts, this
+    // reaches back to everyone, however long ago they were added.
+    if (filterNotReached) {
+      result = result.filter(c => !(reachByContactMap.get(c.id)?.reached ?? false));
+    }
+
     // Name-first tiering (#1192): a contact whose name matches the query outranks
     // one that only matched on email/role/background/tags/ties. Stable — the
     // underlying userContacts order holds within each tier.
@@ -567,7 +576,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterAddedWhen, customRange, selectedTags, searchMatches]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags, searchMatches, reachByContactMap]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -708,6 +717,23 @@ export default function Directory() {
   const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
   const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => getEffectiveContactTags(c.tags, c.createdAt))), [userContacts]);
 
+  // Each tag chip's not-reached count (#1300): only Contacts added in the last
+  // 30 days, from the shared reach model.
+  const tagNotReachedCounts = useMemo(
+    () =>
+      unreachedTagCounts(
+        userContacts.map(c => ({
+          id: c.id,
+          kind: contactKind(c),
+          createdAtMs: parseMs(c.createdAt),
+          tags: getEffectiveContactTags(c.tags, c.createdAt),
+        })),
+        reachByContactMap,
+        Date.now(),
+      ),
+    [userContacts, reachByContactMap],
+  );
+
   const newCount = useMemo(
     () => userContacts.filter(c => {
       const ms = parseMs(c.createdAt);
@@ -736,12 +762,13 @@ export default function Directory() {
     setFilterSpiritualBackground('All');
     setKindSegment('contact');
     setFilterUnsorted(false);
+    setFilterNotReached(false);
     setFilterAddedWhen('all');
     setCustomRange({ from: '', to: '' });
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -1127,6 +1154,20 @@ export default function Directory() {
                     </div>
 
                     <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.reach')}</label>
+                      <label className="flex items-center gap-2.5 min-h-[40px] px-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          data-testid="filter-not-reached"
+                          checked={filterNotReached}
+                          onChange={(e) => setFilterNotReached(e.target.checked)}
+                          className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-on-surface">{t('directory.not_reached_yet')}</span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.added_when')}</label>
                       <Select
                         value={filterAddedWhen}
@@ -1171,20 +1212,23 @@ export default function Directory() {
       {/* ── Tag chips filter ── */}
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-4">
-          {allTags.map(tag => (
-            <button
-              key={tag}
-              onClick={() => toggleTagFilter(tag)}
-              className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0",
-                selectedTags.includes(tag)
-                  ? "bg-primary text-on-primary border-primary"
-                  : "bg-surface text-on-surface-variant border-outline-variant hover:border-outline"
-              )}
-            >
-              {tag}
-            </button>
-          ))}
+          {allTags.map(tag => {
+            const notReached = tagNotReachedCounts.get(tag) ?? 0;
+            return (
+              <button
+                key={tag}
+                onClick={() => toggleTagFilter(tag)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0",
+                  selectedTags.includes(tag)
+                    ? "bg-primary text-on-primary border-primary"
+                    : "bg-surface text-on-surface-variant border-outline-variant hover:border-outline"
+                )}
+              >
+                {tag} · {t('directory.tag_not_reached').replace('{n}', String(notReached))}
+              </button>
+            );
+          })}
         </div>
       )}
 

@@ -295,7 +295,7 @@ describe('Directory', () => {
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     });
 
-    const tagChip = screen.getByRole('button', { name: 'Freshman' });
+    const tagChip = screen.getByRole('button', { name: /^Freshman/ });
     fireEvent.click(tagChip);
     expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
@@ -475,7 +475,7 @@ describe('Directory', () => {
     });
 
     // Tag chip for 'new' should be present in tag chips
-    const newTagChip = screen.getByRole('button', { name: 'new' });
+    const newTagChip = screen.getByRole('button', { name: /^new/ });
     expect(newTagChip).toBeInTheDocument();
 
     // Clicking 'new' tag chip should filter down to fresh contacts
@@ -522,7 +522,7 @@ describe('Directory', () => {
     });
 
     // The chip is the spaced, human-readable version.
-    const tagChip = screen.getByRole('button', { name: 'Fall 2025' });
+    const tagChip = screen.getByRole('button', { name: /^Fall 2025/ });
     fireEvent.click(tagChip);
 
     expect(screen.getByText('Dana Fall')).toBeInTheDocument();
@@ -1058,6 +1058,91 @@ describe('Directory', () => {
     (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
     render(<Directory />);
     await waitFor(() => expect(collectionGroup).toHaveBeenCalledWith({}, 'interactions'));
+  });
+
+  it('shows each tag chip its not-reached count, over Contacts added in the last 30 days (#1300)', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'r-bfa1', data: () => ({ name: 'Recent BFA One', role: 'Student', stage: 'Lead', createdAt: days(2), tags: ['BFA'] }) },
+            { id: 'r-bfa2', data: () => ({ name: 'Recent BFA Two', role: 'Student', stage: 'Lead', createdAt: days(10), tags: ['BFA'] }) },
+            { id: 'r-bfa-old', data: () => ({ name: 'Old BFA', role: 'Student', stage: 'Lead', createdAt: days(40), tags: ['BFA'] }) },
+            { id: 'r-bfa-saint', data: () => ({ name: 'Saint BFA', role: 'Student', stage: 'Lead', inChurchLife: true, isStudent: false, createdAt: days(2), tags: ['BFA'] }) },
+            { id: 'r-fresh', data: () => ({ name: 'Freshman Recent', role: 'Student', stage: 'Lead', createdAt: days(3), tags: ['Freshman'] }) },
+          ],
+          size: 5,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Recent BFA One')).toBeInTheDocument());
+
+    // Two recent Contacts (the 40-day-old contact is outside the window, the
+    // Local saint never counts).
+    expect(screen.getByRole('button', { name: 'BFA · 2 not reached' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Freshman · 1 not reached' })).toBeInTheDocument();
+  });
+
+  it('the Not reached yet filter combines with tags and reaches back past 30 days (#1300)', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'f-bfa-new', data: () => ({ name: 'BFA New', role: 'Student', stage: 'Lead', createdAt: days(2), tags: ['BFA'] }) },
+            { id: 'f-bfa-old', data: () => ({ name: 'BFA Old', role: 'Student', stage: 'Lead', createdAt: days(90), tags: ['BFA'] }) },
+            { id: 'f-bfa-reached', data: () => ({ name: 'BFA Reached', role: 'Student', stage: 'Lead', createdAt: days(2), tags: ['BFA'] }) },
+            { id: 'f-other', data: () => ({ name: 'Other Freshman', role: 'Student', stage: 'Lead', createdAt: days(2), tags: ['Freshman'] }) },
+          ],
+          size: 4,
+        });
+      } else if (ref?.group === 'interactions') {
+        callback({
+          docs: [
+            {
+              id: 'i1',
+              ref: { path: 'contacts/f-bfa-reached/interactions/i1' },
+              data: () => ({ createdAt: days(1), content: 'Talked' }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('BFA New')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Filters'));
+    fireEvent.click(screen.getByTestId('filter-not-reached'));
+
+    expect(screen.getByText('BFA New')).toBeInTheDocument();
+    expect(screen.getByText('BFA Old')).toBeInTheDocument();
+    expect(screen.getByText('Other Freshman')).toBeInTheDocument();
+    expect(screen.queryByText('BFA Reached')).not.toBeInTheDocument();
+
+    // Combining with a tag narrows to the BFA people nobody has reached, old
+    // ones included.
+    fireEvent.click(screen.getByRole('button', { name: /^BFA ·/ }));
+    expect(screen.getByText('BFA New')).toBeInTheDocument();
+    expect(screen.getByText('BFA Old')).toBeInTheDocument();
+    expect(screen.queryByText('Other Freshman')).not.toBeInTheDocument();
+    expect(screen.queryByText('BFA Reached')).not.toBeInTheDocument();
   });
 });
 
