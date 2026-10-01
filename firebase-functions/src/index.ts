@@ -24,6 +24,7 @@ import {
 import { expoSender, webPushSender } from "./transports";
 import { advanceTranslationCron } from "./translate";
 import { firestoreTranslationDeps, geminiTranslator } from "./translateFirestore";
+import { firestoreReminderDeps, runAskReminders } from "./reminders";
 
 initializeApp();
 
@@ -172,3 +173,23 @@ function scheduledTranslationFor(database: string) {
 
 export const scheduledTranslateProd = scheduledTranslationFor("prod");
 export const scheduledTranslateQa = scheduledTranslationFor("qa-db");
+
+/** Once a day on campus time, tell each asker whose Follow-up ask or question
+ *  has gone unanswered three calendar days. The rule lives in @cisa/core. */
+function scheduledRemindersFor(database: string) {
+  return onSchedule(
+    {
+      schedule: "0 8 * * *",
+      timeZone: "America/Los_Angeles",
+      region: "us-east1",
+    },
+    async () => {
+      const db = getFirestore(database);
+      const result = await runAskReminders(firestoreReminderDeps(db));
+      console.log(`[ScheduledReminders] ${database} run complete:`, result);
+    },
+  );
+}
+
+export const scheduledRemindersProd = scheduledRemindersFor("prod");
+export const scheduledRemindersQa = scheduledRemindersFor("qa-db");

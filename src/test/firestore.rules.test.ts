@@ -2645,6 +2645,11 @@ describeRules('Firestore Security Rules', () => {
       await seedMsg('th30');
       const author = getFirestore({ uid: 'operator1' });
       await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th30'), { kind: 'nudge' }));
+      // `remindedAt` is written only by the reminder function (admin SDK); a
+      // client may not mark its own ask or question reminded.
+      await assertFails(
+        updateDoc(doc(author, 'contacts/contact1/threads/th30'), { remindedAt: new Date().toISOString() }),
+      );
     });
 
     it('lets the author rewrite the body and stamp editedAt in one update', async () => {

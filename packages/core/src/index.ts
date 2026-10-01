@@ -6,6 +6,7 @@ export * from './walking';
 export * from './threads';
 export * from './stream';
 export * from './asks';
+export * from './reminders';
 export * from './goal';
 export * from './whatsNew';
 export * from './inbox';

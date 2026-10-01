@@ -2,7 +2,7 @@
   "name": "cisa-notification-functions",
   "private": true,
   "description": "Pushes every notification-bell entry to the recipient's registered devices (Expo + Web Push).",
-  "main": "lib/index.js",
+  "main": "lib/firebase-functions/src/index.js",
   "engines": {
     "node": "22"
   },
