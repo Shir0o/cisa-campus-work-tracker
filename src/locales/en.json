@@ -453,6 +453,10 @@
     "confirm_remove": "Are you sure you want to remove {n} {count}?",
     "kind": "Kind",
     "all_kinds": "All kinds",
+    "kind_all": "All",
+    "kind_contacts": "Contacts",
+    "kind_our_own": "Our own",
+    "kind_local_saints": "Local saints",
     "set_kind_for_selected": "Set who the selected people are",
     "cancel": "Cancel",
     "save": "Save"

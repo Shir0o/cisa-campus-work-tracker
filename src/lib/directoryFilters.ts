@@ -8,14 +8,18 @@
 // contact-detail navigation without persisting past a full page reload or
 // leaking across accounts/roles.
 
-import type { KindFilter } from './contactKind';
+import type { ContactKind } from './contactKind';
+
+/** The kind segment the Directory opens on, or `all` for no kind narrowing. */
+export type KindSegment = 'all' | ContactKind;
 
 export interface DirectoryFilterState {
   searchQuery: string;
   filterStage: string;
   filterRole: string;
   filterSpiritualBackground: string;
-  filterKind: KindFilter;
+  kindSegment: KindSegment;
+  filterUnsorted: boolean;
   filterAddedWhen: 'all' | 'today' | 'week' | 'month';
   customRange: { from: string; to: string };
   selectedTags: string[];
@@ -26,7 +30,8 @@ export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   filterStage: 'All',
   filterRole: 'All',
   filterSpiritualBackground: 'All',
-  filterKind: 'all',
+  kindSegment: 'contact',
+  filterUnsorted: false,
   filterAddedWhen: 'all',
   customRange: { from: '', to: '' },
   selectedTags: [],
