@@ -306,6 +306,40 @@ describe('Directory', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
   });
 
+  it('reads "Not reached yet" for a contact nobody has reached (#1293)', async () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            {
+              id: 'c-new',
+              data: () => ({
+                name: 'New Person',
+                role: 'Student',
+                stage: 'Lead',
+                createdAt: twoDaysAgo,
+                tags: [],
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('New Person')).toBeInTheDocument());
+
+    expect(screen.getByText('Not reached yet')).toBeInTheDocument();
+    expect(screen.queryByText(/Last connected 2 days ago/i)).not.toBeInTheDocument();
+  });
+
   it('filters contacts by Added When (today, week, month)', async () => {
     const today = new Date().toISOString();
     const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();

@@ -34,7 +34,7 @@ import { useLanguage } from '../components/LanguageProvider';
 import { prefetchTranslations } from '../lib/translator';
 import { visibleContacts, seesAllPeople } from '../lib/permissions';
 import { contactVisibilityConstraints, subscribeTiedSubcollection } from '../lib/contactQueries';
-import { Contact, Stage } from '../types';
+import { Contact, Gathering, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import Select from '../components/ui/Select';
@@ -54,6 +54,7 @@ import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContac
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
 import { contactKind, kindLabelKey, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
+import { reachByContact } from '../lib/reach';
 import { matchContact, matchTier, type ContactMatch } from '../lib/contactMatch';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
@@ -197,6 +198,10 @@ export default function Directory() {
 
   // ── Last-connected signal: most recent interaction/comment per contact ──
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
+  // Interactions alone (thread messages are not reach) and Gatherings, for the
+  // reach model: someone nobody has reached reads "Not reached yet" (#1293).
+  const [interactions, setInteractions] = useState<{ contactId: string; ms: number }[]>([]);
+  const [gatherings, setGatherings] = useState<Gathering[]>([]);
 
   // Track whether both primary snapshots have arrived. Previously this effect
   // waited an artificial 800ms, which caused a skeleton flash every time the
@@ -280,6 +285,7 @@ export default function Directory() {
 
     const onInteractions = (docs: QueryDocumentSnapshot[]) => {
       interactionTouches = ingest({ docs }, 'content');
+      setInteractions(interactionTouches.map(({ contactId, ms }) => ({ contactId, ms })));
       publish();
     };
     // A Trainee may not list the interactions collection group (it spans
@@ -325,6 +331,22 @@ export default function Directory() {
     }
     return map;
   }, [touches]);
+
+  // Gatherings, read for the reach model (attendance counts as reaching
+  // someone). Approved users may read events; a Trainee sees them too.
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, 'events'),
+      (snap) => setGatherings(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Gathering[]),
+      (e) => onLoadError(e, 'events'),
+    );
+    return unsub;
+  }, []);
+
+  const reachByContactMap = useMemo(
+    () => reachByContact({ interactions, gatherings }),
+    [interactions, gatherings],
+  );
 
   // Team display names, keyed by uid, for searching by founder/carer/coCreator name (#1176).
   const [teamDisplayNames, setTeamDisplayNames] = useState<Map<string, string>>(new Map());
@@ -1215,9 +1237,11 @@ export default function Directory() {
             const isStage = stagesData.some(s => s.label === contact.stage);
             const tStyle = isStage ? toneStyle(stageColor) : undefined;
             const touch = lastTouchByContact.get(contact.id);
+            const reach = reachByContactMap.get(contact.id);
+            const reached = reach?.reached ?? false;
             const contactLastMs = parseMs(contact.lastContactedDate) ?? parseMs(contact.lastSeen);
             const touchMs = touch?.ms;
-            const bestMs = Math.max(touchMs ?? -Infinity, contactLastMs ?? -Infinity);
+            const bestMs = Math.max(touchMs ?? -Infinity, contactLastMs ?? -Infinity, reach?.ms ?? -Infinity);
             const ms = Number.isFinite(bestMs) && bestMs > 0 ? bestMs : parseMs(contact.createdAt);
             const days = ms != null ? daysSince(ms) : null;
             const overdue = days != null && days >= 7;
@@ -1277,7 +1301,9 @@ export default function Directory() {
                         {t('directory.matched_by').replace('{names}', matchedBy.join(', '))}
                       </div>
                     )}
-                    {days != null ? (
+                    {!reached ? (
+                      <div className="text-sm text-on-surface-variant/70 italic mt-1">{t('directory.not_reached_yet')}</div>
+                    ) : days != null ? (
                       <div className={cn(
                         "flex items-center gap-1.5 text-sm mt-1",
                         overdue ? "text-stage-amber font-medium" : "text-on-surface-variant"
