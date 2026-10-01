@@ -2,36 +2,18 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
-  User,
-  Briefcase,
-  Mail,
-  Phone,
-  Loader2,
-  Trash2,
-  Edit3,
-  Calendar,
-  MessageSquare,
-  ChevronDown,
-  ChevronRight,
-  Send,
-  UserCircle,
-  Clock,
   Plus,
-  Sparkles,
+  Clock,
+  MessageSquare,
   Heart,
-  Footprints,
-  Camera,
-  Check,
-  Tag,
-  MoreHorizontal,
   Lock,
+  Trash2,
 } from "lucide-react";
 import {
   db,
   handleFirestoreError,
   OperationType,
   logActivity,
-  sendNotification,
 } from "../../lib/firebase";
 import {
   doc,
@@ -59,24 +41,20 @@ import { partnersOf } from "../../lib/partners";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
 import { Skeleton } from "../ui/Skeleton";
-import Stream, { ThreadChip } from "../stream/Stream";
 import { conversationAdapter } from "../stream/conversationAdapter";
 import { fullTimersAdapter } from "../stream/fullTimersAdapter";
-import { interactionAdapter, interactionThreadSummary } from "../stream/interactionAdapter";
-import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
+import { interactionAdapter } from "../stream/interactionAdapter";
 import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
-import { traineesOf, walkingRecipient } from "../../lib/walking";
+import { walkingRecipient } from "../../lib/walking";
 import { unhidePrayerContact } from "../../lib/prayers";
-import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
-import { tagStyle, TAG_SUGGESTIONS, getEffectiveContactTags, normalizeTagList } from "../../lib/tags";
+import { normalizeTagList } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
 import { useUndoSnack } from "../../hooks/useUndoSnack";
-import { StageMenu, StageMoveSheet } from "../ui/StagePicker";
-import { stageToneStyle } from "../../lib/stageTones";
+import { StageMoveSheet } from "../ui/StagePicker";
 import { UndoSnackbar } from "../UndoSnackbar";
 import {
   scheduleInteractionRemoval,
@@ -84,10 +62,28 @@ import {
   subscribeInteractionRemovals,
   getPendingRemovalIds,
 } from "../../lib/interactionRemoval";
-import KindChip from "../ui/KindChip";
-import KindFields from "../ui/KindFields";
 import { contactKind, kindLabelKey } from "../../lib/contactKind";
 import { buildContactStory } from "../../lib/contactStory";
+
+import ContactHead, { type ContactTab } from "../contact/ContactHead";
+import ContactEditForm from "../contact/ContactEditForm";
+import ContactDrawerHost from "../contact/ContactDrawerHost";
+import ContactStory from "../contact/ContactStory";
+import ContactJourney from "../contact/ContactJourney";
+import ContactThreadLinks from "../contact/ContactThreadLinks";
+import ContactStreamTab from "../contact/ContactStreamTab";
+import ContactInteractionForm from "../contact/ContactInteractionForm";
+import ContactPrayerForm from "../contact/ContactPrayerForm";
+import ContactPrayerCard from "../contact/ContactPrayerCard";
+import ContactInteractionItem from "../contact/ContactInteractionItem";
+import ContactAuditItem from "../contact/ContactAuditItem";
+import WhatWeKnow from "../contact/overview/WhatWeKnow";
+import PrayersHeld from "../contact/overview/PrayersHeld";
+import HowToReach from "../contact/overview/HowToReach";
+import CaredForBy from "../contact/overview/CaredForBy";
+import WhoCanSee from "../contact/overview/WhoCanSee";
+import TagsSection from "../contact/overview/TagsSection";
+import DeleteContact from "../contact/overview/DeleteContact";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -98,181 +94,6 @@ interface ContactDetailsModalProps {
   // thread; otherwise honours initialTab.
   initialTab?: "thread";
   initialInteractionId?: string | null;
-}
-
-type PrayerStatus = PrayerRecord["status"];
-
-const PRAYER_MARK_ORDER: PrayerStatus[] = ["ongoing", "answered", "unanswered"];
-const PRAYER_MARK_ON: Record<PrayerStatus, string> = {
-  pending: "",
-  ongoing: "bg-stage-accent-soft text-stage-accent border-stage-accent/40",
-  answered: "bg-success/10 text-success border-success/40",
-  unanswered: "bg-error/10 text-error border-error/40",
-};
-
-function AuditActivityItem({
-  activity,
-  isLast,
-  key
-}: {
-  activity: any;
-  isLast: boolean;
-  key?: React.Key;
-}) {
-  const { t } = useLanguage();
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <div
-      className="relative pl-8 pb-4 last:pb-0 group"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Timeline line */}
-      {!isLast && (
-        <div className="absolute left-4 top-10 bottom-0 w-[1px] bg-outline-variant group-hover:bg-primary/30 transition-colors" />
-      )}
-
-      {/* Icon Bubble */}
-      <div
-        className={cn(
-          "absolute left-0 top-0.5 w-8 h-8 rounded-full border-2 border-surface-container flex items-center justify-center z-10 transition-transform group-hover:scale-110 ",
-          activity.type === "edit"
-            ? "bg-tertiary-container text-on-tertiary-container"
-            : activity.type === "create"
-              ? "bg-primary-container text-on-primary-container"
-              : activity.type === "comment"
-                ? "bg-secondary-container text-on-secondary-container"
-                : activity.type === "call"
-                  ? "bg-primary-fixed text-on-primary-fixed"
-                  : "bg-surface-container-highest text-on-surface-variant",
-        )}
-      >
-        {activity.type === "edit" && <Edit3 className="w-4 h-4" />}
-        {activity.type === "create" && <UserCircle className="w-4 h-4" />}
-        {activity.type === "comment" && <MessageSquare className="w-4 h-4" />}
-        {activity.type === "call" && <Phone className="w-4 h-4" />}
-        {!["edit", "create", "comment", "call"].includes(activity.type) && (
-          <Calendar className="w-4 h-4" />
-        )}
-      </div>
-
-      <div className="flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-          <span className="text-xs font-semibold text-on-surface  tracking-tight">
-            {activity.userName}
-          </span>
-          <span className="text-xs text-on-surface-variant">
-            {activity.action === "logged an interaction for" ||
-            activity.action === "logged a batch interaction for"
-              ? activity.type === "call"
-                ? t('modals.contactDetails.audit_called')
-                : activity.type === "email"
-                  ? t('modals.contactDetails.audit_emailed')
-                  : activity.type === "event"
-                    ? t('modals.contactDetails.audit_meeting')
-                    : activity.type === "comment"
-                      ? t('modals.contactDetails.audit_note')
-                      : t('modals.contactDetails.audit_interacted')
-              : activity.action === "updated an interaction for"
-                ? t('modals.contactDetails.audit_updated_interaction')
-                : activity.action === "deleted an interaction for"
-                  ? t('modals.contactDetails.audit_deleted_interaction')
-                  : activity.action === "cleared a prayer for"
-                    ? t('activity.cleared_a_prayer_for')
-                    : activity.action.startsWith("updated") &&
-                    activity.action !== "updated an interaction for" &&
-                    activity.type === "edit" &&
-                    activity.description
-                ? t('modals.contactDetails.audit_updated_the').replace('{fields}', (activity.description
-                    .split("\\n")
-                    .map((line: string) => {
-                      const field = line.includes(":") ? line.split(":")[0].trim() : line.trim();
-                      if (field.toLowerCase() === "notes updated") return t('modals.contactDetails.audit_notes');
-                      return field.charAt(0).toUpperCase() + field.slice(1).toLowerCase();
-                    })
-                    .filter((v: string, i: number, a: string[]) => v && a.indexOf(v) === i)
-                    .join(", ")))
-                : activity.action}
-          </span>
-          <span className="text-[10px] font-semibold text-on-surface-variant/40 ml-auto   whitespace-nowrap">
-            {new Date(activity.createdAt).toLocaleDateString()} at{" "}
-            {new Date(activity.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-
-        {activity.description && activity.type !== "edit" && (
-          <div className="mt-2 p-3 rounded-xl bg-surface-container-high border border-outline-variant/30 text-[13px] leading-relaxed text-on-surface-variant italic">
-            "{activity.description}"
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MoreMenu({
-  onLogInteraction,
-  onAddPrayer,
-  onEdit,
-  showEdit,
-}: {
-  onLogInteraction: () => void;
-  onAddPrayer: () => void;
-  onEdit: () => void;
-  showEdit: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = React.useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-  return (
-    <div ref={wrapRef} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="More actions"
-        title="More actions"
-        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-2 z-30 min-w-[200px] bg-surface rounded-xl border border-outline-variant shadow-lg py-1.5">
-          <button
-            onClick={() => { setOpen(false); onLogInteraction(); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" /> Log interaction
-          </button>
-          <button
-            onClick={() => { setOpen(false); onAddPrayer(); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors"
-          >
-            <Heart className="w-4 h-4" /> Add prayer
-          </button>
-          {showEdit && (
-            <button
-              onClick={() => { setOpen(false); onEdit(); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-container-high transition-colors"
-            >
-              <Edit3 className="w-4 h-4" /> Edit details
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function ContactDetailsModal({
@@ -393,9 +214,6 @@ export default function ContactDetailsModal({
     inChurchLife: false,
     isStudent: false,
   });
-  const capitalize = (str: string) => {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  };
 
   const getInitials = (firstName: string, lastName: string) => {
     return (firstName.charAt(0) + (lastName.charAt(0) || "")).toUpperCase();
@@ -1201,7 +1019,7 @@ export default function ContactDetailsModal({
     }
   };
 
-  const handleUpdatePrayerStatus = async (prayer: PrayerRecord, status: PrayerStatus) => {
+  const handleUpdatePrayerStatus = async (prayer: PrayerRecord, status: PrayerRecord["status"]) => {
     if (!contact) return;
     try {
       const now = new Date().toISOString();
@@ -1368,11 +1186,6 @@ export default function ContactDetailsModal({
   const openPrayers = prayers.filter(
     (p) => p.status !== "answered" && p.status !== "unanswered",
   );
-  const heldDays = (date?: string): number | null => {
-    if (!date) return null;
-    const d = new Date(date).getTime();
-    return isNaN(d) ? null : Math.max(1, Math.floor((Date.now() - d) / 86_400_000));
-  };
 
   if (isOpen && !hasAccess) {
     return (
@@ -1380,14 +1193,14 @@ export default function ContactDetailsModal({
         <div className="w-full max-w-md bg-surface-container rounded-[28px] p-6 border border-outline-variant shadow-2xl text-on-surface">
           <h2 className="font-serif text-xl font-semibold mb-2">{t('modals.contactDetails.access_restricted')}</h2>
           <p className="text-sm text-on-surface-variant mb-6">
-            You do not have permission to view this contact record.
+            {t('modals.contactDetails.no_permission')}
           </p>
           <div className="flex justify-end">
             <button
               onClick={handleClose}
               className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
             >
-              Close
+              {t('modals.contactDetails.close')}
             </button>
           </div>
         </div>
@@ -1398,501 +1211,73 @@ export default function ContactDetailsModal({
   // Shared by the phone tabs and the desktop story (#design-D): the log form,
   // one conversation, the add-prayer form and one prayer card.
   const logInteractionForm = (
-    <AnimatePresence>
-      {isLoggingInteraction && (
-        <motion.form
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          onSubmit={handleAddInteraction}
-          className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
-        >
-          <div className="grid grid-cols-2 gap-3 pb-3">
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                <Calendar className="w-3 h-3" /> {t('modals.contactDetails.date_time')}
-              </label>
-              <input
-                required
-                type="datetime-local"
-                value={newInteraction.dateTime}
-                onChange={(e) =>
-                  setNewInteraction((prev) => ({
-                    ...prev,
-                    dateTime: e.target.value,
-                  }))
-                }
-                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.type')}
-              </label>
-              <select
-                value={newInteraction.type}
-                onChange={(e) =>
-                  setNewInteraction((prev) => ({
-                    ...prev,
-                    type: e.target.value,
-                  }))
-                }
-                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-              >
-                <option value="chat">{t('modals.contactDetails.chat_message')}</option>
-                <option value="call">{t('modals.contactDetails.phone_call')}</option>
-                <option value="meeting">{t('modals.contactDetails.meeting')}</option>
-                <option value="email">{t('modals.contactDetails.email')}</option>
-              </select>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-              <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.content')}
-            </label>
-            <textarea
-              required
-              placeholder={t('modals.contactDetails.interaction_placeholder')}
-              value={newInteraction.content}
-              onChange={(e) =>
-                setNewInteraction((prev) => ({
-                  ...prev,
-                  content: e.target.value,
-                }))
-              }
-              className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="submit"
-              disabled={
-                submittingInteraction ||
-                !newInteraction.content.trim()
-              }
-              className="px-4 h-9 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
-            >
-              {submittingInteraction ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Send className="w-3.5 h-3.5" />
-              )}
-              Log Interaction
-            </button>
-          </div>
-        </motion.form>
-      )}
-    </AnimatePresence>
-  );
-
-  const renderInteraction = (interaction: Interaction) => (
-    <div
-      key={interaction.id}
-      className="flex gap-3 group"
-    >
-      <div className="shrink-0 mt-0.5">
-        {interaction.userPhoto ? (
-          <img
-            src={interaction.userPhoto}
-            alt={interaction.userName}
-            className="w-8 h-8 rounded-full border border-outline-variant"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-            <UserCircle className="w-5 h-5" />
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        {editingInteractionId === interaction.id ? (
-          <form
-            onSubmit={handleUpdateInteraction}
-            className="space-y-3 p-3 rounded-3xl bg-surface-container-high border border-primary/20"
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                  {t('modals.contactDetails.date')}
-                </label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={editInteractionData.dateTime}
-                  onChange={(e) =>
-                    setEditInteractionData((prev) => ({
-                      ...prev,
-                      dateTime: e.target.value,
-                    }))
-                  }
-                  className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                  {t('modals.contactDetails.type')}
-                </label>
-                <select
-                  value={editInteractionData.type}
-                  onChange={(e) =>
-                    setEditInteractionData((prev) => ({
-                      ...prev,
-                      type: e.target.value,
-                    }))
-                  }
-                  className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
-                >
-                  <option value="chat">
-                    {t('modals.contactDetails.chat_message')}
-                  </option>
-                  <option value="call">
-                    {t('modals.contactDetails.phone_call')}
-                  </option>
-                  <option value="meeting">
-                    {t('modals.contactDetails.meeting')}
-                  </option>
-                  <option value="email">{t('modals.contactDetails.email')}</option>
-                  <option value="interaction">
-                    {t('modals.contactDetails.other')}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                {t('modals.contactDetails.content')}
-              </label>
-              <textarea
-                required
-                value={editInteractionData.content}
-                onChange={(e) =>
-                  setEditInteractionData((prev) => ({
-                    ...prev,
-                    content: e.target.value,
-                  }))
-                }
-                className="w-full min-h-[60px] p-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs resize-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-1 border-t border-outline-variant/30">
-              <button
-                type="button"
-                onClick={() =>
-                  setEditingInteractionId(null)
-                }
-                className="h-7 px-3 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={
-                  isUpdatingInteraction ||
-                  !editInteractionData.content.trim()
-                }
-                className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-semibold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
-              >
-                {isUpdatingInteraction ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  t('modals.contactDetails.save')
-                )}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-on-surface  tracking-tight">
-                  {interaction.userName}
-                </span>
-                <span className="text-[10px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
-                  {new Date(
-                    interaction.dateTime,
-                  ).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 transition-opacity">
-                {(user?.uid === interaction.userId || isAdmin) && (
-                  <button
-                    onClick={() => {
-                      setEditingInteractionId(
-                        interaction.id,
-                      );
-                      setEditInteractionData({
-                        content: interaction.content,
-                        dateTime: interaction.dateTime,
-                        type:
-                          interaction.type ||
-                          "interaction",
-                      });
-                    }}
-                    className="text-[10px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
-                  >
-                    Edit
-                  </button>
-                )}
-                {canRemoveInteraction(interaction) && (
-                  <button
-                    onClick={() => handleRemoveInteraction(interaction)}
-                    className="text-[10px] font-semibold text-error hover:opacity-80 focus:outline-none"
-                  >
-                    {t('modals.contactDetails.remove_interaction')}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors whitespace-pre-wrap">
-              <Translate showOriginalToggle text={interaction.content} />
-            </div>
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="text-[10px] font-semibold text-on-surface-variant/40  ">
-                {interaction.createdAt
-                  ? t('modals.contactDetails.logged_at').replace('{date}', new Date(interaction.createdAt).toLocaleDateString()).replace('{time}', new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
-                  : t('modals.contactDetails.logging')}
-              </span>
-              {(interaction.duration ||
-                interaction.type) && (
-                <span className="text-[10px] font-semibold text-on-surface-variant/40   flex items-center gap-1">
-                  {interaction.type && (
-                    <span className="px-1.5 py-0.5 rounded bg-surface-container-high">
-                      {interaction.type}
-                    </span>
-                  )}
-                  {interaction.duration && (
-                    <span className="flex items-center gap-0.5">
-                      <Clock className="w-3 h-3" />
-                      {interaction.duration}
-                    </span>
-                  )}
-                </span>
-              )}
-            </div>
-            {/* The team's Thread on this interaction: a replies chip, or an
-                invitation to start one. Either opens the Thread in the drawer. */}
-            <div className="mt-2">
-              {(() => {
-                const summary = interactionThreadSummary(interactionAdapterFor(interaction), streamViewer, Date.now());
-                const opened = drawer === "interaction" && openThread === interaction.id;
-                const open = () => {
-                  setOpenThread(interaction.id);
-                  setDrawer("interaction");
-                };
-                return summary ? (
-                  <ThreadChip summary={summary} open={opened} onClick={open} />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={open}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant/60 hover:text-accent transition-colors"
-                  >
-                    <Footprints className="w-3.5 h-3.5" />
-                    {t('stream.think_together')}
-                  </button>
-                );
-              })()}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+    <ContactInteractionForm
+      open={isLoggingInteraction}
+      value={newInteraction}
+      onChange={setNewInteraction}
+      submitting={submittingInteraction}
+      onSubmit={handleAddInteraction}
+    />
   );
 
   const addPrayerForm = (
-    <AnimatePresence>
-      {isAddingPrayer && (
-        <motion.form
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          onSubmit={handleAddPrayer}
-          className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
-        >
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-on-surface-variant px-1">
-              What are we praying for?
-            </label>
-            <input
-              required
-              autoFocus
-              type="text"
-              placeholder={`e.g. ${firstName}'s family back home`}
-              value={newPrayer.burden}
-              onChange={(e) =>
-                setNewPrayer((p) => ({ ...p, burden: e.target.value }))
-              }
-              className="w-full h-10 px-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-on-surface-variant px-1">
-              {t('modals.contactDetails.prayer_context_label')} <span className="text-on-surface-variant/60">{t('modals.contactDetails.optional')}</span>
-            </label>
-            <textarea
-              placeholder={t('modals.contactDetails.prayer_context_placeholder')}
-              value={newPrayer.context}
-              onChange={(e) =>
-                setNewPrayer((p) => ({ ...p, context: e.target.value }))
-              }
-              className="w-full min-h-[70px] p-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm resize-none"
-            />
-          </div>
-          <div className="flex justify-end pt-1">
-            <button
-              type="submit"
-              disabled={submittingPrayer || !newPrayer.burden.trim()}
-              className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {submittingPrayer ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Heart className="w-3.5 h-3.5" />
-              )}
-              Add prayer
-            </button>
-          </div>
-        </motion.form>
-      )}
-    </AnimatePresence>
+    <ContactPrayerForm
+      open={isAddingPrayer}
+      value={newPrayer}
+      onChange={setNewPrayer}
+      submitting={submittingPrayer}
+      onSubmit={handleAddPrayer}
+      firstName={firstName}
+    />
   );
 
-  const renderPrayerCard = (p: PrayerRecord) => {
-    const answered = p.status === "answered";
-    const heldDays = p.date
-      ? Math.max(
-          0,
-          Math.floor(
-            (Date.now() - new Date(p.date).getTime()) / 86_400_000,
-          ),
-        )
-      : null;
-    return (
-      <div
-        key={p.id}
-        className="p-4 rounded-3xl bg-surface-container-high border border-outline-variant/40"
-      >
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
-              answered
-                ? "bg-stage-teal-soft text-stage-teal"
-                : p.status === "unanswered"
-                  ? "bg-surface-variant text-on-surface-variant"
-                  : "bg-stage-violet-soft text-stage-violet",
-            )}
-          >
-            <span
-              className={cn(
-                "w-1.5 h-1.5 rounded-full",
-                answered
-                  ? "bg-stage-teal"
-                  : p.status === "unanswered"
-                    ? "bg-on-surface-variant"
-                    : "bg-stage-violet",
-              )}
-            />
-            {answered
-              ? t('modals.contactDetails.answered')
-              : p.status === "unanswered"
-                ? t('modals.contactDetails.closed')
-                : t('modals.contactDetails.open')}
-          </span>
-          {heldDays != null && (
-            <span className="text-xs text-on-surface-variant/60">
-              {t('modals.contactDetails.held')} {heldDays} {heldDays === 1 ? t('modals.contactDetails.day') : t('modals.contactDetails.days')}
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
-          {p.burden}
-        </p>
-        {canUpdatePrayers && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] text-on-surface-variant mr-0.5">
-              {t('modals.contactDetails.mark')}
-            </span>
-            {PRAYER_MARK_ORDER.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() =>
-                  handleUpdatePrayerStatus(
-                    p,
-                    p.status === s ? "pending" : s,
-                  )
-                }
-                className={cn(
-                  "text-xs px-2.5 py-1 rounded-full border transition-colors",
-                  p.status === s
-                    ? PRAYER_MARK_ON[s]
-                    : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline",
-                )}
-              >
-                {t('modals.contactDetails.' + (s === 'pending' ? 'unmarked' : s === 'ongoing' ? 'ongoing' : s === 'answered' ? 'answered' : 'archived'))}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const renderInteractionItem = (interaction: Interaction) => (
+    <ContactInteractionItem
+      interaction={interaction}
+      canEdit={user?.uid === interaction.userId || isAdmin}
+      canRemove={canRemoveInteraction(interaction)}
+      editing={editingInteractionId === interaction.id}
+      editData={editInteractionData}
+      onEditDataChange={setEditInteractionData}
+      onStartEdit={() => {
+        setEditingInteractionId(interaction.id);
+        setEditInteractionData({
+          content: interaction.content,
+          dateTime: interaction.dateTime,
+          type: interaction.type || "interaction",
+        });
+      }}
+      onCancelEdit={() => setEditingInteractionId(null)}
+      onUpdate={handleUpdateInteraction}
+      updating={isUpdatingInteraction}
+      onRemove={() => handleRemoveInteraction(interaction)}
+      adapterFor={interactionAdapterFor}
+      viewer={streamViewer}
+      threadOpen={drawer === "interaction" && openThread === interaction.id}
+      onOpenThread={() => {
+        setOpenThread(interaction.id);
+        setDrawer("interaction");
+      }}
+    />
+  );
+
+  const renderPrayerCard = (p: PrayerRecord) => (
+    <ContactPrayerCard
+      prayer={p}
+      canUpdatePrayers={canUpdatePrayers}
+      onUpdateStatus={handleUpdatePrayerStatus}
+    />
+  );
 
   // "Where they are": in Overview on phones, the band across the top of the
   // desktop story page.
   const journeySection = (
-    <div className="cd-sec">
-      <div className="cd-sec-head">
-        <h3 className="cd-sec-title">{t('modals.contactDetails.where_they_are')}</h3>
-      </div>
-      <div className="cd-journey">
-        {sortedStages.length === 0 && (
-          <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
-        )}
-        {sortedStages.map((s, i) => {
-          const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
-          const body = (
-            <>
-              <span className="cd-step-mark">
-                {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
-                {state === "done" && <span className="pd" />}
-              </span>
-              <span className="cd-step-name">{s.label}</span>
-              {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
-            </>
-          );
-          // The step list is where the pipeline is already
-          // explained, so it doubles as the move target
-          // for anyone who may edit (#677).
-          return canMoveStage && state !== "on" ? (
-            <button
-              key={s.id}
-              onClick={() => moveStage(s.label)}
-              className={cn("cd-journey-step is-move", state)}
-            >
-              {body}
-              <span className="cd-step-move">
-                {t('modals.contactDetails.move_here')}
-                <ChevronRight className="w-3 h-3" />
-              </span>
-            </button>
-          ) : (
-            <div key={s.id} className={cn("cd-journey-step", state)}>
-              {body}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  // The phone-width Conversation and Full-timers tabs: the same stream, in the
-  // page body, its Threads replacing it with a back arrow.
-  const renderStreamTab = (adapter: typeof conversation, onMakeTodo?: (m: ThreadMessage) => void) => (
-    <div className="cdm-stream">
-      <Stream adapter={adapter} viewer={streamViewer} threadMode="replace" onMakeTodo={onMakeTodo} />
-    </div>
+    <ContactJourney
+      stages={sortedStages}
+      stageIdx={stageIdx}
+      canMoveStage={canMoveStage}
+      onMoveStage={moveStage}
+    />
   );
 
   // ── Desktop story page (design D) ──
@@ -1909,128 +1294,35 @@ export default function ContactDetailsModal({
   const canSeeTeamThread = role === "admin" || isAdmin;
 
   const storySection = (
-    <section aria-label={t('modals.contactDetails.story_so_far')} className="cd-story">
-      <div className="cd-sec-head">
-        <h3 className="cd-sec-title">{t('modals.contactDetails.story_so_far')}</h3>
-      </div>
-      {isLoggingInteraction || isAddingPrayer ? (
-        <div className="cd-story-compose-open">
-          <button
-            type="button"
-            onClick={() => {
-              setIsLoggingInteraction(false);
-              setIsAddingPrayer(false);
-            }}
-            className="self-end text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            {t('modals.contactDetails.cancel')}
-          </button>
-          {logInteractionForm}
-          {addPrayerForm}
-        </div>
-      ) : (
-        <div className="cd-story-compose">
-          <button
-            type="button"
-            onClick={() => setIsLoggingInteraction(true)}
-            className="cd-story-compose-input"
-          >
-            {t('modals.contactDetails.write_what_happened')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsAddingPrayer(true)}
-            aria-label={t('modals.contactDetails.add_prayer')}
-            title={t('modals.contactDetails.add_prayer')}
-            className="cd-story-compose-pray"
-          >
-            <Heart className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-      {/* Conversations are the spine; prayers join as their listener lands. */}
-      {interactionsLoading ? (
-        <Skeleton className="h-24 w-full rounded-2xl" />
-      ) : (
-        <ol className="cd-story-list">
-          {story.map((entry) => (
-            <li
-              key={`${entry.kind}:${entry.id}`}
-              id={entry.kind === "conversation" ? `story-${entry.id}` : undefined}
-              data-kind={entry.kind}
-              className={cn(
-                "cd-story-entry",
-                (entry.kind === "step" || entry.kind === "added" || entry.kind === "prayer-answered") && "is-milestone",
-              )}
-            >
-              <span className="cd-story-date">{fmtDate(entry.at)}</span>
-              <span className="cd-story-dot" aria-hidden="true" />
-              <div className="cd-story-body">
-                {entry.kind === "conversation" && renderInteraction(entry.interaction)}
-                {entry.kind === "prayer" && renderPrayerCard(entry.prayer)}
-                {entry.kind === "prayer-answered" && (
-                  <div className="cd-story-milestone">
-                    <strong>{t('modals.contactDetails.prayer_answered_story')}</strong>
-                    <span>{(entry.prayer.burden || "").split("\n\n")[0]}</span>
-                    {entry.prayer.answer && (
-                      <p className="cd-prose">
-                        <Translate showOriginalToggle text={entry.prayer.answer} />
-                      </p>
-                    )}
-                  </div>
-                )}
-                {entry.kind === "step" && (
-                  <div className="cd-story-milestone">
-                    <strong>
-                      {entry.to
-                        ? t('modals.contactDetails.moved_to').replace('{stage}', entry.to)
-                        : t('modals.contactDetails.moved_out_of_steps')}
-                    </strong>
-                    <span>
-                      {(entry.from
-                        ? t('modals.contactDetails.story_moved_from_by').replace('{stage}', entry.from)
-                        : t('modals.contactDetails.story_moved_by')
-                      ).replace('{name}', entry.byName)}
-                    </span>
-                  </div>
-                )}
-                {entry.kind === "added" && (
-                  <div className="cd-story-milestone">
-                    <strong>
-                      {entry.byName
-                        ? t('modals.contactDetails.story_added_by').replace('{name}', entry.byName)
-                        : t('modals.contactDetails.story_added')}
-                    </strong>
-                  </div>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
+    <ContactStory
+      story={story}
+      fmtDate={fmtDate}
+      isLoggingInteraction={isLoggingInteraction}
+      isAddingPrayer={isAddingPrayer}
+      onCancelCompose={() => {
+        setIsLoggingInteraction(false);
+        setIsAddingPrayer(false);
+      }}
+      onStartLog={() => setIsLoggingInteraction(true)}
+      onStartPrayer={() => setIsAddingPrayer(true)}
+      interactionsLoading={interactionsLoading}
+      logInteractionForm={logInteractionForm}
+      addPrayerForm={addPrayerForm}
+      renderInteraction={renderInteractionItem}
+      renderPrayerCard={renderPrayerCard}
+    />
   );
 
   const threadLinks = (
-    <div className="cd-sec">
-      <div className="cd-sec-head">
-        <h3 className="cd-sec-title">{t('modals.contactDetails.talk_about').replace('{name}', firstName)}</h3>
-      </div>
-      <div className="cd-thread-links">
-        <button type="button" className="cd-thread-link" onClick={() => setDrawer("thread")}>
-          <Footprints className="w-4 h-4" />
-          {walkLabel}
-          <span className="count">{countFor(threadMessages, null)}</span>
-        </button>
-        {canSeeTeamThread && (
-          <button type="button" className="cd-thread-link" onClick={() => setDrawer("discussion")}>
-            <MessageSquare className="w-4 h-4" />
-            {t('modals.contactDetails.discussion')}
-            <span className="count">{countFor(threadMessages, null, "team")}</span>
-          </button>
-        )}
-      </div>
-    </div>
+    <ContactThreadLinks
+      firstName={firstName}
+      walkLabel={walkLabel}
+      walkCount={countFor(threadMessages, null)}
+      teamCount={countFor(threadMessages, null, "team")}
+      canSeeTeamThread={canSeeTeamThread}
+      onOpenThread={() => setDrawer("thread")}
+      onOpenDiscussion={() => setDrawer("discussion")}
+    />
   );
 
   const wrapDesktopStory = (content: React.ReactNode) =>
@@ -2055,560 +1347,66 @@ export default function ContactDetailsModal({
     (drawer === "interaction" && !!interactionThread) ||
     (!isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread)));
   const drawerLabel = drawer === "discussion" ? t('modals.contactDetails.discussion') : walkLabel;
-  const closeDrawerLabel = t('modals.contactDetails.close_drawer').replace('{thread}', drawerLabel);
-  const closeDrawerButton = (
-    <button
-      type="button"
-      onClick={() => setDrawer(null)}
-      title={closeDrawerLabel}
-      aria-label={closeDrawerLabel}
-      className="w-9 h-9 shrink-0 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
-    >
-      <X className="w-4 h-4" />
-    </button>
-  );
+
+  const visibleTabList: ContactTab[] = [
+    { id: "overview", label: t('modals.contactDetails.overview') },
+    { id: "thread", label: t('modals.contactDetails.follow_up'), count: countFor(threadMessages, null) },
+    ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: t('modals.contactDetails.discussion'), count: countFor(threadMessages, null, "team") }] : []),
+    { id: "interactions", label: t('modals.contactDetails.interactions'), count: visibleInteractions.length },
+    { id: "prayer", label: t('modals.contactDetails.prayer'), count: prayers.length },
+    ...(canSeeHistory(role) ? [{ id: "history", label: t('modals.contactDetails.history') }] : []),
+  ];
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className={isMobile ? "cdm-page" : "cd-page"}>
           <div className={isMobile ? "cdm-page-main" : "cd-page-main"}>
-            {isMobile ? (
-              isEditing ? (
-                /* Mobile Editing Header */
-                <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-outline-variant shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="text-sm font-semibold text-on-surface-variant"
-                  >
-                    Cancel
-                  </button>
-                  <h3 className="font-serif text-base text-on-surface font-semibold">{t('modals.contactDetails.edit_details')}</h3>
-                  <button
-                    type="submit"
-                    form="edit-contact-form"
-                    className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold"
-                  >
-                    Save
-                  </button>
-                </div>
-              ) : (
-                /* Mobile Profile Header */
-                <div className="shrink-0 flex flex-col bg-surface border-b border-outline-variant/30">
-                  {/* Top back bar */}
-                  <div className="cdm-top px-5 pt-4 flex items-center justify-between">
-                    <button
-                      onClick={handleClose}
-                      className="cdm-back text-on-surface-variant font-medium text-sm inline-flex items-center gap-1"
-                    >
-                      <ChevronRight className="w-4.5 h-4.5 rotate-180 cdm-back-ico text-on-surface-variant" />
-                      <span>{t('modals.contactDetails.people')}</span>
-                    </button>
-                    {role !== 'viewer' && (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
-                      >
-                        {t('actions.edit') || 'Edit'}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Hero Block */}
-                  <div className="cdm-hero px-5 pt-1 pb-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
-                        {contact.initials}
-                      </div>
-                      <div className="cdm-hero-main min-w-0 flex-1">
-                        <h2 className="font-serif text-2xl text-on-surface leading-tight truncate cd-name">
-                          {contact.name}
-                        </h2>
-                        <div className="cdm-chip-row flex flex-wrap gap-1 mt-1.5">
-                          {getEffectiveContactTags(contact.tags, contact.createdAt).map((t) => (
-                            <span
-                              key={t}
-                              style={tagStyle(t)}
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)]"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                        {canMoveStage ? (
-                          <button
-                            onClick={() => setMovingStage(true)}
-                            style={stageToneStyle(currentStageInfo?.color, currentStageIndex)}
-                            aria-label={`${t('modals.contactDetails.move_to_step')}: ${currentContact.stage || t('modals.contactDetails.not_in_step')}`}
-                            className={cn(
-                              "cdm-stage-btn mt-2.5 inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-full text-sm font-semibold",
-                              currentContact.stage
-                                ? "bg-[var(--tone-soft)] border border-[var(--tone)]/40 text-[var(--tone)]"
-                                : "border border-outline text-on-surface-variant",
-                            )}
-                          >
-                            <span className={cn("w-2 h-2 rounded-full", currentContact.stage ? "bg-[var(--tone)]" : "bg-outline")} />
-                            <span className="truncate max-w-[200px]">{currentContact.stage || t('modals.contactDetails.not_in_step')}</span>
-                            <ChevronDown className="w-3.5 h-3.5 opacity-75" />
-                          </button>
-                        ) : currentContact.stage ? (
-                          <span className="cd-stage-pill mt-2.5">{currentContact.stage}</span>
-                        ) : null}
-                        <p className="text-xs text-on-surface-variant cdm-meta mt-3">
-                          {[contact.role, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Communication Tiles */}
-                  <div className="cdm-comm px-5 pb-4">
-                    {contact.phone && (
-                      <button onClick={callContact}>
-                        <span className="cdm-comm-ico"><Phone className="w-4.5 h-4.5" /></span>
-                        <span>{t('modals.contactDetails.call')}</span>
-                      </button>
-                    )}
-                    {contact.phone && (
-                      <button onClick={textContact}>
-                        <span className="cdm-comm-ico"><MessageSquare className="w-4.5 h-4.5" /></span>
-                        <span>{t('modals.contactDetails.text')}</span>
-                      </button>
-                    )}
-                    {contact.email && (
-                      <button onClick={emailContact}>
-                        <span className="cdm-comm-ico"><Mail className="w-4.5 h-4.5" /></span>
-                        <span>{t('modals.contactDetails.email')}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Two Primary Actions */}
-                  <div className="cdm-primary px-5 pb-5 flex gap-2">
-                    <button onClick={startLogInteraction} className="btn bg-primary text-on-primary font-semibold flex items-center justify-center gap-2 flex-1 min-h-[48px] rounded-xl text-sm">
-                      <MessageSquare className="w-4 h-4" /> {t('modals.contactDetails.log_interaction')}
-                    </button>
-                    <button onClick={startAddPrayer} className="btn bg-stage-violet-soft text-stage-violet font-semibold flex items-center justify-center gap-2 border border-stage-violet/20 flex-1 min-h-[48px] rounded-xl text-sm">
-                      <Heart className="w-4 h-4" /> {t('modals.contactDetails.prayer')}
-                    </button>
-                  </div>
-                </div>
-              )
-            ) : (
-              /* Desktop header — single 56px row carrying avatar, name, stage,
-                 "Last connected … · Cared for by …", and a compact icon
-                 cluster on the right. The aside's "Cared for by" is promoted
-                 here so the one glance-level fact stays on screen from every
-                 tab (#780). */
-              <header className="cd-head">
-                <div className="cd-head-avatar">{contact.initials}</div>
-                <div className="cd-head-main">
-                  <div className="cd-name-row">
-                    <h2 className="cd-name">{isEditing ? t('modals.contactDetails.edit_details') : contact.name}</h2>
-                    {!isEditing && contact.pronouns && (
-                      <span className="cd-pronouns">{contact.pronouns}</span>
-                    )}
-                    {!isEditing && (canMoveStage ? (
-                      <StageMenu
-                        stages={sortedStages}
-                        current={currentContact.stage || ""}
-                        onSelect={moveStage}
-                      />
-                    ) : currentContact.stage ? (
-                      <span className="cd-stage-pill">{currentContact.stage}</span>
-                    ) : null)}
-                    {/* Everyone tied to a person sees who they are, whether or
-                        not they may change it (#1152). */}
-                    {!isEditing && <KindChip contact={currentContact} />}
-                  </div>
-                  {!isEditing && (
-                    <div className="cd-head-sub">
-                      <span>{sinceText}</span>
-                      {carerNames.length > 0 && (
-                        <>
-                          <span className="sep">·</span>
-                          <span>{t('modals.contactDetails.cared_for_by')} <b>{carerNames.join(', ')}</b></span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {!isEditing && (
-                  <div className="cd-actions">
-                    {contact.phone && (
-                      <button
-                        onClick={callContact}
-                        title={t('modals.contactDetails.call')}
-                        aria-label={t('modals.contactDetails.call')}
-                        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
-                      >
-                        <Phone className="w-4 h-4" />
-                      </button>
-                    )}
-                    {contact.phone && (
-                      <button
-                        onClick={textContact}
-                        title={t('modals.contactDetails.text')}
-                        aria-label={t('modals.contactDetails.text')}
-                        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                      </button>
-                    )}
-                    {contact.email && (
-                      <button
-                        onClick={emailContact}
-                        title={t('modals.contactDetails.email')}
-                        aria-label={t('modals.contactDetails.email')}
-                        className="w-9 h-9 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center justify-center"
-                      >
-                        <Mail className="w-4 h-4" />
-                      </button>
-                    )}
-                    <MoreMenu
-                      onLogInteraction={startLogInteraction}
-                      onAddPrayer={startAddPrayer}
-                      onEdit={() => setIsEditing(true)}
-                      showEdit={role !== 'viewer'}
-                    />
-                    <button
-                      onClick={handleClose}
-                      title={t('modals.contactDetails.close')}
-                      aria-label={t('modals.contactDetails.close')}
-                      className="w-9 h-9 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </header>
-            )}
-
-            {/* Content Tab Switcher — phones only; desktop is one story page */}
-            {!isEditing && (() => {
-              const visibleTabList = [
-                { id: "overview", label: t('modals.contactDetails.overview') },
-                { id: "thread", label: t('modals.contactDetails.follow_up'), count: countFor(threadMessages, null) },
-                ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: t('modals.contactDetails.discussion'), count: countFor(threadMessages, null, "team") }] : []),
-                { id: "interactions", label: t('modals.contactDetails.interactions'), count: visibleInteractions.length },
-                { id: "prayer", label: t('modals.contactDetails.prayer'), count: prayers.length },
-                ...(canSeeHistory(role) ? [{ id: "history", label: t('modals.contactDetails.history') }] : []),
-              ];
-
-              return isMobile ? (
-                /* Mobile Dropdown Switcher */
-                <div className="cdm-switch sticky top-0 z-10 bg-surface border-t border-b border-outline-variant/35 px-5 py-2.5">
-                  <div className="relative">
-                    <select
-                      value={activeTab}
-                      onChange={(e) => setActiveTab(e.target.value as any)}
-                      className="w-full h-11 pl-4 pr-10 bg-surface-container-low border border-outline rounded-xl text-sm font-semibold appearance-none cursor-pointer text-on-surface cdm-select"
-                    >
-                      {visibleTabList.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label} {"count" in t && t.count != null ? `(${t.count})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/75 cdm-select-caret">
-                      ▾
-                    </span>
-                  </div>
-                </div>
-              ) : null;
-            })()}
+            <ContactHead
+              isMobile={isMobile}
+              isEditing={isEditing}
+              contact={contact}
+              currentContact={currentContact}
+              stages={sortedStages}
+              canMoveStage={canMoveStage}
+              currentStageIndex={currentStageIndex}
+              currentStageInfo={currentStageInfo}
+              sinceText={sinceText}
+              carerNames={carerNames}
+              role={role}
+              activeTab={activeTab}
+              tabs={visibleTabList}
+              onClose={handleClose}
+              onEdit={() => setIsEditing(true)}
+              onCancelEdit={() => setIsEditing(false)}
+              onCall={callContact}
+              onText={textContact}
+              onEmail={emailContact}
+              onLogInteraction={startLogInteraction}
+              onStartPrayer={startAddPrayer}
+              onMoveStage={moveStage}
+              onOpenMoveSheet={() => setMovingStage(true)}
+              onChangeTab={(tab) => setActiveTab(tab as any)}
+            />
 
             {/* Content */}
             <div className={isMobile ? "cdm-page-body" : "cd-page-content"}>
               {isEditing ? (
-                <form
-                  id="edit-contact-form"
+                <ContactEditForm
+                  formData={formData}
+                  onChange={setFormData}
+                  stages={stages}
+                  isAdmin={isAdmin}
+                  phoneError={phoneError}
+                  onPhoneBlur={handlePhoneBlur}
+                  onClearPhoneError={() => setPhoneError(null)}
+                  editTagInput={editTagInput}
+                  onEditTagInputChange={setEditTagInput}
                   onSubmit={handleUpdate}
-                  className={cn("space-y-6", !isMobile && "px-7 py-6")}
-                >
-                  <div className="cd-form-grid grid grid-cols-1 gap-6">
-                    {/* First Name */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.first_name')}
-                      </label>
-                      <input
-                        required
-                        type="text"
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          setFormData((f) => ({
-                            ...f,
-                            firstName: capitalize(e.target.value),
-                          }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder={t('modals.contactDetails.first_name_placeholder')}
-                      />
-                    </div>
-                    {/* Last Name */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.last_name')}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          setFormData((f) => ({
-                            ...f,
-                            lastName: capitalize(e.target.value),
-                          }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder={t('modals.contactDetails.last_name_placeholder')}
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
-                        <Briefcase className="w-3.5 h-3.5" /> {t('modals.contactDetails.contact_group')}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.role}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, role: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder={t('modals.contactDetails.contact_group_placeholder')}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.gender')}
-                      </label>
-                      <select
-                        value={formData.gender}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, gender: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
-                      >
-                        <option value="">{t('modals.contactDetails.gender_placeholder')}</option>
-                        <option value="M">M</option>
-                        <option value="F">F</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Mail className="w-3.5 h-3.5" /> {t('modals.contactDetails.email_label')}
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, email: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder={t('modals.contactDetails.email_placeholder')}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Phone className="w-3.5 h-3.5" /> {t('modals.contactDetails.phone')}
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => {
-                          setFormData((f) => ({ ...f, phone: e.target.value }));
-                          if (phoneError) setPhoneError(null);
-                        }}
-                        onBlur={handlePhoneBlur}
-                        className={cn(
-                          "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm",
-                          phoneError
-                            ? "border-error focus:border-error focus:ring-1 focus:ring-error"
-                            : "border-outline focus:border-primary focus:ring-1 focus:ring-primary",
-                        )}
-                        placeholder="(555) 000-0000"
-                      />
-                      <AnimatePresence>
-                        {phoneError && (
-                          <motion.p
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="text-[10px] font-semibold text-error px-1  "
-                          >
-                            {phoneError}
-                          </motion.p>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
-                        <Calendar className="w-3.5 h-3.5" /> {t('modals.contactDetails.pipeline_stage')}
-                      </label>
-                      <select
-                        aria-label={t('modals.contactDetails.pipeline_stage')}
-                        value={stages.some(s => s.label === formData.stage) ? formData.stage : t('modals.contactDetails.unassigned')}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, stage: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none"
-                      >
-                        <option value="Unassigned">{t('modals.contactDetails.unassigned')}</option>
-                        {stages.map((s) => (
-                          <option key={s.id} value={s.label}>
-                            {s.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Tag className="w-3.5 h-3.5" /> {t('modals.contactDetails.tags_comma_separated')}
-                      </label>
-                      {formData.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-1.5">
-                          {formData.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              style={tagStyle(tag)}
-                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
-                            >
-                              {tag}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setFormData((f) => ({
-                                    ...f,
-                                    tags: f.tags.filter((t) => t !== tag),
-                                  }))
-                                }
-                                className="hover:opacity-75 cursor-pointer ml-0.5 text-xs font-bold leading-none"
-                                title={t('modals.contactDetails.remove_tag')}
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <input
-                        type="text"
-                        value={editTagInput}
-                        onChange={(e) => setEditTagInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            const raw = editTagInput.trim();
-                            if (raw) {
-                              const newTags = raw.split(",").map((t) => t.trim()).filter(Boolean);
-                              setFormData((f) => ({
-                                ...f,
-                                tags: normalizeTagList([...f.tags, ...newTags]),
-                              }));
-                              setEditTagInput("");
-                            }
-                          }
-                        }}
-                        placeholder="e.g. Gospel, Fall2023"
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                      />
-                      {(() => {
-                        const availableSuggestions = TAG_SUGGESTIONS.filter(
-                          (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
-                        );
-                        if (availableSuggestions.length === 0) return null;
-                        return (
-                          <div className="flex flex-wrap gap-1 mt-1.5 pt-0.5">
-                            {availableSuggestions.map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => {
-                                  if (!formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())) {
-                                    setFormData((f) => ({ ...f, tags: [...f.tags, s] }));
-                                  }
-                                }}
-                                style={tagStyle(s)}
-                                className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity border border-outline-variant/30 cursor-pointer"
-                              >
-                                + {s}
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    {/* The kind of person (#1152) — Full-timers only, and
-                        written on its own rules branch when saved. */}
-                    {isAdmin && (
-                      <div className="space-y-1.5 md:col-span-2">
-                        <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                          <Sparkles className="w-3.5 h-3.5" /> {t('contactKind.who_they_are')}
-                        </label>
-                        <KindFields
-                          inChurchLife={formData.inChurchLife}
-                          isStudent={formData.isStudent}
-                          onChange={(next) => setFormData((f) => ({ ...f, ...next }))}
-                        />
-                      </div>
-                    )}
-
-                    {/* Spiritual Background Field */}
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Sparkles className="w-3.5 h-3.5" /> {t('modals.contactDetails.spiritual_background')}
-                      </label>
-                      <select
-                        value={formData.spiritualBackground}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, spiritualBackground: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
-                      >
-                        <option value="">{t('modals.contactDetails.spiritual_background_placeholder')}</option>
-                        <option value="Exploring">{t('modals.contactDetails.spiritual_exploring')}</option>
-                        <option value="Christian">{t('modals.contactDetails.christian')}</option>
-                        <option value="Catholic">{t('modals.contactDetails.catholic')}</option>
-                        <option value="Other">{t('modals.contactDetails.other_religion')}</option>
-                        <option value="None">{t('modals.contactDetails.none')}</option>
-                      </select>
-                    </div>
-                    {/* Notes Field */}
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MessageSquare className="w-3.5 h-3.5" /> {t('modals.contactDetails.notes')}
-                      </label>
-                      <textarea
-                        value={formData.notes}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, notes: e.target.value }))
-                        }
-                        className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
-                        placeholder={t('modals.contactDetails.notes_placeholder')}
-                      />
-                    </div>
-                    {isMobile && (
-                      <div className="pt-4 border-t border-outline-variant/30 md:col-span-2">
-                        <button
-                          type="button"
-                          onClick={handleDelete}
-                          disabled={loading}
-                          className="w-full flex items-center justify-center gap-2 px-4 h-11 rounded-xl text-error font-semibold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          {loading ? (
-                            <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
-                          ) : (
-                            t('modals.contactDetails.delete_contact')
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </form>
+                  isMobile={isMobile}
+                  onDelete={handleDelete}
+                  loading={loading}
+                />
               ) : (
                 wrapDesktopStory(<>
                 {(!isMobile || activeTab === "overview") && (
@@ -2616,341 +1414,63 @@ export default function ContactDetailsModal({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                     >
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.what_we_know')}</h3>
-                        </div>
-                        <div className="cd-prose">
-                          {contact.notes ? (
-                            <Translate showOriginalToggle text={contact.notes} />
-                          ) : (
-                            "No notes recorded for this contact yet."
-                          )}
-                        </div>
-                      </div>
+                      <WhatWeKnow notes={contact.notes} />
 
-                      <div className="cd-sec">
-                        <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">{t('modals.contactDetails.prayers_we_re_holding')}</h3>
-                        </div>
-                        {prayersLoading ? (
-                          <Skeleton className="h-20 w-full rounded-2xl" />
-                        ) : openPrayers.length === 0 ? (
-                          <div className="cd-empty">{t('modals.contactDetails.nothing_open')}</div>
-                        ) : (
-                          <div className="cd-pray">
-                            {openPrayers.map((p) => {
-                              const burden = p.burden || "";
-                              const title = burden.split("\n\n")[0] || burden;
-                              const context = burden.includes("\n\n") ? burden.split("\n\n").slice(1).join("\n\n") : null;
-                              return (
-                                <div key={p.id} className="cd-pray-card">
-                                  <div className="cd-pray-top">
-                                    <strong className="cd-pray-title">
-                                      <Translate showOriginalToggle text={title} />
-                                    </strong>
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-stage-violet-soft text-stage-violet">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-stage-violet" /> {t('modals.contactDetails.open')}
-                                    </span>
-                                  </div>
-                                  {context && (
-                                    <div className="cd-pray-body">
-                                      <Translate showOriginalToggle text={context} />
-                                    </div>
-                                  )}
-                                  <div className="cd-pray-foot">
-                                    {heldDays(p.date) != null &&
-                                      `Held ${heldDays(p.date)} ${heldDays(p.date) === 1 ? "day" : "days"}`}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                      <PrayersHeld loading={prayersLoading} prayers={openPrayers} />
 
                       {/* The five groups that used to be the 320px aside. They pair up
                           once the column can hold two — a container query, because the
                           rail's 232/76px collapse changes the available width without
                           the viewport moving (#780). */}
                       <div className="cd-overview-grid">
-                        <div className="cd-sec">
-                          <div className="cd-sec-head">
-                            <h3 className="cd-sec-title">{t('modals.contactDetails.how_to_reach').replace('{name}', firstName)}</h3>
-                          </div>
-                          <div className="cd-kv">
-                            {contact.phone && (
-                              <div className="cd-kv-row">
-                                <Phone className="w-3.5 h-3.5 cd-kv-ico" />
-                                <span className="cd-kv-val">{contact.phone}</span>
-                              </div>
-                            )}
-                            {contact.email && (
-                              <div className="cd-kv-row">
-                                <Mail className="w-3.5 h-3.5 cd-kv-ico" />
-                                <span className="cd-kv-val dim">{contact.email}</span>
-                              </div>
-                            )}
-                            {contact.instagram && (
-                              <div className="cd-kv-row">
-                                <Camera className="w-3.5 h-3.5 cd-kv-ico" />
-                                <span className="cd-kv-val dim">{contact.instagram}</span>
-                              </div>
-                            )}
-                            {contact.role && (
-                              <div className="cd-kv-row">
-                                <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
-                                <span className="cd-kv-val dim">{contact.role}</span>
-                              </div>
-                            )}
-                            {contact.spiritualBackground && (
-                              <div className="cd-kv-row">
-                                <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
-                                <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
-                              </div>
-                            )}
-                            {!contact.phone && !contact.email && !contact.instagram && !contact.role && !contact.spiritualBackground && (
-                              <div className="cd-empty">{t('modals.contactDetails.none_yet')}</div>
-                            )}
-                          </div>
-                        </div>
+                        <HowToReach contact={contact} firstName={firstName} />
 
                         {isMobile && journeySection}
 
-                        <div className="cd-sec">
-                          <div className="cd-sec-head">
-                            <h3 className="cd-sec-title">{t('modals.contactDetails.cared_for_by')}</h3>
-                          </div>
-                          {carerMembers.length > 0 ? (
-                            carerMembers.map((m) => (
-                              <div className="cd-owner" key={m.id}>
-                                <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
-                                  {m.initials || "?"}
-                                </div>
-                                <div>
-                                  <div className="cd-owner-name">{m.name}</div>
-                                  {m.role && <div className="cd-owner-role">{m.role}</div>}
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-xs text-on-surface-variant">
-                              {t('modals.contactDetails.no_one_cares', 'No one has taken them on yet')}
-                            </div>
-                          )}
+                        <CaredForBy
+                          carerMembers={carerMembers}
+                          addedByName={addedByName}
+                          sinceBy={sinceBy}
+                          fmtDate={fmtDate}
+                          isAdmin={isAdmin}
+                          isImpersonating={isImpersonating}
+                          reassigningCreator={reassigningCreator}
+                          onStartReassign={() => setReassigningCreator(true)}
+                          onCancelReassign={() => setReassigningCreator(false)}
+                          teamMembers={teamMembers}
+                          onReassignCreator={handleReassignCreator}
+                          contact={contact}
+                        />
 
-                          {(addedByName || sinceBy) && (
-                            <div className="cd-whowho">
-                              {addedByName && (
-                                <div className="cd-lastby flex-wrap">
-                                  <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
-                                    {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
-                                  </div>
-                                  <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
-                                  {isAdmin && !isImpersonating && (
-                                    reassigningCreator ? (
-                                      <div className="flex items-center gap-1.5 w-full mt-1.5 pl-8">
-                                        <select
-                                          className="cd-share-sel text-xs flex-1"
-                                          autoFocus
-                                          defaultValue=""
-                                          aria-label={t('modals.contactDetails.reassign_creator', 'Reassign creator')}
-                                          onChange={(e) => e.target.value && handleReassignCreator(e.target.value)}
-                                        >
-                                          <option value="" disabled>{t('modals.contactDetails.select_creator', 'Select new creator...')}</option>
-                                          {teamMembers.map((m) => (
-                                            <option key={m.id} value={m.id}>{m.name} · {m.role}</option>
-                                          ))}
-                                        </select>
-                                        <button
-                                          type="button"
-                                          onClick={() => setReassigningCreator(false)}
-                                          className="px-2 py-0.5 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
-                                        >
-                                          {t('common.cancel', 'Cancel')}
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => setReassigningCreator(true)}
-                                        aria-label={t('modals.contactDetails.change_creator', 'Change creator')}
-                                        title={t('modals.contactDetails.change_creator', 'Change creator')}
-                                        className="ml-1 text-on-surface-variant hover:text-primary transition-colors p-0.5 rounded inline-flex items-center"
-                                      >
-                                        <Edit3 className="w-3 h-3" />
-                                      </button>
-                                    )
-                                  )}
-                                </div>
-                              )}
-                              {sinceBy && (
-                                <div className="cd-lastby">
-                                  <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
-                                    {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
-                                  </div>
-                                  <span>{t('modals.contactDetails.last_contacted_by')} <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                        <WhoCanSee
+                          sharedWith={sharedWith}
+                          founders={founders}
+                          canRemove={(staffId) => canShare && canRemoveContactMember(role, currentUid, contact, staffId)}
+                          onRemoveShare={removeShare}
+                          shareOptions={shareOptions}
+                          canShare={canShare}
+                          sharing={sharing}
+                          onStartShare={() => setSharing(true)}
+                          onCancelShare={() => setSharing(false)}
+                          onAddShare={addShare}
+                          firstName={firstName}
+                        />
 
-                        <div className="cd-sec">
-                          <div className="cd-sec-head">
-                            <h3 className="cd-sec-title">{t('modals.contactDetails.who_else_can_see')}</h3>
-                          </div>
-                          <div className="cd-share">
-                            {sharedWith.length === 0 && (
-                              <span className="text-xs text-on-surface-variant">
-                                {t('modals.contactDetails.just_owner_for_now').replace('{name}', firstName)}
-                              </span>
-                            )}
-                            {sharedWith.map((s) => {
-                              const isFounder = founders.includes(s.id);
-                              const canRemove =
-                                canShare && canRemoveContactMember(role, currentUid, contact, s.id);
-                              return (
-                                <div key={s.id} className="cd-share-row">
-                                  <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
-                                  <span className="cd-share-name">{s.name}</span>
-                                  <span className="cd-share-role">{isFounder ? t('modals.contactDetails.founder') : s.role}</span>
-                                  {canRemove && (
-                                    <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {canShare && shareOptions.length > 0 && (
-                              sharing ? (
-                                <div className="flex items-center gap-2">
-                                  <select
-                                    className="cd-share-sel flex-1"
-                                    autoFocus
-                                    defaultValue=""
-                                    onChange={(e) => e.target.value && addShare(e.target.value)}
-                                  >
-                                    <option value="" disabled>{t('modals.contactDetails.add_someone')}</option>
-                                    {shareOptions.map((s) => (
-                                      <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                                    ))}
-                                  </select>
-                                  <button
-                                    onClick={() => setSharing(false)}
-                                    className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setSharing(true)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
-                                >
-                                  <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
-                                </button>
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="cd-sec">
-                          <div className="cd-sec-head">
-                            <h3 className="cd-sec-title">{t('modals.contactDetails.tags')}</h3>
-                          </div>
-                          <div className="cd-tags">
-                            {formData.tags.length === 0 && !addingTag && (
-                              <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.none_yet')}</span>
-                            )}
-                            {formData.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                style={tagStyle(tag)}
-                                className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
-                              >
-                                {tag}
-                                <button onClick={() => removeTag(tag)} className="cd-tag-x" title={t('modals.contactDetails.remove_tag')}>×</button>
-                              </span>
-                            ))}
-                            {addingTag ? (
-                              <div className="flex flex-col gap-2 w-full">
-                                <span className="cd-tag-input-wrap">
-                                  <input
-                                    className="cd-tag-input w-full"
-                                    autoFocus
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    placeholder={t('modals.contactDetails.new_tag_placeholder')}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") commitTag();
-                                      if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
-                                    }}
-                                    onBlur={() => {
-                                      if (tagInput.trim()) commitTag();
-                                      else setTimeout(() => setAddingTag(false), 200);
-                                    }}
-                                  />
-                                </span>
-                                {(() => {
-                                  const available = TAG_SUGGESTIONS.filter(
-                                    (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
-                                  );
-                                  if (available.length === 0) return null;
-                                  return (
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {available.slice(0, 4).map((s) => (
-                                        <button
-                                          key={s}
-                                          type="button"
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            persistTags([...formData.tags, s], "added", s);
-                                            setTagInput("");
-                                            setAddingTag(false);
-                                          }}
-                                          style={tagStyle(s)}
-                                          className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
-                                        >
-                                          + {s}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setAddingTag(true)}
-                                className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
-                              >
-                                <Plus className="w-3 h-3" /> {t('modals.contactDetails.add')}
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        <TagsSection
+                          tags={formData.tags}
+                          addingTag={addingTag}
+                          tagInput={tagInput}
+                          onTagInputChange={setTagInput}
+                          onStartAdd={() => setAddingTag(true)}
+                          onCancelAdd={() => setAddingTag(false)}
+                          onCommitTag={commitTag}
+                          onRemoveTag={removeTag}
+                          onAddTag={(tag) => persistTags([...formData.tags, tag], "added", tag)}
+                        />
                       </div>
 
                       {role !== 'viewer' && (
-                        <div className="cd-sec">
-                          <div className="rounded-2xl border border-error/30 p-5 bg-error/5">
-                            <h3 className="cd-sec-title text-error">{t('modals.contactDetails.delete_contact')}</h3>
-                            <p className="text-sm text-on-surface-variant mt-1">
-                              {t('modals.contactDetails.delete_contact_help')}
-                            </p>
-                            <button
-                              onClick={handleDelete}
-                              disabled={loading}
-                              className="mt-4 inline-flex items-center gap-2 px-4 h-10 rounded-full text-error font-semibold text-sm border border-error/30 hover:bg-error/10 transition-colors disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              {loading ? (
-                                <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
-                              ) : (
-                                t('modals.contactDetails.delete_contact')
-                              )}
-                            </button>
-                          </div>
-                        </div>
+                        <DeleteContact onDelete={handleDelete} loading={loading} />
                       )}
                     </motion.div>
                   )}
@@ -2962,7 +1482,7 @@ export default function ContactDetailsModal({
                     >
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">
-                          Every conversation
+                          {t('contactDetails.every_conversation', 'Every conversation')}
                         </h3>
                         <button
                           onClick={() =>
@@ -2999,11 +1519,11 @@ export default function ContactDetailsModal({
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
                             <p className="text-xs font-semibold text-on-surface-variant/40  ">
-                              No interactions logged yet.
+                              {t('modals.contactDetails.no_interactions')}
                             </p>
                           </div>
                         ) : (
-                          visibleInteractions.map((interaction) => renderInteraction(interaction))
+                          visibleInteractions.map((interaction) => renderInteractionItem(interaction))
                         )}
                       </div>
                     </motion.div>
@@ -3014,7 +1534,7 @@ export default function ContactDetailsModal({
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
                       </div>
-                      {renderStreamTab(conversation, (m) => setTodoFrom(m))}
+                      <ContactStreamTab adapter={conversation} viewer={streamViewer} onMakeTodo={(m) => setTodoFrom(m)} />
                     </div>
                   )}
 
@@ -3069,7 +1589,7 @@ export default function ContactDetailsModal({
                           {t('modals.contactDetails.discussion')}
                         </h3>
                       </div>
-                      {renderStreamTab(fullTimers)}
+                      <ContactStreamTab adapter={fullTimers} viewer={streamViewer} />
                     </div>
                   )}
 
@@ -3098,12 +1618,12 @@ export default function ContactDetailsModal({
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <Clock className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
                             <p className="text-[10px] font-semibold text-on-surface-variant/40  ">
-                              No audit history found for this contact.
+                              {t('modals.contactDetails.no_audit_history')}
                             </p>
                           </div>
                         ) : (
                           activities.map((activity, idx) => (
-                            <AuditActivityItem
+                            <ContactAuditItem
                               key={activity.id || idx}
                               activity={activity}
                               isLast={idx === activities.length - 1}
@@ -3161,67 +1681,23 @@ export default function ContactDetailsModal({
               </button>
             </div>
 
-            {drawerOpen && drawer === "thread" && (
-              <div className="cd-drawer cd-drawer-stream" role="dialog" aria-label={drawerLabel}>
-                <Stream
-                  adapter={conversation}
-                  viewer={{ uid: currentUid ?? "", role }}
-                  threadMode="replace"
-                  onClose={() => setDrawer(null)}
-                  onMakeTodo={(m) => setTodoFrom(m)}
-                  header={
-                    // The title alone: who reads it is said above the composer (C3).
-                    <div className="cd-drawer-head">
-                      <h3 className="cd-sec-title">{drawerLabel}</h3>
-                      {closeDrawerButton}
-                    </div>
-                  }
-                />
-              </div>
-            )}
-            {drawerOpen && drawer === "discussion" && (
-              <div className="cd-drawer cd-drawer-stream" role="dialog" aria-label={drawerLabel}>
-                <Stream
-                  adapter={fullTimers}
-                  viewer={streamViewer}
-                  threadMode="replace"
-                  onClose={() => setDrawer(null)}
-                  header={
-                    <div className="cd-drawer-head">
-                      <div>
-                        <h3 className="cd-sec-title inline-flex items-center gap-2">
-                          <Lock className="w-4 h-4" aria-hidden />
-                          {drawerLabel}
-                        </h3>
-                      </div>
-                      {closeDrawerButton}
-                    </div>
-                  }
-                />
-              </div>
-            )}
-            {drawerOpen && drawer === "interaction" && interactionThread && (
-              <div className="cd-drawer cd-drawer-stream" role="dialog" aria-label={t('stream.thread_title')}>
-                <Stream
-                  adapter={interactionThread}
-                  viewer={streamViewer}
-                  threadMode="replace"
-                  onClose={() => setDrawer(null)}
-                />
-              </div>
-            )}
-            {todoFrom && (
-              <FromEntryTodoComposer
-                text={todoFrom.body}
-                contactId={contact.id}
-                contactName={contact.name}
-                source={null}
-                team={teamMembers.map((m) => ({ uid: m.id, name: m.name }))}
-                meUid={currentUid ?? ""}
-                meName={user?.displayName || "Someone"}
-                onClose={() => setTodoFrom(null)}
-              />
-            )}
+            <ContactDrawerHost
+              drawerOpen={drawerOpen}
+              drawer={drawer}
+              conversation={conversation}
+              fullTimers={fullTimers}
+              interactionThread={interactionThread}
+              viewer={streamViewer}
+              drawerLabel={drawerLabel}
+              onCloseDrawer={() => setDrawer(null)}
+              onMakeTodo={(m) => setTodoFrom(m)}
+              todoFrom={todoFrom}
+              onCloseTodo={() => setTodoFrom(null)}
+              contact={contact}
+              teamMembers={teamMembers}
+              currentUid={currentUid}
+              meName={user?.displayName || "Someone"}
+            />
           </div>
         </div>
       )}
