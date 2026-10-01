@@ -2647,6 +2647,44 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th30'), { kind: 'nudge' }));
     });
 
+    it('lets the author rewrite the body and stamp editedAt in one update', async () => {
+      await seedThreadUsers();
+      await seedMsg('th31');
+      const author = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(
+        updateDoc(doc(author, 'contacts/contact1/threads/th31'), {
+          body: 'edited',
+          editedAt: new Date().toISOString(),
+        }),
+      );
+    });
+
+    it('refuses an edit that moves from or at, and an oversized editedAt', async () => {
+      await seedThreadUsers();
+      await seedMsg('th32');
+      const author = getFirestore({ uid: 'operator1' });
+      await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th32'), { from: 'operator2' }));
+      await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th32'), { at: new Date().toISOString() }));
+      await assertFails(
+        updateDoc(doc(author, 'contacts/contact1/threads/th32'), { body: 'x', editedAt: 'y'.repeat(41) }),
+      );
+      await assertFails(
+        updateDoc(doc(author, 'contacts/contact1/threads/th32'), { body: 'x', editedAt: 12345 }),
+      );
+    });
+
+    it('refuses a non-author rewrite that also stamps editedAt', async () => {
+      await seedThreadUsers();
+      await seedMsg('th33');
+      const other = getFirestore({ uid: 'operator2' });
+      await assertFails(
+        updateDoc(doc(other, 'contacts/contact1/threads/th33'), {
+          body: 'hijacked',
+          editedAt: new Date().toISOString(),
+        }),
+      );
+    });
+
     it('lets an approved user collection-group list threads (the inbox/cockpit read)', async () => {
       await seedThreadUsers();
       await seedMsg('th40');

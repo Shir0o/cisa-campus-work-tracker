@@ -1872,6 +1872,8 @@
     "edit": "Editar",
     "edited": "Editado",
     "edit_label": "Editar mensaje",
+    "edit_failed": "No se guardó. Inténtalo de nuevo en un momento.",
+    "post_failed": "No se publicó. Inténtalo de nuevo en un momento.",
     "where_full_timers": "Tiempo completo · {name}",
     "where_interaction": "Interacción · {name}",
     "audience_full_timers": "Solo el tiempo completo ve esto; los aprendices no.",

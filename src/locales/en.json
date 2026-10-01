@@ -1872,6 +1872,8 @@
     "edit": "Edit",
     "edited": "Edited",
     "edit_label": "Edit message",
+    "edit_failed": "That didn't save. Try again in a moment.",
+    "post_failed": "That didn't post. Try again in a moment.",
     "where_full_timers": "Full-timers · {name}",
     "where_interaction": "Interaction · {name}",
     "audience_full_timers": "Only Full-timers see this — Trainees can't.",

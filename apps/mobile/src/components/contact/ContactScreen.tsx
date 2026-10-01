@@ -120,6 +120,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const [tab, setTab] = useState<ContactV2Tab>(initialTab);
   const [stream, setStream] = useState<ContactStream>('open');
   const [held, setHeld] = useState<StreamRow<ThreadMessage> | null>(null);
+  // The message being rewritten, if any (author-only; ADR 0033).
+  const [editingMessage, setEditingMessage] = useState<ThreadMessage | null>(null);
   const [todoFrom, setTodoFrom] = useState<string | null>(null);
   const scroller = useRef<ScrollView>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -484,6 +486,14 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                   onLongPress={(row) => setHeld(row)}
                   onOpenThread={openRowThread}
                   onCloseAsk={(row) => void data.closeAsk(row.message)}
+                  editingId={editingMessage?.id ?? null}
+                  onSaveEdit={async (body) => {
+                    if (!editingMessage) return;
+                    await data.editThreadMessage(editingMessage, body);
+                    setEditingMessage(null);
+                  }}
+                  onCancelEdit={() => setEditingMessage(null)}
+                  editFailure={t('mobile.stream.edit_failed')}
                 />
               </View>
             )}
@@ -532,6 +542,13 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           setToast(t('mobile.stream.copied'));
         }}
         onDelete={canWrite ? (row) => void data.deleteThreadMessage(row.message) : undefined}
+        // Author-only, and only the open Conversation — Full-timers messages are
+        // posted and removed, never edited (firestore.rules).
+        onEdit={
+          canWrite && showing === 'open' && held?.message.from === uid && !held?.message.scope
+            ? (row) => setEditingMessage(row.message)
+            : undefined
+        }
       />
 
       <FtTodoSheet
