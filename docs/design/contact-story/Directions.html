@@ -1,0 +1,336 @@
+<title>Where Conversation Lives</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a stack of five full-width contact-page frames, one per direction, each with its verdict notes underneath. App tokens lifted from src/index.css. */
+:root{
+  --bg:#FFFFFF; --page:#F7F7F8; --surface:#F4F4F5; --panel:#EAEAEC;
+  --fg:#0A0A0B; --dim:#52525B; --mute:#A1A1AA; --line:#E4E4E7; --line-soft:#F0F0F2;
+  --primary:#131316; --on-primary:#FFFFFF;
+  --violet:#6D4AC2; --violet-soft:#EFEAFB;
+  --amber:#9A5B00; --amber-soft:#FCF1DE;
+  --teal:#0B6B5D; --teal-soft:#E3F3EF;
+  --flag:#C81E4A; --flag-soft:#FCE8EE;
+  --display:"Lexend",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E0E10; --page:#09090A; --surface:#17171A; --panel:#222226;
+  --fg:#F4F4F5; --dim:#B4B4BC; --mute:#71717A; --line:#2A2A2F; --line-soft:#1E1E22;
+  --primary:#F4F4F5; --on-primary:#0A0A0B;
+  --violet:#B7A2F0; --violet-soft:#241C38; --amber:#F2B45C; --amber-soft:#2E2210;
+  --teal:#6FD1BF; --teal-soft:#0F2A25; --flag:#FF7A9A; --flag-soft:#351520; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E0E10; --page:#09090A; --surface:#17171A; --panel:#222226;
+  --fg:#F4F4F5; --dim:#B4B4BC; --mute:#71717A; --line:#2A2A2F; --line-soft:#1E1E22;
+  --primary:#F4F4F5; --on-primary:#0A0A0B;
+  --violet:#B7A2F0; --violet-soft:#241C38; --amber:#F2B45C; --amber-soft:#2E2210;
+  --teal:#6FD1BF; --teal-soft:#0F2A25; --flag:#FF7A9A; --flag-soft:#351520; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45;padding:32px 20px 64px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+h1{font-size:30px;font-weight:600;letter-spacing:-.01em}
+.lede{max-width:68ch;color:var(--dim);font-size:15px;display:flex;flex-direction:column;gap:10px}
+.lede p{margin:0}
+.axis{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.axis a{font-family:var(--display);font-size:13px;font-weight:500;text-decoration:none;color:var(--fg);border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px}
+.axis a:hover,.axis a:focus-visible{border-color:var(--fg);outline:none}
+.axis a b{color:var(--mute);font-weight:600;margin-right:6px}
+section.dir{display:flex;flex-direction:column;gap:16px}
+.dir-head{display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.dir-head .tag{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.dir-head h2{font-size:22px;font-weight:600}
+.dir-head p{margin:0;color:var(--dim)}
+.picked{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--teal);background:var(--teal-soft);border-radius:6px;padding:2px 7px;margin-left:8px;vertical-align:3px}
+.scroll{overflow-x:auto;border-radius:20px}
+.frame{width:1080px;height:600px;background:var(--bg);border:1px solid var(--line);border-radius:20px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.note{background:var(--bg);border:1px solid var(--line-soft);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.note h3{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mute)}
+.note p{margin:0;font-size:13.5px}
+.note.good h3{color:var(--teal)} .note.bad h3{color:var(--flag)}
+@media (max-width:760px){.notes{grid-template-columns:minmax(0,1fr)}}
+
+/* ---------- contact page mock ---------- */
+.head{display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line-soft);flex:none}
+.av{width:36px;height:36px;border-radius:999px;background:var(--panel);color:var(--dim);font-family:var(--display);font-weight:600;font-size:12.5px;display:grid;place-items:center;flex:none}
+.av.lg{width:44px;height:44px;font-size:15px;background:var(--primary);color:var(--on-primary)}
+.av.sm{width:24px;height:24px;font-size:10px;border:2px solid var(--bg)}
+.who{display:flex;flex-direction:column;gap:3px;min-width:0}
+.name{font-family:var(--display);font-size:19px;font-weight:600;display:flex;align-items:center;gap:8px}
+.kind{font-family:var(--body);font-size:11px;font-weight:600;color:var(--dim);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+.meta{font-size:12.5px;color:var(--mute);display:flex;gap:6px;align-items:center}
+.meta u{text-decoration:none;color:var(--dim);border-bottom:1px dashed var(--line)}
+.spacer{flex:1}
+.carers{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)}
+.stack{display:flex}.stack .av.sm+.av.sm{margin-left:-7px}
+.btn{font-family:var(--display);font-size:13px;font-weight:600;border-radius:999px;height:34px;padding:0 14px;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.btn.pri{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.icon{width:34px;padding:0;justify-content:center}
+.body{flex:1;display:flex;min-height:0}
+.col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.col-title{display:flex;align-items:center;gap:8px;padding:12px 22px 4px;font-family:var(--display);font-size:13px;font-weight:600;color:var(--dim)}
+.list{flex:1;overflow:hidden;padding:4px 10px 10px;display:flex;flex-direction:column;position:relative}
+.list.bottom{justify-content:flex-end}
+.list.fadetop::before,.list.fadebot::after{content:"";position:absolute;left:0;right:0;height:48px;pointer-events:none;z-index:2}
+.list.fadetop::before{top:0;background:linear-gradient(var(--bg),transparent)}
+.list.fadebot::after{bottom:0;background:linear-gradient(transparent,var(--bg))}
+.pane{width:340px;flex:none;border-left:1px solid var(--line-soft);display:flex;flex-direction:column;background:var(--bg)}
+.pane-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line-soft);font-family:var(--display);font-size:13.5px;font-weight:600}
+.pane-head small{font-family:var(--body);font-weight:500;font-size:11.5px;color:var(--mute)}
+.seg{display:inline-flex;background:var(--surface);border-radius:999px;padding:3px;gap:2px}
+.seg span{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;color:var(--dim)}
+.seg span.on{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* rows */
+.row{display:flex;gap:10px;padding:7px 12px;border-radius:10px}
+.row .main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.line1{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.line1 b{font-family:var(--display);font-weight:600;font-size:13.5px}
+.line1 time{font-size:11.5px;color:var(--mute)}
+.txt{font-size:13.5px}
+.t{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:5px;padding:1px 6px}
+.t.q{color:var(--amber);background:var(--amber-soft)}
+.t.ask{color:var(--amber);background:var(--amber-soft)}
+.t.del{color:var(--teal);background:var(--teal-soft)}
+.t.int{color:var(--dim);background:var(--surface)}
+.t.pr{color:var(--violet);background:var(--violet-soft)}
+.state{font-size:12px;color:var(--mute);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.state .act{font-weight:600;color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.state .rep{font-weight:600;color:var(--dim)}
+.ico{width:36px;flex:none;display:grid;place-items:center;color:var(--mute)}
+.ico i{width:28px;height:28px;border-radius:9px;background:var(--surface);display:grid;place-items:center;font-style:normal;font-size:13px}
+.ico i.pr{background:var(--violet-soft);color:var(--violet)}
+.chg{display:flex;align-items:center;gap:8px;padding:3px 12px 3px 22px;font-size:12.5px;color:var(--mute)}
+.chg::before{content:"";width:6px;height:6px;border-radius:999px;background:var(--line);flex:none;margin-right:12px}
+.chg b{color:var(--dim);font-weight:600}
+.chg .more{margin-left:4px;color:var(--dim);font-weight:600}
+.ptr{margin:4px 12px;padding:8px 12px;border:1px dashed var(--line);border-radius:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim)}
+.ptr b{color:var(--fg)}
+.ptr .go{margin-left:auto;font-weight:600;color:var(--fg)}
+.day{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);padding:8px 12px 2px}
+.day::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+.flag{position:relative;box-shadow:inset 0 0 0 1.5px var(--flag);background:var(--flag-soft)}
+.pin{margin:6px 12px 8px;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:6px 0}
+.pin-h{display:flex;align-items:center;gap:8px;padding:4px 14px 2px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--amber)}
+.comp{margin:8px 16px 12px;border:1px solid var(--line);border-radius:14px;background:var(--bg);display:flex;flex-direction:column;gap:6px;padding:10px 12px;flex:none}
+.comp .ph{color:var(--mute);font-size:13.5px}
+.comp .kinds{display:flex;gap:6px;align-items:center}
+.comp .kinds span{font-size:11.5px;font-weight:600;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.comp .kinds span.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.comp .kinds em{margin-left:auto;font-style:normal;font-size:11.5px;color:var(--mute)}
+.callout{position:absolute;z-index:5;background:var(--flag);color:#fff;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:7px;box-shadow:0 2px 8px rgba(200,30,74,.3);max-width:230px;line-height:1.35}
+.callout.ok{background:var(--teal);box-shadow:0 2px 8px rgba(11,107,93,.3)}
+.lock{font-size:11px}
+.not-drawn{position:absolute;right:14px;bottom:10px;font-size:11px;color:var(--mute);z-index:3}
+@media (prefers-reduced-motion:no-preference){.axis a{transition:border-color .15s}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:14px">
+    <h1>Where does a person's Conversation live?</h1>
+    <div class="lede">
+      <p>Five ways to lay out the contact page, drawn with the same sample person and the same eleven things that happened to him. The only thing that changes between frames is where the Conversation sits and which way the list reads.</p>
+      <p>What to look for in each: when Anna asks a question, where does the answer appear, and would a teammate who opens the page on Monday notice that Sunday's question is still unanswered?</p>
+      <p>Content column at a 1440 screen, Full-timer's view. Profile details, prayers we're holding, and who can see are unchanged and not drawn. Sample data only.</p>
+    </div>
+    <nav class="axis" aria-label="Directions">
+      <a href="#A"><b>A</b>Folded, newest first</a>
+      <a href="#B"><b>B</b>Folded, oldest first</a>
+      <a href="#C"><b>C</b>Folded + waiting on a reply</a>
+      <a href="#D"><b>D</b>Story beside Conversation</a>
+      <a href="#E"><b>E</b>Story with pointers</a>
+    </nav>
+  </header>
+  <div id="boards" style="display:contents"></div>
+</div>
+
+<script>
+const P = { AN:"Anna", JA:"Jae", PR:"Priya" };
+const head = `
+<div class="head">
+  <div class="av lg">MR</div>
+  <div class="who">
+    <div class="name">Mateo Ruiz <span class="kind">Contact</span></div>
+    <div class="meta">Step: <u>Follow up ▾</u> · added by Jae · Sep 12</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="carers">Cared for by <span class="stack"><span class="av sm">JA</span><span class="av sm">PR</span></span></div>
+  <button class="btn pri" type="button">Delegate</button>
+  <button class="btn icon" type="button" aria-label="More">⋯</button>
+</div>`;
+
+const msg = (who, time, text, o={}) => `
+<div class="row${o.flag?' flag':''}">
+  <div class="av">${who}</div>
+  <div class="main">
+    <div class="line1"><b>${P[who]}</b>${o.tag||''}<time>${time}</time></div>
+    <div class="txt">${text}</div>
+    ${o.state?`<div class="state">${o.state}</div>`:''}
+  </div>
+</div>`;
+const item = (kind, who, time, text, o={}) => `
+<div class="row">
+  <div class="ico"><i class="${kind==='pr'?'pr':''}">${kind==='pr'?'♡':'✎'}</i></div>
+  <div class="main">
+    <div class="line1"><span class="t ${kind}">${kind==='pr'?'Prayer':o.label}</span><b>${P[who]}</b><time>${time}</time></div>
+    <div class="txt">${text}</div>
+    ${o.state?`<div class="state">${o.state}</div>`:''}
+  </div>
+</div>`;
+const chg = (html) => `<div class="chg">${html}</div>`;
+const day = (d) => `<div class="day">${d}</div>`;
+const ptr = (html) => `<div class="ptr">💬 ${html}<span class="go">Open ›</span></div>`;
+
+const TAG = { q:'<span class="t q">Question</span>', ask:'<span class="t ask">Follow-up ask</span>', del:'<span class="t del">Delegate</span>' };
+
+// The eleven things, oldest first.
+const E = {
+  meet: item('int','JA','Sep 12','Met at the club fair. Civil engineering, first year, from Monterrey. Plays five-a-side on Thursdays.',{label:'Meeting'}),
+  added: chg('<b>Jae</b> added Mateo · kind <b>Contact</b>'),
+  step1: chg('<b>Jae</b> moved step Met → <b>Follow up</b>'),
+  pray: item('pr','JA','Sep 18',"For his mom's surgery on the 24th.",{state:'Open · held 11 days'}),
+  q1: (o={}) => msg('AN','Sep 20','Is he coming to the Friday dinner? @Jae',{tag:TAG.q,...o}),
+  a1: (o={}) => msg('JA','Sep 21','Said maybe. He has a lab until 7.',o),
+  chgs: chg('<b>Anna</b> shared with Priya · added tag <b>Grad</b> <span class="more">2 changes ▾</span>'),
+  del: msg('AN','Sep 24',"@Priya you're in his lab section. Could you walk over with him Friday?",{tag:TAG.del}),
+  walk: item('int','PR','Sep 26','Walked over together after lab. Stayed until 10, talked with Jae about his mom.',{label:'Chat'}),
+  ask: (o={}) => msg('JA','Sep 27','Someone should ask whether the surgery went ok.',{tag:TAG.ask,state:'<span>Open · 2 days</span><span class="act">I followed up</span><span class="act">Never mind</span>',...o}),
+  q2: (o={}) => msg('AN','Sep 28','Great to hear. Can someone bring him Sunday?',{tag:TAG.q,state:'<span>No reply yet</span>',...o}),
+};
+
+const composer = (kinds, ph, hint) => `
+<div class="comp"><div class="ph">${ph}</div>
+<div class="kinds">${kinds.map((k,i)=>`<span class="${i===0?'on':''}">${k}</span>`).join('')}${hint?`<em>${hint}</em>`:''}</div></div>`;
+const ALL = ['Message','Interaction','Prayer','Follow-up ask'];
+
+const ftPane = `
+<aside class="pane">
+  <div class="pane-head">Full-timers <small class="lock">· Trainees can't see this</small></div>
+  <div class="list bottom">
+    ${day('Sep 22')}
+    ${msg('AN','Sep 22',"His visa renewal is in December. Careful bringing up plans past then.")}
+    ${msg('JA','Sep 22',"Noted. I'll leave it to him.")}
+  </div>
+  ${composer(['Message'],'Write to Full-timers…')}
+</aside>`;
+
+const boards = [
+{
+  id:'A', title:'Folded, newest first', picked:true,
+  blurb:'Everything in one list with the newest entry on top and one composer above it. This is what rounds 11b and 15b chose.',
+  frame: `${head}<div class="body"><div class="col">
+    ${composer(ALL,'Write a message about Mateo…','Message by default')}
+    <div class="list fadebot">
+      ${E.q2()}${E.ask()}${E.walk}${E.del}${E.chgs}
+      ${E.a1({flag:true})}${E.q1({flag:true})}
+      ${E.pray}${E.step1}
+    </div></div>${ftPane}</div>
+    <div class="callout" style="left:430px;top:462px">Jae's answer sits above Anna's question</div>`,
+  notes:[
+    ['good','What works','One place to read and one composer. Interactions, prayers and changes read naturally newest first.'],
+    ['bad','Replying','A back-and-forth reads bottom-up. Answering Anna means scrolling down to her question, then replying above it.'],
+    ['bad','Unanswered things','Sunday\'s question is on top today. Three new entries tomorrow push it below the fold, and nothing marks it as still waiting.'],
+  ]
+},
+{
+  id:'B', title:'Folded, oldest first',
+  blurb:'Same single list, read like a chat: oldest at the top, the page opens scrolled to the newest entry, composer pinned at the foot. This is ADR 0033\'s stream grammar applied to the whole story.',
+  frame: `${head}<div class="body"><div class="col">
+    <div class="list bottom fadetop">
+      ${E.pray}${E.q1({flag:true})}${E.a1({flag:true})}${E.chgs}${E.del}${E.walk}${E.ask()}${E.q2()}
+    </div>
+    ${composer(ALL,'Write a message about Mateo…','Message by default')}
+    </div>${ftPane}</div>
+    <div class="callout ok" style="left:430px;top:140px">Question, then its answer</div>`,
+  notes:[
+    ['good','Replying','Conversations read top-down and the composer sits under the newest entry, as in Messages. Same row grammar as every other stream.'],
+    ['bad','History','Reading back to how you met means scrolling up through everything. The story no longer opens on a summary.'],
+    ['bad','Unanswered things','Same as A: a waiting question scrolls away as soon as newer entries arrive.'],
+  ]
+},
+{
+  id:'C', title:'Folded, with "Waiting on a reply" pinned',
+  blurb:'A, plus a strip above the composer that holds every open Follow-up ask and every unanswered question until someone acts. Replies open in the Thread pane, so a message and its answers read top-down there, and the story shows "2 replies" instead of splitting them.',
+  frame: `${head}<div class="body"><div class="col">
+    <div class="pin"><div class="pin-h">Waiting on a reply · 2</div>
+      ${E.ask({state:'<span>Open · 2 days</span><span class="act">I followed up</span><span class="act">Never mind</span>'})}
+      ${E.q2({state:'<span>No reply yet</span><span class="act">Reply</span>'})}
+    </div>
+    ${composer(ALL,'Write a message about Mateo…','Message by default')}
+    <div class="list fadebot">
+      ${E.walk}${E.del}${E.chgs}
+      ${E.q1({state:'<span class="rep">1 reply ›</span>'})}
+      ${E.pray}${E.step1}
+    </div></div>${ftPane}</div>
+    <div class="callout ok" style="left:430px;top:118px">Stays here until someone answers or closes it</div>
+    <div class="callout ok" style="left:430px;top:505px">Jae's answer lives in the thread</div>`,
+  notes:[
+    ['good','Replying','You answer from the strip or the Thread pane. Question and answer never read upside down, because answers are replies, not new story entries.'],
+    ['good','Unanswered things','Nothing waiting can sink. A teammate opening the page on Monday sees Sunday\'s question first.'],
+    ['bad','Cost','A new rule to learn: a top-level message that someone answers with another top-level message still splits. The strip also needs an "unanswered" test for plain questions.'],
+  ]
+},
+{
+  id:'D', title:'Story beside Conversation',
+  blurb:'No fold. The story keeps interactions, prayers and changes, newest first. Conversation is a stream in the side pane, oldest first with its composer at the foot, and shares the pane with Full-timers through a switch. This is what I recommended in round 3.',
+  frame: `${head}<div class="body"><div class="col">
+    ${composer(['Interaction','Prayer'],'Log what happened with Mateo…')}
+    <div class="list fadebot">
+      ${E.walk}
+      ${chg('<b>Anna</b> delegated Mateo to <b>Priya</b>')}
+      ${E.chgs}${E.pray}${E.step1}${E.added}${E.meet}
+    </div></div>
+    <aside class="pane">
+      <div class="pane-head"><span class="seg"><span class="on">Conversation</span><span>Full-timers</span></span></div>
+      <div class="list bottom fadetop">
+        ${E.q1()}${E.a1()}${E.del}${E.ask()}${E.q2()}
+      </div>
+      ${composer(['Message','Follow-up ask'],'Write to everyone tied to Mateo…')}
+    </aside></div>`,
+  notes:[
+    ['good','Replying','Conversation reads like Messages, with its own composer. What you did with him and what you said about him never mix.'],
+    ['bad','History','Two lists to read for the whole story. Anna\'s Sep 20 question isn\'t next to the Sep 26 walk it led to.'],
+    ['bad','Full-timers','Full-timers is one switch away rather than always visible, so it gives up round 18a.'],
+  ]
+},
+{
+  id:'E', title:'Story with pointers into Conversation',
+  blurb:'The story stays newest first and holds everything except the message text. Each stretch of Conversation shows as one line at the point in time it happened. Opening it shows that stretch in the pane, oldest first. Open asks and unanswered questions stay on their pointer.',
+  frame: `${head}<div class="body"><div class="col">
+    ${composer(ALL,'Write a message about Mateo…','Message by default')}
+    <div class="list fadebot">
+      ${ptr('<b>Anna</b> asked who can bring him Sunday · <b>no reply yet</b>')}
+      ${ptr('<b>Jae</b> raised a follow-up ask · open 2 days')}
+      ${E.walk}
+      ${ptr('<b>Anna</b> delegated to <b>Priya</b> · 1 message')}
+      ${E.chgs}
+      ${ptr('<b>Anna</b> and <b>Jae</b> talked about the Friday dinner · 2 messages')}
+      ${E.pray}${E.step1}
+    </div></div>
+    <aside class="pane">
+      <div class="pane-head"><span class="seg"><span class="on">Conversation</span><span>Full-timers</span></span><small style="margin-left:auto">Sep 20 – 21</small></div>
+      <div class="list">
+        ${day('Sep 20')}${E.q1()}${day('Sep 21')}${E.a1()}
+      </div>
+      ${composer(['Message'],'Reply to Anna…')}
+    </aside></div>`,
+  notes:[
+    ['good','History','One list in time order, and it stays scannable: a chat of twenty messages is one line.'],
+    ['good','Replying','Conversation always reads top-down in the pane. Waiting items show their state on the pointer.'],
+    ['bad','Cost','Grouping messages into "stretches" is a rule someone has to define (a gap in time? a topic?). You read a message in the pane, not in the story.'],
+  ]
+},
+];
+
+document.getElementById('boards').innerHTML = boards.map(b => `
+<section class="dir" id="${b.id}" aria-labelledby="h-${b.id}">
+  <div class="dir-head">
+    <span class="tag">Direction ${b.id}</span>
+    <h2 id="h-${b.id}">${b.title}${b.picked?'<span class="picked">Current pick</span>':''}</h2>
+    <p>${b.blurb}</p>
+  </div>
+  <div class="scroll"><div class="frame">${b.frame}</div></div>
+  <div class="notes">${b.notes.map(([k,h,p])=>`<div class="note ${k}"><h3>${h}</h3><p>${p}</p></div>`).join('')}</div>
+</section>`).join('');
+</script>

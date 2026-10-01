@@ -1,0 +1,185 @@
+<title>Story Composer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: four directions stacked; each shows the composer at rest and while writing, inside the real 640px story column. App tokens from src/index.css. */
+:root{
+  --bg:#FFFFFF; --page:#F7F7F8; --surface:#F4F4F5; --panel:#EAEAEC;
+  --fg:#0A0A0B; --dim:#52525B; --mute:#A1A1AA; --line:#E4E4E7; --line-soft:#F0F0F2;
+  --primary:#131316; --on-primary:#FFFFFF; --focus:#131316;
+  --violet:#6D4AC2; --violet-soft:#EFEAFB; --teal:#0B6B5D; --teal-soft:#E3F3EF;
+  --flag:#C81E4A;
+  --display:"Lexend",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141416; --page:#0B0B0C; --surface:#1C1C1F; --panel:#26262A;
+  --fg:#F4F4F5; --dim:#B4B4BC; --mute:#71717A; --line:#2E2E33; --line-soft:#212125;
+  --primary:#F4F4F5; --on-primary:#0A0A0B; --focus:#F4F4F5;
+  --violet:#B7A2F0; --violet-soft:#261D3B; --teal:#6FD1BF; --teal-soft:#0F2A25; --flag:#FF7A9A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141416; --page:#0B0B0C; --surface:#1C1C1F; --panel:#26262A;
+  --fg:#F4F4F5; --dim:#B4B4BC; --mute:#71717A; --line:#2E2E33; --line-soft:#212125;
+  --primary:#F4F4F5; --on-primary:#0A0A0B; --focus:#F4F4F5;
+  --violet:#B7A2F0; --violet-soft:#261D3B; --teal:#6FD1BF; --teal-soft:#0F2A25; --flag:#FF7A9A; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45;padding:32px 20px 64px}
+.wrap{max-width:1360px;margin:0 auto;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:28px;font-weight:600}
+.lede{max-width:70ch;color:var(--dim);display:flex;flex-direction:column;gap:8px}
+.lede p{margin:0}
+.dir{display:flex;flex-direction:column;gap:14px}
+.dir-head{display:flex;flex-direction:column;gap:5px;max-width:74ch}
+.dir-head .tag{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.dir-head h2{font-size:21px;font-weight:600}
+.dir-head p{margin:0;color:var(--dim)}
+.picked{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--teal);background:var(--teal-soft);border-radius:6px;padding:2px 7px;margin-left:8px;vertical-align:3px}
+.states{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:1000px){.states{grid-template-columns:minmax(0,1fr)}}
+.state{display:flex;flex-direction:column;gap:6px;min-width:0}
+.state-label{font-size:12px;font-weight:600;color:var(--mute)}
+.scroll{overflow-x:auto}
+.col{width:640px;background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:18px 18px 8px;display:flex;flex-direction:column;gap:12px}
+.col h3{font-size:18px;font-weight:600}
+.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:1000px}
+.note{background:var(--bg);border:1px solid var(--line-soft);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.note h4{margin:0;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.note.good h4{color:var(--teal)} .note.bad h4{color:var(--flag)}
+.note p{margin:0;font-size:13.5px}
+@media (max-width:700px){.notes{grid-template-columns:minmax(0,1fr)}}
+
+/* story rows (context under the composer) */
+.row{display:flex;gap:10px;padding:6px 2px}
+.ico{width:30px;height:30px;border-radius:9px;background:var(--surface);display:grid;place-items:center;color:var(--mute);flex:none;font-size:13px}
+.ico.pr{background:var(--violet-soft);color:var(--violet)}
+.main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.l1{display:flex;gap:7px;align-items:baseline}
+.l1 b{font-family:var(--display);font-size:13.5px;font-weight:600}
+.l1 time{font-size:11.5px;color:var(--mute)}
+.t{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:5px;padding:1px 6px;color:var(--dim);background:var(--surface)}
+.t.pr{color:var(--violet);background:var(--violet-soft)}
+.txt{font-size:13.5px}
+.chg{font-size:12.5px;color:var(--mute);padding:2px 2px 2px 40px}
+.chg b{color:var(--dim)}
+
+/* shared controls */
+.chip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--dim);background:var(--bg);white-space:nowrap}
+.chip.on{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.chip.ghost{border-color:transparent;background:var(--surface)}
+.btn{font-family:var(--display);font-size:13px;font-weight:600;height:32px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--fg);display:inline-flex;align-items:center}
+.btn.pri{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.link{border-color:transparent;color:var(--dim);padding:0 8px}
+.sw{display:inline-flex;background:var(--surface);border-radius:999px;padding:3px;gap:2px}
+.sw span{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;color:var(--dim)}
+.sw span.on{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.sw span.on.pr{color:var(--violet)}
+.box{border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.box.focus{border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 12%,transparent)}
+.ph{color:var(--mute)}
+.typed{color:var(--fg)}
+.caret{display:inline-block;width:1.5px;height:16px;background:var(--fg);vertical-align:-3px;margin-left:1px}
+.bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sp{flex:1}
+.hint{font-size:11.5px;color:var(--mute)}
+.pop{position:relative}
+.menu{position:absolute;top:34px;left:0;z-index:3;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;width:220px;display:flex;flex-direction:column;gap:2px}
+.menu span{font-size:13px;padding:6px 10px;border-radius:8px}
+.menu span.on{background:var(--surface);font-weight:600}
+.menu .sep{height:1px;background:var(--line-soft);margin:4px 0;padding:0}
+.word{font-family:var(--display);font-weight:600;color:var(--fg);border-bottom:1.5px dashed var(--mute);padding-bottom:1px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--dim)}
+.inp{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 12px;display:flex;align-items:center;font-size:13.5px;background:var(--bg)}
+.sheet-scrim{position:relative;border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--fg) 30%,var(--bg));padding:60px 0 0}
+.sheet{background:var(--bg);border-radius:18px 18px 0 0;padding:14px 18px 16px;display:flex;flex-direction:column;gap:12px}
+.grab{width:36px;height:4px;border-radius:9px;background:var(--line);align-self:center}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:12px">
+    <h1>The story's composer</h1>
+    <div class="lede">
+      <p>Four ways to log what happened with someone, drawn in the 640px story column of the new contact page. Each shows the composer at rest and while writing. The same interaction is being logged every time: Jae messaged Mateo yesterday evening.</p>
+      <p>Every version has the same parts: Interaction or Prayer; for an interaction a type, a when that can be back-dated, and what happened. Sample data only.</p>
+    </div>
+  </header>
+  <div id="boards" style="display:contents"></div>
+</div>
+
+<script>
+const rows = `
+<div class="row"><div class="ico">✎</div><div class="main"><div class="l1"><span class="t">Chat</span><b>Priya</b><time>Sep 26</time></div><div class="txt">Walked over together after lab. Stayed until 10.</div></div></div>
+<div class="chg"><b>Anna</b> delegated Mateo to <b>Priya</b></div>
+<div class="row"><div class="ico pr">♡</div><div class="main"><div class="l1"><span class="t pr">Prayer</span><b>Jae</b><time>Sep 18</time></div><div class="txt">For his mom's surgery on the 24th.</div></div></div>`;
+const col = (inner) => `<div class="scroll"><div class="col"><h3>The story so far</h3>${inner}${rows}</div></div>`;
+const TYPES = (on) => ['Chat','Call','Meeting','Email','Other'].map(t=>`<span class="chip ${t===on?'on':''}">${t}</span>`).join('');
+const text = `<span class="typed">Texted him about Friday dinner. Said he'd come if his lab ends early.</span><span class="caret"></span>`;
+
+const boards = [
+{ id:'a', title:'Text first, details as chips', picked:true,
+  blurb:'One field that grows as you type. The details live in a quiet row under it: the kind switch, the type, and when. Nothing but the field shows at rest.',
+  rest: col(`<div class="box" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+      <span class="ph" style="flex:1">What happened with Mateo?</span>
+      <span class="sw"><span class="on">Interaction</span><span>Prayer</span></span></div>`),
+  open: col(`<div class="box focus" style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
+      <div style="min-height:44px">${text}</div>
+      <div class="bar">${TYPES('Chat')}
+        <span class="pop"><span class="chip ghost">Yesterday, 8:15 pm ▾</span></span>
+      </div>
+      <div class="bar"><span class="sw"><span class="on">Interaction</span><span>Prayer</span></span><span class="sp"></span><span class="hint">⌘↵</span><button class="btn link" type="button">Cancel</button><button class="btn pri" type="button">Log</button></div>
+    </div>`),
+  notes:[['good','Works','Reads like the stream composer (#1257): one box, chips inside it. What happened comes first; the defaults (Chat, Now) are right most of the time.'],
+         ['bad','Watch','Five type chips plus a time chip is a busy row on a phone; it wraps to two lines at 375px.']] },
+{ id:'b', title:'A sentence',
+  blurb:'Type and time become words in a sentence you tap to change. The field for what happened sits under it.',
+  rest: col(`<div class="box" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+      <span class="ph" style="flex:1">What happened with Mateo?</span>
+      <span class="sw"><span class="on">Interaction</span><span>Prayer</span></span></div>`),
+  open: col(`<div class="box focus" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:15px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap" class="pop">
+        <span class="word">Messaged</span> Mateo <span class="word">yesterday at 8:15 pm</span>
+        <div class="menu" style="top:28px"><span class="on">Messaged</span><span>Called</span><span>Met</span><span>Emailed</span><span>Something else with</span></div>
+      </div>
+      <div style="min-height:44px">${text}</div>
+      <div class="bar"><span class="sw"><span class="on">Interaction</span><span>Prayer</span></span><span class="sp"></span><button class="btn link" type="button">Cancel</button><button class="btn pri" type="button">Log</button></div>
+    </div>`),
+  notes:[['good','Works','Reads as what happened, not a form. Short on a phone: two tappable words instead of six chips.'],
+         ['bad','Watch','The choices are hidden until you tap a word. Translating the sentence to Spanish needs a template per type.']] },
+{ id:'c', title:'A sheet',
+  blurb:'At rest the story shows one button. Logging opens a sheet (a modal on desktop), the way the prayer composer works today.',
+  rest: col(`<div class="bar"><button class="btn pri" type="button">Log what happened</button><button class="btn" type="button">♡ Prayer</button></div>`),
+  open: `<div class="scroll"><div style="width:640px" class="sheet-scrim"><div class="sheet">
+      <div class="grab"></div>
+      <div class="bar"><h3 style="font-size:17px">Log what happened with Mateo</h3><span class="sp"></span><button class="btn link" type="button">Cancel</button></div>
+      <div class="bar">${TYPES('Chat')}<span class="chip ghost">Yesterday, 8:15 pm ▾</span></div>
+      <div class="box focus" style="padding:12px 14px;min-height:96px">${text}</div>
+      <div class="bar"><span class="sp"></span><button class="btn pri" type="button">Log</button></div>
+    </div></div></div>`,
+  notes:[['good','Works','The most room to write. Matches the prayer composer people already use.'],
+         ['bad','Watch','Covers the story you are adding to. One more tap before you can type, every time.']] },
+{ id:'d', title:'Keep the form, restyle it',
+  blurb:'Today\'s three fields (date, type, content), rebuilt from the app\'s own inputs and chips instead of native pickers, with Cancel inside the card.',
+  rest: col(`<div class="box" style="padding:11px 14px;display:flex;align-items:center;gap:10px">
+      <span class="ph" style="flex:1">Write what happened next…</span><span class="chip">♡</span></div>`),
+  open: col(`<div class="box focus" style="padding:14px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field"><label>When</label><div class="inp">Yesterday, 8:15 pm</div></div>
+        <div class="field"><label>Type</label><div class="bar">${TYPES('Chat')}</div></div>
+      </div>
+      <div class="field"><label>What happened</label><div class="inp" style="height:auto;min-height:72px;align-items:flex-start;padding:10px 12px">${text}</div></div>
+      <div class="bar"><span class="sp"></span><button class="btn link" type="button">Cancel</button><button class="btn pri" type="button">Log interaction</button></div>
+    </div>`),
+  notes:[['good','Works','Smallest change from today. Every field is labelled, so nothing is hidden.'],
+         ['bad','Watch','Date and type still come before what happened. It stays a form sitting inside the story.']] },
+];
+document.getElementById('boards').innerHTML = boards.map(b=>`
+<section class="dir" aria-labelledby="h-${b.id}">
+  <div class="dir-head"><span class="tag">Direction ${b.id}</span>
+    <h2 id="h-${b.id}">${b.title}${b.picked?'<span class="picked">Your pick</span>':''}</h2><p>${b.blurb}</p></div>
+  <div class="states">
+    <div class="state"><span class="state-label">At rest</span>${b.rest}</div>
+    <div class="state"><span class="state-label">Writing</span>${b.open}</div>
+  </div>
+  <div class="notes">${b.notes.map(([k,h,p])=>`<div class="note ${k}"><h4>${h}</h4><p>${p}</p></div>`).join('')}</div>
+</section>`).join('');
+</script>
