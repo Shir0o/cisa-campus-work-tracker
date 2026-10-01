@@ -110,8 +110,12 @@ describe('ChatThreadScreen', () => {
     });
 
     it('divides the days (G5)', async () => {
-      const yesterday = msg('y1', { text: 'YESTERDAY-MSG', timestamp: hoursAgo(30) });
-      const { getByText } = await renderAs(trainee, { messages: [yesterday, mine] });
+      // Anchored to now, not a fixed hour offset: "Today"/"Yesterday" are
+      // calendar labels, and a fixed offset lands on the wrong day when the
+      // suite runs near midnight.
+      const yesterday = msg('y1', { text: 'YESTERDAY-MSG', timestamp: hoursAgo(24) });
+      const today = msg('t1', { text: 'TODAY-MSG', senderId: 'user1', senderName: 'Tony Wang', timestamp: new Date().toISOString() });
+      const { getByText } = await renderAs(trainee, { messages: [yesterday, today] });
       expect(getByText('Yesterday')).toBeTruthy();
       expect(getByText('Today')).toBeTruthy();
     });
