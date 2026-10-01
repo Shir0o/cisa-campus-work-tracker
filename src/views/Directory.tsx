@@ -47,13 +47,13 @@ import { buildContactRowActions } from '../lib/rowActions';
 import { followUpContact } from '../lib/followUp';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useUndoSnack } from '../hooks/useUndoSnack';
-import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters } from '../lib/directoryFilters';
+import { DEFAULT_DIRECTORY_FILTERS, readDirectoryFilters, writeDirectoryFilters, type KindSegment } from '../lib/directoryFilters';
 import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { bucketFor } from '../components/landing/dateBuckets';
 import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContact } from '../lib/threads';
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
-import { contactKind, kindLabelKey, kindMatches, type ContactKind, type KindFilter } from '../lib/contactKind';
+import { contactKind, kindLabelKey, isKindSorted, type ContactKind } from '../lib/contactKind';
 import { reachByContact } from '../lib/reach';
 import { matchContact, matchTier, type ContactMatch } from '../lib/contactMatch';
 
@@ -133,6 +133,14 @@ export const toneStyle = (color: string | undefined, index: number = 0): React.C
 
 const peopleCount = (n: number) =>
   n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
+
+// The Directory's kind segments (#1296, ADR 0030), in reading order.
+const KIND_SEGMENTS: { value: KindSegment; labelKey: string }[] = [
+  { value: 'all', labelKey: 'directory.kind_all' },
+  { value: 'contact', labelKey: 'directory.kind_contacts' },
+  { value: 'our-own', labelKey: 'directory.kind_our_own' },
+  { value: 'local-saint', labelKey: 'directory.kind_local_saints' },
+];
 
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'w-9 h-9 text-xs' : 'w-12 h-12 text-sm';
@@ -366,7 +374,8 @@ export default function Directory() {
   const [filterStage, setFilterStage] = useState<string>(restoredFilters.filterStage);
   const [filterRole, setFilterRole] = useState<string>(restoredFilters.filterRole);
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
-  const [filterKind, setFilterKind] = useState<KindFilter>(restoredFilters.filterKind);
+  const [kindSegment, setKindSegment] = useState<KindSegment>(restoredFilters.kindSegment);
+  const [filterUnsorted, setFilterUnsorted] = useState<boolean>(restoredFilters.filterUnsorted);
   const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
   const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
@@ -414,12 +423,13 @@ export default function Directory() {
       filterStage,
       filterRole,
       filterSpiritualBackground,
-      filterKind,
+      kindSegment,
+      filterUnsorted,
       filterAddedWhen,
       customRange,
       selectedTags,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags]);
+  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterAddedWhen, customRange, selectedTags]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -502,10 +512,14 @@ export default function Directory() {
       result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
     }
 
-    // The kind of person (#1152). "unsorted" is the absence of a stamp, which
-    // is what Not sorted yet counts — the backfill's own worklist.
-    if (filterKind !== 'all') {
-      result = result.filter(c => kindMatches(c, filterKind));
+    // The kind of person (#1152, #1296). The segment narrows to one kind, but a
+    // search looks across every kind, so it only applies when the box is empty.
+    // Not sorted yet is the absence of a stamp, which is what its own worklist
+    // counts, and it takes over from the segment when on.
+    if (filterUnsorted) {
+      result = result.filter(c => !isKindSorted(c));
+    } else if (kindSegment !== 'all' && searchQuery.trim() === '') {
+      result = result.filter(c => contactKind(c) === kindSegment);
     }
 
     // Filter by Added When (preset AND custom range, both must pass).
@@ -553,7 +567,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterKind, filterAddedWhen, customRange, selectedTags, searchMatches]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterAddedWhen, customRange, selectedTags, searchMatches]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -720,13 +734,14 @@ export default function Directory() {
     setFilterStage('All');
     setFilterRole('All');
     setFilterSpiritualBackground('All');
-    setFilterKind('all');
+    setKindSegment('contact');
+    setFilterUnsorted(false);
     setFilterAddedWhen('all');
     setCustomRange({ from: '', to: '' });
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || filterKind !== 'all' || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -981,8 +996,38 @@ export default function Directory() {
         </div>
       </header>
 
+      {/* ── Kind segments (#1296) ── */}
+      <div
+        role="group"
+        aria-label={t('directory.kind')}
+        className="inline-flex flex-wrap items-center gap-1 mt-8 p-1 bg-surface-container rounded-xl border border-outline-variant/40"
+      >
+        {KIND_SEGMENTS.map((segment) => {
+          const active = !filterUnsorted && kindSegment === segment.value;
+          return (
+            <button
+              key={segment.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setKindSegment(segment.value);
+                setFilterUnsorted(false);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors min-h-[36px]',
+                active
+                  ? 'bg-primary text-on-primary shadow-xs'
+                  : 'text-on-surface-variant hover:text-on-surface',
+              )}
+            >
+              {t(segment.labelKey)}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Search + filters ── */}
-      <div className="flex flex-wrap items-center gap-3 mt-8">
+      <div className="flex flex-wrap items-center gap-3 mt-4">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input
@@ -1069,17 +1114,16 @@ export default function Directory() {
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.kind')}</label>
-                      <Select
-                        value={filterKind}
-                        onChange={(e) => setFilterKind(e.target.value as KindFilter)}
-                        className="h-10 text-sm"
-                      >
-                        <option value="all">{t('directory.all_kinds')}</option>
-                        <option value="local-saint">{t('contactKind.local_saint')}</option>
-                        <option value="our-own">{t('contactKind.our_own')}</option>
-                        <option value="contact">{t('contactKind.contact')}</option>
-                        <option value="unsorted">{t('contactKind.not_sorted_yet')}</option>
-                      </Select>
+                      <label className="flex items-center gap-2.5 min-h-[40px] px-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          data-testid="filter-unsorted"
+                          checked={filterUnsorted}
+                          onChange={(e) => setFilterUnsorted(e.target.checked)}
+                          className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-on-surface">{t('contactKind.not_sorted_yet')}</span>
+                      </label>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1282,7 +1326,7 @@ export default function Directory() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-serif text-lg text-on-surface leading-tight">{contact.name}</span>
-                      <KindChip contact={contact} />
+                      <KindChip contact={contact} showAll />
                       <span
                         style={tStyle}
                         className={cn(

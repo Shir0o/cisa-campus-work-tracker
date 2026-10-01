@@ -1300,7 +1300,7 @@ describe('Directory — search by relationship fields (#1176)', () => {
   });
 });
 
-// The kind of person in the Directory (#1152, ADR 0030).
+// The kind segments and chips in the Directory (#1296, ADR 0030).
 describe('Directory — the kind of person', () => {
   const kindContacts = [
     { id: 'k1', data: () => ({ name: 'Saint Local', email: 's@example.com', phone: '', role: '', stage: 'Regular', location: '', spiritualBackground: '', tags: [], createdAt: '2026-01-01T00:00:00.000Z', inChurchLife: true, isStudent: false, kindSetBy: 'u1', kindSetAt: '2026-09-23T00:00:00.000Z' }) },
@@ -1329,39 +1329,68 @@ describe('Directory — the kind of person', () => {
     });
   });
 
-  it('marks a Local saint and Our own on their rows, and leaves a Contact unmarked', async () => {
+  it('opens on the Contacts segment, which narrows the list to Contacts', async () => {
     render(<Directory />);
-    await waitFor(() => expect(screen.getByText('Saint Local')).toBeInTheDocument());
-    expect(screen.getByText('Local saint')).toBeInTheDocument();
-    expect(screen.getByText('Our own')).toBeInTheDocument();
-    // "Plain Contact" and "Nobody Sorted" carry no chip: only two chips exist.
-    expect(screen.queryAllByText('Contact')).toHaveLength(0);
+    await waitFor(() => expect(screen.getByText('Plain Contact')).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: 'Contacts' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+    // The segment is doing the filtering: Local saint and Our own are hidden.
+    expect(screen.queryByText('Saint Local')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ours Student')).not.toBeInTheDocument();
   });
 
-  it('narrows to one kind', async () => {
+  it('narrows to one kind when a segment is picked', async () => {
     render(<Directory />);
-    await waitFor(() => expect(screen.getByText('Saint Local')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Plain Contact')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText('Filters'));
-    const kindSelect = screen.getByText('Kind').parentElement?.querySelector('select') as HTMLSelectElement;
-    fireEvent.change(kindSelect, { target: { value: 'local-saint' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Local saints' }));
 
     expect(screen.getByText('Saint Local')).toBeInTheDocument();
     expect(screen.queryByText('Ours Student')).not.toBeInTheDocument();
     expect(screen.queryByText('Plain Contact')).not.toBeInTheDocument();
   });
 
-  it('narrows to the people nobody has sorted yet', async () => {
+  it('looks across every kind when a search is typed, whatever segment is on', async () => {
     render(<Directory />);
-    await waitFor(() => expect(screen.getByText('Saint Local')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Plain Contact')).toBeInTheDocument());
+
+    // The segment is still Contacts, but a search ignores it (#1296).
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Saint' } });
+
+    expect(screen.getByText('Saint Local')).toBeInTheDocument();
+    expect(screen.queryByText('Plain Contact')).not.toBeInTheDocument();
+
+    fireEvent.change(searchInput, { target: { value: 'Ours' } });
+    expect(screen.getByText('Ours Student')).toBeInTheDocument();
+  });
+
+  it('carries a kind chip on every row', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Plain Contact')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+
+    const chips = screen.getAllByTestId('kind-chip').map((el) => el.textContent);
+    expect(chips).toContain('Local saint');
+    expect(chips).toContain('Our own');
+    expect(chips).toContain('Contact');
+  });
+
+  it('keeps Not sorted yet in the filter panel, as its own worklist', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Plain Contact')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('Filters'));
-    const kindSelect = screen.getByText('Kind').parentElement?.querySelector('select') as HTMLSelectElement;
-    fireEvent.change(kindSelect, { target: { value: 'unsorted' } });
+    const unsorted = screen.getByTestId('filter-unsorted');
+    expect(unsorted).toBeInTheDocument();
+
+    fireEvent.click(unsorted);
 
     expect(screen.getByText('Nobody Sorted')).toBeInTheDocument();
-    expect(screen.queryByText('Saint Local')).not.toBeInTheDocument();
     expect(screen.queryByText('Plain Contact')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saint Local')).not.toBeInTheDocument();
   });
 });
 
@@ -1394,6 +1423,8 @@ describe('Directory — bulk-setting the kind', () => {
 
   const setKindTo = async (value: string) => {
     render(<Directory />);
+    // The student is Our own, so the default Contacts segment hides them.
+    fireEvent.click(await screen.findByRole('button', { name: 'All' }));
     await waitFor(() => expect(screen.getByText('Known Student')).toBeInTheDocument());
     fireEvent.click(screen.getAllByTitle('Select')[0]);
     fireEvent.click(screen.getByTitle('Set who the selected people are'));

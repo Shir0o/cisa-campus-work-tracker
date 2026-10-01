@@ -453,6 +453,10 @@
     "confirm_remove": "¿Seguro que quieres eliminar {n} {count}?",
     "kind": "Tipo",
     "all_kinds": "Todos los tipos",
+    "kind_all": "Todos",
+    "kind_contacts": "Contactos",
+    "kind_our_own": "De los nuestros",
+    "kind_local_saints": "Santos locales",
     "set_kind_for_selected": "Definir quiénes son los seleccionados",
     "cancel": "Cancelar",
     "save": "Guardar"
