@@ -552,7 +552,14 @@
     "thing": "cosa",
     "things": "cosas",
     "is": "es",
-    "are": "son"
+    "are": "son",
+    "not_reached_title": "Aún no alcanzado",
+    "not_reached_sub": "Añadidos en los últimos 30 días, aún sin alcanzar.",
+    "not_reached_scope": "Qué personas muestra la tarjeta",
+    "not_reached_yours": "Tuyos",
+    "not_reached_team": "Equipo",
+    "not_reached_empty": "No hay nadie esperando ser alcanzado.",
+    "not_reached_tied_to": "Vinculado con {names}"
   },
   "prayers": {
     "who_are_we_holding": "¿Por quiénes oramos?",

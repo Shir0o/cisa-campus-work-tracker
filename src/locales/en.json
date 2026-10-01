@@ -552,7 +552,14 @@
     "thing": "thing",
     "things": "things",
     "is": "is",
-    "are": "are"
+    "are": "are",
+    "not_reached_title": "Not reached yet",
+    "not_reached_sub": "Added in the last 30 days, still to be reached.",
+    "not_reached_scope": "Which people the card shows",
+    "not_reached_yours": "Yours",
+    "not_reached_team": "Team",
+    "not_reached_empty": "No one's waiting to be reached.",
+    "not_reached_tied_to": "Tied to {names}"
   },
   "prayers": {
     "who_are_we_holding": "Who are we praying for?",
