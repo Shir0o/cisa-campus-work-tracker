@@ -56,40 +56,40 @@ held it to its canvas (#1243).
 
 ### Grammar — every stream, web and phone
 
-- [ ] **G1** No bubble. A message is a row: 36px avatar (28px inside an Around card), name and time on one line, the body beneath.
-- [ ] **G2** A message from the same author within 5 minutes of their last continues without avatar or name.
+- [x] **G1** No bubble. A message is a row: 36px avatar (28px inside an Around card), name and time on one line, the body beneath.
+- [x] **G2** A message from the same author within 5 minutes of their last continues without avatar or name.
 - [x] **G3** Everything left-aligned, your own messages included; your own name shows, not "You".
-- [ ] **G4** Oldest at top, composer pinned at the foot; the stream opens on the newest message.
-- [ ] **G5** Day dividers: Today, Yesterday, then weekday and date.
+- [x] **G4** Oldest at top, composer pinned at the foot; the stream opens on the newest message.
+- [x] **G5** Day dividers: Today, Yesterday, then weekday and date.
 - [x] **G6** A "New" line above the first unread, where read state exists (chat, announcements).
 - [x] **G7** Hover lights the row and shows a toolbar — Reply in thread, Make a to-do, More. On a phone, long-press opens a sheet with those plus Copy text, and Delete for the author or a Full-timer.
-- [ ] **G8** No reactions anywhere (#1107 stands).
+- [x] **G8** No reactions anywhere (#1107 stands).
 
 ### Threads
 
-- [ ] **T1** Replies are one level deep. A parent with replies carries a chip: up to three replier avatars, "N replies", "Last reply …". The chip of the Thread that is open is marked.
-- [ ] **T2** A Thread opens *beside* the stream where there is width (Messages at 1440, a 340px pane) and *replaces* it, with a back arrow, where there isn't — the contact drawer, an Around card, the phone (a pushed screen).
-- [ ] **T3** The Thread header says where it lives: "Thread · in Conversation · Daniel Reyes".
+- [x] **T1** Replies are one level deep. A parent with replies carries a chip: up to three replier avatars, "N replies", "Last reply …". The chip of the Thread that is open is marked.
+- [x] **T2** A Thread opens *beside* the stream where there is width (Messages at 1440, a 340px pane) and *replaces* it, with a back arrow, where there isn't — the contact drawer, an Around card, the phone (a pushed screen).
+- [x] **T3** The Thread header says where it lives: "Thread · in Conversation · Daniel Reyes".
 - [x] **T4** An Interaction's Thread hangs off its log / Story entry — a replies chip, or "Think it through together" when there are none — and quotes the interaction as its parent. It no longer appears in the Conversation stream (the phone merged them).
 
 ### Kinds
 
-- [ ] **K1** A Question or a Follow-up ask shows a tag beside the author's name: Question in blue, Follow-up ask in amber.
-- [ ] **K2** An open ask shows "Open N days" under the body with **I followed up** (anyone tied) and **Never mind** (the asker only).
-- [ ] **K3** A closed ask reads "✓ {name} followed up · {when}"; a withdrawn one mutes its tag and reads "{asker} withdrew this".
+- [x] **K1** A Question or a Follow-up ask shows a tag beside the author's name: Question in blue, Follow-up ask in amber.
+- [x] **K2** An open ask shows "Open N days" under the body with **I followed up** (anyone tied) and **Never mind** (the asker only).
+- [x] **K3** A closed ask reads "✓ {name} followed up · {when}"; a withdrawn one mutes its tag and reads "{asker} withdrew this".
 - [x] **K4** An ask can be closed in the stream, on an Around card, and on the phone — not only from My Day.
 
 ### Composer
 
-- [ ] **C1** One box everywhere: the text, then a tools row — attach where the source supports it, @, the shortcut hint, send.
-- [ ] **C2** Kind chips (Comment · Question · Ask a follow-up) sit inside the box on a Conversation only. A selected ask chip takes the amber; each kind keeps its placeholder.
-- [ ] **C3** An audience line above the box on every contact stream — "Everyone tied to Daniel sees this." / a lock and "Only Full-timers see this." — and above an announcement composer, naming the real audience.
+- [x] **C1** One box everywhere: the text, then a tools row — attach where the source supports it, @, the shortcut hint, send.
+- [x] **C2** Kind chips (Comment · Question · Ask a follow-up) sit inside the box on a Conversation only. A selected ask chip takes the amber; each kind keeps its placeholder.
+- [x] **C3** An audience line above the box on every contact stream — "Everyone tied to Daniel sees this." / a lock and "Only Full-timers see this." — and above an announcement composer, naming the real audience.
 - [x] **C4** @mention candidates are unchanged from ADR 0007: any teammate on a Conversation, Full-timers only on Full-timers, the members of a chat.
 - [x] **C5** Chat stages files and contact cards above the text, each removable before sending.
 
 ### Surfaces
 
-- [ ] **S1** Contact drawer headers: the stream's title only (Full-timers carries a lock icon); the audience line lives above the composer (C3).
+- [x] **S1** Contact drawer headers: the stream's title only (Full-timers carries a lock icon); the audience line lives above the composer (C3).
 - [x] **S2** Copy: the Full-timers placeholder becomes "Write something only Full-timers will see…" (en + es).
 - [x] **S3** Around: ADR 0022 unchanged — one card open, reading in place, the Conversation / Full-timers segment, the composer posting into the open one, the just-posted message landing above the composer, marked "Just posted".
 - [x] **S4** Announcements: a member sees Got it / You said got it and Reply in thread; the poster sees "Read by X of Y · N said got it" as one link to the receipts; the pinned post stays first under "Pinned by {name} · stays at the top until {they} unpin it"; the footer "Only Full-timers post here. Anyone can reply in a thread." is set in regular, not italic, text.

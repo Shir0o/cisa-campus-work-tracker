@@ -86,4 +86,23 @@ describe("CardConversation", () => {
     expect(list).toHaveTextContent("Ruth Chen");
     expect(list).not.toHaveTextContent("Josh Park");
   });
+
+  it("makes a to-do from a message on the card", () => {
+    const messages = [
+      {
+        id: "m1",
+        interactionId: null,
+        from: "ruth",
+        fromName: "Ruth Chen",
+        kind: "comment" as const,
+        body: "Invite him to the retreat",
+        at: new Date().toISOString(),
+      },
+    ];
+    render(
+      <CardConversation contact={kofi} uid="ft1" messages={messages} justPosted={new Set()} onPosted={vi.fn()} teamMembers={roster} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Make a to-do" }));
+    expect(screen.getByDisplayValue("Invite him to the retreat")).toBeInTheDocument();
+  });
 });

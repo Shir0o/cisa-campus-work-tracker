@@ -1877,8 +1877,7 @@
     "placeholder_follow_up": "What wants doing — text them, email them? Say enough that anyone could pick it up.",
     "empty_interaction": "No comments on this interaction yet.",
     "empty_full_timers": "Nothing here yet — start the team's discussion below.",
-    "empty_conversation": "Nothing here yet — leave the first comment below.",
-    "placeholder_full_timers": "Add to the Full-timers thread…"
+    "empty_conversation": "Nothing here yet — leave the first comment below."
   },
   "stream": {
     "today": "Today",

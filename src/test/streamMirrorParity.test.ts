@@ -5,9 +5,9 @@
 // copies cannot share an import; this corpus is the contract between them
 // (the same shape as feedVisibleThreadsMirrorParity.test.ts).
 import { describe, it, expect } from 'vitest';
-import { buildStream as webStream, buildThread as webThread, type StreamMessage } from '../lib/stream';
+import { buildStream as webStream, buildThread as webThread, calendarDaysOpen as webDaysOpen, type StreamMessage } from '../lib/stream';
 // Direct relative import into the workspace package -- resolved for tests only.
-import { buildStream as coreStream, buildThread as coreThread } from '../../packages/core/src/stream';
+import { buildStream as coreStream, buildThread as coreThread, calendarDaysOpen as coreDaysOpen } from '../../packages/core/src/stream';
 
 const at = (d: number, h: number, m = 0, s = 0) => new Date(2026, 8, d, h, m, s).toISOString();
 const NOW = new Date(2026, 8, 24, 12, 0).getTime();
@@ -78,5 +78,16 @@ describe('stream model mirror parity (ADR 0033)', () => {
     expect(items.map((i) => (i.type === 'row' ? `${i.message.id}${i.continuation ? '+' : ''}` : i.type))).toEqual([
       'day', 'm1', 'm2+', 'new', 'j1', 'day', 'ask', 'day', 'q',
     ]);
+  });
+
+  it('calendarDaysOpen agrees across the two copies, including 20 hours ago on the previous day', () => {
+    const todayTwentyHoursAgo = new Date(2026, 8, 24, 8, 0).toISOString();
+    const yesterdayTwentyHoursAgo = new Date(2026, 8, 23, 16, 0).toISOString();
+    const cases = [todayTwentyHoursAgo, yesterdayTwentyHoursAgo, at(20, 9), at(24, 12)];
+    for (const iso of cases) {
+      expect(coreDaysOpen(iso, NOW)).toBe(webDaysOpen(iso, NOW));
+    }
+    expect(webDaysOpen(yesterdayTwentyHoursAgo, NOW)).toBe(1);
+    expect(webDaysOpen(todayTwentyHoursAgo, NOW)).toBe(0);
   });
 });

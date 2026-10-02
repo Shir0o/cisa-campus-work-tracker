@@ -3290,13 +3290,14 @@ describe('desktop story layout (design D)', () => {
       );
     });
 
-    it('offers no to-do from a Full-timers message', () => {
+    it('makes a to-do from a Full-timers message', () => {
       hoisted.messages = [
         { id: 'ft-1', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Staff only', at: new Date().toISOString() },
       ];
       const drawer = openDrawer();
       expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
-      expect(within(drawer).queryByRole('button', { name: 'Make a to-do' })).toBeNull();
+      fireEvent.click(within(drawer).getByRole('button', { name: 'Make a to-do' }));
+      expect(screen.getByDisplayValue('Staff only')).toBeInTheDocument();
     });
   });
 
@@ -3367,6 +3368,18 @@ describe('desktop story layout (design D)', () => {
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
       fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
       expect(within(screen.getByRole('dialog', { name: 'Conversation' })).queryByText('On the interaction')).toBeNull();
+    });
+
+    it('makes a to-do from a reply in an Interaction Thread', () => {
+      interactions();
+      hoisted.messages = [
+        { id: 'r1', interactionId: 'inter-1', from: 'user-9', fromName: 'Josh Park', kind: 'comment', body: 'Mention the scholarship', at: '2026-09-17T13:00:00.000Z' },
+      ];
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      fireEvent.click(within(story()).getByRole('button', { name: /1 reply/ }));
+      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      fireEvent.click(within(thread).getByRole('button', { name: 'Make a to-do' }));
+      expect(screen.getByDisplayValue('Mention the scholarship')).toBeInTheDocument();
     });
   });
 
