@@ -201,7 +201,11 @@ describe('buildContactStory', () => {
           prayer('majors', '2026-09-13T20:00:00.000Z', {
             status: 'answered',
             answer: 'She settled on biology and feels at peace.',
-            answeredAt: '2026-09-24T08:00:00.000Z',
+            // `answeredAt` is display text (the contact page writes it with
+            // toLocaleDateString), so the milestone orders by the ISO `updatedAt`
+            // written in the same save — not by parsing "Sep 24" (year 2001).
+            answeredAt: 'Sep 24',
+            updatedAt: '2026-09-24T08:00:00.000Z',
           }),
         ],
       });
@@ -213,6 +217,71 @@ describe('buildContactStory', () => {
         'added:added',
       ]);
       expect(story[0]).toMatchObject({ kind: 'prayer-answered', at: '2026-09-24T08:00:00.000Z' });
+    });
+
+    it('orders a mixed story strictly newest-first', () => {
+      const story = buildContactStory({
+        contact,
+        ...empty,
+        interactions: [
+          conversation('coffee', '2026-09-21T10:00:00.000Z'),
+          // Logged on the 25th, but it happened on the 10th.
+          conversation('backdated', '2026-09-10T12:00:00.000Z', '2026-09-25T08:00:00.000Z'),
+        ],
+        activities: [activity('moved', '2026-09-18T09:00:00.000Z', 'stage: "Unassigned" → "Regular"')],
+        prayers: [
+          prayer('open', '2026-09-20T20:00:00.000Z'),
+          prayer('answered', '2026-09-13T20:00:00.000Z', {
+            status: 'answered',
+            answeredAt: 'Sep 24',
+            updatedAt: '2026-09-24T08:00:00.000Z',
+          }),
+        ],
+      });
+
+      expect(kindsAndIds(story)).toEqual([
+        'prayer-answered:answered',
+        'conversation:coffee',
+        'prayer:open',
+        'step:moved',
+        'prayer:answered',
+        'conversation:backdated',
+        'added:added',
+      ]);
+
+      const times = story.slice(0, -1).map((entry) => new Date(entry.at ?? 0).getTime());
+      expect(times).toEqual([...times].sort((a, b) => b - a));
+    });
+
+    it('falls back to the prayer date when a status write left updatedAt missing', () => {
+      const story = buildContactStory({
+        contact,
+        ...empty,
+        prayers: [
+          prayer('legacy', '2026-09-13T20:00:00.000Z', {
+            status: 'answered',
+            answeredAt: 'Sep 24',
+            updatedAt: undefined,
+          }),
+        ],
+      });
+
+      expect(story.find((entry) => entry.kind === 'prayer-answered')).toMatchObject({
+        at: '2026-09-13T20:00:00.000Z',
+      });
+    });
+
+    it('keeps an entry with an unreadable date from sinking below dated ones', () => {
+      const story = buildContactStory({
+        contact,
+        ...empty,
+        interactions: [
+          conversation('dated', '2026-09-21T10:00:00.000Z'),
+          conversation('unreadable', 'not-a-date', 'not-a-date'),
+        ],
+      });
+
+      expect(kindsAndIds(story)).toEqual(['conversation:unreadable', 'conversation:dated', 'added:added']);
     });
   });
 });

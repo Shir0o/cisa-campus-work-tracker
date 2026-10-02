@@ -63,14 +63,23 @@ export function buildContactStory({
   });
 
   // A prayer is a moment when it is started, and again when it is answered.
+  // The answered moment orders by the ISO `updatedAt` written in the same save,
+  // never by `answeredAt` — that field is display text ("Sep 24") that parses
+  // to the year 2001 and would sink the milestone to the bottom of the story.
   const prayerMoments: StoryEntry[] = prayers.flatMap((prayer) => [
     { kind: 'prayer' as const, id: prayer.id, at: prayer.date, prayer },
     ...(prayer.status === 'answered' && prayer.answeredAt
-      ? [{ kind: 'prayer-answered' as const, id: prayer.id, at: prayer.answeredAt, prayer }]
+      ? [{ kind: 'prayer-answered' as const, id: prayer.id, at: prayer.updatedAt || prayer.date, prayer }]
       : []),
   ]);
 
-  const newestFirst = [...conversations, ...steps, ...prayerMoments].sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));
+  // Newest first. A date we cannot read must not silently collapse to epoch 0
+  // and sink beneath every real entry, so it sorts above them instead.
+  const orderMs = (at: string | null) => parseMs(at) ?? Number.POSITIVE_INFINITY;
+  const newestFirst = [...conversations, ...steps, ...prayerMoments].sort((a, b) => {
+    const [ta, tb] = [orderMs(a.at), orderMs(b.at)];
+    return ta === tb ? 0 : tb - ta;
+  });
 
   // Being added is the beginning of the story, so it stays last even when a
   // conversation is backdated to before the person was logged.
