@@ -34,7 +34,7 @@ import {
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
+import { Contact, Stage, Interaction, Activity, PrayerRecord, Gathering, Rhythm } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canRemoveContactMember, visibleToOf } from "../../lib/permissions";
 import { partnersOf } from "../../lib/partners";
@@ -64,6 +64,7 @@ import {
 } from "../../lib/interactionRemoval";
 import { contactKind, kindLabelKey } from "../../lib/contactKind";
 import { buildContactStory } from "../../lib/contactStory";
+import { subscribeRhythms } from "../../lib/rhythms";
 
 import ContactHead, { type ContactTab } from "../contact/ContactHead";
 import ContactEditForm from "../contact/ContactEditForm";
@@ -115,6 +116,8 @@ export default function ContactDetailsModal({
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [prayersLoading, setPrayersLoading] = useState(true);
+  const [gatherings, setGatherings] = useState<Gathering[]>([]);
+  const [rhythms, setRhythms] = useState<Rhythm[]>([]);
   const [teamMembers, setTeamMembers] = useState<
     { id: string; name: string; role: string; initials: string; fullTimer: boolean }[]
   >([]);
@@ -376,6 +379,33 @@ export default function ContactDetailsModal({
       return () => unsubscribe();
     }
   }, [isOpen, contact]);
+
+  // Attendance is read live from Gatherings, never copied into the person's
+  // interactions, so unmarking someone takes their story entry back out (#1291).
+  useEffect(() => {
+    if (isOpen && contact) {
+      const q = query(
+        collection(db, "events"),
+        where("attendance.present", "array-contains", contact.id),
+      );
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          setGatherings(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Gathering));
+        },
+        (error) => handleFirestoreError(error, OperationType.LIST, "events"),
+      );
+
+      return () => unsubscribe();
+    }
+  }, [isOpen, contact]);
+
+  // Rhythm names are read live so a rename reads back on past attendance.
+  useEffect(() => {
+    if (!isOpen) return;
+    return subscribeRhythms(setRhythms);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && contact) {
@@ -1289,6 +1319,8 @@ export default function ContactDetailsModal({
     interactions,
     prayers,
     activities,
+    gatherings,
+    rhythms,
     pendingRemovalIds,
   });
   const canSeeTeamThread = role === "admin" || isAdmin;

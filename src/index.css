@@ -4193,6 +4193,17 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   font-size: 13px; color: var(--on-surface-variant);
 }
 .cd-story-milestone strong { font-size: 15px; font-weight: 600; color: var(--on-surface); }
+.cd-story-change {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px;
+  font-size: 13px; color: var(--on-surface-variant);
+}
+.cd-story-change strong { font-size: 13px; font-weight: 600; color: var(--on-surface); }
+.cd-story-change-sep { color: var(--outline); }
+.cd-story-change-more {
+  font-size: 12.5px; font-weight: 500; color: var(--primary);
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.cd-story-change-more:hover { text-decoration: underline; }
 .cd-thread-links { display: flex; flex-direction: column; gap: 8px; }
 .cd-thread-link {
   display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px;

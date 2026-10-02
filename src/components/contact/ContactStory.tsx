@@ -1,11 +1,90 @@
-import React from "react";
+import React, { useState } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Skeleton } from "../ui/Skeleton";
 import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
-import type { StoryEntry } from "../../lib/contactStory";
+import type { StoryChange, StoryEntry } from "../../lib/contactStory";
 import type { Interaction, PrayerRecord } from "../../types";
+
+type TranslateFn = (key: string, fallback?: string) => string;
+
+function changePhrases(change: StoryChange, t: TranslateFn): string[] {
+  switch (change.type) {
+    case "step":
+      return [t('modals.contactDetails.story_change_step').replace('{from}', change.from).replace('{to}', change.to)];
+    case "kind":
+      return [t('modals.contactDetails.story_change_kind').replace('{from}', change.from).replace('{to}', change.to)];
+    case "tags":
+      return [
+        ...change.added.map((tag) => t('modals.contactDetails.story_change_tag_added').replace('{tag}', tag)),
+        ...change.removed.map((tag) => t('modals.contactDetails.story_change_tag_removed').replace('{tag}', tag)),
+      ];
+    case "field": {
+      const label = t(`modals.contactDetails.story_field_${change.field}`, change.field);
+      return [
+        t('modals.contactDetails.story_change_field')
+          .replace('{field}', label)
+          .replace('{from}', change.from)
+          .replace('{to}', change.to),
+      ];
+    }
+    case "notes":
+      return [t('modals.contactDetails.story_change_notes')];
+    case "share":
+      return [
+        t(
+          change.added
+            ? 'modals.contactDetails.story_change_shared'
+            : 'modals.contactDetails.story_change_unshared',
+        ).replace('{name}', change.person),
+      ];
+    case "creator":
+      return [
+        t('modals.contactDetails.story_change_creator')
+          .replace('{from}', change.from)
+          .replace('{to}', change.to),
+      ];
+  }
+}
+
+function ChangeEntry({
+  entry,
+  t,
+}: {
+  entry: Extract<StoryEntry, { kind: 'change' }>;
+  t: TranslateFn;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const phrases = entry.changes.flatMap((change) => changePhrases(change, t));
+  const visible = expanded ? phrases : phrases.slice(0, 1);
+  const hidden = phrases.length - 1;
+
+  return (
+    <div className="cd-story-change">
+      <strong>{entry.byName}</strong>
+      {visible.map((phrase, index) => (
+        <React.Fragment key={index}>
+          <span className="cd-story-change-sep" aria-hidden="true">
+            ·
+          </span>
+          <span>{phrase}</span>
+        </React.Fragment>
+      ))}
+      {hidden > 0 && (
+        <button
+          type="button"
+          className="cd-story-change-more"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded
+            ? t('modals.contactDetails.story_show_less')
+            : t('modals.contactDetails.story_more_changes').replace('{count}', String(hidden))}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function ContactStory({
   story,
@@ -85,7 +164,7 @@ export default function ContactStory({
               data-kind={entry.kind}
               className={cn(
                 "cd-story-entry",
-                (entry.kind === "step" || entry.kind === "added" || entry.kind === "prayer-answered") && "is-milestone",
+                (entry.kind === "added" || entry.kind === "prayer-answered" || entry.kind === "attendance") && "is-milestone",
               )}
             >
               <span className="cd-story-date">{fmtDate(entry.at)}</span>
@@ -104,19 +183,17 @@ export default function ContactStory({
                     )}
                   </div>
                 )}
-                {entry.kind === "step" && (
+                {entry.kind === "change" && <ChangeEntry entry={entry} t={t} />}
+                {entry.kind === "attendance" && (
                   <div className="cd-story-milestone">
                     <strong>
-                      {entry.to
-                        ? t('modals.contactDetails.moved_to').replace('{stage}', entry.to)
-                        : t('modals.contactDetails.moved_out_of_steps')}
+                      {(entry.count > 1
+                        ? t('modals.contactDetails.story_attended_weeks')
+                        : t('modals.contactDetails.story_attended')
+                      )
+                        .replace('{name}', entry.name)
+                        .replace('{count}', String(entry.count))}
                     </strong>
-                    <span>
-                      {(entry.from
-                        ? t('modals.contactDetails.story_moved_from_by').replace('{stage}', entry.from)
-                        : t('modals.contactDetails.story_moved_by')
-                      ).replace('{name}', entry.byName)}
-                    </span>
                   </div>
                 )}
                 {entry.kind === "added" && (

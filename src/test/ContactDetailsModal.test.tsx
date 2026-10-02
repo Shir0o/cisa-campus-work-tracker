@@ -3059,7 +3059,7 @@ describe('desktop story layout (design D)', () => {
     const story = screen.getByRole('region', { name: 'The story so far' });
     expect(within(story).getByText('Coffee at the Union')).toBeInTheDocument();
     expect(within(story).getAllByText("Her grandmother's surgery").length).toBeGreaterThan(0);
-    expect(within(story).getByText('Moved to Regular')).toBeInTheDocument();
+    expect(within(story).getByText(/moved step First Contact → Regular/)).toBeInTheDocument();
     expect(within(story).getByText('Added by Sarah Lee')).toBeInTheDocument();
 
     expect(screen.queryByRole('button', { name: /^Interactions/ })).toBeNull();
