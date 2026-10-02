@@ -1746,7 +1746,7 @@
     "sub": "Un equipo por persona, para toda la lista. Esto es lo que leen los filtros de las novedades.",
     "on_team": "{n} en {team}",
     "unassigned": "Todavía sin equipo",
-    "unassigned_sub": "Siguen apareciendo en las novedades; sólo que los filtros por equipo no los alcanzan.",
+    "unassigned_sub": "No reciben recordatorio semanal, y los filtros por equipo no los alcanzan.",
     "numbers_vary": "Los números cambian cada trimestre",
     "set_team": "Poner a {name} en un equipo",
     "nobody_yet": "Todavía nadie en este equipo."
@@ -2067,5 +2067,24 @@
     "from_surnames": "de los apellidos",
     "unnamed_home": "Hogar sin nombre",
     "close": "Cerrar"
+  },
+  "reminders": {
+    "yours_title": "Tus recordatorios semanales",
+    "yours_sub": "Los recordatorios del ritmo que llegan a tu teléfono, según el reloj del campus.",
+    "yours_toggle": "Recordatorios semanales",
+    "yours_help": "Activa o desactiva tu propio recordatorio. Solo cuando algo está esperando, así una semana tranquila se queda tranquila.",
+    "schedule_title": "Horario de recordatorios semanales",
+    "schedule_sub": "Cuándo sale cada recordatorio, según el reloj del campus. Cada uno se envía solo si algo está esperando.",
+    "full_timers": "Tiempo completo",
+    "days_for": "Días para {name}",
+    "hour": "Hora",
+    "hour_for": "Hora para {name}",
+    "weekday_sun": "Dom",
+    "weekday_mon": "Lun",
+    "weekday_tue": "Mar",
+    "weekday_wed": "Mié",
+    "weekday_thu": "Jue",
+    "weekday_fri": "Vie",
+    "weekday_sat": "Sáb"
   }
 }

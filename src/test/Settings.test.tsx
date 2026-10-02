@@ -1342,6 +1342,58 @@ describe('Settings', () => {
     });
   });
 
+  // ── Weekly reminders (#1301) ──
+
+  describe('weekly reminders', () => {
+    it('lets a Full-timer edit the team schedule', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Weekly reminder schedule')).toBeInTheDocument();
+      });
+
+      const fullTimersDays = screen.getByRole('group', { name: 'Days for Full-timers' });
+      fireEvent.click(within(fullTimersDays).getByRole('button', { name: 'Mon' }));
+
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'settings/reminder_schedule' }),
+          expect.objectContaining({
+            fullTimers: expect.objectContaining({ days: expect.arrayContaining([1]) }),
+          }),
+        );
+      });
+    });
+
+    it('shows the schedule only to Full-timers', async () => {
+      setupManagerAuth({ isAdmin: false, role: 'manager' });
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Your team')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Weekly reminder schedule')).not.toBeInTheDocument();
+    });
+
+    it('gives everyone their own weekly reminder switch', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      const toggle = await screen.findByRole('switch', { name: 'Weekly reminders' });
+      expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+      fireEvent.click(toggle);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'users/u-admin' }),
+          { weeklyRemindersOff: true },
+        );
+      });
+    });
+  });
+
   // ── Which team they're on (#727) ──
 
   describe('teams', () => {
@@ -1381,6 +1433,15 @@ describe('Settings', () => {
       expect(screen.getByText('1 on YP team')).toBeInTheDocument();
       expect(screen.getByText('0 on Campus team')).toBeInTheDocument();
       expect(screen.getByText('Not on a team yet')).toBeInTheDocument();
+    });
+
+    it('flags an unassigned Trainee as getting no weekly reminder', async () => {
+      renderWithTrainees();
+
+      await waitFor(() => {
+        expect(screen.getByText('Not on a team yet')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/no weekly reminder/i)).toBeInTheDocument();
     });
 
     it('writes the single team field when a trainee is put on a team', async () => {

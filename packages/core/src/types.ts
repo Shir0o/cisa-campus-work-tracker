@@ -316,6 +316,9 @@ export interface AppUser {
   /** Which team they're on — the division above the gospel-partner pairs
    *  (#727). Absent means unassigned. */
   team?: string | null;
+  /** Their own weekly-reminder switch (#1301). Absent means on; only they may
+   *  change it (Firestore rules). */
+  weeklyRemindersOff?: boolean;
 }
 
 export interface Invitation {

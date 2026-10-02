@@ -24,7 +24,12 @@ import {
 import { expoSender, webPushSender } from "./transports";
 import { advanceTranslationCron } from "./translate";
 import { firestoreTranslationDeps, geminiTranslator } from "./translateFirestore";
-import { firestoreReminderDeps, runAskReminders } from "./reminders";
+import {
+  firestoreReminderDeps,
+  firestoreWeeklyDeps,
+  runAskReminders,
+  runWeeklyReminders,
+} from "./reminders";
 
 initializeApp();
 
@@ -193,3 +198,25 @@ function scheduledRemindersFor(database: string) {
 
 export const scheduledRemindersProd = scheduledRemindersFor("prod");
 export const scheduledRemindersQa = scheduledRemindersFor("qa-db");
+
+/** Hourly on campus time, so the stored schedule's days and hours decide when
+ *  each weekly reminder fires (#1301). The rule reads the clock and the counts;
+ *  this only writes what it returns. */
+function scheduledWeeklyRemindersFor(database: string) {
+  return onSchedule(
+    {
+      schedule: "0 * * * *",
+      timeZone: "America/Los_Angeles",
+      region: "us-east1",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      const db = getFirestore(database);
+      const result = await runWeeklyReminders(firestoreWeeklyDeps(db));
+      console.log(`[ScheduledWeeklyReminders] ${database} run complete:`, result);
+    },
+  );
+}
+
+export const scheduledWeeklyRemindersProd = scheduledWeeklyRemindersFor("prod");
+export const scheduledWeeklyRemindersQa = scheduledWeeklyRemindersFor("qa-db");

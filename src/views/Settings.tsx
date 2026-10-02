@@ -78,6 +78,18 @@ import {
   type PartnerPairing,
 } from '../lib/partners';
 import { TEAMS, teamLabelKey, isKnownTeam, saveUserTeam } from '../lib/teams';
+import {
+  subscribeReminderSchedule,
+  saveReminderSchedule,
+  saveWeeklyReminderOff,
+  reminderTimeSummary,
+  REMINDER_WEEKDAYS,
+  REMINDER_HOURS,
+  DEFAULT_REMINDER_SCHEDULE,
+  type ReminderSchedule,
+  type ReminderTime,
+  type Weekday,
+} from '../lib/weeklyReminders';
 import { isRealPerson } from '../lib/permissions';
 import { useDayGoal, GOAL_MIN, GOAL_MAX } from '../lib/goal';
 import {
@@ -938,6 +950,146 @@ function NotificationsSection() {
               : t('settings.send_test_web_notification', 'Send test notification')}
           </button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Weekly reminders (#1301) ────────────────────────────────────────────
+// Each staff member's own switch, plus the team-wide schedule only a
+// Full-timer edits. The schedule defaults to Tue/Wed 5 pm for Full-timers and
+// a per-team Trainee slot at 6 pm; every reminder goes out only when something
+// is waiting and only to the people whose schedule names them.
+
+function WeeklyReminderSection({ uid, off }: { uid: string; off: boolean }) {
+  const { t } = useLanguage();
+  const [pending, setPending] = useState<boolean | null>(null);
+  const on = pending ?? !off;
+
+  const toggle = (next: boolean) => {
+    setPending(next);
+    void saveWeeklyReminderOff(uid, !next);
+  };
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('reminders.yours_title', 'Your weekly reminders')}
+        sub={t('reminders.yours_sub', 'The rhythm reminders that reach your phone, on the campus clock.')}
+      />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex items-center justify-between gap-4 max-w-2xl">
+        <div className="min-w-0">
+          <div className="text-sm font-medium text-on-surface">
+            {t('reminders.yours_toggle', 'Weekly reminders')}
+          </div>
+          <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
+            {t(
+              'reminders.yours_help',
+              "Turn your own reminder on or off. Only when something is waiting, so a quiet week stays quiet.",
+            )}
+          </p>
+        </div>
+        <Switch
+          checked={on}
+          onChange={toggle}
+          aria-label={t('reminders.yours_toggle', 'Weekly reminders')}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ReminderScheduleSection() {
+  const { t } = useLanguage();
+  const [schedule, setSchedule] = useState<ReminderSchedule>(DEFAULT_REMINDER_SCHEDULE);
+  useEffect(() => subscribeReminderSchedule(setSchedule), []);
+
+  const write = (next: ReminderSchedule) => {
+    setSchedule(next);
+    void saveReminderSchedule(next);
+  };
+
+  const setTime = (id: string, time: ReminderTime) =>
+    id === 'fullTimers'
+      ? write({ ...schedule, fullTimers: time })
+      : write({ ...schedule, teams: { ...schedule.teams, [id]: time } });
+
+  const toggleDay = (time: ReminderTime, day: Weekday): ReminderTime => ({
+    ...time,
+    days: time.days.includes(day)
+      ? time.days.filter((d) => d !== day)
+      : ([...time.days, day].sort((a, b) => a - b) as Weekday[]),
+  });
+
+  const rows: { id: string; label: string; time: ReminderTime }[] = [
+    { id: 'fullTimers', label: t('reminders.full_timers', 'Full-timers'), time: schedule.fullTimers },
+    ...TEAMS.map((tm) => ({
+      id: tm.id,
+      label: t(teamLabelKey(tm.id), tm.label),
+      time: schedule.teams[tm.id] ?? { days: [], hour: 18 },
+    })),
+  ];
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('reminders.schedule_title', 'Weekly reminder schedule')}
+        sub={t(
+          'reminders.schedule_sub',
+          'When each reminder goes out, on the campus clock. Each fires only if something is waiting.',
+        )}
+      />
+      <div className="flex flex-col gap-3 max-w-2xl">
+        {rows.map((row) => (
+          <div
+            key={row.id}
+            className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5 flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-on-surface">{row.label}</span>
+              <span className="text-[12px] text-on-surface-variant">{reminderTimeSummary(row.time)}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div role="group" aria-label={t('reminders.days_for', 'Days for {name}').replace('{name}', row.label)} className="inline-flex gap-1 rounded-full border border-outline-variant/40 bg-surface-container-low p-1">
+                {REMINDER_WEEKDAYS.map((day) => {
+                  const active = row.time.days.includes(day.value);
+                  return (
+                    <button
+                      key={day.value}
+                      type="button"
+                      aria-pressed={active}
+                      aria-label={t(day.key, day.label)}
+                      onClick={() => setTime(row.id, toggleDay(row.time, day.value))}
+                      className={cn(
+                        'rounded-full px-2.5 py-1 text-[12px] transition-colors cursor-pointer',
+                        active
+                          ? 'bg-background text-on-surface font-medium'
+                          : 'text-on-surface-variant hover:text-on-surface',
+                      )}
+                    >
+                      {t(day.key, day.label)}
+                    </button>
+                  );
+                })}
+              </div>
+              <label className="text-[12px] text-on-surface-variant flex items-center gap-2">
+                {t('reminders.hour', 'Time')}
+                <select
+                  value={row.time.hour}
+                  aria-label={t('reminders.hour_for', 'Time for {name}').replace('{name}', row.label)}
+                  onChange={(e) => setTime(row.id, { ...row.time, hour: Number(e.target.value) })}
+                  className="rounded-xl border border-outline-variant/50 bg-surface px-2.5 py-1.5 text-[13px] text-on-surface cursor-pointer"
+                >
+                  {REMINDER_HOURS.map((hour) => (
+                    <option key={hour} value={hour}>
+                      {`${String(hour).padStart(2, '0')}:00`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -2901,7 +3053,7 @@ function TeamsSection({ users }: { users: AppUser[] }) {
             <p className="text-[13px] text-on-surface-variant mt-0.5 mb-3 leading-relaxed">
               {t(
                 'teams.unassigned_sub',
-                "They still show up on the news; the team chips just don't reach them.",
+                "They get no weekly reminder, and the team chips just don't reach them.",
               )}
             </p>
             <div className="flex flex-col gap-1.5">{unassigned.map(row)}</div>
@@ -2956,6 +3108,7 @@ export default function Settings() {
   const { t } = useLanguage();
 
   const [users, setUsers] = useState<AppUser[]>([]);
+  const myWeeklyOff = !!users.find((u) => u.uid === currentUser?.uid)?.weeklyRemindersOff;
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -3181,6 +3334,7 @@ export default function Settings() {
       <AppearanceSection theme={theme} setTheme={setTheme} />
       <NavigationSection />
       <NotificationsSection />
+      {isManager && <WeeklyReminderSection uid={currentUser?.uid ?? ''} off={myWeeklyOff} />}
       <LanguageSection />
       <WhatsNewSection
         onOpen={() => setWhatsNewOpen(true)}
@@ -3306,6 +3460,8 @@ export default function Settings() {
       {isAdmin && <PartnersSection users={users} />}
 
       {isAdmin && <TeamsSection users={users} />}
+
+      {isAdmin && <ReminderScheduleSection />}
 
       {isAdmin && <DayGoalSection />}
 
