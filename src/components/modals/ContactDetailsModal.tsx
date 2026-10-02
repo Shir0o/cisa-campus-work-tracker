@@ -63,7 +63,9 @@ import {
   subscribeInteractionRemovals,
   getPendingRemovalIds,
 } from "../../lib/interactionRemoval";
-import { contactKind, kindLabelKey } from "../../lib/contactKind";
+import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKind";
+import AboutSheet from "../contact/AboutSheet";
+import DelegateSheet from "../contact/DelegateSheet";
 import { buildContactStory } from "../../lib/contactStory";
 import { subscribeRhythms } from "../../lib/rhythms";
 
@@ -128,6 +130,8 @@ export default function ContactDetailsModal({
   const [movingStage, setMovingStage] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [reassigningCreator, setReassigningCreator] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [delegateOpen, setDelegateOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
   >("overview");
@@ -681,6 +685,48 @@ export default function ContactDetailsModal({
     });
 
     setReassigningCreator(false);
+  };
+
+  // The kind chip in the head writes the same two booleans and stamp the edit
+  // form does, on its own rules branch (#1152, ADR 0030), and lands in History.
+  const changeKind = async (kind: ContactKind) => {
+    if (!contact || !isAdmin || isImpersonating) return;
+    const fields = kind === "contact"
+      ? { inChurchLife: false }
+      : { inChurchLife: true, isStudent: kind === "our-own" };
+    const before = contactKind(contact);
+    const now = new Date().toISOString();
+    await updateDoc(doc(db, "contacts", contact.id), {
+      ...fields,
+      kindSetBy: user?.uid,
+      kindSetAt: now,
+      updatedAt: now,
+      updatedBy: user?.uid,
+      updatedByName:
+        user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+    });
+    contact.inChurchLife = fields.inChurchLife;
+    if ("isStudent" in fields) contact.isStudent = fields.isStudent;
+    const change = `kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(kind))}"`;
+    logActivity({
+      action: `updated ${change} for`,
+      targetId: contact.id,
+      targetName: currentContact.name,
+      targetType: "contact",
+      type: "edit",
+      description: change,
+    } as any);
+  };
+
+  // Delegate = Share + an @mention carrying the optional note, through the
+  // contact's Conversation and the existing mention path (ADR 0034, ADR 0007).
+  const handleDelegate = async (staffId: string, note: string) => {
+    if (!contact || !staffId) return;
+    const member = teamMembers.find((m) => m.id === staffId);
+    await addShare(staffId);
+    const body = note ? `@${member?.name ?? ""} ${note}`.trim() : `@${member?.name ?? ""}`.trim();
+    await conversation.post({ body, kind: "comment", mentionedUserIds: [staffId] });
+    setDelegateOpen(false);
   };
 
   const handlePhoneBlur = () => {
@@ -1501,6 +1547,10 @@ export default function ContactDetailsModal({
               role={role}
               activeTab={activeTab}
               tabs={visibleTabList}
+              isAdmin={isAdmin}
+              canEditKind={isAdmin && !isImpersonating}
+              openPrayerCount={openPrayers.length}
+              canDelegate={canShare}
               onClose={handleClose}
               onEdit={() => setIsEditing(true)}
               onCancelEdit={() => setIsEditing(false)}
@@ -1512,6 +1562,17 @@ export default function ContactDetailsModal({
               onMoveStage={moveStage}
               onOpenMoveSheet={() => setMovingStage(true)}
               onChangeTab={(tab) => setActiveTab(tab as any)}
+              onOpenAbout={() => setAboutOpen(true)}
+              onOpenDelegate={() => setDelegateOpen(true)}
+              onChangeKind={changeKind}
+              onChangeCreator={() => setReassigningCreator(true)}
+              onDelete={handleDelete}
+              onOpenPrayers={() => {
+                setActiveTab("overview");
+                requestAnimationFrame(() =>
+                  document.getElementById("contact-prayers")?.scrollIntoView?.({ block: "center" }),
+                );
+              }}
             />
 
             {reachPromptType && (
@@ -1549,7 +1610,9 @@ export default function ContactDetailsModal({
                     >
                       <WhatWeKnow notes={contact.notes} />
 
-                      <PrayersHeld loading={prayersLoading} prayers={openPrayers} />
+                      <div id="contact-prayers">
+                        <PrayersHeld loading={prayersLoading} prayers={openPrayers} />
+                      </div>
 
                       {/* The five groups that used to be the 320px aside. They pair up
                           once the column can hold two — a container query, because the
@@ -1834,6 +1897,47 @@ export default function ContactDetailsModal({
           </div>
         </div>
       )}
+
+      {aboutOpen && (
+        <AboutSheet open={aboutOpen} name={contact.name} onClose={() => setAboutOpen(false)}>
+          <div className="space-y-2">
+            <WhatWeKnow notes={contact.notes} />
+            <HowToReach contact={contact} firstName={firstName} />
+            <TagsSection
+              tags={formData.tags}
+              addingTag={addingTag}
+              tagInput={tagInput}
+              onTagInputChange={setTagInput}
+              onStartAdd={() => setAddingTag(true)}
+              onCancelAdd={() => setAddingTag(false)}
+              onCommitTag={commitTag}
+              onRemoveTag={removeTag}
+              onAddTag={(tag) => persistTags([...formData.tags, tag], "added", tag)}
+            />
+            <WhoCanSee
+              sharedWith={sharedWith}
+              founders={founders}
+              canRemove={(staffId) => canShare && canRemoveContactMember(role, currentUid, contact, staffId)}
+              onRemoveShare={removeShare}
+              shareOptions={shareOptions}
+              canShare={canShare}
+              sharing={sharing}
+              onStartShare={() => setSharing(true)}
+              onCancelShare={() => setSharing(false)}
+              onAddShare={addShare}
+              firstName={firstName}
+            />
+          </div>
+        </AboutSheet>
+      )}
+
+      <DelegateSheet
+        open={delegateOpen}
+        name={contact.name}
+        members={shareOptions}
+        onClose={() => setDelegateOpen(false)}
+        onDelegate={handleDelegate}
+      />
 
       {movingStage && (
         <StageMoveSheet
