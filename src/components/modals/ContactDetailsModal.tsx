@@ -75,6 +75,7 @@ import ContactJourney from "../contact/ContactJourney";
 import ContactThreadLinks from "../contact/ContactThreadLinks";
 import ContactStreamTab from "../contact/ContactStreamTab";
 import ContactInteractionForm from "../contact/ContactInteractionForm";
+import ContactReachPrompt from "../contact/ContactReachPrompt";
 import ContactPrayerForm from "../contact/ContactPrayerForm";
 import ContactPrayerCard from "../contact/ContactPrayerCard";
 import ContactInteractionItem from "../contact/ContactInteractionItem";
@@ -195,6 +196,11 @@ export default function ContactDetailsModal({
   });
   const [submittingInteraction, setSubmittingInteraction] = useState(false);
   const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
+  // A Call or Text leaves the page for the dialer/messages app; when the page
+  // comes back, the pending reach asks to be logged (#1297).
+  const [reachPromptType, setReachPromptType] = useState<null | "call" | "chat">(null);
+  const reachPendingRef = React.useRef<null | "call" | "chat">(null);
+  const reachPageHiddenRef = React.useRef(false);
   const [editingInteractionId, setEditingInteractionId] = useState<
     string | null
   >(null);
@@ -244,6 +250,27 @@ export default function ContactDetailsModal({
       }
     }
   }, [isOpen, contact?.id, user?.uid]);
+
+  // Offer to log the reach when the page becomes visible again after a Call or
+  // Text. Nothing is written unless the offer is accepted.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        if (reachPendingRef.current) reachPageHiddenRef.current = true;
+        return;
+      }
+      if (
+        document.visibilityState === "visible" &&
+        reachPendingRef.current &&
+        reachPageHiddenRef.current
+      ) {
+        setReachPromptType(reachPendingRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isOpen]);
 
   const handleClose = () => {
     if (
@@ -1154,13 +1181,40 @@ export default function ContactDetailsModal({
 
   // ── Contact actions: Call / Text / Email ──
   const callContact = () => {
-    if (contact.phone) window.open(`tel:${contact.phone}`);
+    if (contact.phone) {
+      reachPendingRef.current = "call";
+      reachPageHiddenRef.current = false;
+      window.open(`tel:${contact.phone}`);
+    }
   };
   const textContact = () => {
-    if (contact.phone) window.open(`sms:${contact.phone}`);
+    if (contact.phone) {
+      reachPendingRef.current = "chat";
+      reachPageHiddenRef.current = false;
+      window.open(`sms:${contact.phone}`);
+    }
   };
   const emailContact = () => {
     if (contact.email) window.open(`mailto:${contact.email}`);
+  };
+  const acceptReachPrompt = () => {
+    const type = reachPromptType;
+    setReachPromptType(null);
+    reachPendingRef.current = null;
+    reachPageHiddenRef.current = false;
+    if (!type) return;
+    setNewInteraction((prev) => ({
+      ...prev,
+      type,
+      dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    }));
+    setActiveTab("interactions");
+    setIsLoggingInteraction(true);
+  };
+  const dismissReachPrompt = () => {
+    setReachPromptType(null);
+    reachPendingRef.current = null;
+    reachPageHiddenRef.current = false;
   };
   const startLogInteraction = () => {
     setActiveTab("interactions");
@@ -1459,6 +1513,14 @@ export default function ContactDetailsModal({
               onOpenMoveSheet={() => setMovingStage(true)}
               onChangeTab={(tab) => setActiveTab(tab as any)}
             />
+
+            {reachPromptType && (
+              <ContactReachPrompt
+                name={firstName}
+                onAccept={acceptReachPrompt}
+                onDismiss={dismissReachPrompt}
+              />
+            )}
 
             {/* Content */}
             <div className={isMobile ? "cdm-page-body" : "cd-page-content"}>

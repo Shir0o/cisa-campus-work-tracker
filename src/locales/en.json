@@ -1348,6 +1348,8 @@
       "call": "Call",
       "text": "Text",
       "email": "Email",
+      "messaged_prompt": "Messaged {name}? Log it",
+      "messaged_prompt_dismiss": "Not now",
       "log_interaction": "Log interaction",
       "prayer": "Prayer",
       "add_prayer": "Add prayer",

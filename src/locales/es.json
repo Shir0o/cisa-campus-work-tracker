@@ -1348,6 +1348,8 @@
       "call": "Llamar",
       "text": "Mensaje",
       "email": "Correo",
+      "messaged_prompt": "¿Le escribiste a {name}? Regístralo",
+      "messaged_prompt_dismiss": "Ahora no",
       "log_interaction": "Registrar interacción",
       "prayer": "Oración",
       "add_prayer": "Añadir oración",
