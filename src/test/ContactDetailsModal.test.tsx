@@ -3514,3 +3514,182 @@ describe('Reach prompt after Text or Call (#1297)', () => {
   });
 });
 
+describe('contact head, About sheet, Delegate and kind (#1299)', () => {
+  const mockOnClose = vi.fn();
+  const teammateDoc = { id: 'ft2', data: () => ({ name: 'Sam Lee', role: 'admin' }) };
+
+  const withTeam = () => {
+    (firestore.onSnapshot as any).mockImplementation((ref: any, cb: any) => {
+      if (typeof cb === 'function') {
+        cb(ref?.path === 'users' ? { docs: [teammateDoc] } : { docs: [] });
+      }
+      return () => {};
+    });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' },
+      isAdmin: true,
+      role: 'admin',
+    });
+    (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
+    (firestore.updateDoc as any).mockResolvedValue(true);
+    withTeam();
+  });
+
+  it('opens the About sheet from the name and holds its four sections', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getByText('John Doe'));
+
+    const sheet = screen.getByRole('dialog', { name: /About John Doe/i });
+    expect(within(sheet).getByText(/What we know/i)).toBeInTheDocument();
+    expect(within(sheet).getByText(/How to reach John/i)).toBeInTheDocument();
+    expect(within(sheet).getByText(/^Tags$/i)).toBeInTheDocument();
+    expect(within(sheet).getByText(/Who else can see them/i)).toBeInTheDocument();
+  });
+
+  it('shares and removes a teammate from inside the About sheet', async () => {
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, coCreators: [], founders: [] }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('John Doe'));
+    const sheet = screen.getByRole('dialog', { name: /About John Doe/i });
+
+    fireEvent.click(within(sheet).getByRole('button', { name: /add someone/i }));
+    fireEvent.change(within(sheet).getByRole('combobox'), { target: { value: 'ft2' } });
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ coCreators: ['ft2'] }),
+      );
+    });
+    expect(firestore.arrayUnion).toHaveBeenCalledWith('ft2');
+
+    fireEvent.click(await within(sheet).findByTitle('Remove access'));
+
+    await waitFor(() => {
+      expect(firestore.arrayRemove).toHaveBeenCalledWith('ft2');
+    });
+  });
+
+  it('delegates: shares the person and posts a mention carrying the note', async () => {
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, coCreators: [], founders: [] }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delegate' }));
+    const sheet = await screen.findByRole('dialog', { name: /Delegate John Doe/i });
+
+    fireEvent.change(within(sheet).getByLabelText('Choose a teammate'), {
+      target: { value: 'ft2' },
+    });
+    fireEvent.change(within(sheet).getByLabelText('Add a note (optional)'), {
+      target: { value: 'Please call him this week' },
+    });
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Delegate' }));
+
+    await waitFor(() => {
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        'contact-abc',
+        expect.objectContaining({
+          kind: 'comment',
+          mentionedUserIds: ['ft2'],
+          body: expect.stringContaining('Please call him this week'),
+        }),
+        expect.anything(),
+      );
+    });
+    expect(firestore.updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ coCreators: ['ft2'] }),
+    );
+  });
+
+  it('lets a Full-timer change the kind from the head chip', async () => {
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, inChurchLife: false, isStudent: true }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('kind-chip-edit'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Our own' }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          inChurchLife: true,
+          isStudent: true,
+          kindSetBy: 'user-123',
+        }),
+      );
+    });
+  });
+
+  it('does not let a Trainee change the kind from the head chip', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'tr1', displayName: 'Trainee' },
+      isAdmin: false,
+      role: 'manager',
+    });
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{
+          ...mockContact,
+          inChurchLife: true,
+          isStudent: false,
+          createdBy: 'tr1',
+          visibleTo: ['tr1'],
+        }}
+      />,
+    );
+
+    expect(screen.queryByTestId('kind-chip-edit')).toBeNull();
+    expect(screen.getByText('Local saint')).toBeInTheDocument();
+  });
+
+  it('counts the prayers we are holding in a line under the head', async () => {
+    (firestore.onSnapshot as any).mockImplementation((ref: any, cb: any) => {
+      if (typeof cb === 'function') {
+        if (ref?.path === 'prayers') {
+          cb({
+            docs: [
+              {
+                id: 'p1',
+                data: () => ({ contactId: 'contact-abc', burden: 'Exams', status: 'open', date: new Date().toISOString() }),
+              },
+            ],
+          });
+        } else if (ref?.path === 'users') {
+          cb({ docs: [teammateDoc] });
+        } else {
+          cb({ docs: [] });
+        }
+      }
+      return () => {};
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    expect(await screen.findByText('1 prayer we\'re holding')).toBeInTheDocument();
+  });
+});
+
