@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
 import { addThreadMessage, closeFollowUpAsk } from '../lib/threads';
@@ -3415,6 +3415,102 @@ describe('desktop story layout (design D)', () => {
       expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
       expect(within(pane).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();
     });
+  });
+});
+
+describe('Reach prompt after Text or Call (#1297)', () => {
+  const onClose = vi.fn();
+  const originalVisibility = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+
+  const setVisibility = (state: 'hidden' | 'visible') => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+    fireEvent(document, new Event('visibilitychange'));
+  };
+
+  const tapThenReturn = (name: RegExp) => {
+    fireEvent.click(screen.getByRole('button', { name }));
+    act(() => setVisibility('hidden'));
+    act(() => setVisibility('visible'));
+  };
+
+  const prompt = () => screen.queryByRole('button', { name: /Messaged John\? Log it/ });
+  const interactionForm = () =>
+    screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form') as HTMLFormElement;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('open', vi.fn());
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' },
+      isAdmin: true,
+      role: 'admin',
+    });
+    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
+      if (typeof cb === 'function') cb({ docs: [] });
+      return () => {};
+    });
+    (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
+  });
+
+  afterEach(() => {
+    if (originalVisibility) {
+      Object.defineProperty(document, 'visibilityState', originalVisibility);
+    } else {
+      delete (document as any).visibilityState;
+    }
+  });
+
+  it('offers to log a Text as a chat message when the page comes back', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    tapThenReturn(/^Text$/);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Messaged John? Log it' }));
+
+    const form = interactionForm();
+    expect((form.querySelector('select') as HTMLSelectElement).value).toBe('chat');
+    const dateTime = (form.querySelector('input[type="datetime-local"]') as HTMLInputElement).value;
+    expect(dateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(Math.abs(Date.now() - new Date(dateTime).getTime())).toBeLessThan(120000);
+  });
+
+  it('offers to log a Call as a phone call when the page comes back', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    tapThenReturn(/^Call$/);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Messaged John? Log it' }));
+    expect((interactionForm().querySelector('select') as HTMLSelectElement).value).toBe('call');
+  });
+
+  it('does not prompt after Email, nor when the page was never hidden', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    tapThenReturn(/^Email$/);
+    expect(prompt()).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Text$/ }));
+    act(() => setVisibility('visible'));
+    expect(prompt()).not.toBeInTheDocument();
+
+    expect(firestore.addDoc).not.toHaveBeenCalled();
+  });
+
+  it('dismissing the prompt writes nothing and opens no form', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    tapThenReturn(/^Text$/);
+    await screen.findByRole('button', { name: 'Messaged John? Log it' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+
+    expect(prompt()).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
+    expect(firestore.addDoc).not.toHaveBeenCalled();
   });
 });
 
