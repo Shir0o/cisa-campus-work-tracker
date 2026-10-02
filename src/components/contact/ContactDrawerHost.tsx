@@ -84,6 +84,7 @@ export default function ContactDrawerHost({
             viewer={viewer}
             threadMode="replace"
             onClose={onCloseDrawer}
+            onMakeTodo={onMakeTodo}
             header={
               <div className="cd-drawer-head">
                 <div>
@@ -105,6 +106,7 @@ export default function ContactDrawerHost({
             viewer={viewer}
             threadMode="replace"
             onClose={onCloseDrawer}
+            onMakeTodo={onMakeTodo}
           />
         </div>
       )}

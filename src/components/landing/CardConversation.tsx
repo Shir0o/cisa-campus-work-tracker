@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { cn } from "../../lib/utils";
 import type { Contact } from "../../types";
 import Stream from "../stream/Stream";
+import FromEntryTodoComposer from "../todos/FromEntryTodoComposer";
 import { conversationAdapter } from "../stream/conversationAdapter";
 import { fullTimersAdapter } from "../stream/fullTimersAdapter";
 import type { TeamMemberLike } from "../stream/types";
@@ -117,6 +118,8 @@ export function CardConversation({
   const { t } = useLanguage();
   const { user, role } = useAuth();
   const [tab, setTab] = useState<Tab>("conversation");
+  // The message a to-do is being made from (the row toolbar).
+  const [todoFrom, setTodoFrom] = useState<string | null>(null);
 
   const conversationCount = countFor(messages, null, null);
   const teamCount = countFor(messages, null, "team");
@@ -187,8 +190,21 @@ export function CardConversation({
         threadMode="replace"
         compact
         highlightIds={justPosted}
+        onMakeTodo={(m) => setTodoFrom(m.body)}
         header={segment}
       />
+      {todoFrom !== null && (
+        <FromEntryTodoComposer
+          text={todoFrom}
+          contactId={contact.id}
+          contactName={contact.name}
+          source={null}
+          team={(teamMembers ?? []).map((m) => ({ uid: m.id, name: m.name }))}
+          meUid={uid}
+          meName={user?.displayName || "Someone"}
+          onClose={() => setTodoFrom(null)}
+        />
+      )}
     </div>
   );
 }
