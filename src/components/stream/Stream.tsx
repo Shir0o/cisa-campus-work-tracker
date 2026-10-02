@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Pin, Reply, SquareCheckBig, X } from "lucide-react";
+import { ArrowLeft, Check, Ellipsis, Footprints, Loader2, Pencil, Pin, Quote, Reply, SquareCheckBig, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
 import { useTranslate } from "../../hooks/useTranslate";
@@ -28,6 +28,12 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   /** Drawn under the composer — a line the composer can't say alone. */
   footer?: React.ReactNode;
   onMakeTodo?: (message: M) => void;
+  /** Conversation only: add a message to the person's story, or take it back
+   *  out. Never passed on a Full-timers stream. */
+  onAddToStory?: (message: M) => void;
+  /** The message ids the person keeps a reference to, so a row can say whether
+   *  it is already in the story. */
+  storyMessageIds?: ReadonlySet<string> | null;
   /** Inside a card: 28px avatars and the tighter rhythm (G1). */
   compact?: boolean;
   /** Messages to mark "Just posted" — the viewer's own, for a moment. */
@@ -176,6 +182,8 @@ interface RowProps<M extends StreamSourceMessage> {
   showChip: boolean;
   onOpenThread?: (focus: boolean) => void;
   onMakeTodo?: () => void;
+  onAddToStory?: () => void;
+  addedToStory?: boolean;
   /** The model allows it and the adapter doesn't forbid it. */
   deletable: boolean;
   /** The adapter lets this viewer rewrite this message. */
@@ -208,6 +216,8 @@ function Row<M extends StreamSourceMessage>({
   showChip,
   onOpenThread,
   onMakeTodo,
+  onAddToStory,
+  addedToStory,
   deletable,
   canEdit,
   onEdit,
@@ -403,6 +413,17 @@ function Row<M extends StreamSourceMessage>({
             <SquareCheckBig className="w-4 h-4" />
           </button>
         )}
+        {onAddToStory && (
+          <button
+            type="button"
+            className={cn("strm-tool", addedToStory && "on")}
+            aria-label={addedToStory ? t("stream.remove_from_story") : t("stream.add_to_story")}
+            title={addedToStory ? t("stream.remove_from_story") : t("stream.add_to_story")}
+            onClick={onAddToStory}
+          >
+            <Quote className="w-4 h-4" />
+          </button>
+        )}
         <button
           type="button"
           className={cn("strm-tool", menu && "on")}
@@ -493,6 +514,8 @@ export default function Stream<M extends StreamSourceMessage>({
   onClose,
   footer,
   onMakeTodo,
+  onAddToStory,
+  storyMessageIds,
   compact,
   highlightIds,
   renderExtra,
@@ -553,6 +576,8 @@ export default function Stream<M extends StreamSourceMessage>({
     maxLength: words?.maxLength,
     justPosted: !!highlightIds?.has(row.message.id),
     onMakeTodo: onMakeTodo ? () => onMakeTodo(row.message) : undefined,
+    onAddToStory: onAddToStory ? () => onAddToStory(row.message) : undefined,
+    addedToStory: !!storyMessageIds?.has(row.message.id),
     onDelete: () => void adapter.delete(row.message),
     onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
     photo: adapter.avatarUrl?.(row.message) ?? null,

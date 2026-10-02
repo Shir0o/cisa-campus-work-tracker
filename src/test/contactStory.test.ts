@@ -566,6 +566,56 @@ describe('buildContactStory', () => {
     });
   });
 
+  describe('messages added to the story', () => {
+    const storyMessage = (id: string, over: Record<string, unknown> = {}) => ({
+      id,
+      from: 'josh',
+      fromName: 'Josh Park',
+      body: `said ${id}`,
+      at: '2026-09-19T10:00:00.000Z',
+      ...over,
+    });
+
+    it('quotes a Conversation message someone added, with who said it and when', () => {
+      const story = buildContactStory({
+        contact: { ...contact, storyMessageIds: ['m1'] },
+        ...empty,
+        storyMessages: [storyMessage('m1')],
+      });
+
+      expect(story.find((entry) => entry.kind === 'story-message')).toEqual({
+        kind: 'story-message',
+        id: 'm1',
+        at: '2026-09-19T10:00:00.000Z',
+        messageId: 'm1',
+        fromId: 'josh',
+        fromName: 'Josh Park',
+        body: 'said m1',
+      });
+    });
+
+    it('drops a message that was taken back out of the story', () => {
+      const story = buildContactStory({
+        contact: { ...contact, storyMessageIds: [] },
+        ...empty,
+        storyMessages: [storyMessage('m1')],
+      });
+
+      expect(story.some((entry) => entry.kind === 'story-message')).toBe(false);
+    });
+
+    it('orders an added message among the rest, newest first', () => {
+      const story = buildContactStory({
+        contact: { ...contact, storyMessageIds: ['m1'] },
+        ...empty,
+        interactions: [conversation('coffee', '2026-09-21T10:00:00.000Z')],
+        storyMessages: [storyMessage('m1')],
+      });
+
+      expect(kindsAndIds(story).slice(0, 2)).toEqual(['conversation:coffee', 'story-message:m1']);
+    });
+  });
+
   it('holds an interaction logged on a teammate\u2019s behalf, and counts it as reach (#1288)', () => {
     const onBehalf = {
       ...conversation('on-behalf', '2026-09-21T10:00:00.000Z'),

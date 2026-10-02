@@ -20,6 +20,8 @@ export default function ContactDrawerHost({
   drawerLabel,
   onCloseDrawer,
   onMakeTodo,
+  onAddToStory,
+  storyMessageIds,
   todoFrom,
   onCloseTodo,
   contact,
@@ -36,6 +38,10 @@ export default function ContactDrawerHost({
   drawerLabel: string;
   onCloseDrawer: () => void;
   onMakeTodo: (message: ThreadMessage) => void;
+  /** Conversation only: add a message to the person's story, or take it back
+   *  out. Never offered on the Full-timers stream. */
+  onAddToStory: (message: ThreadMessage) => void;
+  storyMessageIds: ReadonlySet<string>;
   todoFrom: ThreadMessage | null;
   onCloseTodo: () => void;
   contact: Contact;
@@ -67,6 +73,8 @@ export default function ContactDrawerHost({
             threadMode="replace"
             onClose={onCloseDrawer}
             onMakeTodo={onMakeTodo}
+            onAddToStory={onAddToStory}
+            storyMessageIds={storyMessageIds}
             header={
               // The title alone: who reads it is said above the composer (C3).
               <div className="cd-drawer-head">

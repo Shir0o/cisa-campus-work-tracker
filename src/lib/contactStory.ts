@@ -19,15 +19,27 @@ export type StoryEntry =
   | { kind: 'change'; id: string; at: string; byId: string; byName: string; changes: StoryChange[] }
   | { kind: 'prayer' | 'prayer-answered'; id: string; at: string; prayer: PrayerRecord }
   | { kind: 'attendance'; id: string; at: string; name: string; count: number }
+  | { kind: 'story-message'; id: string; at: string; messageId: string; fromId: string; fromName: string; body: string }
   | { kind: 'added'; id: string; at: string | null; byName: string | null };
 
+// A Conversation message someone chose to Add to story: the story quotes it,
+// naming who said it and when, and links back to where it was said (#1298).
+export interface StoryMessageInput {
+  id: string;
+  from: string;
+  fromName: string;
+  body: string;
+  at: string;
+}
+
 export interface ContactStoryInput {
-  contact: { id: string; createdAt?: string; createdByName?: string | null };
+  contact: { id: string; createdAt?: string; createdByName?: string | null; storyMessageIds?: string[] };
   interactions: Interaction[];
   prayers: PrayerRecord[];
   activities: SystemActivity[];
   gatherings?: Gathering[];
   rhythms?: Rhythm[];
+  storyMessages?: StoryMessageInput[];
   pendingRemovalIds?: string[];
 }
 
@@ -198,6 +210,7 @@ export function buildContactStory({
   activities,
   gatherings = [],
   rhythms = [],
+  storyMessages = [],
   pendingRemovalIds = [],
 }: ContactStoryInput): StoryEntry[] {
   // A conversation sits at the date it happened (dateTime), not when it was
@@ -239,10 +252,25 @@ export function buildContactStory({
 
   const attendance = attendanceEntries(gatherings, rhythms, contact.id);
 
+  // Only the messages the person currently keeps a reference to; taking one
+  // back out leaves it where it was said but drops it from the story (#1298).
+  const storyMessageIds = new Set(contact.storyMessageIds ?? []);
+  const addedMessages: StoryEntry[] = storyMessages
+    .filter((message) => storyMessageIds.has(message.id))
+    .map((message) => ({
+      kind: 'story-message',
+      id: message.id,
+      at: message.at,
+      messageId: message.id,
+      fromId: message.from,
+      fromName: message.fromName,
+      body: message.body,
+    }));
+
   // Newest first. A date we cannot read must not silently collapse to epoch 0
   // and sink beneath every real entry, so it sorts above them instead.
   const orderMs = (at: string | null) => parseMs(at) ?? Number.POSITIVE_INFINITY;
-  const newestFirst = [...conversations, ...changes, ...prayerMoments, ...attendance].sort((a, b) => {
+  const newestFirst = [...conversations, ...changes, ...prayerMoments, ...attendance, ...addedMessages].sort((a, b) => {
     const [ta, tb] = [orderMs(a.at), orderMs(b.at)];
     return ta === tb ? 0 : tb - ta;
   });

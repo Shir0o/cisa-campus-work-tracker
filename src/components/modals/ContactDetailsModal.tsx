@@ -565,6 +565,14 @@ export default function ContactDetailsModal({
     });
   };
 
+  const toggleStoryMessage = (message: ThreadMessage) => {
+    const ids = (liveContact || contact).storyMessageIds ?? [];
+    const inStory = ids.includes(message.id);
+    updateDoc(doc(db, "contacts", contact.id), {
+      storyMessageIds: inStory ? arrayRemove(message.id) : arrayUnion(message.id),
+    }).catch((error) => handleFirestoreError(error, OperationType.UPDATE, "contacts"));
+  };
+
   const addShare = async (staffId: string) => {
     if (!contact) return;
     const s = teamMembers.find((m) => m.id === staffId);
@@ -1454,14 +1462,24 @@ export default function ContactDetailsModal({
   // column, and the profile groups sit beside it. The two threads open in a
   // drawer; the full audit log lives on the History page.
   const story = buildContactStory({
-    contact,
+    contact: currentContact,
     interactions,
     prayers,
     activities,
     gatherings,
     rhythms,
+    storyMessages: threadMessages,
     pendingRemovalIds,
   });
+  const storyMessageIds = new Set(currentContact.storyMessageIds ?? []);
+  const openStoryMessage = (messageId: string) => {
+    setOpenThread(null);
+    if (isMobile) setActiveTab("thread");
+    else setDrawer("thread");
+    setTimeout(() => {
+      document.querySelector(`[data-stream-row="${messageId}"]`)?.scrollIntoView?.({ block: "center" });
+    }, 0);
+  };
   const canSeeTeamThread = role === "admin" || isAdmin;
 
   const storySection = (
@@ -1481,6 +1499,7 @@ export default function ContactDetailsModal({
       addPrayerForm={addPrayerForm}
       renderInteraction={renderInteractionItem}
       renderPrayerCard={renderPrayerCard}
+      onOpenStoryMessage={openStoryMessage}
     />
   );
 
@@ -1730,7 +1749,13 @@ export default function ContactDetailsModal({
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
                       </div>
-                      <ContactStreamTab adapter={conversation} viewer={streamViewer} onMakeTodo={(m) => setTodoFrom(m)} />
+                      <ContactStreamTab
+                        adapter={conversation}
+                        viewer={streamViewer}
+                        onMakeTodo={(m) => setTodoFrom(m)}
+                        onAddToStory={toggleStoryMessage}
+                        storyMessageIds={storyMessageIds}
+                      />
                     </div>
                   )}
 
@@ -1887,6 +1912,8 @@ export default function ContactDetailsModal({
               drawerLabel={drawerLabel}
               onCloseDrawer={() => setDrawer(null)}
               onMakeTodo={(m) => setTodoFrom(m)}
+              onAddToStory={toggleStoryMessage}
+              storyMessageIds={storyMessageIds}
               todoFrom={todoFrom}
               onCloseTodo={() => setTodoFrom(null)}
               contact={contact}

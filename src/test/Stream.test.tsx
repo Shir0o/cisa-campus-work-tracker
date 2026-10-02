@@ -141,6 +141,28 @@ describe("Stream — the hover toolbar (G7)", () => {
     expect(onMakeTodo).toHaveBeenCalledWith(m);
   });
 
+  it("Add to story hands the message to the surface", () => {
+    const onAddToStory = vi.fn();
+    const m = message({ body: "she came to the appointment" });
+    renderStream(fakeAdapter({ messages: [m] }), { onAddToStory });
+    fireEvent.click(within(row("she came to the appointment")).getByRole("button", { name: "Add to story" }));
+    expect(onAddToStory).toHaveBeenCalledWith(m);
+  });
+
+  it("offers Remove from story once the message is in the story, and takes it back out", () => {
+    const onAddToStory = vi.fn();
+    const m = message({ id: "m1", body: "in the story" });
+    renderStream(fakeAdapter({ messages: [m] }), { onAddToStory, storyMessageIds: new Set(["m1"]) });
+    fireEvent.click(within(row("in the story")).getByRole("button", { name: "Remove from story" }));
+    expect(onAddToStory).toHaveBeenCalledWith(m);
+    expect(within(row("in the story")).queryByRole("button", { name: "Add to story" })).toBeNull();
+  });
+
+  it("offers no Add to story where the surface does not", () => {
+    renderStream(fakeAdapter({ messages: [message({ body: "no story here" })] }));
+    expect(screen.queryByRole("button", { name: "Add to story" })).toBeNull();
+  });
+
   it("More → Delete removes your own message", () => {
     const adapter = fakeAdapter({ messages: [message({ id: "mine", from: "maria", body: "oops" })] });
     renderStream(adapter);

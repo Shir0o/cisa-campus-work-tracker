@@ -99,6 +99,7 @@ export default function ContactStory({
   addPrayerForm,
   renderInteraction,
   renderPrayerCard,
+  onOpenStoryMessage,
 }: {
   story: StoryEntry[];
   fmtDate: (v?: string | null) => string | null;
@@ -112,6 +113,8 @@ export default function ContactStory({
   addPrayerForm: React.ReactNode;
   renderInteraction: (interaction: Interaction) => React.ReactNode;
   renderPrayerCard: (prayer: PrayerRecord) => React.ReactNode;
+  /** A message added to the story links back to its place in the Conversation. */
+  onOpenStoryMessage?: (messageId: string) => void;
 }) {
   const { t } = useLanguage();
 
@@ -184,6 +187,25 @@ export default function ContactStory({
                   </div>
                 )}
                 {entry.kind === "change" && <ChangeEntry entry={entry} t={t} />}
+                {entry.kind === "story-message" && (
+                  <div className="cd-story-quote">
+                    <p className="cd-prose">{entry.body}</p>
+                    <div className="cd-story-quote-foot">
+                      <span>
+                        {t('modals.contactDetails.story_message_said').replace('{name}', entry.fromName)}
+                      </span>
+                      {onOpenStoryMessage && (
+                        <button
+                          type="button"
+                          className="cd-story-quote-link"
+                          onClick={() => onOpenStoryMessage(entry.messageId)}
+                        >
+                          {t('modals.contactDetails.story_message_link')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {entry.kind === "attendance" && (
                   <div className="cd-story-milestone">
                     <strong>
