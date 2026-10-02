@@ -15,17 +15,6 @@ import {
   type ReminderSchedule,
   type WeeklyReminderStaff,
 } from "../../packages/core/src/reminders";
-import { contactKind } from "../../packages/core/src/directory";
-import {
-  isTiedTo,
-  reachByContact,
-  unreachedContacts,
-  type ReachGathering,
-  type ReachInteraction,
-  type ReachPerson,
-  type ReachReading,
-} from "../../packages/core/src/reach";
-import { parseMs } from "../../packages/core/src/myday";
 import type { Firestore } from "firebase-admin/firestore";
 
 export interface ReminderDeps {
@@ -128,16 +117,49 @@ export async function runWeeklyReminders(deps: WeeklyReminderDeps): Promise<Week
   return { written: due.length };
 }
 
+const DAY_MS = 86_400_000;
+const UNREACHED_TAG_WINDOW_DAYS = 30;
+
+function parseMs(value: unknown): number | null {
+  if (typeof value !== "string" || !value) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** One person the weekly counts read: whether they are a Contact, when they
+ *  were added, and every tie that makes a teammate a recipient. */
+interface WaitingPerson {
+  id: string;
+  isContact: boolean;
+  createdAtMs: number | null;
+  tiedUids: string[];
+}
+
+function isTiedTo(person: WaitingPerson | undefined, uid: string): boolean {
+  return !!person && person.tiedUids.includes(uid);
+}
+
 /** How many Contact-kind people added in the last 30 days nobody has reached,
- *  for a Full-timer (the whole roster) or one Trainee's own ties. */
+ *  for a Full-timer (the whole roster) or one Trainee's own ties. The web/core
+ *  reach model (#1293) is the behaviour oracle; this is the same reading over
+ *  the raw docs the functions package already gathers, like #1289's candidates.
+ *  Reach itself is ever — the 30-day limit is on when the person was added. */
 function waitingCount(
-  people: readonly ReachPerson[],
-  reach: ReadonlyMap<string, ReachReading>,
+  people: readonly WaitingPerson[],
+  reached: ReadonlySet<string>,
   uid: string,
   nowMs: number,
   scope: "team" | "yours",
 ): number {
-  return unreachedContacts(people, reach, { scope, viewerUid: uid, nowMs }).length;
+  const floor = nowMs - UNREACHED_TAG_WINDOW_DAYS * DAY_MS;
+  let count = 0;
+  for (const p of people) {
+    if (!p.isContact || p.createdAtMs == null || p.createdAtMs < floor) continue;
+    if (reached.has(p.id)) continue;
+    if (scope === "yours" && !isTiedTo(p, uid)) continue;
+    count += 1;
+  }
+  return count;
 }
 
 /** The live deps over Firestore: the schedule doc, every staff member, and the
@@ -166,30 +188,32 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
         db.collectionGroup("threads").where("kind", "==", "nudge").get(),
       ]);
 
-      const interactions: ReachInteraction[] = interactionsSnap.docs.map((d) => {
+      // Reach: anyone with a logged Interaction, or ever present at a Gathering.
+      const reached = new Set<string>();
+      for (const d of interactionsSnap.docs) {
         const data = d.data();
-        return {
-          contactId: data.contactId ?? d.ref.parent.parent?.id ?? "",
-          ms: parseMs(data.dateTime) ?? parseMs(data.createdAt) ?? 0,
-        };
-      });
-      const gatherings: ReachGathering[] = eventsSnap.docs.map((d) => {
-        const data = d.data();
-        return { date: data.date ?? "", attendance: data.attendance };
-      });
-      const reach = reachByContact({ interactions, gatherings });
+        const id = data.contactId ?? d.ref.parent.parent?.id ?? "";
+        if (id) reached.add(id);
+      }
+      for (const d of eventsSnap.docs) {
+        const present = (d.data().attendance?.present ?? []) as string[];
+        for (const id of present) if (id) reached.add(id);
+      }
 
-      const people: ReachPerson[] = contactsSnap.docs.map((d) => {
+      const people: WaitingPerson[] = contactsSnap.docs.map((d) => {
         const data = d.data();
+        const tiedUids = [
+          data.createdBy,
+          data.addedBy,
+          ...(data.coCreators ?? []),
+          ...(data.founders ?? []),
+          ...(data.carers ?? []),
+        ].filter((t): t is string => typeof t === "string" && t.length > 0);
         return {
           id: d.id,
-          kind: contactKind(data),
+          isContact: data.inChurchLife !== true,
           createdAtMs: parseMs(data.createdAt),
-          createdBy: data.createdBy ?? null,
-          addedBy: data.addedBy ?? null,
-          coCreators: data.coCreators ?? null,
-          founders: data.founders ?? null,
-          carers: data.carers ?? null,
+          tiedUids,
         };
       });
       const personById = new Map(people.map((p) => [p.id, p]));
@@ -213,9 +237,9 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
           lastWeeklyReminderAt: data.weeklyReminderAt ?? null,
         };
         if (staff.role === "admin") {
-          staff.toWorkThrough = waitingCount(people, reach, uid, nowMs, "team");
+          staff.toWorkThrough = waitingCount(people, reached, uid, nowMs, "team");
         } else if (staff.role === "manager") {
-          staff.notReachedYet = waitingCount(people, reach, uid, nowMs, "yours");
+          staff.notReachedYet = waitingCount(people, reached, uid, nowMs, "yours");
           let openAsks = 0;
           for (const [contactId, count] of openAsksByContact) {
             if (isTiedTo(personById.get(contactId), uid)) openAsks += count;
