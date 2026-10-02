@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "date-fns": "^4.4.0",
     "firebase-admin": "^14.4.0",
     "firebase-functions": "^7.4.0",
     "web-push": "^3.6.7"
