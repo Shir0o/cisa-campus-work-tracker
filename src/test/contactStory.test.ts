@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildContactStory } from '../lib/contactStory';
+import { isReached } from '../lib/reach';
 import type { Gathering, Rhythm } from '../types';
 
 const contact = {
@@ -563,5 +564,33 @@ describe('buildContactStory', () => {
 
       expect(kindsAndIds(story)).toEqual(['conversation:unreadable', 'conversation:dated', 'added:added']);
     });
+  });
+
+  it('holds an interaction logged on a teammate\u2019s behalf, and counts it as reach (#1288)', () => {
+    const onBehalf = {
+      ...conversation('on-behalf', '2026-09-21T10:00:00.000Z'),
+      userId: 'anna',
+      userName: 'Anna',
+      reachedById: 'jae',
+      reachedByName: 'Jae',
+    };
+    const story = buildContactStory({ contact, ...empty, interactions: [onBehalf] });
+
+    expect(story.find((entry) => entry.id === 'on-behalf')).toMatchObject({
+      kind: 'conversation',
+      interaction: { reachedByName: 'Jae', userName: 'Anna' },
+    });
+
+    // A reach-by-someone interaction is still an Interaction logged with them.
+    const reached = isReached(contact.id, {
+      interactions: [
+        {
+          contactId: contact.id,
+          ms: new Date('2026-09-21T10:00:00.000Z').getTime(),
+        },
+      ],
+      gatherings: [],
+    });
+    expect(reached).toBe(true);
   });
 });

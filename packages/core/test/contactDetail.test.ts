@@ -283,6 +283,20 @@ describe('storyRowLine', () => {
     const i = interaction({ dateTime: '', createdAt: '' });
     expect(storyRowLine(i, 'u-mei', NOW)).toBe('not dated');
   });
+
+  it('credits the reacher when a teammate logged it on their behalf (#1288)', () => {
+    const i = interaction({
+      userId: 'u-anna',
+      userName: 'Anna',
+      reachedById: 'u-jae',
+      reachedByName: 'Jae',
+    });
+    expect(storyRowLine(i, 'u-mei', NOW)).toBe('3 days ago · Jae');
+    // The reacher reading their own story hears no name, as when it's you.
+    expect(storyRowLine(i, 'u-jae', NOW)).toBe('3 days ago');
+    // The logger sees the reacher credited too, not themselves.
+    expect(storyRowLine(i, 'u-anna', NOW)).toBe('3 days ago · Jae');
+  });
 });
 
 describe('splitContactPrayers', () => {

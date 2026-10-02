@@ -75,8 +75,24 @@ describe('contactActivity (#329)', () => {
       expect(patch.updatedAt).toBeDefined();
     });
 
-    it('handles fallback for anonymous or missing user data', () => {
+    it('names the reacher in last-connected-by while keeping the logger as updater (#1288)', () => {
       const patch = buildContactActivityPatch({
+        date: '2026-08-19T14:30:00Z',
+        by: { uid: 'anna', name: 'Anna' },
+        reacher: { uid: 'jae', name: 'Jae' },
+        type: 'interaction',
+      });
+
+      expect(patch).toMatchObject({
+        lastContactedBy: 'Jae',
+        lastContactedById: 'jae',
+        updatedBy: 'anna',
+        updatedByName: 'Anna',
+        hasNewActivity: true,
+      });
+    });
+
+    it('handles fallback for anonymous or missing user data', () => {      const patch = buildContactActivityPatch({
         date: '2026-08-19',
         by: {},
       });

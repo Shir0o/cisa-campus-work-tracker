@@ -157,8 +157,11 @@ export function storyRowLine(
 ): string {
   const ms = parseMs(interaction.dateTime) ?? parseMs(interaction.createdAt);
   const when = ms === null ? "not dated" : touchWords(daysSince(ms, now));
-  const by = interaction.userId ?? interaction.createdById ?? "";
-  const byName = interaction.userName ?? interaction.createdByName ?? "";
+  // A Full-timer may log on a teammate's behalf (#1288): credit the teammate
+  // who reached the person, falling back to whoever wrote the entry.
+  const by = interaction.reachedById ?? interaction.userId ?? interaction.createdById ?? "";
+  const byName =
+    interaction.reachedByName ?? interaction.userName ?? interaction.createdByName ?? "";
   return [
     when,
     interaction.duration ? `${interaction.duration} min` : null,

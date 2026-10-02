@@ -1042,6 +1042,67 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets a Trainee log an interaction reached by themselves (#1288)', async () => {
+      const db = getFirestore({ uid: 'manager1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertSucceeds(setDoc(doc(db, 'contacts/contact1/interactions/int-self'), {
+        userId: 'manager1',
+        userName: 'Trainee One',
+        reachedById: 'manager1',
+        reachedByName: 'Trainee One',
+        content: 'He messaged him',
+        dateTime: '2026-08-08',
+        createdAt: serverTimestamp(),
+      }));
+    });
+
+    it('denies a Trainee naming someone else as reached-by (#1288)', async () => {
+      const db = getFirestore({ uid: 'manager1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adb = context.firestore();
+        await setDoc(doc(adb, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(adb, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertFails(setDoc(doc(db, 'contacts/contact1/interactions/int-other'), {
+        userId: 'manager1',
+        userName: 'Trainee One',
+        reachedById: 'manager2',
+        reachedByName: 'Trainee Two',
+        content: 'He messaged him',
+        dateTime: '2026-08-08',
+        createdAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets a Full-timer log an interaction on a teammate\u2019s behalf (#1288)', async () => {
+      const db = getFirestore({ uid: 'admin1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adb = context.firestore();
+        await setDoc(doc(adb, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(adb, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertSucceeds(setDoc(doc(db, 'contacts/contact1/interactions/int-onbehalf'), {
+        userId: 'admin1',
+        userName: 'Anna',
+        reachedById: 'manager2',
+        reachedByName: 'Jae',
+        content: 'He messaged him',
+        dateTime: '2026-08-08',
+        createdAt: serverTimestamp(),
+      }));
+    });
+
     it('lets the person who logged an interaction, or a manager, delete it', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const adb = context.firestore();
