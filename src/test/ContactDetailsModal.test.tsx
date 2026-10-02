@@ -3572,6 +3572,13 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
         expect.objectContaining({ coCreators: ['ft2'] }),
       );
     });
+    expect(firestore.arrayUnion).toHaveBeenCalledWith('ft2');
+
+    fireEvent.click(await within(sheet).findByTitle('Remove access'));
+
+    await waitFor(() => {
+      expect(firestore.arrayRemove).toHaveBeenCalledWith('ft2');
+    });
   });
 
   it('delegates: shares the person and posts a mention carrying the note', async () => {
