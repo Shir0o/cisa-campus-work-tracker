@@ -427,7 +427,16 @@ service cloud.firestore {
         function isValidInteraction(data) {
           return data.keys().hasAll(['userId', 'userName', 'content', 'dateTime', 'createdAt']) &&
                  data.userName is string && data.userName.size() <= 128 &&
-                 data.content is string && data.content.size() <= 5000;
+                 data.content is string && data.content.size() <= 5000 &&
+                 (!('reachedById' in data) || (data.reachedById is string && data.reachedById.size() > 0 && data.reachedById.size() <= 128)) &&
+                 (!('reachedByName' in data) || (data.reachedByName is string && data.reachedByName.size() <= 128));
+        }
+
+        // "Reached by" (#1288) names the teammate who actually connected with the
+        // person, separate from whoever wrote the entry. Naming anyone but
+        // yourself is a Full-timer's act; a Trainee may only ever name themselves.
+        function isReachedByAllowed(data) {
+          return !('reachedById' in data) || data.reachedById == request.auth.uid || isAdmin();
         }
 
         allow list: if canReadParentContact();
@@ -435,6 +444,7 @@ service cloud.firestore {
         allow create: if isValidId(interactionId) && isApprovedUser() && isOperator() && 
                         isValidInteraction(incoming()) && 
                         incoming().userId == request.auth.uid && 
+                        isReachedByAllowed(incoming()) &&
                         incoming().createdAt == request.time;
         allow update: if isValidId(interactionId) && isApprovedUser() && isOperator() && 
                         isValidInteraction(incoming()) && 

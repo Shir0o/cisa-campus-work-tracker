@@ -6,7 +6,7 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
 import { addThreadMessage, closeFollowUpAsk } from '../lib/threads';
 import { useAuth } from '../components/AuthProvider';
-import { handleFirestoreError, logActivity } from '../lib/firebase';
+import { handleFirestoreError, logActivity, sendNotification } from '../lib/firebase';
 import { Frecency, __resetFrecencyCache } from '../lib/frecency';
 
 // jsdom's `window.confirm` returns undefined, which the transfer handler
@@ -1932,6 +1932,76 @@ describe('ContactDetailsModal Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
     expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
   });
+  it('lets a Full-timer log an interaction on a teammate\u2019s behalf (#1288)', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'users') {
+        s({
+          docs: [
+            { id: 'user-123', data: () => ({ displayName: 'Admin Tony', role: 'admin' }) },
+            { id: 'jae', data: () => ({ displayName: 'Jae', role: 'manager' }) },
+          ],
+        });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    clickLogInteractionMenu();
+
+    fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
+      target: { value: 'He messaged him' },
+    });
+    const bySelect = screen.getByRole('option', { name: 'Jae' }).closest('select')!;
+    fireEvent.change(bySelect, { target: { value: 'jae' } });
+
+    const form = screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
+    fireEvent.click(form.querySelector('button[type="submit"]')!);
+
+    await waitFor(() =>
+      expect(firestore.addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          userId: 'user-123',
+          userName: 'Admin Tony',
+          reachedById: 'jae',
+          reachedByName: 'Jae',
+        }),
+      ),
+    );
+    // Last-connected-by names the reacher, not the logger.
+    await waitFor(() =>
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ lastContactedBy: 'Jae', updatedByName: 'Admin Tony' }),
+      ),
+    );
+    // The teammate named as reacher gets a bell entry.
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'jae', targetId: 'contact-abc' }),
+    );
+  });
+
+  it('hides the By choice from a Trainee (#1288)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Trainee One' },
+      isAdmin: false,
+      role: 'manager',
+    });
+
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, createdBy: 'user-123' }}
+      />,
+    );
+    clickLogInteractionMenu();
+
+    expect(screen.queryByText('By')).toBeNull();
+  });
+
   it('reports interaction creation failures through handleFirestoreError', async () => {
     (firestore.addDoc as any).mockRejectedValueOnce(new Error('denied'));
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);

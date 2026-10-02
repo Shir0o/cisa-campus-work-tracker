@@ -165,8 +165,14 @@ export default function ContactInteractionItem({
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-on-surface  tracking-tight">
-                  {interaction.userName}
+                  {interaction.reachedByName || interaction.userName}
                 </span>
+                {interaction.reachedByName &&
+                  interaction.reachedByName !== interaction.userName && (
+                    <span className="text-[10px] font-medium text-on-surface-variant">
+                      {t('modals.contactDetails.logged_by').replace('{name}', interaction.userName || '')}
+                    </span>
+                  )}
                 <span className="text-[10px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
                   {new Date(
                     interaction.dateTime,

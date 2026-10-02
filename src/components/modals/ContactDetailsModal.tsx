@@ -14,6 +14,7 @@ import {
   handleFirestoreError,
   OperationType,
   logActivity,
+  sendNotification,
 } from "../../lib/firebase";
 import {
   doc,
@@ -190,6 +191,7 @@ export default function ContactDetailsModal({
     dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     duration: "",
     type: "interaction",
+    reachedById: "",
   });
   const [submittingInteraction, setSubmittingInteraction] = useState(false);
   const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
@@ -900,29 +902,59 @@ export default function ContactDetailsModal({
     hasActionRef.current = true;
     setSubmittingInteraction(true);
     try {
+      const content = newInteraction.content.trim();
+      const loggerName =
+        user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous');
+      // Only a Full-timer may name a teammate other than themselves (#1288);
+      // the Firestore create rule enforces the same cut.
+      const selectedReacher =
+        isAdmin && !isImpersonating
+          ? teamMembers.find((m) => m.id === newInteraction.reachedById)
+          : undefined;
+      const reacher =
+        selectedReacher && selectedReacher.id !== user.uid
+          ? { id: selectedReacher.id, name: selectedReacher.name }
+          : null;
+
       const interactionsRef = collection(
         db,
         "contacts",
         contact.id,
         "interactions",
       );
-      const docRef = await addDoc(interactionsRef, {
+      await addDoc(interactionsRef, {
         userId: user.uid,
-        userName: user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous'),
+        userName: loggerName,
         userPhoto: user.photoURL || "",
-        content: newInteraction.content.trim(),
+        ...(reacher ? { reachedById: reacher.id, reachedByName: reacher.name } : {}),
+        content,
         dateTime: newInteraction.dateTime,
         type: newInteraction.type,
         createdAt: serverTimestamp(),
       });
 
-      const userName = user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous');
       const activityPatch = buildContactActivityPatch({
         date: newInteraction.dateTime,
-        by: { uid: user.uid, name: userName },
+        by: { uid: user.uid, name: loggerName },
+        ...(reacher ? { reacher: { uid: reacher.id, name: reacher.name } } : {}),
         type: 'interaction',
       });
       await updateDoc(doc(db, "contacts", contact.id), activityPatch as Record<string, unknown>);
+
+      // The teammate named as reacher hears about it, so a wrong entry can be
+      // corrected (the bell entry also pushes, ADR 0031).
+      if (reacher) {
+        sendNotification({
+          userId: reacher.id,
+          title: t('modals.contactDetails.on_behalf_title'),
+          message: t('modals.contactDetails.on_behalf_message')
+            .replace('{logger}', loggerName)
+            .replace('{name}', contact.name),
+          type: 'info',
+          targetId: contact.id,
+          link: `/people/${contact.id}`,
+        });
+      }
 
       logActivity({
         action: "logged an interaction for",
@@ -935,7 +967,7 @@ export default function ContactDetailsModal({
             : newInteraction.type === "chat"
               ? "comment"
               : (newInteraction.type as Activity["type"]),
-        description: newInteraction.content.trim(),
+        description: content,
       });
 
       setNewInteraction({
@@ -943,6 +975,7 @@ export default function ContactDetailsModal({
         dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
         duration: "",
         type: "interaction",
+        reachedById: "",
       });
       setIsLoggingInteraction(false);
     } catch (error) {
@@ -1190,7 +1223,11 @@ export default function ContactDetailsModal({
   const sinceText = lastConnectedDate
     ? t('modals.contactDetails.last_connected').replace('{date}', lastConnectedDate)
     : t('modals.contactDetails.not_connected_yet');
-  const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
+  const sinceBy =
+    latestInteraction?.reachedByName ||
+    latestInteraction?.userName ||
+    currentContact?.lastContactedBy ||
+    null;
   // "Cared for by" derives from the carers tie (#1051) — everyone holding this
   // person in their sheep — and names zero, one or several people.
   const carerNames = carerNamesOf(
@@ -1247,6 +1284,8 @@ export default function ContactDetailsModal({
       onChange={setNewInteraction}
       submitting={submittingInteraction}
       onSubmit={handleAddInteraction}
+      canLogOnBehalf={isAdmin && !isImpersonating}
+      teamMembers={teamMembers}
     />
   );
 

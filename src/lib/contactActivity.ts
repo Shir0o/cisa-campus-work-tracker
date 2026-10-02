@@ -8,6 +8,9 @@ export interface ContactActivityAuthor {
 export interface ContactActivityStamp {
   date: string;
   by?: ContactActivityAuthor;
+  /** The teammate who actually reached the person, when it wasn't the logger
+   *  (#1288). `lastContactedBy` names them; `updatedBy` still names the logger. */
+  reacher?: ContactActivityAuthor;
   type?: 'interaction' | 'visit' | 'attendance';
 }
 
@@ -30,13 +33,15 @@ export interface ContactActivityPatch {
 export function buildContactActivityPatch(stamp: ContactActivityStamp): ContactActivityPatch {
   const authorName = stamp.by?.name?.trim() || 'Someone';
   const authorUid = stamp.by?.uid || null;
+  const reacherName = stamp.reacher?.name?.trim() || authorName;
+  const reacherUid = stamp.reacher ? stamp.reacher.uid || null : authorUid;
   const isoNow = new Date().toISOString();
 
   return {
     lastSeen: stamp.date,
     lastContactedDate: stamp.date,
-    lastContactedBy: authorName,
-    lastContactedById: authorUid,
+    lastContactedBy: reacherName,
+    lastContactedById: reacherUid,
     hasNewActivity: true,
     updatedAt: isoNow,
     updatedBy: authorUid,

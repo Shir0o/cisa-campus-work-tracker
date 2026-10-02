@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Calendar, Loader2, MessageSquare, Send } from "lucide-react";
+import { Calendar, Loader2, MessageSquare, Send, UserCheck } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 
 export interface NewInteraction {
@@ -8,6 +8,9 @@ export interface NewInteraction {
   dateTime: string;
   duration: string;
   type: string;
+  /** The teammate who reached the person, when a Full-timer logs it on their
+   *  behalf (#1288). Empty string means "me" — the person logging it. */
+  reachedById: string;
 }
 
 export default function ContactInteractionForm({
@@ -16,12 +19,16 @@ export default function ContactInteractionForm({
   onChange,
   submitting,
   onSubmit,
+  canLogOnBehalf = false,
+  teamMembers = [],
 }: {
   open: boolean;
   value: NewInteraction;
   onChange: React.Dispatch<React.SetStateAction<NewInteraction>>;
   submitting: boolean;
   onSubmit: (e: React.FormEvent) => void;
+  canLogOnBehalf?: boolean;
+  teamMembers?: { id: string; name: string }[];
 }) {
   const { t } = useLanguage();
 
@@ -74,6 +81,30 @@ export default function ContactInteractionForm({
               </select>
             </div>
           </div>
+          {canLogOnBehalf && (
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
+                <UserCheck className="w-3 h-3" /> {t('modals.contactDetails.by')}
+              </label>
+              <select
+                value={value.reachedById}
+                onChange={(e) =>
+                  onChange((prev) => ({
+                    ...prev,
+                    reachedById: e.target.value,
+                  }))
+                }
+                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+              >
+                <option value="">{t('modals.contactDetails.by_me')}</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
               <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.content')}

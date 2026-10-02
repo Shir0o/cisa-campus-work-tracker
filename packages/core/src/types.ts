@@ -157,6 +157,10 @@ export interface Interaction {
   id: string;
   userId?: string;
   userName?: string;
+  /** The teammate who actually reached the person, when a Full-timer logged it
+   *  on their behalf (#1288). Absent when the logger is the reacher. */
+  reachedById?: string;
+  reachedByName?: string;
   createdById?: string;
   createdByName?: string;
   contactId?: string;
