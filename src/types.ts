@@ -83,6 +83,10 @@ export interface Contact {
    *  migration seed — so an absent stamp is what "Not sorted yet" counts. */
   kindSetBy?: string;
   kindSetAt?: string;
+  /** Conversation messages the person keeps a reference to, so they read in
+   *  The story so far quoted, with who said them and when (#1298). A message
+   *  can be added once and taken back out; it stays where it was said. */
+  storyMessageIds?: string[];
 }
 
 export interface Stage {

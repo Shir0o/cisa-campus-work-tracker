@@ -3209,6 +3209,55 @@ describe('desktop story layout (design D)', () => {
     expect(screen.getByDisplayValue('Invite him to the retreat')).toBeInTheDocument();
   });
 
+  it('adds a Conversation message to the story, and takes it back out', () => {
+    hoisted.messages = [
+      { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },
+    ];
+    const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Add to story' }));
+    expect(firestore.updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts/contact-abc' }),
+      { storyMessageIds: ['m-1'] },
+    );
+    unmount();
+
+    (firestore.updateDoc as any).mockClear();
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, storyMessageIds: ['m-1'] }}
+        initialTab="thread"
+      />,
+    );
+    const again = screen.getByRole('dialog', { name: 'Conversation' });
+    fireEvent.click(within(again).getByRole('button', { name: 'Remove from story' }));
+    expect(firestore.updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts/contact-abc' }),
+      { storyMessageIds: expect.anything() },
+    );
+    expect(firestore.arrayRemove).toHaveBeenCalledWith('m-1');
+  });
+
+  it('quotes an added message in the story and links back to its Conversation', () => {
+    hoisted.messages = [
+      { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },
+    ];
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, storyMessageIds: ['m-1'] }}
+      />,
+    );
+    const story = screen.getByRole('region', { name: 'The story so far' });
+    expect(within(story).getByText('He came to the appointment')).toBeInTheDocument();
+    expect(within(story).getByText(/Maria Santos/)).toBeInTheDocument();
+    fireEvent.click(within(story).getByRole('button', { name: 'Open in Conversation' }));
+    expect(screen.getByRole('dialog', { name: 'Conversation' })).toBeInTheDocument();
+  });
+
   it('offers the Full-timers thread to Full-timers only', () => {
     asRole('manager');
     const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
@@ -3298,6 +3347,15 @@ describe('desktop story layout (design D)', () => {
       expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
       fireEvent.click(within(drawer).getByRole('button', { name: 'Make a to-do' }));
       expect(screen.getByDisplayValue('Staff only')).toBeInTheDocument();
+    });
+
+    it('offers no Add to story from a Full-timers message', () => {
+      hoisted.messages = [
+        { id: 'ft-1', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Staff only', at: new Date().toISOString() },
+      ];
+      const drawer = openDrawer();
+      expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
+      expect(within(drawer).queryByRole('button', { name: 'Add to story' })).toBeNull();
     });
   });
 

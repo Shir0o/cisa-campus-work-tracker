@@ -4179,6 +4179,22 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   background: none; border: 0; padding: 0; cursor: pointer;
 }
 .cd-story-change-more:hover { text-decoration: underline; }
+.cd-story-quote {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  border-left: 3px solid var(--stage-accent);
+}
+.cd-story-quote .cd-prose { margin: 0; }
+.cd-story-quote-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px;
+  font-size: 12.5px; color: var(--on-surface-variant);
+}
+.cd-story-quote-link {
+  font-size: 12.5px; font-weight: 500; color: var(--accent);
+  background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
 .cd-thread-links { display: flex; flex-direction: column; gap: 8px; }
 .cd-thread-link {
   display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px;

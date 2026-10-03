@@ -24,6 +24,44 @@ const renderStory = (story: StoryEntry[]) =>
     />,
   );
 
+describe('ContactStory — a message added to the story (#1298)', () => {
+  it('quotes the message with who said it, and links back to the Conversation', () => {
+    const onOpenStoryMessage = vi.fn();
+    render(
+      <ContactStory
+        story={[
+          {
+            kind: 'story-message',
+            id: 'm1',
+            at: '2026-09-19T10:00:00.000Z',
+            messageId: 'm1',
+            fromId: 'josh',
+            fromName: 'Josh Park',
+            body: 'He came to the appointment.',
+          },
+        ]}
+        fmtDate={(v) => v ?? null}
+        isLoggingInteraction={false}
+        isAddingPrayer={false}
+        onCancelCompose={noop}
+        onStartLog={noop}
+        onStartPrayer={noop}
+        interactionsLoading={false}
+        logInteractionForm={null}
+        addPrayerForm={null}
+        renderInteraction={() => null}
+        renderPrayerCard={() => null}
+        onOpenStoryMessage={onOpenStoryMessage}
+      />,
+    );
+
+    expect(screen.getByText('He came to the appointment.')).toBeInTheDocument();
+    expect(screen.getByText(/Josh Park/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open in Conversation' }));
+    expect(onOpenStoryMessage).toHaveBeenCalledWith('m1');
+  });
+});
+
 describe('ContactStory — changes and attendance (#1291)', () => {
   it('shows a change one-liner, and opens the folded run behind a count', () => {
     renderStory([
