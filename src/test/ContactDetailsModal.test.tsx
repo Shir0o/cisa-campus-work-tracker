@@ -120,9 +120,13 @@ describe('ContactDetailsModal Component', () => {
     return screen.getByText('Edit details');
   };
 
-  /** Desktop has no History tab (the audit log is the History page); phones
-   * still pick it from the tab dropdown. */
-  const renderOnPhoneAtHistory = (ui: React.ReactElement) => {
+  /** #1290: the profile sections (what we know, how to reach, cared for by,
+   * tags, who can see) live in the About sheet, opened from the name. */
+  const openAbout = (name = 'John Doe') => fireEvent.click(screen.getByText(name));
+
+  /** Narrow screens only have the story plus a Conversation button that opens
+   * the pane full-screen. */
+  const renderOnPhone = (ui: React.ReactElement) => {
     const original = window.matchMedia;
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -138,9 +142,7 @@ describe('ContactDetailsModal Component', () => {
       })),
     });
     restoreMatchMedia = () => Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
-    const utils = render(ui);
-    fireEvent.change(document.querySelector('.cdm-select') as HTMLSelectElement, { target: { value: 'history' } });
-    return utils;
+    return render(ui);
   };
   let restoreMatchMedia: (() => void) | null = null;
   afterEach(() => {
@@ -160,6 +162,7 @@ describe('ContactDetailsModal Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    hoisted.messages = [];
     localStorage.clear();
     __resetFrecencyCache();
     (useAuth as any).mockReturnValue({
@@ -202,6 +205,8 @@ describe('ContactDetailsModal Component', () => {
     setupOnSnapshotMocks({});
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
+    // #1290: the profile sections live in the About sheet.
+    openAbout();
     expect(screen.getByText('john.doe@example.com')).toBeInTheDocument();
     // #730: the contact's `location` (and `metVia`) is no longer surfaced in
     // the read-only overview — the field is gone from the app. The contact
@@ -241,14 +246,14 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(container.querySelector('.bg-black\\/40')).toBeNull();
   });
-  it('Overview absorbs the profile fields, prayer list, and delete block', () => {
+  it('About sheet holds the profile fields, prayer count and delete entry point', () => {
     render(
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
     );
-    // The formerly-aside section headings live inside the Overview panel.
+    // #1290: the story page has no tabs and no inline Overview; the profile
+    // sections moved into the About sheet, opened from the person's name.
+    openAbout();
     expect(screen.getByText(/How to reach John/i)).toBeInTheDocument();
-    expect(screen.getByText(/Where they are/i)).toBeInTheDocument();
-    // "Cared for by" appears in both the head's combined line and the section title.
     expect(screen.getAllByText(/Cared for by/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Who else can see them/i)).toBeInTheDocument();
     expect(screen.getByText(/^Tags$/i)).toBeInTheDocument();
@@ -307,12 +312,12 @@ describe('ContactDetailsModal Component', () => {
     ).toBeTruthy();
   });
 
-  it('shows notes, the story and prayers on one desktop page, with Full-timers in a drawer', async () => {
+  it('shows the story on the page and the Conversation in the pane, with Full-timers behind the switch', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    expect(screen.getByText('Some notes about John Doe.')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'The story so far' })).toBeInTheDocument();
-    expect(screen.getByText("Prayers we're praying for")).toBeInTheDocument();
+    // The pane is open on the Conversation by default.
+    expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
@@ -322,6 +327,7 @@ describe('ContactDetailsModal Component', () => {
 
   it('allows adding a tag', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    openAbout();
 
     // Click add tag button
     const addTagBtn = screen.getByRole('button', { name: /^add$/i });
@@ -613,18 +619,19 @@ describe('ContactDetailsModal Component', () => {
     const mockGetDocs = vi.mocked(firestore.getDocs);
     mockGetDocs.mockResolvedValue({ size: 0, docs: [] } as any);
 
-    const deleteBtn = screen.getAllByRole('button', { name: 'Delete Contact' })[0];
-    fireEvent.click(deleteBtn);
+    // #1290: the inline delete block is gone; Delete lives in the head's ⋯.
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Delete Contact'));
 
     expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this contact?');
     await waitFor(() => {
       expect(firestore.deleteDoc).toHaveBeenCalled();
-      expect(mockOnClose).toHaveBeenCalled();
-    });
+      expect(mockOnClose).toHaveBeenCalled();    });
   });
 
   it('allows removing a tag', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    openAbout();
 
     // Click the close/X button on the 'leadership' tag
     const removeTagBtns = screen.getAllByTitle('Remove tag');
@@ -675,40 +682,6 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('renders history tab with audit items', async () => {
-    // Mock activities snapshot
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path === 'activities') {
-        successCallback({
-          docs: [
-            {
-              id: 'activity-1',
-              data: () => ({
-                action: 'created contact',
-                targetId: 'contact-abc',
-                targetName: 'John Doe',
-                targetType: 'contact',
-                type: 'create',
-                userName: 'Admin Tony',
-                createdAt: new Date().toISOString(),
-                description: 'Initial creation',
-              }),
-            },
-          ],
-        });
-      }
-      return vi.fn();
-    });
-
-    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-
-    // Assert that history header and activity are displayed
-    await waitFor(() => {
-      expect(screen.getByText('Looking back')).toBeInTheDocument();
-      expect(screen.getByText('Admin Tony')).toBeInTheDocument();
-      expect(screen.getByText('created contact')).toBeInTheDocument();
-    });
-  });
 
   // ── handleUpdateInteraction ────────────────────────────────────────
 
@@ -797,6 +770,7 @@ describe('ContactDetailsModal Component', () => {
   it('commits tag on blur of input', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     // Click add tag button
     const addTagBtn = screen.getByRole('button', { name: /^add$/i });
@@ -889,103 +863,6 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  // ── AuditActivityItem branches ─────────────────────────────────────
-
-  it('renders various action texts in AuditActivityItem', async () => {
-    const mockActivities = [
-      {
-        id: 'act-1',
-        action: 'logged an interaction for',
-        targetId: 'contact-abc',
-        targetName: 'John Doe',
-        targetType: 'contact',
-        type: 'email',
-        userName: 'User A',
-        createdAt: new Date().toISOString(),
-        description: 'Email desc',
-      },
-      {
-        id: 'act-2',
-        action: 'logged an interaction for',
-        targetId: 'contact-abc',
-        targetName: 'John Doe',
-        targetType: 'contact',
-        type: 'event',
-        userName: 'User B',
-        createdAt: new Date().toISOString(),
-        description: 'Meeting desc',
-      },
-      {
-        id: 'act-3',
-        action: 'logged an interaction for',
-        targetId: 'contact-abc',
-        targetName: 'John Doe',
-        targetType: 'contact',
-        type: 'comment',
-        userName: 'User C',
-        createdAt: new Date().toISOString(),
-        description: 'Comment desc',
-      },
-      {
-        id: 'act-4',
-        action: 'logged an interaction for',
-        targetId: 'contact-abc',
-        targetName: 'John Doe',
-        targetType: 'contact',
-        type: 'something-else',
-        userName: 'User D',
-        createdAt: new Date().toISOString(),
-        description: 'Misc desc',
-      },
-      {
-        id: 'act-5',
-        action: 'updated details',
-        targetId: 'contact-abc',
-        targetName: 'John Doe',
-        targetType: 'contact',
-        type: 'edit',
-        userName: 'User E',
-        createdAt: new Date().toISOString(),
-        description: 'notes updated\\nemail: updated',
-      },
-      {
-        id: 'act-6',
-        action: 'deleted an interaction for',
-        targetId: 'contact-abc',
-        targetName: 'John Doe',
-        targetType: 'contact',
-        type: 'edit',
-        userName: 'User F',
-        createdAt: new Date().toISOString(),
-        description: 'Coffee chat',
-      },
-    ];
-
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      if (q?.path === 'activities') {
-        successCallback({
-          docs: mockActivities.map(act => ({
-            id: act.id,
-            data: () => act,
-          })),
-        });
-      }
-      return vi.fn();
-    });
-
-    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    await screen.findByText('John Doe');
-
-    // Verify all custom action strings are rendered
-    await waitFor(() => {
-      expect(screen.getByText('emailed')).toBeInTheDocument();
-      expect(screen.getByText('had a meeting with')).toBeInTheDocument();
-      expect(screen.getByText('left a note for')).toBeInTheDocument();
-      expect(screen.getByText('interacted with')).toBeInTheDocument();
-      expect(screen.getByText('updated the Notes, Email for')).toBeInTheDocument();
-      expect(screen.getByText('removed a conversation for')).toBeInTheDocument();
-    });
-  });
 
   it('renders Access Restricted modal overlay when trainee cannot see contact', () => {
     (useAuth as any).mockReturnValue({
@@ -1100,8 +977,9 @@ describe('ContactDetailsModal Component', () => {
 
     // Head's combined line binds "Last connected …" to the contacted-by name.
     expect(screen.getAllByText(/Last connected/i).length).toBeGreaterThan(0);
+    openAbout();
     expect(screen.getAllByText(/Tony Wang/i).length).toBeGreaterThan(0);
-    // Overview's Cared-for-by section keeps the legacy "Added by" line.
+    // About's Cared-for-by section keeps the legacy "Added by" line.
     expect(within(document.querySelector('.cd-whowho') as HTMLElement).getByText(/Added by/i)).toBeInTheDocument();
     expect(screen.getAllByText('Sarah Connor').length).toBeGreaterThan(0);
   });
@@ -1135,6 +1013,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCoCreator} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     // Click "Add someone…" trigger button
     const addShareTrigger = screen.getByRole('button', { name: /add someone/i });
@@ -1190,6 +1069,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={singleOwnerContact} />);
     await screen.findByText('Jane Doe');
+    openAbout('Jane Doe');
 
     expect(screen.getByText('Just Jane for now.')).toBeInTheDocument();
     expect(screen.queryByText(/Just Jane\} for now\./)).not.toBeInTheDocument();
@@ -1224,6 +1104,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCarerCollab} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     fireEvent.click(screen.getByTitle('Remove access'));
 
@@ -1271,6 +1152,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithFounderCarer} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     fireEvent.click(screen.getByTitle('Remove access'));
 
@@ -1320,6 +1202,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCoCreators} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     // The Transfer affordance is gone entirely (#1053) — nobody reassigns care.
     expect(screen.queryByRole('button', { name: /transfer to/i })).toBeNull();
@@ -1367,6 +1250,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     // Founders are named as such; the deliberately added collaborator is not.
     expect(screen.getAllByText('Gospel partner')).toHaveLength(2);
@@ -1413,6 +1297,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     // A Full-timer may remove anyone: both founders and the added collaborator.
     expect(screen.getAllByTitle('Remove access')).toHaveLength(3);
@@ -1447,6 +1332,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     // Both share and transfer buttons should be hidden in read-only impersonation mode
     expect(screen.queryByRole('button', { name: /add someone/i })).toBeNull();
@@ -1486,6 +1372,7 @@ describe('ContactDetailsModal Component', () => {
 
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCreator} />);
       await screen.findByText('John Doe');
+      openAbout();
       await screen.findByText('Admin Tony');
 
       const changeBtn = screen.getByRole('button', { name: 'Change creator' });
@@ -1546,6 +1433,7 @@ describe('ContactDetailsModal Component', () => {
 
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCreator} />);
       await screen.findByText('John Doe');
+      openAbout();
       await screen.findByText('Admin Tony');
 
       expect(screen.queryByRole('button', { name: 'Change creator' })).not.toBeInTheDocument();
@@ -1574,6 +1462,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, coCreators: [] }} />);
     await screen.findByText("John Doe");
+    openAbout();
 
     // No owner, no transfer: the only affordance under "Cared for by" is gone.
     expect(screen.queryByRole("button", { name: /transfer to/i })).toBeNull();
@@ -1616,6 +1505,7 @@ describe('ContactDetailsModal Component', () => {
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithOwnerOnly} />,
     );
     await screen.findByText('John Doe');
+    openAbout();
     expect(screen.queryAllByText(/Mei Tanaka/i).length).toBe(0);
     expect(screen.getByText(/No one has taken them on yet/i)).toBeInTheDocument();
     first.unmount();
@@ -1629,6 +1519,7 @@ describe('ContactDetailsModal Component', () => {
       />,
     );
     await screen.findByText('John Doe');
+    openAbout();
     expect(screen.getAllByText(/Owner Tony/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Sami Lee/i).length).toBeGreaterThan(0);
   });
@@ -1643,8 +1534,9 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    const deleteBtn = screen.getAllByRole('button', { name: /Delete Contact/i })[0];
-    fireEvent.click(deleteBtn);
+    // #1290: the inline delete block is gone; Delete lives in the head's ⋯.
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Delete Contact'));
 
     await waitFor(() => {
       expect(firestore.deleteDoc).toHaveBeenCalled();
@@ -1697,14 +1589,7 @@ describe('ContactDetailsModal Component', () => {
 
   // ── Overview: prayers, held days, journey ─────────────────────────
 
-  it('renders open prayers with held-day counts and the aside journey', async () => {
-    (firestore.getDocs as any).mockResolvedValue({
-      size: 2,
-      docs: [
-        { id: 's1', data: () => ({ label: 'First', order: 0 }) },
-        { id: 's2', data: () => ({ label: 'Regular', order: 1 }) },
-      ],
-    });
+  it('renders open prayers in the story, including one with an unparseable date', async () => {
     (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
       if (q?.path === 'prayers') {
         s({
@@ -1723,13 +1608,10 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    expect(screen.getAllByText('Pray for finals').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Held \d+ (day|days)/)).toBeInTheDocument();
-    // The invalid-date prayer shows no held count.
-    expect(screen.getAllByText('Bad date prayer').length).toBeGreaterThan(0);
-    // The aside journey marks the current stage as "here now".
-    expect(await screen.findByText('here now')).toBeInTheDocument();
-    expect(screen.getByText('First')).toBeInTheDocument();
+    const story = screen.getByRole('region', { name: 'The story so far' });
+    expect(within(story).getAllByText('Pray for finals').length).toBeGreaterThan(0);
+    // The invalid-date prayer still renders, just without a held-day count.
+    expect(within(story).getAllByText('Bad date prayer').length).toBeGreaterThan(0);
   });
 
   it('lets an operator mark a prayer answered or archived from the Prayer tab (#463)', async () => {
@@ -1885,7 +1767,8 @@ describe('ContactDetailsModal Component', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Delete Contact/i })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Delete Contact'));
 
     expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this contact?');
     expect(firestore.deleteDoc).not.toHaveBeenCalled();
@@ -2104,6 +1987,7 @@ describe('ContactDetailsModal Component', () => {
     (firestore.updateDoc as any).mockRejectedValueOnce(new Error('denied'));
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
     fireEvent.change(screen.getByPlaceholderText(/new tag/i), {
@@ -2135,6 +2019,8 @@ describe('ContactDetailsModal Component', () => {
       createdByName: undefined,
     };
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithAddedBy} />);
+    await screen.findByText('John Doe');
+    openAbout();
 
     // The carer row and the head's "Cared for by" line both resolve via the
     // users snapshot (as does the "Added by" provenance), all naming Grace.
@@ -2153,6 +2039,7 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
+    openAbout();
 
     fireEvent.click(screen.getByRole('button', { name: /add someone/i }));
     expect(screen.getByRole('combobox')).toBeInTheDocument();
@@ -2163,22 +2050,18 @@ describe('ContactDetailsModal Component', () => {
 
   // ── Skeleton loading states ───────────────────────────────────────
 
-  it('shows skeletons while interactions, prayers and activities are loading', async () => {
+  it('shows skeletons while the story is loading', async () => {
     (firestore.onSnapshot as any).mockImplementation(() => vi.fn());
 
-    const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     expect(
       within(screen.getByRole('region', { name: 'The story so far' })).getByText('', { selector: '.animate-pulse' }),
     ).toBeInTheDocument();
-    unmount();
-
-    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
   // ── Mobile layout ─────────────────────────────────────────────────
 
-  it('renders the mobile layout with dropdown switcher, edit header and tag chips', async () => {
+  it('renders the mobile layout with a Conversation button, edit header and tag chips', async () => {
     const original = window.matchMedia;
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -2203,57 +2086,18 @@ describe('ContactDetailsModal Component', () => {
       expect(screen.getByText('Edit details')).toBeInTheDocument();
       fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
 
-      // Dropdown tab switcher.
-      const select = document.querySelector('.cdm-select') as HTMLSelectElement;
-      expect(select).toBeTruthy();
-      fireEvent.change(select, { target: { value: 'interactions' } });
-      expect(screen.getByText('Every conversation')).toBeInTheDocument();
+      // #1290: no tab bar; a Conversation button opens the pane full-screen.
+      expect(document.querySelector('.cdm-select')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+      expect(document.querySelector('.cd-pane-stream.is-open')).toBeTruthy();
     } finally {
       Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
     }
   });
 
-  // ── Audit hover ───────────────────────────────────────────────────
-
-  it('toggles hover state on audit items', async () => {
-    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
-      if (q?.path === 'activities') {
-        s({
-          docs: [
-            {
-              id: 'act-1',
-              data: () => ({
-                action: 'created contact',
-                targetId: 'contact-abc',
-                targetName: 'John Doe',
-                targetType: 'contact',
-                type: 'create',
-                userName: 'Admin Tony',
-                createdAt: new Date().toISOString(),
-              }),
-            },
-          ],
-        });
-      } else {
-        s({ docs: [] });
-      }
-      return vi.fn();
-    });
-
-    renderOnPhoneAtHistory(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    await screen.findByText('created contact');
-
-    const item = screen.getByText('created contact').closest('.group')!;
-    fireEvent.mouseEnter(item);
-    fireEvent.mouseLeave(item);
-    expect(item).toBeInTheDocument();
-  });
-
   it('records frecency open on mount and records close demotion if quickly closed without action', async () => {
     const uid = 'user-123';
-    const { unmount } = render(
-      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />
-    );
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Initial mount records open
     const scoreAfterOpen = Frecency.getScore(uid, mockContact.id);
@@ -2305,6 +2149,7 @@ describe('ContactDetailsModal Component', () => {
         }}
       />
     );
+    openAbout();
     // Initial interaction is Sarah Chen on Aug 10.
     const lastBy = () => within(document.querySelector('.cd-whowho') as HTMLElement);
     expect(lastBy().getByText(/Sarah Chen/i)).toBeInTheDocument();
@@ -2904,19 +2749,20 @@ describe('stage move (#677)', () => {
     });
   });
 
-  it('moves the contact from a step row in Where they are', async () => {
-    const { container } = await renderWithRole('operator');
-
-    const row = within(container.querySelector('.cd-journey') as HTMLElement)
-      .getByRole('button', { name: /First Contact/ });
-    fireEvent.click(row);
-
-    await waitFor(() => {
-      expect(firestore.updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ stage: 'First Contact' }),
-      );
+  it('keeps the page read-only for viewers', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Read Only' },
+      isAdmin: false,
+      role: 'viewer',
     });
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+
+    // #1290: the journey band is gone; the head carries the step control, and
+    // for a viewer it is just a read-only pill.
+    expect(screen.queryByRole('button', { name: /Move to a step/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Regular')).toBeInTheDocument();
   });
 
   it('records the move in history the way the edit form does', async () => {
@@ -2972,26 +2818,6 @@ describe('stage move (#677)', () => {
     });
   });
 
-  it('keeps the page read-only for viewers', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { uid: 'user-123', displayName: 'Read Only' },
-      isAdmin: false,
-      role: 'viewer',
-    });
-    const { container } = render(
-      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
-    );
-
-    await waitFor(() => {
-      expect(container.querySelectorAll('.cd-journey-step').length).toBe(STAGE_DOCS.length);
-    });
-
-    // The stage still reads, but nothing about it is actionable.
-    expect(screen.queryByRole('button', { name: /Move to a step/i })).not.toBeInTheDocument();
-    expect(
-      within(container.querySelector('.cd-journey') as HTMLElement).queryAllByRole('button'),
-    ).toHaveLength(0);
-  });
 });
 
 // The kind of person on the contact's own page (#1152, ADR 0030).
@@ -3136,35 +2962,28 @@ describe('desktop story layout (design D)', () => {
     expect(screen.queryByRole('button', { name: /^History/ })).toBeNull();
   });
 
-  it('opens the Conversation in a drawer on the shared stream, and closes it', async () => {
+  it('renders the Conversation pinned in the pane, with no reply thread open', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
-
-    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
-    expect(drawer.querySelector('[data-stream-list]')).toBeTruthy();
-    expect(drawer.querySelector('[data-thread-pane]')).toBeNull();
-
-    fireEvent.click(within(drawer).getByRole('button', { name: 'Close Conversation' }));
-    expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
+    const pane = screen.getByRole('region', { name: 'Conversation' });
+    expect(pane.querySelector('[data-stream-list]')).toBeTruthy();
+    expect(pane.querySelector('[data-thread-pane]')).toBeNull();
   });
 
-  it('the Conversation drawer names its audience above the box only — the header is the title alone — and offers the kinds', () => {
+  it('the Conversation pane names its audience above the box only — the header is the title alone — and offers the kinds', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
-    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
-    const audience = within(drawer).getByText('Everyone tied to John sees this.');
+    const pane = screen.getByRole('region', { name: 'Conversation' });
+    const audience = within(pane).getByText('Everyone tied to John sees this.');
     expect(audience.closest('[data-stream-composer]')).not.toBeNull();
-    const header = within(drawer).getByRole('heading', { name: 'Conversation' }).closest('.cd-drawer-head') as HTMLElement;
-    expect(header.textContent).toBe('Conversation');
-    expect(within(drawer).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
-    expect(within(drawer).getByText('Nothing here yet — leave the first comment below.')).toBeInTheDocument();
+    expect(within(pane).getByRole('heading', { name: 'Conversation' })).toBeInTheDocument();
+    expect(within(pane).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
+    expect(within(pane).getByText('Nothing here yet — leave the first comment below.')).toBeInTheDocument();
   });
 
   it('posts a Follow-up ask from the drawer to everyone tied', async () => {
     const contact = { ...mockContact, createdBy: 'user-9', carers: ['user-7'] };
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contact} initialTab="thread" />);
-    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    const drawer = screen.getByRole('region', { name: 'Conversation' });
 
     fireEvent.click(within(drawer).getByRole('button', { name: 'Ask a follow-up' }));
     expect(within(drawer).getByText('Everyone tied to John sees this and can say they followed up.')).toBeInTheDocument();
@@ -3178,12 +2997,28 @@ describe('desktop story layout (design D)', () => {
     );
   });
 
+  it('counts the open Follow-up asks in the pane header and jumps to the first (#1290)', async () => {
+    hoisted.messages = [
+      { id: 'ask-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'nudge', body: 'Can someone text him?', at: new Date().toISOString() },
+    ];
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    const pane = screen.getByRole('region', { name: 'Conversation' });
+
+    const count = within(pane).getByRole('button', { name: '1 open Follow-up ask' });
+    const row = pane.querySelector('[data-stream-row="ask-1"]') as HTMLElement;
+    const scroll = vi.fn();
+    row.scrollIntoView = scroll;
+
+    fireEvent.click(count);
+    await waitFor(() => expect(scroll).toHaveBeenCalled());
+  });
+
   it('closes an open Follow-up ask right in the stream', () => {
     hoisted.messages = [
       { id: 'ask-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'nudge', body: 'Can someone text him?', at: new Date(Date.now() - 2 * 86_400_000).toISOString() },
     ];
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
-    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    const drawer = screen.getByRole('region', { name: 'Conversation' });
 
     expect(within(drawer).getByText('Follow-up ask')).toBeInTheDocument();
     expect(within(drawer).getByText('Open 2 days')).toBeInTheDocument();
@@ -3196,7 +3031,7 @@ describe('desktop story layout (design D)', () => {
   it('a read-only viewer reads the Conversation but gets no composer', () => {
     asRole('viewer');
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, createdBy: 'user-123' }} initialTab="thread" />);
-    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    const drawer = screen.getByRole('region', { name: 'Conversation' });
     expect(within(drawer).queryByRole('button', { name: 'Post' })).toBeNull();
   });
 
@@ -3214,7 +3049,7 @@ describe('desktop story layout (design D)', () => {
       { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },
     ];
     const { unmount } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
-    const drawer = screen.getByRole('dialog', { name: 'Conversation' });
+    const drawer = screen.getByRole('region', { name: 'Conversation' });
     fireEvent.click(within(drawer).getByRole('button', { name: 'Add to story' }));
     expect(firestore.updateDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'contacts/contact-abc' }),
@@ -3231,7 +3066,7 @@ describe('desktop story layout (design D)', () => {
         initialTab="thread"
       />,
     );
-    const again = screen.getByRole('dialog', { name: 'Conversation' });
+    const again = screen.getByRole('region', { name: 'Conversation' });
     fireEvent.click(within(again).getByRole('button', { name: 'Remove from story' }));
     expect(firestore.updateDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'contacts/contact-abc' }),
@@ -3255,7 +3090,7 @@ describe('desktop story layout (design D)', () => {
     expect(within(story).getByText('He came to the appointment')).toBeInTheDocument();
     expect(within(story).getByText(/Maria Santos/)).toBeInTheDocument();
     fireEvent.click(within(story).getByRole('button', { name: 'Open in Conversation' }));
-    expect(screen.getByRole('dialog', { name: 'Conversation' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
   });
 
   it('offers the Full-timers thread to Full-timers only', () => {
@@ -3267,24 +3102,47 @@ describe('desktop story layout (design D)', () => {
     asRole('admin');
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
-    expect(screen.getByRole('dialog', { name: 'Full-timers' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Full-timers' })).toBeInTheDocument();
   });
 
-  it('closes an open drawer on Escape before closing the page', () => {
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+  it('closes the full-screen pane on Escape before closing the page', () => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((q: string) => ({
+        matches: q === '(max-width: 768px)',
+        media: q,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    try {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+      expect(document.querySelector('.cd-pane-stream.is-open')).toBeTruthy();
 
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: 'Conversation' })).toBeNull();
-    expect(mockOnClose).not.toHaveBeenCalled();
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(document.querySelector('.cd-pane-stream.is-open')).toBeNull();
+      expect(mockOnClose).not.toHaveBeenCalled();
 
-    fireEvent.keyDown(window, { key: 'Escape' });
-    expect(mockOnClose).toHaveBeenCalled();
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(mockOnClose).toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    }
   });
 
-  it('opens the Conversation drawer when deep-linked to the thread', () => {
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
-    expect(screen.getByRole('dialog', { name: 'Conversation' })).toBeInTheDocument();
+  it('deep-link parameters open the pane on the matching side', () => {
+    const first = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
+    first.unmount();
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="discussion" />);
+    expect(screen.getByRole('region', { name: 'Full-timers' })).toBeInTheDocument();
   });
 
   describe('Full-timers drawer on the shared stream', () => {
@@ -3298,7 +3156,7 @@ describe('desktop story layout (design D)', () => {
     const openDrawer = () => {
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
       fireEvent.click(screen.getByRole('button', { name: /^Full-timers/ }));
-      return screen.getByRole('dialog', { name: 'Full-timers' });
+      return screen.getByRole('region', { name: 'Full-timers' });
     };
 
     it('titles the drawer with a lock and says who sees it once, above the box', () => {
@@ -3373,22 +3231,22 @@ describe('desktop story layout (design D)', () => {
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
       fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
 
-      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      const thread = screen.getByRole('region', { name: 'Thread' });
       expect(within(thread).getByText(/^Josh's conversation · /)).toBeInTheDocument();
       expect(within(thread).getByText('Sat with him at the Thursday gathering')).toBeInTheDocument();
       expect(within(thread).getByText('On an interaction · everyone tied to John sees this.')).toBeInTheDocument();
       expect(within(thread).queryByRole('group', { name: 'What are you writing' })).toBeNull();
-      expect(within(thread).queryByRole('button', { name: /^Back to/ })).toBeNull();
-
-      fireEvent.click(within(thread).getByRole('button', { name: 'Close' }));
-      expect(screen.queryByRole('dialog', { name: 'Thread' })).toBeNull();
+      // #1290: the Thread opens inside the pane with a back arrow, not a close.
+      fireEvent.click(within(thread).getByRole('button', { name: 'Back to Conversation' }));
+      expect(screen.queryByRole('region', { name: 'Thread' })).toBeNull();
+      expect(screen.getByRole('region', { name: 'Conversation' })).toBeInTheDocument();
     });
 
     it('replies on the Interaction through the existing data layer', () => {
       interactions();
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
       fireEvent.click(within(story()).getByRole('button', { name: 'Think it through together' }));
-      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      const thread = screen.getByRole('region', { name: 'Thread' });
       fireEvent.change(within(thread).getByPlaceholderText('Think it through together…'), { target: { value: 'Mention the scholarship' } });
       fireEvent.click(within(thread).getByRole('button', { name: 'Reply' }));
 
@@ -3413,7 +3271,7 @@ describe('desktop story layout (design D)', () => {
       fireEvent.click(chip);
       expect(within(story()).getByRole('button', { name: /2 replies/ })).toHaveAttribute('aria-pressed', 'true');
 
-      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      const thread = screen.getByRole('region', { name: 'Thread' });
       expect(within(thread).getByText('First')).toBeInTheDocument();
       expect(within(thread).getByText('Second')).toBeInTheDocument();
     });
@@ -3425,7 +3283,7 @@ describe('desktop story layout (design D)', () => {
       ];
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
       fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
-      expect(within(screen.getByRole('dialog', { name: 'Conversation' })).queryByText('On the interaction')).toBeNull();
+      expect(within(screen.getByRole('region', { name: 'Conversation' })).queryByText('On the interaction')).toBeNull();
     });
 
     it('makes a to-do from a reply in an Interaction Thread', () => {
@@ -3435,7 +3293,7 @@ describe('desktop story layout (design D)', () => {
       ];
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
       fireEvent.click(within(story()).getByRole('button', { name: /1 reply/ }));
-      const thread = screen.getByRole('dialog', { name: 'Thread' });
+      const thread = screen.getByRole('region', { name: 'Thread' });
       fireEvent.click(within(thread).getByRole('button', { name: 'Make a to-do' }));
       expect(screen.getByDisplayValue('Mention the scholarship')).toBeInTheDocument();
     });
@@ -3465,23 +3323,25 @@ describe('desktop story layout (design D)', () => {
       restore = () => Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     };
-    const pickTab = (value: string) =>
-      fireEvent.change(document.querySelector('.cdm-select') as HTMLSelectElement, { target: { value } });
-
-    it('reads the Conversation tab on the shared stream, with the kinds and its audience above the box', () => {
+    const openPane = () => {
       renderOnPhone();
-      pickTab('thread');
-      const pane = document.querySelector('.cdm-stream') as HTMLElement;
+      fireEvent.click(screen.getByRole('button', { name: /^Conversation/ }));
+      const pane = document.querySelector('.cd-pane-stream') as HTMLElement;
+      expect(pane.classList.contains('is-open')).toBe(true);
+      return pane;
+    };
+
+    it('opens the Conversation full-screen, with the kinds and its audience above the box', () => {
+      const pane = openPane();
       expect(pane.querySelector('[data-stream-list]')).toBeTruthy();
       expect(pane.querySelector('[data-thread-pane]')).toBeNull();
       expect(within(pane).getByRole('group', { name: 'What are you writing' })).toBeInTheDocument();
       expect(within(pane).getByText('Everyone tied to John sees this.')).toBeInTheDocument();
     });
 
-    it('reads the Full-timers tab on the shared stream, locked and with no kinds', () => {
-      renderOnPhone();
-      pickTab('discussion');
-      const pane = document.querySelector('.cdm-stream') as HTMLElement;
+    it('offers the Full-timers side behind the switch, locked and with no kinds', () => {
+      const pane = openPane();
+      fireEvent.click(within(pane).getByRole('button', { name: /^Full-timers/ }));
       expect(within(pane).getByText("Only Full-timers see this — Trainees can't.")).toBeInTheDocument();
       expect(within(pane).queryByRole('group', { name: 'What are you writing' })).toBeNull();
       expect(within(pane).getByPlaceholderText('Write something only Full-timers will see…')).toBeInTheDocument();

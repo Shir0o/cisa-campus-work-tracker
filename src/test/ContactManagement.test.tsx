@@ -177,6 +177,11 @@ describe('Contact Management', () => {
   });
 
   it('Changing a Contact: updates contact details', async () => {
+    // The pane renders the Conversation, so every listener needs a sane shape.
+    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
+      if (typeof cb === 'function') cb({ docs: [] });
+      return vi.fn();
+    });
     const contact = mockContacts[0];
     render(
       <ContactDetailsModal
@@ -212,7 +217,11 @@ describe('Contact Management', () => {
   it('Deleting a Contact: calls deleteDoc', async () => {
     // Mock window.confirm
     vi.stubGlobal('confirm', vi.fn(() => true));
-    
+
+    (firestore.onSnapshot as any).mockImplementation((_q: any, cb: any) => {
+      if (typeof cb === 'function') cb({ docs: [] });
+      return vi.fn();
+    });
     const contact = mockContacts[0];
     render(
       <ContactDetailsModal 
@@ -221,12 +230,9 @@ describe('Contact Management', () => {
         contact={contact}
       />
     );
-    // #780: Delete moved to a bordered danger block at the end of Overview.
-    // The heading and the button both render the same text; click the button
-    // inside the danger block.
-    const dangerBlock = screen.getAllByText(/Delete Contact/i)[1].closest('div');
-    const deleteBtn = dangerBlock!.querySelector('button')!;
-    fireEvent.click(deleteBtn);
+    // #1290: Delete lives in the head's ⋯ menu (the inline danger block is gone).
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByText('Delete Contact'));
 
     await waitFor(() => {
       expect(firestore.deleteDoc).toHaveBeenCalled();

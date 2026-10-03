@@ -416,7 +416,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { contactId } = useParams();
   const isMessagesPage = location.pathname.startsWith("/messages");
-  const initialTab = new URLSearchParams(location.search).get("tab") === "thread" ? ("thread" as const) : undefined;
+  const tabParam = new URLSearchParams(location.search).get("tab");
+  const initialTab = tabParam === "thread" || tabParam === "discussion" ? tabParam : undefined;
   const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey, user, role } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);

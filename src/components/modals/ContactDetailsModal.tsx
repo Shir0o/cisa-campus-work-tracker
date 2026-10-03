@@ -1,14 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  X,
-  Plus,
-  Clock,
-  MessageSquare,
-  Heart,
-  Lock,
-  Trash2,
-} from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import {
   db,
   handleFirestoreError,
@@ -33,15 +24,14 @@ import {
   arrayUnion,
   arrayRemove,
 } from "firebase/firestore";
-import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
+import { formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord, Gathering, Rhythm } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, canSeeHistory, hasMinRole, canManageCollaborators, canRemoveContactMember, visibleToOf } from "../../lib/permissions";
+import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, visibleToOf } from "../../lib/permissions";
 import { partnersOf } from "../../lib/partners";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
-import { Skeleton } from "../ui/Skeleton";
 import { conversationAdapter } from "../stream/conversationAdapter";
 import { fullTimersAdapter } from "../stream/fullTimersAdapter";
 import { interactionAdapter } from "../stream/interactionAdapter";
@@ -69,35 +59,30 @@ import DelegateSheet from "../contact/DelegateSheet";
 import { buildContactStory } from "../../lib/contactStory";
 import { subscribeRhythms } from "../../lib/rhythms";
 
-import ContactHead, { type ContactTab } from "../contact/ContactHead";
+import ContactHead from "../contact/ContactHead";
 import ContactEditForm from "../contact/ContactEditForm";
-import ContactDrawerHost from "../contact/ContactDrawerHost";
 import ContactStory from "../contact/ContactStory";
-import ContactJourney from "../contact/ContactJourney";
-import ContactThreadLinks from "../contact/ContactThreadLinks";
-import ContactStreamTab from "../contact/ContactStreamTab";
 import ContactInteractionForm from "../contact/ContactInteractionForm";
 import ContactReachPrompt from "../contact/ContactReachPrompt";
 import ContactPrayerForm from "../contact/ContactPrayerForm";
 import ContactPrayerCard from "../contact/ContactPrayerCard";
 import ContactInteractionItem from "../contact/ContactInteractionItem";
-import ContactAuditItem from "../contact/ContactAuditItem";
+import ContactStreamPane, { type ContactPaneView } from "../contact/ContactStreamPane";
 import WhatWeKnow from "../contact/overview/WhatWeKnow";
-import PrayersHeld from "../contact/overview/PrayersHeld";
 import HowToReach from "../contact/overview/HowToReach";
 import CaredForBy from "../contact/overview/CaredForBy";
 import WhoCanSee from "../contact/overview/WhoCanSee";
 import TagsSection from "../contact/overview/TagsSection";
-import DeleteContact from "../contact/overview/DeleteContact";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   contact: Contact | null;
-  // Deep-link the modal to a tab on open (e.g. the My Day inbox "Comment"
+  // Deep-link the modal to the pane on open (e.g. the My Day inbox "Comment"
   // action). When initialInteractionId is set, opens that interaction's inline
-  // thread; otherwise honours initialTab.
-  initialTab?: "thread";
+  // thread; otherwise honours initialTab — "discussion" lands on Full-timers,
+  // anything else on the Conversation.
+  initialTab?: "thread" | "discussion";
   initialInteractionId?: string | null;
 }
 
@@ -132,12 +117,11 @@ export default function ContactDetailsModal({
   const [reassigningCreator, setReassigningCreator] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [delegateOpen, setDelegateOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
-  >("overview");
-  // Desktop has no tabs: the two conversation streams, and an Interaction's
-  // Thread (openThread names the Interaction), open in a side drawer.
-  const [drawer, setDrawer] = useState<null | "thread" | "discussion" | "interaction">(null);
+  // The pinned pane (ADR 0034): which of the two streams it shows, whether it
+  // is open full-screen on a narrow screen. The Interaction Thread it replaces
+  // the stream with is tracked by openThread below.
+  const [paneView, setPaneView] = useState<ContactPaneView>("conversation");
+  const [paneOpen, setPaneOpen] = useState(false);
 
   const [liveContact, setLiveContact] = useState<Contact | null>(contact);
 
@@ -152,7 +136,7 @@ export default function ContactDetailsModal({
         setLiveContact({ id: snap.id, ...snap.data() } as Contact);
       }
     });
-    return () => unsub();
+    return () => unsub?.();
   }, [isOpen, contact?.id]);
 
   useEffect(() => {
@@ -174,12 +158,19 @@ export default function ContactDetailsModal({
         })
       );
     });
-    return () => unsub();
+    return () => unsub?.();
   }, [isOpen]);
   // Walking-together threads on this contact (live), + which Interaction's
-  // Thread the drawer is open on.
+  // Thread the pane is open on.
   const threadMessages = useThreads(contact?.id, { includeTeam: isAdmin });
   const [openThread, setOpenThread] = useState<string | null>(null);
+  // When the reader last opened the Full-timers side of the pane, per person,
+  // so the switch can show an unread dot (ADR 0034 decision 2).
+  const [fullTimersSeenAt, setFullTimersSeenAt] = useState("");
+  useEffect(() => {
+    if (!contact?.id) return;
+    setFullTimersSeenAt(localStorage.getItem(`cisa.contactFullTimersSeen.${contact.id}`) || "");
+  }, [contact?.id]);
   // The Conversation message a to-do is being made from (the stream's toolbar).
   const [todoFrom, setTodoFrom] = useState<ThreadMessage | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
@@ -291,15 +282,18 @@ export default function ContactDetailsModal({
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // An open thread drawer closes first; the page closes on the next Esc.
-      if (drawer) setDrawer(null);
+      // An Interaction's Thread closes back to the stream first, then the
+      // full-screen pane, then the page.
+      if (openThread && !isMobile) setOpenThread(null);
+      else if (paneOpen) setPaneOpen(false);
+      else if (openThread) setOpenThread(null);
       else handleClose();
     };
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
     }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, handleClose, drawer]);
+  }, [isOpen, handleClose, openThread, paneOpen, isMobile]);
 
   useEffect(() => {
     if (contact) {
@@ -379,7 +373,7 @@ export default function ContactDetailsModal({
         },
       );
 
-      return () => unsubscribe();
+      return () => unsubscribe?.();
     }
   }, [isOpen, contact]);
 
@@ -409,7 +403,7 @@ export default function ContactDetailsModal({
         },
       );
 
-      return () => unsubscribe();
+      return () => unsubscribe?.();
     }
   }, [isOpen, contact]);
 
@@ -430,7 +424,7 @@ export default function ContactDetailsModal({
         (error) => handleFirestoreError(error, OperationType.LIST, "events"),
       );
 
-      return () => unsubscribe();
+      return () => unsubscribe?.();
     }
   }, [isOpen, contact]);
 
@@ -466,28 +460,26 @@ export default function ContactDetailsModal({
         },
       );
 
-      return () => unsubscribe();
+      return () => unsubscribe?.();
     }
   }, [isOpen, contact]);
 
-  // On open: reset to Overview, unless a deep-link asks for a thread. An
-  // interaction deep-link opens the Conversations tab with that thread expanded;
-  // otherwise initialTab ("thread") opens the contact-level "Walking together".
+  // On open: the pane starts on the Conversation and closed on a narrow screen,
+  // unless a deep-link asks for the Full-timers side or an Interaction's Thread
+  // (a notification, Around the team). Both open the pane.
   useEffect(() => {
     if (!isOpen) return;
-    setActiveTab(initialInteractionId ? "interactions" : initialTab ?? "overview");
     setIsAddingPrayer(false);
     setAddingTag(false);
     setTagInput("");
     setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
-    // A thread deep-link opens its drawer: the contact-level Conversation, or
-    // the Interaction's own Thread.
-    setDrawer(initialInteractionId ? "interaction" : initialTab === "thread" ? "thread" : null);
+    setPaneView(initialTab === "discussion" ? "fullTimers" : "conversation");
+    setPaneOpen(Boolean(initialInteractionId || initialTab));
   }, [contact?.id, isOpen, initialTab, initialInteractionId]);
 
   // An interaction deep-link on desktop scrolls the story to that
-  // conversation, whose Thread is open in the drawer (openThread above).
+  // conversation, whose Thread is open in the pane (openThread above).
   useEffect(() => {
     if (!isOpen || isMobile || !initialInteractionId || interactionsLoading) return;
     document.getElementById(`story-${initialInteractionId}`)?.scrollIntoView?.({ block: "center" });
@@ -498,7 +490,6 @@ export default function ContactDetailsModal({
   const currentUid = effectiveUserId || user?.uid;
   const hasAccess = canSeeContact(role, currentUid, contact);
 
-  const walkLabel = t('modals.contactDetails.follow_up');
   const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
 
   // Every written surface on this page runs on the shared stream (ADR 0033),
@@ -1262,7 +1253,6 @@ export default function ContactDetailsModal({
       type,
       dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     }));
-    setActiveTab("interactions");
     setIsLoggingInteraction(true);
   };
   const dismissReachPrompt = () => {
@@ -1271,11 +1261,9 @@ export default function ContactDetailsModal({
     reachPageHiddenRef.current = false;
   };
   const startLogInteraction = () => {
-    setActiveTab("interactions");
     setIsLoggingInteraction(true);
   };
   const startAddPrayer = () => {
-    setActiveTab("prayer");
     setIsAddingPrayer(true);
   };
 
@@ -1430,10 +1418,10 @@ export default function ContactDetailsModal({
       onRemove={() => handleRemoveInteraction(interaction)}
       adapterFor={interactionAdapterFor}
       viewer={streamViewer}
-      threadOpen={drawer === "interaction" && openThread === interaction.id}
+      threadOpen={openThread === interaction.id}
       onOpenThread={() => {
         setOpenThread(interaction.id);
-        setDrawer("interaction");
+        setPaneOpen(true);
       }}
     />
   );
@@ -1446,21 +1434,6 @@ export default function ContactDetailsModal({
     />
   );
 
-  // "Where they are": in Overview on phones, the band across the top of the
-  // desktop story page.
-  const journeySection = (
-    <ContactJourney
-      stages={sortedStages}
-      stageIdx={stageIdx}
-      canMoveStage={canMoveStage}
-      onMoveStage={moveStage}
-    />
-  );
-
-  // ── Desktop story page (design D) ──
-  // No tabs: "Where they are" runs across the top, the story fills the main
-  // column, and the profile groups sit beside it. The two threads open in a
-  // drawer; the full audit log lives on the History page.
   const story = buildContactStory({
     contact: currentContact,
     interactions,
@@ -1474,8 +1447,8 @@ export default function ContactDetailsModal({
   const storyMessageIds = new Set(currentContact.storyMessageIds ?? []);
   const openStoryMessage = (messageId: string) => {
     setOpenThread(null);
-    if (isMobile) setActiveTab("thread");
-    else setDrawer("thread");
+    setPaneView("conversation");
+    setPaneOpen(true);
     setTimeout(() => {
       document.querySelector(`[data-stream-row="${messageId}"]`)?.scrollIntoView?.({ block: "center" });
     }, 0);
@@ -1503,49 +1476,64 @@ export default function ContactDetailsModal({
     />
   );
 
-  const threadLinks = (
-    <ContactThreadLinks
-      firstName={firstName}
-      walkLabel={walkLabel}
-      walkCount={countFor(threadMessages, null)}
-      teamCount={countFor(threadMessages, null, "team")}
-      canSeeTeamThread={canSeeTeamThread}
-      onOpenThread={() => setDrawer("thread")}
-      onOpenDiscussion={() => setDrawer("discussion")}
+  // The open Follow-up asks in the Conversation, so the pane header can say how
+  // many are waiting and jump to the first (ADR 0034 decision 2).
+  const openAsks = conversation.messages.filter(
+    (m) => !m.parentId && m.kind === "nudge" && !m.closedAt,
+  );
+  const jumpToOpenAsk = () => {
+    setPaneView("conversation");
+    setPaneOpen(true);
+    const first = openAsks[0];
+    if (!first) return;
+    setTimeout(() => {
+      document.querySelector(`[data-stream-row="${first.id}"]`)?.scrollIntoView?.({ block: "center" });
+    }, 0);
+  };
+
+  // A Full-timers unread dot: anything team-scoped newer than the last time the
+  // reader opened that side of the pane.
+  const latestTeamAt = threadMessages
+    .filter((m) => m.scope === "team" && !m.parentId)
+    .reduce((max, m) => (m.at > max ? m.at : max), "");
+  const fullTimersUnread = !!latestTeamAt && latestTeamAt > fullTimersSeenAt;
+  const markFullTimersSeen = () => {
+    const stamp = new Date().toISOString();
+    setFullTimersSeenAt(stamp);
+    if (contact?.id) localStorage.setItem(`cisa.contactFullTimersSeen.${contact.id}`, stamp);
+  };
+  const selectPaneView = (view: ContactPaneView) => {
+    setPaneView(view);
+    if (view === "fullTimers") markFullTimersSeen();
+  };
+
+  const streamPane = (
+    <ContactStreamPane
+      isMobile={isMobile}
+      open={paneOpen}
+      view={paneView}
+      onViewChange={selectPaneView}
+      conversation={conversation}
+      fullTimers={fullTimers}
+      interactionThread={interactionThread}
+      viewer={streamViewer}
+      isFullTimer={canSeeTeamThread}
+      onBack={() => setOpenThread(null)}
+      onClose={() => setPaneOpen(false)}
+      onMakeTodo={(m) => setTodoFrom(m)}
+      onAddToStory={toggleStoryMessage}
+      storyMessageIds={storyMessageIds}
+      todoFrom={todoFrom}
+      onCloseTodo={() => setTodoFrom(null)}
+      contact={contact}
+      teamMembers={teamMembers}
+      currentUid={currentUid}
+      meName={user?.displayName || "Someone"}
+      openAskCount={openAsks.length}
+      onJumpToAsk={jumpToOpenAsk}
+      fullTimersUnread={fullTimersUnread}
     />
   );
-
-  const wrapDesktopStory = (content: React.ReactNode) =>
-    isMobile ? (
-      content
-    ) : (
-      <>
-        <div className="cd-journey-band">{journeySection}</div>
-        <div className="cd-story-layout">
-          {storySection}
-          <div className="cd-story-aside">
-            {threadLinks}
-            {content}
-          </div>
-        </div>
-      </>
-    );
-
-  // An Interaction's Thread also opens on a phone, over the page: its entry is
-  // on the phone's Interactions tab too.
-  const drawerOpen =
-    (drawer === "interaction" && !!interactionThread) ||
-    (!isMobile && (drawer === "thread" || (drawer === "discussion" && canSeeTeamThread)));
-  const drawerLabel = drawer === "discussion" ? t('modals.contactDetails.discussion') : walkLabel;
-
-  const visibleTabList: ContactTab[] = [
-    { id: "overview", label: t('modals.contactDetails.overview') },
-    { id: "thread", label: t('modals.contactDetails.follow_up'), count: countFor(threadMessages, null) },
-    ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: t('modals.contactDetails.discussion'), count: countFor(threadMessages, null, "team") }] : []),
-    { id: "interactions", label: t('modals.contactDetails.interactions'), count: visibleInteractions.length },
-    { id: "prayer", label: t('modals.contactDetails.prayer'), count: prayers.length },
-    ...(canSeeHistory(role) ? [{ id: "history", label: t('modals.contactDetails.history') }] : []),
-  ];
 
   return (
     <AnimatePresence>
@@ -1564,8 +1552,6 @@ export default function ContactDetailsModal({
               sinceText={sinceText}
               carerNames={carerNames}
               role={role}
-              activeTab={activeTab}
-              tabs={visibleTabList}
               isAdmin={isAdmin}
               canEditKind={isAdmin && !isImpersonating}
               openPrayerCount={openPrayers.length}
@@ -1580,18 +1566,23 @@ export default function ContactDetailsModal({
               onStartPrayer={startAddPrayer}
               onMoveStage={moveStage}
               onOpenMoveSheet={() => setMovingStage(true)}
-              onChangeTab={(tab) => setActiveTab(tab as any)}
               onOpenAbout={() => setAboutOpen(true)}
               onOpenDelegate={() => setDelegateOpen(true)}
               onChangeKind={changeKind}
               onChangeCreator={() => setReassigningCreator(true)}
               onDelete={handleDelete}
               onOpenPrayers={() => {
-                setActiveTab("overview");
                 requestAnimationFrame(() =>
-                  document.getElementById("contact-prayers")?.scrollIntoView?.({ block: "center" }),
+                  document
+                    .querySelector('[data-kind="prayer"], [data-kind="prayer-answered"]')
+                    ?.scrollIntoView?.({ block: "center" }),
                 );
               }}
+              onOpenConversation={() => {
+                setPaneView("conversation");
+                setPaneOpen(true);
+              }}
+              conversationUnread={fullTimersUnread}
             />
 
             {reachPromptType && (
@@ -1620,246 +1611,21 @@ export default function ContactDetailsModal({
                   onDelete={handleDelete}
                   loading={loading}
                 />
+              ) : isMobile ? (
+                <>
+                  {storySection}
+                  {streamPane}
+                </>
               ) : (
-                wrapDesktopStory(<>
-                {(!isMobile || activeTab === "overview") && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <WhatWeKnow notes={contact.notes} />
-
-                      <div id="contact-prayers">
-                        <PrayersHeld loading={prayersLoading} prayers={openPrayers} />
-                      </div>
-
-                      {/* The five groups that used to be the 320px aside. They pair up
-                          once the column can hold two — a container query, because the
-                          rail's 232/76px collapse changes the available width without
-                          the viewport moving (#780). */}
-                      <div className="cd-overview-grid">
-                        <HowToReach contact={contact} firstName={firstName} />
-
-                        {isMobile && journeySection}
-
-                        <CaredForBy
-                          carerMembers={carerMembers}
-                          addedByName={addedByName}
-                          sinceBy={sinceBy}
-                          fmtDate={fmtDate}
-                          isAdmin={isAdmin}
-                          isImpersonating={isImpersonating}
-                          reassigningCreator={reassigningCreator}
-                          onStartReassign={() => setReassigningCreator(true)}
-                          onCancelReassign={() => setReassigningCreator(false)}
-                          teamMembers={teamMembers}
-                          onReassignCreator={handleReassignCreator}
-                          contact={contact}
-                        />
-
-                        <WhoCanSee
-                          sharedWith={sharedWith}
-                          founders={founders}
-                          canRemove={(staffId) => canShare && canRemoveContactMember(role, currentUid, contact, staffId)}
-                          onRemoveShare={removeShare}
-                          shareOptions={shareOptions}
-                          canShare={canShare}
-                          sharing={sharing}
-                          onStartShare={() => setSharing(true)}
-                          onCancelShare={() => setSharing(false)}
-                          onAddShare={addShare}
-                          firstName={firstName}
-                        />
-
-                        <TagsSection
-                          tags={formData.tags}
-                          addingTag={addingTag}
-                          tagInput={tagInput}
-                          onTagInputChange={setTagInput}
-                          onStartAdd={() => setAddingTag(true)}
-                          onCancelAdd={() => setAddingTag(false)}
-                          onCommitTag={commitTag}
-                          onRemoveTag={removeTag}
-                          onAddTag={(tag) => persistTags([...formData.tags, tag], "added", tag)}
-                        />
-                      </div>
-
-                      {role !== 'viewer' && (
-                        <DeleteContact onDelete={handleDelete} loading={loading} />
-                      )}
-                    </motion.div>
-                  )}
-{isMobile && activeTab === "interactions" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="cd-sec"
-                    >
-                      <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">
-                          {t('contactDetails.every_conversation', 'Every conversation')}
-                        </h3>
-                        <button
-                          onClick={() =>
-                            setIsLoggingInteraction(!isLoggingInteraction)
-                          }
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        >
-                          {isLoggingInteraction ? (
-                            <X className="w-3.5 h-3.5" />
-                          ) : (
-                            <Plus className="w-3.5 h-3.5" />
-                          )}
-                          {isLoggingInteraction ? t('modals.contactDetails.cancel') : t('modals.contactDetails.log_interaction')}
-                        </button>
-                      </div>
-
-                      {/* Log Interaction Form */}
-                      {logInteractionForm}
-
-                      <div className="space-y-4">
-                        {interactionsLoading ? (
-                          <div className="space-y-3">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className="flex gap-3">
-                                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-                                <div className="flex-1 space-y-2">
-                                  <Skeleton className="h-3 w-24 rounded-full" />
-                                  <Skeleton className="h-12 w-full rounded-xl" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : interactions.length === 0 ? (
-                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
-                            <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-xs font-semibold text-on-surface-variant/40  ">
-                              {t('modals.contactDetails.no_interactions')}
-                            </p>
-                          </div>
-                        ) : (
-                          visibleInteractions.map((interaction) => renderInteractionItem(interaction))
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {isMobile && activeTab === "thread" && (
-                    <div className="cd-pane cd-sec">
-                      <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">{walkLabel}</h3>
-                      </div>
-                      <ContactStreamTab
-                        adapter={conversation}
-                        viewer={streamViewer}
-                        onMakeTodo={(m) => setTodoFrom(m)}
-                        onAddToStory={toggleStoryMessage}
-                        storyMessageIds={storyMessageIds}
-                      />
-                    </div>
-                  )}
-
-                  {isMobile && activeTab === "prayer" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="cd-sec"
-                    >
-                      <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">
-                          {t('modals.contactDetails.prayers_we_re_holding')}
-                        </h3>
-                        <button
-                          onClick={() => setIsAddingPrayer(!isAddingPrayer)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        >
-                          {isAddingPrayer ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                          {isAddingPrayer ? t('modals.contactDetails.cancel') : t('modals.contactDetails.add_prayer')}
-                        </button>
-                      </div>
-
-                      {/* Add Prayer Form */}
-                      {addPrayerForm}
-
-                      <div className="space-y-3">
-                        {prayersLoading ? (
-                          <div className="space-y-3">
-                            {[1, 2].map((i) => (
-                              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
-                            ))}
-                          </div>
-                        ) : prayers.length === 0 ? (
-                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
-                            <Heart className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-sm text-on-surface-variant/60">
-                              No prayers recorded for {firstName} yet.
-                            </p>
-                          </div>
-                        ) : (
-                          prayers.map((p) => renderPrayerCard(p))
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {isMobile && activeTab === "discussion" && (role === "admin" || isAdmin) && (
-                    <div className="cd-pane cd-sec">
-                      <div className="cd-sec-head">
-                        <h3 className="cd-sec-title inline-flex items-center gap-2">
-                          <Lock className="w-4 h-4" aria-hidden />
-                          {t('modals.contactDetails.discussion')}
-                        </h3>
-                      </div>
-                      <ContactStreamTab adapter={fullTimers} viewer={streamViewer} />
-                    </div>
-                  )}
-
-
-
-                  {isMobile && activeTab === "history" && (
-                    <div className="cd-sec">
-                      <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">{t('modals.contactDetails.looking_back')}</h3>
-                      </div>
-
-                      <div className="space-y-6">
-                        {activitiesLoading ? (
-                          <div className="space-y-4">
-                            {[1, 2, 3, 4].map((i) => (
-                              <div key={i} className="flex gap-4">
-                                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
-                                <div className="flex-1 space-y-2">
-                                  <Skeleton className="h-4 w-1/3 rounded-full" />
-                                  <Skeleton className="h-8 w-full rounded-xl" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : activities.length === 0 ? (
-                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
-                            <Clock className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-[10px] font-semibold text-on-surface-variant/40  ">
-                              {t('modals.contactDetails.no_audit_history')}
-                            </p>
-                          </div>
-                        ) : (
-                          activities.map((activity, idx) => (
-                            <ContactAuditItem
-                              key={activity.id || idx}
-                              activity={activity}
-                              isLast={idx === activities.length - 1}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>)
+                <div className="cd-story-layout">
+                  <div className="cd-story-scroll">{storySection}</div>
+                  {streamPane}
+                </div>
               )}
             </div>
 
             {/* Footer: Save/Cancel only while editing. Read mode has no
-               persistent chrome — Delete moved to the end of Overview (#780). */}
+               persistent chrome — Delete lives in the head's ⋯ menu. */}
             {isEditing && !isMobile && (
               <div className="cd-page-foot">
                 <div className="flex gap-3 w-full sm:w-auto ml-auto">
@@ -1885,42 +1651,6 @@ export default function ContactDetailsModal({
                 </div>
               </div>
             )}
-
-            {/* Mobile-only delete button */}
-            <div className={cn("sm:hidden px-6 pb-6 pt-0", isMobile && "hidden")}>
-              <button
-                onClick={handleDelete}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-full text-error font-semibold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                {loading ? (
-                  <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
-                ) : (
-                  t('modals.contactDetails.delete_contact')
-                )}
-              </button>
-            </div>
-
-            <ContactDrawerHost
-              drawerOpen={drawerOpen}
-              drawer={drawer}
-              conversation={conversation}
-              fullTimers={fullTimers}
-              interactionThread={interactionThread}
-              viewer={streamViewer}
-              drawerLabel={drawerLabel}
-              onCloseDrawer={() => setDrawer(null)}
-              onMakeTodo={(m) => setTodoFrom(m)}
-              onAddToStory={toggleStoryMessage}
-              storyMessageIds={storyMessageIds}
-              todoFrom={todoFrom}
-              onCloseTodo={() => setTodoFrom(null)}
-              contact={contact}
-              teamMembers={teamMembers}
-              currentUid={currentUid}
-              meName={user?.displayName || "Someone"}
-            />
           </div>
         </div>
       )}
@@ -1930,6 +1660,20 @@ export default function ContactDetailsModal({
           <div className="space-y-2">
             <WhatWeKnow notes={contact.notes} />
             <HowToReach contact={contact} firstName={firstName} />
+            <CaredForBy
+              carerMembers={carerMembers}
+              addedByName={addedByName}
+              sinceBy={sinceBy}
+              fmtDate={fmtDate}
+              isAdmin={isAdmin}
+              isImpersonating={isImpersonating}
+              reassigningCreator={reassigningCreator}
+              onStartReassign={() => setReassigningCreator(true)}
+              onCancelReassign={() => setReassigningCreator(false)}
+              teamMembers={teamMembers}
+              onReassignCreator={handleReassignCreator}
+              contact={contact}
+            />
             <TagsSection
               tags={formData.tags}
               addingTag={addingTag}
