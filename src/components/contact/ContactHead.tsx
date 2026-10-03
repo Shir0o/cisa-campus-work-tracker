@@ -22,12 +22,6 @@ import { stageToneStyle } from "../../lib/stageTones";
 import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKind";
 import type { Contact, Stage } from "../../types";
 
-export interface ContactTab {
-  id: string;
-  label: string;
-  count?: number;
-}
-
 const KIND_OPTIONS: ContactKind[] = ["local-saint", "our-own", "contact"];
 
 function KindControl({
@@ -206,8 +200,6 @@ export default function ContactHead({
   sinceText,
   carerNames,
   role,
-  activeTab,
-  tabs,
   isAdmin,
   canEditKind,
   openPrayerCount,
@@ -222,13 +214,14 @@ export default function ContactHead({
   onStartPrayer,
   onMoveStage,
   onOpenMoveSheet,
-  onChangeTab,
   onOpenAbout,
   onOpenDelegate,
   onChangeKind,
   onChangeCreator,
   onDelete,
   onOpenPrayers,
+  onOpenConversation,
+  conversationUnread,
 }: {
   isMobile: boolean;
   isEditing: boolean;
@@ -241,8 +234,6 @@ export default function ContactHead({
   sinceText: string;
   carerNames: string[];
   role: string;
-  activeTab: string;
-  tabs: ContactTab[];
   isAdmin: boolean;
   canEditKind: boolean;
   openPrayerCount: number;
@@ -257,13 +248,16 @@ export default function ContactHead({
   onStartPrayer: () => void;
   onMoveStage: (label: string) => void;
   onOpenMoveSheet: () => void;
-  onChangeTab: (tab: string) => void;
   onOpenAbout: () => void;
   onOpenDelegate: () => void;
   onChangeKind: (kind: ContactKind) => void;
   onChangeCreator: () => void;
   onDelete: () => void;
   onOpenPrayers: () => void;
+  /** Narrow screens: open the Conversation pane full-screen. */
+  onOpenConversation: () => void;
+  /** Something new in the Full-timers stream the reader hasn't opened. */
+  conversationUnread?: boolean;
 }) {
   const { t } = useLanguage();
   const aboutLabel = t('modals.contactDetails.about_person').replace('{name}', contact.name);
@@ -332,6 +326,25 @@ export default function ContactHead({
                   </button>
                 )}
               </div>
+            </div>
+
+            {/* The Conversation lives in a pane; on a narrow screen this opens
+                it full-screen (ADR 0034). */}
+            <div className="px-5 pt-1">
+              <button
+                type="button"
+                onClick={onOpenConversation}
+                className="relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-variant transition-colors"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                {t('modals.contactDetails.follow_up')}
+                {conversationUnread && (
+                  <span
+                    className="cd-pane-dot"
+                    aria-label={t('modals.contactDetails.full_timers_unread')}
+                  />
+                )}
+              </button>
             </div>
 
             {/* Hero Block */}
@@ -551,29 +564,6 @@ export default function ContactHead({
           </header>
           {!isEditing && prayersLine}
         </>
-      )}
-
-      {/* Content Tab Switcher — phones only; desktop is one story page */}
-      {!isEditing && isMobile && (
-        /* Mobile Dropdown Switcher */
-        <div className="cdm-switch sticky top-0 z-10 bg-surface border-t border-b border-outline-variant/35 px-5 py-2.5">
-          <div className="relative">
-            <select
-              value={activeTab}
-              onChange={(e) => onChangeTab(e.target.value)}
-              className="w-full h-11 pl-4 pr-10 bg-surface-container-low border border-outline rounded-xl text-sm font-semibold appearance-none cursor-pointer text-on-surface cdm-select"
-            >
-              {tabs.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label} {t.count != null ? `(${t.count})` : ""}
-                </option>
-              ))}
-            </select>
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/75 cdm-select-caret">
-              ▾
-            </span>
-          </div>
-        </div>
       )}
     </>
   );

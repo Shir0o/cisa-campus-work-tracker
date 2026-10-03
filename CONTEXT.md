@@ -216,7 +216,7 @@ One staff member saying a **Follow up** wants doing, written into a contact's **
 _Avoid_: Nudge, reminder, assigned follow-up, task
 
 **Conversation (on a contact)**:
-The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** tab, which is the same kind of thread restricted to staff.
+The staff stream on a contact, read in the side pane beside **The story so far** and open to everyone tied to that person, where a Full-timer asks a question, a teammate answers, and a **Follow-up ask** is raised. Formerly titled "Follow-up", which named an act toward the contact rather than a place staff write. Distinct from **Interactions**, the log of actual contact with the person, and from the **Full-timers** stream, which is the same kind of thread restricted to staff.
 _Avoid_: Follow-up, Thread, Comments, Walking together
 
 **The story so far**:
@@ -260,7 +260,7 @@ Bringing a teammate onto a contact *and* asking them to act: it **Shares** the p
 _Avoid_: Assign, hand off, transfer, reassign
 
 **Cared for by**:
-The people who hold a person in **Your sheep** — derived from the contact's `carers` tie, and so naming zero, one, or several people at once. It is not an owner and nothing transfers: whoever carries the person simply shows up here. Shown on the contact's Overview and promoted into the contact-detail head (ADR 0006).
+The people who hold a person in **Your sheep** — derived from the contact's `carers` tie, and so naming zero, one, or several people at once. It is not an owner and nothing transfers: whoever carries the person simply shows up here. Shown in the contact's About sheet and promoted into the contact-detail head (ADR 0006).
 
 **Seen / Completed**:
 The two independent things a person records about an item in **On you**. **Seen** is passive — you opened the contact — and shows as the unread dot. **Completed** is deliberate: *Reviewed* for something you only had to look at, *I followed up* or *Answered* for something you owed someone, *Got it* for information. The count is the number **not completed**, so opening things never makes the number fall. Both are per person and stored server-side, so they agree across someone's phone and laptop. **Around the team** keeps only the deliberate half — see **Reviewed**.

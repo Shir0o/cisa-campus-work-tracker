@@ -25,6 +25,9 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   header?: React.ReactNode;
   /** Shut the whole surface — the replacing Thread's close control. */
   onClose?: () => void;
+  /** A pinned Thread (an Interaction's) replaces the stream with no stream
+   *  behind it to return to, so its back control is supplied from outside. */
+  back?: { label: string; onClick: () => void };
   /** Drawn under the composer — a line the composer can't say alone. */
   footer?: React.ReactNode;
   onMakeTodo?: (message: M) => void;
@@ -512,6 +515,7 @@ export default function Stream<M extends StreamSourceMessage>({
   threadMode,
   header,
   onClose,
+  back,
   footer,
   onMakeTodo,
   onAddToStory,
@@ -618,14 +622,14 @@ export default function Stream<M extends StreamSourceMessage>({
   const replaceMode = threadMode === "replace" || !!pinned;
   const threadPane = thread && (
     <section className="strm-thread" aria-label={t("stream.thread_title")}>
-      <div className={cn("strm-th-head", replaceMode && !pinned && "back")}>
-        {replaceMode && !pinned && (
+      <div className={cn("strm-th-head", replaceMode && (!pinned || back) && "back")}>
+        {replaceMode && (!pinned || back) && (
           <button
             type="button"
             className="strm-icon-btn"
-            aria-label={t("stream.back_to").replace("{name}", adapter.name)}
-            title={t("stream.back_to").replace("{name}", adapter.name)}
-            onClick={() => setOpen(null)}
+            aria-label={pinned && back ? back.label : t("stream.back_to").replace("{name}", adapter.name)}
+            title={pinned && back ? back.label : t("stream.back_to").replace("{name}", adapter.name)}
+            onClick={() => (pinned && back ? back.onClick() : setOpen(null))}
           >
             <ArrowLeft className="w-[18px] h-[18px]" />
           </button>
@@ -638,7 +642,7 @@ export default function Stream<M extends StreamSourceMessage>({
           <button type="button" className="strm-icon-btn" aria-label={t("stream.close_thread")} title={t("stream.close_thread")} onClick={() => setOpen(null)}>
             <X className="w-[18px] h-[18px]" />
           </button>
-        ) : (
+        ) : pinned && back ? null : (
           onClose && (
             <button type="button" className="strm-icon-btn" aria-label={t("stream.close")} title={t("stream.close")} onClick={onClose}>
               <X className="w-[18px] h-[18px]" />

@@ -3940,7 +3940,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .cd-page-content > .cd-pane {
   display: flex;
@@ -4115,16 +4115,43 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cd-journey-band .cd-step-move { margin-left: 0; }
 .cd-journey-band .cd-journey-step.is-move { width: auto; margin: 0; padding: 10px 12px; }
 .cd-journey-band .cd-journey-step.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.cd-story-layout { display: grid; grid-template-columns: minmax(0, 1fr); }
-@container cd-main (min-width: 900px) {
-  .cd-story-layout { grid-template-columns: minmax(0, 1fr) 340px; }
-  .cd-story-aside { border-left: 1px solid var(--outline-variant); }
+.cd-story-layout { display: flex; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.cd-story-scroll { flex: 1 1 auto; min-width: 0; overflow-y: auto; }
+/* ── the Conversation pane (ADR 0034) ──
+   The story fills the main column; the Conversation sits pinned beside it on a
+   wide screen and opens full-screen over the page on a narrow one. */
+.cd-pane-stream { display: none; }
+.cd-story-layout .cd-pane-stream {
+  display: flex; flex-direction: column; flex: none; min-height: 0;
+  width: clamp(320px, 36%, 420px);
+  border-left: 1px solid var(--outline-variant);
+  background: var(--bg);
+}
+.cd-pane-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 14px 16px; border-bottom: 1px solid var(--border-soft); flex: none;
+}
+.cd-pane-title { font-family: var(--font-serif); font-size: 16px; font-weight: 600; margin: 0; color: var(--on-surface); }
+.cd-pane-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--surface-container-low); }
+.cd-pane-tab {
+  position: relative; height: 28px; padding: 0 12px; border-radius: 999px; border: 0;
+  background: transparent; color: var(--on-surface-variant);
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.cd-pane-tab.on { background: var(--surface); color: var(--on-surface); box-shadow: var(--shadow-pop); }
+.cd-pane-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--danger); display: inline-block; margin-left: 5px; vertical-align: middle; }
+.cd-pane-asks {
+  margin-left: auto; height: 28px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.cd-pane-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.cd-pane-body > .strm { flex: 1 1 auto; }
+.cdm-page .cd-pane-stream.is-open {
+  display: flex; flex-direction: column; position: absolute; inset: 0; z-index: 40;
+  width: 100%; background: var(--bg);
 }
 .cd-story { padding: 24px 28px; min-width: 0; }
-.cd-story-aside { min-width: 0; }
-/* The profile groups stay one column beside the story. */
-.cd-story-aside .cd-overview-grid { display: block; }
-.cd-story-aside .cd-overview-grid > .cd-sec { border-right: 0; }
 .cd-story-compose { display: flex; gap: 8px; margin-bottom: 20px; }
 .cd-story-compose-input {
   flex: 1 1 auto; min-height: 44px; padding: 0 16px; text-align: left;
@@ -4430,12 +4457,6 @@ body.msgs-fullscreen .msgs-rail { display: none; }
    available width without the viewport moving at all (#780). */
 @container cd-main (min-width: 560px) {
   .cd-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  /* Overview's five profile groups pair up for the same reason the form does.
-     Grid items stretch, so paired sections share a row height and their
-     hairlines line up; the last one spans both columns because tags flow. */
-  .cd-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cd-overview-grid > .cd-sec:nth-child(odd) { border-right: 1px solid var(--outline-variant); }
-  .cd-overview-grid > .cd-sec:last-child { grid-column: 1 / -1; border-right: 0; }
 }
 
 /* ── sections ──
