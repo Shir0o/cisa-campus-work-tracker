@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   collection,
   query,
@@ -67,6 +67,9 @@ import {
 
 export default function Messages() {
   const { roomId } = useParams<{ roomId?: string }>();
+  // A notification about a reply opens that message's Thread (#1303).
+  const [searchParams] = useSearchParams();
+  const initialThreadId = searchParams.get('parent');
   const { user: currentUser, role: userRole, effectiveUserId, impersonateTarget } = useAuth();
   const effectiveUid = effectiveUserId || currentUser?.uid;
   const { setSelectedContact, openLogInteraction } = useLayout();
@@ -918,6 +921,7 @@ export default function Messages() {
               renderExtra={renderAttachments}
               renderActions={activeRoom.type === 'announcement' ? renderPostActions : undefined}
               translate
+              initialThreadId={initialThreadId}
               footer={adapter.readOnlyNote && <div className="msgs-postnote">{adapter.readOnlyNote}</div>}
               header={
               <>

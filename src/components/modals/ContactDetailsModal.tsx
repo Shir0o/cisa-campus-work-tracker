@@ -84,6 +84,9 @@ interface ContactDetailsModalProps {
   // anything else on the Conversation.
   initialTab?: "thread" | "discussion";
   initialInteractionId?: string | null;
+  /** A deep link onto one Conversation or Full-timers message's Thread, from a
+   * notification (#1303). */
+  initialThreadId?: string | null;
 }
 
 export default function ContactDetailsModal({
@@ -92,6 +95,7 @@ export default function ContactDetailsModal({
   contact,
   initialTab,
   initialInteractionId,
+  initialThreadId,
 }: ContactDetailsModalProps) {
   const { user, isAdmin, role, effectiveUserId, isImpersonating } = useAuth();
   const { t, language } = useLanguage();
@@ -475,8 +479,8 @@ export default function ContactDetailsModal({
     setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
     setPaneView(initialTab === "discussion" ? "fullTimers" : "conversation");
-    setPaneOpen(Boolean(initialInteractionId || initialTab));
-  }, [contact?.id, isOpen, initialTab, initialInteractionId]);
+    setPaneOpen(Boolean(initialInteractionId || initialTab || initialThreadId));
+  }, [contact?.id, isOpen, initialTab, initialInteractionId, initialThreadId]);
 
   // An interaction deep-link on desktop scrolls the story to that
   // conversation, whose Thread is open in the pane (openThread above).
@@ -1532,6 +1536,7 @@ export default function ContactDetailsModal({
       openAskCount={openAsks.length}
       onJumpToAsk={jumpToOpenAsk}
       fullTimersUnread={fullTimersUnread}
+      initialThreadId={initialThreadId}
     />
   );
 

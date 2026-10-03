@@ -9,13 +9,14 @@ import { ContactScreen, type ContactV2Tab } from '../../../src/components/contac
 
 // The person screen — mobile v2's `M2Contact`. Reached from People, the queue,
 // Prayer, Attendance, Search, and a direct-message thread's "Open {first}'s
-// page →". `?tab=` and `?interactionId=` are the deep links its callers set.
-// A Thread opens over it as ./thread.
+// page →". `?tab=`, `?interactionId=` and `?stream=team` are the deep links its
+// callers set. A Thread opens over it as ./thread.
 export default function ContactDetail() {
-  const { contactId, tab, interactionId } = useLocalSearchParams<{
+  const { contactId, tab, interactionId, stream } = useLocalSearchParams<{
     contactId: string;
     tab?: string;
     interactionId?: string;
+    stream?: string;
   }>();
   const { colors, spacing } = useTheme();
   const { role } = useAuth();
@@ -33,11 +34,18 @@ export default function ContactDetail() {
 
   const initialTab: ContactV2Tab = interactionId
     ? 'story'
-    : tab === 'thread' || tab === 'alongside' || tab === 'conversation'
+    : tab === 'thread' || tab === 'discussion' || tab === 'alongside' || tab === 'conversation'
       ? 'conversation'
       : tab === 'prayer' || tab === 'prayers'
         ? 'prayers'
         : 'story';
 
-  return <ContactScreen contactId={contactId} initialTab={initialTab} initialInteractionId={interactionId ?? null} />;
+  return (
+    <ContactScreen
+      contactId={contactId}
+      initialTab={initialTab}
+      initialInteractionId={interactionId ?? null}
+      initialStream={stream === 'team' ? 'team' : undefined}
+    />
+  );
 }

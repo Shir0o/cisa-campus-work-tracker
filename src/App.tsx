@@ -416,8 +416,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { contactId } = useParams();
   const isMessagesPage = location.pathname.startsWith("/messages");
-  const tabParam = new URLSearchParams(location.search).get("tab");
+  const queryParams = new URLSearchParams(location.search);
+  const tabParam = queryParams.get("tab");
   const initialTab = tabParam === "thread" || tabParam === "discussion" ? tabParam : undefined;
+  // A notification about a reply carries its parent; one about an Interaction's
+  // Thread carries the interaction id (#1303).
+  const initialParentId = queryParams.get("parent");
+  const initialInteractionId = queryParams.get("interaction");
   const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey, user, role } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
@@ -604,6 +609,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   onClose={() => openSelectedContact(null)}
                   contact={selectedContact}
                   initialTab={initialTab}
+                  initialThreadId={initialParentId}
+                  initialInteractionId={initialInteractionId}
                 />
               ) : (
                 <React.Suspense

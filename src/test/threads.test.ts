@@ -7,6 +7,7 @@ import {
   repliesOf,
   countFor,
   addThreadMessage,
+  threadNotificationLink,
   deleteThreadMessage,
   editThreadMessage,
   subscribeThreads,
@@ -592,6 +593,48 @@ describe("repliesOf helper", () => {
     ];
     expect(repliesOf(msgs, "m1").map((m) => m.id)).toEqual(["r1", "r2"]);
     expect(repliesOf(msgs, "m2")).toEqual([]);
+  });
+});
+
+describe("addThreadMessage writes the link a notification opens (#1303)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("a Conversation reply carries its parent, so the Thread opens under it", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "comment", body: "Sure", parentId: "p-1" },
+      { to: "u3", contactName: "Rio" },
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ link: "/people/C-1?tab=thread&parent=p-1" }),
+    );
+  });
+});
+
+describe("threadNotificationLink (#1303)", () => {
+  it("a top-level Conversation message opens just the stream", () => {
+    expect(threadNotificationLink("C-1", {})).toBe("/people/C-1?tab=thread");
+  });
+
+  it("a Conversation reply opens the Thread under its parent", () => {
+    expect(threadNotificationLink("C-1", { parentId: "p-1" })).toBe(
+      "/people/C-1?tab=thread&parent=p-1",
+    );
+  });
+
+  it("a Full-timers message opens the Discussion side, a reply under its parent", () => {
+    expect(threadNotificationLink("C-1", { scope: "team" })).toBe(
+      "/people/C-1?tab=discussion",
+    );
+    expect(threadNotificationLink("C-1", { scope: "team", parentId: "p-2" })).toBe(
+      "/people/C-1?tab=discussion&parent=p-2",
+    );
+  });
+
+  it("a message on an Interaction's Thread carries the interaction id", () => {
+    expect(threadNotificationLink("C-1", { interactionId: "I-9", parentId: "p-3" })).toBe(
+      "/people/C-1?interaction=I-9",
+    );
   });
 });
 

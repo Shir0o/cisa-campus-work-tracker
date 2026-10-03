@@ -93,6 +93,9 @@ interface ContactScreenProps {
   /** A deep link into one logged conversation's own Thread (a queue card's
    * "Open the conversation"), pushed over Story on arrival. */
   initialInteractionId?: string | null;
+  /** A deep link onto the Full-timers side of the Conversation (#1303); only a
+   * Full-timer actually sees that side. */
+  initialStream?: ContactStream;
 }
 
 /** Where a Thread opens: a pushed screen over this one (T2). */
@@ -109,7 +112,7 @@ export function ContactScreen(props: ContactScreenProps) {
   );
 }
 
-function Person({ contactId, initialTab, initialInteractionId }: ContactScreenProps) {
+function Person({ contactId, initialTab, initialInteractionId, initialStream }: ContactScreenProps) {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const router = useRouter();
   const { uid, user, role, isImpersonating } = useAuth();
@@ -118,7 +121,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const queueState = useQueueState(uid ?? null);
 
   const [tab, setTab] = useState<ContactV2Tab>(initialTab);
-  const [stream, setStream] = useState<ContactStream>('open');
+  const [stream, setStream] = useState<ContactStream>(initialStream ?? 'open');
   const [held, setHeld] = useState<StreamRow<ThreadMessage> | null>(null);
   // The message being rewritten, if any (author-only; ADR 0033).
   const [editingMessage, setEditingMessage] = useState<ThreadMessage | null>(null);

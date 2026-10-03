@@ -345,7 +345,7 @@ export async function sendMessage(
         message: body,
         type: 'info',
         targetId: roomId,
-        link: `/messages/${roomId}`,
+        link: `/messages/${roomId}?parent=${parentId}`,
       });
     }
     return;
@@ -366,7 +366,7 @@ export async function sendMessage(
         message: notificationBody,
         type: 'info',
         targetId: roomId,
-        link: `/messages/${roomId}`,
+        link: parentId ? `/messages/${roomId}?parent=${parentId}` : `/messages/${roomId}`,
       });
     }
   }

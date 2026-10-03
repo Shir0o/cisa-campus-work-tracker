@@ -2161,6 +2161,31 @@ describe('Messages View Component', () => {
         fireEvent.click(within(pane).getByRole('button', { name: 'Back to Trainees Chat' }));
         expect(await screen.findByText('Group · 2 people')).toBeInTheDocument();
       });
+
+      it('opens the Thread a notification deep link names, without a click (#1303)', async () => {
+        (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+          const isMessages = q && q.path && q.path.includes('messages');
+          const dataList = isMessages ? thread : mockRooms;
+          successCallback({
+            forEach: (fn: any) => dataList.forEach((item: any) => {
+              const { id, ...rest } = item;
+              fn({ id, data: () => rest });
+            }),
+          });
+          return vi.fn();
+        });
+        const { Routes, Route } = await import('react-router-dom');
+        render(
+          <MemoryRouter initialEntries={['/messages/room1?parent=p']}>
+            <Routes>
+              <Route path="/messages/:roomId" element={<Messages />} />
+            </Routes>
+          </MemoryRouter>
+        );
+        await screen.findByText('Table plan for Thursday');
+        const pane = await screen.findByRole('region', { name: 'Thread' });
+        expect(within(pane).getByText('I can take the first hour')).toBeInTheDocument();
+      });
     });
   });
 });
