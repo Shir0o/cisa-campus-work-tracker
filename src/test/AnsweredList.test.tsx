@@ -62,16 +62,23 @@ const mockContacts = [
   },
 ];
 
+// Fixtures are anchored to a fixed "now" so the component's rolling 90-day
+// "Recent answers" window never ages out. `recent` offsets stay well inside the
+// window; `earlier` offsets stay well outside it.
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = Date.now();
+const daysAgo = (n: number) => new Date(NOW - n * DAY).toISOString();
+
 const mockPrayers = [
   {
     id: 'p1',
     data: () => ({
       contactId: 'c1',
       burden: 'Strength for finals',
-      date: '2026-06-10T00:00:00.000Z',
+      date: daysAgo(120),
       status: 'answered',
       answer: 'Passed with high grades!',
-      answeredAt: 'Jul 5, 2026',
+      answeredAt: daysAgo(10),
     }),
   },
   {
@@ -79,10 +86,10 @@ const mockPrayers = [
     data: () => ({
       contactId: 'c2',
       burden: 'Health and recovery',
-      date: '2026-06-11T00:00:00.000Z',
+      date: daysAgo(260),
       status: 'answered',
       answer: 'Fully recovered and back to school.',
-      answeredAt: 'Jan 2, 2025',
+      answeredAt: daysAgo(200),
     }),
   },
   {
@@ -90,7 +97,7 @@ const mockPrayers = [
     data: () => ({
       contactId: null,
       burden: 'Personal unanswered prayer',
-      date: '2026-06-12T00:00:00.000Z',
+      date: daysAgo(120),
       status: 'pending',
     }),
   },
@@ -99,10 +106,10 @@ const mockPrayers = [
     data: () => ({
       contactId: 'c1',
       burden: 'Wisdom for decisions',
-      date: '2026-06-08T00:00:00.000Z',
+      date: daysAgo(120),
       status: 'answered',
       answer: 'Decided on career path.',
-      answeredAt: 'Jul 4, 2026',
+      answeredAt: daysAgo(12),
     }),
   },
   {
@@ -110,7 +117,7 @@ const mockPrayers = [
     data: () => ({
       contactId: 'c1',
       burden: 'Invalid date prayer',
-      date: '2026-06-12T00:00:00.000Z',
+      date: daysAgo(120),
       status: 'answered',
       answer: 'Passed with issues',
       answeredAt: '',
@@ -122,10 +129,10 @@ const mockPrayers = [
     data: () => ({
       contactId: null,
       burden: 'Team prayer',
-      date: '2026-06-08T00:00:00.000Z',
+      date: daysAgo(120),
       status: 'answered',
       answer: 'Team was blessed',
-      answeredAt: 'Jul 3, 2026',
+      answeredAt: daysAgo(15),
     }),
   },
   {
@@ -133,10 +140,10 @@ const mockPrayers = [
     data: () => ({
       contactId: null,
       burden: 'Past team prayer',
-      date: '2026-06-12T00:00:00.000Z',
+      date: daysAgo(260),
       status: 'answered',
       answer: 'Past blessing',
-      answeredAt: 'Jan 1, 2025',
+      answeredAt: daysAgo(210),
     }),
   },
   {
@@ -144,7 +151,7 @@ const mockPrayers = [
     data: () => ({
       contactId: 'c1',
       burden: 'Fallback date prayer',
-      date: '2026-06-05T00:00:00.000Z',
+      date: daysAgo(200),
       status: 'answered',
       answer: 'Passed fallback',
       answeredAt: '',
