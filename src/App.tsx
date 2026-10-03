@@ -26,7 +26,7 @@ import Landing from "./views/landings/Landing";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LanguageProvider } from "./components/LanguageProvider";
-import { Plus, Eye, EyeOff } from "lucide-react";
+import { Plus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Skeleton } from "./components/ui/Skeleton";
 import { Contact } from "./types";
 import ContactDetailsModal from "./components/modals/ContactDetailsModal";
@@ -204,16 +204,24 @@ function EmailPasswordForm() {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isApproved, loading, signIn, logOut, pendingMfa, completeMfaSignIn, cancelMfa } = useAuth();
   const [signInError, setSignInError] = React.useState<string | null>(null);
+  const [googleBusy, setGoogleBusy] = React.useState(false);
+  const googleBusyRef = React.useRef(false);
   const [mfaCode, setMfaCode] = React.useState("");
   const [mfaBusy, setMfaBusy] = React.useState(false);
   const [mfaError, setMfaError] = React.useState<string | null>(null);
 
   const handleSignIn = async () => {
+    if (googleBusyRef.current) return;
+    googleBusyRef.current = true;
     setSignInError(null);
+    setGoogleBusy(true);
     try {
       await signIn();
     } catch (e: any) {
       setSignInError(e?.message || 'Google sign-in failed. Please try again.');
+    } finally {
+      googleBusyRef.current = false;
+      setGoogleBusy(false);
     }
   };
 
@@ -322,14 +330,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           </p>
           <button
             onClick={handleSignIn}
-            className="w-full py-4 bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all"
+            disabled={googleBusy}
+            aria-busy={googleBusy}
+            className="w-full py-4 bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
           >
+            {googleBusy && <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />}
             <img
               src="https://www.google.com/favicon.ico"
               alt="Google"
-              className="w-5 h-5 bg-white rounded-full p-0.5"
+              className={cn("w-5 h-5 bg-white rounded-full p-0.5", googleBusy && "hidden")}
             />
-            Sign in with Google
+            {googleBusy ? "Signing in…" : "Sign in with Google"}
           </button>
 
           {signInError && (

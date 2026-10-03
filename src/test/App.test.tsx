@@ -231,6 +231,37 @@ describe('App Component', () => {
     expect(mockSignIn).toHaveBeenCalled();
   });
 
+  it('disables the Google button and blocks re-entry while sign-in is pending', async () => {
+    let resolveSignIn: () => void = () => {};
+    mockSignIn.mockReturnValue(new Promise<void>((resolve) => { resolveSignIn = resolve; }));
+    render(<App />);
+    const googleBtn = screen.getByRole('button', { name: /Sign in with Google/i });
+
+    fireEvent.click(googleBtn);
+    fireEvent.click(googleBtn);
+    fireEvent.click(googleBtn);
+
+    expect(mockSignIn).toHaveBeenCalledTimes(1);
+    const pendingBtn = screen.getByRole('button', { name: /Signing in/i });
+    expect(pendingBtn).toBeDisabled();
+
+    resolveSignIn();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeEnabled();
+    });
+  });
+
+  it('re-enables the Google button and shows the error after a failed sign-in', async () => {
+    mockSignIn.mockRejectedValue(new Error('Google sign-in failed. Please try again.'));
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: /Sign in with Google/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeEnabled();
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Google sign-in failed. Please try again.');
+  });
+
   it('handles email/password sign-in correctly', async () => {
     render(<App />);
     const emailInput = screen.getByPlaceholderText('Email');
