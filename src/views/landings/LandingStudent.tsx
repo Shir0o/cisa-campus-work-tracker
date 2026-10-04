@@ -15,6 +15,7 @@ import {
   type PersonalPrayer,
 } from "../../lib/personalPrayers";
 import FirstRunCard from "../../components/landing/FirstRunCard";
+import { useFirstRunRecords } from "../../lib/firstRunRecords";
 
 // Student landing: what's coming up (with RSVP) + a quiet place to pray for the
 // friends on your heart. Friends are just titled personal prayers (no contacts).
@@ -23,6 +24,7 @@ export default function LandingStudent() {
   const navigate = useNavigate();
   const uid = effectiveUserId || user?.uid;
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
+  const firstRunRecords = useFirstRunRecords("student", uid);
 
   const [personalPrayers, setPersonalPrayers] = useState<PersonalPrayer[]>([]);
 
@@ -56,8 +58,7 @@ export default function LandingStudent() {
         userId={uid}
         context={{
           prayersCount: activePersonalPrayers.length,
-          messagesCount: 0,
-          feedbackCount: 0,
+          ...firstRunRecords,
         }}
         className="mt-8"
       />
