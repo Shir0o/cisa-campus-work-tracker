@@ -1538,13 +1538,16 @@ Analyze the input text carefully and extract the following:
       const existingContact = await findExistingContact(parsed.contactName, "", "");
 
       if (existingContact) {
+        const loggedAt = new Date().toISOString();
         // Update contact lastSeen and metadata
         const updatePayload: any = {
           lastSeen: "Just now",
           updatedAt: new Date().toISOString(),
           updatedBy: opUserId,
           updatedByName: opUserName,
-          hasNewActivity: true
+          hasNewActivity: true,
+          // The interaction below reaches them (#1335).
+          reachedAt: loggedAt,
         };
 
         await getAdminDb().collection("contacts").doc(existingContact.id).update(updatePayload);
@@ -1561,7 +1564,7 @@ Analyze the input text carefully and extract the following:
             contactName: existingContact.name,
             content: parsed.content || `Interaction logged: "${remainingText}"`,
             type: parsed.type || "Quick Add Note",
-            dateTime: new Date().toISOString(),
+            dateTime: loggedAt,
             createdAt: new Date().toISOString(),
             serverCreatedAt: FieldValue.serverTimestamp()
           });
@@ -1609,6 +1612,7 @@ Analyze the input text carefully and extract the following:
       } else {
         // Contact doesn't exist, create minimal contact and append interaction
         const partnerCoCreators = await resolvePartnerCoCreators(opUserId);
+        const loggedAt = new Date().toISOString();
         const contactData = {
           name: parsed.contactName,
           role: "Student",
@@ -1626,6 +1630,8 @@ Analyze the input text carefully and extract the following:
           createdByName: opUserName,
           ...(partnerCoCreators.length > 0 ? { coCreators: partnerCoCreators } : {}),
           hasNewActivity: true,
+          // The interaction below reaches them (#1335).
+          reachedAt: loggedAt,
         };
         // `createdBy` is a persisted tie, so the access list the rules read has
         // to be derived and written in the same breath (#1024 phase 4).
@@ -1645,7 +1651,7 @@ Analyze the input text carefully and extract the following:
             contactName: contactData.name,
             content: parsed.content || `Initial interaction logged.`,
             type: parsed.type || "Quick Add Note",
-            dateTime: new Date().toISOString(),
+            dateTime: loggedAt,
             createdAt: new Date().toISOString(),
             serverCreatedAt: FieldValue.serverTimestamp()
           });
@@ -1703,12 +1709,15 @@ Analyze the input text carefully and extract the following:
       const existingContact = await findExistingContact(parsed.name, parsed.email, parsed.phone);
 
       if (existingContact) {
+        const loggedAt = new Date().toISOString();
         const updatePayload: any = {
           lastSeen: "Just now",
           updatedAt: new Date().toISOString(),
           updatedBy: opUserId,
           updatedByName: opUserName,
-          hasNewActivity: true
+          hasNewActivity: true,
+          // The interaction below reaches them (#1335).
+          reachedAt: loggedAt,
         };
 
         // Merge fields cleanly if they are empty on the existing contact record
@@ -1743,15 +1752,15 @@ Analyze the input text carefully and extract the following:
             contactName: existingContact.name,
             content: parsed.notes || `Interaction logged via Quick Add: "${remainingText}"`,
             type: "Quick Add Note",
-            dateTime: new Date().toISOString(),
+            dateTime: loggedAt,
             createdAt: new Date().toISOString(),
             serverCreatedAt: FieldValue.serverTimestamp()
           });
 
         // Format description logging message
-        const hasUpdates = Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity"].includes(k)).length > 0;
+        const hasUpdates = Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity", "reachedAt"].includes(k)).length > 0;
         const changeSummary = hasUpdates 
-          ? `Filled details: ${Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity"].includes(k)).join(", ")}` 
+          ? `Filled details: ${Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity", "reachedAt"].includes(k)).join(", ")}` 
           : "No additional empty fields were present to fill.";
 
         const detailedLog = [
@@ -2472,6 +2481,8 @@ ${JSON.stringify(contactsList)}`;
             lastContactedBy: userName,
             lastContactedById: uid,
             lastContactedDate: dateStr,
+            // The imported interaction reaches them (#1335).
+            reachedAt: dateStr,
             updatedAt: new Date().toISOString(),
           });
         }

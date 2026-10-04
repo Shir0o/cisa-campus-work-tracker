@@ -45,7 +45,15 @@ const GATHERINGS = [
   { date: '2026-09-27', attendance: { present: ['c2'], absent: [] } },
   { date: '2026-10-04' },
 ];
-const CONTACTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'unreached'];
+// The stored reach stamp (#1335): c6's interactions are all older than the
+// interactions read, `signed-up` carries only what public sign-up writes.
+const STAMPED = [
+  { id: 'c1', reachedAt: '2026-10-01' },
+  { id: 'c6', reachedAt: '2025-01-10' },
+  { id: 'c7', reachedAt: 'not a date' },
+  { id: 'signed-up', reachedAt: null },
+];
+const CONTACTS = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'signed-up', 'unreached'];
 
 const PARITY_NOW = new Date('2026-10-01T12:00:00Z').getTime();
 const DAY = 86_400_000;
@@ -59,8 +67,8 @@ const PEOPLE_STATIC = [
 
 describe('reach mirror parity (web vs core)', () => {
   it('agrees on every person', () => {
-    const web: WebSources = { interactions: INTERACTIONS, gatherings: GATHERINGS };
-    const core: CoreSources = { interactions: INTERACTIONS, gatherings: GATHERINGS };
+    const web: WebSources = { interactions: INTERACTIONS, gatherings: GATHERINGS, contacts: STAMPED };
+    const core: CoreSources = { interactions: INTERACTIONS, gatherings: GATHERINGS, contacts: STAMPED };
     const webMap = webReach(web);
     const coreMap = coreReach(core);
 
@@ -69,6 +77,9 @@ describe('reach mirror parity (web vs core)', () => {
       expect(webMap.get(id) ?? null, id).toEqual(coreMap.get(id) ?? null);
       expect(webReached(id, web), id).toBe(coreReached(id, core));
     }
+    // Not vacuous: both read the stamp, and neither reads sign-up as reach.
+    expect(webReached('c6', web)).toBe(true);
+    expect(webReached('signed-up', web)).toBe(false);
   });
 
   it('agrees on every tag count (#1300)', () => {

@@ -293,6 +293,37 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets an operator stamp the reach with the trio when logging an interaction (#1335)', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
+        lastSeen: '2026-08-08',
+        lastContactedBy: 'Operator One',
+        lastContactedById: 'operator1',
+        lastContactedDate: '2026-08-08',
+        reachedAt: '2026-08-08',
+        hasNewActivity: true,
+        updatedAt: serverTimestamp(),
+      }));
+    });
+
+    it('lets a signed-in teammate create a walk-in already reached, but not a stranger (#1335)', async () => {
+      // A walk-in is marked present as they are added, so they are reached. The
+      // public sign-up form is filled in by a stranger, and signing up is not
+      // reach — an unauthenticated create may not claim it.
+      await assertSucceeds(setDoc(doc(getFirestore({ uid: 'operator1' }), 'contacts', 'walk_in'), {
+        name: 'Walk In', reachedAt: '2026-08-08', attendance: { e1: true },
+      }));
+      await assertFails(setDoc(doc(getFirestore(), 'contacts', 'stranger'), {
+        name: 'Stranger', reachedAt: '2026-08-08',
+      }));
+    });
+
   it("the caregiver field is gone — updating owner is rejected for everyone, admin included (#1053)", async () => {
     const db = getFirestore({ uid: "admin1" });
 

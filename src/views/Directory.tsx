@@ -351,9 +351,11 @@ export default function Directory() {
     return unsub;
   }, []);
 
+  // A Full-timer reads only the 500 newest interactions, so each person's own
+  // reach stamp covers the older ones (#1335).
   const reachByContactMap = useMemo(
-    () => reachByContact({ interactions, gatherings }),
-    [interactions, gatherings],
+    () => reachByContact({ interactions, gatherings, contacts }),
+    [interactions, gatherings, contacts],
   );
 
   // Team display names, keyed by uid, for searching by founder/carer/coCreator name (#1176).

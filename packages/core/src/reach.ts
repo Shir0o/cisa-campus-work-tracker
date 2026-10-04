@@ -22,9 +22,20 @@ export interface ReachGathering {
   attendance?: { present: string[]; absent?: string[] };
 }
 
+/** A person's stored reach stamp (#1335): `reachedAt` is written by every path
+ *  that logs an Interaction with them or marks them present at a Gathering —
+ *  never by sign-up — so it still says they were reached when the Interaction
+ *  itself is older than the ones a screen reads. */
+export interface ReachStamp {
+  id: string;
+  reachedAt?: string | null;
+}
+
 export interface ReachSources {
   interactions: readonly ReachInteraction[];
   gatherings: readonly ReachGathering[];
+  /** The people themselves, for their reach stamp. */
+  contacts?: readonly ReachStamp[];
 }
 
 /** Whether anyone has reached a person, and when they last did. */
@@ -32,8 +43,8 @@ export interface ReachReading {
   /** True once an Interaction has been logged with the person, or they have
    *  been marked present at a Gathering. */
   reached: boolean;
-  /** Epoch ms of the newest reach — an Interaction or a Gathering they were
-   *  present at; null when nobody has reached them. */
+  /** Epoch ms of the newest reach — an Interaction, a Gathering they were
+   *  present at, or their reach stamp; null when none of these can be dated. */
   ms: number | null;
 }
 
@@ -57,6 +68,10 @@ export function reachByContact(sources: ReachSources): Map<string, ReachReading>
   for (const gathering of sources.gatherings) {
     const at = parseMs(gathering.date);
     for (const contactId of gathering.attendance?.present ?? []) note(contactId, at);
+  }
+
+  for (const contact of sources.contacts ?? []) {
+    if (contact.reachedAt) note(contact.id, parseMs(contact.reachedAt));
   }
 
   return map;

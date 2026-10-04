@@ -80,6 +80,7 @@ export function buildCombineOps(
       carers: combined.carers,
       coCreators: combined.coCreators,
       visibleTo: combined.visibleTo,
+      ...(combined.reachedAt ? { reachedAt: combined.reachedAt } : {}),
       updatedAt: now,
       updatedBy: updatedById,
       updatedByName,
@@ -364,6 +365,8 @@ export function combineContactProfiles(survivor: Contact, duplicate: Contact): C
     carers: unionArray(survivor.carers, duplicate.carers),
     coCreators: unionArray(survivor.coCreators, duplicate.coCreators),
     visibleTo: unionArray(survivor.visibleTo, duplicate.visibleTo),
+    // The duplicate's interactions move to the survivor, so its reach does too (#1335).
+    reachedAt: survivor.reachedAt || duplicate.reachedAt,
   };
 
   return combined;

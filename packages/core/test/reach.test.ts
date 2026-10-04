@@ -80,6 +80,50 @@ describe('reach model (#1293)', () => {
   });
 });
 
+describe('the stored reach stamp (#1335)', () => {
+  // A Full-timer's screens read only the team's 500 newest interactions, so a
+  // person whose every interaction is older than that is missing from the
+  // interactions source. The contact's own `reachedAt` stamp — written by every
+  // path that logs an interaction or marks someone present — still says so.
+  const newest500 = Array.from({ length: 500 }, (_, i) => interaction(`other-${i}`, NOW - i));
+
+  it('a person whose only interaction is older than the 500 newest is reached', () => {
+    const map = reachByContact({
+      interactions: newest500,
+      gatherings: [],
+      contacts: [{ id: 'c1', reachedAt: '2025-01-10' }],
+    });
+    expect(map.get('c1')).toEqual({ reached: true, ms: new Date('2025-01-10').getTime() });
+  });
+
+  it('a person who only signed up publicly stays Not reached yet', () => {
+    // Sign-up stamps the last-contacted trio, but never the reach stamp.
+    const signedUp = {
+      id: 'c1',
+      lastContactedById: 'u1',
+      lastContactedBy: 'Ana',
+      lastContactedDate: '2026-09-30T10:00:00Z',
+    };
+    const map = reachByContact({ interactions: newest500, gatherings: [], contacts: [signedUp] });
+    expect(map.has('c1')).toBe(false);
+  });
+
+  it('counts a stamp it cannot date, with no date', () => {
+    const map = reachByContact({ interactions: [], gatherings: [], contacts: [{ id: 'c1', reachedAt: 'soon' }] });
+    expect(map.get('c1')).toEqual({ reached: true, ms: null });
+  });
+
+  it('reads the newest reach across the stamp, interactions and attendance', () => {
+    const map = reachByContact({
+      interactions: [interaction('c1', 1_000)],
+      gatherings: [gathering('2026-09-20', ['c1'])],
+      contacts: [{ id: 'c1', reachedAt: '2026-09-27' }, { id: 'c2', reachedAt: null }],
+    });
+    expect(map.get('c1')?.ms).toBe(new Date('2026-09-27').getTime());
+    expect(map.has('c2')).toBe(false);
+  });
+});
+
 describe('unreached tag counts (#1300)', () => {
   const reached = (id: string) => reachByContact({ interactions: [interaction(id, NOW)], gatherings: [] });
 

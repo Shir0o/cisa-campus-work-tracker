@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
 import Directory from '../views/Directory';
@@ -1143,6 +1143,61 @@ describe('Directory', () => {
     expect(screen.getByText('BFA Old')).toBeInTheDocument();
     expect(screen.queryByText('Other Freshman')).not.toBeInTheDocument();
     expect(screen.queryByText('BFA Reached')).not.toBeInTheDocument();
+  });
+
+  it('a Full-timer sees a person reached long before the 500 newest interactions as reached, everywhere (#1335)', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            // Their only interaction is older than the 500 the page reads; the
+            // reach stamp it left on them is all that remains.
+            { id: 'old-reached', data: () => ({ name: 'Old Reached', role: 'Student', stage: 'Lead', createdAt: days(2), tags: ['BFA'], reachedAt: days(200) }) },
+            // Public sign-up while a teammate was signed in: the last-contacted
+            // trio, but nobody logged an interaction and they were never present.
+            {
+              id: 'signed-up',
+              data: () => ({
+                name: 'Signed Up', role: 'Student', stage: 'Lead', createdAt: days(2), tags: ['BFA'],
+                lastContactedById: 'u-ft', lastContactedBy: 'Ana', lastContactedDate: days(2),
+              }),
+            },
+          ],
+          size: 2,
+        });
+      } else if (ref?.group === 'interactions') {
+        callback({
+          docs: [
+            { id: 'i1', ref: { path: 'contacts/someone-else/interactions/i1' }, data: () => ({ createdAt: days(1), content: 'Talked' }) },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Old Reached')).toBeInTheDocument());
+    const rowOf = (name: string) => screen.getByText(name).parentElement!.parentElement!;
+
+    // The row label.
+    expect(within(rowOf('Old Reached')).queryByText('Not reached yet')).not.toBeInTheDocument();
+    expect(within(rowOf('Signed Up')).getByText('Not reached yet')).toBeInTheDocument();
+
+    // The tag count.
+    expect(screen.getByRole('button', { name: 'BFA · 1 not reached' })).toBeInTheDocument();
+
+    // The filter.
+    fireEvent.click(screen.getByText('Filters'));
+    fireEvent.click(screen.getByTestId('filter-not-reached'));
+    expect(screen.getByText('Signed Up')).toBeInTheDocument();
+    expect(screen.queryByText('Old Reached')).not.toBeInTheDocument();
   });
 });
 

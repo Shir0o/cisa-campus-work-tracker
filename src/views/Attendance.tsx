@@ -400,6 +400,8 @@ export default function Attendance() {
         lastContactedBy: userName,
         lastContactedById: userUid,
         hasNewActivity: true,
+        // Marked present as they are added, so reached (#1335).
+        reachedAt: event.date || new Date().toISOString(),
         attendance: { [event.id]: true },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

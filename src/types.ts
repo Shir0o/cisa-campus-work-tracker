@@ -70,6 +70,10 @@ export interface Contact {
   lastContactedBy?: string;
   lastContactedById?: string;
   lastContactedDate?: string;
+  /** Set by every path that logs an interaction with this person or marks them
+   *  present at a Gathering — never by sign-up — so it says they were reached
+   *  however old that interaction is (#1335). */
+  reachedAt?: string;
   /** Whether they meet regularly with the church, as distinct from merely
    *  believing (#1152, ADR 0030). With `isStudent` it decides the kind of
    *  person: in the church life and not a student is a Local saint, in it and
