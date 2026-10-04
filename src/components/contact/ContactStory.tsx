@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Heart } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Skeleton } from "../ui/Skeleton";
 import { Translate } from "../Translate";
@@ -89,28 +88,17 @@ function ChangeEntry({
 export default function ContactStory({
   story,
   fmtDate,
-  isLoggingInteraction,
-  isAddingPrayer,
-  onCancelCompose,
-  onStartLog,
-  onStartPrayer,
+  composer,
   interactionsLoading,
-  logInteractionForm,
-  addPrayerForm,
   renderInteraction,
   renderPrayerCard,
   onOpenStoryMessage,
 }: {
   story: StoryEntry[];
   fmtDate: (v?: string | null) => string | null;
-  isLoggingInteraction: boolean;
-  isAddingPrayer: boolean;
-  onCancelCompose: () => void;
-  onStartLog: () => void;
-  onStartPrayer: () => void;
+  /** The story's one composer: interaction or prayer, chosen with its switch. */
+  composer: React.ReactNode;
   interactionsLoading: boolean;
-  logInteractionForm: React.ReactNode;
-  addPrayerForm: React.ReactNode;
   renderInteraction: (interaction: Interaction) => React.ReactNode;
   renderPrayerCard: (prayer: PrayerRecord) => React.ReactNode;
   /** A message added to the story links back to its place in the Conversation. */
@@ -123,38 +111,7 @@ export default function ContactStory({
       <div className="cd-sec-head">
         <h3 className="cd-sec-title">{t('modals.contactDetails.story_so_far')}</h3>
       </div>
-      {isLoggingInteraction || isAddingPrayer ? (
-        <div className="cd-story-compose-open">
-          <button
-            type="button"
-            onClick={onCancelCompose}
-            className="self-end text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            {t('modals.contactDetails.cancel')}
-          </button>
-          {logInteractionForm}
-          {addPrayerForm}
-        </div>
-      ) : (
-        <div className="cd-story-compose">
-          <button
-            type="button"
-            onClick={onStartLog}
-            className="cd-story-compose-input"
-          >
-            {t('modals.contactDetails.write_what_happened')}
-          </button>
-          <button
-            type="button"
-            onClick={onStartPrayer}
-            aria-label={t('modals.contactDetails.add_prayer')}
-            title={t('modals.contactDetails.add_prayer')}
-            className="cd-story-compose-pray"
-          >
-            <Heart className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <div className="cd-story-compose">{composer}</div>
       {/* Conversations are the spine; prayers join as their listener lands. */}
       {interactionsLoading ? (
         <Skeleton className="h-24 w-full rounded-2xl" />

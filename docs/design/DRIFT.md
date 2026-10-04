@@ -271,3 +271,16 @@ S8 are ticked. A Thread is a pushed screen at `/messages/{roomId}/thread?parent=
 | 57 | Make a to-do on a chat message has no person to be about. | **Build** | It opens the existing "Something to carry" sheet as "A to-do for the team", seeded with the message, for staff only — a member app has no to-do flow, so a member's sheet omits it. |
 | 58 | C3 names an announcement's real audience ("Posting to everyone on Campus"). The phone's room reader does not carry the room's `audiencePreset`. | **Design** (C3, S5) | **Resolved in #1279**: the core room reader carries `audiencePreset`; a Full-timer's announcement composer names the real audience for each preset ("Posting to everyone on Campus — {n} people" / "Posting to {n} people in this channel"), and the chat header reads S5's lines — "Group · N people", "Announcement · N people · {names} post here", "Just the two of you" — through a `chatRoomSubtitle` mirror kept in step with the web by a parity test. |
 | 59 | The loading skeleton still alternates bubbles left and right. | **Design** (G3) | **Resolved in #1279**: the chat loading skeleton's placeholders are all left-aligned, like the rows they stand in for. |
+
+### 2026-10-03 — the story's composer
+
+Found building [#1292](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1292)
+against [`contact-story/Composer.html`](contact-story/Composer.html) direction (a).
+The canvas is drawn to the issue's own checklist, so the switch, the text-first
+box, the chip row, the in-box Cancel / Log and the ⌘↵ hint all match. Two places
+needed a decision.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 60 | Direction (a) draws no "By" chip: `Composer.html` pre-dates [#1288](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1288), which added logging on a teammate's behalf, and the issue asks the composer to carry it forward. | **The issue** | The foot row gains a Full-timer-only `By: {name}` chip that opens a menu of Me and the team, replacing 5/13's native `<select>`. A Trainee sees no chip. |
+| 61 | The canvas draws the time chip (`Yesterday, 8:15 pm ▾`) but not the menu it opens, and the issue says the time "can be back-dated". | **Neither — the canvas is silent** | The chip opens quick presets (Now, 15 minutes ago, 1 hour ago, Yesterday, 2 days ago) rather than a native datetime picker, so the whole composer is free of the controls the ticket retires. An exact-time picker is a small addition if presets prove too coarse. |
