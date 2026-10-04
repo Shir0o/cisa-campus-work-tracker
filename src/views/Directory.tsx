@@ -385,7 +385,9 @@ export default function Directory() {
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
   const [isKindModalOpen, setIsKindModalOpen] = useState(false);
-  const [bulkKind, setBulkKind] = useState<ContactKind>('contact');
+  // Both bulk pickers open blank (#1263): saving is someone deciding, so
+  // there is no pre-chosen answer to confirm by accident.
+  const [bulkKind, setBulkKind] = useState<ContactKind | ''>('');
   const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [isCombineContactsOpen, setIsCombineContactsOpen] = useState(false);
@@ -632,7 +634,7 @@ export default function Directory() {
   // takes someone out of Not sorted yet.
   const handleBulkKind = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedIds.size === 0 || !isAdmin) return;
+    if (selectedIds.size === 0 || !isAdmin || !bulkKind) return;
 
     // A Contact may be a student or a local — the fourth cell. The picker
     // cannot express that, so setting someone to Contact writes only what the
@@ -1234,8 +1236,17 @@ export default function Directory() {
         </div>
       )}
 
-      {/* ── Select bar / count ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-8 mb-4">
+      {/* ── Select bar / count ── pinned while a selection exists, so the
+          actions follow the reader down a long list (#1263). It bleeds out
+          to the page gutter so the cards scroll under a full-width band. */}
+      <div
+        data-testid="selection-row"
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-8 mb-4",
+          selectedIds.size > 0 &&
+            "sticky top-0 z-20 py-2 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-background/90 backdrop-blur-md border-b border-outline-variant/40"
+        )}
+      >
         <label className="flex items-center gap-2.5 cursor-pointer group select-none" onClick={toggleSelectAll}>
           <span className={cn(
             "w-5 h-5 rounded-md border-2 transition-colors flex items-center justify-center",
@@ -1264,12 +1275,15 @@ export default function Directory() {
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
-              className="flex flex-wrap items-center gap-1"
+              className="flex items-center gap-1 max-w-full overflow-x-auto"
             >
               {isAdmin && (
                 <button
-                  onClick={() => setIsKindModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
+                  onClick={() => {
+                    setBulkKind('');
+                    setIsKindModalOpen(true);
+                  }}
+                  className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                   title={t('directory.set_kind_for_selected')}
                 >
                   {t('directory.kind')}
@@ -1277,31 +1291,31 @@ export default function Directory() {
               )}
               <button
                 onClick={() => {
-                  setBulkStage(stagesData[0]?.label || '');
+                  setBulkStage('');
                   setIsStageModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
+                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                 title={t('directory.change_stage_for_selected')}
               >
                 <Kanban className="w-4 h-4" /> {t('directory.stage')}
               </button>
               <button
                 onClick={() => setIsTagModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
+                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                 title={t('directory.tag_selected')}
               >
                 <Tag className="w-4 h-4" /> {t('directory.tag')}
               </button>
               <button
                 onClick={handleBulkEmail}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
+                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
                 title={t('directory.copy_emails')}
               >
                 <Copy className="w-4 h-4" /> {t('directory.copy_emails')}
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-error hover:bg-error/10 transition-colors min-h-[44px]"
+                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-error hover:bg-error/10 transition-colors min-h-[44px]"
                 title={t('directory.remove_selected')}
               >
                 <Trash2 className="w-4 h-4" /> {t('directory.remove')}
@@ -1515,6 +1529,7 @@ export default function Directory() {
                     onChange={e => setBulkKind(e.target.value as ContactKind)}
                     className="h-12 px-4"
                   >
+                    <option value="" disabled>{t('contactKind.choose')}</option>
                     <option value="local-saint">{t('contactKind.local_saint')}</option>
                     <option value="our-own">{t('contactKind.our_own')}</option>
                     <option value="contact">{t('contactKind.contact')}</option>
@@ -1531,7 +1546,8 @@ export default function Directory() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity"
+                    disabled={!bulkKind}
+                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {t('directory.save')}
                   </button>
@@ -1573,6 +1589,7 @@ export default function Directory() {
                     onChange={e => setBulkStage(e.target.value)}
                     className="h-12 px-4"
                   >
+                    <option value="" disabled>{t('directory.choose_stage')}</option>
                     {stagesData.map(s => (
                       <option key={s.id} value={s.label}>
                         {s.label}
@@ -1591,7 +1608,8 @@ export default function Directory() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity"
+                    disabled={!bulkStage}
+                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Update stage
                   </button>

@@ -441,6 +441,7 @@
     "tag": "Etiqueta",
     "remove": "Eliminar",
     "change_stage": "Cambiar etapa",
+    "choose_stage": "Elige una etapa…",
     "add_a_tag": "Añadir una etiqueta",
     "for_selected": "Para {n} {count} seleccionados",
     "tag_placeholder": "p. ej. líder-track",
@@ -2095,7 +2096,8 @@
     "in_church_life": "En la vida de la iglesia",
     "is_student": "Estudiante",
     "reads_as": "Se lee como {kind}",
-    "who_they_are": "Quiénes son"
+    "who_they_are": "Quiénes son",
+    "choose": "Elige quiénes son…"
   },
   "homes": {
     "title": "Hogares",
