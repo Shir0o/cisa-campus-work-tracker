@@ -137,7 +137,7 @@ describe("firestoreWeeklyDeps — the Full-timer's count (#1336)", () => {
       expect.objectContaining({
         userId: "ft1",
         title: "Around the team",
-        message: "2 new people to work through on Around the team",
+        message: "2 people to work through on Around the team",
         link: "/around",
       }),
     );

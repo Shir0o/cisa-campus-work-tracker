@@ -180,8 +180,8 @@ export function campusWeekdayHour(now: number | Date | string): { weekday: numbe
 
 export function aroundTeamReminderMessage(count: number): string {
   return count === 1
-    ? "1 new person to work through on Around the team"
-    : `${count} new people to work through on Around the team`;
+    ? "1 person to work through on Around the team"
+    : `${count} people to work through on Around the team`;
 }
 
 export function traineeReminderMessage(notReachedYet: number, openAsks: number): string {
