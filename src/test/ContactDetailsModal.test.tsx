@@ -397,28 +397,22 @@ describe('ContactDetailsModal Component', () => {
     // Click Log interaction button in the header
     clickLogInteractionMenu();
 
-    // Enter notes
-    const notesInput = screen.getByPlaceholderText(/Describe the interaction\.\.\./i);
+    // Text first, then the details as chips.
+    const notesInput = screen.getByPlaceholderText(/What happened with John/i);
     fireEvent.change(notesInput, { target: { value: 'Met for coffee today.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Meeting' }));
 
-    // Wait for the submit button to be enabled
     await waitFor(() => {
-      const currentForm = screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
-      const btn = currentForm.querySelector('button[type="submit"]')!;
-      expect(btn).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Log' })).not.toBeDisabled();
     });
-
-    // Log it
-    const form = screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
-    const submitBtn = form.querySelector('button[type="submit"]')!;
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
 
     await waitFor(() => {
       expect(firestore.addDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
           content: 'Met for coffee today.',
-          type: 'interaction',
+          type: 'meeting',
         })
       );
     });
@@ -430,21 +424,14 @@ describe('ContactDetailsModal Component', () => {
     // Click Add prayer button in the header
     clickAddPrayerMenu();
 
-    // Fill burden
-    const burdenInput = screen.getByPlaceholderText(/John's family back home/i);
+    // The same box, in Prayer mode.
+    const burdenInput = screen.getByPlaceholderText(/What are we praying for/i);
     fireEvent.change(burdenInput, { target: { value: 'Pray for upcoming exams.' } });
 
-    // Wait for the submit button to be enabled
     await waitFor(() => {
-      const currentForm = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-      const btn = currentForm.querySelector('button[type="submit"]')!;
-      expect(btn).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Add prayer' })).not.toBeDisabled();
     });
-
-    // Add prayer
-    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-    const submitBtn = form.querySelector('button[type="submit"]')!;
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
 
     await waitFor(() => {
       expect(firestore.addDoc).toHaveBeenCalledWith(
@@ -462,17 +449,14 @@ describe('ContactDetailsModal Component', () => {
 
     clickAddPrayerMenu();
 
-    fireEvent.change(screen.getByPlaceholderText(/John's family back home/i), {
+    fireEvent.change(screen.getByPlaceholderText(/What are we praying for/i), {
       target: { value: 'Pray for upcoming exams.' },
     });
 
     await waitFor(() => {
-      const currentForm = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-      expect(currentForm.querySelector('button[type="submit"]')).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Add prayer' })).not.toBeDisabled();
     });
-
-    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-    fireEvent.click(form.querySelector('button[type="submit"]')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
 
     await waitFor(() => {
       expect(firestore.addDoc).toHaveBeenCalledWith(
@@ -496,16 +480,14 @@ describe('ContactDetailsModal Component', () => {
     clickAddPrayerMenu();
 
     // Fill burden and submit
-    const burdenInput = screen.getByPlaceholderText(/John's family back home/i);
-    fireEvent.change(burdenInput, { target: { value: 'Pray for upcoming exams.' } });
-
-    await waitFor(() => {
-      const currentForm = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-      expect(currentForm.querySelector('button[type="submit"]')).not.toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText(/What are we praying for/i), {
+      target: { value: 'Pray for upcoming exams.' },
     });
 
-    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-    fireEvent.click(form.querySelector('button[type="submit"]')!);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add prayer' })).not.toBeDisabled();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
 
     await waitFor(() => {
       expect(firestore.addDoc).toHaveBeenCalled();
@@ -1777,44 +1759,74 @@ describe('ContactDetailsModal Component', () => {
 
   // ── Interaction form ──────────────────────────────────────────────
 
-  it('ignores empty interaction submissions and toggles the inline form off', async () => {
+  it('guards an empty submit, clears on Cancel, and reopens (#1292)', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     clickLogInteractionMenu();
-    const getForm = () =>
-      screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
+    const input = () => screen.getByPlaceholderText(/What happened with John/i) as HTMLTextAreaElement;
 
-    // Type content but clear the date: the submit guard (empty dateTime) blocks it.
-    fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
-      target: { value: 'No date log' },
-    });
-    fireEvent.change(getForm().querySelector('input[type="datetime-local"]')!, {
-      target: { value: '' },
-    });
-    fireEvent.click(getForm().querySelector('button[type="submit"]')!);
+    // Empty: Log is disabled, so nothing is written.
+    expect(screen.getByRole('button', { name: 'Log' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
     expect(firestore.addDoc).not.toHaveBeenCalled();
 
-    // With a date restored, the same submit works and closes the form.
-    fireEvent.change(getForm().querySelector('input[type="datetime-local"]')!, {
-      target: { value: '2026-06-16T10:00' },
-    });
-    fireEvent.click(getForm().querySelector('button[type="submit"]')!);
+    // Writing and logging clears the box and returns it to rest.
+    fireEvent.change(input(), { target: { value: 'No date log' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
     await waitFor(() =>
       expect(firestore.addDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ content: 'No date log' }),
       ),
     );
-    await waitFor(() =>
-      expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(input().value).toBe(''));
+    expect(screen.queryByRole('button', { name: 'Log' })).not.toBeInTheDocument();
 
-    // The story's composer opens the form again, and Cancel closes it.
-    fireEvent.click(screen.getByRole('button', { name: /Write what happened next/ }));
-    expect(screen.getByPlaceholderText(/Describe the interaction\.\.\./i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
-    expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
+    // Cancel clears what was typed and closes the composer.
+    fireEvent.focus(input());
+    fireEvent.change(input(), { target: { value: 'half-written' } });
+    expect(screen.getByRole('button', { name: 'Log' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(input().value).toBe('');
+    expect(screen.queryByRole('button', { name: 'Log' })).not.toBeInTheDocument();
   });
+
+  it('posts the chosen type, text and a back-dated time (#1292)', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    clickLogInteractionMenu();
+
+    fireEvent.change(screen.getByPlaceholderText(/What happened with John/i), {
+      target: { value: 'Texted him about Friday dinner.' },
+    });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Type' })).getByRole('button', { name: 'Call' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Now' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '15 minutes ago' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+
+    await waitFor(() => expect(firestore.addDoc).toHaveBeenCalled());
+    const payload = (firestore.addDoc as any).mock.calls.at(-1)[1];
+    expect(payload).toEqual(
+      expect.objectContaining({ content: 'Texted him about Friday dinner.', type: 'call' }),
+    );
+    expect(Date.now() - new Date(payload.dateTime).getTime()).toBeGreaterThan(10 * 60_000);
+  });
+
+  it('logs with ⌘/Ctrl+Enter (#1292)', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    clickLogInteractionMenu();
+
+    const input = screen.getByPlaceholderText(/What happened with John/i);
+    fireEvent.change(input, { target: { value: 'Shortcut log' } });
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() =>
+      expect(firestore.addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ content: 'Shortcut log' }),
+      ),
+    );
+  });
+
   it('lets a Full-timer log an interaction on a teammate\u2019s behalf (#1288)', async () => {
     (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
       if (q?.path === 'users') {
@@ -1833,14 +1845,13 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     clickLogInteractionMenu();
 
-    fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
+    fireEvent.change(screen.getByPlaceholderText(/What happened with John/i), {
       target: { value: 'He messaged him' },
     });
-    const bySelect = screen.getByRole('option', { name: 'Jae' }).closest('select')!;
-    fireEvent.change(bySelect, { target: { value: 'jae' } });
-
-    const form = screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
-    fireEvent.click(form.querySelector('button[type="submit"]')!);
+    // A Full-timer gets the By chip; pick the teammate who reached him.
+    fireEvent.click(screen.getByRole('button', { name: /^By:/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Jae' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
 
     await waitFor(() =>
       expect(firestore.addDoc).toHaveBeenCalledWith(
@@ -1866,7 +1877,7 @@ describe('ContactDetailsModal Component', () => {
     );
   });
 
-  it('hides the By choice from a Trainee (#1288)', async () => {
+  it('hides the By chip from a Trainee (#1288)', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Trainee One' },
       isAdmin: false,
@@ -1882,7 +1893,7 @@ describe('ContactDetailsModal Component', () => {
     );
     clickLogInteractionMenu();
 
-    expect(screen.queryByText('By')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^By:/ })).toBeNull();
   });
 
   it('reports interaction creation failures through handleFirestoreError', async () => {
@@ -1890,11 +1901,10 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     clickLogInteractionMenu();
-    fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
+    fireEvent.change(screen.getByPlaceholderText(/What happened with John/i), {
       target: { value: 'A doomed log' },
     });
-    const form = screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
-    fireEvent.submit(form);
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
 
     await waitFor(() =>
       expect(handleFirestoreError).toHaveBeenCalledWith(
@@ -1959,26 +1969,25 @@ describe('ContactDetailsModal Component', () => {
 
     // Failure path with context filled.
     (firestore.addDoc as any).mockRejectedValueOnce(new Error('denied'));
-    fireEvent.change(screen.getByPlaceholderText(/John's family back home/i), {
+    fireEvent.change(screen.getByPlaceholderText(/What are we praying for/i), {
       target: { value: 'Finals week' },
     });
     fireEvent.change(screen.getByPlaceholderText(/Any background worth knowing/i), {
       target: { value: 'Three exams' },
     });
     await waitFor(() => {
-      const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-      expect(form.querySelector('button[type="submit"]')!).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Add prayer' })).not.toBeDisabled();
     });
-    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
-    fireEvent.click(form.querySelector('button[type="submit"]')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
 
     await waitFor(() =>
       expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'CREATE', 'prayers'),
     );
 
-    // Toggle the form off.
+    // Cancel clears the box and returns it to rest, in Interaction mode.
     fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
-    expect(screen.queryByPlaceholderText(/John's family back home/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/What are we praying for/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Any background worth knowing/i)).not.toBeInTheDocument();
   });
 
   // ── Tag persistence failure ───────────────────────────────────────
@@ -3391,8 +3400,8 @@ describe('Reach prompt after Text or Call (#1297)', () => {
   };
 
   const prompt = () => screen.queryByRole('button', { name: /Messaged John\? Log it/ });
-  const interactionForm = () =>
-    screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form') as HTMLFormElement;
+  const selectedType = (name: string) =>
+    screen.getByRole('button', { name, pressed: true }) as HTMLButtonElement;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -3425,11 +3434,10 @@ describe('Reach prompt after Text or Call (#1297)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Messaged John? Log it' }));
 
-    const form = interactionForm();
-    expect((form.querySelector('select') as HTMLSelectElement).value).toBe('chat');
-    const dateTime = (form.querySelector('input[type="datetime-local"]') as HTMLInputElement).value;
-    expect(dateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-    expect(Math.abs(Date.now() - new Date(dateTime).getTime())).toBeLessThan(120000);
+    // The composer arrives in Interaction mode with the chat type selected and
+    // the time chip defaulting to now.
+    expect(selectedType('Chat')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Now' })).toBeInTheDocument();
   });
 
   it('offers to log a Call as a phone call when the page comes back', async () => {
@@ -3439,7 +3447,7 @@ describe('Reach prompt after Text or Call (#1297)', () => {
     tapThenReturn(/^Call$/);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Messaged John? Log it' }));
-    expect((interactionForm().querySelector('select') as HTMLSelectElement).value).toBe('call');
+    expect(selectedType('Call')).toBeInTheDocument();
   });
 
   it('does not prompt after Email, nor when the page was never hidden', async () => {
@@ -3466,7 +3474,9 @@ describe('Reach prompt after Text or Call (#1297)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
 
     expect(prompt()).not.toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
+    // The composer stays at rest: no Log button, and nothing typed.
+    expect(screen.queryByRole('button', { name: 'Log' })).not.toBeInTheDocument();
+    expect((screen.getByPlaceholderText(/What happened with John/i) as HTMLTextAreaElement).value).toBe('');
     expect(firestore.addDoc).not.toHaveBeenCalled();
   });
 });

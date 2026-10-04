@@ -4152,20 +4152,86 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   width: 100%; background: var(--bg);
 }
 .cd-story { padding: 24px 28px; min-width: 0; }
-.cd-story-compose { display: flex; gap: 8px; margin-bottom: 20px; }
-.cd-story-compose-input {
-  flex: 1 1 auto; min-height: 44px; padding: 0 16px; text-align: left;
-  border: 1px solid var(--outline-variant); border-radius: var(--radius);
-  background: var(--surface-container-low); color: var(--on-surface-variant);
-  font-family: var(--font-sans); font-size: 15px; cursor: text;
+.cd-story-compose { margin-bottom: 20px; }
+
+/* ── the story's composer (#1292) ──
+   Text first: one box that grows with the writing. The kind switch, the type
+   and the time are a quiet chip row inside it; Cancel and Log sit at its foot. */
+.cd-composer { display: block; }
+.cd-composer-box {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--outline-variant); border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
-.cd-story-compose-input:hover { border-color: var(--outline); }
-.cd-story-compose-pray {
-  width: 44px; height: 44px; flex: none; display: grid; place-items: center;
-  border: 1px solid var(--outline-variant); border-radius: var(--radius);
-  background: var(--stage-violet-soft); color: var(--stage-violet); cursor: pointer;
+.cd-composer.is-open .cd-composer-box {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
 }
-.cd-story-compose-open { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.cd-composer.is-rest .cd-composer-box { flex-direction: row; align-items: center; }
+.cd-composer-text {
+  flex: 1 1 auto; min-height: 24px; max-height: 320px; resize: none;
+  border: 0; outline: none; background: transparent; color: var(--on-surface);
+  font-family: var(--font-sans); font-size: 15px; line-height: 1.45;
+  field-sizing: content;
+}
+.cd-composer-text::placeholder { color: var(--on-surface-variant); }
+.cd-composer-context { font-size: 14px; color: var(--on-surface-variant); }
+.cd-composer-detail { display: flex; flex-direction: column; gap: 8px; }
+.cd-composer-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cd-composer-pop { position: relative; display: inline-flex; }
+.cd-composer-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid var(--outline-variant); background: var(--surface);
+  color: var(--on-surface-variant); font-family: var(--font-sans);
+  font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.cd-composer-chip.ghost { border-color: transparent; background: var(--surface-container-high); }
+.cd-composer-chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.cd-composer-menu {
+  position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 5;
+  display: flex; flex-direction: column; gap: 2px; min-width: 180px; padding: 6px;
+  border: 1px solid var(--outline-variant); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow-pop);
+}
+.cd-composer-item {
+  text-align: left; padding: 6px 10px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--on-surface);
+  font-family: var(--font-sans); font-size: 13px; cursor: pointer;
+}
+.cd-composer-item:hover { background: var(--hover); }
+.cd-composer-item.on { background: var(--surface-container-high); font-weight: 600; }
+.cd-composer-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cd-composer-switch {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
+  background: var(--surface-container-high);
+}
+.cd-composer-switch button {
+  height: 24px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--on-surface-variant);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.cd-composer-switch button.on { background: var(--surface); color: var(--on-surface); box-shadow: var(--shadow-pop); }
+.cd-composer-spacer { flex: 1 1 auto; }
+.cd-composer-hint { font-size: 11.5px; color: var(--on-surface-variant); }
+.cd-composer-cancel {
+  height: 32px; padding: 0 8px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--on-surface-variant);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.cd-composer-log {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 14px; border: 0; border-radius: 999px;
+  background: var(--primary); color: var(--on-primary);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.cd-composer-log:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 480px) {
+  .cd-composer-chip-row { gap: 5px; }
+  .cd-composer-hint { display: none; }
+}
 .cd-story-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .cd-story-entry {
   display: grid; grid-template-columns: 84px 14px minmax(0, 1fr); column-gap: 14px;

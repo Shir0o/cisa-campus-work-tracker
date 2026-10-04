@@ -57,14 +57,14 @@ import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKi
 import AboutSheet from "../contact/AboutSheet";
 import DelegateSheet from "../contact/DelegateSheet";
 import { buildContactStory } from "../../lib/contactStory";
+import { emptyComposer, type ComposerValue } from "../../lib/contactComposer";
 import { subscribeRhythms } from "../../lib/rhythms";
 
 import ContactHead from "../contact/ContactHead";
 import ContactEditForm from "../contact/ContactEditForm";
 import ContactStory from "../contact/ContactStory";
-import ContactInteractionForm from "../contact/ContactInteractionForm";
+import ContactComposer from "../contact/ContactComposer";
 import ContactReachPrompt from "../contact/ContactReachPrompt";
-import ContactPrayerForm from "../contact/ContactPrayerForm";
 import ContactPrayerCard from "../contact/ContactPrayerCard";
 import ContactInteractionItem from "../contact/ContactInteractionItem";
 import ContactStreamPane, { type ContactPaneView } from "../contact/ContactStreamPane";
@@ -180,21 +180,14 @@ export default function ContactDetailsModal({
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
   const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
   useEffect(() => subscribeInteractionRemovals(() => setPendingRemovalIds(getPendingRemovalIds())), []);
-  const [isAddingPrayer, setIsAddingPrayer] = useState(false);
-  const [newPrayer, setNewPrayer] = useState({ burden: "", context: "" });
-  const [submittingPrayer, setSubmittingPrayer] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [editTagInput, setEditTagInput] = useState("");
-  const [newInteraction, setNewInteraction] = useState({
-    content: "",
-    dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-    duration: "",
-    type: "interaction",
-    reachedById: "",
-  });
-  const [submittingInteraction, setSubmittingInteraction] = useState(false);
-  const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
+  // The story's one composer (#1292): text first, with the kind, the type, the
+  // time and the By chip held here so a submit posts exactly what it shows.
+  const [composer, setComposer] = useState<ComposerValue>(() => emptyComposer());
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [submittingComposer, setSubmittingComposer] = useState(false);
   // A Call or Text leaves the page for the dialer/messages app; when the page
   // comes back, the pending reach asks to be logged (#1297).
   const [reachPromptType, setReachPromptType] = useState<null | "call" | "chat">(null);
@@ -473,7 +466,7 @@ export default function ContactDetailsModal({
   // (a notification, Around the team). Both open the pane.
   useEffect(() => {
     if (!isOpen) return;
-    setIsAddingPrayer(false);
+    setComposerOpen(false);
     setAddingTag(false);
     setTagInput("");
     setEditTagInput("");
@@ -968,24 +961,24 @@ export default function ContactDetailsModal({
   const handleAddInteraction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
-      !newInteraction.content.trim() ||
-      !newInteraction.dateTime ||
+      !composer.text.trim() ||
+      !composer.dateTime ||
       !user ||
       !contact
     )
       return;
 
     hasActionRef.current = true;
-    setSubmittingInteraction(true);
+    setSubmittingComposer(true);
     try {
-      const content = newInteraction.content.trim();
+      const content = composer.text.trim();
       const loggerName =
         user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous');
       // Only a Full-timer may name a teammate other than themselves (#1288);
       // the Firestore create rule enforces the same cut.
       const selectedReacher =
         isAdmin && !isImpersonating
-          ? teamMembers.find((m) => m.id === newInteraction.reachedById)
+          ? teamMembers.find((m) => m.id === composer.reachedById)
           : undefined;
       const reacher =
         selectedReacher && selectedReacher.id !== user.uid
@@ -1004,13 +997,13 @@ export default function ContactDetailsModal({
         userPhoto: user.photoURL || "",
         ...(reacher ? { reachedById: reacher.id, reachedByName: reacher.name } : {}),
         content,
-        dateTime: newInteraction.dateTime,
-        type: newInteraction.type,
+        dateTime: composer.dateTime,
+        type: composer.type,
         createdAt: serverTimestamp(),
       });
 
       const activityPatch = buildContactActivityPatch({
-        date: newInteraction.dateTime,
+        date: composer.dateTime,
         by: { uid: user.uid, name: loggerName },
         ...(reacher ? { reacher: { uid: reacher.id, name: reacher.name } } : {}),
         type: 'interaction',
@@ -1038,22 +1031,16 @@ export default function ContactDetailsModal({
         targetName: contact.name,
         targetType: "contact",
         type:
-          newInteraction.type === "meeting"
+          composer.type === "meeting"
             ? "event"
-            : newInteraction.type === "chat"
+            : composer.type === "chat"
               ? "comment"
-              : (newInteraction.type as Activity["type"]),
+              : (composer.type as Activity["type"]),
         description: content,
       });
 
-      setNewInteraction({
-        content: "",
-        dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        duration: "",
-        type: "interaction",
-        reachedById: "",
-      });
-      setIsLoggingInteraction(false);
+      setComposer(emptyComposer());
+      setComposerOpen(false);
     } catch (error) {
       handleFirestoreError(
         error,
@@ -1061,7 +1048,7 @@ export default function ContactDetailsModal({
         `contacts/${contact.id}/interactions`,
       );
     } finally {
-      setSubmittingInteraction(false);
+      setSubmittingComposer(false);
     }
   };
 
@@ -1113,12 +1100,12 @@ export default function ContactDetailsModal({
 
   const handleAddPrayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPrayer.burden.trim() || !contact) return;
+    if (!composer.text.trim() || !contact) return;
 
     hasActionRef.current = true;
-    setSubmittingPrayer(true);
+    setSubmittingComposer(true);
     try {
-      const burden = [newPrayer.burden.trim(), newPrayer.context.trim()]
+      const burden = [composer.text.trim(), composer.context.trim()]
         .filter(Boolean)
         .join("\n\n");
       const now = new Date().toISOString();
@@ -1146,15 +1133,15 @@ export default function ContactDetailsModal({
         targetName: contact.name,
         targetType: "contact",
         type: "comment",
-        description: newPrayer.burden.trim(),
+        description: composer.text.trim(),
       });
 
-      setNewPrayer({ burden: "", context: "" });
-      setIsAddingPrayer(false);
+      setComposer(emptyComposer());
+      setComposerOpen(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "prayers");
     } finally {
-      setSubmittingPrayer(false);
+      setSubmittingComposer(false);
     }
   };
 
@@ -1252,23 +1239,30 @@ export default function ContactDetailsModal({
     reachPendingRef.current = null;
     reachPageHiddenRef.current = false;
     if (!type) return;
-    setNewInteraction((prev) => ({
+    setComposer((prev) => ({
       ...prev,
+      mode: "interaction",
       type,
       dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     }));
-    setIsLoggingInteraction(true);
+    setComposerOpen(true);
   };
   const dismissReachPrompt = () => {
     setReachPromptType(null);
     reachPendingRef.current = null;
     reachPageHiddenRef.current = false;
   };
-  const startLogInteraction = () => {
-    setIsLoggingInteraction(true);
+  const startComposer = (mode: ComposerValue["mode"]) => {
+    setComposer((prev) => ({ ...prev, mode }));
+    setComposerOpen(true);
   };
-  const startAddPrayer = () => {
-    setIsAddingPrayer(true);
+  const cancelComposer = () => {
+    setComposer(emptyComposer());
+    setComposerOpen(false);
+  };
+  const handleComposerSubmit = (e: React.FormEvent) => {
+    if (composer.mode === "prayer") handleAddPrayer(e);
+    else handleAddInteraction(e);
   };
 
   const firstName = contact.name.split(" ")[0];
@@ -1375,27 +1369,19 @@ export default function ContactDetailsModal({
     );
   }
 
-  // Shared by the phone tabs and the desktop story (#design-D): the log form,
-  // one conversation, the add-prayer form and one prayer card.
-  const logInteractionForm = (
-    <ContactInteractionForm
-      open={isLoggingInteraction}
-      value={newInteraction}
-      onChange={setNewInteraction}
-      submitting={submittingInteraction}
-      onSubmit={handleAddInteraction}
+  // The story's composer (#1292): one box for an interaction or a prayer,
+  // shared by the phone story and the desktop story column.
+  const composerNode = (
+    <ContactComposer
+      open={composerOpen}
+      value={composer}
+      onChange={setComposer}
+      onOpen={() => setComposerOpen(true)}
+      onCancel={cancelComposer}
+      onSubmit={handleComposerSubmit}
+      submitting={submittingComposer}
       canLogOnBehalf={isAdmin && !isImpersonating}
       teamMembers={teamMembers}
-    />
-  );
-
-  const addPrayerForm = (
-    <ContactPrayerForm
-      open={isAddingPrayer}
-      value={newPrayer}
-      onChange={setNewPrayer}
-      submitting={submittingPrayer}
-      onSubmit={handleAddPrayer}
       firstName={firstName}
     />
   );
@@ -1463,17 +1449,8 @@ export default function ContactDetailsModal({
     <ContactStory
       story={story}
       fmtDate={fmtDate}
-      isLoggingInteraction={isLoggingInteraction}
-      isAddingPrayer={isAddingPrayer}
-      onCancelCompose={() => {
-        setIsLoggingInteraction(false);
-        setIsAddingPrayer(false);
-      }}
-      onStartLog={() => setIsLoggingInteraction(true)}
-      onStartPrayer={() => setIsAddingPrayer(true)}
+      composer={composerNode}
       interactionsLoading={interactionsLoading}
-      logInteractionForm={logInteractionForm}
-      addPrayerForm={addPrayerForm}
       renderInteraction={renderInteractionItem}
       renderPrayerCard={renderPrayerCard}
       onOpenStoryMessage={openStoryMessage}
@@ -1567,8 +1544,8 @@ export default function ContactDetailsModal({
               onCall={callContact}
               onText={textContact}
               onEmail={emailContact}
-              onLogInteraction={startLogInteraction}
-              onStartPrayer={startAddPrayer}
+              onLogInteraction={() => startComposer("interaction")}
+              onStartPrayer={() => startComposer("prayer")}
               onMoveStage={moveStage}
               onOpenMoveSheet={() => setMovingStage(true)}
               onOpenAbout={() => setAboutOpen(true)}

@@ -4,21 +4,13 @@ import { describe, it, expect, vi } from 'vitest';
 import ContactStory from '../components/contact/ContactStory';
 import type { StoryEntry } from '../lib/contactStory';
 
-const noop = () => {};
-
 const renderStory = (story: StoryEntry[]) =>
   render(
     <ContactStory
       story={story}
       fmtDate={(v) => v ?? null}
-      isLoggingInteraction={false}
-      isAddingPrayer={false}
-      onCancelCompose={noop}
-      onStartLog={noop}
-      onStartPrayer={noop}
+      composer={null}
       interactionsLoading={false}
-      logInteractionForm={null}
-      addPrayerForm={null}
       renderInteraction={() => null}
       renderPrayerCard={() => null}
     />,
@@ -41,14 +33,8 @@ describe('ContactStory — a message added to the story (#1298)', () => {
           },
         ]}
         fmtDate={(v) => v ?? null}
-        isLoggingInteraction={false}
-        isAddingPrayer={false}
-        onCancelCompose={noop}
-        onStartLog={noop}
-        onStartPrayer={noop}
+        composer={null}
         interactionsLoading={false}
-        logInteractionForm={null}
-        addPrayerForm={null}
         renderInteraction={() => null}
         renderPrayerCard={() => null}
         onOpenStoryMessage={onOpenStoryMessage}
