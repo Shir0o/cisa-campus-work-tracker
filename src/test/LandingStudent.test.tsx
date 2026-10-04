@@ -19,6 +19,8 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, ...parts) => ({ path: parts.join('/') })),
   query: vi.fn((ref) => ref),
   where: vi.fn(),
+  limit: vi.fn(),
+  getDocs: vi.fn(() => Promise.resolve({ empty: true, docs: [] })),
   onSnapshot: vi.fn((_q, callback) => {
     if (typeof callback === 'function') {
       try {

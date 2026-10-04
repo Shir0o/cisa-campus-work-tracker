@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { MessageSquare } from "lucide-react";
@@ -11,6 +11,11 @@ import PageContainer from "../../components/layout/PageContainer";
 import { Avatar, SectionHead } from "../../components/landing/primitives";
 import { UpcomingEventsRsvp } from "../../components/landing/UpcomingEventsRsvp";
 import FirstRunCard from "../../components/landing/FirstRunCard";
+import { useFirstRunRecords } from "../../lib/firstRunRecords";
+import {
+  subscribePersonalPrayers,
+  type PersonalPrayer,
+} from "../../lib/personalPrayers";
 import { getOrCreateDirectChat } from "../../services/chat";
 
 interface FullTimer {
@@ -29,6 +34,21 @@ export default function LandingCommunity() {
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
 
   const [fts, setFts] = useState<FullTimer[]>([]);
+  const [personalPrayers, setPersonalPrayers] = useState<PersonalPrayer[]>([]);
+  const firstRunRecords = useFirstRunRecords("community", uid);
+
+  const activePersonalPrayers = useMemo(
+    () =>
+      personalPrayers.filter(
+        (p) => p.status !== "answered" && p.status !== "archived",
+      ),
+    [personalPrayers],
+  );
+
+  useEffect(() => {
+    if (!uid) return;
+    return subscribePersonalPrayers(uid, setPersonalPrayers);
+  }, [uid]);
 
   useEffect(() => {
     // Full-timers are the approved admins — query and filter client-side.
@@ -82,9 +102,8 @@ export default function LandingCommunity() {
         role="community"
         userId={uid}
         context={{
-          prayersCount: 0,
-          messagesCount: 0,
-          feedbackCount: 0,
+          prayersCount: activePersonalPrayers.length,
+          ...firstRunRecords,
         }}
         className="mt-8"
       />

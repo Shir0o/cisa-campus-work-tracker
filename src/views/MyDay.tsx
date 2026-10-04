@@ -96,6 +96,7 @@ import PointerCard from "../components/landing/PointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
 import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
+import { useFirstRunRecords } from "../lib/firstRunRecords";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
 import KindChip from "../components/ui/KindChip";
@@ -478,6 +479,7 @@ export default function MyDay() {
   const navigate = useNavigate();
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
   const uid = effectiveUserId || user?.uid;
+  const firstRunRecords = useFirstRunRecords(role, uid);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -1336,9 +1338,7 @@ export default function MyDay() {
             prayersCount: personalPrayers.length + prayers.length,
             todosCreatedCount: tasks.filter((t) => t.createdById === uid).length,
             todosCompletedCount: tasks.filter((t) => t.status === "completed").length,
-            docsCount: 1,
-            messagesCount: 1,
-            feedbackCount: 0,
+            ...firstRunRecords,
           }}
           className="mt-8"
         />
