@@ -15,6 +15,11 @@ import {
   type ReminderSchedule,
   type WeeklyReminderStaff,
 } from "../../packages/core/src/reminders";
+import {
+  aroundTeamToWorkThrough,
+  reviewedStackIds,
+  type AroundTeamInput,
+} from "../../packages/core/src/aroundTeam";
 import type { Firestore } from "firebase-admin/firestore";
 
 export interface ReminderDeps {
@@ -140,8 +145,8 @@ function isTiedTo(person: WaitingPerson | undefined, uid: string): boolean {
 }
 
 /** How many Contact-kind people added in the last 30 days nobody has reached,
- *  for a Full-timer (the whole roster) or one Trainee's own ties. The web/core
- *  reach model (#1293) is the behaviour oracle; this is the same reading over
+ *  among one Trainee's own ties. The web/core reach model (#1293) is the
+ *  behaviour oracle; this is the same reading over
  *  the raw docs the functions package already gathers, like #1289's candidates.
  *  Reach itself is ever — the 30-day limit is on when the person was added. */
 function waitingCount(
@@ -149,17 +154,73 @@ function waitingCount(
   reached: ReadonlySet<string>,
   uid: string,
   nowMs: number,
-  scope: "team" | "yours",
 ): number {
   const floor = nowMs - UNREACHED_TAG_WINDOW_DAYS * DAY_MS;
   let count = 0;
   for (const p of people) {
     if (!p.isContact || p.createdAtMs == null || p.createdAtMs < floor) continue;
     if (reached.has(p.id)) continue;
-    if (scope === "yours" && !isTiedTo(p, uid)) continue;
+    if (!isTiedTo(p, uid)) continue;
     count += 1;
   }
   return count;
+}
+
+type AroundTeamDocs = Omit<AroundTeamInput, "uid" | "personalContactIds">;
+
+/** The team half of a Full-timer's **to work through** count (#1336): the same
+ *  docs Around the team and My Day's pointer card read — every contact, the
+ *  500 newest interactions, and every message in `threads` and `teamThreads`. */
+async function aroundTeamDocs(db: Firestore, nowIso: string): Promise<AroundTeamDocs> {
+  const [contactsSnap, interactionsSnap, threadsSnap, teamThreadsSnap] = await Promise.all([
+    db.collection("contacts").get(),
+    db.collectionGroup("interactions").orderBy("createdAt", "desc").limit(500).get(),
+    db.collectionGroup("threads").get(),
+    db.collectionGroup("teamThreads").get(),
+  ]);
+  const toThread = (d: (typeof threadsSnap.docs)[number]) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      contactId: d.ref.parent.parent?.id ?? "",
+      from: data.from ?? "",
+      kind: data.kind ?? "comment",
+      at: data.at ?? nowIso,
+      interactionId: data.interactionId ?? null,
+      mentionedUserIds: Array.isArray(data.mentionedUserIds) ? data.mentionedUserIds : null,
+    };
+  };
+  return {
+    contacts: contactsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    interactions: interactionsSnap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      contactId: d.ref.parent.parent?.id ?? "",
+    })),
+    threads: [...threadsSnap.docs.map(toThread), ...teamThreadsSnap.docs.map(toThread)],
+  };
+}
+
+/** One Full-timer's to-work-through count: the shared Around the team rule
+ *  over the team docs, their Reviewed stamps, and the people they keep. */
+async function toWorkThroughFor(
+  db: Firestore,
+  uid: string,
+  docs: AroundTeamDocs,
+  nowMs: number,
+): Promise<number> {
+  const [inboxSnap, prefsSnap] = await Promise.all([
+    db.doc(`inboxState/${uid}`).get(),
+    db.doc(`userPreferences/${uid}`).get(),
+  ]);
+  const completed = inboxSnap.exists ? inboxSnap.data()?.completed : undefined;
+  // My Day falls back to "the people I created" when nothing is picked; those
+  // are already tied to the reader, so that fallback is the same as no set.
+  const kept = prefsSnap.exists ? prefsSnap.data()?.personalContactIds : undefined;
+  return aroundTeamToWorkThrough(
+    { ...docs, uid, personalContactIds: Array.isArray(kept) ? new Set<string>(kept) : null },
+    reviewedStackIds(completed, nowMs),
+  );
 }
 
 /** The live deps over Firestore: the schedule doc, every staff member, and the
@@ -175,9 +236,10 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
         ? (scheduleSnap.data() as ReminderSchedule)
         : DEFAULT_REMINDER_SCHEDULE;
       const { weekday, hour } = campusWeekdayHour(nowMs);
-      const anyDue = [schedule.fullTimers, ...Object.values(schedule.teams ?? {})].some(
-        (plan) => plan.days.includes(weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6) && plan.hour === hour,
-      );
+      const covers = (plan: ReminderSchedule["fullTimers"]) =>
+        plan.days.includes(weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6) && plan.hour === hour;
+      const fullTimersDue = covers(schedule.fullTimers);
+      const anyDue = fullTimersDue || Object.values(schedule.teams ?? {}).some(covers);
       if (!anyDue) return [];
 
       const [usersSnap, contactsSnap, interactionsSnap, eventsSnap, nudgeSnap] = await Promise.all([
@@ -226,7 +288,11 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
         openAsksByContact.set(contactId, (openAsksByContact.get(contactId) ?? 0) + 1);
       }
 
-      return usersSnap.docs.map((d) => {
+      // Around the team's docs are read only in an hour the Full-timers'
+      // schedule covers.
+      const around = fullTimersDue ? await aroundTeamDocs(db, new Date(nowMs).toISOString()) : null;
+
+      return Promise.all(usersSnap.docs.map(async (d) => {
         const data = d.data();
         const uid = d.id;
         const staff: WeeklyReminderStaff = {
@@ -237,9 +303,11 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
           lastWeeklyReminderAt: data.weeklyReminderAt ?? null,
         };
         if (staff.role === "admin") {
-          staff.toWorkThrough = waitingCount(people, reached, uid, nowMs, "team");
+          if (around && !staff.weeklyRemindersOff) {
+            staff.toWorkThrough = await toWorkThroughFor(db, uid, around, nowMs);
+          }
         } else if (staff.role === "manager") {
-          staff.notReachedYet = waitingCount(people, reached, uid, nowMs, "yours");
+          staff.notReachedYet = waitingCount(people, reached, uid, nowMs);
           let openAsks = 0;
           for (const [contactId, count] of openAsksByContact) {
             if (isTiedTo(personById.get(contactId), uid)) openAsks += count;
@@ -247,7 +315,7 @@ export function firestoreWeeklyDeps(db: Firestore): WeeklyReminderDeps {
           staff.openAsks = openAsks;
         }
         return staff;
-      });
+      }));
     },
     async schedule() {
       const snap = await db.doc("settings/reminder_schedule").get();
