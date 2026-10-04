@@ -638,6 +638,29 @@ describe('Directory', () => {
     });
   });
 
+  // #1263: like the kind picker, the stage picker offers no pre-chosen answer.
+  it('opens the bulk stage picker blank, with Update waiting for a choice', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    fireEvent.click(screen.getByTitle('Change stage for selected'));
+
+    expect((screen.getByTestId('bulk-stage-select') as HTMLSelectElement).value).toBe('');
+    expect(screen.getByRole('button', { name: 'Update stage' })).toBeDisabled();
+  });
+
+  // #1263: on a long list the actions follow the reader down while a
+  // selection exists, rather than waiting at the top of the page.
+  it('pins the selection row only while something is selected', async () => {
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+    expect(screen.getByTestId('selection-row')).not.toHaveClass('sticky');
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    expect(screen.getByTestId('selection-row')).toHaveClass('sticky');
+  });
+
   it('performs bulk delete when confirmed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
@@ -1587,6 +1610,22 @@ describe('Directory — bulk-setting the kind', () => {
     const written = mockUpdate.mock.calls.at(-1)?.[1];
     expect(written.inChurchLife).toBe(true);
     expect(written.isStudent).toBe(true);
+  });
+
+  // #1263: saving the kind is a person deciding, so the picker never offers a
+  // pre-chosen answer — not a default, and not whatever was saved last time.
+  it('opens blank every time, and Save waits for a choice', async () => {
+    await setKindTo('our-own');
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByTestId('bulk-kind-select')).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    fireEvent.click(screen.getByTitle('Set who the selected people are'));
+    expect((screen.getByTestId('bulk-kind-select') as HTMLSelectElement).value).toBe('');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('bulk-kind-select'), { target: { value: 'local-saint' } });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
 
   it('records the change in the team\u2019s own words, not slugs', async () => {
