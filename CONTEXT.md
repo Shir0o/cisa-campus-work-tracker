@@ -84,6 +84,14 @@ will fail otherwise.
 The role-aware onboarding card (`FirstRunCard`) on the home screen and role landings. Each step is reactively derived from live records — contacts added, conversations logged, questions asked, prayers offered — never manually ticked, so the card always tells the truth about progress. Shows an accessible progress meter and an "X of Y complete" count; dismissed with "Put this away" (persisted per user + role in localStorage) and restored from Settings > Getting started. It disappears quietly once every step is done (ADR 0010 — reactive in-situ checklists, no overlay tours).
 _Avoid_: Onboarding tour, walkthrough, tutorial overlay
 
+**Help**:
+The in-app, written onboarding and orientation resource at `/help` (web only). A role-filtered, bilingual corpus of markdown pages compiled at build time, explaining what the app is for, what a role means, and how cross-cutting flows fit together — the gaps the First-Run Checklist cannot express reactively. English serves as the fallback for any page with no Spanish authored (ADR 0035). Distinct from Support, which is operational contact, and from the First-Run Checklist, which is *what to do*.
+_Avoid_: Tutorial, onboarding video, walkthrough, documentation site
+
+**Support**:
+The operational contact surface at `/support` (and the outward-facing static `docs/support.html`): how to reach the team, support hours and response time, account access, roles, notifications, deletion, and a device compatibility list. Replies and triage for problems, not onboarding guidance; Help explains the product, Support handles the problem.
+_Avoid_: Help, help center, documentation
+
 **Border Radius Scale (CSS tokens)**:
 The monotonic scale governing corner curvature across the application: Shell container 32px (`--radius-2xl`), Cards/Modals 24px (`--radius-xl`), Sub-containers 20px (`--radius-lg`), Nested panels 14px (`--radius`), Form inputs/controls 10px (`--radius-sm`), and Pills/Avatars (`rounded-full`). Invariant: nested elements must descend in radius (Card 24px → Panel 14px → Control 10px), and controls must never clamp to lozenges/stadiums (ADR 0009).
 _Avoid_: Arbitrary px radii on inputs, lozenge inputs
