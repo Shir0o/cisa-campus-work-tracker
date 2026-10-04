@@ -47,7 +47,7 @@ describe("weeklyRemindersDue", () => {
     expect(tuesday).toHaveLength(1);
     expect(wednesday).toHaveLength(1);
     expect(tuesday[0].notification.userId).toBe("ft1");
-    expect(tuesday[0].notification.message).toBe("3 new people to work through on Around the team");
+    expect(tuesday[0].notification.message).toBe("3 people to work through on Around the team");
     expect(tuesday[0].notification.link).toBe("/around");
   });
 
@@ -117,8 +117,8 @@ describe("weeklyRemindersDue", () => {
 
 describe("weekly reminder copy", () => {
   it("counts people, not peoples, for one", () => {
-    expect(aroundTeamReminderMessage(1)).toBe("1 new person to work through on Around the team");
-    expect(aroundTeamReminderMessage(4)).toBe("4 new people to work through on Around the team");
+    expect(aroundTeamReminderMessage(1)).toBe("1 person to work through on Around the team");
+    expect(aroundTeamReminderMessage(4)).toBe("4 people to work through on Around the team");
   });
 
   it("joins only the clauses that are waiting", () => {
