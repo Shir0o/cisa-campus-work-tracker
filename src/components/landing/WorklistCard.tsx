@@ -315,12 +315,13 @@ export function WorklistCard({
   if (hasOpenAsk) phrases.push(t("whatsNew.nobody_yet"));
   else if (!reviewedOnly && stack.seen && !completed) phrases.push(t("whatsNew.opened_not_finished"));
 
-  const latestText =
+  const rawText =
     newest.type === "thread"
       ? newest.body
       : newest.type === "contact"
         ? contact?.notes || ""
         : newest.body || contact?.notes || "";
+  const latestText = rawText?.trim() || "";
 
   const openThem = () => {
     // Seen is set here and only here — opening the person is the whole of it.

@@ -369,4 +369,27 @@ describe("the worklist card, through On you (#813, #943)", () => {
       }
     }
   });
+
+  it("does not render a blank strip container when contact notes or thread body is only whitespace (#1302)", () => {
+    const contactWithWhitespaceNotes = contact({
+      id: "c_blank",
+      name: "Jesus Baiza",
+      notes: "   \n\t  ",
+      carers: ["u1"],
+    });
+
+    const { container } = render(
+      <OnYouCard
+        contacts={[contactWithWhitespaceNotes]}
+        interactions={[]}
+        threads={[]}
+        staffNameMap={{ u3: "Ale" }}
+      />,
+    );
+
+    expect(screen.getByText("Jesus Baiza")).toBeInTheDocument();
+    // The note preview has bg-surface-variant/40 styling when rendered; ensure no such container exists
+    expect(container.querySelector(".bg-surface-variant\\/40")).toBeNull();
+  });
 });
+
