@@ -8,10 +8,29 @@ import { Platform } from 'react-native';
 
 export function routeForNotificationLink(link: unknown): string {
   if (typeof link !== 'string') return '/';
-  const path = link.split('?')[0];
+  const [path, query = ''] = link.split('?');
+  const q = new URLSearchParams(query);
   let m: RegExpMatchArray | null;
-  if ((m = path.match(/^\/people\/([^/]+)$/))) return `/contact/${m[1]}`;
-  if ((m = path.match(/^\/messages(\/[^/]+)?$/))) return `/messages${m[1] ?? ''}`;
+  if ((m = path.match(/^\/people\/([^/]+)$/))) {
+    const id = m[1];
+    // A message on an Interaction's Thread opens that Thread itself (#1303).
+    const interaction = q.get('interaction');
+    if (interaction) return `/contact/${id}/thread?interaction=${interaction}`;
+    // A reply opens the Thread under its parent; a Full-timers one names its side.
+    const parent = q.get('parent');
+    const team = q.get('tab') === 'discussion';
+    if (parent) return `/contact/${id}/thread?parent=${parent}${team ? '&stream=team' : ''}`;
+    // A top-level Full-timers message opens the Conversation on its side; a
+    // top-level Conversation message just opens the Conversation.
+    if (team) return `/contact/${id}?tab=conversation&stream=team`;
+    if (q.get('tab') === 'thread') return `/contact/${id}?tab=conversation`;
+    return `/contact/${id}`;
+  }
+  if ((m = path.match(/^\/messages\/([^/]+)$/))) {
+    const parent = q.get('parent');
+    return parent ? `/messages/${m[1]}/thread?parent=${parent}` : `/messages/${m[1]}`;
+  }
+  if (path === '/messages') return '/messages';
   if ((m = path.match(/^\/coordination\/([^/]+)$/))) return `/coordination/${m[1]}`;
   if (path === '/directory') return '/people';
   if (path === '/feedback') return '/your-notes';

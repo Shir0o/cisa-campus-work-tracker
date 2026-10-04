@@ -3145,6 +3145,32 @@ describe('desktop story layout (design D)', () => {
     expect(screen.getByRole('region', { name: 'Full-timers' })).toBeInTheDocument();
   });
 
+  it('a reply deep-link opens the Thread under its parent (#1303)', () => {
+    hoisted.messages = [
+      { id: 'p-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'PARENT', at: new Date().toISOString() },
+      { id: 'r-1', parentId: 'p-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'REPLY', at: new Date().toISOString() },
+    ];
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" initialThreadId="p-1" />,
+    );
+    const thread = screen.getByRole('region', { name: 'Thread' });
+    expect(within(thread).getByText('PARENT')).toBeInTheDocument();
+    expect(within(thread).getByText('REPLY')).toBeInTheDocument();
+  });
+
+  it("an Interaction deep-link opens that Interaction's Thread (#1303)", () => {
+    feed({
+      interactions: [
+        docOf('inter-1', { userId: 'user-9', userName: 'Maria Santos', content: 'Coffee at the Union', dateTime: '2026-09-21T10:00', createdAt: '2026-09-21T10:05:00.000Z' }),
+      ],
+    });
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialInteractionId="inter-1" />,
+    );
+    const thread = screen.getByRole('region', { name: 'Thread' });
+    expect(within(thread).getByText('Coffee at the Union')).toBeInTheDocument();
+  });
+
   describe('Full-timers drawer on the shared stream', () => {
     const roster = () =>
       feed({

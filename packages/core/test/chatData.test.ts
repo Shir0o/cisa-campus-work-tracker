@@ -235,6 +235,21 @@ describe('sendMessage notifications', () => {
     expect(onNotify.mock.calls.map((c) => c[0].userId)).toEqual(['u2', 'u3']);
   });
 
+  it('links a thread reply to the Thread under its parent (#1303)', async () => {
+    const onNotify = vi.fn();
+    await sendMessage({} as never, 'r1', 'yes', sender, undefined, {
+      memberIds: ['u1', 'u2'],
+      onNotify,
+      roomType: 'group',
+      parentId: 'm0',
+    });
+    expect(onNotify).toHaveBeenCalledWith(expect.objectContaining({ link: '/messages/r1?parent=m0' }));
+
+    onNotify.mockClear();
+    await sendMessage({} as never, 'r1', 'top', sender, undefined, { memberIds: ['u1', 'u2'], onNotify });
+    expect(onNotify).toHaveBeenCalledWith(expect.objectContaining({ link: '/messages/r1' }));
+  });
+
   it("tells only the post's author and its thread's repliers about a reply in an announcement (as the web does)", async () => {
     firestoreMock.getDocs.mockResolvedValue({ docs: [{ data: () => ({ senderId: 'u3' }) }, { data: () => ({ senderId: 'u1' }) }] });
     firestoreMock.getDoc.mockResolvedValue({ exists: () => true, data: () => ({ senderId: 'u2' }) });

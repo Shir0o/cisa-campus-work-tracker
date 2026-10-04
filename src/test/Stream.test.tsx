@@ -246,8 +246,31 @@ describe("Stream — Threads (T1–T3)", () => {
     expect(screen.getByRole("heading", { name: "Conversation" })).toBeInTheDocument();
   });
 
-  it("in a wide container the Thread opens beside the stream and marks its parent's chip", () => {
-    renderStream(withReplies(), { threadMode: "beside", header: <h3>Conversation</h3> });
+  it("opens straight on the Thread named by initialThreadId — a notification deep link (#1303)", () => {
+    renderStream(withReplies(), { header: <h3>Conversation</h3>, initialThreadId: "p" });
+    const thread = screen.getByRole("region", { name: "Thread" });
+    expect(within(thread).getByText("I'll sit with him Thursday.")).toBeInTheDocument();
+    expect(within(thread).getByText("Perfect")).toBeInTheDocument();
+  });
+
+  it("follows a new deep link on an already-mounted stream (#1303)", () => {
+    const adapter = fakeAdapter({
+      messages: [
+        message({ id: "p1", body: "first parent", at: yesterdayAt(10) }),
+        message({ id: "p2", body: "second parent", at: yesterdayAt(11) }),
+        message({ id: "r2", parentId: "p2", body: "reply two", at: yesterdayAt(11, 5) }),
+      ],
+    });
+    const { rerender } = renderStream(adapter, { initialThreadId: "p1" });
+    expect(within(screen.getByRole("region", { name: "Thread" })).getByText("first parent")).toBeInTheDocument();
+
+    rerender(<Stream adapter={adapter} viewer={MARIA} threadMode="replace" initialThreadId="p2" />);
+    const thread = screen.getByRole("region", { name: "Thread" });
+    expect(within(thread).getByText("second parent")).toBeInTheDocument();
+    expect(within(thread).getByText("reply two")).toBeInTheDocument();
+  });
+
+  it("in a wide container the Thread opens beside the stream and marks its parent's chip", () => {    renderStream(withReplies(), { threadMode: "beside", header: <h3>Conversation</h3> });
     const chip = screen.getByRole("button", { name: /2 replies/ });
     expect(chip).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(chip);

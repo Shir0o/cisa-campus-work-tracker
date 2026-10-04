@@ -77,6 +77,17 @@ export async function closeFollowUpAsk(
   }
 }
 
+/** Where a bell entry about a written message opens, as a web path both apps
+ *  read. Mirrors the web app's `threadNotificationLink` (#1303). */
+export function threadNotificationLink(
+  contactId: string,
+  input: { interactionId?: string | null; parentId?: string | null; scope?: 'team' | null },
+): string {
+  if (input.interactionId) return `/people/${contactId}?interaction=${input.interactionId}`;
+  const tab = input.scope === 'team' ? 'discussion' : 'thread';
+  return `/people/${contactId}?tab=${tab}${input.parentId ? `&parent=${input.parentId}` : ''}`;
+}
+
 /** Post a new message to a contact; pings everyone tied to it. The bell entry
  *  is pushed by the notification function, held to one push per contact per
  *  person per hour so a back-and-forth does not buzz a Trainee eight times
@@ -104,7 +115,7 @@ export async function addThreadMessage(
     await core.addThreadMessage(db, contactId, input, notify, (payload) => {
       void sendNotification({
         ...payload,
-        link: `/people/${contactId}?tab=${input.scope === 'team' ? 'discussion' : 'thread'}`,
+        link: threadNotificationLink(contactId, input),
         coalesceKey: `contact:${contactId}`,
       });
     });

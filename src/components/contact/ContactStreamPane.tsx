@@ -43,6 +43,7 @@ export default function ContactStreamPane({
   openAskCount,
   onJumpToAsk,
   fullTimersUnread,
+  initialThreadId,
 }: {
   isMobile: boolean;
   open: boolean;
@@ -69,6 +70,8 @@ export default function ContactStreamPane({
   openAskCount: number;
   onJumpToAsk: () => void;
   fullTimersUnread: boolean;
+  /** A deep link onto one message's Thread (#1303). */
+  initialThreadId?: string | null;
 }) {
   const { t } = useLanguage();
   const conversationLabel = t('modals.contactDetails.follow_up');
@@ -159,6 +162,7 @@ export default function ContactStreamPane({
               onMakeTodo={onMakeTodo}
               onAddToStory={view === "conversation" ? onAddToStory : undefined}
               storyMessageIds={view === "conversation" ? storyMessageIds : undefined}
+              initialThreadId={initialThreadId}
             />
           </div>
         </>

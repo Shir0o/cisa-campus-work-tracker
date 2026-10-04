@@ -799,6 +799,29 @@ describe('ContactScreen', () => {
       expect(trainee.queryByRole('tab', { name: /Full-timers/ })).toBeNull();
     });
 
+    it('a discussion deep link opens Conversation on the Full-timers side for a Full-timer, plain Conversation for anyone else (#1303)', async () => {
+      (useAuth as jest.Mock).mockReturnValue({ user: { displayName: 'tony' }, uid: 'tony', role: 'admin' });
+      (useContactDetailData as jest.Mock).mockReturnValue({ ...baseLoadedData, threadMessages: [graceSays, staffOnly], interactions: [] });
+      const ft = await render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="conversation" initialStream="team" />
+        </ThemeProvider>,
+      );
+      expect(ft.getByText('STAFF-ONLY')).toBeTruthy();
+      expect(ft.queryByText('GRACE-OPEN')).toBeNull();
+      await ft.unmount();
+
+      (useAuth as jest.Mock).mockReturnValue({ user: { displayName: 'user1' }, uid: 'user1', role: 'manager' });
+      const trainee = await render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="conversation" initialStream="team" />
+        </ThemeProvider>,
+      );
+      expect(trainee.getByText('GRACE-OPEN')).toBeTruthy();
+      expect(trainee.queryByText('STAFF-ONLY')).toBeNull();
+      await trainee.unmount();
+    });
+
     it('cuts the switch on the effective role, so "See it as they do" hides it', async () => {
       const { queryByRole } = await renderAs({ uid: 'user1', role: 'manager', isImpersonating: true }, [graceSays]);
       expect(queryByRole('tab', { name: /Full-timers/ })).toBeNull();

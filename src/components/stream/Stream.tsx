@@ -48,6 +48,9 @@ export interface StreamProps<M extends StreamSourceMessage = StreamSourceMessage
   renderActions?: (message: M, ctx: { openThread: () => void; replies: number }) => React.ReactNode;
   /** Show bodies in the reader's language, as chat always has. */
   translate?: boolean;
+  /** A deep link onto one message's Thread (a notification, #1303): the stream
+   *  opens with that Thread already showing. */
+  initialThreadId?: string | null;
 }
 
 const TONES = 8;
@@ -525,10 +528,22 @@ export default function Stream<M extends StreamSourceMessage>({
   renderExtra,
   renderActions,
   translate,
+  initialThreadId,
 }: StreamProps<M>) {
   const { t } = useLanguage();
   const f = useFormatters();
-  const [open, setOpen] = useState<{ id: string; focus: boolean } | null>(null);
+  const [open, setOpen] = useState<{ id: string; focus: boolean } | null>(() =>
+    initialThreadId ? { id: initialThreadId, focus: false } : null,
+  );
+  // Re-seed when a new deep link arrives on an already-mounted stream, but never
+  // fight the reader's own back/close once it has been applied.
+  const seededThread = useRef<string | null | undefined>(initialThreadId ?? null);
+  useEffect(() => {
+    if (initialThreadId && seededThread.current !== initialThreadId) {
+      seededThread.current = initialThreadId;
+      setOpen({ id: initialThreadId, focus: false });
+    }
+  }, [initialThreadId]);
   const listRef = useRef<HTMLDivElement>(null);
   const { messages, capabilities: can, mentionCandidates } = adapter;
   // An adapter that is one Thread (an Interaction's) is always open on it, and

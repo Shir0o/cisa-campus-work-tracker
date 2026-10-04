@@ -293,7 +293,7 @@ export async function sendMessage(
           : `${sender.displayName}: ${previewText}`,
         type: "info",
         targetId: roomId,
-        link: `/messages/${roomId}`,
+        link: opts.parentId ? `/messages/${roomId}?parent=${opts.parentId}` : `/messages/${roomId}`,
       });
     }
   }

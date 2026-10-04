@@ -421,6 +421,21 @@ describe('chat.ts services', () => {
       });
     });
 
+    it('links a thread reply notification to the Thread under its parent (#1303)', async () => {
+      await sendMessage(
+        'r1',
+        'reply in thread',
+        { uid: 'u1', displayName: 'User One' },
+        undefined,
+        ['u1', 'u2'],
+        'parent-msg-1'
+      );
+
+      expect(mockSendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'u2', link: '/messages/r1?parent=parent-msg-1' }),
+      );
+    });
+
     it('sends an announcement post with channel name as title and custom announcement message (#743)', async () => {
       await sendMessage(
         'r-ann',

@@ -273,6 +273,19 @@ export function stakeholderUidsOf(
   return [...new Set(all)].filter((id) => id !== from);
 }
 
+/** Where a notification about a written message opens, in whichever app reads
+ *  it. A message on an Interaction's Thread carries the interaction id; a reply
+ *  carries its parent so the Thread opens under it; a top-level message opens
+ *  just its stream (#1303). */
+export function threadNotificationLink(
+  contactId: string,
+  input: { interactionId?: string | null; parentId?: string | null; scope?: "team" | null },
+): string {
+  if (input.interactionId) return `/people/${contactId}?interaction=${input.interactionId}`;
+  const tab = input.scope === "team" ? "discussion" : "thread";
+  return `/people/${contactId}?tab=${tab}${input.parentId ? `&parent=${input.parentId}` : ""}`;
+}
+
 /** Post a new message to a contact (and optionally to one interaction). Dispatches
  * notifications to mentioned users, contact stakeholders, or legacy notify.to. */
 export async function addThreadMessage(
@@ -320,9 +333,7 @@ export async function addThreadMessage(
     const who = (input.fromName || "Someone").trim().split(/\s+/)[0];
     const contactName = notify?.contactName || "this person";
     const truncatedBody = body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body;
-    const targetLink = isTeamScope
-      ? `/people/${contactId}?tab=discussion`
-      : `/people/${contactId}?tab=thread`;
+    const targetLink = threadNotificationLink(contactId, input);
 
     // 1. Resolve recipients:
     // Mentions: receive mention-specific alert
