@@ -13,7 +13,7 @@ jest.mock('../../lib/data/chat', () => ({}));
 jest.mock('../../lib/data/todos', () => ({ addTodo: jest.fn().mockResolvedValue('t1') }));
 jest.mock('../../lib/data/contacts', () => ({
   subscribeContacts: jest.fn((cb: (list: unknown[]) => void) => {
-    cb([{ id: 'c1', name: 'Daniel Reyes', role: 'Student', location: 'UCLA' }]);
+    cb([{ id: 'c1', name: 'Daniel Reyes', year: 'Sophomore', major: 'Biology', location: 'UCLA' }]);
     return () => {};
   }),
 }));
@@ -305,7 +305,7 @@ describe('ChatThreadScreen', () => {
       await fireEvent.changeText(getByLabelText('Message'), 'Meet Daniel');
       await fireEvent.press(getByRole('button', { name: 'Send' }));
       expect(d.send).toHaveBeenCalledWith('Meet Daniel', null, [
-        { type: 'contact', id: 'c1', name: 'Daniel Reyes', subtitle: 'Student' },
+        { type: 'contact', id: 'c1', name: 'Daniel Reyes', subtitle: 'Sophomore · Biology' },
       ]);
     });
 

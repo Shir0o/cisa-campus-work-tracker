@@ -93,6 +93,8 @@ const mockContacts = [
     name: 'John Doe',
     email: 'john@example.com',
     role: 'Student',
+    year: 'Sophomore',
+    major: 'Biology',
     metVia: 'Campus Hub',
     location: '',
     phone: '123-456-7890',
@@ -139,9 +141,10 @@ describe('Contact Management', () => {
     // People-first cards: names + meta render (emails live behind a mailto button).
     expect(await screen.findByText('John Doe')).toBeInTheDocument();
     expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
-    // #730: the card sub-text is now just the role (metVia and location
-    // are gone from the form).
-    expect(await screen.findByText(/Student/)).toBeInTheDocument();
+    // #730: metVia and location are gone from the card sub-text. #1345: it reads
+    // year · major, never the stored role.
+    expect(await screen.findByText('Sophomore · Biology')).toBeInTheDocument();
+    expect(screen.queryByText(/Student/)).not.toBeInTheDocument();
   });
 
   it('Adding a Contact: calls addDoc with correct data', async () => {
@@ -196,9 +199,8 @@ describe('Contact Management', () => {
     const editBtn = screen.getByText('Edit details');
     fireEvent.click(editBtn);
 
-    // Change role
-    const roleInput = screen.getByDisplayValue(contact.role);
-    fireEvent.change(roleInput, { target: { value: 'Alumni' } });
+    // Change the last name (#1345: there is no group / role field to change)
+    fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Smith' } });
 
     // Save
     const form = document.getElementById('edit-contact-form');
@@ -208,10 +210,11 @@ describe('Contact Management', () => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          role: 'Alumni'
+          name: 'John Smith'
         })
       );
     });
+    expect(vi.mocked(firestore.updateDoc).mock.calls.at(-1)![1]).not.toHaveProperty('role');
   });
 
   it('Deleting a Contact: calls deleteDoc', async () => {
