@@ -12,6 +12,13 @@ describe('contactActivity (#329)', () => {
   });
 
   describe('buildContactActivityPatch', () => {
+    it('stamps the reach with the date of the interaction, visit or presence (#1335)', () => {
+      for (const type of ['interaction', 'visit', 'attendance'] as const) {
+        const patch = buildContactActivityPatch({ date: '2026-08-19', by: { uid: 'u1', name: 'Tony' }, type });
+        expect(patch.reachedAt, type).toBe('2026-08-19');
+      }
+    });
+
     it('derives identical activity fields for an interaction', () => {
       const stamp = {
         date: '2026-08-19T14:30:00Z',

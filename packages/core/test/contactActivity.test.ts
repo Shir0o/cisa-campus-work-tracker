@@ -29,6 +29,11 @@ describe('packages/core contactActivity (#329)', () => {
       });
       expect(patch.updatedAt).toBeDefined();
     });
+
+    it('stamps the reach with the date of the interaction or presence (#1335)', () => {
+      const patch = buildContactActivityPatch({ date: '2026-08-19', by: { uid: 'u1', name: 'Tony' }, type: 'attendance' });
+      expect(patch.reachedAt).toBe('2026-08-19');
+    });
   });
 
   describe('shouldTouchActivityForAttendance', () => {

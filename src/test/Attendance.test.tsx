@@ -354,6 +354,7 @@ describe('Attendance', () => {
         lastContactedBy: 'Test User',
         lastContactedById: 'u-test',
         hasNewActivity: true,
+        reachedAt: '2026-06-12',
       }),
     );
   });
@@ -468,6 +469,8 @@ describe('Attendance', () => {
         role: 'Student',
         stage: 'Lead',
         attendance: expect.objectContaining({ e1: true }),
+        // Present at the Gathering, so reached (#1335).
+        reachedAt: '2026-06-12',
       }),
     );
   });

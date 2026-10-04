@@ -254,6 +254,22 @@ describe('buildCombineOps', () => {
     expect(duplicateDelete).toBeDefined();
   });
 
+  it("carries the duplicate's reach stamp onto a survivor nobody had reached (#1335)", () => {
+    // The duplicate's interactions move to the survivor, so its reach does too.
+    const d = { ...duplicate, reachedAt: '2025-01-10' } as Contact;
+    const ops = buildCombineOps(survivor, d, combineContactProfiles(survivor, d), now, 'u1', 'Admin');
+    const survivorUpdate = ops.find(
+      (o): o is Extract<FirestoreOp, { op: 'update' }> =>
+        o.op === 'update' && o.collection === 'contacts' && o.docId === 's1'
+    );
+    expect(survivorUpdate?.data.reachedAt).toBe('2025-01-10');
+
+    // Neither reached: no stamp is invented.
+    const plain = buildCombineOps(survivor, duplicate, combined, now, 'u1', 'Admin');
+    const plainUpdate = plain.find((o) => o.op === 'update' && o.docId === 's1') as Extract<FirestoreOp, { op: 'update' }>;
+    expect(plainUpdate.data).not.toHaveProperty('reachedAt');
+  });
+
   it('copies interactions, threads and teamThreads subcollections to the survivor then deletes originals', () => {
     const ops = buildCombineOps(
       survivor,

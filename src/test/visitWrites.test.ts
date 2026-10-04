@@ -147,6 +147,7 @@ describe('addVisit', () => {
       'lastContactedById',
       'lastContactedDate',
       'lastSeen',
+      'reachedAt',
       'updatedAt',
       'updatedBy',
       'updatedByName',

@@ -17,6 +17,9 @@ export interface ContactActivityPatch {
   lastContactedBy: string;
   lastContactedById: string | null;
   hasNewActivity: boolean;
+  /** Every caller is a reach — an interaction or visit logged, or a present
+   *  mark — so the person is stamped reached (#1335). */
+  reachedAt: string;
   updatedAt: string;
   updatedBy: string | null;
   updatedByName: string;
@@ -38,6 +41,7 @@ export function buildContactActivityPatch(stamp: ContactActivityStamp): ContactA
     lastContactedBy: authorName,
     lastContactedById: authorUid,
     hasNewActivity: true,
+    reachedAt: stamp.date,
     updatedAt: isoNow,
     updatedBy: authorUid,
     updatedByName: authorName,

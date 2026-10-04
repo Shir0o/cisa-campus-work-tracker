@@ -691,8 +691,11 @@ export default function MyDay() {
           ms: parseMs(i.dateTime || i.createdAt) ?? Number.NaN,
         })),
         gatherings: events,
+        // The interactions read are only the team's 500 newest; each person's
+        // own reach stamp covers the older ones (#1335).
+        contacts,
       }),
-    [interactions, events],
+    [interactions, events, contacts],
   );
 
   // most-recent touch (+ its note) per contact

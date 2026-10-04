@@ -193,6 +193,8 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     expect(data.createdByName).toBe('Full Timer John');
     expect(data.lastContactedById).toBe('user123');
     expect(data.lastContactedBy).toBe('Full Timer John');
+    // Signing up is not reach: nobody logged an interaction (#1335).
+    expect(data).not.toHaveProperty('reachedAt');
     expect(data.tags).toEqual(expect.arrayContaining(['New Sign Up', 'Club Rush', '2026-27']));
   });
 

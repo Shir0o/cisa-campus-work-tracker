@@ -254,7 +254,16 @@ service cloud.firestore {
                || isAdmin();
       }
 
-      allow create: if isValidId(contactId) && isValidContact(incoming()) && kindSafeOnCreate(incoming());
+      // #1335: the reach stamp says someone logged an interaction with the
+      // person or marked them present. A teammate adding a walk-in present may
+      // write it; the public sign-up form, filled in by a stranger, may not —
+      // signing up is not reach.
+      function reachSafeOnCreate(data) {
+        return !('reachedAt' in data) || isSignedIn();
+      }
+
+      allow create: if isValidId(contactId) && isValidContact(incoming()) && kindSafeOnCreate(incoming()) &&
+                      reachSafeOnCreate(incoming());
       // Operators edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
       // keys, so a contact carrying legacy/extra fields stays editable as long as
@@ -334,13 +343,14 @@ service cloud.firestore {
           // deliberately omitted so updates cannot rewrite who/when a contact
           // was created; the updatedAt/updatedBy/updatedByName trio stays
           // because the client stamps it on every edit, as does the
-          // lastContactedBy/ById/Date trio whenever an interaction is logged.
+          // lastContactedBy/ById/Date trio whenever an interaction is logged,
+          // and the reach stamp `reachedAt` with it (#1335).
           keys.hasOnly([
             'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
             'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
             'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
             'lastSeen', 'avatar', 'hasNewActivity',
-            'lastContactedBy', 'lastContactedById', 'lastContactedDate',
+            'lastContactedBy', 'lastContactedById', 'lastContactedDate', 'reachedAt',
             'updatedAt', 'updatedBy', 'updatedByName'
           ]) ||
 

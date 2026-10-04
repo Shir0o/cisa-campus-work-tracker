@@ -797,6 +797,8 @@ describe("POST /api/quick-add", () => {
     expect(interactions).toHaveLength(1);
     expect(interactions[0].type).toBe("Coffee");
     expect(interactions[0].contactName).toBe("Bob Smith");
+    // An interaction was logged, so the person is reached (#1335).
+    expect(getCollection("contacts")["c-2"].reachedAt).toBe(interactions[0].dateTime);
   });
 
   it("attributes to the authenticated user when an Authorization header is present", async () => {
@@ -807,6 +809,8 @@ describe("POST /api/quick-add", () => {
       .send({ text: "Met New Person" });
     expect(res.status).toBe(200);
     expect(Object.values(getCollection("contacts"))[0].createdBy).toBe("u-123");
+    // Adding someone logs no interaction, so it reaches nobody (#1335).
+    expect(Object.values(getCollection("contacts"))[0]).not.toHaveProperty("reachedAt");
   });
 
   it("matches an existing contact via fuzzy name containment", async () => {
@@ -818,6 +822,12 @@ describe("POST /api/quick-add", () => {
     expect(res.status).toBe(200);
     expect(res.body.contact.isExisting).toBe(true);
     expect(res.body.contact.id).toBe("c-3");
+    // The merge logs an interaction with them, so they are reached (#1335).
+    const [logged] = Object.values(getCollection("contacts/c-3/interactions"));
+    expect(getCollection("contacts")["c-3"].reachedAt).toBe(logged.dateTime);
+    // ...which is bookkeeping, not a detail the merge filled in.
+    const [activity] = Object.values(getCollection("activities"));
+    expect(activity.description).toContain("No additional empty fields were present to fill.");
   });
 
   it("does not collapse 'Bob' onto an existing 'Bobby' contact (#731)", async () => {
@@ -873,7 +883,9 @@ describe("POST /api/quick-add", () => {
     expect(contacts).toHaveLength(1);
     expect(contacts[0]).toMatchObject({ name: "New Kid", role: "Student", stage: "First Contact" });
     const id = res.body.contact.id;
-    expect(Object.values(getCollection(`contacts/${id}/interactions`))).toHaveLength(1);
+    const logged = Object.values(getCollection(`contacts/${id}/interactions`));
+    expect(logged).toHaveLength(1);
+    expect(contacts[0].reachedAt).toBe(logged[0].dateTime);
   });
 
   it("returns 500 when Gemini cannot extract a name", async () => {
@@ -1623,6 +1635,8 @@ describe("POST /api/smart-import/commit — matching paths", () => {
     const storedContact = getCollection("contacts")["existing-1"];
     expect(storedContact.name).toBeUndefined();
     expect(storedContact.lastSeen).toBeTruthy();
+    // The imported interaction reaches them (#1335).
+    expect(storedContact.reachedAt).toBe(storedContact.lastContactedDate);
   });
 });
 

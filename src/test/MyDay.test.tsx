@@ -1202,6 +1202,36 @@ describe('MyDay', () => {
     expect(within(card).getByText(/Tied to Mei/)).toBeInTheDocument();
   });
 
+  it("keeps a person reached before the team's 500 newest interactions off the Team card, and a sign-up on it (#1335)", async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          // Their only interaction is older than the 500 the page reads.
+          unreachedContact('c-old', { name: 'Olu', createdBy: 'u-other', reachedAt: '2025-01-10' }),
+          // Public sign-up while a teammate was signed in: the last-contacted
+          // trio, but no interaction and no presence.
+          unreachedContact('c-signed', {
+            name: 'Sana',
+            createdBy: 'u-other',
+            lastContactedById: 'u-other',
+            lastContactedBy: 'Mei',
+            lastContactedDate: new Date().toISOString(),
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+
+    const card = await screen.findByRole('region', { name: 'Not reached yet' });
+    fireEvent.click(screen.getByRole('button', { name: 'Team' }));
+    expect(within(card).getByText('Sana')).toBeInTheDocument();
+    expect(within(card).queryByText('Olu')).not.toBeInTheDocument();
+  });
+
   it('marks the Not reached yet card as a labelled region even when empty', async () => {
     render(<MyDay />);
     const card = await screen.findByRole('region', { name: 'Not reached yet' });
