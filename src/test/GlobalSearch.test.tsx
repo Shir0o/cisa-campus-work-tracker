@@ -81,6 +81,8 @@ function seedData() {
     docOf('c1', {
       name: 'Alice Wong',
       role: 'Student',
+      year: 'Sophomore',
+      major: 'Biology',
       location: 'North Hall',
       notes: 'planning to join',
       tags: ['freshman'],
@@ -208,6 +210,21 @@ describe('GlobalSearch', () => {
     for (const label of ['New contact', 'Log a visit', 'Sign-up form (for someone new)', 'The Journey']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+  });
+
+  // #1345: the stored role is retired; a person is described by year · major.
+  it('subtitles people with year · major, never their stored role (#1345)', () => {
+    render(<GlobalSearch />);
+    expect(screen.getAllByText('Sophomore · Biology').length).toBeGreaterThan(0);
+    // Bob has neither year nor major, so no subtitle; his doc still says Faculty.
+    expect(screen.queryAllByText('Student').length).toBe(0);
+    expect(screen.queryAllByText('Faculty').length).toBe(0);
+  });
+
+  it('does not match people on their stored role (#1345)', () => {
+    render(<GlobalSearch />);
+    typeDesktop('faculty');
+    expect(screen.queryAllByText('Bob Lee').length).toBe(0);
   });
 
   it('typing filters the People group', () => {

@@ -8,7 +8,6 @@ const mockContacts: Contact[] = [
   {
     id: 'contact-123',
     name: 'John Doe',
-    role: 'Student',
     location: 'Campus',
     stage: 'lead',
     email: 'john@example.com',

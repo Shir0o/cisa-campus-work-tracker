@@ -29,7 +29,6 @@ const event = (overrides: Partial<Event> = {}): Event => ({
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Alex',
-  role: 'Student',
   location: '',
   email: '',
   phone: '',
@@ -169,11 +168,12 @@ describe('avgAttendance', () => {
 describe('buildAttendanceCsv', () => {
   it('builds a quoted header row plus one quoted row per contact', () => {
     const events = [event({ id: 'e1', name: 'Bible Study', date: '2026-07-13', attendance: att(['a']) })];
-    const contacts = [contact({ id: 'a', name: 'Alex', role: 'Student' })];
+    // #1345: no Role column, even for a doc that still stores a role.
+    const contacts = [{ ...contact({ id: 'a', name: 'Alex' }), role: 'Student' } as Contact];
     const csv = buildAttendanceCsv(contacts, events);
     const [header, row] = csv.split('\n');
-    expect(header).toBe('"Name","Role","Bible Study (2026-07-13)"');
-    expect(row).toBe('"Alex","Student","Present"');
+    expect(header).toBe('"Name","Bible Study (2026-07-13)"');
+    expect(row).toBe('"Alex","Present"');
   });
 
   it('maps present/absent/unmarked to Present/Absent/None', () => {
@@ -184,6 +184,6 @@ describe('buildAttendanceCsv', () => {
     ];
     const csv = buildAttendanceCsv([contact({ id: 'a' })], events);
     const [, row] = csv.split('\n');
-    expect(row).toBe('"Alex","Student","Present","Absent","None"');
+    expect(row).toBe('"Alex","Present","Absent","None"');
   });
 });

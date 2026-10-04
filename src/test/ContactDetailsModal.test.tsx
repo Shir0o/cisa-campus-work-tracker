@@ -549,12 +549,12 @@ describe('ContactDetailsModal Component', () => {
     const editBtn = openEditMenu();
     fireEvent.click(editBtn);
 
-    // Modify firstName, lastName, role, location, notes
+    // Modify firstName, notes
     const firstNameInput = screen.getByPlaceholderText('First name is plenty');
     fireEvent.change(firstNameInput, { target: { value: 'Johnny' } });
 
-    const roleInput = screen.getByPlaceholderText('e.g. Student, Faculty');
-    fireEvent.change(roleInput, { target: { value: 'Staff' } });
+    // #1345: there is no group / role input to fill in.
+    expect(screen.queryByPlaceholderText('e.g. Student, Faculty')).not.toBeInTheDocument();
 
     const notesInput = screen.getByPlaceholderText('Add some context about this contact...');
     fireEvent.change(notesInput, { target: { value: 'Updated notes.' } });
@@ -568,11 +568,13 @@ describe('ContactDetailsModal Component', () => {
         expect.anything(),
         expect.objectContaining({
           name: 'Johnny Doe',
-          role: 'Staff',
           notes: 'Updated notes.',
         })
       );
     });
+    // An edit save no longer writes `role` at all, whatever the doc stored.
+    const saved = vi.mocked(firestore.updateDoc).mock.calls.find(([, d]) => (d as { name?: string }).name === 'Johnny Doe')!;
+    expect(saved[1]).not.toHaveProperty('role');
   });
 
   it('edit form required fields conform to the add-contact form (only first name required)', async () => {
@@ -584,7 +586,6 @@ describe('ContactDetailsModal Component', () => {
 
     expect(screen.getByPlaceholderText('First name is plenty')).toBeRequired();
     expect(screen.getByPlaceholderText('alex@campus.edu')).not.toBeRequired();
-    expect(screen.getByPlaceholderText('e.g. Student, Faculty')).not.toBeRequired();
     // #730: the ADDRESS / "How we met" inputs are gone; no placeholder
     // for "Miller Hall, off-campus" should exist in the form.
     expect(

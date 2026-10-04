@@ -37,7 +37,7 @@ vi.mock('motion/react', () => ({
 }));
 
 const mockContacts = [
-  { id: 'c1', name: 'Alice Green', role: 'Student', location: 'Campus Hub' },
+  { id: 'c1', name: 'Alice Green', role: 'Student', year: 'Sophomore', major: 'Biology', location: 'Campus Hub' },
   { id: 'c2', name: 'Bob Jones', role: 'Staff', location: 'Main Hall' },
 ];
 
@@ -128,7 +128,7 @@ describe('AttachDataModal Component', () => {
       type: 'contact',
       id: 'c1',
       name: 'Alice Green',
-      subtitle: 'Student',
+      subtitle: 'Sophomore · Biology',
       status: undefined,
       priority: undefined
     });

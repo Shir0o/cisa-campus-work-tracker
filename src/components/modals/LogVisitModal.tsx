@@ -159,7 +159,6 @@ export default function LogVisitModal({
     try {
       const contactData = {
         name: newName,
-        role: 'Contact',
         location: '',
         email: '',
         phone: '',

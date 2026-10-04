@@ -374,7 +374,6 @@ export default function Directory() {
   }, []);
 
   const [filterStage, setFilterStage] = useState<string>(restoredFilters.filterStage);
-  const [filterRole, setFilterRole] = useState<string>(restoredFilters.filterRole);
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>(restoredFilters.filterSpiritualBackground);
   const [kindSegment, setKindSegment] = useState<KindSegment>(restoredFilters.kindSegment);
   const [filterUnsorted, setFilterUnsorted] = useState<boolean>(restoredFilters.filterUnsorted);
@@ -426,7 +425,6 @@ export default function Directory() {
     writeDirectoryFilters(effectiveUserId, {
       searchQuery,
       filterStage,
-      filterRole,
       filterSpiritualBackground,
       kindSegment,
       filterUnsorted,
@@ -435,7 +433,7 @@ export default function Directory() {
       customRange,
       selectedTags,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags]);
+  }, [effectiveUserId, searchQuery, filterStage, filterSpiritualBackground, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -480,7 +478,6 @@ export default function Directory() {
         needle,
         [
           c.email,
-          c.role,
           c.spiritualBackground,
           effectiveTags.map(t => normalizeTag(t)).join(' '),
         ],
@@ -506,11 +503,6 @@ export default function Directory() {
     // Filter by Stage
     if (filterStage !== 'All') {
       result = result.filter(c => c.stage === filterStage);
-    }
-
-    // Filter by Role
-    if (filterRole !== 'All') {
-      result = result.filter(c => c.role === filterRole);
     }
 
     // Filter by Spiritual Background
@@ -580,7 +572,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags, searchMatches, reachByContactMap]);
+  }, [userContacts, searchQuery, filterStage, filterSpiritualBackground, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags, searchMatches, reachByContactMap]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -717,7 +709,6 @@ export default function Directory() {
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
   // Contacts without a group (blank/missing role) would otherwise render a
   // blank option in the dropdown — drop them (#359).
-  const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role).filter(Boolean))], [userContacts]);
   const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
   const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => getEffectiveContactTags(c.tags, c.createdAt))), [userContacts]);
 
@@ -762,7 +753,6 @@ export default function Directory() {
   const clearFilters = () => {
     setSearchQuery('');
     setFilterStage('All');
-    setFilterRole('All');
     setFilterSpiritualBackground('All');
     setKindSegment('contact');
     setFilterUnsorted(false);
@@ -772,7 +762,7 @@ export default function Directory() {
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterSpiritualBackground !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -1122,17 +1112,6 @@ export default function Directory() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.group')}</label>
-                      <Select
-                        value={filterRole}
-                        onChange={(e) => setFilterRole(e.target.value)}
-                        className="h-10 text-sm"
-                      >
-                        {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? t('directory.all_groups') : r}</option>)}
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
                       <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.spiritual_background')}</label>
                       <Select
                         value={filterSpiritualBackground}
@@ -1350,7 +1329,7 @@ export default function Directory() {
             const days = ms != null ? daysSince(ms) : null;
             const overdue = days != null && days >= 7;
             const note = (touch?.note || contact.notes || '').trim();
-            const sub = [contact.role].filter(Boolean).join(' · ');
+            const sub = [contact.year, contact.major].filter(Boolean).join(' · ');
             const tags = getEffectiveContactTags(contact.tags, contact.createdAt);
             const selected = selectedIds.has(contact.id);
             // Which teammate a relationship-only search hit matched on (#1192).

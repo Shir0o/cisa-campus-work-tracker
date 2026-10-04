@@ -5,7 +5,7 @@ import Directory from '../views/Directory';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import { logActivity, handleFirestoreError } from '../lib/firebase';
-import { __resetDirectoryFilters } from '../lib/directoryFilters';
+import { DEFAULT_DIRECTORY_FILTERS, writeDirectoryFilters, __resetDirectoryFilters } from '../lib/directoryFilters';
 import React from 'react';
 
 // Mock writeBatch operations
@@ -65,6 +65,8 @@ const mockContacts = [
       email: 'alice@example.com',
       phone: '123-456-7890',
       role: 'Student',
+      year: 'Sophomore',
+      major: 'Biology',
       stage: 'Lead',
       location: 'Dorm A',
       spiritualBackground: 'None',
@@ -80,6 +82,7 @@ const mockContacts = [
       email: 'bob@example.com',
       phone: '987-654-3210',
       role: 'Leader',
+      year: 'Junior',
       stage: 'Regular',
       location: 'Off-campus',
       spiritualBackground: 'Christian',
@@ -226,7 +229,7 @@ describe('Directory', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
   });
 
-  it('filters contacts by role and spiritual background options', async () => {
+  it('filters contacts by spiritual background', async () => {
     render(<Directory />);
 
     await waitFor(() => {
@@ -236,57 +239,66 @@ describe('Directory', () => {
     const filtersButton = screen.getByText('Filters');
     fireEvent.click(filtersButton);
 
-    // Filter by Role = Leader
-    const roleSelect = screen.getByText('Group').parentElement?.querySelector('select') as HTMLSelectElement;
-    fireEvent.change(roleSelect, { target: { value: 'Leader' } });
-    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
-    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
-
-    // Clear filters
-    const clearBtn = screen.getByText('Clear all');
-    fireEvent.click(clearBtn);
-    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-
-    // Filter by Spiritual Background = Christian
-    fireEvent.click(filtersButton);
     const spiritualSelect = screen.getByText('Spiritual background').parentElement?.querySelector('select') as HTMLSelectElement;
     fireEvent.change(spiritualSelect, { target: { value: 'Christian' } });
     expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Clear all'));
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
   });
 
-  it('omits blank roles from the Group filter dropdown (issue #359)', async () => {
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'contacts') {
-        callback({
-          docs: [
-            ...mockContacts,
-            { id: 'c4', data: () => ({ name: 'No Role Yet', email: 'none@example.com', phone: '', role: '', stage: 'Lead', location: '', spiritualBackground: '', tags: [], createdAt: '2026-03-01T00:00:00.000Z' }) },
-          ],
-          size: 4,
-        });
-      } else if (ref?.path === 'stages') {
-        callback({ docs: mockStages, size: 2 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
+  // #1345: the free-text group (`role`) is retired; kind is the only answer to
+  // "what sort of person is this".
+  it('has no Group filter in the Filters menu (#1345)', async () => {
     render(<Directory />);
-
     await waitFor(() => {
-      expect(screen.getByText('No Role Yet')).toBeInTheDocument();
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByText('Filters'));
 
-    const groupSelect = screen.getByText('Group').parentElement?.querySelector('select') as HTMLSelectElement;
-    const optionValues = Array.from(groupSelect.options).map((o) => o.value);
-    expect(optionValues).toContain('All');
-    expect(optionValues).toContain('Student');
-    // No blank/whitespace option for contacts without a group.
-    expect(optionValues.every((v) => v.trim() !== '')).toBe(true);
+    expect(screen.getByText('Spiritual background')).toBeInTheDocument();
+    expect(screen.queryByText('Group')).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'All groups' })).not.toBeInTheDocument();
+  });
+
+  it('loads saved filter state that still carries a Group value, and ignores it (#1345)', async () => {
+    writeDirectoryFilters('u-test', { ...DEFAULT_DIRECTORY_FILTERS, filterRole: 'Leader' } as any);
+    render(<Directory />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    expect(screen.getByText('Charlie Brown')).toBeInTheDocument();
+  });
+
+  it('does not match a person on their stored role text (#1345)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Alice's doc still says role: 'Student'; that is the only thing "student"
+    // would have matched.
+    fireEvent.change(screen.getByPlaceholderText(/Find someone by name/i), { target: { value: 'student' } });
+
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+  });
+
+  it('subtitles each card with year · major, skipping what is missing, and shows nothing when both are (#1345)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Sophomore · Biology')).toBeInTheDocument();
+    expect(screen.getByText('Junior')).toBeInTheDocument();
+    // Charlie has neither: no subtitle, and the old role text is not shown.
+    expect(screen.queryByText('Staff')).not.toBeInTheDocument();
+    expect(screen.queryByText('Student')).not.toBeInTheDocument();
+    expect(screen.queryByText('Leader')).not.toBeInTheDocument();
   });
 
   it('filters contacts by tag chips', async () => {

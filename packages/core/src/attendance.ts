@@ -141,13 +141,12 @@ export function avgAttendance(events: Event[]): number {
   return Math.round(slots / events.length);
 }
 
-/** CSV text: header row (Name, Role, one column per event as "{name} ({date})"),
+/** CSV text: header row (Name, one column per event as "{name} ({date})"),
  * one row per contact with Present/Absent/None per event. */
 export function buildAttendanceCsv(contacts: Contact[], events: Event[]): string {
-  const headers = ['Name', 'Role', ...events.map((e) => `${e.name} (${e.date})`)];
+  const headers = ['Name', ...events.map((e) => `${e.name} (${e.date})`)];
   const rows = contacts.map((c) => [
     c.name,
-    c.role,
     ...events.map((e) => (here(e, c.id) ? 'Present' : explicitlyAbsent(e, c.id) ? 'Absent' : 'None')),
   ]);
   return [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n');

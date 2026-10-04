@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
-  Filter,
   GripVertical,
   MoreHorizontal,
   Plus,
@@ -504,23 +503,13 @@ export default function OutreachBoard() {
     }
   };
 
-  const [filterRole, setFilterRole] = useState<string>('All');
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-
   const staffId = effectiveUserId || user?.uid;
   const visibleJourneyContacts = journeyContacts(role, staffId, boardContacts, 'Fall 2026');
 
   const filteredContacts = visibleJourneyContacts.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    return c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesRole = filterRole === 'All' || c.role === filterRole;
-
-    return matchesSearch && matchesRole;
   });
-
-  const filterRoles = useMemo(() => ['All', ...new Set(boardContacts.map(c => c.role))], [boardContacts]);
 
   const getStageContactsArr = (stageLabel: string) => filteredContacts.filter(c => c.stage === stageLabel);
 
@@ -771,50 +760,6 @@ export default function OutreachBoard() {
                 className="pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
                 placeholder={t('outreachBoard.find_someone')}
               />
-            </div>
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className={cn(
-                  "p-2.5 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0 transition-colors",
-                  filterRole !== 'All' && "text-accent bg-primary/10"
-                )}
-              >
-                <Filter className="w-5 h-5" />
-              </button>
-
-              <AnimatePresence>
-                {showFilterMenu && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setShowFilterMenu(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-3 min-w-[180px] space-y-2"
-                    >
-                      <p className="text-[11px] font-medium   text-on-surface-variant px-2">{t('outreachBoard.filter_by_role')}</p>
-                      <div className="space-y-1">
-                        {filterRoles.map(role => (
-                          <button
-                            key={role}
-                            onClick={() => {
-                              setFilterRole(role);
-                              setShowFilterMenu(false);
-                            }}
-                            className={cn(
-                              "w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-                              filterRole === role ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-variant"
-                            )}
-                          >
-                            {role === 'All' ? t('outreachBoard.all') : role}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -1297,7 +1242,7 @@ function InternalKanbanCard({
   const days = ms != null ? daysSince(ms) : null;
   const overdue = days != null && days >= 7;
   const note = (touch?.note || contact.notes || '').trim();
-  const sub = [contact.role].filter(Boolean).join(' · ');
+  const sub = [contact.year, contact.major].filter(Boolean).join(' · ');
   const tags = (contact.tags || []).filter(Boolean);
 
   return (

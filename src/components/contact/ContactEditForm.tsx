@@ -1,7 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Briefcase,
   Calendar,
   Mail,
   MessageSquare,
@@ -20,7 +19,6 @@ import type { Stage } from "../../types";
 export interface ContactFormData {
   firstName: string;
   lastName: string;
-  role: string;
   email: string;
   phone: string;
   stage: string;
@@ -112,20 +110,6 @@ export default function ContactEditForm({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
-            <Briefcase className="w-3.5 h-3.5" /> {t('modals.contactDetails.contact_group')}
-          </label>
-          <input
-            type="text"
-            value={formData.role}
-            onChange={(e) =>
-              onChange((f) => ({ ...f, role: e.target.value }))
-            }
-            className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-            placeholder={t('modals.contactDetails.contact_group_placeholder')}
-          />
-        </div>
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
             <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.gender')}

@@ -19,7 +19,6 @@ describe('EditContactSheet', () => {
   const mockContact: Contact = {
     id: 'contact_123',
     name: 'Jordan Lee',
-    role: 'Student',
     location: 'Dorm A',
     email: 'jordan@college.edu',
     phone: '(555) 234-5678',
@@ -117,7 +116,6 @@ describe('EditContactSheet', () => {
           instagram: '@jordan_lee',
           location: 'Dorm A',
           notes: 'Very friendly, likes music',
-          role: 'Student',
           metVia: 'Outreach',
         }),
         { uid: 'user_trainee', name: 'Trainee Sam' },
@@ -125,6 +123,24 @@ describe('EditContactSheet', () => {
       expect(mockOnSaved).toHaveBeenCalledWith('Jordan Lee');
       expect(mockOnClose).toHaveBeenCalled();
     });
+  });
+
+  it('has no "Part of" picker (#1345)', async () => {
+    const { queryByText } = await renderSheet();
+    for (const label of ['Student', 'Trainee', 'Full-timer', 'Community']) {
+      expect(queryByText(label)).toBeNull();
+    }
+  });
+
+  it('saving an edit to a person with no role writes no role (the old "Student" fallback) (#1345)', async () => {
+    (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+    // mockContact has no role; this save used to stamp 'Student' on them.
+    const { getByDisplayValue, getByText } = await renderSheet();
+    await fireEvent.changeText(getByDisplayValue('(555) 234-5678'), '(555) 999-8888');
+    await fireEvent.press(getByText('Save Details'));
+
+    await waitFor(() => expect(updateContact).toHaveBeenCalled());
+    expect((updateContact as jest.Mock).mock.calls[0][1]).not.toHaveProperty('role');
   });
 
   it('closes directly when clean without prompt', async () => {

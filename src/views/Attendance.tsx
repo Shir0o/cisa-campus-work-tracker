@@ -284,10 +284,9 @@ export default function Attendance() {
   const handleExport = () => {
     if (contacts.length === 0 || events.length === 0) return;
 
-    const headers = [t('attendance.csv_name'), t('attendance.csv_role'), ...events.map((e) => `${e.name} (${e.date})`)];
+    const headers = [t('attendance.csv_name'), ...events.map((e) => `${e.name} (${e.date})`)];
     const rows = contacts.map((c) => [
       c.name,
-      c.role,
       ...events.map((e) =>
         isContactPresent(e, c.id) ? t('attendance.present') : explicitlyAbsent(e, c.id) ? t('attendance.absent') : t('attendance.none'),
       ),
@@ -393,7 +392,6 @@ export default function Attendance() {
       const newContactData: Record<string, unknown> = {
         name: trimmed,
         initials,
-        role: 'Student',
         stage: 'Lead',
         lastSeen: 'Just now',
         lastContactedDate: event.date || new Date().toISOString(),
@@ -951,9 +949,9 @@ export default function Attendance() {
                                 .replace('{date}', formatEventDate(lastSeen.date))
                                 .replace('{n}', String(since))}
                             </div>
-                            {contact.role && (
+                            {(contact.year || contact.major) && (
                               <p className="text-sm text-on-surface-variant mt-1">
-                                {contact.role}
+                                {[contact.year, contact.major].filter(Boolean).join(' · ')}
                               </p>
                             )}
                           </div>

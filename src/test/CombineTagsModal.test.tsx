@@ -35,7 +35,6 @@ const cleanContacts: Contact[] = [
     name: 'Ari',
     email: '',
     phone: '',
-    role: 'Student',
     stage: 'Lead',
     location: '',
     lastSeen: '',

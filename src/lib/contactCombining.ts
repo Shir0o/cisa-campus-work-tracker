@@ -60,7 +60,6 @@ export function buildCombineOps(
     docId: survivor.id,
     data: {
       name: combined.name,
-      role: combined.role,
       location: combined.location,
       email: combined.email,
       phone: combined.phone,
@@ -255,7 +254,6 @@ export interface FieldChange {
 
 /** Scalar profile fields merged in combineContactProfiles (excluding notes). */
 const SCALAR_MERGE_FIELDS = [
-  'role',
   'location',
   'email',
   'phone',
@@ -345,7 +343,6 @@ export function combineContactProfiles(survivor: Contact, duplicate: Contact): C
 
   const combined: Contact = {
     ...survivor,
-    role: survivor.role || duplicate.role || 'Student',
     location: survivor.location || duplicate.location || '',
     email: survivor.email || duplicate.email || '',
     phone: survivor.phone || duplicate.phone || '',

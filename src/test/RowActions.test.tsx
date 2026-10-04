@@ -13,7 +13,6 @@ vi.mock('../lib/useMediaQuery', () => ({
 const contact: Contact = {
   id: 'c1',
   name: 'Lila Rose',
-  role: 'student',
   location: '',
   email: '',
   phone: '',

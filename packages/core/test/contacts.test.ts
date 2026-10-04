@@ -19,7 +19,6 @@ const DOC_REF = { id: 'c-new' };
 
 const baseInput: NewContactInput = {
   name: 'Alex',
-  role: '',
   location: '',
   email: '',
   phone: '',
@@ -264,7 +263,6 @@ describe('updateContact leaves the kind of person alone', () => {
   const patch: ContactUpdateFields = {
     name: 'Alex',
     initials: 'A',
-    role: '',
     email: '',
     phone: '',
     stage: 'Regular',

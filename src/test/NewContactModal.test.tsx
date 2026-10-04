@@ -239,7 +239,7 @@ describe('NewContactModal', () => {
     expect(contactArg?.inChurchLife).toBe(false);
     expect(contactArg?.kindSetBy).toBeTruthy();
     expect(contactArg?.kindSetAt).toBeTruthy();
-    expect(contactArg?.role).toBeUndefined();
+    expect(contactArg).not.toHaveProperty('role');
     // #730: the form no longer writes `metVia` or `location` to the new
     // contact doc. They may still be present in the type as undefined (we keep
     // the field on the schema for backward compat), but the form must not put

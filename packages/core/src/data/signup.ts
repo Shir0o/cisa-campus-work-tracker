@@ -41,7 +41,6 @@ export async function submitSignUp(
   const contactData: Record<string, any> = {
     name: form.name.trim(),
     email: form.email.trim(),
-    role: "Student",
     stage,
     // The public form is filled in by a stranger, so nothing it submits may
     // assert membership (#1152): they are a student, and never in the church

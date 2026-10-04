@@ -18,7 +18,6 @@ import type { Contact, Gathering, Rhythm } from '../types';
 const contact = (id: string, name: string): Contact => ({
   id,
   name,
-  role: 'Student',
   location: '',
   email: '',
   phone: '',

@@ -364,11 +364,12 @@ describe('LogVisitModal', () => {
     const [_, data] = (addDoc as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(data).toMatchObject({
       name: 'Kofi Mensah',
-      role: 'Contact',
       stage: 'Contact',
       createdBy: 'u1',
       createdByName: 'Mei Tanaka',
     });
+    // #1345: not written down as a 'Contact'; the kind is a Full-timer's call.
+    expect(data).not.toHaveProperty('role');
     expect(data.tags).toContain('Fall 2026');
     expect(data.tags).toContain('visit');
 

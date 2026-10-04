@@ -323,7 +323,6 @@ function PendingRow({
             contact: contact || {
               id: '',
               name: n.name,
-              role: '',
               location: '',
               email: '',
               phone: '',
@@ -620,7 +619,6 @@ function LogOutreachModal({
         const isEmail = r.contact.includes('@');
         const contactRef = await addDoc(collection(db, 'contacts'), {
           name: trimmed,
-          role: '',
           location: where.trim(),
           email: isEmail ? r.contact.trim() : '',
           phone: isEmail ? '' : r.contact.trim(),

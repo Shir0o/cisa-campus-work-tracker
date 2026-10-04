@@ -6,7 +6,6 @@ import type { Hist } from '../src/history';
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Zed Zephyr',
-  role: '',
   location: '',
   email: '',
   phone: '',
@@ -49,6 +48,11 @@ describe('recentPeople', () => {
     expect(recentPeople(contacts).map((c) => c.id)).toEqual(['new', 'mid', 'old']);
   });
 
+  it('does not match on a stored role (#1345)', () => {
+    const legacy = { ...contact({ id: 'legacy', name: 'X' }), role: 'Faculty' } as Contact;
+    expect(searchPeople([legacy], 'faculty')).toEqual([]);
+  });
+
   it('caps at the given max', () => {
     const contacts = [contact({ id: 'a' }), contact({ id: 'b' }), contact({ id: 'c' })];
     expect(recentPeople(contacts, 2)).toHaveLength(2);
@@ -60,18 +64,16 @@ describe('searchPeople', () => {
     expect(searchPeople([contact()], '')).toEqual([]);
   });
 
-  it('matches across name/role/location/notes/spiritualBackground/tags', () => {
+  it('matches across name/location/notes/spiritualBackground/tags', () => {
     const contacts = [
       contact({ id: 'by-name', name: 'Ada Lovelace' }),
-      contact({ id: 'by-role', name: 'X', role: 'Faculty' }),
       contact({ id: 'by-location', name: 'X', location: 'Miller Hall' }),
       contact({ id: 'by-notes', name: 'X', notes: 'met at the coffee shop' }),
       contact({ id: 'by-background', name: 'X', spiritualBackground: 'Catholic' }),
       contact({ id: 'by-tag', name: 'X', tags: ['Fall2026'] }),
-      contact({ id: 'no-match', name: 'Y', role: 'Z' }),
+      contact({ id: 'no-match', name: 'Y' }),
     ];
     expect(searchPeople(contacts, 'ada').map((c) => c.id)).toEqual(['by-name']);
-    expect(searchPeople(contacts, 'faculty').map((c) => c.id)).toEqual(['by-role']);
     expect(searchPeople(contacts, 'miller').map((c) => c.id)).toEqual(['by-location']);
     expect(searchPeople(contacts, 'coffee').map((c) => c.id)).toEqual(['by-notes']);
     expect(searchPeople(contacts, 'catholic').map((c) => c.id)).toEqual(['by-background']);
@@ -86,25 +88,25 @@ describe('searchPeople', () => {
   it('matches word-boundary, not mid-word substrings (#1192)', () => {
     const contacts = [
       contact({ id: 'named-ian', name: 'Ian Marks' }),
-      contact({ id: 'christian-role', name: 'Bo', role: 'Christian' }),
+      contact({ id: 'christian-background', name: 'Bo', spiritualBackground: 'Christian' }),
     ];
     expect(searchPeople(contacts, 'ian').map((c) => c.id)).toEqual(['named-ian']);
-    expect(searchPeople(contacts, 'christ').map((c) => c.id)).toEqual(['christian-role']);
+    expect(searchPeople(contacts, 'christ').map((c) => c.id)).toEqual(['christian-background']);
   });
 
   it('ranks name matches above field-only matches (#1192)', () => {
     const contacts = [
-      contact({ id: 'by-role', name: 'Zed', role: 'Ian Studies' }),
+      contact({ id: 'by-notes', name: 'Zed', notes: 'Ian Studies' }),
       contact({ id: 'by-name', name: 'Ian Zephyr' }),
     ];
-    expect(searchPeople(contacts, 'ian').map((c) => c.id)).toEqual(['by-name', 'by-role']);
+    expect(searchPeople(contacts, 'ian').map((c) => c.id)).toEqual(['by-name', 'by-notes']);
   });
 
   it('fills the cap with name matches before field-only matches (#1192)', () => {
     const contacts = [
       contact({ id: 'name-1', name: 'Ian A' }),
       contact({ id: 'name-2', name: 'Ian B' }),
-      contact({ id: 'field-1', name: 'X', role: 'Ian Studies' }),
+      contact({ id: 'field-1', name: 'X', notes: 'Ian Studies' }),
     ];
     expect(searchPeople(contacts, 'ian', 2).map((c) => c.id)).toEqual(['name-1', 'name-2']);
   });

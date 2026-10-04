@@ -533,11 +533,6 @@ export default function MyDayMobile({
                       <div className="flex items-center gap-2 mt-0.5 mdm-person-sub">
                         <StageChip stage={contact.stage} stages={stages} />
                         <KindChip contact={contact} />
-                        {contact.role && (
-                          <span className="text-xs text-on-surface-variant/80 font-medium">
-                            {contact.role}
-                          </span>
-                        )}
                         <span className={cn("text-xs text-on-surface-variant/70 mdm-person-since", overdue && "over text-error font-medium")}>
                           {!Number.isFinite(days) ? t('myDay.not_connected_yet') : days === 0 ? t('myDay.connected_today') : days === 1 ? t('myDay.last_connected_yesterday') : t('myDay.last_connected_days_ago').replace('{n}', String(days))}
                         </span>

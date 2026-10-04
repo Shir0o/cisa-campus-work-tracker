@@ -22,7 +22,6 @@ export const MET_VIA = [
 export interface Contact {
   id: string;
   name: string;
-  role: string;
   location: string;
   email: string;
   phone: string;
@@ -557,7 +556,6 @@ export interface ParsedContactItem {
   email?: string;
   phone?: string;
   stage?: string;
-  role?: string;
   notes?: string;
   tags?: string[];
   spiritualBackground?: string;

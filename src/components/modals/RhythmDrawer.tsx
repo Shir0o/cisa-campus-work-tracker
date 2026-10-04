@@ -120,7 +120,6 @@ export default function RhythmDrawer({ isOpen, onClose, rhythm, gatherings, cont
       const docRef = await addDoc(collection(db, 'contacts'), {
         name: trimmed,
         initials: getUserInitials(trimmed),
-        role: 'Student',
         stage: 'Lead',
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),

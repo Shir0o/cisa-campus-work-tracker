@@ -94,7 +94,8 @@ describe('MyDayMobile', () => {
     render(<MyDayMobile contacts={mockContacts} events={mockEvents} prayers={mockPrayers} stages={[]} />);
 
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
-    expect(screen.getByText('Student')).toBeInTheDocument();
+    // #1345: the stored role is no longer a line under the name.
+    expect(screen.queryByText('Student')).not.toBeInTheDocument();
 
     expect(screen.getByText('Bible Study')).toBeInTheDocument();
     expect(screen.getByText(/Room 101/)).toBeInTheDocument();

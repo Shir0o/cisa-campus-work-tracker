@@ -109,11 +109,29 @@ describe('combineContactProfiles', () => {
   });
 });
 
+describe('combining writes no role (#1345)', () => {
+  const survivor = { id: 's', name: 'Survivor', stage: 'Lead', location: '', email: '', phone: '', lastSeen: '', initials: 'S' } as Contact;
+  const duplicate = { ...survivor, id: 'd', name: 'Duplicate' } as Contact;
+
+  it('does not stamp a role on the combined profile', () => {
+    expect(combineContactProfiles(survivor, duplicate)).not.toHaveProperty('role');
+  });
+
+  it('leaves role out of the survivor update and the comparison, whatever the docs stored', () => {
+    const legacy = { ...survivor, role: 'Student' } as Contact;
+    const combined = combineContactProfiles(legacy, duplicate);
+    const ops = buildCombineOps(legacy, duplicate, combined, '2026-10-04T00:00:00.000Z', 'u1', 'Admin');
+    const update = ops.find((o) => o.op === 'update' && o.collection === 'contacts' && o.docId === 's');
+    expect(update && 'data' in update ? update.data : undefined).toBeDefined();
+    expect(update && 'data' in update ? update.data : {}).not.toHaveProperty('role');
+    expect(diffCombineChanges(legacy, { ...duplicate, role: 'Contact' } as Contact, combined).map((c) => c.field)).not.toContain('role');
+  });
+});
+
 describe('diffCombineChanges', () => {
   const survivor: Partial<Contact> = {
     id: 's',
     name: 'Survivor',
-    role: 'Student',
     stage: 'Lead',
     location: 'Dorm A',
     email: '',
@@ -127,7 +145,6 @@ describe('diffCombineChanges', () => {
   const duplicate: Partial<Contact> = {
     id: 'd',
     name: 'Duplicate',
-    role: 'Student',
     stage: 'Lead',
     location: '',
     email: '',
@@ -214,7 +231,6 @@ describe('buildCombineOps', () => {
     name: 'Survivor',
     email: 's@test.com',
     phone: '',
-    role: 'Student',
     stage: 'Lead',
     location: '',
     lastSeen: '',
@@ -226,7 +242,6 @@ describe('buildCombineOps', () => {
     name: 'Duplicate',
     email: 'd@test.com',
     phone: '',
-    role: 'Student',
     stage: 'Contact',
     location: '',
     lastSeen: '',

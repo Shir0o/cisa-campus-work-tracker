@@ -58,7 +58,6 @@ export async function addContact(
     const id = await core.addContact(db, input, by, (payload: ContactNotifyPayload) => void sendNotification(payload));
 
     const fieldsLog = [
-      `Group: ${input.role}`,
       `Stage: ${input.stage}`,
       input.metVia ? `How we met: ${input.metVia}` : '',
       input.location ? `Address: ${input.location}` : '',
@@ -129,7 +128,6 @@ export async function updateContact(
       {
         name: fullName,
         initials: (edits.firstName.charAt(0) + (edits.lastName.charAt(0) || '')).toUpperCase(),
-        role: edits.role,
         email: edits.email,
         phone: edits.phone,
         stage: edits.stage,

@@ -33,8 +33,6 @@ interface EditContactSheetProps {
   onClose: () => void;
 }
 
-const ROLES = ['Student', 'Trainee', 'Full-timer', 'Community'];
-
 /** Bottom sheets portal to the app root, outside the screen's provider, so this
  * one carries the room itself. */
 export function EditContactSheet(props: EditContactSheetProps) {
@@ -61,7 +59,6 @@ function EditContactSheetBody({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [instagram, setInstagram] = useState('');
-  const [role, setRole] = useState('Student');
   const [metVia, setMetVia] = useState('');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
@@ -80,7 +77,6 @@ function EditContactSheetBody({
       setPhone(contact.phone || '');
       setEmail(contact.email || '');
       setInstagram(contact.instagram || '');
-      setRole(contact.role || 'Student');
       setMetVia(contact.metVia || '');
       setLocation(contact.location || '');
       setNotes(contact.notes || '');
@@ -98,7 +94,6 @@ function EditContactSheetBody({
     const initialPhone = contact.phone || '';
     const initialEmail = contact.email || '';
     const initialInstagram = contact.instagram || '';
-    const initialRole = contact.role || 'Student';
     const initialMetVia = contact.metVia || '';
     const initialLocation = contact.location || '';
     const initialNotes = contact.notes || '';
@@ -109,7 +104,6 @@ function EditContactSheetBody({
     if (phone.trim() !== initialPhone) return true;
     if (email.trim() !== initialEmail) return true;
     if (instagram.trim() !== initialInstagram) return true;
-    if (role !== initialRole) return true;
     if (metVia !== initialMetVia) return true;
     if (location.trim() !== initialLocation) return true;
     if (notes.trim() !== initialNotes) return true;
@@ -120,7 +114,7 @@ function EditContactSheetBody({
     if (tags.some((tg) => !initialSet.has(tg))) return true;
 
     return false;
-  }, [contact, firstName, lastName, phone, email, instagram, role, metVia, location, notes, tags, customTag]);
+  }, [contact, firstName, lastName, phone, email, instagram, metVia, location, notes, tags, customTag]);
 
   const handleRequestClose = () => {
     if (isDirty) {
@@ -182,7 +176,6 @@ function EditContactSheetBody({
         phone: phone.trim(),
         email: email.trim(),
         instagram: instagram.trim(),
-        role: role.trim(),
         metVia: metVia.trim() || undefined,
         location: location.trim(),
         notes: notes.trim(),
@@ -316,39 +309,6 @@ function EditContactSheetBody({
                   onChangeText={setLocation}
                   placeholder={t('mobile.contact.address_placeholder')}
                 />
-              </View>
-            </View>
-
-            {/* Part of (Role) */}
-            <View style={{ gap: 8 }}>
-              <Kicker>{t('mobile.contact.part_of')}</Kicker>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {ROLES.map((r) => {
-                  const selected = role === r;
-                  return (
-                    <Pressable
-                      key={r}
-                      onPress={() => setRole(r)}
-                      style={({ pressed }) => ({
-                        paddingHorizontal: 14,
-                        paddingVertical: 8,
-                        borderRadius: radius.chip,
-                        backgroundColor: selected ? c.card.ink : c.card.bg2,
-                        opacity: pressed ? 0.75 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          fontFamily: font.bold,
-                          fontSize: fs(12.5),
-                          color: selected ? c.card.bg : c.card.ink2,
-                        }}
-                      >
-                        {r}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
               </View>
             </View>
 

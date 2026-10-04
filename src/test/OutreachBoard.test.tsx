@@ -75,6 +75,8 @@ const mockContacts = [
       stage: 'First Contact',
       email: 'alice@example.com',
       role: 'Student',
+      year: 'Sophomore',
+      major: 'Biology',
       location: 'North Campus',
       tags: ['Freshman'],
       notes: 'Met at orientation',
@@ -354,10 +356,10 @@ describe('OutreachBoard', () => {
     vi.advanceTimersByTime(900);
 
     await screen.findByText('Alice Chen');
-    // Sub-info: just the role (#730 removed the location from the card sub).
-    // The role "Student" also appears in the stage chip; assert it's present
-    // (as a sub-element) without requiring it to be unique on the page.
-    expect(screen.getAllByText('Student').length).toBeGreaterThan(0);
+    // Sub-info: year · major (#1345 retired the stored role; #730 removed the
+    // location). Alice's doc still says role: 'Student', which is not shown.
+    expect(screen.getByText('Sophomore · Biology')).toBeInTheDocument();
+    expect(screen.queryByText('Student')).not.toBeInTheDocument();
     // Tag
     expect(screen.getByText('Freshman')).toBeInTheDocument();
   });
@@ -537,43 +539,25 @@ describe('OutreachBoard', () => {
     expect(screen.getByText(/Couldn't load/)).toBeInTheDocument();
   });
 
-  // ── 15. Role filter menu ─────────────────────────────────────────────
-  it('filters contacts by role using the filter menu', async () => {
+  // ── 15. No role filter (#1345) ───────────────────────────────────────
+  it('has no role filter, and search does not match on role (#1345)', async () => {
     setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
 
     render(<OutreachBoard />);
     vi.advanceTimersByTime(900);
 
-    // Wait for the board to render
     await screen.findByText('Alice Chen');
     expect(screen.getByText('Bob Park')).toBeInTheDocument();
 
     const searchInput = screen.getByPlaceholderText(/Find someone/i);
-    const filterBtn = searchInput.parentElement?.nextElementSibling?.querySelector('button');
-    expect(filterBtn).toBeInTheDocument();
+    // The funnel button beside the search box only ever held the role filter.
+    expect(searchInput.parentElement?.nextElementSibling).toBeNull();
+    expect(screen.queryByText('Filter by role')).not.toBeInTheDocument();
 
-    // Open filter menu
-    fireEvent.click(filterBtn!);
-    expect(await screen.findByText('Filter by role')).toBeInTheDocument();
-
-    // Click Student role button
-    const studentFilterBtn = screen.getByRole('button', { name: 'Student' });
-    fireEvent.click(studentFilterBtn);
-
-    // Verify Bob (Leader) is filtered out, but Alice (Student) is still there
+    // Bob's doc says role: 'Leader'; that no longer finds him.
+    fireEvent.change(searchInput, { target: { value: 'Leader' } });
     await waitFor(() => {
-      expect(screen.getByText('Alice Chen')).toBeInTheDocument();
       expect(screen.queryByText('Bob Park')).not.toBeInTheDocument();
-    });
-
-    // Reopen and select 'All'
-    fireEvent.click(filterBtn!);
-    const allFilterBtn = screen.getByRole('button', { name: 'All' });
-    fireEvent.click(allFilterBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText('Alice Chen')).toBeInTheDocument();
-      expect(screen.getByText('Bob Park')).toBeInTheDocument();
     });
   });
 

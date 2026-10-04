@@ -194,7 +194,6 @@ export default function VisitCard({
                 contact: {
                   id: visit.contactIds[0] || '',
                   name: names[0] || t('visitCard.a_visit'),
-                  role: '',
                   location: '',
                   email: '',
                   phone: '',

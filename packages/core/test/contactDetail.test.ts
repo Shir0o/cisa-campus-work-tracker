@@ -17,7 +17,6 @@ import type { Contact, ContactEditFields, Interaction, PrayerRecord, ThreadMessa
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Alex Johnson',
-  role: 'Student',
   location: 'Campus Coffee',
   email: 'alex@campus.edu',
   phone: '(555) 000-0000',
@@ -33,7 +32,6 @@ const contact = (overrides: Partial<Contact> = {}): Contact => ({
 const fields = (overrides: Partial<ContactEditFields> = {}): ContactEditFields => ({
   firstName: 'Alex',
   lastName: 'Johnson',
-  role: 'Student',
   location: 'Campus Coffee',
   email: 'alex@campus.edu',
   phone: '(555) 000-0000',
@@ -90,12 +88,14 @@ describe('diffContactFields', () => {
     expect(changes).toContain('address: "Campus Coffee" → "Library"');
   });
 
-  it('reports group (role) and stage changes', () => {
-    const changes = diffContactFields(contact(), fields({ role: 'Faculty', stage: 'Engaged' }));
-    expect(changes).toEqual([
-      'group: "Student" → "Faculty"',
-      'stage: "Contact" → "Engaged"',
-    ]);
+  it('reports a stage change', () => {
+    const changes = diffContactFields(contact(), fields({ stage: 'Engaged' }));
+    expect(changes).toEqual(['stage: "Contact" → "Engaged"']);
+  });
+
+  it('never reports a group change, even for a doc that still stores a role (#1345)', () => {
+    const legacy = { ...contact(), role: 'Student' } as Contact;
+    expect(diffContactFields(legacy, fields())).toEqual([]);
   });
 
   it('reports a spiritual background change, defaulting the before-value to empty', () => {
@@ -145,7 +145,6 @@ describe('contactDeleteFieldsLog', () => {
     const log = contactDeleteFieldsLog(contact(), 3, 5);
     expect(log).toBe(
       [
-        'Group: Student',
         'Stage: Contact',
         'Email: alex@campus.edu',
         'Phone: (555) 000-0000',
@@ -153,6 +152,11 @@ describe('contactDeleteFieldsLog', () => {
         'Total Comments: 5',
       ].join('\n'),
     );
+  });
+
+  it('has no Group line, even for a doc that still stores a role (#1345)', () => {
+    const legacy = { ...contact(), role: 'Student' } as Contact;
+    expect(contactDeleteFieldsLog(legacy, 0, 0)).not.toMatch(/Group|Student/);
   });
 
   it('falls back to "N/A" for missing email/phone', () => {

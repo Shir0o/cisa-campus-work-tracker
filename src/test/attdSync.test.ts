@@ -46,7 +46,6 @@ vi.mock('../lib/firebase', () => ({
 const contact = (id: string, name: string): Contact => ({
   id,
   name,
-  role: 'Student',
   location: '',
   email: '',
   phone: '',
@@ -171,6 +170,30 @@ describe('attdSync', () => {
     expect(contactSets).toHaveLength(1);
     expect(contactSets[0][1].createdBy).toBe('u-admin');
     expect(contactSets[0][1].visibleTo).toEqual(['u-admin']);
+  });
+
+  // #1345: no guessed 'Student' label. Whether they are a student is the kind
+  // a Full-timer sets (ADR 0030), not something this path writes.
+  it('writes no role on the walk-in contacts it creates (#1345)', async () => {
+    await confirmAttendanceImport({
+      importId: 'import-1',
+      preview: pending.preview,
+      decisions: [
+        { rowIndex: 0, memberId: null, attdName: 'New Person', status: 'present', isLate: false, contactId: null, contactName: null, keepCisa: false },
+      ],
+      contacts: [],
+      rhythms: [study],
+      gatherings: [week],
+      targetRhythmId: 'r1',
+      targetGatheringId: 'g1',
+      createGathering: false,
+      userId: 'u-admin',
+      userName: 'Admin',
+    });
+
+    const contactSets = hoisted.batch.set.mock.calls.filter((call) => call[0].path === 'contacts');
+    expect(contactSets[0][1]).not.toHaveProperty('role');
+    expect(contactSets[0][1]).not.toHaveProperty('isStudent');
   });
 
   it('creates a new occasion when the reviewer asks for one', async () => {

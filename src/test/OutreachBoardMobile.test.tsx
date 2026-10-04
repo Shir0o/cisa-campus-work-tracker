@@ -11,6 +11,8 @@ const contact = (over: any = {}) => ({
   id: 'c1',
   name: 'Alice Smith',
   role: 'Student',
+  year: 'Sophomore',
+  major: 'Biology',
   location: 'Miller Hall',
   stage: 'First Contact',
   createdAt: new Date().toISOString(),
@@ -73,8 +75,10 @@ describe('OutreachBoardMobile', () => {
       />
     );
     expect(screen.getByText('Alice Smith')).toBeInTheDocument();
-    // #730: location was removed from the card sub — just the role remains.
-    expect(screen.getByText('Student')).toBeInTheDocument();
+    // #730: location was removed from the card sub. #1345: it reads year · major,
+    // never the stored role.
+    expect(screen.getByText('Sophomore · Biology')).toBeInTheDocument();
+    expect(screen.queryByText('Student')).not.toBeInTheDocument();
     expect(screen.getByText('Connected today')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Alice Smith'));
     expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));

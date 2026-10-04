@@ -10,7 +10,6 @@ import {
 const state = {
   searchQuery: 'Alice',
   filterStage: 'Regular',
-  filterRole: 'Leader',
   filterSpiritualBackground: 'Christian',
   filterAddedWhen: 'month',
   customRange: { from: '2026-01-01', to: '2026-02-01' },
@@ -29,6 +28,13 @@ describe("directoryFilters — retaining People directory filters across contact
   it("restores exactly what was retained (open-then-close contact detail cycle)", () => {
     writeDirectoryFilters('u1', state as any);
     expect(readDirectoryFilters('u1')).toEqual(state);
+  });
+
+  it("loads retained state that still carries the retired Group value, and drops it (#1345)", () => {
+    writeDirectoryFilters('u1', { ...state, filterRole: 'Leader' } as any);
+    const read = readDirectoryFilters('u1');
+    expect(read).not.toHaveProperty('filterRole');
+    expect(read.filterStage).toBe('Regular');
   });
 
   it("scopes state per user so it does not leak across accounts/roles", () => {

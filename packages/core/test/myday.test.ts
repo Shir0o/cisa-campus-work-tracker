@@ -28,7 +28,6 @@ const NOW = new Date('2026-07-12T15:00:00Z').getTime(); // a Sunday
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Alex',
-  role: '',
   location: '',
   email: '',
   phone: '',

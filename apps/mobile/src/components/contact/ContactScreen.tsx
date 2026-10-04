@@ -1030,7 +1030,6 @@ function Details({
       <DetailRow label={t('mobile.contact.instagram')} value={contact.instagram} />
       {/* #730: the "How we met" and "Address" rows are gone — the fields
           have been retired from the app. */}
-      <DetailRow label={t('mobile.contact.part_of')} value={contact.role} />
       {carerNames.length > 0 && (
         <DetailRow label={t('mobile.contact.cared_for_by')} value={carerNames.join(', ')} />
       )}

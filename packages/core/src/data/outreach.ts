@@ -89,9 +89,6 @@ async function nameToContact(
   const isEmail = row.contact.includes("@");
   const input: NewContactInput = {
     name: trimmed,
-    // The outreach log sheet doesn't ask for a group; role stays empty like the
-    // mobile log sheet's new-contact mode.
-    role: "",
     location: where,
     email: isEmail ? row.contact.trim() : "",
     phone: isEmail ? "" : row.contact.trim(),
