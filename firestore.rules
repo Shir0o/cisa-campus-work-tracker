@@ -331,12 +331,14 @@ service cloud.firestore {
         let uid = request.auth.uid;
         let keys = incoming().diff(ex).affectedKeys();
         // Only the current holder of the share may rewrite who else can see a
-        // person: an admin, whoever brought them in, or an existing co-creator.
+        // person: an admin, whoever brought them in, an existing co-creator, or
+        // a founder (ADR 0022 amendment).
         let admin = isAdmin();
         let mayShare = admin ||
                        ex.get('createdBy', null) == uid ||
                        ex.get('addedBy', null) == uid ||
-                       uid in ex.get('coCreators', []);
+                       uid in ex.get('coCreators', []) ||
+                       uid in ex.get('founders', []);
         return
           // Operators edit the typed profile fields; unknown keys are rejected
           // (ghost-field injection). affectedKeys() only inspects the changed

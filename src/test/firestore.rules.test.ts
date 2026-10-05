@@ -792,6 +792,23 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    // ADR 0022 amendment: a founder manages collaborators exactly as a
+    // co-creator does, though they neither created the person nor were added.
+    it('lets a founder who is not the creator share, delegate and remove a collaborator', async () => {
+      await seed('c_founder', {
+        createdBy: 'manager2', founders: ['manager2', 'manager1'], coCreators: ['manager3'], carers: ['manager3'],
+        visibleTo: ['manager2', 'manager1', 'manager3'],
+      });
+      const founder = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(founder, 'contacts/c_founder'), {
+        coCreators: arrayRemove('manager3'), carers: arrayRemove('manager3'),
+        visibleTo: ['manager2', 'manager1'], ...updated('manager1'),
+      }));
+      await assertSucceeds(updateDoc(doc(founder, 'contacts/c_founder'), {
+        coCreators: arrayUnion('manager3'), visibleTo: ['manager2', 'manager1', 'manager3'], ...updated('manager1'),
+      }));
+    });
+
     it('lets a co-creator remove another collaborator, and their carer tie with them', async () => {
       await seed('c_rm', {
         createdBy: 'manager1', coCreators: ['manager2', 'manager3'], carers: ['manager3'],
