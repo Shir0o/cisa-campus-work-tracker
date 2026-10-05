@@ -562,7 +562,15 @@ export default function ContactDetailsModal({
     const inStory = ids.includes(message.id);
     updateDoc(doc(db, "contacts", contact.id), {
       storyMessageIds: inStory ? arrayRemove(message.id) : arrayUnion(message.id),
-    }).catch((error) => handleFirestoreError(error, OperationType.UPDATE, "contacts"));
+    }).catch((error) => {
+      // The optimistic toggle has already snapped back; say why.
+      showUndoSnack(t("modals.contactDetails.story_update_failed"));
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, "contacts");
+      } catch {
+        // Logged above; rethrowing here would only be an unhandled rejection.
+      }
+    });
   };
 
   const addShare = async (staffId: string) => {

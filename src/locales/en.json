@@ -1476,6 +1476,7 @@
       "logged_at": "Logged {date} at {time}",
       "remove_interaction": "Remove",
       "interaction_removed": "Conversation removed",
+      "story_update_failed": "Couldn't update the story. Try again.",
       "remove_interaction_confirm": "This conversation has {count} message(s) in its thread. Removing it takes them out of the record. Remove anyway?",
       "audit_called": "called",
       "audit_emailed": "emailed",
