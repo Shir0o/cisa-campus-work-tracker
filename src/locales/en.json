@@ -1924,6 +1924,7 @@
     "make_todo": "Make a to-do",
     "add_to_story": "Add to story",
     "remove_from_story": "Remove from story",
+    "story_failed": "Couldn't change the story. Try again.",
     "more_actions": "More actions",
     "copy_text": "Copy text",
     "delete_message": "Delete message",

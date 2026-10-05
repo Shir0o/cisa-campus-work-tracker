@@ -3181,6 +3181,20 @@ describe('desktop story layout (design D)', () => {
     expect(firestore.arrayRemove).toHaveBeenCalledWith('m-1');
   });
 
+  // #1298: a refused write used to vanish: the button flipped back and nothing
+  // said why.
+  it('says so when adding to the story fails', async () => {
+    hoisted.messages = [
+      { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },
+    ];
+    (firestore.updateDoc as any).mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    const drawer = screen.getByRole('region', { name: 'Conversation' });
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Add to story' }));
+    expect(await screen.findByText("Couldn't change the story. Try again.")).toBeInTheDocument();
+    expect(handleFirestoreError).not.toHaveBeenCalled();
+  });
+
   it('quotes an added message in the story and links back to its Conversation', () => {
     hoisted.messages = [
       { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },

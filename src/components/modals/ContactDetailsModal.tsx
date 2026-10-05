@@ -562,7 +562,12 @@ export default function ContactDetailsModal({
     const inStory = ids.includes(message.id);
     updateDoc(doc(db, "contacts", contact.id), {
       storyMessageIds: inStory ? arrayRemove(message.id) : arrayUnion(message.id),
-    }).catch((error) => handleFirestoreError(error, OperationType.UPDATE, "contacts"));
+    }).catch((error) => {
+      // #1298: say so rather than let the button quietly flip back.
+      // handleFirestoreError rethrows, which here left the rejection unhandled.
+      console.error("Add to story failed:", error);
+      showUndoSnack(t("stream.story_failed"));
+    });
   };
 
   const addShare = async (staffId: string) => {

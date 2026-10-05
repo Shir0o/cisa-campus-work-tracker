@@ -1924,6 +1924,7 @@
     "make_todo": "Crear tarea",
     "add_to_story": "Añadir a la historia",
     "remove_from_story": "Quitar de la historia",
+    "story_failed": "No se pudo cambiar la historia. Inténtalo de nuevo.",
     "more_actions": "Más acciones",
     "copy_text": "Copiar texto",
     "delete_message": "Eliminar mensaje",
