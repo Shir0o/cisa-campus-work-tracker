@@ -1105,6 +1105,116 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // #1350 follow-up: writing on a person's page asks the same question as
+  // reading it. A Trainee who is not tied to someone cannot log an interaction,
+  // comment, or post in their Conversation, nor edit or close what is there.
+  describe('Writes under a contact follow the contact\'s visibility (#1350)', () => {
+    const seed = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: ['manager2'] });
+        await setDoc(doc(fs, 'contacts/unlisted'), { name: 'Unlisted', email: 'n@example.com' });
+        // What manager1 wrote on each person while tied — on `untied` the tie
+        // has since gone.
+        for (const contactId of ['tied', 'untied']) {
+          await setDoc(doc(fs, `contacts/${contactId}/interactions/mine`), {
+            userId: 'manager1', userName: 'M1', content: 'Coffee', dateTime: '2026-10-01', createdAt: '2026-10-01',
+          });
+          await setDoc(doc(fs, `contacts/${contactId}/comments/mine`), {
+            userId: 'manager1', userName: 'M1', text: 'Note', createdAt: '2026-10-01', parentId: null,
+          });
+          await setDoc(doc(fs, `contacts/${contactId}/threads/mine`), message('manager1'));
+          await setDoc(doc(fs, `contacts/${contactId}/threads/ask`), message('manager2', { kind: 'nudge' }));
+        }
+      });
+    };
+    const message = (from: string, over: Record<string, unknown> = {}) => ({
+      from, fromName: from, kind: 'comment', body: 'Walking with you',
+      at: '2026-10-01T00:00:00.000Z', interactionId: null, scope: null, ...over,
+    });
+    const interaction = (uid: string, over: Record<string, unknown> = {}) => ({
+      userId: uid, userName: uid, content: 'Coffee', dateTime: '2026-10-05', type: 'meeting',
+      createdAt: serverTimestamp(), ...over,
+    });
+    const comment = (uid: string) => ({ userId: uid, userName: uid, text: 'Note', createdAt: serverTimestamp(), parentId: null });
+    const closed = (uid: string) => ({ closedBy: uid, closedByName: uid, closedAt: '2026-10-05T00:00:00.000Z' });
+
+    it('refuses an untied Trainee logging an interaction, commenting or posting a message', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(trainee, 'contacts/untied/interactions/new'), interaction('manager1')));
+      await assertFails(setDoc(doc(trainee, 'contacts/untied/comments/new'), comment('manager1')));
+      await assertFails(setDoc(doc(trainee, 'contacts/untied/threads/new'), message('manager1')));
+    });
+
+    it('refuses a Trainee writing under a person missing from every access list', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(trainee, 'contacts/unlisted/interactions/new'), interaction('manager1')));
+      await assertFails(setDoc(doc(trainee, 'contacts/nobody/interactions/new'), interaction('manager1')));
+    });
+
+    it('refuses a Trainee editing what they wrote on a person they no longer see', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(trainee, 'contacts/untied/interactions/mine'), { content: 'Edited' }));
+      await assertFails(updateDoc(doc(trainee, 'contacts/untied/comments/mine'), { text: 'Edited' }));
+      await assertFails(updateDoc(doc(trainee, 'contacts/untied/threads/mine'), {
+        body: 'Edited', editedAt: '2026-10-05T00:00:00.000Z',
+      }));
+    });
+
+    it('refuses an untied Trainee closing a follow-up ask', async () => {
+      await seed();
+      await assertFails(updateDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied/threads/ask'), closed('manager1')));
+    });
+
+    it('refuses an untied Trainee posting to Full-timers', async () => {
+      await seed();
+      await assertFails(setDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied/teamThreads/new'),
+        message('manager1', { scope: 'team' })));
+    });
+
+    it('lets a tied Trainee log, comment, post, edit their own and close an ask', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(setDoc(doc(trainee, 'contacts/tied/interactions/new'), interaction('manager1')));
+      await assertSucceeds(setDoc(doc(trainee, 'contacts/tied/comments/new'), comment('manager1')));
+      await assertSucceeds(setDoc(doc(trainee, 'contacts/tied/threads/new'), message('manager1')));
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/tied/interactions/mine'), { content: 'Edited' }));
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/tied/comments/mine'), { text: 'Edited' }));
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/tied/threads/mine'), {
+        body: 'Edited', editedAt: '2026-10-05T00:00:00.000Z',
+      }));
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/tied/threads/ask'), closed('manager1')));
+    });
+
+    it('lets a Full-timer log on behalf of a Trainee on a person they are not listed on', async () => {
+      await seed();
+      const fullTimer = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(fullTimer, 'contacts/untied/interactions/onbehalf'),
+        interaction('admin1', { reachedById: 'manager2', reachedByName: 'M2' })));
+      await assertSucceeds(setDoc(doc(fullTimer, 'contacts/unlisted/interactions/onbehalf'),
+        interaction('admin1', { reachedById: 'manager2', reachedByName: 'M2' })));
+      await assertSucceeds(updateDoc(doc(fullTimer, 'contacts/untied/interactions/mine'), { content: 'Corrected' }));
+      await assertSucceeds(setDoc(doc(fullTimer, 'contacts/untied/teamThreads/new'), message('admin1', { scope: 'team' })));
+    });
+
+    it('lets a Student, who sees everyone, write on a person they are not listed on', async () => {
+      await seed();
+      const student = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(setDoc(doc(student, 'contacts/untied/interactions/new'), interaction('operator1')));
+      await assertSucceeds(setDoc(doc(student, 'contacts/untied/comments/new'), comment('operator1')));
+      await assertSucceeds(setDoc(doc(student, 'contacts/untied/threads/new'), message('operator1')));
+      await assertSucceeds(updateDoc(doc(student, 'contacts/untied/threads/ask'), closed('operator1')));
+    });
+  });
+
   // The founders list is written once at creation (#1049) and backfilled for
   // older contacts (#1050). It is immutable: any update that touches it is a
   // ghost field for everyone except a Full-timer's genuine-mistake correction,
@@ -1303,7 +1413,7 @@ describeRules('Firestore Security Rules', () => {
 
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com', visibleTo: ['manager1'] });
       });
 
       await assertSucceeds(setDoc(doc(db, 'contacts/contact1/interactions/int-self'), {
@@ -1324,7 +1434,7 @@ describeRules('Firestore Security Rules', () => {
         const adb = context.firestore();
         await setDoc(doc(adb, 'users', 'manager1'), { role: 'manager', approved: true });
         await setDoc(doc(adb, 'users', 'manager2'), { role: 'manager', approved: true });
-        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com', visibleTo: ['manager1'] });
       });
 
       await assertFails(setDoc(doc(db, 'contacts/contact1/interactions/int-other'), {
