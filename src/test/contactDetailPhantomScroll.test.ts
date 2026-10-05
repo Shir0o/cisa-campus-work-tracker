@@ -140,4 +140,11 @@ describe('contact-detail phantom-scroll guardrail (#780)', () => {
     // offending rule shipped as a comma-separated selector list.
     expect(css).not.toMatch(/\[data-thread-list\][^{}]*\{[^}]*column-reverse/);
   });
+
+  it('desktop edit form is wrapped in a scroll container inside cd-page-content', () => {
+    const markup = readFileSync(MARKUP_PATHS[0], 'utf8');
+    // When isEditing is true on desktop, the edit form must be wrapped in a scroll
+    // container (.cd-edit-scroll or .cd-story-scroll) because .cd-page-content is overflow: hidden.
+    expect(markup).toMatch(/isEditing\s*\?\s*\(\s*<div\s+className="(cd-edit-scroll|cd-story-scroll)"/);
+  });
 });

@@ -1600,22 +1600,24 @@ export default function ContactDetailsModal({
             {/* Content */}
             <div className={isMobile ? "cdm-page-body" : "cd-page-content"}>
               {isEditing ? (
-                <ContactEditForm
-                  formData={formData}
-                  onChange={setFormData}
-                  stages={stages}
-                  isAdmin={isAdmin}
-                  phoneError={phoneError}
-                  onPhoneBlur={handlePhoneBlur}
-                  onClearPhoneError={() => setPhoneError(null)}
-                  editTagInput={editTagInput}
-                  onEditTagInputChange={setEditTagInput}
-                  onSubmit={handleUpdate}
-                  isMobile={isMobile}
-                  showDelete={canDelete}
-                  onDelete={handleDelete}
-                  loading={loading}
-                />
+                <div className="cd-story-scroll">
+                  <ContactEditForm
+                    formData={formData}
+                    onChange={setFormData}
+                    stages={stages}
+                    isAdmin={isAdmin}
+                    phoneError={phoneError}
+                    onPhoneBlur={handlePhoneBlur}
+                    onClearPhoneError={() => setPhoneError(null)}
+                    editTagInput={editTagInput}
+                    onEditTagInputChange={setEditTagInput}
+                    onSubmit={handleUpdate}
+                    isMobile={isMobile}
+                    showDelete={canDelete}
+                    onDelete={handleDelete}
+                    loading={loading}
+                  />
+                </div>
               ) : isMobile ? (
                 <>
                   {storySection}
