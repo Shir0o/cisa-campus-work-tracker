@@ -135,6 +135,8 @@ export async function updateContact(
         notes: edits.notes,
         spiritualBackground: edits.spiritualBackground,
         instagram: edits.instagram,
+        ...(edits.year !== undefined && { year: edits.year }),
+        ...(edits.major !== undefined && { major: edits.major }),
       },
       by,
     );

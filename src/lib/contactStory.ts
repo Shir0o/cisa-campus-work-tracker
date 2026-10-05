@@ -62,7 +62,7 @@ function stepMoveOf({ action = '', description = '' }: SystemActivity): { from: 
   return null;
 }
 
-const FIELD_LINE = /^(name|email|phone|group|spiritualBackground|gender|carer|delegate): "(.*)" → "(.*)"$/;
+const FIELD_LINE = /^(name|email|phone|group|spiritualBackground|gender|year|major|carer|delegate): "(.*)" → "(.*)"$/;
 const TAG_LIST_LINE = /^Tags: \[(.*)\] → \[(.*)\]$/;
 
 const tagList = (value: string): string[] =>

@@ -1713,6 +1713,102 @@ describe('ContactDetailsModal Component', () => {
     }
   });
 
+  describe('Year and Major (#1348)', () => {
+    const openEditing = async (contact: Record<string, unknown>) => {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, ...contact }} />);
+      await screen.findByText('John Doe');
+      fireEvent.click(openEditMenu());
+    };
+    const savedUpdate = () =>
+      (vi.mocked(firestore.updateDoc).mock.calls as unknown[][]).find(([, d]) => 'year' in (d as object))![1] as Record<string, unknown>;
+    const loggedChanges = () =>
+      (logActivity as any).mock.calls
+        .map(([arg]: any[]) => arg)
+        .filter((arg: any) => arg?.type === 'edit')
+        .map((arg: any) => arg.description as string)
+        .join('\n');
+
+    it('shows Year as a select over the sign-up list, and Major as free text, with what is stored', async () => {
+      await openEditing({ year: 'Junior', major: 'Biology' });
+
+      const year = screen.getByRole('combobox', { name: 'YEAR' }) as HTMLSelectElement;
+      expect(year.value).toBe('Junior');
+      expect(Array.from(year.options).map((o) => o.value).filter(Boolean)).toEqual([
+        'Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other',
+      ]);
+      expect(screen.getByPlaceholderText('e.g. Biology')).toHaveValue('Biology');
+      expect(screen.queryByPlaceholderText('Tell us their year')).not.toBeInTheDocument();
+    });
+
+    it('saves a chosen year and a typed major, and records both as changes', async () => {
+      await openEditing({ year: 'Junior', major: '' });
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'YEAR' }), { target: { value: 'Senior' } });
+      fireEvent.change(screen.getByPlaceholderText('e.g. Biology'), { target: { value: 'Music' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      await waitFor(() => expect(savedUpdate()).toMatchObject({ year: 'Senior', major: 'Music' }));
+      expect(loggedChanges()).toContain('year: "Junior" → "Senior"');
+      expect(loggedChanges()).toContain('major: "" → "Music"');
+    });
+
+    it('Other reveals a text input and the stored value is that text', async () => {
+      await openEditing({ year: 'Junior' });
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'YEAR' }), { target: { value: 'Other' } });
+      fireEvent.change(screen.getByPlaceholderText('Tell us their year'), { target: { value: ' Gap year ' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      await waitFor(() => expect(savedUpdate()).toMatchObject({ year: 'Gap year' }));
+      expect(loggedChanges()).toContain('year: "Junior" → "Gap year"');
+    });
+
+    it('shows a stored off-list year as Other plus its text, and leaves it untouched on save', async () => {
+      await openEditing({ year: 'Taking one class on Thursday F26' });
+
+      expect((screen.getByRole('combobox', { name: 'YEAR' }) as HTMLSelectElement).value).toBe('Other');
+      expect(screen.getByPlaceholderText('Tell us their year')).toHaveValue('Taking one class on Thursday F26');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await waitFor(() => expect(firestore.updateDoc).toHaveBeenCalled());
+      // Nothing is rewritten unless someone edits it.
+      for (const [, data] of vi.mocked(firestore.updateDoc).mock.calls) {
+        expect(data).not.toHaveProperty('year');
+        expect(data).not.toHaveProperty('major');
+      }
+      expect(loggedChanges()).not.toMatch(/year:|major:/);
+    });
+
+    it('shows the literal "Other" as Other plus that text', async () => {
+      await openEditing({ year: 'Other' });
+      expect((screen.getByRole('combobox', { name: 'YEAR' }) as HTMLSelectElement).value).toBe('Other');
+      expect(screen.getByPlaceholderText('Tell us their year')).toHaveValue('Other');
+    });
+
+    it('clears both fields', async () => {
+      await openEditing({ year: 'Senior', major: 'Music' });
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'YEAR' }), { target: { value: '' } });
+      fireEvent.change(screen.getByPlaceholderText('e.g. Biology'), { target: { value: '' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      await waitFor(() => expect(savedUpdate()).toMatchObject({ year: '', major: '' }));
+      expect(loggedChanges()).toContain('year: "Senior" → ""');
+      expect(loggedChanges()).toContain('major: "Music" → ""');
+    });
+
+    it('is offered to a Trainee too, on a contact they can open', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'user-123', displayName: 'Trainee Sam' },
+        isAdmin: false,
+        role: 'trainee',
+      });
+      await openEditing({ year: 'Junior', createdBy: 'user-123', visibleTo: ['user-123'] });
+      expect(screen.getByRole('combobox', { name: 'YEAR' })).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('e.g. Biology')).toBeInTheDocument();
+    });
+  });
+
   it('parses comma-separated tags from the edit form', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');

@@ -63,6 +63,30 @@ describe('diffContactFields', () => {
     ]);
   });
 
+  it('reports year and major changes, with a missing value read as empty (#1348)', () => {
+    const changes = diffContactFields(
+      contact({ year: 'Junior' }),
+      fields({ year: 'Gap year', major: 'Biology' }),
+    );
+    expect(changes).toEqual(['year: "Junior" → "Gap year"', 'major: "" → "Biology"']);
+  });
+
+  it('reports a cleared year or major (#1348)', () => {
+    const changes = diffContactFields(
+      contact({ year: 'Senior', major: 'Music' }),
+      fields({ year: '', major: '' }),
+    );
+    expect(changes).toEqual(['year: "Senior" → ""', 'major: "Music" → ""']);
+  });
+
+  it('does not read an absent year/major as cleared (#1348)', () => {
+    expect(diffContactFields(contact({ year: 'Senior', major: 'Music' }), fields())).toEqual([]);
+  });
+
+  it('treats an unset year and an empty one as the same (#1348)', () => {
+    expect(diffContactFields(contact(), fields({ year: '', major: '' }))).toEqual([]);
+  });
+
   it('does not surface a "how we met" change — the form no longer exposes metVia', () => {
     // #730: the new-contact and contact-edit forms removed the metVia field.
     // Even if a legacy value still sits on the contact, changing it is no

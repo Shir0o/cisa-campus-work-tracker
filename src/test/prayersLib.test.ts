@@ -124,17 +124,21 @@ describe('getContactCarers & getContactAddedBy', () => {
 });
 
 describe('getContactGrade', () => {
-  it('prefers direct year field', () => {
-    expect(getContactGrade({ year: 'Freshman', tags: ['Senior'] })).toBe('Freshman');
+  it('reads the year field, trimmed', () => {
+    expect(getContactGrade({ year: 'Freshman' })).toBe('Freshman');
+    expect(getContactGrade({ year: '  Junior ' })).toBe('Junior');
   });
 
-  it('falls back to grade/year tags', () => {
-    expect(getContactGrade({ tags: ['Sophomore', 'Campus'] })).toBe('Sophomore');
-    expect(getContactGrade({ tags: ['1st year'] })).toBe('1st year');
+  it('no longer reads year tags (#1348): grade comes from year only', () => {
+    // A whole Contact is what callers pass; its tags are simply not read.
+    const taggedOnly = { year: undefined, tags: ['Sophomore', 'Campus', '1st year'] };
+    const both = { year: 'Freshman', tags: ['Senior'] };
+    expect(getContactGrade(taggedOnly)).toBeUndefined();
+    expect(getContactGrade(both)).toBe('Freshman');
   });
 
-  it('returns undefined when no year info is present', () => {
-    expect(getContactGrade({ tags: ['Campus'] })).toBeUndefined();
+  it('returns undefined when no year is present', () => {
+    expect(getContactGrade({ year: '   ' })).toBeUndefined();
     expect(getContactGrade({})).toBeUndefined();
   });
 });

@@ -166,6 +166,29 @@ describe('buildContactStory', () => {
       });
     });
 
+    it('reads year and major edits as field changes, a cleared value included (#1348)', () => {
+      const story = buildContactStory({
+        contact,
+        ...empty,
+        activities: [
+          activity(
+            'edited',
+            '2026-09-24T09:00:00.000Z',
+            'year: "Junior" → "Gap year"\nmajor: "" → "Biology"\nyear: "Senior" → ""',
+          ),
+        ],
+      });
+
+      expect(story[0]).toMatchObject({
+        kind: 'change',
+        changes: [
+          { type: 'field', field: 'year', from: 'Junior', to: 'Gap year' },
+          { type: 'field', field: 'major', from: '', to: 'Biology' },
+          { type: 'field', field: 'year', from: 'Senior', to: '' },
+        ],
+      });
+    });
+
     it('reads a bulk move made from the Directory', () => {
       const story = buildContactStory({
         contact,

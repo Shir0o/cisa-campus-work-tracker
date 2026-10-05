@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Calendar,
+  GraduationCap,
   Mail,
   MessageSquare,
   Phone,
@@ -13,6 +14,7 @@ import {
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
 import KindFields from "../ui/KindFields";
+import { YEARS } from "../../lib/contactYear";
 import { tagStyle, TAG_SUGGESTIONS, normalizeTagList } from "../../lib/tags";
 import type { Stage } from "../../types";
 
@@ -23,6 +25,9 @@ export interface ContactFormData {
   phone: string;
   stage: string;
   gender: string;
+  year: string;
+  yearOther: string;
+  major: string;
   tags: string[];
   notes: string;
   spiritualBackground: string;
@@ -125,6 +130,52 @@ export default function ContactEditForm({
             <option value="M">M</option>
             <option value="F">F</option>
           </select>
+        </div>
+        {/* Year and Major (#1348): the sign-up list, with free text after Other. */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+            <GraduationCap className="w-3.5 h-3.5" /> {t('modals.contactDetails.year')}
+          </label>
+          <select
+            aria-label={t('modals.contactDetails.year')}
+            value={formData.year}
+            onChange={(e) =>
+              onChange((f) => ({ ...f, year: e.target.value }))
+            }
+            className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
+          >
+            <option value="">{t('modals.contactDetails.year_placeholder')}</option>
+            {YEARS.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+          {formData.year === "Other" && (
+            <input
+              type="text"
+              value={formData.yearOther}
+              onChange={(e) =>
+                onChange((f) => ({ ...f, yearOther: e.target.value }))
+              }
+              className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+              placeholder={t('modals.contactDetails.year_other_placeholder')}
+            />
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+            <GraduationCap className="w-3.5 h-3.5" /> {t('modals.contactDetails.major')}
+          </label>
+          <input
+            type="text"
+            value={formData.major}
+            onChange={(e) =>
+              onChange((f) => ({ ...f, major: e.target.value }))
+            }
+            className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+            placeholder={t('modals.contactDetails.major_placeholder')}
+          />
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">

@@ -77,4 +77,10 @@ describe('TAG_SUGGESTIONS', () => {
     expect(TAG_SUGGESTIONS).toContain('Club Rush');
     expect(TAG_SUGGESTIONS).toContain('BFA');
   });
+
+  it('no longer suggests the year words as tags (#1348): year lives in `year`', () => {
+    for (const year of ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate']) {
+      expect(TAG_SUGGESTIONS).not.toContain(year);
+    }
+  });
 });

@@ -341,6 +341,9 @@ export interface ContactUpdateFields {
   notes: string;
   spiritualBackground: string;
   instagram?: string;
+  /** Sign-up's Year and Major (#1348). Optional: only sent when edited. */
+  year?: string;
+  major?: string;
   /** How we first met — the fixed "How we met" vocabulary (#356). Optional:
    * the web forms no longer send it (#730), mobile's EditContactSheet does. */
   metVia?: string;

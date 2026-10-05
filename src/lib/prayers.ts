@@ -89,18 +89,10 @@ function nameParts(name: string): { first: string; last: string } {
 
 /**
  * Resolves a contact's academic year/grade (e.g. Freshman, Sophomore) from
- * their `year` field or from tags.
+ * their `year` field. Year tags are gone (#1348): `year` is the only place.
  */
-export function getContactGrade(contact: { year?: string; tags?: string[] }): string | undefined {
-  if (contact.year?.trim()) return contact.year.trim();
-  const found = contact.tags?.find((t) => {
-    const s = t.trim();
-    return (
-      /^(freshman|sophomore|junior|senior|graduate|grad|1st\s*year|2nd\s*year|3rd\s*year|4th\s*year)$/i.test(s) ||
-      s.toLowerCase().includes('year')
-    );
-  });
-  return found?.trim();
+export function getContactGrade(contact: { year?: string }): string | undefined {
+  return contact.year?.trim() || undefined;
 }
 
 /**

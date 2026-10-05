@@ -16,10 +16,11 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useSeason, getAutoSemesterAndSchoolYearTags, SEASON_ORDER, SEASONS, seasonYear, SeasonId } from '../lib/seasons';
 import { normalizeTagList } from '../lib/tags';
+import { YEARS } from '../lib/contactYear';
 import { useAuth } from '../components/AuthProvider';
 import { visibleToOf } from '../lib/permissions';
 
-export const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
+export { YEARS };
 
 export const GENDERS = ['Male', 'Female', 'Other'];
 

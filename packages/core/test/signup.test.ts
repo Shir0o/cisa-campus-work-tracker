@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   emptySignUpForm,
   signUpYearValue,
+  signUpYearToForm,
   validateSignUpBasics,
   validateSignUpInterests,
   validateSignUp,
@@ -254,3 +255,26 @@ describe('submitSignUp with actor logging and auto tagging', () => {
 });
 
 
+
+describe('signUpYearToForm (#1348)', () => {
+  it('reads a listed year as itself and nothing as empty', () => {
+    expect(signUpYearToForm('Junior')).toEqual({ year: 'Junior', yearOther: '' });
+    expect(signUpYearToForm(undefined)).toEqual({ year: '', yearOther: '' });
+    expect(signUpYearToForm('  ')).toEqual({ year: '', yearOther: '' });
+  });
+
+  it('reads an off-list value, or the literal "Other", as Other plus its text', () => {
+    expect(signUpYearToForm('Taking one class on Thursday F26')).toEqual({
+      year: 'Other',
+      yearOther: 'Taking one class on Thursday F26',
+    });
+    expect(signUpYearToForm('.')).toEqual({ year: 'Other', yearOther: '.' });
+    expect(signUpYearToForm('Other')).toEqual({ year: 'Other', yearOther: 'Other' });
+  });
+
+  it('round-trips through signUpYearValue untouched', () => {
+    for (const stored of ['Taking one class on Thursday F26', '.', 'Other', 'Junior']) {
+      expect(signUpYearValue(signUpYearToForm(stored))).toBe(stored);
+    }
+  });
+});
