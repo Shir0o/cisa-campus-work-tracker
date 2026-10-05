@@ -7,7 +7,16 @@ import { stageColor } from "./helpers";
 // Round avatar — shows the contact's photo when available, else their initials.
 // Landings that need an avatar for a non-contact (e.g. a Full-timer `user`) can
 // pass a lightweight `{ name, avatar?, initials? }` cast to Contact.
-export function Avatar({ contact, size = "md" }: { contact: Contact; size?: "sm" | "md" }) {
+export function Avatar({
+  contact,
+  size = "md",
+  muted = false,
+}: {
+  contact: Contact;
+  size?: "sm" | "md";
+  /** Neutral fill instead of the brand tint — for people shown as not present. */
+  muted?: boolean;
+}) {
   const dim = size === "sm" ? "w-8 h-8 text-xs" : "w-11 h-11 text-sm";
   const initials = contact.initials || getUserInitials(contact.name);
   if (contact.avatar) {
@@ -23,7 +32,8 @@ export function Avatar({ contact, size = "md" }: { contact: Contact; size?: "sm"
     <div
       className={cn(
         dim,
-        "rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0",
+        "rounded-full font-semibold flex items-center justify-center shrink-0",
+        muted ? "bg-surface-variant text-on-surface-variant" : "bg-primary-container text-on-primary-container",
       )}
     >
       {initials}

@@ -106,7 +106,8 @@ describe('AttendanceMobile', () => {
     expect(document.querySelector('.gthm-scount b')?.textContent).toBe('1');
 
     fireEvent.click(screen.getByText('Bible Study'));
-    expect(screen.getAllByText('Here').length).toBeGreaterThan(0);
+    expect(screen.getByText('Came')).toBeInTheDocument();
+    expect(screen.queryByText('Here')).not.toBeInTheDocument();
     expect(screen.getByText('We missed')).toBeInTheDocument();
     expect(screen.getByText('Tap a name to cycle.')).toBeInTheDocument();
   });
@@ -206,5 +207,87 @@ describe('AttendanceMobile', () => {
     fireEvent.click(screen.getByText('Bible Study'));
     fireEvent.click(screen.getByTitle('Make a to-do to check on Alice Smith'));
     expect(onOpenTodo).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), expect.objectContaining({ id: 's1' }));
+  });
+  describe('Gathering sheet member chips', () => {
+    const rhythmWeek = (over: any = {}) =>
+      session({ rhythmId: 'r1', attendance: { present: ['c2'], absent: [] }, ...over });
+    const rhythmRoster = () => ['c1', 'c2'];
+
+    it('resolves the Rhythm roster so a regular who did not come is under We missed', () => {
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[rhythmWeek()]}
+          contacts={[contact(), contact({ id: 'c2', name: 'Bob Jones' })]}
+          here={vi.fn((_g: any, id: string) => id === 'c2')}
+          resolvedRosterFor={rhythmRoster}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.getByTitle('Tap to mark present')).toHaveTextContent('Alice Smith');
+      expect(screen.queryByText('walk-in')).not.toBeInTheDocument();
+    });
+
+    it('tags only people outside the resolved roster as walk-ins', () => {
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[rhythmWeek({ attendance: { present: ['c2', 'c3'], absent: [] } })]}
+          contacts={[contact(), contact({ id: 'c2', name: 'Bob Jones' }), contact({ id: 'c3', name: 'Cara Newcomer' })]}
+          here={vi.fn((_g: any, id: string) => id !== 'c1')}
+          resolvedRosterFor={rhythmRoster}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.getAllByText('walk-in')).toHaveLength(1);
+      expect(screen.getByRole('button', { name: /Cara Newcomer/ })).toHaveTextContent('walk-in');
+      expect(screen.getByRole('button', { name: /Bob Jones/ })).not.toHaveTextContent('walk-in');
+    });
+
+    it('offers add-to-roster on a walk-in for Full-timers only, and renders no star badge', () => {
+      const onToggleRoster = vi.fn().mockResolvedValue(undefined);
+      const props = {
+        ...baseProps,
+        sessions: [rhythmWeek({ attendance: { present: ['c2', 'c3'], absent: [] } })],
+        contacts: [contact(), contact({ id: 'c2', name: 'Bob Jones' }), contact({ id: 'c3', name: 'Cara Newcomer' })],
+        here: vi.fn((_g: any, id: string) => id !== 'c1'),
+        resolvedRosterFor: rhythmRoster,
+        onToggleRoster,
+      };
+      const { unmount } = render(<AttendanceMobile {...props} isAdmin />);
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.getAllByRole('button', { name: /Add .* to roster/ })).toHaveLength(1);
+      expect(screen.queryByText('★')).not.toBeInTheDocument();
+      expect(screen.queryByText('+ Roster')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Add Cara Newcomer to roster' }));
+      expect(onToggleRoster).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }), 'c3', true);
+      unmount();
+
+      render(<AttendanceMobile {...props} isAdmin={false} />);
+      fireEvent.click(screen.getByText('Bible Study'));
+      expect(screen.queryByRole('button', { name: /Add .* to roster/ })).not.toBeInTheDocument();
+      expect(screen.getByText('walk-in')).toBeInTheDocument();
+    });
+
+    it('lists roster members before walk-ins, each alphabetical', () => {
+      render(
+        <AttendanceMobile
+          {...baseProps}
+          sessions={[rhythmWeek({ attendance: { present: ['c1', 'c2', 'c3'], absent: [] } })]}
+          contacts={[
+            contact({ id: 'c3', name: 'Aaron Walkin' }),
+            contact({ id: 'c2', name: 'Zoe Jones' }),
+            contact({ id: 'c1', name: 'Mia Smith' }),
+          ]}
+          here={vi.fn(() => true)}
+          resolvedRosterFor={() => ['c1', 'c2']}
+        />
+      );
+      fireEvent.click(screen.getByText('Bible Study'));
+      const names = screen.getAllByRole('button', { name: /Mia Smith|Zoe Jones|Aaron Walkin/ }).map((b) => b.textContent);
+      expect(names[0]).toContain('Mia Smith');
+      expect(names[1]).toContain('Zoe Jones');
+      expect(names[2]).toContain('Aaron Walkin');
+    });
   });
 });

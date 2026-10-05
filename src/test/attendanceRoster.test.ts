@@ -83,6 +83,36 @@ describe('attendanceRoster', () => {
       expect(absent.map((c) => c.id).sort()).toEqual(['c1', 'c2']);
     });
 
+    it('orders present and absent roster-first, then outside the roster, each alphabetical', () => {
+      const mk = (id: string, name: string): Contact => ({ ...contactA, id, name });
+      const contacts = [
+        mk('p-walk-z', 'zed walk'),
+        mk('p-roster-b', 'bea'),
+        mk('p-walk-a', 'Adam walk'),
+        mk('p-roster-a', 'Aaron'),
+        mk('p-roster-c', 'carl'),
+        mk('a-walk-b', 'beth walk'),
+        mk('a-roster-b', 'Bob'),
+        mk('a-walk-a', 'Amy walk'),
+        mk('a-roster-a', 'alex'),
+      ];
+      const gathering: Gathering = {
+        id: 'e9',
+        name: 'Order check',
+        date: '2026-06-12',
+        order: 1,
+        createdAt: '2026-05-25',
+        roster: ['p-roster-a', 'p-roster-b', 'p-roster-c', 'a-roster-a', 'a-roster-b'],
+        attendance: {
+          present: ['p-walk-z', 'p-roster-b', 'p-walk-a', 'p-roster-a', 'p-roster-c'],
+          absent: ['a-walk-b', 'a-walk-a'],
+        },
+      };
+      const { present, absent } = getSessionRoster(gathering, contacts);
+      expect(present.map((c) => c.name)).toEqual(['Aaron', 'bea', 'carl', 'Adam walk', 'zed walk']);
+      expect(absent.map((c) => c.name)).toEqual(['alex', 'Bob', 'Amy walk', 'beth walk']);
+    });
+
     it('counts nobody absent for a cancelled Gathering', () => {
       const cancelled: Gathering = { ...event2, cancelled: true };
       const { absent, nonRoster } = getSessionRoster(cancelled, [contactA, contactB, contactC]);
