@@ -2805,6 +2805,97 @@ describe('removing interactions (#650)', () => {
       }
     });
   });
+
+  // #1367: Firestore's delete rule requires isManager (Full-timer or Trainee),
+  // so a Student is offered Edit but never Delete.
+  describe('Delete is manager-only (#1367)', () => {
+    const mockOnClose = vi.fn();
+
+    const renderOnPhone = (ui: React.ReactElement) => {
+      const original = window.matchMedia;
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query) => ({
+          matches: query === '(max-width: 768px)',
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+      const result = render(ui);
+      return { ...result, restore: () => Object.defineProperty(window, 'matchMedia', { writable: true, value: original }) };
+    };
+
+    const tiedContact = { ...mockContact, createdBy: 'user-123' };
+
+    const renderFor = (role: string) => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'user-123', displayName: 'User' },
+        isAdmin: role === 'admin',
+        role,
+      });
+      return render(
+        <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={tiedContact} />,
+      );
+    };
+
+    it('shows a Student Edit but no Delete in the More menu', async () => {
+      renderFor('operator');
+      await screen.findByText('John Doe');
+
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+      expect(screen.getByText('Edit details')).toBeInTheDocument();
+      expect(screen.queryByText('Delete Contact')).not.toBeInTheDocument();
+    });
+
+    it('shows a Student Edit but no Delete in the mobile edit form', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'student_1', displayName: 'Student Sam' },
+        isAdmin: false,
+        role: 'operator',
+      });
+      const { restore } = renderOnPhone(
+        <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+      );
+      try {
+        fireEvent.click(await screen.findByRole('button', { name: /^Edit$/i }));
+        expect(await screen.findByText(/edit details/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Delete Contact/i })).not.toBeInTheDocument();
+      } finally {
+        restore();
+      }
+    });
+
+    it.each(['manager', 'admin'])('keeps Delete for %s in the More menu', async (role) => {
+      renderFor(role);
+      await screen.findByText('John Doe');
+
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+      expect(screen.getByText('Edit details')).toBeInTheDocument();
+      expect(screen.getByText('Delete Contact')).toBeInTheDocument();
+    });
+
+    it.each(['manager', 'admin'])('keeps Delete for %s in the mobile edit form', async (role) => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'user-123', displayName: 'Staff' },
+        isAdmin: role === 'admin',
+        role,
+      });
+      const { restore } = renderOnPhone(
+        <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={tiedContact} />,
+      );
+      try {
+        fireEvent.click(await screen.findByRole('button', { name: /^Edit$/i }));
+        expect(await screen.findByRole('button', { name: /Delete Contact/i })).toBeInTheDocument();
+      } finally {
+        restore();
+      }
+    });
+  });
 });
 
 // ── Moving a stage from the contact page (#677) ────────────────────

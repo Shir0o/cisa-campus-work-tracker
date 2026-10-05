@@ -101,6 +101,7 @@ function MoreMenu({
   onEmail,
   onEdit,
   showEdit,
+  showDelete,
   showChangeCreator,
   onChangeCreator,
   onDelete,
@@ -113,6 +114,7 @@ function MoreMenu({
   onEmail: () => void;
   onEdit: () => void;
   showEdit: boolean;
+  showDelete: boolean;
   showChangeCreator: boolean;
   onChangeCreator: () => void;
   onDelete: () => void;
@@ -177,7 +179,7 @@ function MoreMenu({
               <UserCog className="w-4 h-4" /> {t('modals.contactDetails.change_creator')}
             </button>
           )}
-          {showEdit && (
+          {showDelete && (
             <button onClick={() => { setOpen(false); onDelete(); }} className={item}>
               <Trash2 className="w-4 h-4" /> {t('modals.contactDetails.delete_contact')}
             </button>
@@ -201,6 +203,7 @@ export default function ContactHead({
   carerNames,
   role,
   isAdmin,
+  showDelete,
   canEditKind,
   openPrayerCount,
   canDelegate,
@@ -235,6 +238,7 @@ export default function ContactHead({
   carerNames: string[];
   role: string;
   isAdmin: boolean;
+  showDelete: boolean;
   canEditKind: boolean;
   openPrayerCount: number;
   canDelegate: boolean;
@@ -547,6 +551,7 @@ export default function ContactHead({
                   onEmail={onEmail}
                   onEdit={onEdit}
                   showEdit={role !== 'viewer'}
+                  showDelete={showDelete}
                   showChangeCreator={isAdmin}
                   onChangeCreator={onChangeCreator}
                   onDelete={onDelete}

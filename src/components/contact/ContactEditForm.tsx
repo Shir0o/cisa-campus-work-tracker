@@ -51,6 +51,7 @@ export default function ContactEditForm({
   onEditTagInputChange,
   onSubmit,
   isMobile,
+  showDelete,
   onDelete,
   loading,
 }: {
@@ -65,6 +66,7 @@ export default function ContactEditForm({
   onEditTagInputChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   isMobile: boolean;
+  showDelete: boolean;
   onDelete: () => void;
   loading: boolean;
 }) {
@@ -371,7 +373,7 @@ export default function ContactEditForm({
             placeholder={t('modals.contactDetails.notes_placeholder')}
           />
         </div>
-        {isMobile && (
+        {isMobile && showDelete && (
           <div className="pt-4 border-t border-outline-variant/30 md:col-span-2">
             <button
               type="button"

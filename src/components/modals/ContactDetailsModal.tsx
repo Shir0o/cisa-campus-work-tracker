@@ -1359,6 +1359,9 @@ export default function ContactDetailsModal({
   // Moving a stage is an edit, so it sits behind the same gate as the Edit
   // action: operator and up. Viewers keep the read-only pill and step list.
   const canMoveStage = (isAdmin || hasMinRole(role, "operator")) && sortedStages.length > 0;
+  // Deleting a contact needs isManager (Full-timer or Trainee), the same gate
+  // Firestore enforces (#1367). Kept separate from Edit so they can't drift.
+  const canDelete = isAdmin || hasMinRole(role, "manager");
   const currentStageIndex = stageIdx === -1 ? 0 : stageIdx;
   const currentStageInfo = stageIdx === -1 ? undefined : sortedStages[stageIdx];
   const canUpdatePrayers = isAdmin || hasMinRole(role, "operator");
@@ -1553,6 +1556,7 @@ export default function ContactDetailsModal({
               carerNames={carerNames}
               role={role}
               isAdmin={isAdmin}
+              showDelete={canDelete}
               canEditKind={isAdmin && !isImpersonating}
               openPrayerCount={openPrayers.length}
               canDelegate={canShare}
@@ -1608,6 +1612,7 @@ export default function ContactDetailsModal({
                   onEditTagInputChange={setEditTagInput}
                   onSubmit={handleUpdate}
                   isMobile={isMobile}
+                  showDelete={canDelete}
                   onDelete={handleDelete}
                   loading={loading}
                 />
