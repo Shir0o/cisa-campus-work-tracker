@@ -247,10 +247,13 @@ service cloud.firestore {
       // not assert it. The safe shape — no membership claimed, no stamp — is
       // what the public sign-up form writes, and it passes without a document
       // read; only a create that claims membership or stamps itself pays for
-      // the role lookup.
+      // the role lookup. #1351: the same goes for a year confirmed for the
+      // school year — Years to confirm counts that marker, so only a
+      // Full-timer may arrive with it.
       function kindSafeOnCreate(data) {
         return (data.get('inChurchLife', false) == false &&
-                !('kindSetBy' in data) && !('kindSetAt' in data))
+                !('kindSetBy' in data) && !('kindSetAt' in data) &&
+                !('yearConfirmedFor' in data))
                || isAdmin();
       }
 
@@ -367,8 +370,12 @@ service cloud.firestore {
           // exhausted the 1000-expression budget. Checking the incoming map
           // still refuses a kind written with no stamp, and binding kindSetBy to
           // the caller keeps the who-decided-it guarantee.
+          //
+          // #1351: `year` may ride along, so graduating — no longer a student,
+          // and no year — is one write. It adds nothing a Trainee could not
+          // already do: `year` is an ordinary profile field.
           (keys.hasOnly([
-            'inChurchLife', 'isStudent', 'kindSetBy', 'kindSetAt',
+            'inChurchLife', 'isStudent', 'kindSetBy', 'kindSetAt', 'year',
             'updatedAt', 'updatedBy', 'updatedByName'
           ]) && incoming().keys().hasAll(['kindSetBy', 'kindSetAt']) &&
             incoming().kindSetBy == request.auth.uid && admin) ||
@@ -415,7 +422,16 @@ service cloud.firestore {
             'founders', 'createdBy', 'createdByName', 'visibleTo',
             'coCreators', 'carers',
             'updatedAt', 'updatedBy', 'updatedByName'
-          ]) && admin && keys.hasAny(['founders', 'createdBy']));
+          ]) && admin && keys.hasAny(['founders', 'createdBy'])) ||
+
+          // #1351: Moving up a year. A Full-timer confirms a student's year for
+          // the school year, with a marker naming them — the marker Years to
+          // confirm counts. Its own branch, like the kind, so a profile edit
+          // cannot carry it; last, so no other write pays for it.
+          (keys.hasOnly([
+            'year', 'yearConfirmedFor', 'yearConfirmedBy', 'yearConfirmedAt',
+            'updatedAt', 'updatedBy', 'updatedByName'
+          ]) && incoming().get('yearConfirmedBy', null) == uid && admin);
       }
 
       allow update: if isValidId(contactId) && isApprovedOperator() &&

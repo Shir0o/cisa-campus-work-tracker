@@ -226,6 +226,18 @@ describe('buildContactStory', () => {
       expect(story[0]).toMatchObject({ changes: [{ type: 'kind', from: 'Contact', to: 'Local saint' }] });
     });
 
+    it('reads a graduation, and the kind change that came with it (#1351)', () => {
+      const story = buildContactStory({
+        contact,
+        ...empty,
+        activities: [activity('grad', '2026-08-03T09:00:00.000Z', 'graduated or left school\nkind: "Our own" → "Local saint"')],
+      });
+
+      expect(story[0]).toMatchObject({
+        changes: [{ type: 'graduated' }, { type: 'kind', from: 'Our own', to: 'Local saint' }],
+      });
+    });
+
     it('reads a tag edit as tags added and removed', () => {
       const story = buildContactStory({
         contact,

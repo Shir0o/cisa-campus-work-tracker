@@ -42,6 +42,7 @@ import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
 import CombineContactsModal from '../components/modals/CombineContactsModal';
 import TagGenderModal from '../components/modals/TagGenderModal';
+import MovingUpAYearModal from '../components/modals/MovingUpAYearModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { followUpContact } from '../lib/followUp';
@@ -54,6 +55,7 @@ import { subscribeAllThreads, subscribeTiedThreads, type ThreadMessageWithContac
 import { Translate } from '../components/Translate';
 import KindChip from '../components/ui/KindChip';
 import { contactKind, kindLabelKey, isKindSorted, type ContactKind } from '../lib/contactKind';
+import { yearsToConfirm } from '../lib/movingUpAYear';
 import { reachByContact, unreachedTagCounts } from '../lib/reach';
 import { matchContact, matchTier, type ContactMatch } from '../lib/contactMatch';
 
@@ -391,6 +393,8 @@ export default function Directory() {
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [isCombineContactsOpen, setIsCombineContactsOpen] = useState(false);
   const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
+  // Moving up a year (#1351): a Full-timer's sorting work, beside Not sorted yet.
+  const [movingUpAt, setMovingUpAt] = useState<Date | null>(null);
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -459,6 +463,12 @@ export default function Directory() {
 
   const staffId = effectiveUserId || user?.uid;
   const userContacts = useMemo(() => visibleContacts(role, staffId, contacts), [role, staffId, contacts]);
+  // Years to confirm (#1351): students whose year no Full-timer has confirmed
+  // for this school year.
+  const toConfirm = useMemo(
+    () => (isAdmin ? yearsToConfirm(userContacts, new Date()) : []),
+    [isAdmin, userContacts],
+  );
 
   // Name-first word-boundary search (#1192): each visible contact's match
   // quality, keyed by id, so the filter below can tier results (name matches
@@ -1134,6 +1144,20 @@ export default function Directory() {
                         />
                         <span className="text-sm text-on-surface">{t('contactKind.not_sorted_yet')}</span>
                       </label>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          disabled={toConfirm.length === 0}
+                          onClick={() => {
+                            setShowFilterMenu(false);
+                            setMovingUpAt(new Date());
+                          }}
+                          className="w-full flex items-center justify-between gap-2 min-h-[40px] px-1 text-sm text-on-surface hover:text-accent disabled:text-on-surface-variant disabled:cursor-default transition-colors"
+                        >
+                          <span>{t('movingUpAYear.years_to_confirm')}</span>
+                          <span className="tabular-nums text-on-surface-variant">{toConfirm.length}</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -1462,6 +1486,14 @@ export default function Directory() {
         <CombineContactsModal
           contacts={contacts}
           onClose={() => setIsCombineContactsOpen(false)}
+        />
+      )}
+
+      {movingUpAt && (
+        <MovingUpAYearModal
+          people={toConfirm}
+          now={movingUpAt}
+          onClose={() => setMovingUpAt(null)}
         />
       )}
 

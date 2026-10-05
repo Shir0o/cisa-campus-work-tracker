@@ -30,6 +30,8 @@ function changePhrases(change: StoryChange, t: TranslateFn): string[] {
     }
     case "notes":
       return [t('modals.contactDetails.story_change_notes')];
+    case "graduated":
+      return [t('modals.contactDetails.story_change_graduated')];
     case "share":
       return [
         t(

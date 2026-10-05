@@ -368,3 +368,11 @@ _Avoid_: Visitation coverage, coverage, visit schedule, rotation, cadence, visit
 **Not sorted yet**:
 The people whose kind nobody has decided — no one has said whether they are in **the church life** or a student. It is the absence of a stamp, not a value: the default and the migration seed both leave a person unsorted, and only a Full-timer's own decision marks them sorted. The count falls only as someone works through them, which makes it a measure of work remaining rather than of what the app guessed.
 _Avoid_: Uncategorised, unknown, unassigned, untagged, needs review
+
+**Moving up a year**:
+Confirming every student's year when the school year turns over on 1 August. The app proposes the next year — Freshman to Sophomore, through Senior to graduated — and a Full-timer confirms it, for many people at once with exceptions: the same year (a gap year, or taking longer), another year from the list, or graduated or left school. A Graduate, anyone in Other, and anyone with no year get no proposal and are chosen by hand. Graduating or leaving school means they are no longer a student, so they keep no year: an **Our own** becomes a **Local saint** and leaves The Journey, and a **Contact** stays a Contact. It is a Full-timer's decision, as the kind is.
+_Avoid_: Rollover, promotion, advancement, class bump
+
+**Years to confirm**:
+The students whose year no Full-timer has confirmed for the current school year. Like **Not sorted yet**, it counts the absence of someone's decision rather than what the app proposed, so it falls only as someone works through **Moving up a year**, reaches zero when everyone is done, and reopens each August.
+_Avoid_: Rollover, promotion, advancement, class bump

@@ -6,6 +6,7 @@ import { parseMs } from '../components/landing/helpers';
 export type StoryChange =
   | { type: 'step'; from: string; to: string }
   | { type: 'kind'; from: string; to: string }
+  | { type: 'graduated' }
   | { type: 'tags'; added: string[]; removed: string[] }
   | { type: 'field'; field: string; from: string; to: string }
   | { type: 'notes' }
@@ -113,6 +114,7 @@ function changesOf(activity: SystemActivity): StoryChange[] {
       continue;
     }
     if (trimmed === 'notes updated') changes.push({ type: 'notes' });
+    if (trimmed === 'graduated or left school') changes.push({ type: 'graduated' });
   }
 
   // The drag form has no quoted line to match above.

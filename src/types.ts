@@ -86,6 +86,12 @@ export interface Contact {
    *  migration seed — so an absent stamp is what "Not sorted yet" counts. */
   kindSetBy?: string;
   kindSetAt?: string;
+  /** The school year (e.g. "2026-27") a Full-timer confirmed this person's
+   *  `year` for, with who and when (#1351). A student without one for the
+   *  current school year is among Years to confirm. */
+  yearConfirmedFor?: string;
+  yearConfirmedBy?: string;
+  yearConfirmedAt?: string;
   /** Conversation messages the person keeps a reference to, so they read in
    *  The story so far quoted, with who said them and when (#1298). A message
    *  can be added once and taken back out; it stays where it was said. */
