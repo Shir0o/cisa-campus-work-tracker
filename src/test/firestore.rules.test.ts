@@ -715,6 +715,177 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // #1350: who can see a person is who can change them. The update rule asks
+  // the read rule's question of the contact as it stands before the write, so
+  // a tie the write itself removes (giving someone up, leaving a share) still
+  // counts, and a tie the write would add never does.
+  describe('Contact updates follow the contact\'s visibility (#1350)', () => {
+    const seed = async (contactId: string, contact: Record<string, unknown>) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager3'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'contacts', contactId), {
+          name: 'Test', email: 'test@example.com', ...contact,
+        });
+      });
+    };
+    const updated = (uid: string) => ({ updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: uid });
+    const logged = (uid: string) => ({
+      lastSeen: '2026-10-04', lastContactedBy: uid, lastContactedById: uid,
+      lastContactedDate: '2026-10-04', reachedAt: '2026-10-04', ...updated(uid),
+    });
+
+    it('refuses a Trainee editing the profile of someone they are not tied to', async () => {
+      await seed('c_untied', { createdBy: 'manager2', coCreators: [], visibleTo: ['manager2'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(trainee, 'contacts/c_untied'), {
+        year: 'Senior', major: 'Physics', ...updated('manager1'),
+      }));
+    });
+
+    it('refuses a Trainee stamping the reach on someone they are not tied to', async () => {
+      await seed('c_untied_reach', { createdBy: 'manager2', visibleTo: ['manager2'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(trainee, 'contacts/c_untied_reach'), logged('manager1')));
+    });
+
+    it('refuses a Trainee whose tie is not on the access list — the list decides, as for reading', async () => {
+      // An un-backfilled contact the Trainee created: they cannot read it, so
+      // they cannot share it either.
+      await seed('c_legacy', { createdBy: 'manager1', coCreators: [] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(trainee, 'contacts/c_legacy'), {
+        coCreators: ['manager2'], visibleTo: ['manager1', 'manager2'], ...updated('manager1'),
+      }));
+    });
+
+    it('refuses a Trainee taking on someone they are not tied to', async () => {
+      await seed('c_untied_take', { createdBy: 'manager2', visibleTo: ['manager2'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(trainee, 'contacts/c_untied_take'), {
+        carers: ['manager1'], visibleTo: ['manager2', 'manager1'],
+      }));
+    });
+
+    it('lets a tied Trainee edit the profile', async () => {
+      await seed('c_tied', { createdBy: 'manager1', coCreators: [], visibleTo: ['manager1'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_tied'), {
+        year: 'Senior', major: 'Physics', ...updated('manager1'),
+      }));
+    });
+
+    it('lets a tied Trainee log an interaction: the last-contacted trio and the reach', async () => {
+      await seed('c_tied_reach', { carers: ['manager1'], visibleTo: ['manager1'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_tied_reach'), logged('manager1')));
+    });
+
+    it('lets a tied Trainee share and delegate', async () => {
+      await seed('c_share', { createdBy: 'manager1', coCreators: [], visibleTo: ['manager1'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_share'), {
+        coCreators: arrayUnion('manager2'), visibleTo: ['manager1', 'manager2'],
+      }));
+    });
+
+    it('lets a co-creator remove another collaborator, and their carer tie with them', async () => {
+      await seed('c_rm', {
+        createdBy: 'manager1', coCreators: ['manager2', 'manager3'], carers: ['manager3'],
+        visibleTo: ['manager1', 'manager2', 'manager3'],
+      });
+      const coCreator = getFirestore({ uid: 'manager2' });
+      await assertSucceeds(updateDoc(doc(coCreator, 'contacts/c_rm'), {
+        coCreators: arrayRemove('manager3'), carers: arrayRemove('manager3'),
+        visibleTo: ['manager1', 'manager2'], ...updated('manager2'),
+      }));
+    });
+
+    it('lets a co-creator leave the share, though the write takes them off the access list', async () => {
+      await seed('c_leave', {
+        createdBy: 'manager1', coCreators: ['manager2'], visibleTo: ['manager1', 'manager2'],
+      });
+      const coCreator = getFirestore({ uid: 'manager2' });
+      await assertSucceeds(updateDoc(doc(coCreator, 'contacts/c_leave'), {
+        coCreators: arrayRemove('manager2'), visibleTo: ['manager1'], ...updated('manager2'),
+      }));
+    });
+
+    it('lets a tied Trainee take someone on, and give up a person held only as a carer', async () => {
+      await seed('c_take', { createdBy: 'manager2', coCreators: ['manager1'], visibleTo: ['manager2', 'manager1'] });
+      await seed('c_give', { createdBy: 'manager2', carers: ['manager1'], visibleTo: ['manager2', 'manager1'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_take'), {
+        carers: arrayUnion('manager1'), visibleTo: ['manager2', 'manager1'],
+      }));
+      await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_give'), {
+        carers: arrayRemove('manager1'), visibleTo: ['manager2'],
+      }));
+    });
+
+    it('lets a Full-timer edit anyone, on the access list or not', async () => {
+      await seed('c_ft_listed', { createdBy: 'manager2', visibleTo: ['manager2'] });
+      await seed('c_ft_legacy', { createdBy: 'manager2' });
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft_listed'), { notes: 'oversight', ...updated('admin1') }));
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft_legacy'), logged('admin1')));
+    });
+
+    it('lets a Full-timer share, correct founders, set the kind and confirm a year on someone not on their list', async () => {
+      await seed('c_ft', {
+        createdBy: 'manager2', founders: ['manager2'], coCreators: [], visibleTo: ['manager2'],
+        isStudent: true, year: 'Junior',
+      });
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft'), {
+        coCreators: ['manager1'], visibleTo: ['manager2', 'manager1'], ...updated('admin1'),
+      }));
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft'), {
+        founders: ['manager2', 'manager3'], visibleTo: ['manager2', 'manager1', 'manager3'], ...updated('admin1'),
+      }));
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft'), {
+        inChurchLife: true, isStudent: true, kindSetBy: 'admin1', kindSetAt: '2026-10-04T00:00:00.000Z',
+        ...updated('admin1'),
+      }));
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft'), {
+        year: 'Senior', yearConfirmedFor: '2026-27', yearConfirmedBy: 'admin1',
+        yearConfirmedAt: '2026-10-04T00:00:00.000Z', ...updated('admin1'),
+      }));
+    });
+
+    // The costliest legitimate writes: the writer is not on the list, so the
+    // gate pays for the role lookup, and the write takes the heaviest branch.
+    it('lets a Full-timer remove a collaborator and their carer tie on someone not on their list (expression budget)', async () => {
+      await seed('c_ft_rm', {
+        createdBy: 'manager1', coCreators: ['manager2', 'manager3'], carers: ['manager3'],
+        visibleTo: ['manager1', 'manager2', 'manager3'],
+      });
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(updateDoc(doc(admin, 'contacts/c_ft_rm'), {
+        coCreators: arrayRemove('manager3'), carers: arrayRemove('manager3'),
+        visibleTo: ['manager1', 'manager2'], ...updated('admin1'),
+      }));
+    });
+
+    it('lets a Student remove a collaborator and their carer tie on someone whose list does not name them (expression budget)', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+      });
+      await seed('c_op_rm', {
+        createdBy: 'operator1', coCreators: ['manager2', 'manager3'], carers: ['manager3'],
+        visibleTo: ['manager2', 'manager3'],
+      });
+      const student = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(updateDoc(doc(student, 'contacts/c_op_rm'), {
+        coCreators: arrayRemove('manager3'), carers: arrayRemove('manager3'),
+        visibleTo: ['manager2'], ...updated('operator1'),
+      }));
+    });
+  });
+
   // A History entry is data about its target contact (targetName, a stage
   // change in description), so it is visible exactly when the contact is: a
   // Trainee reads only entries about people in their `visibleTo`.

@@ -434,7 +434,18 @@ service cloud.firestore {
           ]) && incoming().get('yearConfirmedBy', null) == uid && admin);
       }
 
+      // #1350: who can see a person is who can change them. This is
+      // canReadContact asked of the contact as it stands before the write, so
+      // a tie the write removes (giving someone up, leaving a share) still
+      // counts and a tie it would add never does. Full-timers and Students see
+      // everyone; a Trainee must be on the access list.
+      // isApprovedOperator() has already proved approval, so the gate skips
+      // canReadContact's isApprovedUser() and tests the tie first. Calling
+      // canReadContact whole re-walks the role lookups for every writer, and
+      // the sheep and collaborator-removal writes were then denied, the
+      // 1000-expression ceiling again (#1052).
       allow update: if isValidId(contactId) && isApprovedOperator() &&
+                      (request.auth.uid in contactVisibleTo(existing()) || seesAllContacts()) &&
                       isValidContact(incoming()) && canUpdateContact();
       allow delete: if isValidId(contactId) && isManager();
 
