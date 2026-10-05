@@ -3150,6 +3150,29 @@ describe('desktop story layout (design D)', () => {
     expect(screen.getByDisplayValue('Invite him to the retreat')).toBeInTheDocument();
   });
 
+  it('says so when the Add to story write is refused, without an unhandled rejection', async () => {
+    hoisted.messages = [
+      { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },
+    ];
+    // The real handleFirestoreError logs and rethrows.
+    vi.mocked(handleFirestoreError).mockImplementationOnce(() => { throw new Error('logged'); });
+    (firestore.updateDoc as any).mockRejectedValueOnce(new Error('permission-denied'));
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+      const drawer = screen.getByRole('region', { name: 'Conversation' });
+      fireEvent.click(within(drawer).getByRole('button', { name: 'Add to story' }));
+
+      expect(await screen.findByText("Couldn't update the story. Try again.")).toBeInTheDocument();
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'UPDATE', 'contacts');
+      await new Promise((r) => setTimeout(r, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
   it('adds a Conversation message to the story, and takes it back out', () => {
     hoisted.messages = [
       { id: 'm-1', interactionId: null, from: 'user-9', fromName: 'Maria Santos', kind: 'comment', body: 'He came to the appointment', at: new Date().toISOString() },

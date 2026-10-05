@@ -1476,6 +1476,7 @@
       "logged_at": "Registrado {date} a las {time}",
       "remove_interaction": "Eliminar",
       "interaction_removed": "Conversación eliminada",
+      "story_update_failed": "No se pudo actualizar la historia. Inténtalo de nuevo.",
       "remove_interaction_confirm": "Esta conversación tiene {count} mensaje(s) en su hilo. Al eliminarla, desaparecen del registro. ¿Eliminar de todos modos?",
       "audit_called": "llamó",
       "audit_emailed": "envió un correo",
