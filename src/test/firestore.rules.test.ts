@@ -886,6 +886,43 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // #1298: Add to story. Anyone who can see the person may take a message into
+  // their story, or take it back out; the visibility gate (#1350) still refuses
+  // anyone who cannot see them.
+  describe('Add to story (#1298)', () => {
+    const seed = async (contactId: string, contact: Record<string, unknown>) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts', contactId), { name: 'Test', ...contact });
+      });
+    };
+    const addThenRemove = async (uid: string, contactId: string) => {
+      const ref = doc(getFirestore({ uid }), 'contacts', contactId);
+      await assertSucceeds(updateDoc(ref, { storyMessageIds: arrayUnion('m1') }));
+      await assertSucceeds(updateDoc(ref, { storyMessageIds: arrayRemove('m1') }));
+    };
+
+    it('lets a tied Trainee add a message to the story and take it back out', async () => {
+      await seed('c_story', { createdBy: 'manager2', visibleTo: ['manager2', 'manager1'] });
+      await addThenRemove('manager1', 'c_story');
+    });
+
+    it('lets a Full-timer and a Student do it for someone not on their list', async () => {
+      await seed('c_story_all', { createdBy: 'manager2', visibleTo: ['manager2'] });
+      await addThenRemove('admin1', 'c_story_all');
+      await addThenRemove('operator1', 'c_story_all');
+    });
+
+    it('refuses a Trainee who cannot see the person', async () => {
+      await seed('c_story_untied', { createdBy: 'manager2', visibleTo: ['manager2'] });
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(trainee, 'contacts/c_story_untied'), { storyMessageIds: arrayUnion('m1') }));
+    });
+  });
+
   // A History entry is data about its target contact (targetName, a stage
   // change in description), so it is visible exactly when the contact is: a
   // Trainee reads only entries about people in their `visibleTo`.

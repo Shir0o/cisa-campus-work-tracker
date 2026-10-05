@@ -347,12 +347,14 @@ service cloud.firestore {
           // was created; the updatedAt/updatedBy/updatedByName trio stays
           // because the client stamps it on every edit, as does the
           // lastContactedBy/ById/Date trio whenever an interaction is logged,
-          // and the reach stamp `reachedAt` with it (#1335).
+          // and the reach stamp `reachedAt` with it (#1335). `storyMessageIds`
+          // is Add to story (#1298): anyone who can see the person may do it,
+          // and the visibility gate on `allow update` already asks that.
           keys.hasOnly([
             'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
             'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
             'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
-            'lastSeen', 'avatar', 'hasNewActivity',
+            'lastSeen', 'avatar', 'hasNewActivity', 'storyMessageIds',
             'lastContactedBy', 'lastContactedById', 'lastContactedDate', 'reachedAt',
             'updatedAt', 'updatedBy', 'updatedByName'
           ]) ||
