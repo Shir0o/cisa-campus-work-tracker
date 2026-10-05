@@ -70,6 +70,7 @@ const mockContacts = [
       stage: 'Lead',
       location: 'Dorm A',
       spiritualBackground: 'None',
+      interests: ['Bible study'],
       tags: ['Freshman'],
       createdAt: '2026-01-01T00:00:00.000Z',
       createdBy: 'u-other',
@@ -86,6 +87,7 @@ const mockContacts = [
       stage: 'Regular',
       location: 'Off-campus',
       spiritualBackground: 'Christian',
+      interests: ['Prayer group'],
       tags: ['Senior'],
       createdAt: '2026-02-01T00:00:00.000Z',
       createdBy: 'trainee-123',
@@ -246,6 +248,33 @@ describe('Directory', () => {
 
     fireEvent.click(screen.getByText('Clear all'));
     expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+  });
+
+  it('filters contacts by interest option and searches contacts by interest', async () => {
+    render(<Directory />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const filtersButton = screen.getByText('Filters');
+    fireEvent.click(filtersButton);
+
+    const interestSelect = screen.getByText('Interest').parentElement?.querySelector('select') as HTMLSelectElement;
+    expect(interestSelect).toBeInTheDocument();
+    fireEvent.change(interestSelect, { target: { value: 'Bible study' } });
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Clear all'));
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+
+    // Also verify search by interest
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Bible study' } });
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
   });
 
   // #1345: the free-text group (`role`) is retired; kind is the only answer to

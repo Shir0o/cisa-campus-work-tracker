@@ -199,7 +199,7 @@ describe('ContactDetailsModal Component', () => {
   };
 
   it('renders overview tab details correctly by default', () => {
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, interests: ['Bible study', 'Prayer group'] }} />);
 
     // Mock implementation for onSnapshot (normally set up in specific tests if needed)
     setupOnSnapshotMocks({});
@@ -213,6 +213,7 @@ describe('ContactDetailsModal Component', () => {
     // still has the value on disk for legacy rows, but the UI must not show it.
     expect(screen.queryByText('Main Hall')).not.toBeInTheDocument();
     expect(screen.getByText('Christian')).toBeInTheDocument();
+    expect(screen.getByText('Bible study, Prayer group')).toBeInTheDocument();
   });
   it('avoids dash placeholders when last-connected is missing', () => {
     render(

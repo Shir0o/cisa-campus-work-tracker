@@ -227,12 +227,19 @@ describe('GlobalSearch', () => {
     expect(screen.queryAllByText('Bob Lee').length).toBe(0);
   });
 
-  it('typing filters the People group', () => {
+  it('matches people on their interests', () => {
+    seedData();
+    h.mockData.contacts.push(
+      docOf('c_interest', {
+        name: 'Grace Hopper',
+        interests: ['Bible study'],
+        tags: [],
+        updatedAt: '2026-06-12T10:00:00Z',
+      }),
+    );
     render(<GlobalSearch />);
-    typeDesktop('alice');
-    expect(screen.getAllByText('People').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Alice Wong').length).toBeGreaterThan(0);
-    expect(screen.queryAllByText('Bob Lee').length).toBe(0);
+    typeDesktop('bible');
+    expect(screen.getAllByText('Grace Hopper').length).toBeGreaterThan(0);
   });
 
   it('matches word-boundary, not mid-word substrings (#1192)', () => {

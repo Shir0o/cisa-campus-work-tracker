@@ -39,6 +39,7 @@ export interface Contact {
   updatedByName?: string;
   hasNewActivity?: boolean;
   spiritualBackground?: string;
+  interests?: string[];
   // Captured by the public sign-up form (Overhaul #22); surfaced in the profile later.
   pronouns?: string;
   gender?: string;

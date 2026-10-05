@@ -384,3 +384,8 @@ _Avoid_: Rollover, promotion, advancement, class bump
 **Years to confirm**:
 The students whose year no Full-timer has confirmed for the current school year. Like **Not sorted yet**, it counts the absence of someone's decision rather than what the app proposed, so it falls only as someone works through **Moving up a year**, reaches zero when everyone is done, and reopens each August.
 _Avoid_: Rollover, promotion, advancement, class bump
+
+**Fellowship Interests**:
+The specific areas of interest (e.g. "Bible study", "Home fellowship", "Prayer group") selected by prospective members or contacts on the intake/sign-up form. Displayed read-only under the profile overview and filterable in the People directory and global search.
+_Avoid_: Hobbies, preferences, ministry activities
+
