@@ -137,6 +137,8 @@ export async function updateContact(
         instagram: edits.instagram,
         ...(edits.year !== undefined && { year: edits.year }),
         ...(edits.major !== undefined && { major: edits.major }),
+        ...(edits.metVia !== undefined && { metVia: edits.metVia }),
+        ...(edits.location !== undefined && { location: edits.location }),
       },
       by,
     );
