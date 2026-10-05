@@ -675,6 +675,11 @@ describe('Directory', () => {
 
   it('performs bulk delete when confirmed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-test', displayName: 'Test User' },
+      effectiveUserId: 'u-test',
+      isManager: true,
+    });
 
     render(<Directory />);
     await waitFor(() => {
@@ -694,6 +699,11 @@ describe('Directory', () => {
 
   it('does not perform bulk delete if cancel is clicked', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-test', displayName: 'Test User' },
+      effectiveUserId: 'u-test',
+      isManager: true,
+    });
 
     render(<Directory />);
     await waitFor(() => {
@@ -708,6 +718,63 @@ describe('Directory', () => {
 
     expect(window.confirm).toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  // #1368: Firestore's delete rule requires isManager (Full-timer or Trainee),
+  // so a Student is never offered the Directory's bulk Remove.
+  it('hides bulk Remove from a Student with people selected (#1368)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-student', displayName: 'Student User' },
+      effectiveUserId: 'u-student',
+      role: 'operator',
+      isAdmin: false,
+      isManager: false,
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    expect(screen.queryByTitle('Remove selected')).not.toBeInTheDocument();
+  });
+
+  it('keeps bulk Remove for a Trainee with people selected (#1368)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'trainee-123', displayName: 'Trainee User' },
+      effectiveUserId: 'trainee-123',
+      role: 'manager',
+      isAdmin: false,
+      isManager: true,
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    expect(screen.getByTitle('Remove selected')).toBeInTheDocument();
+  });
+
+  it('keeps bulk Remove for a Full-timer with people selected (#1368)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User' },
+      effectiveUserId: 'u-admin',
+      role: 'admin',
+      isAdmin: true,
+      isManager: true,
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Select')[0]);
+    expect(screen.getByTitle('Remove selected')).toBeInTheDocument();
   });
 
   it('renders avatars correctly', async () => {
