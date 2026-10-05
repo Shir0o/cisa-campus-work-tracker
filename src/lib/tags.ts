@@ -193,11 +193,13 @@ export function clusterTags(
 
   for (const list of groups.values()) {
     if (list.length <= 1) continue;
-    // Find target by frequency, tie-break by Title Case
+    // Find target by frequency, tie-break by Title Case / Capitalized
     const sorted = [...list].sort((a, b) => {
       const countDiff = (rawTagCounts.get(b) ?? 0) - (rawTagCounts.get(a) ?? 0);
       if (countDiff !== 0) return countDiff;
-      // Prefer capitalized
+      const isTitleA = /^[A-Z]/.test(a);
+      const isTitleB = /^[A-Z]/.test(b);
+      if (isTitleA !== isTitleB) return isTitleA ? -1 : 1;
       return a.localeCompare(b);
     });
     const target = sorted[0];
