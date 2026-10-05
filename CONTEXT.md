@@ -51,7 +51,7 @@ The submitter's own side of the feedback loop: every Note they have left, what c
 _Avoid_: Send feedback, feedback page, my tickets
 
 **Remove an interaction**:
-Permanently deleting a logged conversation from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
+Permanently deleting a logged conversation from a contact's Interactions log (called that on both web and mobile; mobile's "Story" was retired for it). Restricted to the person who logged it or a Trainee/Full-timer, and only on a person they can see (#1350); reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
 _Avoid_: Archive entry, trash a conversation
 
 **Remove from prayer list**:

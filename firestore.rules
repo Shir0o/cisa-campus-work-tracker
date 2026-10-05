@@ -464,10 +464,11 @@ service cloud.firestore {
       }
 
       // #1350: writing on a person's page asks the same question as reading
-      // it — logging, commenting, posting, editing your own entry, closing an
-      // ask. Like the contact update gate it leaves approval to the rule that
-      // calls it and tests the tie first, so a tied Trainee pays one get() and
-      // an `in`; Full-timers and Students fall through to seesAllContacts().
+      // it — logging, commenting, posting, editing or removing your own entry,
+      // closing an ask, and a Trainee removing someone else's. Like the contact
+      // update gate it leaves approval to the rule that calls it and tests the
+      // tie first, so a tied Trainee pays one get() and an `in`; Full-timers
+      // and Students fall through to seesAllContacts().
       function seesParentContact() {
         return request.auth.uid in contactVisibleTo(get(/databases/$(database)/documents/contacts/$(contactId)).data) ||
                seesAllContacts();
@@ -502,7 +503,7 @@ service cloud.firestore {
                         incoming().userId == existing().userId &&
                         (existing().userId == request.auth.uid || isAdmin()) &&
                         incoming().diff(existing()).affectedKeys().hasOnly(['content', 'dateTime', 'type', 'userName', 'userPhoto']);
-        allow delete: if isValidId(interactionId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
+        allow delete: if isValidId(interactionId) && isApprovedUser() && seesParentContact() && (isManager() || existing().userId == request.auth.uid);
       }
 
       // Comments
@@ -524,7 +525,7 @@ service cloud.firestore {
                         incoming().userId == existing().userId &&
                         (existing().userId == request.auth.uid || isAdmin()) &&
                         incoming().diff(existing()).affectedKeys().hasOnly(['text']);
-        allow delete: if isValidId(commentId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
+        allow delete: if isValidId(commentId) && isApprovedUser() && seesParentContact() && (isManager() || existing().userId == request.auth.uid);
       }
 
       function isValidThread(data) {
@@ -592,7 +593,7 @@ service cloud.firestore {
                           isCloseOfAsk(existing(), incoming())
                         )
                       );
-        allow delete: if isValidId(threadId) && isApprovedUser() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isAdmin() || existing().from == request.auth.uid);
+        allow delete: if isValidId(threadId) && isApprovedUser() && seesParentContact() && (resource.data.get('scope', '') != 'team' || isAdmin()) && (isAdmin() || existing().from == request.auth.uid);
       }
 
       // Full-timers Discussion — the contact tab only Full-timers see. Its own
