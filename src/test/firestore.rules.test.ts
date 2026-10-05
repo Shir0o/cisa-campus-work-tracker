@@ -361,7 +361,9 @@ describeRules('Firestore Security Rules', () => {
     }));
   });
 
-  it("lets a creator share the contact via coCreators", async () => {
+  // #1363: the creator alone used to pass mayShare via createdBy. The client
+  // never offers them the share branch, so the rules refuse it now.
+  it("refuses a creator who is neither founder nor co-creator via coCreators", async () => {
     const db = getFirestore({ uid: "operator1" });
 
     await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -371,7 +373,7 @@ describeRules('Firestore Security Rules', () => {
       });
     });
 
-    await assertSucceeds(updateDoc(doc(db, "contacts", "contact1"), {
+    await assertFails(updateDoc(doc(db, "contacts", "contact1"), {
       coCreators: ["operator2"],
       updatedAt: serverTimestamp(),
       updatedBy: "operator1",
@@ -657,19 +659,19 @@ describeRules('Firestore Security Rules', () => {
       await seedVisibleToUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'contacts/c1'), {
-          name: 'Test', email: 'test@example.com', createdBy: 'manager1', coCreators: [], visibleTo: ['manager1'],
+          name: 'Test', email: 'test@example.com', createdBy: 'manager2', coCreators: ['manager1'], visibleTo: ['manager1'],
         });
       });
 
-      const owner = getFirestore({ uid: 'manager1' });
+      const coCreator = getFirestore({ uid: 'manager1' });
       // A profile edit may not smuggle a visibleTo change.
-      await assertFails(updateDoc(doc(owner, 'contacts/c1'), {
+      await assertFails(updateDoc(doc(coCreator, 'contacts/c1'), {
         name: 'Renamed',
         visibleTo: ['manager1', 'manager2'],
       }));
       // The tie-maintenance branch may rewrite it in lockstep with the ties.
-      await assertSucceeds(updateDoc(doc(owner, 'contacts/c1'), {
-        coCreators: ['manager2'],
+      await assertSucceeds(updateDoc(doc(coCreator, 'contacts/c1'), {
+        coCreators: ['manager1', 'manager2'],
         visibleTo: ['manager1', 'manager2'],
         updatedAt: serverTimestamp(),
       }));
@@ -784,10 +786,33 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_tied_reach'), logged('manager1')));
     });
 
-    it('lets a tied Trainee share and delegate', async () => {
-      await seed('c_share', { createdBy: 'manager1', coCreators: [], visibleTo: ['manager1'] });
-      const trainee = getFirestore({ uid: 'manager1' });
-      await assertSucceeds(updateDoc(doc(trainee, 'contacts/c_share'), {
+    // #1363: the client's canManageCollaborators never consults the creator,
+    // so the rules must not either. A creator who is neither a founder nor a
+    // co-creator keeps read access but gets no share branch.
+    it('refuses a creator who is neither founder nor co-creator the share branch', async () => {
+      await seed('c_creator', { createdBy: 'manager1', coCreators: [], visibleTo: ['manager1'] });
+      const creator = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(creator, 'contacts/c_creator'), {
+        coCreators: arrayUnion('manager2'), visibleTo: ['manager1', 'manager2'],
+      }));
+    });
+
+    it('refuses the same creator the collaborator-removal branch (#1052)', async () => {
+      await seed('c_creator_rm', {
+        createdBy: 'manager1', coCreators: ['manager3'], carers: ['manager3'],
+        visibleTo: ['manager1', 'manager3'],
+      });
+      const creator = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(creator, 'contacts/c_creator_rm'), {
+        coCreators: arrayRemove('manager3'), carers: arrayRemove('manager3'),
+        visibleTo: ['manager1'], ...updated('manager1'),
+      }));
+    });
+
+    it('refuses a legacy addedBy-only creator the share branch too', async () => {
+      await seed('c_added', { addedBy: 'manager1', visibleTo: ['manager1'] });
+      const adder = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(adder, 'contacts/c_added'), {
         coCreators: arrayUnion('manager2'), visibleTo: ['manager1', 'manager2'],
       }));
     });
@@ -892,7 +917,7 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
       });
       await seed('c_op_rm', {
-        createdBy: 'operator1', coCreators: ['manager2', 'manager3'], carers: ['manager3'],
+        createdBy: 'manager1', coCreators: ['operator1', 'manager2', 'manager3'], carers: ['manager3'],
         visibleTo: ['manager2', 'manager3'],
       });
       const student = getFirestore({ uid: 'operator1' });
