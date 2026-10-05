@@ -1130,7 +1130,20 @@ describeRules('Firestore Security Rules', () => {
           });
           await setDoc(doc(fs, `contacts/${contactId}/threads/mine`), message('manager1'));
           await setDoc(doc(fs, `contacts/${contactId}/threads/ask`), message('manager2', { kind: 'nudge' }));
+          // What a Student, who sees everyone, wrote on each person.
+          await setDoc(doc(fs, `contacts/${contactId}/interactions/theirs`), {
+            userId: 'operator1', userName: 'O1', content: 'Coffee', dateTime: '2026-10-01', createdAt: '2026-10-01',
+          });
+          await setDoc(doc(fs, `contacts/${contactId}/comments/theirs`), {
+            userId: 'operator1', userName: 'O1', text: 'Note', createdAt: '2026-10-01', parentId: null,
+          });
+          await setDoc(doc(fs, `contacts/${contactId}/threads/theirs`), message('operator1'));
         }
+        await setDoc(doc(fs, 'contacts/untied/teamThreads/team'), message('admin1', { scope: 'team' }));
+        // Left behind under a person who has since been deleted.
+        await setDoc(doc(fs, 'contacts/nobody/interactions/orphan'), {
+          userId: 'manager1', userName: 'M1', content: 'Coffee', dateTime: '2026-10-01', createdAt: '2026-10-01',
+        });
       });
     };
     const message = (from: string, over: Record<string, unknown> = {}) => ({
@@ -1212,6 +1225,55 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(setDoc(doc(student, 'contacts/untied/comments/new'), comment('operator1')));
       await assertSucceeds(setDoc(doc(student, 'contacts/untied/threads/new'), message('operator1')));
       await assertSucceeds(updateDoc(doc(student, 'contacts/untied/threads/ask'), closed('operator1')));
+    });
+
+    it('refuses an untied Trainee removing someone else\'s interaction or comment', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(deleteDoc(doc(trainee, 'contacts/untied/interactions/theirs')));
+      await assertFails(deleteDoc(doc(trainee, 'contacts/untied/comments/theirs')));
+    });
+
+    it('refuses a Trainee removing what they wrote on a person they no longer see', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(deleteDoc(doc(trainee, 'contacts/untied/interactions/mine')));
+      await assertFails(deleteDoc(doc(trainee, 'contacts/untied/comments/mine')));
+      await assertFails(deleteDoc(doc(trainee, 'contacts/untied/threads/mine')));
+      await assertFails(deleteDoc(doc(trainee, 'contacts/nobody/interactions/orphan')));
+    });
+
+    it('refuses an untied Trainee removing a Full-timers message', async () => {
+      await seed();
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied/teamThreads/team')));
+    });
+
+    it('lets a tied Trainee remove their own entries and someone else\'s interaction or comment', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(deleteDoc(doc(trainee, 'contacts/tied/interactions/mine')));
+      await assertSucceeds(deleteDoc(doc(trainee, 'contacts/tied/comments/mine')));
+      await assertSucceeds(deleteDoc(doc(trainee, 'contacts/tied/threads/mine')));
+      await assertSucceeds(deleteDoc(doc(trainee, 'contacts/tied/interactions/theirs')));
+      await assertSucceeds(deleteDoc(doc(trainee, 'contacts/tied/comments/theirs')));
+    });
+
+    it('lets a Full-timer remove anything on a person they are not listed on', async () => {
+      await seed();
+      const fullTimer = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/interactions/theirs')));
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/comments/theirs')));
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/threads/theirs')));
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied/teamThreads/team')));
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/nobody/interactions/orphan')));
+    });
+
+    it('lets a Student remove their own entries on a person they are not listed on', async () => {
+      await seed();
+      const student = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(deleteDoc(doc(student, 'contacts/untied/interactions/theirs')));
+      await assertSucceeds(deleteDoc(doc(student, 'contacts/untied/comments/theirs')));
+      await assertSucceeds(deleteDoc(doc(student, 'contacts/untied/threads/theirs')));
     });
   });
 
@@ -1474,7 +1536,8 @@ describeRules('Firestore Security Rules', () => {
         const adb = context.firestore();
         await setDoc(doc(adb, 'users', 'owner1'), { role: 'operator', approved: true });
         await setDoc(doc(adb, 'users', 'manager1'), { role: 'manager', approved: true });
-        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        // The Trainee is tied: removing on a person needs seeing them (#1350).
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com', visibleTo: ['manager1'] });
         await setDoc(doc(adb, 'contacts/contact1/interactions/int-owner'), {
           userId: 'owner1',
           userName: 'Owner',
@@ -3300,6 +3363,10 @@ describeRules('Firestore Security Rules', () => {
       it('lets a manager (Trainee) delete their own message', async () => {
         await seedThreadUsers();
         await seedMsg('del6', { from: 'manager1' });
+        // Tied, since removing on a person needs seeing them (#1350).
+        await testEnv.withSecurityRulesDisabled(async (c) => {
+          await updateDoc(doc(c.firestore(), 'contacts', 'contact1'), { visibleTo: ['manager1'] });
+        });
         const db = getFirestore({ uid: 'manager1' });
         await assertSucceeds(deleteDoc(doc(db, 'contacts/contact1/threads/del6')));
       });
