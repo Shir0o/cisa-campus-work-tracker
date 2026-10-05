@@ -1241,7 +1241,7 @@ Analyze the input text carefully and extract the following:
 3. email: string (Any email mentioned. Format appropriately; empty string if not mentioned).
 4. phone: string (Any cell or phone number mentioned. Format in clean standard style: (XXX) XXX-XXXX; empty string if not mentioned).
 5. stage: string (The progress stage. MUST be one of: 'First Contact', 'Outreach', 'Unassigned'. Default to 'First Contact' if not specified).
-6. tags: array of strings (A maximum of 4 simple keyword tags. For example: ['Freshman', 'Gospel', 'Inquisitive']. Do not include space-padded commas).
+6. tags: array of strings (A maximum of 4 simple keyword tags. For example: ['Gospel', 'Inquisitive', 'Club Rush']. Never use a school year such as Freshman or Senior as a tag. Do not include space-padded commas).
 7. spiritualBackground: string (Optional. Choose EXACTLY one of: 'Christian', 'Catholic', 'Other', 'None', or empty string if not explicit).
 8. notes: string (Strictly required. A concise, polished summary of descriptions, what was discussed, their background, and key points of interest. Include any contextual cues like "Met in biology class").`,
           responseMimeType: "application/json",
