@@ -81,11 +81,6 @@ export const TAG_SUGGESTIONS = [
   'Baptized',
   'Interested',
   'Open',
-  'Freshman',
-  'Sophomore',
-  'Junior',
-  'Senior',
-  'Graduate',
   'Club Rush',
   'BFA',
 ];

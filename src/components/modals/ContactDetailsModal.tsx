@@ -42,6 +42,7 @@ import { unhidePrayerContact } from "../../lib/prayers";
 import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
 import { normalizeTagList } from "../../lib/tags";
+import { yearFromForm, yearToForm } from "../../lib/contactYear";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
 import { useUndoSnack } from "../../hooks/useUndoSnack";
@@ -210,6 +211,9 @@ export default function ContactDetailsModal({
     phone: "",
     stage: "",
     gender: "",
+    year: "",
+    yearOther: "",
+    major: "",
     tags: [] as string[],
     notes: "",
     spiritualBackground: "",
@@ -301,6 +305,8 @@ export default function ContactDetailsModal({
         phone: contact.phone || "",
         stage: contact.stage || "",
         gender: contact.gender || "",
+        ...yearToForm(contact.year),
+        major: contact.major || "",
         tags: contact.tags || [],
         notes: contact.notes || "",
         spiritualBackground: contact.spiritualBackground || "",
@@ -816,6 +822,12 @@ export default function ContactDetailsModal({
         changes.push(`spiritualBackground: "${contact.spiritualBackground || ''}" → "${formData.spiritualBackground}"`);
       if (formData.gender !== contact.gender)
         changes.push(`gender: "${contact.gender || ''}" → "${formData.gender || ''}"`);
+      const year = yearFromForm(formData);
+      if (year !== (contact.year || ""))
+        changes.push(`year: "${contact.year || ''}" → "${year}"`);
+      const major = formData.major.trim();
+      if (major !== (contact.major || ""))
+        changes.push(`major: "${contact.major || ''}" → "${major}"`);
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
 
       const typedTags = editTagInput.split(",").map((t) => t.trim()).filter(Boolean);
@@ -835,6 +847,10 @@ export default function ContactDetailsModal({
         phone: formData.phone,
         stage: formData.stage,
         gender: formData.gender,
+        // Only a changed value is written, so saving something else never
+        // rewrites an off-list year or stamps an empty one on a record.
+        ...(year !== (contact.year || "") && { year }),
+        ...(major !== (contact.major || "") && { major }),
         tags,
         notes: formData.notes,
         spiritualBackground: formData.spiritualBackground,

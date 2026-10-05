@@ -20,6 +20,10 @@ export interface ContactEditFields {
   notes: string;
   spiritualBackground: string;
   instagram?: string;
+  /** Sign-up's Year and Major, editable since #1348. Optional so a caller that
+   * doesn't offer them leaves both alone: an absent key never reads as cleared. */
+  year?: string;
+  major?: string;
   /** How we first met — the fixed "How we met" vocabulary (#356). Optional
    * since #730 removed it from the web forms; mobile's EditContactSheet
    * (#633) still edits it, so the field stays on the interface. */
@@ -55,6 +59,12 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
     changes.push(
       `spiritualBackground: "${before.spiritualBackground || ""}" → "${after.spiritualBackground}"`,
     );
+  }
+  if (after.year !== undefined && after.year !== (before.year ?? "")) {
+    changes.push(`year: "${before.year || ""}" → "${after.year}"`);
+  }
+  if (after.major !== undefined && after.major !== (before.major ?? "")) {
+    changes.push(`major: "${before.major || ""}" → "${after.major}"`);
   }
   if (after.notes !== before.notes) changes.push("notes updated");
 

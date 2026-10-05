@@ -11,9 +11,12 @@ import {
 } from 'react-native';
 import {
   MET_VIA,
+  SIGNUP_YEARS,
   TAG_SUGGESTIONS,
   firstName as getFirstName,
   normalizeTagList,
+  signUpYearToForm,
+  signUpYearValue,
   type Contact,
   type ContactEditFields,
 } from '@cisa/core';
@@ -61,6 +64,9 @@ function EditContactSheetBody({
   const [instagram, setInstagram] = useState('');
   const [metVia, setMetVia] = useState('');
   const [location, setLocation] = useState('');
+  const [year, setYear] = useState('');
+  const [yearOther, setYearOther] = useState('');
+  const [major, setMajor] = useState('');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState('');
@@ -79,6 +85,10 @@ function EditContactSheetBody({
       setInstagram(contact.instagram || '');
       setMetVia(contact.metVia || '');
       setLocation(contact.location || '');
+      const initialYear = signUpYearToForm(contact.year);
+      setYear(initialYear.year);
+      setYearOther(initialYear.yearOther);
+      setMajor(contact.major || '');
       setNotes(contact.notes || '');
       setTags(contact.tags ? [...contact.tags] : []);
       setCustomTag('');
@@ -97,6 +107,7 @@ function EditContactSheetBody({
     const initialMetVia = contact.metVia || '';
     const initialLocation = contact.location || '';
     const initialNotes = contact.notes || '';
+    const initialYear = signUpYearToForm(contact.year);
     const initialTags = contact.tags || [];
 
     if (firstName.trim() !== initialFirst) return true;
@@ -106,6 +117,9 @@ function EditContactSheetBody({
     if (instagram.trim() !== initialInstagram) return true;
     if (metVia !== initialMetVia) return true;
     if (location.trim() !== initialLocation) return true;
+    if (year !== initialYear.year) return true;
+    if (year === 'Other' && yearOther.trim() !== initialYear.yearOther) return true;
+    if (major.trim() !== (contact.major || '')) return true;
     if (notes.trim() !== initialNotes) return true;
     if (customTag.trim().length > 0) return true;
 
@@ -114,7 +128,7 @@ function EditContactSheetBody({
     if (tags.some((tg) => !initialSet.has(tg))) return true;
 
     return false;
-  }, [contact, firstName, lastName, phone, email, instagram, metVia, location, notes, tags, customTag]);
+  }, [contact, firstName, lastName, phone, email, instagram, metVia, location, year, yearOther, major, notes, tags, customTag]);
 
   const handleRequestClose = () => {
     if (isDirty) {
@@ -170,6 +184,11 @@ function EditContactSheetBody({
         }
       }
 
+      // Only a changed Year or Major is sent, so saving something else never
+      // rewrites an off-list year or stamps an empty one on a record (#1348).
+      const yearValue = signUpYearValue({ year, yearOther });
+      const majorValue = major.trim();
+
       const edits: ContactEditFields = {
         firstName: cleanFirst,
         lastName: cleanLast,
@@ -178,6 +197,8 @@ function EditContactSheetBody({
         instagram: instagram.trim(),
         metVia: metVia.trim() || undefined,
         location: location.trim(),
+        ...(yearValue !== (contact.year || '').trim() && { year: yearValue }),
+        ...(majorValue !== (contact.major || '') && { major: majorValue }),
         notes: notes.trim(),
         spiritualBackground: contact.spiritualBackground || '',
         stage: contact.stage || '',
@@ -310,6 +331,55 @@ function EditContactSheetBody({
                   placeholder={t('mobile.contact.address_placeholder')}
                 />
               </View>
+            </View>
+
+            {/* Year & Major (#1348): the sign-up list, free text after Other. */}
+            <View style={{ gap: 8 }}>
+              <Kicker>{t('mobile.contact.year')}</Kicker>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {SIGNUP_YEARS.map((y) => {
+                  const selected = year === y;
+                  return (
+                    <Pressable
+                      key={y}
+                      onPress={() => setYear(selected ? '' : y)}
+                      accessibilityState={{ selected }}
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 13,
+                        paddingVertical: 7,
+                        borderRadius: radius.chip,
+                        backgroundColor: selected ? c.card.ink : c.card.bg2,
+                        opacity: pressed ? 0.75 : 1,
+                      })}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: font.bold,
+                          fontSize: fs(12),
+                          color: selected ? c.card.bg : c.card.ink2,
+                        }}
+                      >
+                        {y}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {year === 'Other' && (
+                <V2Input
+                  value={yearOther}
+                  onChangeText={setYearOther}
+                  placeholder={t('mobile.contact.year_other_placeholder')}
+                />
+              )}
+            </View>
+            <View style={{ gap: 8 }}>
+              <Kicker>{t('mobile.contact.major')}</Kicker>
+              <V2Input
+                value={major}
+                onChangeText={setMajor}
+                placeholder={t('mobile.contact.major_placeholder')}
+              />
             </View>
 
             {/* How We Met */}

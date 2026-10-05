@@ -102,7 +102,7 @@ An alert delivered to the notification bell in the top navigation bar, and pushe
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:
-Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, first impressions/notes, and tags). There is no group or role field: what sort of person someone is, is their kind — **Local saint**, **Our own** or **Contact** — which a Full-timer sets separately. Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet.
+Updating a person's core profile details (name, phone, email, Instagram, year, major, how we met, address/location, first impressions/notes, and tags). Year is chosen from the sign-up list, with free text after "Other". There is no group or role field: what sort of person someone is, is their kind — **Local saint**, **Our own** or **Contact** — which a Full-timer sets separately. Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet.
 _Avoid_: Admin edit form, contact manager modal
 
 **Edit a teammate**:

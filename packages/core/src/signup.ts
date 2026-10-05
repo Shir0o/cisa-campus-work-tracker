@@ -62,6 +62,19 @@ export function signUpYearValue(form: Pick<SignUpFormState, 'year' | 'yearOther'
   return form.year === 'Other' ? (form.yearOther || '').trim() : form.year;
 }
 
+/** What Edit a contact's Year control shows for a stored year (#1348). Anything
+ * not on the list — including the literal "Other" — shows as Other plus the
+ * stored text, so nothing is rewritten unless someone edits it. The inverse of
+ * `signUpYearValue`. */
+export function signUpYearToForm(
+  stored: string | null | undefined,
+): Required<Pick<SignUpFormState, 'year' | 'yearOther'>> {
+  const value = (stored ?? '').trim();
+  if (!value) return { year: '', yearOther: '' };
+  if (value !== 'Other' && SIGNUP_YEARS.includes(value)) return { year: value, yearOther: '' };
+  return { year: 'Other', yearOther: value };
+}
+
 /** Required-field checks: name, gender, year, major, email, phone (cell number) are mandatory. */
 export function validateSignUpBasics(form: SignUpFormState): string | null {
   if (!form.name.trim()) return 'Please enter your full name.';

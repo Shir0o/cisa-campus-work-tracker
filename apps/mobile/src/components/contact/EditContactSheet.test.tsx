@@ -143,6 +143,85 @@ describe('EditContactSheet', () => {
     expect((updateContact as jest.Mock).mock.calls[0][1]).not.toHaveProperty('role');
   });
 
+  describe('Year and Major (#1348)', () => {
+    const savedEdits = () => (updateContact as jest.Mock).mock.calls[0][1];
+    const save = async (getByText: (t: string) => unknown) => {
+      await fireEvent.press(getByText('Save Details') as never);
+      await waitFor(() => expect(updateContact).toHaveBeenCalled());
+    };
+
+    it('renders Year as the sign-up list and Major as text, with what is stored', async () => {
+      const { getByText, getByDisplayValue } = await renderSheet({
+        contact: { ...mockContact, year: 'Junior', major: 'Biology' },
+      });
+      for (const y of ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other']) {
+        expect(getByText(y)).toBeTruthy();
+      }
+      expect(getByDisplayValue('Biology')).toBeTruthy();
+    });
+
+    it('saves a chosen year and a typed major', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, getByPlaceholderText } = await renderSheet({
+        contact: { ...mockContact, year: 'Junior' },
+      });
+
+      await fireEvent.press(getByText('Senior'));
+      await fireEvent.changeText(getByPlaceholderText('e.g. Biology'), 'Music');
+      await save(getByText);
+
+      expect(savedEdits()).toMatchObject({ year: 'Senior', major: 'Music' });
+    });
+
+    it('Other reveals a text input and saves that text', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, queryByPlaceholderText, getByPlaceholderText } = await renderSheet();
+      expect(queryByPlaceholderText('Tell us their year')).toBeNull();
+
+      await fireEvent.press(getByText('Other'));
+      await fireEvent.changeText(getByPlaceholderText('Tell us their year'), '  Gap year ');
+      await save(getByText);
+
+      expect(savedEdits()).toMatchObject({ year: 'Gap year' });
+    });
+
+    it('shows a stored off-list year as Other plus its text and saves nothing for it', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, getByDisplayValue } = await renderSheet({
+        contact: { ...mockContact, year: 'Taking one class on Thursday F26' },
+      });
+      expect(getByDisplayValue('Taking one class on Thursday F26')).toBeTruthy();
+
+      await fireEvent.changeText(getByDisplayValue('(555) 234-5678'), '(555) 999-8888');
+      await save(getByText);
+
+      // Untouched, so it is not rewritten (and the story gets no year line).
+      expect(savedEdits()).not.toHaveProperty('year');
+      expect(savedEdits()).not.toHaveProperty('major');
+    });
+
+    it('clears both fields', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, getByDisplayValue } = await renderSheet({
+        contact: { ...mockContact, year: 'Senior', major: 'Music' },
+      });
+
+      await fireEvent.press(getByText('Senior')); // tapping the chosen year again clears it
+      await fireEvent.changeText(getByDisplayValue('Music'), '');
+      await save(getByText);
+
+      expect(savedEdits()).toMatchObject({ year: '', major: '' });
+    });
+
+    it('counts as a change when closing', async () => {
+      const spyAlert = jest.spyOn(Alert, 'alert');
+      const { getByText } = await renderSheet();
+      await fireEvent.press(getByText('Junior'));
+      await fireEvent.press(getByText('Cancel'));
+      expect(spyAlert).toHaveBeenCalled();
+    });
+  });
+
   it('closes directly when clean without prompt', async () => {
     const spyAlert = jest.spyOn(Alert, 'alert');
     const { getByText } = await renderSheet();

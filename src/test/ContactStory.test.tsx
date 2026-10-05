@@ -103,6 +103,21 @@ describe('ContactStory — changes and attendance (#1291)', () => {
     expect(screen.getByText('changed group from Student to Faculty')).toBeInTheDocument();
   });
 
+  it('labels year and major changes in words (#1348)', () => {
+    const change = (id: string, field: string, from: string, to: string) => ({
+      kind: 'change' as const,
+      id,
+      at: '2026-08-01T09:00:00.000Z',
+      byId: 'anna',
+      byName: 'Anna',
+      changes: [{ type: 'field' as const, field, from, to }],
+    });
+    renderStory([change('y', 'year', 'Junior', 'Senior'), change('m', 'major', 'Math', 'Biology')]);
+
+    expect(screen.getByText('changed year from Junior to Senior')).toBeInTheDocument();
+    expect(screen.getByText('changed major from Math to Biology')).toBeInTheDocument();
+  });
+
   it('says how many weeks running at a Rhythm, and a single gathering plainly', () => {
     renderStory([
       { kind: 'attendance', id: 'r:1', at: '2026-09-17', name: 'College Meeting', count: 6 },

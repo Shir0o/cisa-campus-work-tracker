@@ -99,6 +99,12 @@ describe('tagToneKey and tagStyle', () => {
     expect(TAG_SUGGESTIONS).toContain('BFA');
   });
 
+  it('no longer suggests the year words as tags (#1348): year lives in `year`', () => {
+    for (const year of ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate']) {
+      expect(TAG_SUGGESTIONS).not.toContain(year);
+    }
+  });
+
   it('returns the clay outreach tone for Club Rush and BFA', () => {
     expect(tagToneKey('Club Rush')).toBe('clay');
     expect(tagToneKey('BFA')).toBe('clay');
