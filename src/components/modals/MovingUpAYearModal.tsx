@@ -42,7 +42,7 @@ export default function MovingUpAYearModal({ people, now, onClose }: MovingUpAYe
   const { user } = useAuth();
   const { t } = useLanguage();
   const [choices, setChoices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(people.map((p) => [p.id, encode(proposeYear(p, now))])),
+    Object.fromEntries(people.map((p) => [p.id, encode(proposeYear(p))])),
   );
   const [saving, setSaving] = useState(false);
   const chosen = people.filter((p) => choices[p.id]);

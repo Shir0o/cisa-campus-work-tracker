@@ -34,6 +34,22 @@ describe('Years to confirm', () => {
     expect(yearsToConfirm(people, august1).map((p) => p.id)).toEqual(['a', 'b']);
   });
 
+  it("leaves out someone added since 1 August who gave a year: it is already this school year's", () => {
+    const people = [
+      { id: 'september-freshman', isStudent: true, year: 'Freshman', createdAt: '2026-09-10T17:00:00.000Z' },
+      { id: 'september-no-year', isStudent: true, createdAt: '2026-09-10T17:00:00.000Z' },
+      { id: 'last-spring', isStudent: true, year: 'Freshman', createdAt: '2026-03-10T17:00:00.000Z' },
+    ];
+    expect(yearsToConfirm(people, new Date(2026, 9, 4)).map((p) => p.id)).toEqual(['september-no-year', 'last-spring']);
+    // …but by next August that year is as stale as anyone's.
+    expect(yearsToConfirm(people, new Date(2027, 7, 1)).map((p) => p.id)).toEqual(['september-freshman', 'september-no-year', 'last-spring']);
+  });
+
+  it('reads when someone was added from a Firestore Timestamp too — sign-up stores one', () => {
+    const signedUp = { id: 's', isStudent: true, year: 'Freshman', createdAt: { seconds: Date.UTC(2026, 8, 10) / 1000, nanoseconds: 0 } };
+    expect(yearsToConfirm([signedUp], new Date(2026, 9, 4))).toEqual([]);
+  });
+
   it('leaves out someone already confirmed for this school year', () => {
     const people = [
       { id: 'done', isStudent: true, year: 'Sophomore', ...confirmedFor('2026-27') },
@@ -55,29 +71,21 @@ describe('Years to confirm', () => {
 });
 
 describe('the proposal', () => {
-  const lastYear = '2025-09-01T00:00:00.000Z';
-
   it('moves everyone up one step, and a Senior on to graduating', () => {
-    expect(proposeYear({ year: 'Freshman', createdAt: lastYear }, august1)).toEqual({ type: 'year', year: 'Sophomore' });
-    expect(proposeYear({ year: 'Sophomore', createdAt: lastYear }, august1)).toEqual({ type: 'year', year: 'Junior' });
-    expect(proposeYear({ year: 'Junior', createdAt: lastYear }, august1)).toEqual({ type: 'year', year: 'Senior' });
-    expect(proposeYear({ year: 'Senior', createdAt: lastYear }, august1)).toEqual({ type: 'graduated' });
+    expect(proposeYear({ year: 'Freshman' })).toEqual({ type: 'year', year: 'Sophomore' });
+    expect(proposeYear({ year: 'Sophomore' })).toEqual({ type: 'year', year: 'Junior' });
+    expect(proposeYear({ year: 'Junior' })).toEqual({ type: 'year', year: 'Senior' });
+    expect(proposeYear({ year: 'Senior' })).toEqual({ type: 'graduated' });
   });
 
   it('proposes nothing where there is no next step: Graduate, Other, off-list text, or no year', () => {
-    expect(proposeYear({ year: 'Graduate', createdAt: lastYear }, august1)).toBeNull();
-    expect(proposeYear({ year: 'Other', createdAt: lastYear }, august1)).toBeNull();
-    expect(proposeYear({ year: '5th year', createdAt: lastYear }, august1)).toBeNull();
-    expect(proposeYear({ year: '', createdAt: lastYear }, august1)).toBeNull();
-    expect(proposeYear({ createdAt: lastYear }, august1)).toBeNull();
+    expect(proposeYear({ year: 'Graduate' })).toBeNull();
+    expect(proposeYear({ year: 'Other' })).toBeNull();
+    expect(proposeYear({ year: '5th year' })).toBeNull();
+    expect(proposeYear({ year: '' })).toBeNull();
+    expect(proposeYear({})).toBeNull();
   });
 
-  it('keeps the year of someone added since 1 August — they told us it this school year', () => {
-    const signedUpInSeptember = { year: 'Freshman', createdAt: '2026-09-10T17:00:00.000Z' };
-    expect(proposeYear(signedUpInSeptember, new Date(2026, 9, 4))).toEqual({ type: 'year', year: 'Freshman' });
-    // …but by next August that year is as stale as anyone's.
-    expect(proposeYear(signedUpInSeptember, new Date(2027, 7, 1))).toEqual({ type: 'year', year: 'Sophomore' });
-  });
 });
 
 describe('confirming a year', () => {
