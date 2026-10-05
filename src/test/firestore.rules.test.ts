@@ -1277,6 +1277,50 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // #1350 follow-up: deleting a person asks the same question as seeing them.
+  // A Trainee may delete only someone they are tied to; a Full-timer anyone.
+  describe('Deleting a contact follows the contact\'s visibility (#1350)', () => {
+    const seed = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(fs, 'contacts/tied'), { name: 'Tied', email: 't@example.com', visibleTo: ['manager1'] });
+        await setDoc(doc(fs, 'contacts/untied'), { name: 'Untied', email: 'u@example.com', visibleTo: ['manager2'] });
+        await setDoc(doc(fs, 'contacts/unlisted'), { name: 'Unlisted', email: 'n@example.com' });
+      });
+    };
+
+    it('refuses an untied Trainee deleting a person', async () => {
+      await seed();
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/untied')));
+    });
+
+    it('refuses a Trainee deleting a person missing from every access list', async () => {
+      await seed();
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/unlisted')));
+    });
+
+    it('lets a tied Trainee delete a person', async () => {
+      await seed();
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/tied')));
+    });
+
+    it('lets a Full-timer delete a person they are not listed on', async () => {
+      await seed();
+      const fullTimer = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/untied')));
+      await assertSucceeds(deleteDoc(doc(fullTimer, 'contacts/unlisted')));
+    });
+
+    it('still refuses a Student, who sees everyone but is not a manager', async () => {
+      await seed();
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'operator1' }), 'contacts/untied')));
+    });
+  });
+
   // The founders list is written once at creation (#1049) and backfilled for
   // older contacts (#1050). It is immutable: any update that touches it is a
   // ghost field for everyone except a Full-timer's genuine-mistake correction,
