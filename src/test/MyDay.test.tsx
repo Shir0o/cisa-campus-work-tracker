@@ -6,14 +6,20 @@ import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import MyDay from '../views/MyDay';
+import AroundTheTeam from '../views/AroundTheTeam';
 import { useAuth } from '../components/AuthProvider';
 import { format } from 'date-fns';
+import { MemoryRouter } from 'react-router-dom';
 
 // ── Mocks ──────────────────────────────────────────────────────────────
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-}));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
@@ -23,6 +29,7 @@ const mockSetSelectedContact = vi.fn();
 // ContactDetailsModal (rendered closed) pulls useLayout from ../App.
 vi.mock('../App', () => ({
   useLayout: vi.fn(() => ({ setSelectedContact: mockSetSelectedContact, openLogInteraction: vi.fn() })),
+  useOptionalLayout: () => undefined,
 }));
 
 vi.mock('motion/react', () => ({
@@ -1113,6 +1120,62 @@ describe('MyDay', () => {
     expect(pointer.textContent).not.toMatch(/haven.t looked at/i);
     // No "Around the team" region on My Day — the team column is gone.
     expect(screen.queryByRole('region', { name: 'Around the team' })).not.toBeInTheDocument();
+  });
+
+  // A Full-timers-only question on a person with no contact card is a card on
+  // Around, so the pointer card must count it too — else a Full-timer sees one
+  // number on My Day and another on the page it opens (#1339). My Day reads
+  // `teamThreads` for a Full-timer, and Around, fed the same message, shows the
+  // same number.
+  it('counts a Full-timers-only message the same as Around (#1339)', async () => {
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { displayName: 'Test User', uid: 'u-test' },
+      role: 'admin',
+    });
+    const at = new Date().toISOString();
+    // A Full-timers-only question on a person with no contact doc: only the
+    // `teamThreads` read can make this a card.
+    const teamThread = {
+      id: 'm1',
+      ref: { path: 'contacts/c1/teamThreads/m1' },
+      data: () => ({
+        from: 'ft2',
+        fromName: 'Mei',
+        kind: 'question',
+        body: 'Who is following up with this person?',
+        at,
+        interactionId: null,
+        scope: 'team',
+      }),
+    };
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({ contacts: [], interactions: [], threads: [], teamThreads: [teamThread] }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('region', { name: 'On you' })).toBeInTheDocument());
+
+    const teamMsg = {
+      id: 'm1',
+      contactId: 'c1',
+      from: 'ft2',
+      fromName: 'Mei',
+      kind: 'question',
+      at,
+      interactionId: null,
+      scope: 'team',
+    };
+    const pointer = screen.getByRole('link', { name: /Around the team/ });
+    expect(pointer.textContent).toContain('1');
+    expect(pointer.textContent).toContain('to work through');
+
+    const around = render(
+      <MemoryRouter>
+        <AroundTheTeam contacts={[]} interactions={[]} threads={[teamMsg as any]} staffNameMap={{}} />
+      </MemoryRouter>,
+    );
+    await waitFor(() =>
+      expect(within(around.container).getByText('1 to work through')).toBeInTheDocument(),
+    );
   });
 
   it('shows a Trainee the On you card and no pointer card', async () => {

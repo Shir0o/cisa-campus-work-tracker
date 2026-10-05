@@ -619,20 +619,25 @@ export default function MyDay() {
       (e) => onLoadError(e, "interactions (collectionGroup)"),
     );
 
-    const unsubThreads = subscribeAllThreads((messages) => {
-      // Threads are the single per-person conversation surface. Team-scope
-      // Discussion messages are Full-timer-only, so don't surface them as a
-      // public "last connected" touch.
-      commentTouches = messages
-        .filter((m) => m.scope !== "team")
-        .map((m) => ({
-          contactId: m.contactId,
-          ms: parseMs(m.at) ?? NaN,
-          note: m.body.trim(),
-        }));
-      setThreads(messages); // raw, for the feed's shape decision (#823)
-      publish();
-    });
+    const unsubThreads = subscribeAllThreads(
+      (messages) => {
+        // Threads are the single per-person conversation surface. Team-scope
+        // Discussion messages are Full-timer-only, so don't surface them as a
+        // public "last connected" touch — but a Full-timer's pointer card does
+        // count them, so the subscription must include `teamThreads` (#1339).
+        commentTouches = messages
+          .filter((m) => m.scope !== "team")
+          .map((m) => ({
+            contactId: m.contactId,
+            ms: parseMs(m.at) ?? NaN,
+            note: m.body.trim(),
+          }));
+        setThreads(messages); // raw, for the feed's shape decision (823)
+        publish();
+      },
+      undefined,
+      { includeTeam: role === "admin" },
+    );
 
     return () => {
       unsubContacts();

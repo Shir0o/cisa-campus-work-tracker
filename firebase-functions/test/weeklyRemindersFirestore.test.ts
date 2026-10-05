@@ -153,6 +153,19 @@ describe("firestoreWeeklyDeps — the Full-timer's count (#1336)", () => {
     expect(staff.find((s) => s.uid === "ft1")?.toWorkThrough).toBe(2);
   });
 
+  it("counts a Full-timers-only message as a card, like Around and the pointer card", async () => {
+    const db = fakeDb([
+      ...users,
+      ...contacts,
+      {
+        path: "contacts/orphan/teamThreads/t1",
+        data: { from: "ft2", kind: "question", at: RECENT },
+      },
+    ]);
+    const staff = await firestoreWeeklyDeps(db as never).staff();
+    expect(staff.find((s) => s.uid === "ft1")?.toWorkThrough).toBe(4);
+  });
+
   it("sends a Full-timer nothing when everything is Reviewed", async () => {
     const db = fakeDb([
       ...users,
