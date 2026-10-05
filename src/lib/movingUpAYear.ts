@@ -11,7 +11,8 @@ import { contactKind, type ContactKind } from './contactKind';
 export interface YearConfirmable {
   isStudent?: boolean;
   year?: string;
-  createdAt?: string;
+  /** An ISO string, or a Firestore Timestamp — sign-up stores one. */
+  createdAt?: string | { seconds: number };
   yearConfirmedFor?: string;
   yearConfirmedBy?: string;
 }
@@ -41,15 +42,22 @@ export function schoolYearOf(now: Date): string {
 }
 
 /** The default for one person, or null where there is no next step (Graduate,
- *  Other or off-list text, no year) and a Full-timer must choose by hand.
- *  Someone added since 1 August gave their year this school year, so theirs
- *  stays as it is rather than being pushed ahead. */
-export function proposeYear(c: Pick<YearConfirmable, 'year' | 'createdAt'>, now: Date): YearChoice | null {
-  const year = (c.year ?? '').trim();
-  if (!year) return null;
-  const addedMs = c.createdAt ? Date.parse(c.createdAt) : NaN;
-  if (addedMs >= new Date(startYearOf(now), 7, 1).getTime()) return { type: 'year', year };
-  return NEXT[year] ?? null;
+ *  Other or off-list text, no year) and a Full-timer must choose by hand. */
+export function proposeYear(c: Pick<YearConfirmable, 'year'>): YearChoice | null {
+  return NEXT[(c.year ?? '').trim()] ?? null;
+}
+
+/** When someone was added, in ms, or NaN if unknown. */
+function addedMs(createdAt: YearConfirmable['createdAt']): number {
+  if (typeof createdAt === 'string') return Date.parse(createdAt);
+  return typeof createdAt?.seconds === 'number' ? createdAt.seconds * 1000 : NaN;
+}
+
+/** Someone added since 1 August who gave a year gave it this school year, so
+ *  there is nothing to confirm until next August. Without a year they still
+ *  need one set. */
+function gaveYearThisSchoolYear(c: YearConfirmable, now: Date): boolean {
+  return !!(c.year ?? '').trim() && addedMs(c.createdAt) >= new Date(startYearOf(now), 7, 1).getTime();
 }
 
 /** Whether someone's year was confirmed for this school year. Both the school
@@ -59,10 +67,12 @@ function isConfirmed(c: YearConfirmable, schoolYear: string): boolean {
 }
 
 /** Years to confirm: every student whose year nobody has confirmed for the
- *  current school year. */
+ *  current school year, except someone who gave theirs since 1 August. */
 export function yearsToConfirm<T extends YearConfirmable>(contacts: T[], now: Date): T[] {
   const schoolYear = schoolYearOf(now);
-  return contacts.filter((c) => c.isStudent === true && !isConfirmed(c, schoolYear));
+  return contacts.filter(
+    (c) => c.isStudent === true && !isConfirmed(c, schoolYear) && !gaveYearThisSchoolYear(c, now),
+  );
 }
 
 interface Confirming {
