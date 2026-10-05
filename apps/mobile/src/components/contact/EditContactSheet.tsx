@@ -184,10 +184,12 @@ function EditContactSheetBody({
         }
       }
 
-      // Only a changed Year or Major is sent, so saving something else never
-      // rewrites an off-list year or stamps an empty one on a record (#1348).
+      // Only a changed Year, Major, How we met or Address is sent, so saving
+      // something else never rewrites an off-list year or stamps an empty
+      // field on a record (#1348).
       const yearValue = signUpYearValue({ year, yearOther });
       const majorValue = major.trim();
+      const locationValue = location.trim();
 
       const edits: ContactEditFields = {
         firstName: cleanFirst,
@@ -195,8 +197,8 @@ function EditContactSheetBody({
         phone: phone.trim(),
         email: email.trim(),
         instagram: instagram.trim(),
-        metVia: metVia.trim() || undefined,
-        location: location.trim(),
+        ...(metVia !== (contact.metVia || '') && { metVia }),
+        ...(locationValue !== (contact.location || '') && { location: locationValue }),
         ...(yearValue !== (contact.year || '').trim() && { year: yearValue }),
         ...(majorValue !== (contact.major || '') && { major: majorValue }),
         notes: notes.trim(),

@@ -114,9 +114,7 @@ describe('EditContactSheet', () => {
           phone: '(555) 999-8888',
           email: 'jordan@college.edu',
           instagram: '@jordan_lee',
-          location: 'Dorm A',
           notes: 'Very friendly, likes music',
-          metVia: 'Outreach',
         }),
         { uid: 'user_trainee', name: 'Trainee Sam' },
       );
@@ -219,6 +217,43 @@ describe('EditContactSheet', () => {
       await fireEvent.press(getByText('Junior'));
       await fireEvent.press(getByText('Cancel'));
       expect(spyAlert).toHaveBeenCalled();
+    });
+  });
+
+  describe('How we met and Address', () => {
+    const savedEdits = () => (updateContact as jest.Mock).mock.calls[0][1];
+    const save = async (getByText: (t: string) => unknown) => {
+      await fireEvent.press(getByText('Save Details') as never);
+      await waitFor(() => expect(updateContact).toHaveBeenCalled());
+    };
+
+    it('saves a changed how-we-met and address', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, getByDisplayValue } = await renderSheet();
+      await fireEvent.press(getByText('A friend brought them'));
+      await fireEvent.changeText(getByDisplayValue('Dorm A'), '  Dorm B ');
+      await save(getByText);
+      expect(savedEdits()).toMatchObject({ metVia: 'A friend brought them', location: 'Dorm B' });
+    });
+
+    it('saves a cleared how-we-met and address', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, getByDisplayValue } = await renderSheet();
+      await fireEvent.press(getByText('Outreach')); // tapping the chosen chip again clears it
+      await fireEvent.changeText(getByDisplayValue('Dorm A'), '');
+      await save(getByText);
+      expect(savedEdits()).toMatchObject({ metVia: '', location: '' });
+    });
+
+    it('sends neither when untouched', async () => {
+      (updateContact as jest.Mock).mockResolvedValueOnce(undefined);
+      const { getByText, getByDisplayValue } = await renderSheet({
+        contact: { ...mockContact, metVia: undefined, location: '' },
+      });
+      await fireEvent.changeText(getByDisplayValue('(555) 234-5678'), '(555) 999-8888');
+      await save(getByText);
+      expect(savedEdits()).not.toHaveProperty('metVia');
+      expect(savedEdits()).not.toHaveProperty('location');
     });
   });
 
