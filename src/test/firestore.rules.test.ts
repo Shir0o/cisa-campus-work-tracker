@@ -4265,4 +4265,82 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // Moving up a year (#1351). Confirming a year carries a marker of who
+  // confirmed it and for which school year; graduating is a kind decision. Both
+  // are a Full-timer's alone.
+  describe('Moving up a year', () => {
+    const seedStudent = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'tr1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'contacts', 'y1'), {
+          name: 'Year Test', email: 'year@example.com',
+          inChurchLife: true, isStudent: true, year: 'Senior',
+          kindSetBy: 'ft0', kindSetAt: '2025-09-01T00:00:00.000Z',
+          yearConfirmedFor: '2025-26', yearConfirmedBy: 'ft0', yearConfirmedAt: '2025-08-02T00:00:00.000Z',
+          createdBy: 'tr1', coCreators: [], carers: [], visibleTo: ['ft1', 'tr1'],
+        });
+      });
+    };
+    const updated = (uid: string) => ({ updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: uid });
+    const confirmed = (uid: string) => ({
+      yearConfirmedFor: '2026-27', yearConfirmedBy: uid, yearConfirmedAt: '2026-08-03T00:00:00.000Z', ...updated(uid),
+    });
+    const graduated = (uid: string) => ({
+      isStudent: false, year: '', kindSetBy: uid, kindSetAt: '2026-08-03T00:00:00.000Z', ...updated(uid),
+    });
+
+    it('lets a Full-timer confirm a new year', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'y1'), { year: 'Graduate', ...confirmed('ft1') }));
+    });
+
+    it('lets a Full-timer confirm the same year', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'y1'), confirmed('ft1')));
+    });
+
+    it('lets a Full-timer graduate someone in one write: no longer a student, stamped, no year', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'y1'), graduated('ft1')));
+    });
+
+    it('refuses a Trainee confirming a year', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'y1'), { year: 'Graduate', ...confirmed('tr1') }));
+    });
+
+    it('refuses a Trainee graduating someone', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'y1'), graduated('tr1')));
+    });
+
+    it('refuses a confirmation attributed to somebody other than the caller', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'y1'), { ...confirmed('ft1'), yearConfirmedBy: 'tr1' }));
+    });
+
+    it('refuses the marker mixed into an ordinary profile edit', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'ft1', email: 'ft1@test.com' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'y1'), { notes: 'changed', ...confirmed('ft1') }));
+    });
+
+    it('refuses a Trainee creating someone already confirmed', async () => {
+      await seedStudent();
+      const db = getFirestore({ uid: 'tr1', email: 'tr1@test.com' });
+      await assertFails(setDoc(doc(db, 'contacts', 'y2'), {
+        name: 'Pre-confirmed', email: 'pc@example.com', isStudent: true, year: 'Junior',
+        yearConfirmedFor: '2026-27', yearConfirmedBy: 'tr1', yearConfirmedAt: '2026-08-03T00:00:00.000Z',
+      }));
+    });
+  });
+
 });

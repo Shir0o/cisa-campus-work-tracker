@@ -1524,6 +1524,7 @@
       "story_change_kind": "cambió el tipo de {from} a {to}",
       "story_change_field": "cambió {field} de {from} a {to}",
       "story_change_notes": "actualizó las notas",
+      "story_change_graduated": "marcó que se graduó o dejó los estudios",
       "story_change_tag_added": "añadió la etiqueta {tag}",
       "story_change_tag_removed": "quitó la etiqueta {tag}",
       "story_change_shared": "compartió con {name}",
@@ -2086,6 +2087,17 @@
     "attd_step_1": "Abre Configuración en la app Attendance Tracker (~/attd).",
     "attd_step_2": "Ve a CISA Campus Tracker en Configuración adicional.",
     "attd_step_3": "Pega esta URL de recepción y el Token de sincronización."
+  },
+  "movingUpAYear": {
+    "title": "Pasar de año",
+    "years_to_confirm": "Años por confirmar",
+    "subtitle": "{n} por confirmar para {year}. Cada uno empieza en el año siguiente cuando lo hay; cambia a quien no pase de año.",
+    "no_year": "Sin año",
+    "choose": "Elige…",
+    "same_year": "{year} (mismo año)",
+    "graduated": "Se graduó / dejó los estudios",
+    "choice_for": "Año de {name}",
+    "confirm": "Confirmar {n}"
   },
   "contactKind": {
     "local_saint": "Santo local",

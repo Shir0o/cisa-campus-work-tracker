@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
 import Directory from '../views/Directory';
 import { useAuth } from '../components/AuthProvider';
@@ -1646,5 +1646,95 @@ describe('Directory — bulk-setting the kind', () => {
     const logged = vi.mocked(logActivity).mock.calls.at(-1)?.[0] as any;
     expect(logged.description).toContain('Local saint');
     expect(logged.description).not.toContain('local-saint');
+  });
+});
+
+// #1351: Moving up a year. Next to Not sorted yet, a Full-timer confirms every
+// student's year for the new school year — all at once, with exceptions.
+describe('Directory — Moving up a year', () => {
+  const person = (id: string, name: string, extra: Record<string, unknown>) => ({
+    id,
+    data: () => ({ name, email: `${id}@example.com`, phone: '', stage: 'Lead', tags: [], createdAt: '2025-09-01T00:00:00.000Z', ...extra }),
+  });
+  const students = [
+    person('m1', 'Fresh Face', { isStudent: true, inChurchLife: false, year: 'Freshman' }),
+    person('m2', 'Gap Year', { isStudent: true, inChurchLife: false, year: 'Junior' }),
+    person('m3', 'Senior Ours', { isStudent: true, inChurchLife: true, year: 'Senior', kindSetBy: 'u0', kindSetAt: '2025-09-01T00:00:00.000Z' }),
+    person('m4', 'Grad Student', { isStudent: true, inChurchLife: false, year: 'Graduate' }),
+    person('m5', 'Done Already', { isStudent: true, year: 'Junior', yearConfirmedFor: '2026-27', yearConfirmedBy: 'u0', yearConfirmedAt: '2026-08-02T00:00:00.000Z' }),
+    person('m6', 'Local Saint', { isStudent: false, inChurchLife: true }),
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 15, 12, 0));
+    __resetDirectoryFilters();
+    (useLayout as any).mockReturnValue({ openNewContact: vi.fn(), setSelectedContact: vi.fn() });
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: students, size: students.length });
+      else if (ref?.path === 'stages') callback({ docs: mockStages, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const asFullTimer = () => vi.mocked(useAuth).mockReturnValue({
+    user: { uid: 'ft1', email: 'ft@example.com', displayName: 'Full Timer' },
+    effectiveUserId: 'ft1', role: 'admin', isAdmin: true,
+  } as any);
+
+  const openFilters = async () => {
+    render(<Directory />);
+    fireEvent.click(await screen.findByText('Filters'));
+  };
+
+  it('moves everyone up at once, keeps the exceptions, and graduates a Senior into a Local saint', async () => {
+    asFullTimer();
+    await openFilters();
+
+    // Four students are unconfirmed for 2026–27; the confirmed one and the
+    // non-student are not counted.
+    fireEvent.click(screen.getByRole('button', { name: /Years to confirm\s*4/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Moving up a year' });
+    expect(within(dialog).queryByText('Done Already')).toBeNull();
+    expect(within(dialog).queryByText('Local Saint')).toBeNull();
+
+    const choice = (id: string) => within(dialog).getByTestId(`year-choice-${id}`) as HTMLSelectElement;
+    expect(choice('m1').value).toBe('year:Sophomore');
+    expect(choice('m3').value).toBe('graduated');
+    // A Graduate has no next step, so nothing is chosen for them.
+    expect(choice('m4').value).toBe('');
+
+    // The exception: a gap year keeps them where they are.
+    fireEvent.change(choice('m2'), { target: { value: 'year:Junior' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm 3' }));
+
+    await waitFor(() => expect(mockCommit).toHaveBeenCalled());
+    const writes = Object.fromEntries(mockUpdate.mock.calls.map(([ref, data]) => [ref.id, data]));
+    expect(Object.keys(writes).sort()).toEqual(['m1', 'm2', 'm3']);
+    expect(writes.m1).toMatchObject({ year: 'Sophomore', yearConfirmedFor: '2026-27', yearConfirmedBy: 'ft1' });
+    expect(writes.m2).toMatchObject({ yearConfirmedFor: '2026-27', yearConfirmedBy: 'ft1' });
+    expect(writes.m2).not.toHaveProperty('year');
+    expect(writes.m3).toMatchObject({ isStudent: false, year: '', kindSetBy: 'ft1' });
+    expect(writes.m3.kindSetAt).toEqual(expect.any(String));
+    expect(writes.m3).not.toHaveProperty('inChurchLife');
+
+    const logged = vi.mocked(logActivity).mock.calls.map(([a]) => a as any);
+    expect(logged.find((a) => a.targetId === 'm1')?.description).toBe('year: "Freshman" → "Sophomore"');
+    expect(logged.find((a) => a.targetId === 'm3')?.description).toBe('graduated or left school\nkind: "Our own" → "Local saint"');
+    expect(logged.find((a) => a.targetId === 'm2')).toBeUndefined();
+  });
+
+  it('is not there for a Trainee', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'tr1', displayName: 'Trainee' }, effectiveUserId: 'tr1', role: 'manager', isAdmin: false,
+    } as any);
+    await openFilters();
+    expect(screen.getByTestId('filter-unsorted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Years to confirm/ })).toBeNull();
   });
 });

@@ -1524,6 +1524,7 @@
       "story_change_kind": "changed kind from {from} to {to}",
       "story_change_field": "changed {field} from {from} to {to}",
       "story_change_notes": "updated notes",
+      "story_change_graduated": "marked them graduated or left school",
       "story_change_tag_added": "added tag {tag}",
       "story_change_tag_removed": "removed tag {tag}",
       "story_change_shared": "shared with {name}",
@@ -2086,6 +2087,17 @@
     "attd_step_1": "Open Settings in the Attendance Tracker (~/attd) app.",
     "attd_step_2": "Navigate to CISA Campus Tracker under Additional Settings.",
     "attd_step_3": "Paste this Intake URL and Sync Token, then sync any session."
+  },
+  "movingUpAYear": {
+    "title": "Moving up a year",
+    "years_to_confirm": "Years to confirm",
+    "subtitle": "{n} to confirm for {year}. Each starts on the next year where there is one; change anyone who isn't moving up.",
+    "no_year": "No year",
+    "choose": "Choose…",
+    "same_year": "{year} (same year)",
+    "graduated": "Graduated / left school",
+    "choice_for": "Year for {name}",
+    "confirm": "Confirm {n}"
   },
   "contactKind": {
     "local_saint": "Local saint",

@@ -86,6 +86,15 @@ describe('ContactStory — changes and attendance (#1291)', () => {
     expect(screen.getByRole('button', { name: 'show less' })).toBeInTheDocument();
   });
 
+  it('says when someone graduated or left school (#1351)', () => {
+    renderStory([
+      { kind: 'change', id: 'g1', at: '2026-08-03T09:00:00.000Z', byId: 'anna', byName: 'Anna', changes: [{ type: 'graduated' }] },
+      { kind: 'added', id: 'added', at: null, byName: 'Sarah Lee' },
+    ]);
+
+    expect(screen.getByText('marked them graduated or left school')).toBeInTheDocument();
+  });
+
   // #1345: nothing edits the group any more, but entries already recorded
   // keep their label in the story.
   it('still renders an old group change entry (#1345)', () => {
