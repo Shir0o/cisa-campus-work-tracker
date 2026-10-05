@@ -451,7 +451,11 @@ service cloud.firestore {
       allow update: if isValidId(contactId) && isApprovedOperator() &&
                       (request.auth.uid in contactVisibleTo(existing()) || seesAllContacts()) &&
                       isValidContact(incoming()) && canUpdateContact();
-      allow delete: if isValidId(contactId) && isManager();
+      // #1350: deleting a person asks the same question — a Trainee may delete
+      // only someone they are tied to; a Full-timer anyone. Students and
+      // Community still cannot delete (isManager()).
+      allow delete: if isValidId(contactId) && isManager() &&
+                      (request.auth.uid in contactVisibleTo(existing()) || seesAllContacts());
 
       // Interactions and comments are part of the contact's detail page, so
       // they are readable exactly when the contact is -- the canReadContact
