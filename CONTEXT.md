@@ -327,6 +327,10 @@ _Avoid_: Doc task, linked task
 The administrative action on the directory (`/directory`) that finds candidate duplicate people (by matching email, phone, or name) and consolidates them into a single surviving record with a dry-run preview before committing. Combines relationship ties (`founders`, `carers`, `coCreators`, `visibleTo`, and `tags`) as union sets, preserves survivor profile details while backfilling missing values, migrates all subcollections and external references, and deletes the absorbed duplicate with a permanent Activity Log record (ADR 0026). Restricted strictly to Full-timers.
 _Avoid_: Merge contacts, dedupe, deduplicate contacts
 
+**Combine tags**:
+The batch consolidation action on the directory (`/directory`) that detects fragmented, misspelled, or context-suffixed tag variations (e.g. `bfa table`, `bfa-table` into `BFA`, `Fall2025` into `Fall 2025`) across all contacts. Employs hybrid clustering against canonical suggestion anchors (`TAG_SUGGESTIONS`, seasons) and directory frequency, presenting a dry-run preview grouped by tag transformation rule with individual toggles before applying batched updates to Firestore (ADR 0036).
+_Avoid_: Merge tags, dedupe tags, auto-fix tags
+
 **Content language**:
 The language a piece of user-authored content — a prayer burden, an interaction summary, a contact note, a chat message, a coordination doc — was written in. Content is stored verbatim in the author's language with no language tag. The app's translation only ever moves English-authored content toward Spanish, and content already in Spanish is shown as-is rather than translated.
 _Avoid_: Source language, input language, locale

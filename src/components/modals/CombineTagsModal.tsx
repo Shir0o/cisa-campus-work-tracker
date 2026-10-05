@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { doc, writeBatch } from 'firebase/firestore';
 import { X, Check, Combine } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
-import { planTagCombining } from '../../lib/tags';
+import { clusterTags, planTagCombiningWithRules } from '../../lib/tags';
+import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import type { Contact } from '../../types';
@@ -16,9 +17,9 @@ interface CombineTagsModalProps {
 /**
  * Dry-run tag combining for the directory.
  *
- * The modal computes a preview of every contact whose tags would change
- * (duplicate season variants, club-rush spellings, etc.) and only writes to
- * Firestore after the user confirms the preview.
+ * Discovers tag variation clusters across the contacts directory, groups them
+ * into reviewable rules with individual checkboxes, and builds a preview of
+ * affected contacts. Writes to Firestore only after the user confirms.
  */
 export default function CombineTagsModal({
   contacts,
@@ -29,9 +30,41 @@ export default function CombineTagsModal({
   const { t } = useLanguage();
   const [applying, setApplying] = useState(false);
 
-  const changes = useMemo(
-    () => planTagCombining(contacts),
+  const rules = useMemo(
+    () => clusterTags(contacts),
     [contacts],
+  );
+
+  const [disabledRuleIds, setDisabledRuleIds] = useState<Set<string>>(() => new Set());
+
+  const enabledRuleIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rules) {
+      if (!disabledRuleIds.has(r.id)) {
+        set.add(r.id);
+      }
+    }
+    return set;
+  }, [rules, disabledRuleIds]);
+
+  const toggleRule = (ruleId: string) => {
+    setDisabledRuleIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(ruleId)) {
+        next.delete(ruleId);
+      } else {
+        next.add(ruleId);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => setDisabledRuleIds(new Set());
+  const deselectAll = () => setDisabledRuleIds(new Set(rules.map((r) => r.id)));
+
+  const changes = useMemo(
+    () => planTagCombiningWithRules(contacts, rules, enabledRuleIds),
+    [contacts, rules, enabledRuleIds],
   );
 
   const handleApply = async () => {
@@ -96,8 +129,8 @@ export default function CombineTagsModal({
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto">
-          {changes.length === 0 ? (
+        <div className="p-6 overflow-y-auto space-y-6">
+          {rules.length === 0 ? (
             <div className="py-10 text-center">
               <Check className="w-10 h-10 text-primary mx-auto mb-3" />
               <p className="font-medium text-on-surface">{t('modals.no_duplicate_tags')}</p>
@@ -107,32 +140,112 @@ export default function CombineTagsModal({
             </div>
           ) : (
             <>
-              <p className="text-sm text-on-surface-variant mb-4">
-                {t('modals.contacts_would_change').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact_singular') : t('modals.contacts'))}
-              </p>
+              {/* Rules section */}
               <div className="space-y-3">
-                {changes.slice(0, 100).map((row) => (
-                  <div
-                    key={row.contactId}
-                    className="rounded-2xl border border-outline-variant/60 bg-surface p-4"
-                  >
-                    <p className="font-medium text-on-surface">{row.name}</p>
-                    <p className="text-sm text-on-surface-variant mt-1">
-                      <span className="text-on-surface-variant/70">{t('modals.before')}</span>{' '}
-                      {row.from.length > 0 ? row.from.join(', ') : '—'}
-                    </p>
-                    <p className="text-sm text-on-surface-variant mt-0.5">
-                      <span className="text-on-surface-variant/70">{t('modals.after')}</span>{' '}
-                      {row.to.length > 0 ? row.to.join(', ') : '—'}
-                    </p>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-on-surface">
+                    {t('modals.rules_to_combine', 'Proposed tag rules ({count})').replace('{count}', String(rules.length))}
+                  </h3>
+                  <div className="flex gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={selectAll}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {t('modals.select_all_rules', 'Select all')}
+                    </button>
+                    <span className="text-outline-variant">·</span>
+                    <button
+                      type="button"
+                      onClick={deselectAll}
+                      className="text-on-surface-variant hover:underline font-medium"
+                    >
+                      {t('modals.deselect_all_rules', 'Deselect all')}
+                    </button>
                   </div>
-                ))}
+                </div>
+
+                <div className="grid gap-2">
+                  {rules.map((rule) => {
+                    const isChecked = enabledRuleIds.has(rule.id);
+                    return (
+                      <label
+                        key={rule.id}
+                        className={cn(
+                          'flex items-start gap-3 p-3 rounded-2xl border transition-colors cursor-pointer select-none',
+                          isChecked
+                            ? 'bg-surface border-primary/40 shadow-sm'
+                            : 'bg-surface-variant/40 border-outline-variant/40 opacity-70',
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleRule(rule.id)}
+                          className="mt-1 h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/30"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs text-on-surface-variant line-through opacity-80">
+                              {rule.from.join(', ')}
+                            </span>
+                            <span className="text-xs text-primary font-bold">→</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">
+                              {rule.to}
+                            </span>
+                          </div>
+                          <p className="text-xs text-on-surface-variant/80 mt-1">
+                            {t('modals.rule_contacts_count', '{n} {count}')
+                              .replace('{n}', String(rule.contactCount))
+                              .replace(
+                                '{count}',
+                                rule.contactCount === 1 ? t('modals.contact_singular') : t('modals.contacts'),
+                              )}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-              {changes.length > 100 && (
-                <p className="text-sm text-on-surface-variant mt-4">
-                  {t('modals.and_more').replace('{n}', String(changes.length - 100))}
-                </p>
-              )}
+
+              {/* Contacts preview */}
+              <div>
+                <h3 className="text-sm font-semibold text-on-surface mb-3">
+                  {t('modals.contacts_would_change')
+                    .replace('{n}', String(changes.length))
+                    .replace('{count}', changes.length === 1 ? t('modals.contact_singular') : t('modals.contacts'))}
+                </h3>
+                {changes.length === 0 ? (
+                  <p className="text-xs text-on-surface-variant italic">
+                    {t('modals.nothing_to_combine')}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {changes.slice(0, 100).map((row) => (
+                      <div
+                        key={row.contactId}
+                        className="rounded-2xl border border-outline-variant/60 bg-surface p-4"
+                      >
+                        <p className="font-medium text-on-surface">{row.name}</p>
+                        <p className="text-sm text-on-surface-variant mt-1">
+                          <span className="text-on-surface-variant/70">{t('modals.before')}</span>{' '}
+                          {row.from.length > 0 ? row.from.join(', ') : '—'}
+                        </p>
+                        <p className="text-sm text-on-surface-variant mt-0.5">
+                          <span className="text-on-surface-variant/70">{t('modals.after')}</span>{' '}
+                          {row.to.length > 0 ? row.to.join(', ') : '—'}
+                        </p>
+                      </div>
+                    ))}
+                    {changes.length > 100 && (
+                      <p className="text-sm text-on-surface-variant mt-4">
+                        {t('modals.and_more').replace('{n}', String(changes.length - 100))}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
