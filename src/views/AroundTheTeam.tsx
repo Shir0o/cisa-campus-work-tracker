@@ -22,6 +22,7 @@ import {
 import { TEAMS, teamLabelKey, rosterOnTeam } from "../lib/teams";
 import { useLanguage } from "../components/LanguageProvider";
 import { InboxState } from "../lib/inboxState";
+import { subscribeUserPreferences } from "../lib/userPreferences";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
 import { closeFollowUpAsk, reopenFollowUpAsk, subscribeAllThreads, type ThreadMessageWithContact } from "../lib/threads";
@@ -157,6 +158,20 @@ export default function AroundTheTeam({
   const [inboxTick, setInboxTick] = useState(0);
   useEffect(() => InboxState.subscribe(() => setInboxTick((n) => n + 1)), []);
 
+  // The reader's kept set (#1339): My Day's pointer card and the weekly
+  // reminder read `userPreferences/{uid}.personalContactIds`; on its own route
+  // this page has no prop, so it reads the same doc. A kept person is carried,
+  // so they leave Around for On you on every surface.
+  const [keptIds, setKeptIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    return subscribeUserPreferences(uid, (prefs) =>
+      setKeptIds(prefs.personalContactIds ? new Set(prefs.personalContactIds) : null),
+    );
+  }, [uid]);
+
+  const personal = personalContactIds !== undefined ? personalContactIds : keptIds;
+
   useEffect(() => {
     if (propsContacts) return;
     try {
@@ -283,9 +298,9 @@ export default function AroundTheTeam({
         contacts,
         interactions,
         threads,
-        personalContactIds,
+        personalContactIds: personal,
       }),
-    [role, uid, contacts, interactions, threads, personalContactIds],
+    [role, uid, contacts, interactions, threads, personal],
   );
 
   const allStacks = useMemo(() => {
@@ -296,8 +311,8 @@ export default function AroundTheTeam({
   // Partition ONCE on the unfiltered feed, then narrow. The partition is
   // untouched by this change (#943).
   const allSides = useMemo(
-    () => partitionAttentionStacks(allStacks, contacts, uid, role, personalContactIds),
-    [allStacks, contacts, uid, role, personalContactIds],
+    () => partitionAttentionStacks(allStacks, contacts, uid, role, personal),
+    [allStacks, contacts, uid, role, personal],
   );
 
   const isCompleted = (stack: AttentionStack) => InboxState.isCompleted(uid, stack.id);

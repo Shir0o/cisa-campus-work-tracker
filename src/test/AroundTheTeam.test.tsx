@@ -11,6 +11,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AroundTheTeam from '../views/AroundTheTeam';
+import PointerCard from '../components/landing/PointerCard';
 import { __resetUserEntityStateCache } from '../lib/userEntityState';
 import { InboxState, __resetInboxState } from '../lib/inboxState';
 import { applyTeams } from '../lib/teams';
@@ -35,6 +36,17 @@ vi.mock('../lib/threads', async (importOriginal) => {
 
 vi.mock('../App', () => ({
   useOptionalLayout: () => h.layout,
+}));
+
+// The reader's kept set — the same userPreferences doc My Day and the weekly
+// reminder read, so Around and the pointer card leave the same people out
+// (#1339).
+const prefsMock = vi.hoisted(() => ({ data: {} as { personalContactIds?: string[] } }));
+vi.mock('../lib/userPreferences', () => ({
+  subscribeUserPreferences: (_uid: string, cb: (p: { personalContactIds?: string[] }) => void) => {
+    if (Object.keys(prefsMock.data).length) cb(prefsMock.data);
+    return vi.fn();
+  },
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -158,6 +170,7 @@ describe('Around the team page (#943)', () => {
     localStorage.clear();
     __resetUserEntityStateCache();
     __resetInboxState();
+    prefsMock.data = {};
     applyTeams([
       { uid: 'mei', team: 'yp', displayName: 'Mei Tanaka' },
       { uid: 'grace', team: 'campus', displayName: 'Grace Lim' },
@@ -238,6 +251,34 @@ describe('Around the team page (#943)', () => {
     expect(screen.getByText('2 to work through')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'YP team' }));
     expect(screen.getByText('1 to work through')).toBeInTheDocument();
+  });
+
+  // A person you keep on My Day is carried, so they leave Around for On you —
+  // and the pointer card has always read that kept set (#1339). Around reads
+  // the same userPreferences doc, so the two show one number.
+  it('leaves the people you keep out of Around, the same as the pointer card (#1339)', () => {
+    prefsMock.data = { personalContactIds: ['kept'] };
+    const kept = contact({ id: 'kept', name: 'Kept Person', createdBy: 'grace' });
+    const around = render(
+      <MemoryRouter>
+        <AroundTheTeam
+          contacts={[contacts[0], kept]}
+          interactions={[]}
+          threads={[]}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+    const pointer = render(
+      <MemoryRouter>
+        <PointerCard contacts={[contacts[0], kept]} personalContactIds={new Set(['kept'])} />
+      </MemoryRouter>,
+    );
+
+    expect(within(around.container).getByText('1 to work through')).toBeInTheDocument();
+    const pointerLink = within(pointer.container).getByRole('link', { name: /Around the team/ });
+    expect(pointerLink.textContent).toContain('1');
+    expect(pointerLink.textContent).toContain('to work through');
   });
 
   it('marks a stack Talked when it holds a logged conversation', () => {
@@ -554,6 +595,7 @@ describe('Around the team — the signals that were never wired (#965, #966)', (
     localStorage.clear();
     __resetUserEntityStateCache();
     __resetInboxState();
+    prefsMock.data = {};
     h.addThreadMessage.mockClear();
     h.layout = undefined;
     applyTeams([
@@ -659,6 +701,7 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     localStorage.clear();
     __resetUserEntityStateCache();
     __resetInboxState();
+    prefsMock.data = {};
     h.addThreadMessage.mockClear();
     h.layout = undefined;
     applyTeams([
