@@ -1,0 +1,19 @@
+{
+  "pages": [
+    {
+      "slug": "getting-started",
+      "order": 1,
+      "category": "Basics",
+      "content": {
+        "en": {
+          "title": "Getting Started",
+          "body": "# Getting Started\n\nCISA Campus Work Tracker keeps a campus ministry's people, follow-ups, and gatherings in one place.\n\n## What the app is for\n\n- **People** records every contact you meet on campus.\n- **Interactions** capture how each follow-up went.\n- **Gatherings** and **Prayer** keep the team aligned week to week.\n\n## Your role\n\nWhat you can see and do follows your role: Full-timer, Trainee, Student, or Community. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.\n\n> This is a seed page. The full Help corpus is authored separately."
+        },
+        "es": {
+          "title": "Getting Started",
+          "body": "# Getting Started\n\nCISA Campus Work Tracker keeps a campus ministry's people, follow-ups, and gatherings in one place.\n\n## What the app is for\n\n- **People** records every contact you meet on campus.\n- **Interactions** capture how each follow-up went.\n- **Gatherings** and **Prayer** keep the team aligned week to week.\n\n## Your role\n\nWhat you can see and do follows your role: Full-timer, Trainee, Student, or Community. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.\n\n> This is a seed page. The full Help corpus is authored separately."
+        }
+      }
+    }
+  ]
+}
