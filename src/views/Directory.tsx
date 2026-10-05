@@ -170,7 +170,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function Directory() {
   const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
-  const { user, isAdmin, role, effectiveUserId } = useAuth();
+  const { user, isAdmin, isManager, role, effectiveUserId } = useAuth();
 
   // Restore any filter state retained across a contact-detail navigation. The
   // detail route swaps the view for the directory (unmounting it), so filters
@@ -1316,13 +1316,15 @@ export default function Directory() {
               >
                 <Copy className="w-4 h-4" /> {t('directory.copy_emails')}
               </button>
-              <button
-                onClick={handleBulkDelete}
-                className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-error hover:bg-error/10 transition-colors min-h-[44px]"
-                title={t('directory.remove_selected')}
-              >
-                <Trash2 className="w-4 h-4" /> {t('directory.remove')}
-              </button>
+              {isManager && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-error hover:bg-error/10 transition-colors min-h-[44px]"
+                  title={t('directory.remove_selected')}
+                >
+                  <Trash2 className="w-4 h-4" /> {t('directory.remove')}
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
