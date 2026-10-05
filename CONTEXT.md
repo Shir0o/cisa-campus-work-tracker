@@ -346,11 +346,11 @@ Meeting regularly with the church, not merely believing. It is the axis that tel
 _Avoid_: Saved, believer, saint, churched, active, engaged, committed, member
 
 **Local saint**:
-Someone in **the church life** who is not a student — the people whose **Home** we go round to. They sit outside The Journey and are never counted toward **The Day's Goal**: the board and the Goal measure outreach, and a local saint is not being reached.
+Someone in **the church life** who is not a student — the people whose **Home** we go round to, including anyone who was **Our own** and has since graduated or left school. They sit outside The Journey and are never counted toward **The Day's Goal**: the board and the Goal measure outreach, and a local saint is not being reached.
 _Avoid_: Saint, member, church family, brother, sister, non-student
 
 **Our own**:
-A student of ours who is in **the church life** — as much a saint as a **Local saint**, and distinguished from one only by being a student. They stay on The Journey, where the church-meeting step lives, but are never counted as a new connection toward **The Day's Goal**.
+A student of ours who is in **the church life** — as much a saint as a **Local saint**, and distinguished from one only by being a student. They stay on The Journey, where the church-meeting step lives, but are never counted as a new connection toward **The Day's Goal**. Being a student means studying now, not having been one of our campus people: when they graduate or leave school they become a **Local saint** and leave The Journey, however much the campus team still shepherds them.
 _Avoid_: Saint, student, our student, disciple, member
 
 **Contact (the kind of person)**:
