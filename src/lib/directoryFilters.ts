@@ -17,6 +17,7 @@ export interface DirectoryFilterState {
   searchQuery: string;
   filterStage: string;
   filterSpiritualBackground: string;
+  filterInterest: string;
   kindSegment: KindSegment;
   filterUnsorted: boolean;
   filterNotReached: boolean;
@@ -29,6 +30,7 @@ export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   searchQuery: '',
   filterStage: 'All',
   filterSpiritualBackground: 'All',
+  filterInterest: 'All',
   kindSegment: 'contact',
   filterUnsorted: false,
   filterNotReached: false,

@@ -11,6 +11,7 @@ const state = {
   searchQuery: 'Alice',
   filterStage: 'Regular',
   filterSpiritualBackground: 'Christian',
+  filterInterest: 'Bible study',
   filterAddedWhen: 'month',
   customRange: { from: '2026-01-01', to: '2026-02-01' },
   selectedTags: ['Freshman', 'Senior'],
@@ -23,6 +24,7 @@ describe("directoryFilters — retaining People directory filters across contact
 
   it("returns the defaults when nothing has been retained yet", () => {
     expect(readDirectoryFilters('u1')).toEqual(DEFAULT_DIRECTORY_FILTERS);
+    expect(DEFAULT_DIRECTORY_FILTERS.filterInterest).toBe('All');
   });
 
   it("restores exactly what was retained (open-then-close contact detail cycle)", () => {

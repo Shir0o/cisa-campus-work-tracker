@@ -211,6 +211,7 @@ export default function GlobalSearch() {
       const m = matchContact(c, needle, [
         c.notes,
         c.spiritualBackground,
+        (c.interests || []).join(' '),
         (c.tags || []).join(' '),
       ]);
       if (m) scored.push({ c, match: m });

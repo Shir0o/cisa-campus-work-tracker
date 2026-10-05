@@ -1,4 +1,4 @@
-import { Camera, Mail, Phone, Sparkles } from "lucide-react";
+import { BookOpen, Camera, Mail, Phone, Sparkles } from "lucide-react";
 import { useLanguage } from "../../LanguageProvider";
 import type { Contact } from "../../../types";
 
@@ -41,7 +41,13 @@ export default function HowToReach({
             <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
           </div>
         )}
-        {!contact.phone && !contact.email && !contact.instagram && !contact.spiritualBackground && (
+        {contact.interests && contact.interests.length > 0 && (
+          <div className="cd-kv-row">
+            <BookOpen className="w-3.5 h-3.5 cd-kv-ico" />
+            <span className="cd-kv-val dim">{contact.interests.join(', ')}</span>
+          </div>
+        )}
+        {!contact.phone && !contact.email && !contact.instagram && !contact.spiritualBackground && (!contact.interests || contact.interests.length === 0) && (
           <div className="cd-empty">{t('modals.contactDetails.none_yet')}</div>
         )}
       </div>
