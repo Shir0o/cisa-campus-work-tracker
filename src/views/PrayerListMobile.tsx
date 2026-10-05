@@ -294,7 +294,7 @@ export default function PrayerListMobile({
                     <Avatar contact={c} size="sm" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-on-surface truncate pr-picker-name">{c.name}</div>
-                      <div className="text-xs text-on-surface-variant truncate pr-picker-meta mt-0.5">{[c.role].filter(Boolean).join(' · ')}</div>
+                      <div className="text-xs text-on-surface-variant truncate pr-picker-meta mt-0.5">{[c.year, c.major].filter(Boolean).join(' · ')}</div>
                     </div>
                     <Plus className="w-4 h-4 text-accent shrink-0 ml-2 pr-picker-add" />
                   </button>
@@ -384,7 +384,6 @@ function PrayerThreadCard({
             <h4 className="font-serif text-lg text-on-surface leading-tight truncate prt-name">{contact.name}</h4>
             <div className="text-xs text-on-surface-variant truncate mt-0.5 prt-meta">
               {[
-                contact.role,
                 getContactGrade(contact),
                 carers.length ? t('prayers.cared_for_by_name', `Cared for by ${carers.join(', ')}`).replace('{name}', carers.join(', ')) : undefined,
                 addedBy ? t('prayers.added_by_name', `Added by ${addedBy}`).replace('{name}', addedBy) : undefined,

@@ -466,13 +466,13 @@ describe('Attendance', () => {
       expect.anything(),
       expect.objectContaining({
         name: 'New Visitor',
-        role: 'Student',
         stage: 'Lead',
         attendance: expect.objectContaining({ e1: true }),
-        // Present at the Gathering, so reached (#1335).
+        // Present at the Gathering, so reached (#1345: no guessed role).
         reachedAt: '2026-06-12',
       }),
     );
+    expect(vi.mocked(addDoc).mock.calls.at(-1)![1]).not.toHaveProperty('role');
   });
 
   it('renders AttendanceMobile on mobile viewport even while loading', async () => {

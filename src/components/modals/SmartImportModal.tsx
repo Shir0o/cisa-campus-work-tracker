@@ -448,7 +448,6 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 <div className="text-xs text-on-surface-variant mt-1 space-x-3">
                                   {contact.email && <span>{t('modals.smartImport.email')}: {contact.email}</span>}
                                   {contact.phone && <span>{t('modals.smartImport.phone')}: {contact.phone}</span>}
-                                  {contact.role && <span>{t('modals.smartImport.role')}: {contact.role}</span>}
                                 </div>
 
                                 {contact.notes && (

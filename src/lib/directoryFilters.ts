@@ -16,7 +16,6 @@ export type KindSegment = 'all' | ContactKind;
 export interface DirectoryFilterState {
   searchQuery: string;
   filterStage: string;
-  filterRole: string;
   filterSpiritualBackground: string;
   kindSegment: KindSegment;
   filterUnsorted: boolean;
@@ -29,7 +28,6 @@ export interface DirectoryFilterState {
 export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   searchQuery: '',
   filterStage: 'All',
-  filterRole: 'All',
   filterSpiritualBackground: 'All',
   kindSegment: 'contact',
   filterUnsorted: false,
@@ -43,7 +41,10 @@ const store = new Map<string, DirectoryFilterState>();
 
 /** The last-known filter state for a user, or the defaults if never set. */
 export function readDirectoryFilters(userKey: string): DirectoryFilterState {
-  const saved = store.get(userKey) ?? DEFAULT_DIRECTORY_FILTERS;
+  // State retained before the Group filter was retired may still carry
+  // `filterRole`; load it without that key.
+  const saved = { ...(store.get(userKey) ?? DEFAULT_DIRECTORY_FILTERS) } as DirectoryFilterState & { filterRole?: string };
+  delete saved.filterRole;
   return {
     ...saved,
     customRange: { ...saved.customRange },

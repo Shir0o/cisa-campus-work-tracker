@@ -61,7 +61,7 @@ _Avoid_: Archive from prayer list, unhold, stop carrying
 **Global Search (⌘K)**:
 The desktop search palette that opens the do-everything navigation: jump to any destination, find a person, conversation, coordination note, or history entry, and run quick actions — role-filtered and ranked by frecency. ⌘K (Ctrl+K on other keyboards) opens it from anywhere; on mobile a search button opens the same palette full-screen. In rail mode the palette is mounted by the shell above the content; in top-bar mode it sits inside the bar; the keyboard shortcut is identical in both shells.
 **Directory search**:
-The text search on the Directory that finds a contact by matching their name, email, role, spiritual background, tags, and the teammates tied to them (founders, carers, co-creators). Name matches rank first, and matching is word-boundary rather than substring — "ian" surfaces a person named Ian, not every contact with "christian" in a field — while a contact matched only through a tied teammate is still shown, just demoted beneath any name matches.
+The text search on the Directory that finds a contact by matching their name, email, spiritual background, tags, and the teammates tied to them (founders, carers, co-creators). Name matches rank first, and matching is word-boundary rather than substring — "ian" surfaces a person named Ian, not every contact with "christian" in a field — while a contact matched only through a tied teammate is still shown, just demoted beneath any name matches.
 _Avoid_: Find someone, person search, name search
 
 **Questions for the team**:
@@ -102,7 +102,7 @@ An alert delivered to the notification bell in the top navigation bar, and pushe
 _Avoid_: Bell popup, system toast, activity blast
 
 **Edit a contact (Mobile & Web PWA)**:
-Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, role/affiliation, first impressions/notes, and tags). Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet.
+Updating a person's core profile details (name, phone, email, Instagram, how we met, address/location, first impressions/notes, and tags). There is no group or role field: what sort of person someone is, is their kind — **Local saint**, **Our own** or **Contact** — which a Full-timer sets separately. Available to all authenticated write roles (Trainees and Full-timers, `role !== 'viewer'`) across native mobile (`EditContactSheet`), responsive web PWA, and desktop (`ContactDetailsModal`). Moving stage is decoupled and handled by the dedicated Move Step sheet.
 _Avoid_: Admin edit form, contact manager modal
 
 **Edit a teammate**:

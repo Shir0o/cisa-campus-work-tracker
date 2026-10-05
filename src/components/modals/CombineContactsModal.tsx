@@ -34,7 +34,6 @@ const createdAtLabel = (createdAt?: string): string | null => {
 
 /** Human label per merged field, used as the i18n fallback. */
 const FIELD_LABELS: Record<string, string> = {
-  role: 'Role',
   location: 'Location',
   email: 'Email',
   phone: 'Phone',

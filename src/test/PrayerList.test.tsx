@@ -860,7 +860,7 @@ describe('PrayerList', () => {
     errSpy.mockRestore();
   });
 
-  it('filters entries by search text across name, role, and tags', async () => {
+  it('filters entries by search text across name and tags, not role (#1345)', async () => {
     render(<PrayerList />);
     await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
 
@@ -869,9 +869,9 @@ describe('PrayerList', () => {
     await waitFor(() => expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument());
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
 
+    // Bob's doc still says role: 'Leader'; that no longer finds him.
     fireEvent.change(searchInput, { target: { value: 'Leader' } });
-    await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
-    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+    expect(await screen.findByText('No one matches that just yet')).toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: 'Year 2' } });
     await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());

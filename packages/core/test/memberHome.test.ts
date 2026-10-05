@@ -91,7 +91,6 @@ const prayer = (overrides: Partial<PrayerRecord> = {}): PrayerRecord => ({
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Rio Alvarez',
-  role: '',
   location: '',
   email: '',
   phone: '',

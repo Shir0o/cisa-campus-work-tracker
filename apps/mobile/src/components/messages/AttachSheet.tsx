@@ -47,7 +47,7 @@ export function AttachSheet({
     setSearch('');
     if (type === 'contact') {
       return subscribeContacts(
-        (list) => setOptions(list.map((x) => ({ id: x.id, name: x.name, subtitle: x.role || x.location }))),
+        (list) => setOptions(list.map((x) => ({ id: x.id, name: x.name, subtitle: [x.year, x.major].filter(Boolean).join(' · ') || x.location }))),
         () => setOptions([]),
       );
     }

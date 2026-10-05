@@ -28,7 +28,6 @@ const DAY_MS = 86_400_000;
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Alex',
-  role: '',
   location: '',
   email: '',
   phone: '',
@@ -247,7 +246,7 @@ describe('newContactFromLog', () => {
       tags: ['fall-2026'],
       year: 'Sophomore',
     });
-    expect(input.role).toBe('');
+    expect(input).not.toHaveProperty('role');
     expect(input.spiritualBackground).toBe('');
   });
 });

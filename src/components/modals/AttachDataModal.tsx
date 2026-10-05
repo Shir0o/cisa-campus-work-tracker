@@ -85,7 +85,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setItems(snap.docs.map(doc => ({
             id: doc.id,
             name: doc.data().name,
-            subtitle: doc.data().role || doc.data().location || t('modals.contact_subtitle'),
+            subtitle: [doc.data().year, doc.data().major].filter(Boolean).join(' · ') || doc.data().location || t('modals.contact_subtitle'),
             ...doc.data()
           })));
           setLoading(false);

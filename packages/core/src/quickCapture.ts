@@ -179,9 +179,8 @@ export interface LogSheetNewContact {
   /** The design's "Studying". */
   major?: string;
   // The design also folds out "Part of" and "Faith, so far". Both are dropped:
-  // "Part of" picks from a fellowships list this app doesn't have — its nearest
-  // field, `Contact.role`, is a category ("Student", "Faculty"), not a group —
-  // and neither question belongs in a sheet meant to be finished while walking.
+  // "Part of" picks from a fellowships list this app doesn't have, and neither
+  // question belongs in a sheet meant to be finished while walking.
   // The public sign-up form still asks both, and the person screen still shows
   // them when they're there.
   /** The design's "First met", `yyyy-MM-dd`. Backdates the contact's
@@ -238,9 +237,6 @@ export function newContactFromLog({
 
   const input: NewContactInput = {
     name: trimmed,
-    // The sheet no longer asks for either of these; both stay on the shape so
-    // the contact matches what every other addContact caller writes.
-    role: "",
     email: (email ?? "").trim(),
     phone: (phone ?? "").trim(),
     stage: stageLabel,

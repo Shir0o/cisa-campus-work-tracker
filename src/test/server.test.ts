@@ -710,11 +710,14 @@ describe("POST /api/quick-add", () => {
     const res = await request(app).post("/api/quick-add").send({ text: "Met Jane Doe at the cafeteria" });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.contact).toMatchObject({ isExisting: false, name: "Jane Doe", role: "Student" });
+    expect(res.body.contact).toMatchObject({ isExisting: false, name: "Jane Doe" });
+    // #1345: the model's guess at a group is ignored; nothing is stored for it.
+    expect(res.body.contact).not.toHaveProperty("role");
 
     const contacts = Object.values(getCollection("contacts"));
     expect(contacts).toHaveLength(1);
     expect(contacts[0]).toMatchObject({ name: "Jane Doe", stage: "First Contact" });
+    expect(contacts[0]).not.toHaveProperty("role");
     expect(Object.values(getCollection("activities")).length).toBeGreaterThan(0);
     expect(Object.values(getCollection("notifications")).length).toBeGreaterThan(0);
   });
@@ -881,7 +884,8 @@ describe("POST /api/quick-add", () => {
 
     const contacts = Object.values(getCollection("contacts"));
     expect(contacts).toHaveLength(1);
-    expect(contacts[0]).toMatchObject({ name: "New Kid", role: "Student", stage: "First Contact" });
+    expect(contacts[0]).toMatchObject({ name: "New Kid", stage: "First Contact" });
+    expect(contacts[0]).not.toHaveProperty("role");
     const id = res.body.contact.id;
     const logged = Object.values(getCollection(`contacts/${id}/interactions`));
     expect(logged).toHaveLength(1);
@@ -1196,6 +1200,16 @@ describe("POST /api/smart-import/commit", () => {
     const created = Object.values(getCollection("contacts"))[0] as Record<string, unknown>;
     expect(typeof created.createdBy).toBe("string");
     expect(created.visibleTo).toEqual(visibleToOf(created as Parameters<typeof visibleToOf>[0]));
+  });
+
+  // #1345: an import used to stamp 'Student' on anyone the model gave no role.
+  it("writes no role on the contacts it creates", async () => {
+    const res = await request(app)
+      .post("/api/smart-import/commit")
+      .send({ contacts: [{ tempId: "c1", name: "Alice", role: "Trainee" }] });
+    expect(res.status).toBe(200);
+
+    expect(Object.values(getCollection("contacts"))[0]).not.toHaveProperty("role");
   });
 });
 
@@ -1525,7 +1539,7 @@ describe("POST /api/webhook/github — payload edge cases", () => {
 });
 
 describe("POST /api/quick-add — merge and subcommand paths", () => {
-  it("merges missing contact fields and upgrades the role on quick-add", async () => {
+  it("merges missing contact fields on quick-add and leaves the stored role alone (#1345)", async () => {
     seedDoc("contacts", "c-merge", { name: "Kim Lee", email: "", phone: "", location: "", role: "Student", tags: [] });
     mockGenerateContent.mockResolvedValue({
       text: JSON.stringify({
@@ -1547,7 +1561,8 @@ describe("POST /api/quick-add — merge and subcommand paths", () => {
     // #730: the location field is no longer merged on quick-add — it has
     // been retired from the form, so quick-add shouldn't carry it either.
     expect(updated.spiritualBackground).toBe("Christian family");
-    expect(updated.role).toBe("Trainee");
+    // The model offered "Trainee"; the stored role is neither upgraded nor dropped.
+    expect(updated.role).toBe("Student");
     expect(updated.tags).toEqual(["New"]);
   });
 

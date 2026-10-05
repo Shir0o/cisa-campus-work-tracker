@@ -1237,20 +1237,18 @@ export async function createApp() {
           systemInstruction: `You are an expert utility designed to parse raw notes or verbal descriptions about newly met contacts and format them into structured JSON.
 Analyze the input text carefully and extract the following:
 1. name: string (Strictly required. The full name of the contact. If only a single name is offered, use that. If multiple people are mentioned, prioritize the main contact).
-2. role: string (The group or background of the person, e.g., 'Student', 'Faculty', 'Alumni', 'Resident'. Default to 'Student' if not specified).
-3. location: string (The dorm, building, venue, or context where they first connected, e.g., 'Campus Center', 'Miller Hall', 'Cafeteria'. Default to empty string if not mentioned).
-4. email: string (Any email mentioned. Format appropriately; empty string if not mentioned).
-5. phone: string (Any cell or phone number mentioned. Format in clean standard style: (XXX) XXX-XXXX; empty string if not mentioned).
-6. stage: string (The progress stage. MUST be one of: 'First Contact', 'Outreach', 'Unassigned'. Default to 'First Contact' if not specified).
-7. tags: array of strings (A maximum of 4 simple keyword tags. For example: ['Freshman', 'Gospel', 'Inquisitive']. Do not include space-padded commas).
-8. spiritualBackground: string (Optional. Choose EXACTLY one of: 'Christian', 'Catholic', 'Other', 'None', or empty string if not explicit).
-9. notes: string (Strictly required. A concise, polished summary of descriptions, what was discussed, their background, and key points of interest. Include any contextual cues like "Met in biology class").`,
+2. location: string (The dorm, building, venue, or context where they first connected, e.g., 'Campus Center', 'Miller Hall', 'Cafeteria'. Default to empty string if not mentioned).
+3. email: string (Any email mentioned. Format appropriately; empty string if not mentioned).
+4. phone: string (Any cell or phone number mentioned. Format in clean standard style: (XXX) XXX-XXXX; empty string if not mentioned).
+5. stage: string (The progress stage. MUST be one of: 'First Contact', 'Outreach', 'Unassigned'. Default to 'First Contact' if not specified).
+6. tags: array of strings (A maximum of 4 simple keyword tags. For example: ['Freshman', 'Gospel', 'Inquisitive']. Do not include space-padded commas).
+7. spiritualBackground: string (Optional. Choose EXACTLY one of: 'Christian', 'Catholic', 'Other', 'None', or empty string if not explicit).
+8. notes: string (Strictly required. A concise, polished summary of descriptions, what was discussed, their background, and key points of interest. Include any contextual cues like "Met in biology class").`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               name: { type: Type.STRING, description: "Extract full name (First and/or Last name)." },
-              role: { type: Type.STRING, description: "The contact's primary group classification." },
               location: { type: Type.STRING, description: "Where they first met or live." },
               email: { type: Type.STRING, description: "Extracted email address." },
               phone: { type: Type.STRING, description: "Telephone formatted standard." },
@@ -1605,7 +1603,6 @@ Analyze the input text carefully and extract the following:
           id: existingContact.id,
           isExisting: true,
           name: existingContact.name,
-          role: existingContact.role,
           stage: existingContact.stage,
           notes: parsed.content || ""
         };
@@ -1615,7 +1612,6 @@ Analyze the input text carefully and extract the following:
         const loggedAt = new Date().toISOString();
         const contactData = {
           name: parsed.contactName,
-          role: "Student",
           email: "",
           phone: "",
           stage: "First Contact",
@@ -1692,7 +1688,6 @@ Analyze the input text carefully and extract the following:
           id: docRef.id,
           isExisting: false,
           name: contactData.name,
-          role: contactData.role,
           stage: contactData.stage,
           notes: parsed.content || ""
         };
@@ -1725,9 +1720,6 @@ Analyze the input text carefully and extract the following:
         if (!existingContact.phone && parsed.phone) updatePayload.phone = parsed.phone;
         if (!existingContact.spiritualBackground && parsed.spiritualBackground) {
           updatePayload.spiritualBackground = parsed.spiritualBackground;
-        }
-        if (parsed.role && parsed.role !== "Student" && existingContact.role === "Student") {
-          updatePayload.role = parsed.role;
         }
 
         const existingTags = existingContact.tags || [];
@@ -1795,14 +1787,13 @@ Analyze the input text carefully and extract the following:
           targetId: existingContact.id
         });
 
-        return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", role: existingContact.role, stage: existingContact.stage };
+        return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", stage: existingContact.stage };
       }
 
       // Creating new contact
       const partnerCoCreators = await resolvePartnerCoCreators(opUserId);
       const contactData = {
         name: parsed.name,
-        role: parsed.role || "Student",
         email: parsed.email || "",
         phone: parsed.phone || "",
         stage: parsed.stage || "First Contact",
@@ -1830,7 +1821,6 @@ Analyze the input text carefully and extract the following:
 
       // Document formatted log message
       const fieldsLog = [
-        `Group: ${contactData.role}`,
         `Stage: ${contactData.stage}`,
         contactData.email ? `Email: ${contactData.email}` : "",
         contactData.phone ? `Phone: ${contactData.phone}` : "",
@@ -1857,7 +1847,7 @@ Analyze the input text carefully and extract the following:
       await getAdminDb().collection("notifications").add({
         userId: "ALL_ACTIVE",
         title: "📞 New Contact Added via Quick Add",
-        message: `Successfully created ${contactData.name} (${contactData.role}) from text description.`,
+        message: `Successfully created ${contactData.name} from text description.`,
         type: "success",
         read: false,
         createdAt: FieldValue.serverTimestamp(),
@@ -1991,7 +1981,6 @@ Analyze the input text carefully and extract the following:
 <Response>
   <Message>
 🎉 ${contact.isExisting ? "Logged Interaction with" : "Added"} ${contact.name}!
-📋 Group: ${contact.role}
 📍 Location: ${contact.location ? contact.location : "Not specified"}
 ${contact.isExisting ? "📝 Added interaction notes to history." : `💡 Notes: ${contact.notes.substring(0, 100)}${contact.notes.length > 100 ? "..." : ""}`}
   </Message>
@@ -2286,7 +2275,7 @@ ${JSON.stringify(contactsList)}`;
         contents: prompt,
         config: {
           systemInstruction: `You are an expert assistant for a campus ministry work tracker. Parse the provided unstructured text into three categories:
-1. contacts: Individuals mentioned in the text. For each contact, infer their name, email, phone, stage ('lead', 'contact', 'follow-up', 'connected', or 'active'), role ('Student', 'Trainee', 'Community'), spiritual background, notes/summary, and relevant tags. If a contact matches an existing contact from the provided Existing Contacts Database (by exact or close name/email/phone), set matchedContactId to their existing ID and matchedContactName to their existing name; otherwise set matchedContactId and matchedContactName to null. Assign a temporary ID 'c1', 'c2', etc.
+1. contacts: Individuals mentioned in the text. For each contact, infer their name, email, phone, stage ('lead', 'contact', 'follow-up', 'connected', or 'active'), spiritual background, notes/summary, and relevant tags. If a contact matches an existing contact from the provided Existing Contacts Database (by exact or close name/email/phone), set matchedContactId to their existing ID and matchedContactName to their existing name; otherwise set matchedContactId and matchedContactName to null. Assign a temporary ID 'c1', 'c2', etc.
 2. interactions: 1-on-1 touchpoints, phone calls, meetings, text exchanges, or notes logged about a contact. Set contactRef to the matching contact's temporary ID (e.g. 'c1') or matchedContactId, contactName, dateTime (ISO format YYYY-MM-DDTHH:mm or YYYY-MM-DD), type ('coffee', 'call', 'text', 'meeting', 'note'), and full interaction content summary. Assign a temporary ID 'i1', 'i2', etc. Current date is ${currentDate}.
 3. discussions: Group notes, strategy documents, team board notes, or topic discussions. Set title, audience ('team', 'trainees', or 'everyone'), content (in Markdown), tags, and mentioned contact names. Assign a temporary ID 'd1', 'd2', etc.`,
           responseMimeType: "application/json",
@@ -2304,7 +2293,6 @@ ${JSON.stringify(contactsList)}`;
                     email: { type: Type.STRING },
                     phone: { type: Type.STRING },
                     stage: { type: Type.STRING, description: "lead, contact, follow-up, connected, or active" },
-                    role: { type: Type.STRING },
                     notes: { type: Type.STRING },
                     tags: { type: Type.ARRAY, items: { type: Type.STRING } },
                     spiritualBackground: { type: Type.STRING },
@@ -2418,7 +2406,6 @@ ${JSON.stringify(contactsList)}`;
 
           const newContactData = {
             name,
-            role: (contact.role || "Student").slice(0, 64),
             email: (contact.email || "").slice(0, 128),
             phone: (contact.phone || "").slice(0, 32),
             stage: (contact.stage || "lead").slice(0, 64),

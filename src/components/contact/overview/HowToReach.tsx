@@ -1,4 +1,4 @@
-import { Briefcase, Camera, Mail, Phone, Sparkles } from "lucide-react";
+import { Camera, Mail, Phone, Sparkles } from "lucide-react";
 import { useLanguage } from "../../LanguageProvider";
 import type { Contact } from "../../../types";
 
@@ -35,19 +35,13 @@ export default function HowToReach({
             <span className="cd-kv-val dim">{contact.instagram}</span>
           </div>
         )}
-        {contact.role && (
-          <div className="cd-kv-row">
-            <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
-            <span className="cd-kv-val dim">{contact.role}</span>
-          </div>
-        )}
         {contact.spiritualBackground && (
           <div className="cd-kv-row">
             <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
             <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
           </div>
         )}
-        {!contact.phone && !contact.email && !contact.instagram && !contact.role && !contact.spiritualBackground && (
+        {!contact.phone && !contact.email && !contact.instagram && !contact.spiritualBackground && (
           <div className="cd-empty">{t('modals.contactDetails.none_yet')}</div>
         )}
       </div>

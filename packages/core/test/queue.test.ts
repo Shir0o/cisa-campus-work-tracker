@@ -27,7 +27,6 @@ const iso = (offsetDays: number) => new Date(NOW + offsetDays * DAY_MS).toISOStr
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Rio Alvarez',
-  role: '',
   location: '',
   email: '',
   phone: '',

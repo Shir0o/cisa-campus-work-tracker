@@ -151,7 +151,6 @@ export async function confirmAttendanceImport(input: ConfirmAttendanceImportInpu
         const contactData: Record<string, unknown> = {
           name,
           initials: initialsFor(name),
-          role: 'Student',
           stage: 'Lead',
           email: '',
           location: '',

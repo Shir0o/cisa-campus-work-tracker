@@ -129,6 +129,10 @@ describe('RhythmDrawer (issue #957)', () => {
         expect.objectContaining({ name: 'Zed', initials: 'Z' }),
       );
     });
+    // #1345: no guessed 'Student' label, and no guessed kind either.
+    const created = vi.mocked(addDoc).mock.calls.find(([ref]) => (ref as { path: string }).path === 'contacts')![1];
+    expect(created).not.toHaveProperty('role');
+    expect(created).not.toHaveProperty('isStudent');
     expect(screen.getByText('2 on roster')).toBeInTheDocument();
   });
 

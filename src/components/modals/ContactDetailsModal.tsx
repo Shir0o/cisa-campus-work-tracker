@@ -206,7 +206,6 @@ export default function ContactDetailsModal({
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    role: "",
     email: "",
     phone: "",
     stage: "",
@@ -298,7 +297,6 @@ export default function ContactDetailsModal({
       setFormData({
         firstName: first,
         lastName: last,
-        role: contact.role || "",
         email: contact.email || "",
         phone: contact.phone || "",
         stage: contact.stage || "",
@@ -812,8 +810,6 @@ export default function ContactDetailsModal({
         changes.push(`email: "${contact.email}" → "${formData.email}"`);
       if (formData.phone !== contact.phone)
         changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-      if (formData.role !== contact.role)
-        changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage)
         changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
       if (formData.spiritualBackground !== contact.spiritualBackground)
@@ -835,7 +831,6 @@ export default function ContactDetailsModal({
       const updateData: any = {
         name: fullName,
         initials: getInitials(formData.firstName, formData.lastName),
-        role: formData.role,
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
@@ -928,7 +923,6 @@ export default function ContactDetailsModal({
       );
 
       const fieldsLog = [
-        `Group: ${contact.role}`,
         `Stage: ${contact.stage}`,
         `Email: ${contact.email || "N/A"}`,
         `Phone: ${contact.phone || "N/A"}`,

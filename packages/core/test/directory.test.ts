@@ -9,7 +9,6 @@ const DAY_MS = 86_400_000;
 const contact = (overrides: Partial<Contact> = {}): Contact => ({
   id: 'c1',
   name: 'Alex',
-  role: '',
   location: '',
   email: '',
   phone: '',

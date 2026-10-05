@@ -13,7 +13,6 @@ import type { Activity, Contact, Interaction, PrayerRecord } from "./types";
 export interface ContactEditFields {
   firstName: string;
   lastName: string;
-  role: string;
   email: string;
   phone: string;
   stage: string;
@@ -51,7 +50,6 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
   if (after.metVia !== undefined && after.metVia !== before.metVia) {
     changes.push(`how we met: "${before.metVia || ""}" → "${after.metVia || ""}"`);
   }
-  if (after.role !== before.role) changes.push(`group: "${before.role}" → "${after.role}"`);
   if (after.stage !== before.stage) changes.push(`stage: "${before.stage}" → "${after.stage}"`);
   if (after.spiritualBackground !== before.spiritualBackground) {
     changes.push(
@@ -88,7 +86,6 @@ export function contactDeleteFieldsLog(
   commentCount: number,
 ): string {
   return [
-    `Group: ${contact.role}`,
     `Stage: ${contact.stage}`,
     `Email: ${contact.email || "N/A"}`,
     `Phone: ${contact.phone || "N/A"}`,

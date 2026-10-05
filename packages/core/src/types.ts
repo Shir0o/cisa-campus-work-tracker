@@ -13,7 +13,6 @@ export const MET_VIA = [
 export interface Contact {
   id: string;
   name: string;
-  role: string;
   location: string;
   email: string;
   phone: string;

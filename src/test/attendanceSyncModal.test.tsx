@@ -16,7 +16,6 @@ vi.mock('../lib/sync/attdSync', () => ({
 const contact = (id: string, name: string): Contact => ({
   id,
   name,
-  role: 'Student',
   location: '',
   email: '',
   phone: '',

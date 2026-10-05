@@ -86,6 +86,23 @@ describe('ContactStory — changes and attendance (#1291)', () => {
     expect(screen.getByRole('button', { name: 'show less' })).toBeInTheDocument();
   });
 
+  // #1345: nothing edits the group any more, but entries already recorded
+  // keep their label in the story.
+  it('still renders an old group change entry (#1345)', () => {
+    renderStory([
+      {
+        kind: 'change',
+        id: 'old-group',
+        at: '2026-08-01T09:00:00.000Z',
+        byId: 'anna',
+        byName: 'Anna',
+        changes: [{ type: 'field', field: 'group', from: 'Student', to: 'Faculty' }],
+      },
+    ]);
+
+    expect(screen.getByText('changed group from Student to Faculty')).toBeInTheDocument();
+  });
+
   it('says how many weeks running at a Rhythm, and a single gathering plainly', () => {
     renderStory([
       { kind: 'attendance', id: 'r:1', at: '2026-09-17', name: 'College Meeting', count: 6 },

@@ -216,7 +216,6 @@ export function subscribeTouches(
 
 export interface NewContactInput {
   name: string;
-  role: string;
   /** Address used by Visits. Optional: the web new-contact form no longer
    * sends it (#730); the outreach log sheet records where the outing was. */
   location?: string;
@@ -335,7 +334,6 @@ export async function moveContactStage(
 export interface ContactUpdateFields {
   name: string;
   initials: string;
-  role: string;
   email: string;
   phone: string;
   stage: string;

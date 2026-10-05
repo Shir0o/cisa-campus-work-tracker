@@ -209,7 +209,6 @@ export default function GlobalSearch() {
     const scored: { c: Contact; match: ContactMatch }[] = [];
     for (const c of contacts) {
       const m = matchContact(c, needle, [
-        c.role,
         c.notes,
         c.spiritualBackground,
         (c.tags || []).join(' '),
@@ -564,7 +563,7 @@ export default function GlobalSearch() {
                   tone="accent"
                   icon={User}
                   title={c.name}
-                  sub={c.role || undefined}
+                  sub={[c.year, c.major].filter(Boolean).join(' · ') || undefined}
                   onClick={() => openContactById(c.id)}
                 />
               ))}
@@ -644,7 +643,7 @@ export default function GlobalSearch() {
                   tone="accent"
                   icon={User}
                   title={c.name}
-                  sub={c.role || undefined}
+                  sub={[c.year, c.major].filter(Boolean).join(' · ') || undefined}
                   onClick={() => openContactById(c.id)}
                 />
               ))}

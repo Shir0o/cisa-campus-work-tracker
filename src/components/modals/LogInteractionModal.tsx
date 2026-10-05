@@ -87,8 +87,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
     const lower = searchQuery.toLowerCase();
     return contacts.filter(c => 
       c.name.toLowerCase().includes(lower) || 
-      c.email.toLowerCase().includes(lower) ||
-      (c.role && c.role.toLowerCase().includes(lower))
+      c.email.toLowerCase().includes(lower)
     );
   }, [searchQuery, contacts]);
 
@@ -367,7 +366,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
                                 isSelected ? "text-accent" : "text-on-surface"
                               )}>{contact.name}</p>
                               <p className="text-[9px] text-on-surface-variant font-semibold   opacity-60 truncate">
-                                {contact.role} • {contact.stage}
+                                {[[contact.year, contact.major].filter(Boolean).join(' · '), contact.stage].filter(Boolean).join(' • ')}
                               </p>
                             </div>
                           </button>

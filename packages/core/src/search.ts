@@ -26,7 +26,6 @@ export function recentPeople(contacts: Contact[], max: number = GS_MAX): Contact
 }
 
 const personFields = (c: Contact): Array<string | undefined> => [
-  c.role,
   c.location,
   c.notes,
   c.spiritualBackground,
@@ -34,7 +33,7 @@ const personFields = (c: Contact): Array<string | undefined> => [
 ];
 
 /** Name-first, word-boundary match (#1192): name matches rank above contacts
- *  that only match on role/location/notes/background/tags, and "ian" no longer
+ *  that only match on location/notes/background/tags, and "ian" no longer
  *  matches "Christian" mid-word. */
 export function searchPeople(contacts: Contact[], q: string, max: number = GS_MAX): Contact[] {
   const needle = q.trim();

@@ -15,7 +15,6 @@ describe('attendanceRoster', () => {
   const contactA: Contact = {
     id: 'c1',
     name: 'Alice',
-    role: 'Student',
     location: 'Campus',
     email: 'alice@example.com',
     phone: '123',
@@ -27,7 +26,6 @@ describe('attendanceRoster', () => {
   const contactB: Contact = {
     id: 'c2',
     name: 'Bob',
-    role: 'Student',
     location: 'Campus',
     email: 'bob@example.com',
     phone: '456',
@@ -39,7 +37,6 @@ describe('attendanceRoster', () => {
   const contactC: Contact = {
     id: 'c3',
     name: 'Charlie',
-    role: 'Student',
     location: 'Campus',
     email: 'charlie@example.com',
     phone: '789',

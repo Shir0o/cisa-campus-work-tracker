@@ -401,7 +401,7 @@ export default function ContactHead({
                   <p className="text-xs text-on-surface-variant cdm-meta mt-3">
                     {carerNames.length > 0
                       ? `${t('modals.contactDetails.cared_for_by')} ${carerNames.join(', ')}`
-                      : [contact.role, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
+                      : [[contact.year, contact.major].filter(Boolean).join(" · "), contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                   </p>
                 </div>
               </div>
