@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc, where } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
@@ -30,7 +30,13 @@ vi.mock('../lib/useMediaQuery', () => ({
 }));
 
 // ── TipTap (thin seam) ──────────────────────────────────────────────────────
+const mockChain: any = {};
+['focus', 'deleteSelection', 'insertContent', 'run'].forEach((m) => {
+  mockChain[m] = vi.fn(() => mockChain);
+});
+
 const mockEditor = {
+  chain: () => mockChain,
   commands: {
     setContent: vi.fn(),
     setTextSelection: vi.fn(),
@@ -2038,6 +2044,144 @@ describe('CoordinationNotes', () => {
       fireEvent.click(assignUserBtn);
 
       await waitFor(() => expect(addDoc).toHaveBeenCalled());
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('creates a to-do from the Todo composer without rewriting the page', async () => {
+      mockActiveEditor = mockEditor;
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Call the venue',
+        removeAllRanges: vi.fn(),
+      };
+
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+      fireEvent.click(await screen.findByText('Todo'));
+
+      const composer = screen.getByText('New to-do').closest('.rounded-3xl') as HTMLElement;
+      fireEvent.click(within(composer).getByRole('button', { name: /Tony/ }));
+      fireEvent.click(within(composer).getByRole('button', { name: /add to-do/i }));
+
+      await waitFor(() => {
+        expect(addDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Call the venue',
+            assigneeId: 'u-admin',
+            sourceDocId: `doc-${today}`,
+          })
+        );
+      });
+
+      expect(mockChain.deleteSelection).not.toHaveBeenCalled();
+      expect(mockChain.insertContent).not.toHaveBeenCalled();
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('assigns highlighted text without rewriting the page', async () => {
+      mockActiveEditor = mockEditor;
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Task from highlight',
+        removeAllRanges: vi.fn(),
+      };
+
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+      fireEvent.click(await screen.findByText('Assign'));
+      fireEvent.click(screen.getByText('Tony Wang'));
+
+      await waitFor(() => {
+        expect(addDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Task from highlight',
+            assigneeId: 'u-admin',
+            sourceDocId: `doc-${today}`,
+          })
+        );
+      });
+
+      expect(mockChain.deleteSelection).not.toHaveBeenCalled();
+      expect(mockChain.insertContent).not.toHaveBeenCalled();
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('creates one assigned to-do per highlighted line without rewriting the page', async () => {
+      mockActiveEditor = mockEditor;
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Task A\nTask B',
+        removeAllRanges: vi.fn(),
+      };
+
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+      fireEvent.click(await screen.findByText('Assign'));
+      fireEvent.click(screen.getByText('Tony Wang'));
+
+      await waitFor(() => expect(addDoc).toHaveBeenCalled());
+      const createdTitles = (addDoc as unknown as { mock: { calls: unknown[][] } }).mock.calls
+        .map((c) => (c[1] as { title?: string } | undefined)?.title)
+        .filter((t): t is string => t === 'Task A' || t === 'Task B');
+      expect(createdTitles.sort()).toEqual(['Task A', 'Task B']);
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ title: 'Task A', sourceDocId: `doc-${today}` })
+      );
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ title: 'Task B', sourceDocId: `doc-${today}` })
+      );
+
+      expect(mockChain.deleteSelection).not.toHaveBeenCalled();
+      expect(mockChain.insertContent).not.toHaveBeenCalled();
 
       getSelectionSpy.mockRestore();
     });
