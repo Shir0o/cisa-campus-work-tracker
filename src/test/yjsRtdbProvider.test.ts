@@ -166,6 +166,137 @@ describe('RtdbYjsProvider unload handling', () => {
   });
 });
 
+// Builds a synthetic append-only log the way the provider's RTDB node fills up:
+// one base64 Yjs update per keystroke. `Y.mergeUpdates` over all of them is what
+// used to freeze the tab on open; applying them in order is the fix under test.
+function u8ToB64(u8: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+  return btoa(s);
+}
+
+function typingLog(n: number): { source: Y.Doc; entries: [string, string][] } {
+  const source = new Y.Doc();
+  const text = source.getText('md');
+  const updates: string[] = [];
+  source.on('update', (u: Uint8Array) => updates.push(u8ToB64(u)));
+  const words = ['the', 'week', 'meeting', 'leader', 'prayer', 'notes', 'team', 'faith', 'grace'];
+  let seed = 1234567;
+  let caret = 0;
+  const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let i = 0; i < n; i++) {
+    if (caret > 0 && rand() < 0.05) {
+      text.delete(caret - 1, 1);
+      caret -= 1;
+    } else if (rand() < 0.05) {
+      caret = Math.floor(rand() * (text.length + 1));
+    } else {
+      const word = `${words[Math.floor(rand() * words.length)]} `;
+      caret = Math.min(caret, text.length);
+      text.insert(caret, word);
+      caret += word.length;
+    }
+  }
+  const entries = updates.map((b64, i): [string, string] => [
+    `k${String(i).padStart(6, '0')}`,
+    b64,
+  ]);
+  return { source, entries };
+}
+
+function logSnapshot(entries: [string, string][]): { val: () => Record<string, string> } {
+  const val: Record<string, string> = {};
+  for (const [k, v] of entries) val[k] = v;
+  return { val: () => val };
+}
+
+describe('RtdbYjsProvider initial load', () => {
+  let providers: RtdbYjsProvider[];
+  let warn: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    providers = [];
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    providers.forEach((p) => p.destroy());
+    warn.mockRestore();
+  });
+
+  const load = (
+    doc: Y.Doc,
+    snapshot: { val: () => Record<string, string> },
+    onSynced?: (degraded: boolean) => void,
+  ) => {
+    vi.mocked(get).mockResolvedValue(snapshot as never);
+    const provider = new RtdbYjsProvider({} as never, DOC_ID, doc, { onSynced });
+    providers.push(provider);
+    return provider;
+  };
+
+  it(
+    'loads a ~20k-entry log in well under a second',
+    async () => {
+      const { source, entries } = typingLog(20000);
+      const doc = new Y.Doc();
+      let elapsed = 0;
+      const start = performance.now();
+      const synced = new Promise<boolean>((resolve) => {
+        load(doc, logSnapshot(entries), (degraded) => {
+          elapsed = performance.now() - start;
+          resolve(degraded);
+        });
+      });
+
+      expect(await synced).toBe(false);
+      // The mergeUpdates path took ~20s at this size; ordered application is ~100ms.
+      expect(elapsed).toBeLessThan(3000);
+      expect(Y.encodeStateVector(doc)).toEqual(Y.encodeStateVector(source));
+      expect(doc.getText('md').toString()).toBe(source.getText('md').toString());
+      source.destroy();
+    },
+    30000,
+  );
+
+  it('reconstructs the same document as the source for a non-trivial log', async () => {
+    const { source, entries } = typingLog(500);
+    const doc = new Y.Doc();
+    const provider = load(doc, logSnapshot(entries));
+    await flush();
+
+    expect(provider.synced).toBe(true);
+    expect(Y.encodeStateVector(doc)).toEqual(Y.encodeStateVector(source));
+    expect(doc.getText('md').toString()).toBe(source.getText('md').toString());
+    source.destroy();
+  });
+
+  it('does not push the loaded log back to RTDB', async () => {
+    const { source, entries } = typingLog(500);
+    const doc = new Y.Doc();
+    load(doc, logSnapshot(entries));
+    await flush();
+
+    expect(vi.mocked(push)).not.toHaveBeenCalled();
+    source.destroy();
+  });
+
+  it('skips an undecodable entry without failing the load', async () => {
+    const { source, entries } = typingLog(50);
+    const withBad = entries.flatMap((entry, i) => (i === 25 ? [['bad', '!!!'] as [string, string], entry] : [entry]));
+    const doc = new Y.Doc();
+    let degraded: boolean | null = null;
+    load(doc, logSnapshot(withBad), (d) => (degraded = d));
+    await flush();
+
+    expect(degraded).toBe(false);
+    expect(doc.getText('md').toString()).toBe(source.getText('md').toString());
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('undecodable'), expect.anything());
+    source.destroy();
+  });
+});
+
 describe('RtdbYjsProvider base path', () => {
   it('places updates, awareness and the seed flag under a custom base path', async () => {
     vi.clearAllMocks();
