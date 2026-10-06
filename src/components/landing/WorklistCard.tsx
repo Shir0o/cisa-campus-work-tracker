@@ -290,6 +290,7 @@ export function WorklistCard({
   const [open, setOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   const [reactOpen, setReactOpen] = useState(false);
+  const [noteExpanded, setNoteExpanded] = useState(false);
 
   // The strip replaces the swap-in composer when the page hands down both the
   // messages to read and the ownership of which card is open.
@@ -407,12 +408,14 @@ export function WorklistCard({
              * the three-up grid. An open card has left that constraint, so
              * the same gesture that reveals the strip unclamps the body —
              * which is the long interaction note that used to cost the
-             * reader their filters (#965). */
+             * reader their filters (#965). Readers can also click the note
+             * directly to expand/collapse it without opening the strip. */
             <Translate
               as="p"
+              onClick={() => setNoteExpanded((v) => !v)}
               className={cn(
-                "text-xs text-on-surface-variant/90 mt-1 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2",
-                !stripOpen && "line-clamp-2",
+                "text-xs text-on-surface-variant/90 mt-1 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2 cursor-pointer hover:bg-surface-variant/60 transition-colors",
+                !stripOpen && !noteExpanded && "line-clamp-2",
               )}
               text={latestText}
             />
