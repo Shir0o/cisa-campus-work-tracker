@@ -1247,24 +1247,45 @@ export default function Directory() {
 
       {/* ── Tag chips filter ── */}
       {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-4">
-          {allTags.map(tag => {
-            const notReached = tagNotReachedCounts.get(tag) ?? 0;
-            return (
-              <button
-                key={tag}
-                onClick={() => toggleTagFilter(tag)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0",
-                  selectedTags.includes(tag)
-                    ? "bg-primary text-on-primary border-primary"
-                    : "bg-surface text-on-surface-variant border-outline-variant hover:border-outline"
-                )}
-              >
-                {tag} · {t('directory.tag_not_reached').replace('{n}', String(notReached))}
-              </button>
-            );
-          })}
+        <div className="mt-4">
+          {allTags.some(tag => (tagNotReachedCounts.get(tag) ?? 0) > 0) && (
+            <p className="text-xs text-on-surface-variant mb-2">{t('directory.tag_counts_note')}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {allTags.map(tag => {
+              const notReached = tagNotReachedCounts.get(tag) ?? 0;
+              const selected = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  onClick={() => toggleTagFilter(tag)}
+                  aria-label={
+                    notReached > 0
+                      ? t('directory.tag_not_reached_label').replace('{tag}', tag).replace('{n}', String(notReached))
+                      : undefined
+                  }
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 inline-flex items-center gap-1.5",
+                    selected
+                      ? "bg-primary text-on-primary border-primary"
+                      : "bg-surface text-on-surface-variant border-outline-variant hover:border-outline"
+                  )}
+                >
+                  {tag}
+                  {notReached > 0 && (
+                    <span
+                      className={cn(
+                        "min-w-5 px-1.5 rounded-full text-[11px] leading-5 text-center",
+                        selected ? "bg-on-primary/20 text-on-primary" : "bg-surface-container-high text-on-surface"
+                      )}
+                    >
+                      {notReached}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
