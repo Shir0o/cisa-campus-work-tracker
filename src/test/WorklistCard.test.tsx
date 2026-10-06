@@ -391,5 +391,31 @@ describe("the worklist card, through On you (#813, #943)", () => {
     // The note preview has bg-surface-variant/40 styling when rendered; ensure no such container exists
     expect(container.querySelector(".bg-surface-variant\\/40")).toBeNull();
   });
+
+  it("allows toggling a long note open and closed directly without opening conversation strip", () => {
+    const longNote =
+      "He talked for a long time about his family back home, and about why he stopped going to meetings.";
+    const c = contact({ id: "c_long", name: "David Kim", notes: longNote, carers: ["u1"] });
+
+    render(
+      <OnYouCard
+        contacts={[c]}
+        interactions={[]}
+        threads={[]}
+        staffNameMap={{ u3: "Ale" }}
+      />,
+    );
+
+    const noteEl = () => screen.getByText(longNote);
+    expect(noteEl().className).toContain("line-clamp-2");
+
+    // Click note to expand
+    fireEvent.click(noteEl());
+    expect(noteEl().className).not.toContain("line-clamp-2");
+
+    // Click note again to collapse
+    fireEvent.click(noteEl());
+    expect(noteEl().className).toContain("line-clamp-2");
+  });
 });
 
