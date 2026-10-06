@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
+import { Link } from 'react-router-dom';
 import {
   collection,
   getDocs,
@@ -51,6 +52,7 @@ import {
   EyeOff,
   RefreshCw,
   Video,
+  BookOpen,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -818,6 +820,13 @@ function NavigationSection() {
           'On narrower windows the top bar is used instead, and on phones the bottom bar — neither changes this choice. A narrow window may also collapse the rail temporarily.',
         )}
       </p>
+      <Link
+        to="/help"
+        className="mt-6 flex max-w-2xl items-center gap-3 rounded-3xl border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm text-on-surface transition-colors hover:bg-surface-container-high"
+      >
+        <BookOpen className="h-5 w-5 text-accent" />
+        <span className="flex-1">{t('settings.help_link', 'Browse Help')}</span>
+      </Link>
     </section>
   );
 }

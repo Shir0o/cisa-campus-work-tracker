@@ -172,7 +172,8 @@
     "becomes_gathering": "Se convierte en reunión de {name}",
     "open_shared_calendar_app": "Abrir la aplicación del calendario compartido en una pestaña nueva",
     "push_test_sent": "Prueba enviada: debería llegar a cada dispositivo con las notificaciones activadas.",
-    "push_unsupported_here": "Este navegador no puede recibir alertas push (en iPhone, primero agrega la app a tu pantalla de inicio). La prueba se envió a tus otros dispositivos."
+    "push_unsupported_here": "Este navegador no puede recibir alertas push (en iPhone, primero agrega la app a tu pantalla de inicio). La prueba se envió a tus otros dispositivos.",
+    "help_link": "Explorar la ayuda"
   },
   "calendar": {
     "badge": "calendario",
@@ -255,7 +256,8 @@
     "compatibility_android_body": "Android 8.0 (API nivel 26) o posterior",
     "compatibility_web_label": "Web:",
     "compatibility_web_body": "Versiones modernas de Chrome, Safari, Firefox y Edge",
-    "footer": "Última actualización: agosto de 2026 • Soporte de CISA Campus Work Tracker"
+    "footer": "Última actualización: agosto de 2026 • Soporte de CISA Campus Work Tracker",
+    "help_link": "Ayuda"
   },
   "season": {
     "title": "Temporada y reclutamiento",
@@ -2162,5 +2164,14 @@
     "weekday_thu": "Jue",
     "weekday_fri": "Vie",
     "weekday_sat": "Sáb"
+  },
+  "help": {
+    "title": "Ayuda",
+    "subtitle": "Guías para usar CISA Campus Work Tracker.",
+    "back_to_app": "Volver a la aplicación",
+    "pages_label": "Páginas de ayuda",
+    "not_found_title": "Página no encontrada",
+    "not_found_body": "Esta página de ayuda no existe o no está disponible para tu rol.",
+    "back_to_help": "Volver a la ayuda"
   }
 }
