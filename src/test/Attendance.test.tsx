@@ -418,6 +418,22 @@ describe('Attendance', () => {
       expect(screen.queryByText('+ Roster')).not.toBeInTheDocument();
     });
 
+    it('moves a present walk-in to absent, which the roster rule keeps out of both groups (issue #1383)', async () => {
+      await openFirstGathering();
+      fireEvent.click(screen.getByText('Charlie Brown').closest('button')!);
+      await waitFor(() => {
+        expect(mockBatch.update).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'events', id: 'e1' }),
+          { attendance: { present: ['c2'], absent: ['c3'] } },
+        );
+      });
+      // The legacy contact mirror records the walk-in's absence.
+      expect(mockBatch.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'contacts', id: 'c3' }),
+        expect.objectContaining({ attendance: { e1: 'absent' } }),
+      );
+    });
+
     it('lets a Full-timer add a walk-in to the roster from their chip', async () => {
       await openFirstGathering();
       fireEvent.click(screen.getByRole('button', { name: 'Add Charlie Brown to roster' }));

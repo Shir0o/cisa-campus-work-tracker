@@ -47,25 +47,30 @@ export function presentCount(gathering: Event): number {
   return gathering.attendance?.present.length ?? 0;
 }
 
-/** Tapping a name cycles present -> absent -> present. Anyone missed
- * (absent or unmarked) jumps to present on the first tap. */
+/** Tapping a name cycles. A roster member goes present -> absent -> present.
+ *  Someone outside the roster goes unmarked -> present -> absent -> unmarked:
+ *  their absence is never counted, so the second tap after present clears the
+ *  mark and returns them to the walk-in search. */
 export function cycleAttendanceStatus(
   current: GatheringAttendanceStatus | undefined,
-): GatheringAttendanceStatus {
+  onRoster: boolean = true,
+): GatheringAttendanceStatus | undefined {
+  if (onRoster) return current === "present" ? "absent" : "present";
+  if (current === "absent") return undefined;
   return current === "present" ? "absent" : "present";
 }
 
 /** Applies one contact's new mark, returning a fresh record. `undefined`
- *  current means the occasion was unmarked; any tap marks it. */
+ *  clears the mark, removing them from both lists. */
 export function applyAttendance(
   current: GatheringAttendance | undefined,
   contactId: string,
-  next: GatheringAttendanceStatus,
+  next: GatheringAttendanceStatus | undefined,
 ): GatheringAttendance {
   const present = (current?.present ?? []).filter((id) => id !== contactId);
   const absent = (current?.absent ?? []).filter((id) => id !== contactId);
   if (next === "present") present.push(contactId);
-  else absent.push(contactId);
+  else if (next === "absent") absent.push(contactId);
   return { present, absent };
 }
 

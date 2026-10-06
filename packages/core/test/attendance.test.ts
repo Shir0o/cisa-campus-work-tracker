@@ -74,6 +74,17 @@ describe('cycleAttendanceStatus', () => {
   it('jumps unmarked straight to present', () => {
     expect(cycleAttendanceStatus(undefined)).toBe('present');
   });
+
+  it('cycles a walk-in unmarked -> present -> absent -> unmarked', () => {
+    expect(cycleAttendanceStatus(undefined, false)).toBe('present');
+    expect(cycleAttendanceStatus('present', false)).toBe('absent');
+    expect(cycleAttendanceStatus('absent', false)).toBeUndefined();
+  });
+
+  it('keeps a roster member cycling present <-> absent', () => {
+    expect(cycleAttendanceStatus('present', true)).toBe('absent');
+    expect(cycleAttendanceStatus('absent', true)).toBe('present');
+  });
 });
 
 describe('applyAttendance', () => {
@@ -81,6 +92,11 @@ describe('applyAttendance', () => {
     expect(applyAttendance(undefined, 'a', 'present')).toEqual(att(['a']));
     expect(applyAttendance(att(['a']), 'a', 'absent')).toEqual(att([], ['a']));
     expect(applyAttendance(att([], ['a']), 'a', 'present')).toEqual(att(['a']));
+  });
+
+  it('clears a mark from both lists when next is undefined', () => {
+    expect(applyAttendance(att(['a'], ['b']), 'a', undefined)).toEqual(att([], ['b']));
+    expect(applyAttendance(att([], ['a']), 'a', undefined)).toEqual(att());
   });
 
   it('does not disturb other contacts', () => {

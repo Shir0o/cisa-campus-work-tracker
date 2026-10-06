@@ -89,7 +89,10 @@ function SessionRow({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const came = contacts.filter((x) => isHere(session, x.id));
-  const away = contacts.filter((x) => explicitlyAbsent(session, x.id));
+  // Only roster members appear under "We missed"; an explicit absence for a
+  // walk-in is treated as no mark (issue #1383, per CONTEXT.md).
+  const roster = new Set(session.rosterOverride ?? session.roster ?? []);
+  const away = contacts.filter((x) => explicitlyAbsent(session, x.id) && roster.has(x.id));
   const d = new Date(session.date);
 
   return (
