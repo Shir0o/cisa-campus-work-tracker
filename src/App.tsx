@@ -60,6 +60,7 @@ const Settings = lazyWithRetry(() => import("./views/Settings"));
 const SignUp = lazyWithRetry(() => import("./views/SignUp"));
 const PrivacyPolicy = lazyWithRetry(() => import("./views/PrivacyPolicy"));
 const Support = lazyWithRetry(() => import("./views/Support"));
+const Help = lazyWithRetry(() => import("./views/Help"));
 const FeedbackList = lazyWithRetry(() => import("./views/FeedbackList"));
 const MyNotes = lazyWithRetry(() => import("./views/MyNotes"));
 /* v8 ignore stop */
@@ -750,6 +751,30 @@ export default function App() {
                     <React.Suspense fallback={null}>
                       <Support />
                     </React.Suspense>
+                  }
+                />
+
+                {/* In-app Help corpus (ADR 0035). Web-only, distinct from the
+                    static Support and Privacy surfaces; role filtering happens
+                    inside the view so a hidden page resolves as not-found. */}
+                <Route
+                  path="/help"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Help />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/help/:slug"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Help />
+                      </DashboardLayout>
+                    </ProtectedRoute>
                   }
                 />
 

@@ -7,6 +7,10 @@ import { useAuth } from '../components/AuthProvider';
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ to, children, ...props }: any) => {
+    const { createElement } = require('react');
+    return createElement('a', { href: to, ...props }, children);
+  },
 }));
 
 vi.mock('../components/AuthProvider', () => ({

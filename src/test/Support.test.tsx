@@ -22,6 +22,7 @@ describe("Support Component", () => {
     expect(screen.getByText("What are the user roles?")).toBeInTheDocument();
     expect(screen.getByText("System Compatibility")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /privacy policy/i })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: /^help$/i })).toHaveAttribute("href", "/help");
   });
 
   it("navigates back to home when Back to Application button is clicked", () => {

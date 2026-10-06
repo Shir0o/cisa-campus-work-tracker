@@ -172,7 +172,8 @@
     "becomes_gathering": "Becomes a {name} gathering",
     "open_shared_calendar_app": "Open the shared calendar app in a new tab",
     "push_test_sent": "Test sent — it should arrive on every device where notifications are on.",
-    "push_unsupported_here": "This browser can't receive push alerts (on iPhone, add the app to your Home Screen first). The test was sent to your other devices."
+    "push_unsupported_here": "This browser can't receive push alerts (on iPhone, add the app to your Home Screen first). The test was sent to your other devices.",
+    "help_link": "Browse Help"
   },
   "calendar": {
     "badge": "calendar",
@@ -255,7 +256,8 @@
     "compatibility_android_body": "Android 8.0 (API Level 26) or later",
     "compatibility_web_label": "Web:",
     "compatibility_web_body": "Modern versions of Chrome, Safari, Firefox, and Edge",
-    "footer": "Last Updated: August 2026 • CISA Campus Work Tracker Support"
+    "footer": "Last Updated: August 2026 • CISA Campus Work Tracker Support",
+    "help_link": "Help"
   },
   "season": {
     "title": "Season & club rush",
@@ -2162,5 +2164,14 @@
     "weekday_thu": "Thu",
     "weekday_fri": "Fri",
     "weekday_sat": "Sat"
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "Guides for using CISA Campus Work Tracker.",
+    "back_to_app": "Back to Application",
+    "pages_label": "Help pages",
+    "not_found_title": "Page not found",
+    "not_found_body": "This help page does not exist, or it is not available for your role.",
+    "back_to_help": "Back to Help"
   }
 }

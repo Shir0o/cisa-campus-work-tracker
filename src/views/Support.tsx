@@ -19,6 +19,13 @@ export default function Support() {
             {t('support.back_to_app')}
           </button>
           <Link
+            to="/help"
+            className="inline-flex items-center text-sm text-on-surface-variant hover:text-accent transition-colors gap-1.5 underline underline-offset-2"
+          >
+            <HelpCircle className="w-4 h-4" />
+            {t('support.help_link')}
+          </Link>
+          <Link
             to="/privacy"
             className="inline-flex items-center text-sm text-on-surface-variant hover:text-accent transition-colors gap-1.5 underline underline-offset-2"
           >

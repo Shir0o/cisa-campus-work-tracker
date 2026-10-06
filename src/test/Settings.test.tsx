@@ -11,6 +11,10 @@ import React from 'react';
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ to, children, ...props }: any) => {
+    const { createElement } = require('react');
+    return createElement('a', { href: to, ...props }, children);
+  },
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -1309,6 +1313,14 @@ describe('Settings', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Top bar/i }));
       expect(mockSetNavShell).toHaveBeenLastCalledWith('topbar');
+    });
+
+    it('links to the in-app Help surface', () => {
+      setupNonManagerAuth();
+
+      render(<Settings />);
+
+      expect(screen.getByRole('link', { name: /Browse Help/i })).toHaveAttribute('href', '/help');
     });
   });
 
