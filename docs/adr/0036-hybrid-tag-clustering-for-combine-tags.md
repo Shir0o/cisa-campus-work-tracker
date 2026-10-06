@@ -4,7 +4,7 @@ Date: 2026-10-05
 
 ## Status
 
-Accepted
+Accepted. Fixed anchor list superseded by ADR 0039.
 
 ## Context
 
@@ -32,3 +32,4 @@ However, completely unsupervised tag rewriting risks false positives (unintentio
 - No need to hand-code every variation in static regex tables going forward.
 - Retains user sovereignty and prevents data corruption through dry-run rule toggles.
 - Parity is maintained between `packages/core/src/tags.ts` and `src/lib/tags.ts`.
+- Unchecked weak guesses reappear, still unchecked, on every visit. A remembered "Not the same tag" (mirroring **Not the same person**, ADR 0038) is deferred until weak guesses prove noisy.

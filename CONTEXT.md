@@ -344,12 +344,32 @@ A checkbox written into a coordination doc page. It belongs to the page and ever
 _Avoid_: Doc task, linked task
 
 **Combine contacts**:
-The administrative action on the directory (`/directory`) that finds candidate duplicate people (by matching email, phone, or name) and consolidates them into a single surviving record with a dry-run preview before committing. Combines relationship ties (`founders`, `carers`, `coCreators`, `visibleTo`, and `tags`) as union sets, preserves survivor profile details while backfilling missing values, migrates all subcollections and external references, and deletes the absorbed duplicate with a permanent Activity Log record (ADR 0026). Restricted strictly to Full-timers.
+A Full-timer folding two records of the same person into one, one pair at a time, after reviewing a side-by-side diff of both records and the proposed result. Everything that pointed at the combined-in contact points at the kept contact afterwards, and the combine can be undone (ADR 0038).
 _Avoid_: Merge contacts, dedupe, deduplicate contacts
 
+**Kept contact**:
+The record that remains after a combine contacts; its ID is the person's ID from then on.
+_Avoid_: Survivor, primary, surviving record
+
+**Combined-in contact**:
+The record folded into the kept contact during a combine contacts; it stops existing as its own record until the combine is undone.
+_Avoid_: Duplicate, absorbed contact, removed contact
+
+**Not the same person**:
+A Full-timer's remembered judgement that two records the duplicate detector paired are different people, so the pair is no longer suggested.
+_Avoid_: False positive, ignore, dismiss
+
+**Undo combine**:
+Reversing a past combine contacts or combine tags so the records it changed return to how they were, keeping anything added or edited since.
+_Avoid_: Revert, split, restore, unmerge
+
 **Combine tags**:
-The batch consolidation action on the directory (`/directory`) that detects fragmented, misspelled, or context-suffixed tag variations (e.g. `bfa table`, `bfa-table` into `BFA`, `Fall2025` into `Fall 2025`) across all contacts. Employs hybrid clustering against canonical suggestion anchors (`TAG_SUGGESTIONS`, seasons) and directory frequency, presenting a dry-run preview grouped by tag transformation rule with individual toggles before applying batched updates to Firestore (ADR 0036).
+A Full-timer rewriting variant spellings of a tag across all contacts into one tag (e.g. `bfa table` → `BFA`), choosing from guesses or building their own, after a dry-run preview. It can be undone (ADR 0036, ADR 0039).
 _Avoid_: Merge tags, dedupe tags, auto-fix tags
+
+**Standard tag**:
+A tag the Full-timers have named as canonical: it is offered as a suggestion when tagging a contact, and combine tags treats it as the preferred target for its variants.
+_Avoid_: Anchor, suggested tag, canonical tag
 
 **Content language**:
 The language a piece of user-authored content — a prayer burden, an interaction summary, a contact note, a chat message, a coordination doc — was written in. Content is stored verbatim in the author's language with no language tag. The app's translation only ever moves English-authored content toward Spanish, and content already in Spanish is shown as-is rather than translated.
