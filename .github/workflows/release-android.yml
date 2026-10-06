@@ -4,7 +4,7 @@ name: Release Android
 #
 # Builds a signed AAB on the runner itself with `eas build --local`, so no EAS
 # cloud build minutes are consumed, then submits it to the Play Console internal
-# track as a draft — internal testers are NOT notified. Promotion to production
+# track — internal testers are notified automatically. Promotion to production
 # stays a manual Play Console click. See RELEASING.md.
 on:
   push:
