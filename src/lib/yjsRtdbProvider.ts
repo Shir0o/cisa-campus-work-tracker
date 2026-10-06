@@ -110,7 +110,10 @@ export class RtdbYjsProvider {
   }
 
   // Load the existing log once, then listen for new updates. Re-applying an
-  // already-seen update is harmless, but we track keys to avoid the churn.
+  // already-seen update is harmless, but we track keys to avoid the churn. Each
+  // entry is applied in order inside one transaction — merging the whole history
+  // with `Y.mergeUpdates` first slows down sharply as the log grows and blocks
+  // the main thread on open.
   private async bootstrap() {
     let degraded = false;
     try {
@@ -119,11 +122,22 @@ export class RtdbYjsProvider {
       const val = snap.val() as Record<string, string> | null;
       if (val) {
         const entries = Object.entries(val);
-        const merged = entries.map(([k, b64]) => {
-          this.appliedKeys.add(k);
-          return b64ToU8(b64);
-        });
-        if (merged.length) Y.applyUpdate(this.doc, Y.mergeUpdates(merged), this);
+        if (entries.length) {
+          Y.transact(
+            this.doc,
+            () => {
+              for (const [k, b64] of entries) {
+                this.appliedKeys.add(k);
+                try {
+                  Y.applyUpdate(this.doc, b64ToU8(b64), this);
+                } catch (e) {
+                  console.warn('[RtdbYjsProvider] skipping undecodable update', e);
+                }
+              }
+            },
+            this,
+          );
+        }
       }
     } catch (e) {
       degraded = true;
