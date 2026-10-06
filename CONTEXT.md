@@ -174,6 +174,26 @@ _Avoid_: Mapping, roster shortcut, dedupe key
 The pre-shared secret attd sends as `x-sync-token` on every push. It lives in `settings/integrations` and belongs to the team, not a signed-in person: it is exchanged once in attd Settings so a room-side phone never needs a Firebase login.
 _Avoid_: API key, password, bearer token
 
+**Interaction suggestion**:
+A proposed **Interaction** with one Contact, sent over from the BNPB personal relationship app, waiting for the person whose log it came from to confirm or dismiss it. It is never an Interaction until confirmed, and only its owner ever sees it. One BNPB entry that names three people becomes three suggestions, each settled on its own.
+_Avoid_: Candidate interaction, pending import, draft
+
+**Suggestion queue**:
+One person's Interaction suggestions still waiting on them. It keeps between visits and across devices, so it can be worked through later, one item at a time. Confirming writes the Interaction as that person's own. Dismissing removes the suggestion for good: the same entry is never suggested again, and the only way back is the Undo offered right after dismissing.
+_Avoid_: Import queue, staging queue, inbox
+
+**Suggestion link**:
+A remembered link from one BNPB contact to one CISA Contact, made the first time a suggestion for that person is confirmed, so their later suggestions arrive already matched. It belongs to the person who made it, unlike an **Attendee Alias**, which the team shares. A suggestion with no link and no confident name match waits as "Who is this?" until its owner picks a Contact.
+_Avoid_: Alias, mapping
+
+**Not a CISA person**:
+A decision, made once per BNPB contact, that nobody from that person's BNPB life belongs in the tracker. It dismisses every waiting suggestion that names them and every later one, so family and friends stop arriving. Undo is offered right after, as with any dismissal.
+_Avoid_: Ignore, block, mute
+
+**Personal Sync Token**:
+The secret one person generates in Settings and gives to BNPB once, so that BNPB's pushes land in their own **Suggestion queue**. It can only add suggestions for its owner; it reads nothing. Distinct from the team **Sync Token** attd uses, which says nothing about who is pushing.
+_Avoid_: API key, team token
+
 **Cancelled**:
 A Gathering that was scheduled and did not happen — a snow day, a reading week, a Thanksgiving Thursday. Cancelling is a state the Gathering carries, never a deletion: a deleted week leaves no trace, so "we didn't meet" and "this week was never scheduled" collapse into the same silence. Nobody is counted absent for a cancelled week.
 _Avoid_: Skipped, deleted, off
