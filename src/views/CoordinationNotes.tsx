@@ -133,7 +133,6 @@ import {
   docByDateDesc,
   docSortOrder,
   newDocMarkdown,
-  formatDocTaskMarkdown,
   formatDocNoteMarkdown,
   parseDocTasks,
   parseDocNotes,
@@ -2704,11 +2703,10 @@ export function DocEditor({
     if (sel) sel.removeAllRanges();
 
     try {
-      const createdItems: string[] = [];
       if (lines.length > 1) {
         for (const line of lines) {
           const parsed = parseSmartDate(line);
-          const newId = await addTodo(
+          await addTodo(
             {
               title: line,
               assigneeId: member.uid,
@@ -2717,20 +2715,11 @@ export function DocEditor({
             },
             { uid: meUid, name: meName }
           );
-          createdItems.push(
-            formatDocTaskMarkdown({
-              id: newId,
-              title: line,
-              assigneeId: member.uid,
-              assigneeName: member.name.split(' ')[0],
-              done: false,
-            })
-          );
         }
         onToast(`Created ${lines.length} tasks assigned to ${member.name.split(' ')[0]}.`);
       } else {
         const parsed = parseSmartDate(fab.text);
-        const newId = await addTodo(
+        await addTodo(
           {
             title: fab.text,
             assigneeId: member.uid,
@@ -2739,21 +2728,7 @@ export function DocEditor({
           },
           { uid: meUid, name: meName }
         );
-        createdItems.push(
-          formatDocTaskMarkdown({
-            id: newId,
-            title: fab.text,
-            assigneeId: member.uid,
-            assigneeName: member.name.split(' ')[0],
-            done: false,
-          })
-        );
         onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
-      }
-
-      if (editor && createdItems.length > 0) {
-        const replacement = createdItems.join('\n');
-        editor.chain().focus().deleteSelection().insertContent(replacement).run();
       }
     } catch (e) {
       console.error(e);
@@ -3501,20 +3476,6 @@ export function DocEditor({
           meName={meName}
           onClose={() => setTodoFromSelection(null)}
           onSaved={onToast}
-          onCreated={(createdTasks) => {
-            if (!editor) return;
-            const mdLines = createdTasks.map((t) =>
-              formatDocTaskMarkdown({
-                id: t.id,
-                title: t.title,
-                assigneeId: t.assigneeId,
-                assigneeName: t.assigneeName ? t.assigneeName.split(' ')[0] : null,
-                done: false,
-              })
-            );
-            const replacement = mdLines.join('\n');
-            editor.chain().focus().deleteSelection().insertContent(replacement).run();
-          }}
         />
       )}
 
