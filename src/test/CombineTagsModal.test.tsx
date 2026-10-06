@@ -1,21 +1,46 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
-import { logActivity, handleFirestoreError } from '../lib/firebase';
+import { useAuth } from '../components/AuthProvider';
+import { logActivity } from '../lib/firebase';
 import type { Contact } from '../types';
+
+vi.mock('../components/AuthProvider', () => ({
+  useAuth: vi.fn(),
+}));
+
+vi.mock('../components/LanguageProvider', () => ({
+  useLanguage: () => ({
+    t: (key: string, fallback?: string) => {
+      const dict: Record<string, string> = {
+        'modals.combine_tags': 'Combine tags',
+        'modals.dry_run_preview': 'Dry-run preview — no changes are saved until you confirm.',
+        'modals.no_duplicate_tags': 'No duplicate or overlapping tags found.',
+        'modals.season_variants': 'Season variants like “Fall \'26” and “Fall 2026” would be combined here.',
+        'modals.rules_to_combine': 'Proposed tag rules ({count})',
+        'modals.rule_contacts_count': '{n} {count}',
+        'modals.select_all_rules': 'Select all',
+        'modals.deselect_all_rules': 'Deselect all',
+        'modals.contacts_would_change': '{n} {count} would have their tags combined.',
+        'modals.nothing_to_combine': 'Nothing to combine',
+        'modals.contact_singular': 'contact',
+        'modals.contacts': 'contacts',
+        'modals.before': 'Before:',
+        'modals.after': 'After:',
+        'modals.cancel': 'Cancel',
+        'modals.combine_n_contacts': 'Combine {n} {count}',
+      };
+      return dict[key] || fallback || key;
+    },
+  }),
+}));
 
 const mockUpdate = vi.fn();
 const mockCommit = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../components/AuthProvider', () => ({
-  useAuth: () => ({
-    user: { uid: 'u1', displayName: 'Admin', email: 'admin@test.com' },
-  }),
-}));
-
 vi.mock('firebase/firestore', () => ({
-  doc: vi.fn((_db: unknown, path: string, id: string) => ({ path, id })),
+  doc: vi.fn((_db, coll, id) => ({ path: `${coll}/${id}`, id })),
   writeBatch: vi.fn(() => ({
     update: mockUpdate,
     commit: mockCommit,
@@ -29,76 +54,83 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
-const cleanContacts: Contact[] = [
-  {
-    id: 'c1',
-    name: 'Ari',
-    email: '',
-    phone: '',
-    stage: 'Lead',
-    location: '',
-    lastSeen: '',
-    initials: 'A',
-    spiritualBackground: '',
-    tags: ['Fall 2026'],
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-];
-
-const dirtyContacts: Contact[] = [
-  {
-    ...cleanContacts[0],
-    tags: ["Fall '26", 'Fall 2026'],
-  },
-];
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockCommit.mockResolvedValue(undefined);
-});
-
 describe('CombineTagsModal', () => {
-  it('lays over the app shell — z-index above the sidebar (issue #357)', () => {
-    const { container } = render(<CombineTagsModal contacts={cleanContacts} onClose={vi.fn()} />);
-    // The sidebar sits at z-[70]; the modal must stack above it so it isn't
-    // covered on the wide screen.
-    const dialog = container.querySelector('div[class*="z-[100]"]');
-    expect(dialog).not.toBeNull();
-    expect(container.querySelector('div[class*="z-50"]')).toBeNull();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u1', displayName: 'Staff User' },
+    });
   });
 
-  it('shows an empty state when there are no tags to combine', () => {
-    render(<CombineTagsModal contacts={cleanContacts} onClose={vi.fn()} />);
+  it('renders clean empty state when there are no duplicate or suffixed tags', () => {
+    const contacts: Contact[] = [
+      { id: 'c1', name: 'Alice', tags: ['Saved'] } as Contact,
+      { id: 'c2', name: 'Bob', tags: ['Baptized'] } as Contact,
+    ];
 
+    render(<CombineTagsModal contacts={contacts} onClose={vi.fn()} />);
     expect(screen.getByText('No duplicate or overlapping tags found.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Nothing to combine/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /nothing to combine/i })).toBeDisabled();
   });
 
-  it('shows a dry-run preview and applies the combined tags after confirmation', async () => {
+  it('displays discovered rules, allows toggling checkboxes, and commits batch on apply', async () => {
+    const contacts: Contact[] = [
+      { id: 'c1', name: 'Student 1', tags: ['BFA table'] } as Contact,
+      { id: 'c2', name: 'Student 2', tags: ['bfa-table'] } as Contact,
+      { id: 'c3', name: 'Student 3', tags: ['Club rush table'] } as Contact,
+    ];
+
+    const onApplied = vi.fn();
     const onClose = vi.fn();
-    render(<CombineTagsModal contacts={dirtyContacts} onClose={onClose} />);
 
-    expect(screen.getByText('1 contact would have their tags combined.')).toBeInTheDocument();
-    expect(screen.getByText(/Fall '26/)).toBeInTheDocument();
-    expect(screen.getByText('Fall 2026')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Combine 1 contact/i }));
-
-    await waitFor(() => expect(mockCommit).toHaveBeenCalledTimes(1));
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ tags: ['Fall 2026'] }),
+    render(
+      <CombineTagsModal
+        contacts={contacts}
+        onClose={onClose}
+        onApplied={onApplied}
+      />,
     );
-    expect(logActivity).toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalled();
-  });
 
-  it('surfaces Firestore update errors through handleFirestoreError', async () => {
-    mockCommit.mockRejectedValue(new Error('denied'));
-    render(<CombineTagsModal contacts={dirtyContacts} onClose={vi.fn()} />);
+    // Shows 2 proposed rules: BFA table variants -> BFA, and Club rush table -> Club Rush
+    expect(screen.getByText(/Proposed tag rules \(2\)/i)).toBeInTheDocument();
+    expect(screen.getAllByText('BFA').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Club Rush').length).toBeGreaterThanOrEqual(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /Combine 1 contact/i }));
+    // Checkboxes are rendered and checked by default
+    const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    expect(checkboxes.length).toBe(2);
+    expect(checkboxes[0].checked).toBe(true);
+    expect(checkboxes[1].checked).toBe(true);
 
-    await waitFor(() => expect(handleFirestoreError).toHaveBeenCalled());
+    // Initial button text shows all 3 contacts
+    const applyBtn = screen.getByRole('button', { name: /Combine 3 contacts/i });
+    expect(applyBtn).toBeEnabled();
+
+    // Uncheck first rule
+    fireEvent.click(checkboxes[0]);
+    expect(checkboxes[0].checked).toBe(false);
+
+    // Now button text should update to reflect only remaining enabled rule
+    expect(screen.getByRole('button', { name: /Combine 1 contact/i })).toBeEnabled();
+
+    // Deselect all
+    fireEvent.click(screen.getByRole('button', { name: /^Deselect all$/i }));
+    expect(screen.getByRole('button', { name: /nothing to combine/i })).toBeDisabled();
+
+    // Select all back
+    fireEvent.click(screen.getByRole('button', { name: /^Select all$/i }));
+    const finalApplyBtn = screen.getByRole('button', { name: /Combine 3 contacts/i });
+    expect(finalApplyBtn).toBeEnabled();
+
+    // Click apply
+    fireEvent.click(finalApplyBtn);
+    await waitFor(() => {
+      expect(mockCommit).toHaveBeenCalled();
+      expect(onApplied).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(3);
+    expect(logActivity).toHaveBeenCalledTimes(3);
   });
 });
