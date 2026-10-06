@@ -1203,8 +1203,9 @@ describe('Directory', () => {
             { id: 'r-bfa-old', data: () => ({ name: 'Old BFA', role: 'Student', stage: 'Lead', createdAt: days(40), tags: ['BFA'] }) },
             { id: 'r-bfa-saint', data: () => ({ name: 'Saint BFA', role: 'Student', stage: 'Lead', inChurchLife: true, isStudent: false, createdAt: days(2), tags: ['BFA'] }) },
             { id: 'r-fresh', data: () => ({ name: 'Freshman Recent', role: 'Student', stage: 'Lead', createdAt: days(3), tags: ['Freshman'] }) },
+            { id: 'r-senior-old', data: () => ({ name: 'Senior Old', role: 'Student', stage: 'Lead', createdAt: days(50), tags: ['Senior'] }) },
           ],
-          size: 5,
+          size: 6,
         });
       } else if (ref?.path === 'stages') {
         callback({ docs: mockStages, size: 2 });
@@ -1219,8 +1220,45 @@ describe('Directory', () => {
 
     // Two recent Contacts (the 40-day-old contact is outside the window, the
     // Local saint never counts).
-    expect(screen.getByRole('button', { name: 'BFA · 2 not reached' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Freshman · 1 not reached' })).toBeInTheDocument();
+    // A counted chip reads `BFA 2` and its accessible name carries the phrase.
+    const bfa = screen.getByRole('button', { name: 'BFA, 2 not reached yet' });
+    expect(bfa).toHaveTextContent(/^BFA\s*2$/);
+    expect(screen.getByRole('button', { name: 'Freshman, 1 not reached yet' })).toHaveTextContent(/^Freshman\s*1$/);
+    // The words never appear in a chip's visible text.
+    expect(screen.queryByText(/not reached/i, { selector: 'button *' })).not.toBeInTheDocument();
+    // A tag with nobody waiting is the bare tag, no badge, plain name.
+    const senior = screen.getByRole('button', { name: 'Senior' });
+    expect(senior).toHaveTextContent(/^Senior$/);
+    // The numbers are explained once, above the chips.
+    expect(
+      screen.getByText("Numbers show who's not reached yet among people added in the last 30 days"),
+    ).toBeInTheDocument();
+  });
+
+  it('hides the chip-count caption when no tag has anyone not reached yet (#1376)', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'z-old', data: () => ({ name: 'Zero Old', role: 'Student', stage: 'Lead', createdAt: days(60), tags: ['BFA'] }) },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Zero Old')).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: 'BFA' })).toHaveTextContent(/^BFA$/);
+    expect(screen.queryByText(/Numbers show who's not reached yet/)).not.toBeInTheDocument();
   });
 
   it('the Not reached yet filter combines with tags and reaches back past 30 days (#1300)', async () => {
@@ -1269,7 +1307,7 @@ describe('Directory', () => {
 
     // Combining with a tag narrows to the BFA people nobody has reached, old
     // ones included.
-    fireEvent.click(screen.getByRole('button', { name: /^BFA ·/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^BFA,/ }));
     expect(screen.getByText('BFA New')).toBeInTheDocument();
     expect(screen.getByText('BFA Old')).toBeInTheDocument();
     expect(screen.queryByText('Other Freshman')).not.toBeInTheDocument();
@@ -1322,7 +1360,7 @@ describe('Directory', () => {
     expect(within(rowOf('Signed Up')).getByText('Not reached yet')).toBeInTheDocument();
 
     // The tag count.
-    expect(screen.getByRole('button', { name: 'BFA · 1 not reached' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'BFA, 1 not reached yet' })).toBeInTheDocument();
 
     // The filter.
     fireEvent.click(screen.getByText('Filters'));
