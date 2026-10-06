@@ -340,16 +340,20 @@ export default function Attendance() {
       let current: GatheringAttendanceStatus | undefined;
       if (isContactPresent(event, contact.id)) current = 'present';
       else if (explicitlyAbsent(event, contact.id)) current = 'absent';
-      const next = cycleAttendanceStatus(current);
+      const rhythm = event.rhythmId ? rhythmsById.get(event.rhythmId) : undefined;
+      const onRoster = resolveRoster(event, rhythm, new Date()).includes(contact.id);
+      const next = cycleAttendanceStatus(current, onRoster);
       const attendance = applyAttendance(event.attendance, contact.id, next);
       const label = (v: GatheringAttendanceStatus | undefined) =>
         v === 'present' ? t('attendance.present') : v === 'absent' ? t('attendance.absent') : t('attendance.none');
 
       const userName = user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user');
       const userUid = user?.uid || null;
-      const legacyMap = (contact as { attendance?: Record<string, boolean | 'absent' | 'late'> }).attendance ?? {};
+      const legacyMap = { ...((contact as { attendance?: Record<string, boolean | 'absent' | 'late'> }).attendance ?? {}) };
+      if (next === undefined) delete legacyMap[eventId];
+      else legacyMap[eventId] = next === 'present' ? true : 'absent';
       const contactUpdate: Record<string, unknown> = {
-        attendance: { ...legacyMap, [eventId]: next === 'present' ? true : 'absent' },
+        attendance: legacyMap,
         updatedAt: new Date().toISOString(),
         updatedBy: userUid,
         updatedByName: userName,

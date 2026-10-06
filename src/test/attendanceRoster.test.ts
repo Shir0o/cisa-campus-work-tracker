@@ -4,6 +4,8 @@ import {
   calculateMissedContacts,
   shouldCountSessionForContact,
   resolveRoster,
+  cycleAttendanceStatus,
+  applyAttendance,
   cancelGathering,
   uncancelGathering,
 } from '../lib/attendanceRoster';
@@ -108,9 +110,26 @@ describe('attendanceRoster', () => {
           absent: ['a-walk-b', 'a-walk-a'],
         },
       };
-      const { present, absent } = getSessionRoster(gathering, contacts);
+      const { present, absent, nonRoster } = getSessionRoster(gathering, contacts);
       expect(present.map((c) => c.name)).toEqual(['Aaron', 'bea', 'carl', 'Adam walk', 'zed walk']);
-      expect(absent.map((c) => c.name)).toEqual(['alex', 'Bob', 'Amy walk', 'beth walk']);
+      expect(absent.map((c) => c.name)).toEqual(['alex', 'Bob']);
+      expect(nonRoster.map((c) => c.name).sort()).toEqual(['Amy walk', 'beth walk']);
+    });
+
+    it('treats an explicit absence for someone off the roster as no mark', () => {
+      const gathering: Gathering = {
+        id: 'e10',
+        name: 'Walk-in absence',
+        date: '2026-06-12',
+        order: 1,
+        createdAt: '',
+        roster: ['c1'],
+        attendance: { present: ['c2'], absent: ['c3'] },
+      };
+      const { present, absent, nonRoster } = getSessionRoster(gathering, [contactA, contactB, contactC]);
+      expect(present.map((c) => c.id)).toEqual(['c2']);
+      expect(absent.map((c) => c.id)).toEqual(['c1']);
+      expect(nonRoster.map((c) => c.id)).toEqual(['c3']);
     });
 
     it('counts nobody absent for a cancelled Gathering', () => {
@@ -121,6 +140,27 @@ describe('attendanceRoster', () => {
     });
   });
 
+  describe('cycleAttendanceStatus', () => {
+    it('cycles a roster member present -> absent -> present', () => {
+      expect(cycleAttendanceStatus('present', true)).toBe('absent');
+      expect(cycleAttendanceStatus('absent', true)).toBe('present');
+      expect(cycleAttendanceStatus(undefined, true)).toBe('present');
+    });
+
+    it('cycles a walk-in unmarked -> present -> absent -> unmarked', () => {
+      expect(cycleAttendanceStatus(undefined, false)).toBe('present');
+      expect(cycleAttendanceStatus('present', false)).toBe('absent');
+      expect(cycleAttendanceStatus('absent', false)).toBeUndefined();
+    });
+  });
+
+  describe('applyAttendance', () => {
+    it('clears a mark from both lists when next is undefined', () => {
+      expect(applyAttendance({ present: ['c1'], absent: [] }, 'c1', undefined)).toEqual({ present: [], absent: [] });
+      expect(applyAttendance({ present: [], absent: ['c1'] }, 'c1', undefined)).toEqual({ present: [], absent: [] });
+    });
+  });
+
   describe('shouldCountSessionForContact', () => {
     it('does not count a session as missed if contact had never attended and was not in roster at that time', () => {
       const countPast = shouldCountSessionForContact(contactB, event2, [event1, event2]);
@@ -128,6 +168,15 @@ describe('attendanceRoster', () => {
 
       const countC = shouldCountSessionForContact(contactC, event2, [event1, event2]);
       expect(countC).toBe(false);
+    });
+
+    it('does not count an explicit absence for someone off the roster', () => {
+      const session: Gathering = {
+        ...event2,
+        roster: ['c1', 'c2'],
+        attendance: { present: [], absent: ['c3'] },
+      };
+      expect(shouldCountSessionForContact(contactC, session, [session])).toBe(false);
     });
 
     it('never counts a cancelled session', () => {

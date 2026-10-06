@@ -106,23 +106,30 @@ export function uncancelGathering(gathering: Gathering): Gathering {
   return rest;
 }
 
-/** Tapping a name cycles present -> absent -> present. */
+/** Tapping a name cycles. A roster member goes present -> absent -> present.
+ *  Someone outside the roster goes unmarked -> present -> absent -> unmarked:
+ *  their absence is never counted (see `getSessionRoster`), so the second tap
+ *  after present clears the mark and returns them to the walk-in search. */
 export function cycleAttendanceStatus(
   current: GatheringAttendanceStatus | undefined,
-): GatheringAttendanceStatus {
+  onRoster: boolean = true,
+): GatheringAttendanceStatus | undefined {
+  if (onRoster) return current === 'present' ? 'absent' : 'present';
+  if (current === 'absent') return undefined;
   return current === 'present' ? 'absent' : 'present';
 }
 
-/** Applies one contact's new mark, returning a fresh record. */
+/** Applies one contact's new mark, returning a fresh record. `undefined`
+ *  clears the mark, removing them from both lists. */
 export function applyAttendance(
   current: GatheringAttendance | undefined,
   contactId: string,
-  next: GatheringAttendanceStatus,
+  next: GatheringAttendanceStatus | undefined,
 ): GatheringAttendance {
   const present = (current?.present ?? []).filter((id) => id !== contactId);
   const absent = (current?.absent ?? []).filter((id) => id !== contactId);
   if (next === 'present') present.push(contactId);
-  else absent.push(contactId);
+  else if (next === 'absent') absent.push(contactId);
   return { present, absent };
 }
 
@@ -175,8 +182,8 @@ export function hydrateGatherings(gatherings: Gathering[], contacts: Contact[]):
 /**
  * Segregates contacts for a gathering into:
  * - `present`: Anyone marked present (roster or walk-in).
- * - `absent`: Roster members not marked present, plus anyone
- *   outside the roster explicitly marked absent.
+ * - `absent`: Roster members not marked present. An explicit absence for
+ *   someone outside the roster is treated as no mark and falls through.
  * - `nonRoster`: Other contacts who did not attend and are not on the roster.
  *
  * A cancelled Gathering counts nobody absent: everyone not marked present
@@ -203,7 +210,7 @@ export function getSessionRoster(
       present.push(contact);
     } else if (event.cancelled === true) {
       nonRoster.push(contact);
-    } else if (rosterSet.has(contact.id) || explicitlyAbsent(event, contact.id)) {
+    } else if (rosterSet.has(contact.id)) {
       absent.push(contact);
     } else {
       nonRoster.push(contact);
@@ -231,7 +238,7 @@ export function shouldCountSessionForContact(
   resolvedRosterFor: (s: Gathering) => string[] = (s) => s.roster ?? [],
 ): boolean {
   if (session.cancelled === true) return false;
-  if (isContactPresent(session, contact.id) || explicitlyAbsent(session, contact.id)) return true;
+  if (isContactPresent(session, contact.id)) return true;
   if (resolvedRosterFor(session).includes(contact.id)) return true;
   const sessionIdx = allSessionsSortedDesc.findIndex((s) => s.id === session.id);
   if (sessionIdx === -1) return false;

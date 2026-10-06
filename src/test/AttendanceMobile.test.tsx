@@ -184,6 +184,7 @@ describe('AttendanceMobile', () => {
         sessions={[session({ attendance: { present: [], absent: ['c1'] } })]}
         contacts={[absentContact]}
         here={vi.fn(() => false)}
+        resolvedRosterFor={() => ['c1']}
         cycleAttendance={cycleAttendance}
       />
     );
@@ -201,6 +202,7 @@ describe('AttendanceMobile', () => {
         sessions={[session({ attendance: { present: [], absent: ['c1'] } })]}
         contacts={[absentContact]}
         here={vi.fn(() => false)}
+        resolvedRosterFor={() => ['c1']}
         onOpenTodo={onOpenTodo}
       />
     );

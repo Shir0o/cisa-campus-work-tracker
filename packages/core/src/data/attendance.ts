@@ -16,18 +16,21 @@ export async function setGatheringAttendance(
   db: Firestore,
   gathering: Gathering,
   contact: Contact,
-  next: GatheringAttendanceStatus,
+  next: GatheringAttendanceStatus | undefined,
   by: { uid?: string | null; name?: string | null },
   eventDate?: string,
 ): Promise<void> {
   const attendance = applyAttendance(gathering.attendance, contact.id, next);
 
+  const legacy: LegacyContactAttendance = {
+    ...((contact as { attendance?: LegacyContactAttendance }).attendance ?? {}),
+  };
+  if (next === undefined) delete legacy[gathering.id];
+  else legacy[gathering.id] = next === "present" ? true : "absent";
+
   const contactUpdate: Record<string, unknown> = {
     // Legacy mirror - remove with the rest of the migration bridge.
-    attendance: {
-      ...((contact as { attendance?: LegacyContactAttendance }).attendance ?? {}),
-      [gathering.id]: next === "present" ? true : "absent",
-    },
+    attendance: legacy,
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,

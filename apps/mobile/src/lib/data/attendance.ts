@@ -20,7 +20,8 @@ export async function cycleAttendance(
     : core.explicitlyAbsent(gathering, contact.id)
       ? 'absent'
       : undefined;
-  const next = core.cycleAttendanceStatus(current);
+  const onRoster = (gathering.rosterOverride ?? gathering.roster ?? []).includes(contact.id);
+  const next = core.cycleAttendanceStatus(current, onRoster);
   try {
     await core.setGatheringAttendance(db, gathering, contact, next, by, gathering.date);
     void logActivity({
