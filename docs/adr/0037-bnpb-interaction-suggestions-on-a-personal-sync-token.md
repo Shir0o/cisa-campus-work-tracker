@@ -35,6 +35,10 @@ who have nothing to do with campus.
    strictly one at a time and writes an Interaction as the owner; only
    `summary`, `occurredAt`, `durationMinutes` and a mapped `medium` cross —
    BNPB `notes` never leave the phone.
+6. **Only the app owner.** BNPB is the owner's own app, so the whole feature
+   is gated on the existing app-owner identity — no new allowlist. Token
+   generation, every push, the Firestore rules and the UI each check it, so
+   no other account can connect, push, read, or even see the feature.
 
 ## Considered options
 - **Team Sync Token (as attd).** Rejected: it cannot say whose suggestion a

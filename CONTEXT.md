@@ -191,7 +191,7 @@ A decision, made once per BNPB contact, that nobody from that person's BNPB life
 _Avoid_: Ignore, block, mute
 
 **Personal Sync Token**:
-The secret one person generates in Settings and gives to BNPB once, so that BNPB's pushes land in their own **Suggestion queue**. It can only add suggestions for its owner; it reads nothing. Distinct from the team **Sync Token** attd uses, which says nothing about who is pushing.
+The secret one person generates in Settings and gives to BNPB once, so that BNPB's pushes land in their own **Suggestion queue**. It can only add suggestions for its owner; it reads nothing. Only the app owner can have one: BNPB suggestions are the app owner's feature alone, and no one else sees them. Distinct from the team **Sync Token** attd uses, which says nothing about who is pushing.
 _Avoid_: API key, team token
 
 **Cancelled**:
