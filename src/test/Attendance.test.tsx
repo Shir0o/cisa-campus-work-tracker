@@ -1,7 +1,7 @@
 import './useMediaQuery.mock';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, deleteDoc, addDoc } from 'firebase/firestore';
+import { onSnapshot, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import Attendance from '../views/Attendance';
 import { useAuth, type AuthContextType } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -275,7 +275,8 @@ describe('Attendance', () => {
     fireEvent.click(headerBtn);
 
     // Expect to see attendance lists
-    expect(screen.getByText(/Attended/i)).toBeInTheDocument();
+    expect(screen.getByText('Came')).toBeInTheDocument();
+    expect(screen.queryByText('Attended')).not.toBeInTheDocument();
     expect(screen.getByText(/We missed/i)).toBeInTheDocument();
 
     // Toggle Bob Lee (who is present for e1)
@@ -375,6 +376,78 @@ describe('Attendance', () => {
     // The composer opens pre-filled to check on her, and can be committed.
     expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Check on Alice');
     fireEvent.click(screen.getByRole('button', { name: /add to-do/i }));
+  });
+
+  describe('member chips in an expanded Gathering', () => {
+    // Charlie came to e1 but is on nobody's roster — a walk-in.
+    const walkIn = {
+      id: 'c3',
+      data: () => ({
+        name: 'Charlie Brown',
+        email: 'charlie@example.com',
+        role: 'Student',
+        stage: 'Lead',
+        attendance: { e1: true },
+      }),
+    };
+
+    const openFirstGathering = async () => {
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'contacts') {
+          callback({ docs: [...mockContacts, walkIn], size: 3 });
+        } else if (ref?.path === 'events') {
+          callback({ docs: mockEvents, size: 3 });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+      render(<Attendance />);
+      await waitFor(() => {
+        expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Friday Gathering 1'));
+    };
+
+    it('tags only the person outside the roster as a walk-in and drops the star badge', async () => {
+      await openFirstGathering();
+      expect(screen.getAllByText('walk-in')).toHaveLength(1);
+      expect(screen.getByText('Charlie Brown').closest('button')).toHaveTextContent('walk-in');
+      expect(screen.getByText('Bob Lee').closest('button')).not.toHaveTextContent('walk-in');
+      expect(screen.queryByText('★')).not.toBeInTheDocument();
+      expect(screen.queryByText('+ Roster')).not.toBeInTheDocument();
+    });
+
+    it('lets a Full-timer add a walk-in to the roster from their chip', async () => {
+      await openFirstGathering();
+      fireEvent.click(screen.getByRole('button', { name: 'Add Charlie Brown to roster' }));
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'events', id: 'e1' }),
+          { roster: ['c1', 'c2', 'c3'] },
+        );
+      });
+      expect(screen.getAllByRole('button', { name: /Add .* to roster/ })).toHaveLength(1);
+    });
+
+    it('hides add-to-roster from people who are not Full-timers but still shows the walk-in tag', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'u-test', displayName: 'Test User' },
+        isAdmin: false,
+      });
+      await openFirstGathering();
+      expect(screen.getByText('walk-in')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Add .* to roster/ })).not.toBeInTheDocument();
+    });
+
+    it('lists roster members before walk-ins in Came', async () => {
+      await openFirstGathering();
+      const names = screen
+        .getAllByRole('button', { name: /^(?!Add ).*(Bob Lee|Charlie Brown)/ })
+        .map((b) => b.textContent ?? '');
+      expect(names[0]).toContain('Bob Lee');
+      expect(names[1]).toContain('Charlie Brown');
+    });
   });
 
   it('shows an upcoming one-off, faint-rendered under One-offs (Story 36)', async () => {

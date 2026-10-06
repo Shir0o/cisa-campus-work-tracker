@@ -181,6 +181,9 @@ export function hydrateGatherings(gatherings: Gathering[], contacts: Contact[]):
  *
  * A cancelled Gathering counts nobody absent: everyone not marked present
  * falls through to `nonRoster` instead.
+ *
+ * `present` and `absent` come back ordered: roster members first, then those
+ * outside the roster, each part alphabetical by name.
  */
 export function getSessionRoster(
   event: Gathering,
@@ -206,6 +209,12 @@ export function getSessionRoster(
       nonRoster.push(contact);
     }
   }
+  const byRosterThenName = (a: Contact, b: Contact) => {
+    const rosterDiff = Number(rosterSet.has(b.id)) - Number(rosterSet.has(a.id));
+    return rosterDiff !== 0 ? rosterDiff : a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  };
+  present.sort(byRosterThenName);
+  absent.sort(byRosterThenName);
   return { present, absent, nonRoster };
 }
 

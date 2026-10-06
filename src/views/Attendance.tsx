@@ -9,7 +9,6 @@ import {
   Users,
   Pencil,
   Settings2,
-  CheckSquare,
   Ban,
   Repeat,
   Undo2,
@@ -50,6 +49,7 @@ import AttendanceSyncPanel from '../components/AttendanceSyncPanel';
 import { useLanguage } from '../components/LanguageProvider';
 import { useCalendarSync, calStartOfDay, calAddDays, canSeeCalendarSync, type CalContextItem } from '../lib/calendar/calendarSync';
 import KindChip from "../components/ui/KindChip";
+import GatheringMemberChip from '../components/ui/GatheringMemberChip';
 
 // Event dates are date-only ('yyyy-MM-dd'); parseISO reads them as LOCAL midnight
 // (new Date(...) would treat them as UTC and shift a day in negative-offset zones).
@@ -619,6 +619,8 @@ export default function Attendance() {
           RsvpCountComponent={RsvpCount}
           team={team}
           onOpenTodo={openTodoFor}
+          resolvedRosterFor={resolvedRosterFor}
+          onToggleRoster={handleToggleRoster}
         />
         {todoFor && (
           <FromEntryTodoComposer
@@ -1153,6 +1155,7 @@ function GatheringExpansion({
   } = rest;
   const ev = events.find((e) => e.id === gathering.id);
   if (!ev) return null;
+  const rosterIds = new Set(resolvedRosterFor(ev));
   const { present, absent, nonRoster } = getSessionRoster(ev, contacts, resolvedRosterFor(ev));
   const queryText = walkInQuery[ev.id] || '';
   const filteredNonRoster = queryText.trim()
@@ -1196,15 +1199,7 @@ function GatheringExpansion({
         </p>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant">
-            <span className="inline-flex items-center gap-1.5">
-              <i className="w-2 h-2 rounded-full bg-primary inline-block" /> {t('attendance.here')}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <i className="w-2 h-2 rounded-full bg-outline inline-block" /> {t('attendance.missed')}
-            </span>
-            <span className="italic">{t('attendance.tap_name_to_update')}</span>
-          </div>
+          <div className="text-xs text-on-surface-variant italic">{t('attendance.tap_name_to_update')}</div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {isAttendanceTaken(ev) ? (
@@ -1238,33 +1233,16 @@ function GatheringExpansion({
                 {present.length === 0 && (
                   <span className="text-sm text-on-surface-variant italic">{t('attendance.no_one_marked_yet')}</span>
                 )}
-                {present.map((c) => {
-                  const isOnRoster = resolvedRosterFor(ev).includes(c.id);
-                  return (
-                    <div
-                      key={c.id}
-                      className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border transition-colors bg-primary-container/50 border-primary/30 text-on-surface"
-                    >
-                      <button onClick={() => cycleAttendance(c, ev.id)} className="inline-flex items-center gap-2">
-                        <Avatar contact={c} size="sm" />
-                        <span className="text-sm">{c.name}</span>
-                      </button>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleRoster(ev, c.id, !isOnRoster)}
-                          title={isOnRoster ? t('attendance.remove_from_roster', 'Remove from roster') : t('attendance.add_to_roster', 'Add to roster')}
-                          className={cn(
-                            'text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors',
-                            isOnRoster ? 'text-on-surface-variant/70 hover:text-error' : 'bg-primary/20 text-accent hover:bg-primary/30',
-                          )}
-                        >
-                          {isOnRoster ? '★' : '+ Roster'}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                {present.map((c) => (
+                  <GatheringMemberChip
+                    key={c.id}
+                    contact={c}
+                    came
+                    onRoster={rosterIds.has(c.id)}
+                    onToggle={() => cycleAttendance(c, ev.id)}
+                    onAddToRoster={isAdmin ? () => handleToggleRoster(ev, c.id, true) : undefined}
+                  />
+                ))}
               </div>
             </div>
             <div>
@@ -1276,24 +1254,14 @@ function GatheringExpansion({
                   <span className="text-sm text-on-surface-variant italic">{t('attendance.everyone_came_period')}</span>
                 )}
                 {absent.map((c) => (
-                  <span key={c.id} className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border border-outline-variant bg-surface-variant/40 text-on-surface-variant">
-                    <button
-                      onClick={() => cycleAttendance(c, ev.id)}
-                      className="inline-flex items-center gap-2"
-                      title={t('attendance.tap_to_mark_present')}
-                    >
-                      <Avatar contact={c} size="sm" />
-                      <span className="text-sm">{c.name}</span>
-                    </button>
-                    <button
-                      onClick={() => openTodoFor(c, ev)}
-                      title={t('attendance.make_a_todo_check_on').replace('{name}', c.name)}
-                      aria-label={t('attendance.make_a_todo_for').replace('{name}', c.name)}
-                      className="p-1.5 rounded-full hover:bg-surface-variant hover:text-accent transition-colors"
-                    >
-                      <CheckSquare className="w-3.5 h-3.5" />
-                    </button>
-                  </span>
+                  <GatheringMemberChip
+                    key={c.id}
+                    contact={c}
+                    came={false}
+                    onRoster={rosterIds.has(c.id)}
+                    onToggle={() => cycleAttendance(c, ev.id)}
+                    onMakeTodo={() => openTodoFor(c, ev)}
+                  />
                 ))}
               </div>
             </div>

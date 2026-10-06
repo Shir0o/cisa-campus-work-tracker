@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format, isValid } from 'date-fns';
-import { Plus, X, MessageSquare, ChevronRight, Check, Users, Pencil, CheckSquare } from 'lucide-react';
+import { Plus, X, MessageSquare, ChevronRight, Check, Users, Pencil } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact, Gathering } from '../types';
 import { Avatar } from '../components/landing/primitives';
@@ -9,6 +9,7 @@ import type { TodoPerson } from '../lib/todos';
 import { useLanguage } from '../components/LanguageProvider';
 import type { CalContextItem } from '../lib/calendar/calendarSync';
 import { getSessionRoster } from '../lib/attendanceRoster';
+import GatheringMemberChip from '../components/ui/GatheringMemberChip';
 
 // A one-off Gathering shown in "Coming up" — no calendar merge anymore
 // (ADR 0016 decision 2), so this is just an upcoming `events` doc.
@@ -38,6 +39,9 @@ interface AttendanceMobileProps {
   RsvpCountComponent: React.ComponentType<{ eventId: string }>;
   team?: TodoPerson[];
   onOpenTodo?: (contact: Contact, event: Gathering) => void;
+  /** The Gathering's expected roster (its Rhythm's, with the week's override). */
+  resolvedRosterFor?: (session: Gathering) => string[];
+  onToggleRoster?: (event: Gathering, contactId: string, add: boolean) => Promise<void>;
 }
 
 export default function AttendanceMobile({
@@ -58,6 +62,8 @@ export default function AttendanceMobile({
   RsvpCountComponent,
   team,
   onOpenTodo,
+  resolvedRosterFor,
+  onToggleRoster,
 }: AttendanceMobileProps) {
   const { t } = useLanguage();
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
@@ -272,6 +278,8 @@ export default function AttendanceMobile({
           confirmDeleteId={confirmDeleteId}
           setConfirmDeleteId={setConfirmDeleteId}
           onOpenTodo={onOpenTodo}
+          resolvedRosterFor={resolvedRosterFor}
+          onToggleRoster={isAdmin ? onToggleRoster : undefined}
           onClose={() => {
             setOpenSessionId(null);
             setConfirmDeleteId(null);
@@ -291,6 +299,9 @@ interface RosterSheetProps {
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
   onOpenTodo?: (contact: Contact, event: Gathering) => void;
+  resolvedRosterFor?: (session: Gathering) => string[];
+  /** Only passed for Full-timers. */
+  onToggleRoster?: (event: Gathering, contactId: string, add: boolean) => Promise<void>;
   onClose: () => void;
 }
 
@@ -303,11 +314,15 @@ function RosterSheet({
   confirmDeleteId,
   setConfirmDeleteId,
   onOpenTodo,
+  resolvedRosterFor,
+  onToggleRoster,
   onClose,
 }: RosterSheetProps) {
   const { t } = useLanguage();
   const meta = session.cancelled ? t('attendance.cancelled', 'Cancelled') : (session.location || '');
-  const { present, absent } = getSessionRoster(session, contacts);
+  const roster = resolvedRosterFor ? resolvedRosterFor(session) : session.roster ?? [];
+  const rosterIds = new Set(roster);
+  const { present, absent } = getSessionRoster(session, contacts, roster);
 
   return (
     <div
@@ -333,33 +348,30 @@ function RosterSheet({
           </button>
         </div>
 
-        {/* Legend */}
-        <div className="px-5 py-2 flex gap-4 text-xs font-semibold text-on-surface-variant border-b border-outline-variant/30 gthm-legend">
-          <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-primary dot present"></i> {t('attendance.here')}</span>
-          <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-error dot absent"></i> {t('attendance.missed')}</span>
-          <span className="text-[11px] italic font-normal text-on-surface-variant/80 ml-auto gthm-legend-hint">{t('attendance.tap_name_to_cycle')}</span>
+        <div className="px-5 py-2 text-[11px] italic text-on-surface-variant/80 border-b border-outline-variant/30 gthm-legend-hint">
+          {t('attendance.tap_name_to_cycle')}
         </div>
 
         {/* Scrollable rosters */}
         <div className="overflow-y-auto px-5 pb-8 pt-4 space-y-5 mds-body">
-          {/* Here */}
+          {/* Came */}
           <div className="gthm-rcol">
-            <div className="text-xs font-semibold   text-on-surface-variant/80 mb-2 gthm-rcol-h">
-              {t('attendance.here')} <span className="text-xs px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-medium">{present.length}</span>
+            <div className="text-xs font-semibold text-on-surface-variant/80 mb-2 gthm-rcol-h">
+              {t('attendance.attended_header')} <span className="font-normal">{present.length}</span>
             </div>
             {present.length === 0 ? (
               <div className="py-4 text-xs italic text-on-surface-variant/80 text-center gth-empty">{t('attendance.no_one_marked_yet')}</div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {present.map((c) => (
-                  <button
+                  <GatheringMemberChip
                     key={c.id}
-                    onClick={() => cycleAttendance(c, session.id)}
-                    className="flex items-center gap-2.5 p-2 rounded-xl border text-left bg-surface border-outline-variant hover:bg-surface-variant transition-colors gthm-person here"
-                  >
-                    <Avatar contact={c} size="sm" />
-                    <span className="text-sm text-on-surface truncate flex-1 gthm-person-name">{c.name}</span>
-                  </button>
+                    contact={c}
+                    came
+                    onRoster={rosterIds.has(c.id)}
+                    onToggle={() => cycleAttendance(c, session.id)}
+                    onAddToRoster={onToggleRoster ? () => onToggleRoster(session, c.id, true) : undefined}
+                  />
                 ))}
               </div>
             )}
@@ -367,36 +379,22 @@ function RosterSheet({
 
           {/* Missed */}
           <div className="gthm-rcol">
-            <div className="text-xs font-semibold   text-on-surface-variant/80 mb-2 gthm-rcol-h muted">
-              {t('attendance.we_missed')} <span className="text-xs px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-medium">{absent.length}</span>
+            <div className="text-xs font-semibold text-on-surface-variant/80 mb-2 gthm-rcol-h muted">
+              {t('attendance.we_missed')} <span className="font-normal">{absent.length}</span>
             </div>
             {absent.length === 0 ? (
               <div className="py-4 text-xs italic text-on-surface-variant/80 text-center gth-empty font-medium text-stage-teal">{t('attendance.everyone_came')}</div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-wrap gap-2">
                 {absent.map((c) => (
-                  <div
+                  <GatheringMemberChip
                     key={c.id}
-                    className="flex items-center gap-1 p-2 rounded-xl border bg-surface border-outline-variant"
-                  >
-                    <button
-                      onClick={() => cycleAttendance(c, session.id)}
-                      className="flex items-center gap-2.5 text-left flex-1 min-w-0"
-                    >
-                      <Avatar contact={c} size="sm" />
-                      <span className="text-sm text-on-surface truncate flex-1 gthm-person-name">{c.name}</span>
-                    </button>
-                    {onOpenTodo && (
-                      <button
-                        onClick={() => onOpenTodo(c, session)}
-                        title={t('attendance.make_a_todo_check_on').replace('{name}', c.name)}
-                        aria-label={t('attendance.make_a_todo_for').replace('{name}', c.name)}
-                        className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant hover:text-accent transition-colors shrink-0"
-                      >
-                        <CheckSquare className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                    contact={c}
+                    came={false}
+                    onRoster={rosterIds.has(c.id)}
+                    onToggle={() => cycleAttendance(c, session.id)}
+                    onMakeTodo={onOpenTodo ? () => onOpenTodo(c, session) : undefined}
+                  />
                 ))}
               </div>
             )}
