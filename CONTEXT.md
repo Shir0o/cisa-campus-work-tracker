@@ -352,15 +352,15 @@ The batch consolidation action on the directory (`/directory`) that detects frag
 _Avoid_: Merge tags, dedupe tags, auto-fix tags
 
 **Content language**:
-The language a piece of user-authored content — a prayer burden, an interaction summary, a contact note, a chat message, a coordination doc — was written in. Content is stored verbatim in the author's language with no language tag. The app's translation only ever moves English-authored content toward Spanish, and content already in Spanish is shown as-is rather than translated.
+The language a piece of user-authored content — a prayer burden, an interaction summary, a contact note, a chat message, a coordination doc — was written in. Content is stored verbatim in the author's language with no language tag; its language is judged at read time, never recorded at write time. Content may be English, Spanish, or a mix of the two.
 _Avoid_: Source language, input language, locale
 
 **Reading translation**:
-The read-time transform that lets a Spanish-mode reader read English-authored content: English text is translated toward Spanish when a Spanish-mode reader views it. It runs only in that direction — an English-mode reader never receives a translation, and content already written in Spanish is returned unchanged rather than re-translated. The model is English-canonical for now (ADR 0027).
+The read-time transform that shows user-authored content in the reader's app language, in both directions: a Spanish-mode reader sees English-authored content in Spanish, and an English-mode reader sees Spanish-authored content in English. Content already confidently in the reader's language is shown as-is with no translation; anything else — including mixed-language content — is translated whole into the reader's language (ADR 0037, superseding ADR 0027).
 _Avoid_: Auto-translate, localization, on-the-fly translation
 
 **Background translation**:
-The scheduled off-peak sweep (ADR 0032) that pre-populates Firestore's translation cache for user-authored content across collections (prayers, interactions, contacts, todos, coordination notes) using a persistent cursor. Pre-warms translations into the `translations` collection so Spanish-mode readers see immediate text without client-side loading delay, while preserving on-demand reading translation as a fallback.
+The scheduled off-peak sweep (ADR 0032) that pre-populates Firestore's translation cache for user-authored content across collections (prayers, interactions, contacts, todos, coordination notes) using a persistent cursor. Pre-warms translations into the `translations` collection so readers in either language see immediate text without client-side loading delay, while preserving on-demand reading translation as a fallback.
 _Avoid_: Real-time sync translation, inline translation mutation
 
 **App Check**:
