@@ -8,6 +8,7 @@ export interface FirstRunStep {
   label: string;
   hint: string;
   to?: string | null;
+  helpSlug?: string | null;
   done: boolean;
 }
 
@@ -139,6 +140,7 @@ export function computeFirstRunSteps(
         id: 'convo',
         label: 'Write up your first conversation',
         to: '/directory',
+        helpSlug: 'getting-started',
         hint: 'In your own words — what they said, what you noticed.',
         done: (ctx.interactionsCount ?? 0) > 0,
       },

@@ -18,6 +18,11 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    Link: ({ to, children, ...props }: any) => (
+      <a href={String(to)} {...props}>
+        {children}
+      </a>
+    ),
   };
 });
 

@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import FirstRunCard from '../components/landing/FirstRunCard';
 import {
   computeFirstRunSteps,
@@ -59,6 +59,11 @@ describe('FirstRun logic (#335)', () => {
       expect(steps.find((s) => s.id === 'learn')?.done).toBe(true);
       expect(steps.find((s) => s.id === 'pray')?.done).toBe(false);
       expect(steps.find((s) => s.id === 'follow')?.done).toBe(true);
+    });
+
+    it('carries an optional Help target on seeded steps', () => {
+      const steps = computeFirstRunSteps('trainee', {});
+      expect(steps.find((s) => s.id === 'convo')?.helpSlug).toBe('getting-started');
     });
 
     it('returns student/community steps with correct completion states', () => {
@@ -151,6 +156,46 @@ describe('FirstRun logic (#335)', () => {
       fireEvent.click(putAwayBtn);
       expect(onDismiss).toHaveBeenCalled();
       expect(screen.queryByText('Your first week')).not.toBeInTheDocument();
+    });
+
+    it('renders a Learn more link into Help for a step with a Help target', () => {
+      render(
+        <MemoryRouter>
+          <FirstRunCard role="trainee" userId="trainee-1" context={{}} />
+        </MemoryRouter>,
+      );
+
+      const learnMore = screen.getAllByRole('link', { name: /Learn more/i });
+      expect(learnMore).toHaveLength(1);
+      expect(learnMore[0]).toHaveAttribute('href', '/help/getting-started');
+    });
+
+    it('navigates to /help/<slug> when the Learn more link is followed', () => {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route
+              path="/"
+              element={<FirstRunCard role="trainee" userId="trainee-1" context={{}} />}
+            />
+            <Route path="/help/:slug" element={<div data-testid="help-route" />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      fireEvent.click(screen.getByRole('link', { name: /Learn more/i }));
+      expect(screen.getByTestId('help-route')).toBeInTheDocument();
+    });
+
+    it('leaves steps without a Help target unchanged', () => {
+      render(
+        <MemoryRouter>
+          <FirstRunCard role="admin" userId="admin-1" context={{}} />
+        </MemoryRouter>,
+      );
+
+      expect(screen.queryByRole('link', { name: /Learn more/i })).not.toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /Show me/i }).length).toBeGreaterThan(0);
     });
 
     it('renders an accessible progress meter reflecting completion', () => {

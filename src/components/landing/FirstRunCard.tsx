@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Check, ArrowRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useLanguage } from '../LanguageProvider';
 import {
   FirstRunStore,
   evaluateFirstRun,
@@ -25,6 +26,7 @@ export default function FirstRunCard({
   onDismiss,
 }: FirstRunCardProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [dismissed, setDismissed] = useState(false);
 
   const copy = getFrnCopy(role);
@@ -125,17 +127,27 @@ export default function FirstRunCard({
               )}
             </div>
 
-            {/* Go button if not done and has target link */}
-            {!step.done && step.to && (
-              <div className="col-start-2 sm:col-start-auto justify-self-start sm:justify-self-end mt-1 sm:mt-0">
-                <button
-                  type="button"
-                  onClick={() => step.to && navigate(step.to)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full transition-colors"
-                >
-                  Show me
-                  <ArrowRight className="w-3 h-3" />
-                </button>
+            {/* Actions if not done and has a target */}
+            {!step.done && (step.to || step.helpSlug) && (
+              <div className="col-start-2 sm:col-start-auto justify-self-start sm:justify-self-end mt-1 sm:mt-0 flex flex-wrap items-center gap-x-3 gap-y-1">
+                {step.to && (
+                  <button
+                    type="button"
+                    onClick={() => step.to && navigate(step.to)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full transition-colors"
+                  >
+                    Show me
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+                {step.helpSlug && (
+                  <Link
+                    to={`/help/${step.helpSlug}`}
+                    className="inline-flex items-center text-xs font-medium text-on-surface-variant underline underline-offset-2 hover:text-accent transition-colors"
+                  >
+                    {t('firstrun.learn_more', 'Learn more')}
+                  </Link>
+                )}
               </div>
             )}
           </div>
