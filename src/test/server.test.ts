@@ -3085,9 +3085,52 @@ describe("POST /api/combine-contacts", () => {
     seedDoc("contacts/d1/interactions", "i2", { content: "again", authorId: "other" });
     seedDoc("contacts/d1/threads", "t1", { body: "note", authorId: "someone" });
     seedDoc("contacts/d1/teamThreads", "tt1", { body: "team" });
+    seedDoc("contacts/d1/comments", "c1", { text: "hey", userId: "other" });
     seedDoc("prayers", "p1", { contactId: "d1", updatedAt: "x" });
     seedDoc("tasks", "k1", { contactId: "d1", contactName: "In Name", text: "Call" });
-    seedDoc("visits", "v1", { contactIds: ["d1", "s1"] });
+    seedDoc("visits", "v1", {
+      contactIds: ["d1", "s1"],
+      contactNames: ["In Name", "Kept Name"],
+    });
+    seedDoc("events", "e1", {
+      name: "Friday Gathering",
+      roster: ["d1", "s1"],
+      rosterOverride: ["d1"],
+      rosterOverrideBase: ["d1"],
+      attendance: { present: ["d1"], absent: ["d1"] },
+    });
+    seedDoc("rhythms", "r1", { name: "Wednesday", roster: ["d1", "other"] });
+    seedDoc("homes", "h1", { label: "the Peinados", members: ["d1"] });
+    seedDoc("outreach", "o1", {
+      date: "2026-02-03",
+      names: [{ id: "ON-1", name: "In Name", contactId: "d1" }],
+    });
+    seedDoc("attendee_aliases", "a1", { attdName: "In", contactId: "d1" });
+    seedDoc("pending_attendance_imports", "pi1", {
+      status: "pending",
+      preview: {
+        attendees: [{ contactId: "d1", contactName: "In Name" }],
+        conflicts: [{ contactId: "d1" }],
+      },
+    });
+    seedDoc("users", "u2", { role: "trainee", approved: true });
+    seedDoc("users/u2/personalPrayers", "pp1", { contactId: "d1", title: "heal" });
+    seedDoc("userPreferences", "u2", { personalContactIds: ["d1", "x"] });
+    seedDoc("inboxState", "u2", {
+      seen: { "att:contact:d1": "t1" },
+      completed: { "att:contact:d1": "t2" },
+    });
+    seedDoc("notifications", "n1", {
+      targetId: "d1",
+      link: "/people/d1",
+      message: "In Name was logged",
+    });
+    seedDoc("activities", "ac1", {
+      targetId: "d1",
+      targetName: "In Name",
+      targetType: "contact",
+      action: "logged an interaction with",
+    });
   };
 
   it("re-points every reference kind, deletes the combined-in contact, and writes a done record", async () => {
@@ -3111,11 +3154,44 @@ describe("POST /api/combine-contacts", () => {
     expect(getCollection("contacts/s1/threads")["t1"]).toMatchObject({ authorId: "someone" });
     expect(getCollection("contacts/s1/teamThreads")["tt1"]).toMatchObject({ body: "team" });
     expect(getCollection("contacts/d1/threads")["t1"]).toBeUndefined();
+    expect(getCollection("contacts/s1/comments")["c1"]).toMatchObject({ text: "hey" });
+    expect(getCollection("contacts/d1/comments")["c1"]).toBeUndefined();
 
     expect(getCollection("prayers")["p1"].contactId).toBe("s1");
     expect(getCollection("tasks")["k1"].contactId).toBe("s1");
     expect(getCollection("tasks")["k1"].contactName).toBe("Kept Name");
     expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
+    expect(getCollection("visits")["v1"].contactNames).toEqual(["Kept Name"]);
+
+    // Gathering roster, overrides and attendance all drop the duplicate.
+    const event = getCollection("events")["e1"];
+    expect(event.roster).toEqual(["s1"]);
+    expect(event.rosterOverride).toEqual(["s1"]);
+    expect(event.rosterOverrideBase).toEqual(["s1"]);
+    expect(event.attendance).toEqual({ present: ["s1"], absent: ["s1"] });
+    expect(getCollection("rhythms")["r1"].roster).toEqual(["s1", "other"]);
+    expect(getCollection("homes")["h1"].members).toEqual(["s1"]);
+    expect(getCollection("outreach")["o1"].names[0]).toMatchObject({
+      contactId: "s1",
+      name: "Kept Name",
+    });
+    expect(getCollection("attendee_aliases")["a1"].contactId).toBe("s1");
+    expect(getCollection("pending_attendance_imports")["pi1"].preview.attendees[0].contactId).toBe(
+      "s1",
+    );
+    expect(getCollection("pending_attendance_imports")["pi1"].preview.conflicts[0].contactId).toBe(
+      "s1",
+    );
+    expect(getCollection("users/u2/personalPrayers")["pp1"].contactId).toBe("s1");
+    expect(getCollection("userPreferences")["u2"].personalContactIds).toEqual(["s1", "x"]);
+    expect(getCollection("inboxState")["u2"].seen).toEqual({ "att:contact:s1": "t1" });
+    expect(getCollection("inboxState")["u2"].completed).toEqual({ "att:contact:s1": "t2" });
+    // The notification moves; its text does not.
+    expect(getCollection("notifications")["n1"].targetId).toBe("s1");
+    expect(getCollection("notifications")["n1"].link).toBe("/people/s1");
+    expect(getCollection("notifications")["n1"].message).toBe("In Name was logged");
+    expect(getCollection("activities")["ac1"].targetId).toBe("s1");
+    expect(getCollection("activities")["ac1"].targetName).toBe("Kept Name");
 
     const record = Object.values(getCollection("combineRecords"))[0] as any;
     expect(record.status).toBe("done");
@@ -3123,8 +3199,47 @@ describe("POST /api/combine-contacts", () => {
     expect(record.combinedInId).toBe("d1");
     expect(record.keptBefore.name).toBe("Kept Name");
     expect(record.combinedInBefore.name).toBe("In Name");
-    expect(record.movedDocuments).toHaveLength(4);
+    expect(record.movedDocuments).toHaveLength(5);
     expect(record.rewrittenReferences.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("returns the What moves groups without writing when dryRun is set", async () => {
+    seedCombine();
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", dryRun: true });
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    const kinds = res.body.moves.map((m: any) => m.kind);
+    expect(kinds).toEqual(
+      expect.arrayContaining([
+        "interactions",
+        "threads",
+        "teamThreads",
+        "comments",
+        "prayers",
+        "tasks",
+        "visits",
+        "gatherings",
+        "rhythms",
+        "homes",
+        "outreach",
+        "attendeeAliases",
+        "pendingImports",
+        "personalPrayers",
+        "userPreferences",
+        "inboxStates",
+        "notifications",
+        "activities",
+      ]),
+    );
+    const gatherings = res.body.moves.find((m: any) => m.kind === "gatherings");
+    expect(gatherings).toMatchObject({ count: 1 });
+    expect(gatherings.items).toContainEqual({ id: "e1", label: "Friday Gathering" });
+    // Nothing was written.
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+    expect(getCollection("contacts")["s1"].tags).toEqual(["A"]);
+    expect(Object.values(getCollection("combineRecords"))).toHaveLength(0);
   });
 
   it("writes the record as pending before applying the changes", async () => {
@@ -3205,9 +3320,52 @@ describe("POST /api/combine-contacts/undo", () => {
     seedDoc("contacts/d1/interactions", "i2", { content: "again", authorId: "other" });
     seedDoc("contacts/d1/threads", "t1", { body: "note", authorId: "someone" });
     seedDoc("contacts/d1/teamThreads", "tt1", { body: "team" });
+    seedDoc("contacts/d1/comments", "c1", { text: "hey", userId: "other" });
     seedDoc("prayers", "p1", { contactId: "d1", updatedAt: "x" });
     seedDoc("tasks", "k1", { contactId: "d1", contactName: "In Name", text: "Call" });
-    seedDoc("visits", "v1", { contactIds: ["d1", "s1"] });
+    seedDoc("visits", "v1", {
+      contactIds: ["d1", "s1"],
+      contactNames: ["In Name", "Kept Name"],
+    });
+    seedDoc("events", "e1", {
+      name: "Friday Gathering",
+      roster: ["d1", "s1"],
+      rosterOverride: ["d1"],
+      rosterOverrideBase: ["d1"],
+      attendance: { present: ["d1"], absent: ["d1"] },
+    });
+    seedDoc("rhythms", "r1", { name: "Wednesday", roster: ["d1", "other"] });
+    seedDoc("homes", "h1", { label: "the Peinados", members: ["d1"] });
+    seedDoc("outreach", "o1", {
+      date: "2026-02-03",
+      names: [{ id: "ON-1", name: "In Name", contactId: "d1" }],
+    });
+    seedDoc("attendee_aliases", "a1", { attdName: "In", contactId: "d1" });
+    seedDoc("pending_attendance_imports", "pi1", {
+      status: "pending",
+      preview: {
+        attendees: [{ contactId: "d1", contactName: "In Name" }],
+        conflicts: [{ contactId: "d1" }],
+      },
+    });
+    seedDoc("users", "u2", { role: "trainee", approved: true });
+    seedDoc("users/u2/personalPrayers", "pp1", { contactId: "d1", title: "heal" });
+    seedDoc("userPreferences", "u2", { personalContactIds: ["d1", "x"] });
+    seedDoc("inboxState", "u2", {
+      seen: { "att:contact:d1": "t1" },
+      completed: { "att:contact:d1": "t2" },
+    });
+    seedDoc("notifications", "n1", {
+      targetId: "d1",
+      link: "/people/d1",
+      message: "In Name was logged",
+    });
+    seedDoc("activities", "ac1", {
+      targetId: "d1",
+      targetName: "In Name",
+      targetType: "contact",
+      action: "logged an interaction with",
+    });
   };
 
   const combineOnce = async (): Promise<string> => {
@@ -3227,9 +3385,20 @@ describe("POST /api/combine-contacts/undo", () => {
       interactions: structuredClone(getCollection("contacts/d1/interactions")),
       threads: structuredClone(getCollection("contacts/d1/threads")),
       teamThreads: structuredClone(getCollection("contacts/d1/teamThreads")),
+      comments: structuredClone(getCollection("contacts/d1/comments")),
       prayers: structuredClone(getCollection("prayers")),
       tasks: structuredClone(getCollection("tasks")),
       visits: structuredClone(getCollection("visits")),
+      events: structuredClone(getCollection("events")),
+      rhythms: structuredClone(getCollection("rhythms")),
+      homes: structuredClone(getCollection("homes")),
+      outreach: structuredClone(getCollection("outreach")),
+      aliases: structuredClone(getCollection("attendee_aliases")),
+      imports: structuredClone(getCollection("pending_attendance_imports")),
+      personalPrayers: structuredClone(getCollection("users/u2/personalPrayers")),
+      prefs: structuredClone(getCollection("userPreferences")),
+      inbox: structuredClone(getCollection("inboxState")),
+      notifications: structuredClone(getCollection("notifications")),
     };
 
     const combineRes = await request(app)
@@ -3249,9 +3418,25 @@ describe("POST /api/combine-contacts/undo", () => {
     expect(getCollection("contacts/d1/threads")).toEqual(before.threads);
     expect(getCollection("contacts/s1/threads")).toEqual({});
     expect(getCollection("contacts/d1/teamThreads")).toEqual(before.teamThreads);
+    expect(getCollection("contacts/d1/comments")).toEqual(before.comments);
+    expect(getCollection("contacts/s1/comments")).toEqual({});
     expect(getCollection("prayers")).toEqual(before.prayers);
     expect(getCollection("tasks")).toEqual(before.tasks);
     expect(getCollection("visits")).toEqual(before.visits);
+    expect(getCollection("events")).toEqual(before.events);
+    expect(getCollection("rhythms")).toEqual(before.rhythms);
+    expect(getCollection("homes")).toEqual(before.homes);
+    expect(getCollection("outreach")).toEqual(before.outreach);
+    expect(getCollection("attendee_aliases")).toEqual(before.aliases);
+    expect(getCollection("pending_attendance_imports")).toEqual(before.imports);
+    expect(getCollection("users/u2/personalPrayers")).toEqual(before.personalPrayers);
+    expect(getCollection("userPreferences")).toEqual(before.prefs);
+    expect(getCollection("inboxState")).toEqual(before.inbox);
+    expect(getCollection("notifications")).toEqual(before.notifications);
+    expect(getCollection("activities")["ac1"]).toMatchObject({
+      targetId: "d1",
+      targetName: "In Name",
+    });
   });
 
   it("recreates the combined-in contact under its original id", async () => {

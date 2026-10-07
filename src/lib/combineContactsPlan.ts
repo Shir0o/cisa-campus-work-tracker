@@ -28,9 +28,23 @@ export interface CombineReferences {
   interactions: SubcollectionDoc[];
   threads: SubcollectionDoc[];
   teamThreads: SubcollectionDoc[];
+  comments: SubcollectionDoc[];
   prayers: { id: string; data: Record<string, unknown> }[];
   tasks: { id: string; data: Record<string, unknown> }[];
   visits: { id: string; contactIds: string[]; data?: Record<string, unknown> }[];
+  /** Occasions (the `events` collection): roster, overrides and attendance. */
+  gatherings: { id: string; data: Record<string, unknown> }[];
+  rhythms: { id: string; data: Record<string, unknown> }[];
+  homes: { id: string; data: Record<string, unknown> }[];
+  outreach: { id: string; data: Record<string, unknown> }[];
+  attendeeAliases: { id: string; data: Record<string, unknown> }[];
+  pendingImports: { id: string; data: Record<string, unknown> }[];
+  /** Personal prayers, each under the user who keeps it. */
+  personalPrayers: { id: string; userId: string; data: Record<string, unknown> }[];
+  userPreferences: { id: string; data: Record<string, unknown> }[];
+  inboxStates: { id: string; data: Record<string, unknown> }[];
+  notifications: { id: string; data: Record<string, unknown> }[];
+  activities: { id: string; data: Record<string, unknown> }[];
 }
 
 /** How one field's result was decided. */
@@ -64,9 +78,21 @@ export type CombineMoveKind =
   | 'interactions'
   | 'threads'
   | 'teamThreads'
+  | 'comments'
   | 'prayers'
   | 'tasks'
-  | 'visits';
+  | 'visits'
+  | 'gatherings'
+  | 'rhythms'
+  | 'homes'
+  | 'outreach'
+  | 'attendeeAliases'
+  | 'pendingImports'
+  | 'personalPrayers'
+  | 'userPreferences'
+  | 'inboxStates'
+  | 'notifications'
+  | 'activities';
 
 /** A document relocated from the combined-in contact to the kept contact. */
 export interface MovedDocument {
@@ -326,13 +352,34 @@ export function diffCombineFields(kept: Contact, combinedIn: Contact, merged: Co
 
 // ── Plan ───────────────────────────────────────────────────────────────────
 
-const SUBCOLLECTIONS = ['interactions', 'threads', 'teamThreads'] as const;
+const SUBCOLLECTIONS = ['interactions', 'threads', 'teamThreads', 'comments'] as const;
 
 function itemLabel(data: Record<string, unknown>, fallback: string): string {
   const candidate =
     data.content ?? data.body ?? data.text ?? data.title ?? data.burden ?? data.date ?? data.name;
   if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
   return fallback;
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((item, i) => item === b[i]);
+}
+
+/** Replaces one id with another, dropping any duplicate the rewrite creates. */
+function replaceInArray(arr: string[], from: string, to: string): string[] {
+  return [...new Set(arr.map((id) => (id === from ? to : id)))];
+}
+
+/** The My Day worklist key a contact's card is stored under (see attention.ts). */
+function inboxContactKey(id: string): string {
+  return `att:contact:${id}`;
+}
+
+function moveGroup(
+  kind: CombineMoveKind,
+  docs: Array<{ id: string; label: string }>,
+): CombineMoveGroup {
+  return { kind, count: docs.length, items: docs };
 }
 
 /**
@@ -377,47 +424,50 @@ export function buildCombinePlan(
 
   const movedDocuments: MovedDocument[] = [];
   const moves: CombineMoveGroup[] = [];
+  const rewrittenReferences: RewrittenReference[] = [];
+  const id = combinedIn.id;
+  const keptId = kept.id;
 
   for (const sub of SUBCOLLECTIONS) {
     const docs = refs[sub];
     movedDocuments.push(
       ...docs.map((d) => ({
-        originalPath: `contacts/${combinedIn.id}/${sub}/${d.id}`,
-        newPath: `contacts/${kept.id}/${sub}/${d.id}`,
+        originalPath: `contacts/${id}/${sub}/${d.id}`,
+        newPath: `contacts/${keptId}/${sub}/${d.id}`,
         originalData: d.data,
       })),
     );
-    moves.push({
-      kind: sub,
-      count: docs.length,
-      items: docs.map((d) => ({ id: d.id, label: itemLabel(d.data, d.id) })),
-    });
+    moves.push(
+      moveGroup(
+        sub,
+        docs.map((d) => ({ id: d.id, label: itemLabel(d.data, d.id) })),
+      ),
+    );
   }
-
-  const rewrittenReferences: RewrittenReference[] = [];
 
   for (const prayer of refs.prayers) {
     rewrittenReferences.push({
       collection: 'prayers',
       document: prayer.id,
       field: 'contactId',
-      before: prayer.data.contactId ?? combinedIn.id,
-      after: kept.id,
+      before: prayer.data.contactId ?? id,
+      after: keptId,
     });
   }
-  moves.push({
-    kind: 'prayers',
-    count: refs.prayers.length,
-    items: refs.prayers.map((p) => ({ id: p.id, label: itemLabel(p.data, p.id) })),
-  });
+  moves.push(
+    moveGroup(
+      'prayers',
+      refs.prayers.map((p) => ({ id: p.id, label: itemLabel(p.data, p.id) })),
+    ),
+  );
 
   for (const task of refs.tasks) {
     rewrittenReferences.push({
       collection: 'tasks',
       document: task.id,
       field: 'contactId',
-      before: task.data.contactId ?? combinedIn.id,
-      after: kept.id,
+      before: task.data.contactId ?? id,
+      after: keptId,
     });
     // The cached contact name on a to-do is refreshed so it never shows the
     // retired spelling (ADR 0038).
@@ -431,27 +481,292 @@ export function buildCombinePlan(
       });
     }
   }
-  moves.push({
-    kind: 'tasks',
-    count: refs.tasks.length,
-    items: refs.tasks.map((t) => ({ id: t.id, label: itemLabel(t.data, t.id) })),
-  });
+  moves.push(
+    moveGroup(
+      'tasks',
+      refs.tasks.map((t) => ({ id: t.id, label: itemLabel(t.data, t.id) })),
+    ),
+  );
 
   for (const visit of refs.visits) {
-    const after = [...new Set(visit.contactIds.map((id) => (id === combinedIn.id ? kept.id : id)))];
-    rewrittenReferences.push({
-      collection: 'visits',
-      document: visit.id,
-      field: 'contactIds',
-      before: visit.contactIds,
-      after,
-    });
+    const after = replaceInArray(visit.contactIds, id, keptId);
+    if (!arraysEqual(visit.contactIds, after)) {
+      rewrittenReferences.push({
+        collection: 'visits',
+        document: visit.id,
+        field: 'contactIds',
+        before: visit.contactIds,
+        after,
+      });
+    }
+    // The cached names ride alongside the ids; refresh the one for the
+    // combined-in contact and drop the duplicate a merge would create.
+    const names = Array.isArray(visit.data?.contactNames)
+      ? (visit.data!.contactNames as unknown[]).filter((n): n is string => typeof n === 'string')
+      : null;
+    if (names && visit.contactIds.includes(id)) {
+      const mapped: string[] = [];
+      const seen = new Set<string>();
+      for (let i = 0; i < visit.contactIds.length; i++) {
+        const nextId = visit.contactIds[i] === id ? keptId : visit.contactIds[i];
+        if (seen.has(nextId)) continue;
+        seen.add(nextId);
+        mapped.push(visit.contactIds[i] === id ? kept.name : (names[i] ?? ''));
+      }
+      if (!arraysEqual(names, mapped)) {
+        rewrittenReferences.push({
+          collection: 'visits',
+          document: visit.id,
+          field: 'contactNames',
+          before: names,
+          after: mapped,
+        });
+      }
+    }
   }
-  moves.push({
-    kind: 'visits',
-    count: refs.visits.length,
-    items: refs.visits.map((v) => ({ id: v.id, label: itemLabel(v.data ?? {}, v.id) })),
-  });
+  moves.push(
+    moveGroup(
+      'visits',
+      refs.visits.map((v) => ({ id: v.id, label: itemLabel(v.data ?? {}, v.id) })),
+    ),
+  );
+
+  // Gatherings (`events`): roster, roster override, override base and attendance.
+  const gatheringItems: CombineMoveItem[] = [];
+  for (const gathering of refs.gatherings) {
+    const data = gathering.data;
+    let touched = false;
+    for (const field of ['roster', 'rosterOverride', 'rosterOverrideBase'] as const) {
+      const before = listValue(data[field]);
+      if (!before.includes(id)) continue;
+      touched = true;
+      rewrittenReferences.push({
+        collection: 'events',
+        document: gathering.id,
+        field,
+        before,
+        after: replaceInArray(before, id, keptId),
+      });
+    }
+    const attendance = data.attendance as { present?: unknown; absent?: unknown } | undefined;
+    if (attendance) {
+      const present = listValue(attendance.present);
+      const absent = listValue(attendance.absent);
+      if (present.includes(id) || absent.includes(id)) {
+        touched = true;
+        rewrittenReferences.push({
+          collection: 'events',
+          document: gathering.id,
+          field: 'attendance',
+          before: { present, absent },
+          after: {
+            present: replaceInArray(present, id, keptId),
+            absent: replaceInArray(absent, id, keptId),
+          },
+        });
+      }
+    }
+    if (touched) gatheringItems.push({ id: gathering.id, label: itemLabel(data, gathering.id) });
+  }
+  moves.push(moveGroup('gatherings', gatheringItems));
+
+  // Rhythm standing rosters.
+  const rhythmItems: CombineMoveItem[] = [];
+  for (const rhythm of refs.rhythms) {
+    const before = listValue(rhythm.data.roster);
+    if (!before.includes(id)) continue;
+    rewrittenReferences.push({
+      collection: 'rhythms',
+      document: rhythm.id,
+      field: 'roster',
+      before,
+      after: replaceInArray(before, id, keptId),
+    });
+    rhythmItems.push({ id: rhythm.id, label: itemLabel(rhythm.data, rhythm.id) });
+  }
+  moves.push(moveGroup('rhythms', rhythmItems));
+
+  // Home memberships.
+  const homeItems: CombineMoveItem[] = [];
+  for (const home of refs.homes) {
+    const before = listValue(home.data.members);
+    if (!before.includes(id)) continue;
+    rewrittenReferences.push({
+      collection: 'homes',
+      document: home.id,
+      field: 'members',
+      before,
+      after: replaceInArray(before, id, keptId),
+    });
+    homeItems.push({ id: home.id, label: itemLabel(home.data, home.id) });
+  }
+  moves.push(moveGroup('homes', homeItems));
+
+  // Outreach name entries: re-point the contact and refresh the typed name.
+  const outreachItems: CombineMoveItem[] = [];
+  for (const record of refs.outreach) {
+    const names = Array.isArray(record.data.names) ? (record.data.names as Record<string, unknown>[]) : [];
+    if (!names.some((entry) => entry?.contactId === id)) continue;
+    rewrittenReferences.push({
+      collection: 'outreach',
+      document: record.id,
+      field: 'names',
+      before: names,
+      after: names.map((entry) =>
+        entry?.contactId === id ? { ...entry, contactId: keptId, name: kept.name } : entry,
+      ),
+    });
+    outreachItems.push({ id: record.id, label: itemLabel(record.data, record.id) });
+  }
+  moves.push(moveGroup('outreach', outreachItems));
+
+  // Attendance-sheet aliases.
+  const aliasItems: CombineMoveItem[] = [];
+  for (const alias of refs.attendeeAliases) {
+    if (alias.data.contactId !== id) continue;
+    rewrittenReferences.push({
+      collection: 'attendee_aliases',
+      document: alias.id,
+      field: 'contactId',
+      before: alias.data.contactId,
+      after: keptId,
+    });
+    aliasItems.push({ id: alias.id, label: itemLabel(alias.data, alias.id) });
+  }
+  moves.push(moveGroup('attendeeAliases', aliasItems));
+
+  // Pending attendance imports: the matched attendees and conflicts.
+  const importItems: CombineMoveItem[] = [];
+  for (const pending of refs.pendingImports) {
+    const preview = pending.data.preview as Record<string, unknown> | undefined;
+    if (!preview) continue;
+    const attendees = Array.isArray(preview.attendees) ? (preview.attendees as Record<string, unknown>[]) : [];
+    const conflicts = Array.isArray(preview.conflicts) ? (preview.conflicts as Record<string, unknown>[]) : [];
+    if (
+      !attendees.some((a) => a?.contactId === id) &&
+      !conflicts.some((c) => c?.contactId === id)
+    ) {
+      continue;
+    }
+    rewrittenReferences.push({
+      collection: 'pending_attendance_imports',
+      document: pending.id,
+      field: 'preview',
+      before: preview,
+      after: {
+        ...preview,
+        attendees: attendees.map((a) => (a?.contactId === id ? { ...a, contactId: keptId } : a)),
+        conflicts: conflicts.map((c) => (c?.contactId === id ? { ...c, contactId: keptId } : c)),
+      },
+    });
+    importItems.push({ id: pending.id, label: itemLabel(pending.data, pending.id) });
+  }
+  moves.push(moveGroup('pendingImports', importItems));
+
+  // Personal prayers, each under its owner.
+  const personalPrayerItems: CombineMoveItem[] = [];
+  for (const prayer of refs.personalPrayers) {
+    if (prayer.data.contactId !== id) continue;
+    rewrittenReferences.push({
+      collection: `users/${prayer.userId}/personalPrayers`,
+      document: prayer.id,
+      field: 'contactId',
+      before: prayer.data.contactId,
+      after: keptId,
+    });
+    personalPrayerItems.push({ id: prayer.id, label: itemLabel(prayer.data, prayer.id) });
+  }
+  moves.push(moveGroup('personalPrayers', personalPrayerItems));
+
+  // User-preference personal contact ids.
+  const prefItems: CombineMoveItem[] = [];
+  for (const pref of refs.userPreferences) {
+    const before = listValue(pref.data.personalContactIds);
+    if (!before.includes(id)) continue;
+    rewrittenReferences.push({
+      collection: 'userPreferences',
+      document: pref.id,
+      field: 'personalContactIds',
+      before,
+      after: replaceInArray(before, id, keptId),
+    });
+    prefItems.push({ id: pref.id, label: pref.id });
+  }
+  moves.push(moveGroup('userPreferences', prefItems));
+
+  // Inbox read-state keys: rename the contact's key on each axis.
+  const inboxItems: CombineMoveItem[] = [];
+  for (const state of refs.inboxStates) {
+    let touched = false;
+    for (const axis of ['seen', 'completed'] as const) {
+      const before = (state.data[axis] ?? {}) as Record<string, string>;
+      const oldKey = inboxContactKey(id);
+      if (!(oldKey in before)) continue;
+      touched = true;
+      const after = { ...before };
+      const stamp = after[oldKey];
+      delete after[oldKey];
+      const newKey = inboxContactKey(keptId);
+      if (!(newKey in after)) after[newKey] = stamp;
+      rewrittenReferences.push({
+        collection: 'inboxState',
+        document: state.id,
+        field: axis,
+        before,
+        after,
+      });
+    }
+    if (touched) inboxItems.push({ id: state.id, label: state.id });
+  }
+  moves.push(moveGroup('inboxStates', inboxItems));
+
+  // Notifications: re-point the target and the contact link; the text stays.
+  const notificationItems: CombineMoveItem[] = [];
+  for (const notification of refs.notifications) {
+    if (notification.data.targetId !== id) continue;
+    rewrittenReferences.push({
+      collection: 'notifications',
+      document: notification.id,
+      field: 'targetId',
+      before: notification.data.targetId,
+      after: keptId,
+    });
+    if (typeof notification.data.link === 'string' && notification.data.link.includes(id)) {
+      rewrittenReferences.push({
+        collection: 'notifications',
+        document: notification.id,
+        field: 'link',
+        before: notification.data.link,
+        after: notification.data.link.split(id).join(keptId),
+      });
+    }
+    notificationItems.push({ id: notification.id, label: itemLabel(notification.data, notification.id) });
+  }
+  moves.push(moveGroup('notifications', notificationItems));
+
+  // Activity Log entries about the combined-in contact.
+  const activityItems: CombineMoveItem[] = [];
+  for (const activity of refs.activities) {
+    if (activity.data.targetId !== id || activity.data.targetType !== 'contact') continue;
+    rewrittenReferences.push({
+      collection: 'activities',
+      document: activity.id,
+      field: 'targetId',
+      before: activity.data.targetId,
+      after: keptId,
+    });
+    if (typeof activity.data.targetName === 'string' && activity.data.targetName !== kept.name) {
+      rewrittenReferences.push({
+        collection: 'activities',
+        document: activity.id,
+        field: 'targetName',
+        before: activity.data.targetName,
+        after: kept.name,
+      });
+    }
+    activityItems.push({ id: activity.id, label: itemLabel(activity.data, activity.id) });
+  }
+  moves.push(moveGroup('activities', activityItems));
 
   return {
     keptId: kept.id,
@@ -487,7 +802,7 @@ export interface CombineUndoCurrent {
   /** The kept contact as it is now. */
   kept: Record<string, unknown>;
   /** The kept contact's subcollection documents as they are now. */
-  keptSubDocs: Record<'interactions' | 'threads' | 'teamThreads', SubcollectionDoc[]>;
+  keptSubDocs: Record<'interactions' | 'threads' | 'teamThreads' | 'comments', SubcollectionDoc[]>;
   /** Current data at each moved document's new path, or null if it is gone. */
   movedCurrent: Record<string, Record<string, unknown> | null>;
   /** Current value of each rewritten reference, keyed by `referenceKey`. */
@@ -538,6 +853,19 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((item, i) => valuesEqual(item, b[i]));
+  }
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const keysA = Object.keys(a as Record<string, unknown>);
+    const keysB = Object.keys(b as Record<string, unknown>);
+    return (
+      keysA.length === keysB.length &&
+      keysA.every((key) =>
+        valuesEqual(
+          (a as Record<string, unknown>)[key],
+          (b as Record<string, unknown>)[key],
+        ),
+      )
+    );
   }
   return false;
 }

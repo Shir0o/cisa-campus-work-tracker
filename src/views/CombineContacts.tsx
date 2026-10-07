@@ -10,6 +10,7 @@ import {
   mergeContactProfiles,
   diffCombineFields,
   type CombineFieldRow,
+  type CombineMoveGroup,
   type CombinePair,
 } from '../lib/combineContactsPlan';
 import type { Contact } from '../types';
@@ -85,6 +86,28 @@ const KIND_LABELS: Record<CombineFieldRow['kind'], string> = {
   'notes-combined': 'Notes combined',
 };
 
+/** Human label per "What moves" group, used as the i18n fallback. */
+const MOVE_KIND_LABELS: Record<CombineMoveGroup['kind'], string> = {
+  interactions: 'Interactions',
+  threads: 'Alongside threads',
+  teamThreads: 'Discussion threads',
+  comments: 'Comments',
+  prayers: 'Prayers',
+  tasks: 'To-dos',
+  visits: 'Visits',
+  gatherings: 'Gathering rosters and attendance',
+  rhythms: 'Rhythm rosters',
+  homes: 'Home members',
+  outreach: 'Outreach name entries',
+  attendeeAliases: 'Attendance-sheet aliases',
+  pendingImports: 'Pending attendance imports',
+  personalPrayers: 'Personal prayers',
+  userPreferences: 'My Day personal contacts',
+  inboxStates: 'Inbox read-state',
+  notifications: 'Notifications',
+  activities: 'Activity Log entries',
+};
+
 const pairKey = (pair: CombinePair) => `${pair.kept.id}-${pair.combinedIn.id}`;
 
 const renderValue = (value: string | string[]): string => {
@@ -114,6 +137,8 @@ export default function CombineContacts() {
   const [previewRecordId, setPreviewRecordId] = useState<string | null>(null);
   const [preview, setPreview] = useState<UndoPreview | null>(null);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [movesByPair, setMovesByPair] = useState<Record<string, CombineMoveGroup[]>>({});
+  const [movesLoading, setMovesLoading] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -174,6 +199,35 @@ export default function CombineContacts() {
       setCombineError(e instanceof Error ? e.message : String(e));
     } finally {
       setCombiningId(null);
+    }
+  };
+
+  const loadMoves = async (pair: CombinePair) => {
+    const key = pairKey(pair);
+    if (movesLoading) return;
+    setMovesLoading(key);
+    setCombineError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/combine-contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          keptId: pair.kept.id,
+          combinedInId: pair.combinedIn.id,
+          dryRun: true,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Could not load what moves');
+      setMovesByPair((prev) => ({ ...prev, [key]: (body.moves ?? []) as CombineMoveGroup[] }));
+    } catch (e) {
+      setCombineError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMovesLoading(null);
     }
   };
 
@@ -448,6 +502,8 @@ export default function CombineContacts() {
             const rows = diffCombineFields(pair.kept, pair.combinedIn, merged);
             const key = pairKey(pair);
             const isCombining = combiningId === key;
+            const moves = movesByPair[key];
+            const isLoadingMoves = movesLoading === key;
             return (
               <section
                 key={key}
@@ -495,6 +551,37 @@ export default function CombineContacts() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="mt-4 border-t border-outline-variant/40 pt-4">
+                  <button
+                    type="button"
+                    disabled={isLoadingMoves}
+                    onClick={() => loadMoves(pair)}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:opacity-80 transition-opacity disabled:opacity-40"
+                  >
+                    {isLoadingMoves && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {t('combine_contacts.what_moves', 'What moves')}
+                  </button>
+                  {moves && (
+                    <div data-testid="what-moves" className="mt-3 space-y-1">
+                      {moves
+                        .filter((group) => group.count > 0)
+                        .map((group) => (
+                          <details key={group.kind} className="text-sm">
+                            <summary className="cursor-pointer font-medium text-on-surface">
+                              {t('combine_contacts.move_' + group.kind, MOVE_KIND_LABELS[group.kind])}{' '}
+                              ({group.count})
+                            </summary>
+                            <ul className="mt-1 ml-4 space-y-0.5 text-on-surface-variant">
+                              {group.items.map((item) => (
+                                <li key={item.id}>{item.label}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end mt-4">
