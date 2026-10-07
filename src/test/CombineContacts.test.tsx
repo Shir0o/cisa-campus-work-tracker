@@ -29,15 +29,46 @@ const contacts: Contact[] = [
   },
 ];
 
+const combineRecords = [
+  {
+    id: 'r1',
+    keptId: 'c1',
+    combinedInId: 'c2',
+    reason: 'Matching email',
+    status: 'done',
+    combinedByName: 'Faith',
+    combinedAt: '2026-03-01T00:00:00.000Z',
+    keptBefore: { name: 'Alice Smith' },
+    combinedInBefore: { name: 'Alice Second' },
+  },
+  {
+    id: 'r0',
+    keptId: 'c3',
+    combinedInId: 'c4',
+    reason: 'Picked from the directory',
+    status: 'undone',
+    combinedByName: 'Faith',
+    combinedAt: '2026-02-01T00:00:00.000Z',
+    undoneByName: 'Grace',
+    undoneAt: '2026-02-02T00:00:00.000Z',
+    keptBefore: { name: 'Bob Jones' },
+    combinedInBefore: { name: 'Bobby Jones' },
+  },
+];
+
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ t: (_key: string, fallback?: string) => fallback || _key, language: 'en' }),
 }));
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn(() => ({})),
+  collection: vi.fn((_db: unknown, name: string) => ({ __name: name })),
   query: vi.fn((q: unknown) => q),
   orderBy: vi.fn(),
-  onSnapshot: vi.fn((_q: unknown, cb: (snap: unknown) => void) => {
+  onSnapshot: vi.fn((q: { __name?: string }, cb: (snap: unknown) => void) => {
+    if (q?.__name === 'combineRecords') {
+      cb({ docs: combineRecords.map((r) => ({ id: r.id, data: () => r })) });
+      return () => {};
+    }
     cb({ docs: contacts.map((c) => ({ id: c.id, data: () => c })) });
     return () => {};
   }),
@@ -90,5 +121,39 @@ describe('CombineContacts page', () => {
     render(<CombineContacts />);
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+  });
+
+  it('lists combine records with who, when and the match reason in Recent combines', async () => {
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
+
+    expect(await screen.findByText('Matching email')).toBeInTheDocument();
+    expect(screen.getByText('Picked from the directory')).toBeInTheDocument();
+    expect(screen.getAllByTestId('combine-record')).toHaveLength(2);
+    expect(screen.getAllByText(/Faith/).length).toBeGreaterThan(0);
+  });
+
+  it('marks undone records as undone with who undid them', async () => {
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
+
+    expect(await screen.findByText(/Undone by Grace/i)).toBeInTheDocument();
+    // The still-done record offers an undo; the undone one does not.
+    expect(screen.getAllByRole('button', { name: /undo combine/i })).toHaveLength(1);
+  });
+
+  it('posts an undo to the server endpoint', async () => {
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /undo combine/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/combine-contacts/undo',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    expect(body).toEqual({ combineRecordId: 'r1' });
   });
 });

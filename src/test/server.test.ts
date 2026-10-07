@@ -93,12 +93,12 @@ const {
   const db = {
     collection,
     batch: () => {
-      const pending: Array<{ _col: string; _id: string; data: Doc; _delete?: boolean }> = [];
+      const pending: Array<{ _col: string; _id: string; data: Doc; _delete?: boolean; _replace?: boolean }> = [];
       return {
         set: (ref: any, data: Doc) => {
           const col = ref._col || ref.ref?._col || (ref._id && ref._id.includes("/") ? ref._id.split("/")[0] : "");
           const id = ref._id || ref.id || ref.ref?._id || "";
-          pending.push({ _col: col, _id: id, data });
+          pending.push({ _col: col, _id: id, data, _replace: true });
         },
         update: (ref: any, data: Doc) => {
           const col = ref._col || ref.ref?._col || "";
@@ -114,6 +114,12 @@ const {
           for (const p of pending) {
             if (p._delete) {
               if (store[p._col]) delete store[p._col][p._id];
+              continue;
+            }
+            // `set` replaces the whole document, as the real SDK does when
+            // called without `{ merge: true }`; `update` merges fields.
+            if (p._replace) {
+              (store[p._col] ??= {})[p._id] = { ...p.data };
               continue;
             }
             const target = (store[p._col] ??= {})[p._id] ?? {};
@@ -3169,6 +3175,151 @@ describe("POST /api/combine-contacts", () => {
         .post("/api/combine-contacts")
         .set("Authorization", "Bearer tok")
         .send({ keptId: "s1", combinedInId: "d1" });
+      expect(res.status).toBe(403);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+});
+
+describe("POST /api/combine-contacts/undo", () => {
+  const seedCombine = () => {
+    seedDoc("contacts", "s1", {
+      name: "Kept Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Lead",
+      tags: ["A"],
+      location: "",
+    });
+    seedDoc("contacts", "d1", {
+      name: "In Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Contact",
+      tags: ["A", "B"],
+      location: "",
+      createdAt: "2026-02-01",
+    });
+    seedDoc("contacts/d1/interactions", "i1", { content: "hi", authorId: "other" });
+    seedDoc("contacts/d1/interactions", "i2", { content: "again", authorId: "other" });
+    seedDoc("contacts/d1/threads", "t1", { body: "note", authorId: "someone" });
+    seedDoc("contacts/d1/teamThreads", "tt1", { body: "team" });
+    seedDoc("prayers", "p1", { contactId: "d1", updatedAt: "x" });
+    seedDoc("tasks", "k1", { contactId: "d1", contactName: "In Name", text: "Call" });
+    seedDoc("visits", "v1", { contactIds: ["d1", "s1"] });
+  };
+
+  const combineOnce = async (): Promise<string> => {
+    seedCombine();
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+    expect(res.status).toBe(200);
+    return res.body.combineRecordId as string;
+  };
+
+  it("reverses a combine so the database matches its pre-combine state", async () => {
+    seedCombine();
+    const before = {
+      s1: structuredClone(getCollection("contacts")["s1"]),
+      d1: structuredClone(getCollection("contacts")["d1"]),
+      interactions: structuredClone(getCollection("contacts/d1/interactions")),
+      threads: structuredClone(getCollection("contacts/d1/threads")),
+      teamThreads: structuredClone(getCollection("contacts/d1/teamThreads")),
+      prayers: structuredClone(getCollection("prayers")),
+      tasks: structuredClone(getCollection("tasks")),
+      visits: structuredClone(getCollection("visits")),
+    };
+
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+    const undoRes = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(undoRes.status).toBe(200);
+    expect(undoRes.body.success).toBe(true);
+
+    expect(getCollection("contacts")["s1"]).toEqual(before.s1);
+    expect(getCollection("contacts")["d1"]).toEqual(before.d1);
+    expect(getCollection("contacts/d1/interactions")).toEqual(before.interactions);
+    expect(getCollection("contacts/s1/interactions")).toEqual({});
+    expect(getCollection("contacts/d1/threads")).toEqual(before.threads);
+    expect(getCollection("contacts/s1/threads")).toEqual({});
+    expect(getCollection("contacts/d1/teamThreads")).toEqual(before.teamThreads);
+    expect(getCollection("prayers")).toEqual(before.prayers);
+    expect(getCollection("tasks")).toEqual(before.tasks);
+    expect(getCollection("visits")).toEqual(before.visits);
+  });
+
+  it("recreates the combined-in contact under its original id", async () => {
+    const recordId = await combineOnce();
+    expect(getCollection("contacts")["d1"]).toBeUndefined();
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("contacts")["d1"]).toMatchObject({ name: "In Name", createdAt: "2026-02-01" });
+    expect(getCollection("contacts/d1/interactions")["i1"]).toMatchObject({ content: "hi" });
+  });
+
+  it("marks the record undone with who and when", async () => {
+    const recordId = await combineOnce();
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+    expect(res.status).toBe(200);
+
+    const record = getCollection("combineRecords")[recordId] as any;
+    expect(record.status).toBe("undone");
+    expect(record.undoneAt).toBeTruthy();
+    expect(record.undoneBy).toBe("test-user");
+    expect(record.undoneByName).toBe("Test User");
+  });
+
+  it("refuses to undo the same combine twice", async () => {
+    const recordId = await combineOnce();
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+    const second = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+    expect(second.status).toBe(409);
+  });
+
+  it("returns 404 for a missing combine record", async () => {
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: "nope" });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when the record id is missing", async () => {
+    const res = await request(app).post("/api/combine-contacts/undo").send({});
+    expect(res.status).toBe(400);
+  });
+
+  it("records an Activity Log entry for the undo", async () => {
+    const recordId = await combineOnce();
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+    const activities = Object.values(getCollection("activities"));
+    const entry = activities.find((a: any) => a.action === "undid combine of");
+    expect(entry).toBeDefined();
+    expect(entry).toMatchObject({ targetId: "s1", targetType: "contact" });
+    expect(entry.description).toContain("In Name");
+  });
+
+  it("refuses a non-Full-timer with 403", async () => {
+    const recordId = await combineOnce();
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "t@example.com" });
+      seedDoc("users", "trainee-1", { role: "trainee", approved: true });
+      const res = await request(app)
+        .post("/api/combine-contacts/undo")
+        .set("Authorization", "Bearer tok")
+        .send({ combineRecordId: recordId });
       expect(res.status).toBe(403);
     } finally {
       process.env.NODE_ENV = originalEnv;
