@@ -775,7 +775,7 @@ service cloud.firestore {
         return data.userId == request.auth.uid &&
                data.userName is string && data.userName.size() <= 128 &&
                data.action is string && data.action.size() <= 256 &&
-               data.targetType in ['contact', 'event', 'comment', 'interaction'] &&
+               data.targetType in ['contact', 'event', 'comment', 'interaction', 'home'] &&
                data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'];
       }
       // An entry is data about its target (targetName, a stage change in
@@ -1034,7 +1034,7 @@ service cloud.firestore {
 
       allow list, get: if isApprovedUser() && isAdmin();
       allow create, update: if isValidId(homeId) && isApprovedUser() && isAdmin() && isValidHome(incoming());
-      allow delete: if false;
+      allow delete: if isApprovedUser() && isAdmin();
     }
 
     // 11. Feedback Collection

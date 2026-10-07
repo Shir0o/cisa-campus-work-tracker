@@ -133,7 +133,7 @@ export interface SystemActivity {
   action: string;
   targetId: string;
   targetName: string;
-  targetType: 'contact' | 'event' | 'comment' | 'interaction';
+  targetType: 'contact' | 'event' | 'comment' | 'interaction' | 'home';
   description?: string;
   type: Activity['type'];
   createdAt: string;

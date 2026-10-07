@@ -7,9 +7,12 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
+  setDoc,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Contact, Home, Visit } from '../types';
@@ -275,6 +278,86 @@ export async function updateHome(
     updatedBy: by.uid,
     updatedByName: by.name,
   });
+}
+
+/** Whether any visit was logged against this Home (ADR 0040 §1). A Home built
+ *  from co-visit history counts as unvisited: those visits predate it and point
+ *  nowhere (`homeId` is null), so deleting such a Home orphans nothing. The
+ *  test cannot be expressed in Firestore rules (no queries), so it lives here. */
+export function isHomeUnvisited(homeId: string, visits: Visit[]): boolean {
+  return !visits.some((v) => v.homeId === homeId);
+}
+
+/** The fields a kept Home takes on when another is combined in. */
+export interface HomeCombineFields {
+  label: string;
+  place: string;
+  notes: string;
+  members: string[];
+  active: boolean;
+}
+
+/** The fields a kept Home takes on when another is combined in (ADR 0040 §2):
+ *  it keeps its label and place, backfilling each from the combined-in Home
+ *  only where it is empty; members are the union (kept home first); both notes
+ *  are kept, the kept home's first. */
+export function combinedHomeFields(kept: Home, other: Home): HomeCombineFields {
+  const keptNotes = (kept.notes ?? '').trim();
+  const otherNotes = (other.notes ?? '').trim();
+  let notes = keptNotes;
+  if (otherNotes && !keptNotes.includes(otherNotes)) {
+    notes = keptNotes ? `${keptNotes}\n\n--- Combined Notes ---\n\n${otherNotes}` : otherNotes;
+  }
+  return {
+    label: kept.label,
+    place: (kept.place ?? '').trim() || (other.place ?? '').trim(),
+    notes,
+    members: Array.from(new Set([...(kept.members ?? []), ...(other.members ?? [])])),
+    active: kept.active,
+  };
+}
+
+/** Delete a Home made by mistake (ADR 0040 §1). Offered only for a Home no
+ *  visit was logged against; the caller checks `isHomeUnvisited` first. */
+export async function deleteHome(homeId: string): Promise<void> {
+  await deleteDoc(doc(db, 'homes', homeId));
+}
+
+/** Put a deleted Home back under its own id, for the Undo window (ADR 0040 §1).
+ *  The home was unvisited, so nothing points at it and restoring the id is safe. */
+export async function restoreHome(home: Home, by: { uid: string; name: string }): Promise<void> {
+  const now = new Date().toISOString();
+  await setDoc(doc(db, 'homes', home.id), {
+    ...cleanInput(home),
+    updatedAt: now,
+    updatedBy: by.uid,
+    updatedByName: by.name,
+  });
+}
+
+/** Combine the Home entered twice into the Home to keep (ADR 0040 §2): the kept
+ *  home takes the merged fields, every visit pointing at the combined-in home is
+ *  repointed to it, and the combined-in home is deleted — all in one batched
+ *  write so the repoint and the delete land together. */
+export async function combineHomes(
+  kept: Home,
+  combinedIn: Home,
+  visits: Visit[],
+  by: { uid: string; name: string },
+): Promise<void> {
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'homes', kept.id), {
+    ...combinedHomeFields(kept, combinedIn),
+    updatedAt: now,
+    updatedBy: by.uid,
+    updatedByName: by.name,
+  });
+  visits
+    .filter((v) => v.homeId === combinedIn.id)
+    .forEach((v) => batch.update(doc(db, 'visits', v.id), { homeId: kept.id }));
+  batch.delete(doc(db, 'homes', combinedIn.id));
+  await batch.commit();
 }
 
 /** Live subscription to every home. */
