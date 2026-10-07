@@ -4841,4 +4841,110 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // ── BNPB Interaction suggestions (#1420, ADR 0037) ──
+  // Suggestions name people from the owner's private life, so the owner-only
+  // rule is the whole privacy boundary: no manager, no full-timer, no admin
+  // read. The server intake owns the payload; the owner may only settle.
+  describe('BNPB interaction suggestions', () => {
+    const OWNER_UID = 'owner-1';
+    const OWNER_EMAIL = 'yilongwang05@gmail.com';
+
+    const seedUser = async (uid: string, role = 'admin') => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', uid), {
+          email: `${uid}@example.com`,
+          displayName: uid,
+          role,
+          approved: true,
+        });
+      });
+    };
+
+    const seedSuggestion = async (uid: string, id = 'sug-1') => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', uid, 'interactionSuggestions', id), {
+          syncId: 's1',
+          bnpbContactId: 'p-1',
+          bnpbName: 'Alex Chen',
+          occurredAt: '2026-09-10T15:00:00.000Z',
+          durationMinutes: 45,
+          summary: 'Coffee downtown',
+          medium: 'coffee',
+          text: 'Coffee downtown',
+          status: 'pending',
+          createdAt: '2026-09-10T15:30:00.000Z',
+          updatedAt: '2026-09-10T15:30:00.000Z',
+        });
+      });
+    };
+
+    it('lets only the app owner read their own suggestions', async () => {
+      await seedSuggestion(OWNER_UID);
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      await assertSucceeds(getDocs(collection(owner, 'users', OWNER_UID, 'interactionSuggestions')));
+
+      await seedUser('ft1', 'admin');
+      await seedUser('tr1', 'manager');
+      await seedUser('op1', 'operator');
+      for (const uid of ['ft1', 'tr1', 'op1']) {
+        const db = getFirestore({ uid, email: `${uid}@example.com` });
+        await assertFails(getDocs(collection(db, 'users', OWNER_UID, 'interactionSuggestions')));
+      }
+    });
+
+    it('denies a non-owner even on their own path', async () => {
+      await seedUser('op1', 'operator');
+      await seedSuggestion('op1');
+      const db = getFirestore({ uid: 'op1', email: 'op1@example.com' });
+      await assertFails(getDocs(collection(db, 'users', 'op1', 'interactionSuggestions')));
+    });
+
+    it('refuses clients creating or deleting suggestions', async () => {
+      await seedSuggestion(OWNER_UID);
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      await assertFails(setDoc(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'new'), {
+        syncId: 's2', bnpbContactId: 'p-2', bnpbName: 'Beth', occurredAt: 'x', summary: 'y',
+        medium: 'call', text: 'y', status: 'pending', createdAt: 'x', updatedAt: 'x',
+      }));
+      await assertFails(deleteDoc(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'sug-1')));
+    });
+
+    it('lets the owner settle a suggestion but not rewrite its payload', async () => {
+      await seedSuggestion(OWNER_UID);
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      await assertSucceeds(updateDoc(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'sug-1'), {
+        status: 'confirmed',
+        contactId: 'c1',
+        text: 'Coffee and a walk',
+        confirmedAt: serverTimestamp(),
+      }));
+      await assertFails(updateDoc(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'sug-1'), {
+        summary: 'rewritten',
+      }));
+    });
+
+    it('keeps Suggestion links owner-only', async () => {
+      await seedUser('op1', 'operator');
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const link = { bnpbContactId: 'p-1', contactId: 'c1', updatedAt: serverTimestamp() };
+      await assertSucceeds(setDoc(doc(owner, 'users', OWNER_UID, 'suggestionLinks', 'link1'), link));
+      await assertSucceeds(getDoc(doc(owner, 'users', OWNER_UID, 'suggestionLinks', 'link1')));
+
+      const other = getFirestore({ uid: 'op1', email: 'op1@example.com' });
+      await assertFails(getDoc(doc(other, 'users', OWNER_UID, 'suggestionLinks', 'link1')));
+      await assertFails(setDoc(doc(other, 'users', OWNER_UID, 'suggestionLinks', 'link2'), link));
+    });
+
+    it('makes Personal Sync Token records unreadable and unwritable by clients', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'bnpb_sync_tokens', OWNER_UID), {
+          uid: OWNER_UID, tokenHash: 'abc', createdAt: 'x', lastPushAt: null,
+        });
+      });
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      await assertFails(getDoc(doc(owner, 'bnpb_sync_tokens', OWNER_UID)));
+      await assertFails(setDoc(doc(owner, 'bnpb_sync_tokens', OWNER_UID), { uid: OWNER_UID }));
+    });
+  });
+
 });

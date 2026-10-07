@@ -181,6 +181,39 @@ service cloud.firestore {
         allow read, delete: if isOwner(userId);
         allow create, update: if isValidId(deviceId) && isOwner(userId) && isValidPushDevice(incoming());
       }
+
+      // BNPB Interaction suggestions (ADR 0037, #1420). They name people from
+      // the owner's private life, so — deliberately unlike personal prayers —
+      // there is no manager or admin read: only the app owner, on their own
+      // path. The server intake creates the documents and owns their payload;
+      // a client may only settle one, changing the status, the chosen Contact,
+      // the edited text and the confirm stamp, and never the payload itself.
+      match /interactionSuggestions/{suggestionId} {
+        function settlesOnly() {
+          return incoming().diff(existing()).affectedKeys().hasOnly(['status', 'contactId', 'text', 'confirmedAt']);
+        }
+        allow read: if isSuperAdmin() && isOwner(userId);
+        allow create: if false;
+        allow update: if isSuperAdmin() && isOwner(userId) && settlesOnly() &&
+          incoming().status in ['confirmed'] &&
+          incoming().syncId == existing().syncId &&
+          incoming().bnpbContactId == existing().bnpbContactId;
+        allow delete: if false;
+      }
+
+      // The remembered match written when a suggestion is confirmed: BNPB
+      // contact id → CISA Contact id. Owner-only, like the suggestions.
+      match /suggestionLinks/{linkId} {
+        function isValidSuggestionLink(data) {
+          return data.keys().hasAll(['bnpbContactId', 'contactId', 'updatedAt']) &&
+                 data.bnpbContactId is string && data.bnpbContactId.size() > 0 && data.bnpbContactId.size() <= 200 &&
+                 data.contactId is string && data.contactId.size() > 0 && data.contactId.size() <= 128 &&
+                 data.updatedAt == request.time;
+        }
+        allow read: if isSuperAdmin() && isOwner(userId);
+        allow create, update: if isSuperAdmin() && isOwner(userId) && isValidId(linkId) && isValidSuggestionLink(incoming());
+        allow delete: if isSuperAdmin() && isOwner(userId);
+      }
     }
 
     // 2b. User Preferences — private My Day settings (personal contacts,
@@ -197,6 +230,13 @@ service cloud.firestore {
     // a document a dozen Full-timers share.
     match /inboxState/{userId} {
       allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
+    }
+
+    // 2d. Personal Sync Tokens are server-only (ADR 0037, #1420): the plaintext
+    // is returned once by the token endpoint and only a hash is stored here. No
+    // client, owner or otherwise, reads or writes this collection.
+    match /bnpb_sync_tokens/{tokenId} {
+      allow read, write: if false;
     }
 
     // 3. Invitations Collection

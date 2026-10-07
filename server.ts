@@ -2896,6 +2896,282 @@ ${JSON.stringify(contactsList)}`;
     handleAttendanceSyncIntake,
   );
 
+  // --- BNPB Interaction suggestions: Personal Sync Token + intake -----------
+  // ADR 0037, #1420. The owner generates a Personal Sync Token in Settings and
+  // pastes it into BNPB; BNPB POSTs its Interactions here and each becomes one
+  // pending suggestion per named person in the owner's own queue. The feature
+  // is owner-only at every layer: token endpoints return 403 for anyone else,
+  // and the intake refuses any token whose uid is not the owner's. Only
+  // `syncId`, `occurredAt`, `durationMinutes`, `summary`, `medium`, `updatedAt`,
+  // `deleted` and the participant name parts cross the contract; BNPB `notes`
+  // and the other private fields are ignored and never stored.
+  //
+  // The per-request cap is BNPB_SYNC_MAX_INTERACTIONS; BNPB pages its pushes
+  // to stay under it (recorded on Shir0o/bnpb#309).
+  const BNPB_SYNC_MAX_INTERACTIONS = 200;
+  const BNPB_SYNC_TOKEN_COLLECTION = 'bnpb_sync_tokens';
+  const BNPB_SUGGESTIONS_SUBCOLLECTION = 'interactionSuggestions';
+
+  const personalSyncTokenHash = (token: string): string =>
+    crypto.createHash('sha256').update(token, 'utf8').digest('hex');
+
+  // Suggestion ids are a deterministic hash of `syncId` + `bnpbContactId`:
+  // both are opaque strings from BNPB that may carry characters Firestore ids
+  // reject, while the fields themselves are stored on the document so nothing
+  // is lost.
+  const bnpbSuggestionId = (syncId: string, bnpbContactId: string): string =>
+    crypto.createHash('sha256').update(`${syncId}\u0000${bnpbContactId}`, 'utf8').digest('hex').slice(0, 40);
+
+  function bnpbParticipantName(participant: {
+    firstName?: string;
+    lastName?: string;
+    nickname?: string;
+  }): string {
+    const first = (participant.firstName ?? '').trim();
+    const last = (participant.lastName ?? '').trim();
+    const full = `${first} ${last}`.trim();
+    if (full !== '') return full;
+    return (participant.nickname ?? '').trim();
+  }
+
+  interface BnpbParticipantPayload {
+    bnpbContactId: string;
+    firstName?: string;
+    lastName?: string;
+    nickname?: string;
+  }
+
+  interface BnpbInteractionPayload {
+    syncId: string;
+    occurredAt: string;
+    durationMinutes?: number;
+    summary: string;
+    medium: string;
+    updatedAt?: string;
+    deleted?: boolean;
+    participants: BnpbParticipantPayload[];
+  }
+
+  function parseBnpbSyncBody(
+    body: unknown,
+  ): { interactions: BnpbInteractionPayload[] } | { error: string } {
+    if (body === null || typeof body !== 'object') {
+      return { error: 'Body must be a JSON object.' };
+    }
+    const rawInteractions = (body as Record<string, unknown>).interactions;
+    if (!Array.isArray(rawInteractions)) return { error: 'interactions must be an array.' };
+    if (rawInteractions.length > BNPB_SYNC_MAX_INTERACTIONS) {
+      return { error: `At most ${BNPB_SYNC_MAX_INTERACTIONS} interactions per request.` };
+    }
+
+    const interactions: BnpbInteractionPayload[] = [];
+    for (const raw of rawInteractions) {
+      if (raw === null || typeof raw !== 'object') return { error: 'Each interaction must be an object.' };
+      const item = raw as Record<string, unknown>;
+      if (typeof item.syncId !== 'string' || item.syncId.trim() === '') return { error: 'syncId is required.' };
+      if (typeof item.occurredAt !== 'string' || item.occurredAt.trim() === '') return { error: 'occurredAt is required.' };
+      if (typeof item.summary !== 'string') return { error: 'summary is required.' };
+      if (typeof item.medium !== 'string') return { error: 'medium is required.' };
+      if (item.durationMinutes !== undefined && item.durationMinutes !== null && typeof item.durationMinutes !== 'number') {
+        return { error: 'durationMinutes must be a number.' };
+      }
+      if (item.deleted !== undefined && typeof item.deleted !== 'boolean') return { error: 'deleted must be a boolean.' };
+      if (!Array.isArray(item.participants)) return { error: 'participants must be an array.' };
+
+      const participants: BnpbParticipantPayload[] = [];
+      for (const rawParticipant of item.participants) {
+        if (rawParticipant === null || typeof rawParticipant !== 'object') {
+          return { error: 'Each participant must be an object.' };
+        }
+        const participant = rawParticipant as Record<string, unknown>;
+        if (typeof participant.bnpbContactId !== 'string' || participant.bnpbContactId.trim() === '') {
+          return { error: 'participant bnpbContactId is required.' };
+        }
+        participants.push({
+          bnpbContactId: participant.bnpbContactId,
+          ...(typeof participant.firstName === 'string' ? { firstName: participant.firstName } : {}),
+          ...(typeof participant.lastName === 'string' ? { lastName: participant.lastName } : {}),
+          ...(typeof participant.nickname === 'string' ? { nickname: participant.nickname } : {}),
+        });
+      }
+
+      interactions.push({
+        syncId: item.syncId,
+        occurredAt: item.occurredAt,
+        ...(typeof item.durationMinutes === 'number' ? { durationMinutes: item.durationMinutes } : {}),
+        summary: item.summary,
+        medium: item.medium,
+        ...(typeof item.updatedAt === 'string' ? { updatedAt: item.updatedAt } : {}),
+        ...(typeof item.deleted === 'boolean' ? { deleted: item.deleted } : {}),
+        participants,
+      });
+    }
+
+    return { interactions };
+  }
+
+  async function requirePersonalSyncOwner(
+    req: express.Request,
+    res: express.Response,
+  ): Promise<{ uid: string } | null> {
+    try {
+      const decoded = await authenticateFirebaseUser(req);
+      const email = String(decoded.email ?? '').trim().toLowerCase();
+      if (email !== OWNER_EMAIL_SERVER) {
+        res.status(403).json({ success: false, error: 'Only the app owner can manage a Personal Sync Token.' });
+        return null;
+      }
+      return { uid: decoded.uid };
+    } catch {
+      res.status(401).json({ success: false, error: 'Authentication required.' });
+      return null;
+    }
+  }
+
+  app.post('/api/bnpb/token', standardRateLimiter, async (req, res) => {
+    const owner = await requirePersonalSyncOwner(req, res);
+    if (owner === null) return;
+    try {
+      const token = crypto.randomBytes(32).toString('base64url');
+      const createdAt = new Date().toISOString();
+      await getAdminDb().collection(BNPB_SYNC_TOKEN_COLLECTION).doc(owner.uid).set({
+        uid: owner.uid,
+        tokenHash: personalSyncTokenHash(token),
+        createdAt,
+        lastPushAt: null,
+      });
+      return res.status(200).json({ success: true, token, createdAt });
+    } catch (error) {
+      console.error('POST /api/bnpb/token error:', error);
+      return res.status(500).json({ success: false, error: 'Could not generate a token.' });
+    }
+  });
+
+  app.post('/api/bnpb/token/revoke', standardRateLimiter, async (req, res) => {
+    const owner = await requirePersonalSyncOwner(req, res);
+    if (owner === null) return;
+    try {
+      await getAdminDb().collection(BNPB_SYNC_TOKEN_COLLECTION).doc(owner.uid).delete();
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('POST /api/bnpb/token/revoke error:', error);
+      return res.status(500).json({ success: false, error: 'Could not revoke the token.' });
+    }
+  });
+
+  app.get('/api/bnpb/token', standardRateLimiter, async (req, res) => {
+    const owner = await requirePersonalSyncOwner(req, res);
+    if (owner === null) return;
+    try {
+      const snap = await getAdminDb().collection(BNPB_SYNC_TOKEN_COLLECTION).doc(owner.uid).get();
+      const data = snap.exists ? (snap.data() as Record<string, unknown>) : null;
+      return res.status(200).json({
+        success: true,
+        active: snap.exists,
+        createdAt: data ? data.createdAt ?? null : null,
+        lastPushAt: data ? data.lastPushAt ?? null : null,
+      });
+    } catch (error) {
+      console.error('GET /api/bnpb/token error:', error);
+      return res.status(500).json({ success: false, error: 'Could not read the token.' });
+    }
+  });
+
+  app.post('/api/bnpb/sync', standardRateLimiter, async (req, res) => {
+    try {
+      const provided = String(req.headers['x-sync-token'] ?? '');
+      if (provided === '') {
+        return res.status(401).json({ success: false, error: 'Missing x-sync-token.' });
+      }
+      const db = getAdminDb();
+      const tokenSnap = await db
+        .collection(BNPB_SYNC_TOKEN_COLLECTION)
+        .where('tokenHash', '==', personalSyncTokenHash(provided))
+        .limit(1)
+        .get();
+      if (tokenSnap.empty) {
+        return res.status(401).json({ success: false, error: 'Invalid or revoked token.' });
+      }
+      const uid = String((tokenSnap.docs[0].data() as Record<string, unknown>).uid ?? '');
+      if (uid === '') {
+        return res.status(401).json({ success: false, error: 'Invalid token.' });
+      }
+      const userSnap = await db.collection('users').doc(uid).get();
+      const ownerEmail = userSnap.exists
+        ? String((userSnap.data() as Record<string, unknown>).email ?? '').trim().toLowerCase()
+        : '';
+      if (ownerEmail !== OWNER_EMAIL_SERVER) {
+        return res.status(401).json({ success: false, error: 'This token does not belong to the app owner.' });
+      }
+
+      const parsedBody = parseBnpbSyncBody(req.body);
+      if ('error' in parsedBody) {
+        return res.status(400).json({ success: false, error: parsedBody.error });
+      }
+
+      const suggestions = db.collection('users').doc(uid).collection(BNPB_SUGGESTIONS_SUBCOLLECTION);
+      const now = new Date().toISOString();
+      let created = 0;
+      let updated = 0;
+      let withdrawn = 0;
+
+      for (const interaction of parsedBody.interactions) {
+        const existingSnap = await suggestions.where('syncId', '==', interaction.syncId).get();
+        const existingByContact = new Map<string, { id: string; data: Record<string, unknown> }>();
+        for (const entry of existingSnap.docs) {
+          const data = entry.data() as Record<string, unknown>;
+          existingByContact.set(String(data.bnpbContactId), { id: entry.id, data });
+        }
+        const currentContactIds = new Set(interaction.participants.map((p) => p.bnpbContactId));
+
+        // A tombstoned Interaction, or one that lost a participant, withdraws
+        // the still-pending suggestion for that person; settled ones stay.
+        for (const [contactId, entry] of existingByContact) {
+          if (entry.data.status !== 'pending') continue;
+          if (interaction.deleted === true || !currentContactIds.has(contactId)) {
+            await suggestions.doc(entry.id).update({ status: 'withdrawn', updatedAt: now });
+            withdrawn += 1;
+          }
+        }
+        if (interaction.deleted === true) continue;
+
+        for (const participant of interaction.participants) {
+          const existing = existingByContact.get(participant.bnpbContactId);
+          if (existing && (existing.data.status === 'confirmed' || existing.data.status === 'dismissed')) {
+            continue;
+          }
+          const suggestion = {
+            syncId: interaction.syncId,
+            bnpbContactId: participant.bnpbContactId,
+            bnpbName: bnpbParticipantName(participant),
+            occurredAt: interaction.occurredAt,
+            durationMinutes: interaction.durationMinutes ?? null,
+            summary: interaction.summary,
+            medium: interaction.medium,
+            sourceUpdatedAt: interaction.updatedAt ?? null,
+            status: 'pending',
+            text: interaction.summary,
+            createdAt: existing ? existing.data.createdAt ?? now : now,
+            updatedAt: now,
+          };
+          if (existing) {
+            await suggestions.doc(existing.id).set(suggestion);
+            updated += 1;
+          } else {
+            await suggestions.doc(bnpbSuggestionId(interaction.syncId, participant.bnpbContactId)).set(suggestion);
+            created += 1;
+          }
+        }
+      }
+
+      await db.collection(BNPB_SYNC_TOKEN_COLLECTION).doc(uid).update({ lastPushAt: now });
+      return res.status(200).json({ success: true, created, updated, withdrawn });
+    } catch (error) {
+      console.error('POST /api/bnpb/sync error:', error);
+      return res.status(500).json({ success: false, error: 'Could not process the sync.' });
+    }
+  });
+
   // Translation Endpoint: translates batched text strings to targetLang with Firestore L3 caching
   app.post("/api/translate", standardRateLimiter, async (req, res) => {
     try {
