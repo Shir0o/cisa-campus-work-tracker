@@ -88,16 +88,30 @@ beforeEach(() => {
   global.fetch = vi.fn().mockImplementation((_url: string, opts: { body: string }) => {
     const body = JSON.parse(opts.body);
     if (body.dryRun) {
+      if (body.combineRecordId) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            dryRun: true,
+            preview: {
+              goesBack: [{ kind: 'interactions', id: 'i1', label: 'hi' }],
+              stays: [{ kind: 'interactions', id: 'new1', label: 'later' }],
+              notRestored: [{ kind: 'field', label: 'email' }],
+            },
+          }),
+        });
+      }
       return Promise.resolve({
         ok: true,
         json: async () => ({
           success: true,
           dryRun: true,
-          preview: {
-            goesBack: [{ kind: 'interactions', id: 'i1', label: 'hi' }],
-            stays: [{ kind: 'interactions', id: 'new1', label: 'later' }],
-            notRestored: [{ kind: 'field', label: 'email' }],
-          },
+          moves: [
+            { kind: 'interactions', count: 2, items: [{ id: 'i1', label: 'hi' }, { id: 'i2', label: 'again' }] },
+            { kind: 'gatherings', count: 1, items: [{ id: 'e1', label: 'Friday Gathering' }] },
+            { kind: 'homes', count: 0, items: [] },
+          ],
         }),
       });
     }
@@ -132,6 +146,18 @@ describe('CombineContacts page', () => {
     });
     const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
     expect(body).toMatchObject({ keptId: 'c1', combinedInId: 'c2' });
+  });
+
+  it('shows the What moves groups with counts that expand to the items', async () => {
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('button', { name: /what moves/i }));
+
+    const section = await screen.findByTestId('what-moves');
+    expect(within(section).getByText(/Interactions/)).toBeInTheDocument();
+    expect(within(section).getByText(/\(2\)/)).toBeInTheDocument();
+    expect(within(section).getByText('Friday Gathering')).toBeInTheDocument();
+    // Groups that would move nothing are not shown.
+    expect(within(section).queryByText(/Home members/)).not.toBeInTheDocument();
   });
 
   it('removes a pair when it is skipped', () => {

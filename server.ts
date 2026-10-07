@@ -2699,30 +2699,92 @@ ${JSON.stringify(contactsList)}`;
       const keptContact = { id: keptSnap.id, ...keptSnap.data() } as unknown as Contact;
       const combinedInContact = { id: combinedInSnap.id, ...combinedInSnap.data() } as unknown as Contact;
 
-      const [interactionsSnap, threadsSnap, teamThreadsSnap, prayersSnap, tasksSnap, visitsSnap] =
-        await Promise.all([
-          db.collection("contacts").doc(combinedInId).collection("interactions").get(),
-          db.collection("contacts").doc(combinedInId).collection("threads").get(),
-          db.collection("contacts").doc(combinedInId).collection("teamThreads").get(),
-          db.collection("prayers").where("contactId", "==", combinedInId).get(),
-          db.collection("tasks").where("contactId", "==", combinedInId).get(),
-          db.collection("visits").where("contactIds", "array-contains", combinedInId).get(),
-        ]);
+      const [
+        interactionsSnap,
+        threadsSnap,
+        teamThreadsSnap,
+        commentsSnap,
+        prayersSnap,
+        tasksSnap,
+        visitsSnap,
+        eventsSnap,
+        rhythmsSnap,
+        homesSnap,
+        outreachSnap,
+        aliasesSnap,
+        importsSnap,
+        prefsSnap,
+        inboxSnap,
+        notificationsSnap,
+        activitiesSnap,
+        usersSnap,
+      ] = await Promise.all([
+        db.collection("contacts").doc(combinedInId).collection("interactions").get(),
+        db.collection("contacts").doc(combinedInId).collection("threads").get(),
+        db.collection("contacts").doc(combinedInId).collection("teamThreads").get(),
+        db.collection("contacts").doc(combinedInId).collection("comments").get(),
+        db.collection("prayers").where("contactId", "==", combinedInId).get(),
+        db.collection("tasks").where("contactId", "==", combinedInId).get(),
+        db.collection("visits").where("contactIds", "array-contains", combinedInId).get(),
+        db.collection("events").get(),
+        db.collection("rhythms").where("roster", "array-contains", combinedInId).get(),
+        db.collection("homes").where("members", "array-contains", combinedInId).get(),
+        db.collection("outreach").get(),
+        db.collection("attendee_aliases").where("contactId", "==", combinedInId).get(),
+        db.collection("pending_attendance_imports").get(),
+        db.collection("userPreferences").get(),
+        db.collection("inboxState").get(),
+        db.collection("notifications").where("targetId", "==", combinedInId).get(),
+        db.collection("activities").where("targetId", "==", combinedInId).get(),
+        db.collection("users").get(),
+      ]);
 
       const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
         snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+
+      const allDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+        snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+
+      // Personal prayers live under each user; read them per user rather than
+      // with a collection-group query so the same code runs under the test
+      // harness and the Admin SDK alike.
+      const personalPrayers: CombineReferences["personalPrayers"] = [];
+      await Promise.all(
+        usersSnap.docs.map(async (user: any) => {
+          const snap = await db
+            .collection("users")
+            .doc(user.id)
+            .collection("personalPrayers")
+            .get();
+          for (const d of snap.docs) {
+            personalPrayers.push({ id: d.id, userId: user.id, data: d.data() });
+          }
+        }),
+      );
 
       const refs: CombineReferences = {
         interactions: subDocs(interactionsSnap),
         threads: subDocs(threadsSnap),
         teamThreads: subDocs(teamThreadsSnap),
-        prayers: prayersSnap.docs.map((d: any) => ({ id: d.id, data: d.data() })),
-        tasks: tasksSnap.docs.map((d: any) => ({ id: d.id, data: d.data() })),
+        comments: subDocs(commentsSnap),
+        prayers: allDocs(prayersSnap),
+        tasks: allDocs(tasksSnap),
         visits: visitsSnap.docs.map((d: any) => ({
           id: d.id,
           contactIds: (d.data().contactIds ?? []) as string[],
           data: d.data(),
         })),
+        gatherings: allDocs(eventsSnap),
+        rhythms: allDocs(rhythmsSnap),
+        homes: allDocs(homesSnap),
+        outreach: allDocs(outreachSnap),
+        attendeeAliases: allDocs(aliasesSnap),
+        pendingImports: allDocs(importsSnap),
+        personalPrayers,
+        userPreferences: allDocs(prefsSnap),
+        inboxStates: allDocs(inboxSnap),
+        notifications: allDocs(notificationsSnap),
+        activities: allDocs(activitiesSnap),
       };
 
       const now = new Date().toISOString();
@@ -2731,6 +2793,11 @@ ${JSON.stringify(contactsList)}`;
         updatedById: actorId,
         updatedByName: actorName,
       });
+
+      // A dry run returns the review's "What moves" list without writing.
+      if (req.body?.dryRun === true) {
+        return res.status(200).json({ success: true, dryRun: true, moves: plan.moves });
+      }
 
       // The record is written first, as pending, so a failure partway through
       // leaves something that can be inspected.
@@ -2773,23 +2840,28 @@ ${JSON.stringify(contactsList)}`;
           ref: db.collection("contacts").doc(combinedInId).collection(moved.originalPath.split("/")[2]).doc(moved.originalPath.split("/")[3]),
         });
       }
-      for (const prayer of refs.prayers) {
-        ops.push({ op: "update", ref: db.collection("prayers").doc(prayer.id), data: { contactId: keptId } });
+      // Every re-pointed reference is written generically: group by document so
+      // a document with several rewritten fields is written once.
+      const byDocument = new Map<
+        string,
+        { collection: string; document: string; data: Record<string, unknown> }
+      >();
+      for (const ref of plan.rewrittenReferences) {
+        const key = `${ref.collection}/${ref.document}`;
+        const entry = byDocument.get(key);
+        if (entry) entry.data[ref.field] = ref.after;
+        else
+          byDocument.set(key, {
+            collection: ref.collection,
+            document: ref.document,
+            data: { [ref.field]: ref.after },
+          });
       }
-      for (const task of refs.tasks) {
+      for (const entry of byDocument.values()) {
         ops.push({
           op: "update",
-          ref: db.collection("tasks").doc(task.id),
-          data: { contactId: keptId, contactName: keptContact.name },
-        });
-      }
-      for (const visit of refs.visits) {
-        ops.push({
-          op: "update",
-          ref: db.collection("visits").doc(visit.id),
-          data: {
-            contactIds: [...new Set(visit.contactIds.map((id) => (id === combinedInId ? keptId : id)))],
-          },
+          ref: db.collection(entry.collection).doc(entry.document),
+          data: entry.data,
         });
       }
       ops.push({ op: "delete", ref: db.collection("contacts").doc(combinedInId) });
@@ -2916,12 +2988,14 @@ ${JSON.stringify(contactsList)}`;
       }
 
       // Read the current state once, then plan against it.
-      const [keptSnap, interactionsSnap, threadsSnap, teamThreadsSnap] = await Promise.all([
-        db.collection("contacts").doc(keptId).get(),
-        db.collection("contacts").doc(keptId).collection("interactions").get(),
-        db.collection("contacts").doc(keptId).collection("threads").get(),
-        db.collection("contacts").doc(keptId).collection("teamThreads").get(),
-      ]);
+      const [keptSnap, interactionsSnap, threadsSnap, teamThreadsSnap, commentsSnap] =
+        await Promise.all([
+          db.collection("contacts").doc(keptId).get(),
+          db.collection("contacts").doc(keptId).collection("interactions").get(),
+          db.collection("contacts").doc(keptId).collection("threads").get(),
+          db.collection("contacts").doc(keptId).collection("teamThreads").get(),
+          db.collection("contacts").doc(keptId).collection("comments").get(),
+        ]);
 
       const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
         snap.docs.map((d) => ({ id: d.id, data: d.data() }));
@@ -2974,6 +3048,7 @@ ${JSON.stringify(contactsList)}`;
             interactions: subDocs(interactionsSnap),
             threads: subDocs(threadsSnap),
             teamThreads: subDocs(teamThreadsSnap),
+            comments: subDocs(commentsSnap),
           },
           movedCurrent,
           referenceValues,

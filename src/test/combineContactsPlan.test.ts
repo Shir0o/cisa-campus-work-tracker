@@ -17,9 +17,21 @@ const EMPTY_REFS: CombineReferences = {
   interactions: [],
   threads: [],
   teamThreads: [],
+  comments: [],
   prayers: [],
   tasks: [],
   visits: [],
+  gatherings: [],
+  rhythms: [],
+  homes: [],
+  outreach: [],
+  attendeeAliases: [],
+  pendingImports: [],
+  personalPrayers: [],
+  userPreferences: [],
+  inboxStates: [],
+  notifications: [],
+  activities: [],
 };
 
 const META = { now: '2026-03-01T00:00:00.000Z', updatedById: 'u1', updatedByName: 'Admin' };
@@ -315,6 +327,175 @@ describe('buildCombinePlan', () => {
     const ref = plan.rewrittenReferences.find((r) => r.field === 'contactIds');
     expect(ref?.after).toEqual(['s1']);
   });
+
+  it('re-points every remaining reference kind and refreshes cached names', () => {
+    const plan = buildCombinePlan(kept, combinedIn, {
+      ...EMPTY_REFS,
+      comments: [{ id: 'c1', data: { text: 'hey' } }],
+      gatherings: [
+        {
+          id: 'e1',
+          data: {
+            name: 'Friday',
+            roster: ['d1', 's1'],
+            rosterOverride: ['d1'],
+            rosterOverrideBase: ['d1'],
+            attendance: { present: ['d1'], absent: ['d1'] },
+          },
+        },
+      ],
+      rhythms: [{ id: 'r1', data: { name: 'Wed', roster: ['d1', 'other'] } }],
+      homes: [{ id: 'h1', data: { label: 'Peinados', members: ['d1'] } }],
+      outreach: [
+        { id: 'o1', data: { names: [{ id: 'ON-1', name: 'Combined In', contactId: 'd1' }] } },
+      ],
+      attendeeAliases: [{ id: 'a1', data: { contactId: 'd1' } }],
+      pendingImports: [
+        {
+          id: 'pi1',
+          data: { preview: { attendees: [{ contactId: 'd1' }], conflicts: [{ contactId: 'd1' }] } },
+        },
+      ],
+      personalPrayers: [{ id: 'pp1', userId: 'u2', data: { contactId: 'd1', title: 'heal' } }],
+      userPreferences: [{ id: 'u2', data: { personalContactIds: ['d1', 'x'] } }],
+      inboxStates: [
+        { id: 'u2', data: { seen: { 'att:contact:d1': 't1' }, completed: { 'att:contact:d1': 't2' } } },
+      ],
+      notifications: [{ id: 'n1', data: { targetId: 'd1', link: '/people/d1', message: 'm' } }],
+      activities: [
+        { id: 'ac1', data: { targetId: 'd1', targetName: 'Combined In', targetType: 'contact' } },
+      ],
+      visits: [{ id: 'v1', contactIds: ['d1', 's1'], data: { contactNames: ['Combined In', 'Kept'] } }],
+    }, META);
+
+    expect(plan.movedDocuments).toContainEqual({
+      originalPath: 'contacts/d1/comments/c1',
+      newPath: 'contacts/s1/comments/c1',
+      originalData: { text: 'hey' },
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'events',
+      document: 'e1',
+      field: 'roster',
+      before: ['d1', 's1'],
+      after: ['s1'],
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'events',
+      document: 'e1',
+      field: 'attendance',
+      before: { present: ['d1'], absent: ['d1'] },
+      after: { present: ['s1'], absent: ['s1'] },
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'rhythms',
+      document: 'r1',
+      field: 'roster',
+      before: ['d1', 'other'],
+      after: ['s1', 'other'],
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'homes',
+      document: 'h1',
+      field: 'members',
+      before: ['d1'],
+      after: ['s1'],
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'outreach',
+      document: 'o1',
+      field: 'names',
+      before: [{ id: 'ON-1', name: 'Combined In', contactId: 'd1' }],
+      after: [{ id: 'ON-1', name: 'Kept', contactId: 's1' }],
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'attendee_aliases',
+      document: 'a1',
+      field: 'contactId',
+      before: 'd1',
+      after: 's1',
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'pending_attendance_imports',
+      document: 'pi1',
+      field: 'preview',
+      before: { attendees: [{ contactId: 'd1' }], conflicts: [{ contactId: 'd1' }] },
+      after: { attendees: [{ contactId: 's1' }], conflicts: [{ contactId: 's1' }] },
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'users/u2/personalPrayers',
+      document: 'pp1',
+      field: 'contactId',
+      before: 'd1',
+      after: 's1',
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'userPreferences',
+      document: 'u2',
+      field: 'personalContactIds',
+      before: ['d1', 'x'],
+      after: ['s1', 'x'],
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'inboxState',
+      document: 'u2',
+      field: 'seen',
+      before: { 'att:contact:d1': 't1' },
+      after: { 'att:contact:s1': 't1' },
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'inboxState',
+      document: 'u2',
+      field: 'completed',
+      before: { 'att:contact:d1': 't2' },
+      after: { 'att:contact:s1': 't2' },
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'notifications',
+      document: 'n1',
+      field: 'targetId',
+      before: 'd1',
+      after: 's1',
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'notifications',
+      document: 'n1',
+      field: 'link',
+      before: '/people/d1',
+      after: '/people/s1',
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'activities',
+      document: 'ac1',
+      field: 'targetName',
+      before: 'Combined In',
+      after: 'Kept',
+    });
+    expect(plan.rewrittenReferences).toContainEqual({
+      collection: 'visits',
+      document: 'v1',
+      field: 'contactNames',
+      before: ['Combined In', 'Kept'],
+      after: ['Kept'],
+    });
+
+    for (const kind of [
+      'comments',
+      'gatherings',
+      'rhythms',
+      'homes',
+      'outreach',
+      'attendeeAliases',
+      'pendingImports',
+      'personalPrayers',
+      'userPreferences',
+      'inboxStates',
+      'notifications',
+      'activities',
+    ] as const) {
+      expect(plan.moves.find((m) => m.kind === kind)?.count).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('buildCombineUndoPlan', () => {
@@ -355,6 +536,7 @@ describe('buildCombineUndoPlan', () => {
       interactions: [{ id: 'i1', data: { content: 'hi' } }],
       threads: [{ id: 't1', data: { body: 'note' } }],
       teamThreads: [],
+      comments: [],
     },
     movedCurrent: {
       'contacts/d1/interactions/i1': { content: 'hi' },
@@ -434,5 +616,36 @@ describe('buildCombineUndoPlan', () => {
     expect(plan.referenceReverts.find((r) => r.collection === 'prayers')).toBeUndefined();
     expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'prayers.contactId' });
     expect(plan.referenceReverts.find((r) => r.collection === 'tasks')).toBeDefined();
+  });
+
+  it('reverts an object-valued reference by deep equality', () => {
+    const objectRecord: CombineUndoRecord = {
+      ...record,
+      rewrittenReferences: [
+        {
+          collection: 'events',
+          document: 'e1',
+          field: 'attendance',
+          before: { present: ['d1'], absent: [] },
+          after: { present: ['s1'], absent: [] },
+        },
+      ],
+    };
+    const current = {
+      ...baseCurrent(),
+      referenceValues: {
+        [referenceKey('events', 'e1', 'attendance')]: { present: ['s1'], absent: [] },
+      },
+    };
+
+    const plan = buildCombineUndoPlan(objectRecord, current);
+
+    expect(plan.referenceReverts).toContainEqual({
+      collection: 'events',
+      document: 'e1',
+      field: 'attendance',
+      value: { present: ['d1'], absent: [] },
+    });
+    expect(plan.notRestored).toEqual([]);
   });
 });
