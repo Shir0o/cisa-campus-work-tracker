@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -40,7 +41,6 @@ import { DataLoadError } from '../components/ui/DataLoadError';
 import Select from '../components/ui/Select';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
-import CombineContactsModal from '../components/modals/CombineContactsModal';
 import TagGenderModal from '../components/modals/TagGenderModal';
 import MovingUpAYearModal from '../components/modals/MovingUpAYearModal';
 import { RowActions } from '../components/ui/RowActions';
@@ -169,6 +169,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 }
 
 export default function Directory() {
+  const navigate = useNavigate();
   const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
   const { user, isAdmin, isManager, role, effectiveUserId } = useAuth();
 
@@ -392,7 +393,6 @@ export default function Directory() {
   const [bulkKind, setBulkKind] = useState<ContactKind | ''>('');
   const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
-  const [isCombineContactsOpen, setIsCombineContactsOpen] = useState(false);
   const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
   // Moving up a year (#1351): a Full-timer's sorting work, beside Not sorted yet.
   const [movingUpAt, setMovingUpAt] = useState<Date | null>(null);
@@ -917,7 +917,7 @@ export default function Directory() {
         <div className="hidden sm:flex flex-wrap items-center gap-2 shrink-0">
           {role === 'admin' && (
             <button
-              onClick={() => setIsCombineContactsOpen(true)}
+              onClick={() => navigate('/directory/combine-contacts')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
               title={t('directory.combine_contacts', 'Combine contacts')}
             >
@@ -993,7 +993,7 @@ export default function Directory() {
                       type="button"
                       onClick={() => {
                         setHeaderMoreOpen(false);
-                        setIsCombineContactsOpen(true);
+                        navigate('/directory/combine-contacts');
                       }}
                       role="menuitem"
                       className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
@@ -1533,13 +1533,7 @@ export default function Directory() {
         />
       )}
 
-      {/* ── Combine Contacts Modal (dry-run) ── */}
-      {isCombineContactsOpen && (
-        <CombineContactsModal
-          contacts={contacts}
-          onClose={() => setIsCombineContactsOpen(false)}
-        />
-      )}
+      {/* ── Combine contacts lives on its own page (issue #1427) ── */}
 
       {movingUpAt && (
         <MovingUpAYearModal

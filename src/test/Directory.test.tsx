@@ -14,8 +14,9 @@ const mockDelete = vi.fn();
 const mockCommit = vi.fn().mockResolvedValue(undefined);
 
 // Mock dependencies
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }));
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock('../components/AuthProvider', () => ({
@@ -1063,7 +1064,7 @@ describe('Directory', () => {
     expect(await screen.findByText('No duplicate or overlapping tags found.')).toBeInTheDocument();
   });
 
-  it('renders Combine contacts button for admin and opens CombineContactsModal', async () => {
+  it('navigates to the Combine contacts page from the admin action', async () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-admin', displayName: 'Admin User' },
       role: 'admin',
@@ -1079,7 +1080,7 @@ describe('Directory', () => {
     expect(combineContactsBtn).toBeInTheDocument();
 
     fireEvent.click(combineContactsBtn);
-    expect(await screen.findByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/directory/combine-contacts');
   });
 
   it('does not render Combine contacts button for non-admin', async () => {
