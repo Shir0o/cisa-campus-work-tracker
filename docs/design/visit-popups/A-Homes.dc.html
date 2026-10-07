@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Homes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ah-bar{background:#F4F4F5;border-radius:14px;position:absolute}
+.ah-dlg{position:absolute;left:120px;top:40px;width:640px;background:#FFFFFF;border:1px solid #E4E4E7;border-radius:24px;box-shadow:0 16px 32px rgba(0,0,0,.16);overflow:hidden}
+.ah-sec{padding:20px 28px;border-top:1px solid #F0F0F2}
+.ah-row{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid #F0F0F2}
+.ah-row:last-child{border-bottom:0}
+.ah-stack{display:flex;flex:none;width:56px}
+.ah-av{width:28px;height:28px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600;border:2px solid #FFFFFF;margin-right:-10px}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.ah-name{margin:0;font-size:14px;font-weight:600;color:#0A0A0B}
+.ah-meta{margin:2px 0 0;font-size:12px;color:#71717A}
+.ah-icb{width:36px;height:36px;border-radius:999px;border:0;background:transparent;color:#71717A;display:grid;place-items:center;cursor:pointer}
+.ah-sh{margin:0;font-size:13px;font-weight:600;color:#0A0A0B}
+.ah-sx{margin:3px 0 0;font-size:12px;color:#A1A1AA;line-height:1.4}
+.ah-lbl{margin:0 0 6px;font-size:13px;font-weight:500;color:#0A0A0B}
+.ah-hint{margin:6px 0 0;font-size:12px;color:#71717A}
+.ah-fld{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;background:#F4F4F5;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.ah-ph{color:#A1A1AA}
+.ah-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.ah-add{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px dashed #D4D4D8;font-size:13px;color:#52525B;background:transparent}
+.ah-cav{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.ah-grid{display:grid;grid-template-columns:132px minmax(0,1fr);gap:24px}
+.ah-sw{width:40px;height:24px;border-radius:999px;background:#131316;position:relative;flex:none}
+.ah-sw::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:999px;background:#FFFFFF}
+.ah-foot{display:flex;align-items:center;gap:10px;padding:16px 28px;border-top:1px solid #F0F0F2;background:#FAFAFA}
+.ah-btn{height:44px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.ah-sm{height:36px;padding:0 14px;font-size:13px}
+.ah-pri{background:#131316;color:#FFFFFF}
+.ah-out{background:#FFFFFF;color:#0A0A0B;border:1px solid #E4E4E7}
+.ah-ghost{background:transparent;color:#52525B}
+.ah-dng{background:transparent;color:#B1000F;padding:0 12px}
+.ah-close{width:40px;height:40px;border-radius:999px;border:0;background:#F4F4F5;color:#52525B;display:grid;place-items:center;cursor:pointer}
+.ah-tag{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:#F4F4F5;font-size:11px;color:#52525B;font-weight:500}
+.ah-radio{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E4E4E7;border-radius:14px}
+.ah-radio.on{border:1.5px solid #0A0A0B;background:#FAFAFA}
+.ah-dot{width:18px;height:18px;border-radius:999px;border:1.5px solid #A1A1AA;flex:none;box-sizing:border-box}
+.on .ah-dot{border:5px solid #0A0A0B}
+.ah-pv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px 16px;padding:16px 18px;background:#F4F4F5;border-radius:14px;font-size:13px;color:#0A0A0B}
+.ah-pk{color:#71717A}
+.ah-new{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;background:#E1FCDE;color:#016A1C;font-size:11px;font-weight:500;margin-left:6px}
+</style>
+</helmet>
+<div style="position:relative;width:880px;height:1000px;overflow:hidden;font-family:Lexend,sans-serif;background:#FFFFFF">
+  <div class="ah-bar" style="left:48px;top:40px;width:220px;height:28px"></div>
+  <div class="ah-bar" style="left:48px;top:96px;width:784px;height:120px"></div>
+  <div class="ah-bar" style="left:48px;top:240px;width:784px;height:120px"></div>
+  <div class="ah-bar" style="left:48px;top:384px;width:784px;height:120px"></div>
+  <div style="position:absolute;inset:0;background:rgba(10,10,11,.32)"></div>
+
+  <!-- LIST -->
+  <sc-if value="{{isList}}" hint-placeholder-val="{{ true }}">
+    <div class="ah-dlg" role="dialog" aria-label="Homes">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:24px 28px 20px">
+        <div style="flex:1;min-width:0">
+          <p style="margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:#A1A1AA">Visits</p>
+          <h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.01em;color:#0A0A0B">Homes</h2>
+          <p style="margin:4px 0 0;font-size:13px;color:#52525B">The households we go round to.</p>
+        </div>
+        <button class="ah-close" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="ah-sec">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+          <p class="ah-sh" style="flex:1">Our homes <span style="color:#A1A1AA;font-weight:500">· 6</span></p>
+          <button class="ah-btn ah-sm ah-pri"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a home</button>
+        </div>
+        <div>
+          <sc-for list="{{homes}}" as="h" hint-placeholder-count="6">
+            <div class="ah-row">
+              <div class="ah-stack">
+                <sc-for list="{{h.people}}" as="p" hint-placeholder-count="2">
+                  <span class="ah-av {{p.tone}}">{{p.ini}}</span>
+                </sc-for>
+              </div>
+              <div style="flex:1;min-width:0">
+                <p class="ah-name">{{h.label}}</p>
+                <p class="ah-meta">{{h.meta}}</p>
+              </div>
+              <button class="ah-icb" aria-label="Edit {{h.label}}"><svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+            </div>
+          </sc-for>
+        </div>
+        <button style="display:flex;align-items:center;gap:8px;width:100%;margin-top:6px;padding:12px 4px;border:0;border-top:1px solid #F0F0F2;background:transparent;font-family:Lexend,sans-serif;font-size:13px;color:#52525B;cursor:pointer;text-align:left"><svg class="ic" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>Inactive <span style="color:#A1A1AA">· 2 households that have moved on</span></button>
+      </div>
+      <div class="ah-sec" style="background:#FAFAFA">
+        <p class="ah-sh">Suggested homes</p>
+        <p class="ah-sx" style="margin-bottom:12px">From visits we've logged and the surnames we share. Nothing saves until you review it.</p>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:#FFFFFF;border:1px solid #E4E4E7;border-radius:14px">
+          <div class="ah-stack"><span class="ah-av tn-oc">TN</span><span class="ah-av tn-sl">BN</span></div>
+          <div style="flex:1;min-width:0"><p class="ah-name">the Nguyens <span class="ah-tag">from visits</span></p><p class="ah-meta">Thu Nguyen, Bao Nguyen · seen together 4 times</p></div>
+          <button class="ah-btn ah-sm ah-out">Review</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- EDIT (never visited) -->
+  <sc-if value="{{isEdit}}" hint-placeholder-val="{{ false }}">
+    <div class="ah-dlg" role="dialog" aria-label="Edit the Mendozas">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:24px 28px 20px">
+        <div style="flex:1;min-width:0">
+          <a href="#" style="display:inline-flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;text-decoration:none"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>All homes</a>
+          <h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.01em;color:#0A0A0B">the Mendozas</h2>
+          <p style="margin:4px 0 0;font-size:13px;color:#52525B">Added from surnames · no visits yet</p>
+        </div>
+        <button class="ah-close" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="ah-sec ah-grid">
+        <div><p class="ah-sh">The home</p></div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div><p class="ah-lbl">Name</p><div class="ah-fld">the Mendozas</div></div>
+          <div><p class="ah-lbl">Where they live</p><div class="ah-fld"><svg class="ic" viewBox="0 0 24 24" style="color:#A1A1AA"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg><span class="ah-ph">Address or hall</span></div><p class="ah-hint">A visit's place comes from here.</p></div>
+        </div>
+      </div>
+      <div class="ah-sec ah-grid">
+        <div><p class="ah-sh">Who lives here</p></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span class="ah-chip"><span class="ah-cav tn-cl">RM</span>Rosa Mendoza</span>
+          <button class="ah-add"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg>Add someone</button>
+        </div>
+      </div>
+      <div class="ah-sec ah-grid">
+        <div><p class="ah-sh">Status</p></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:12px"><p class="ah-lbl" style="margin:0;flex:1">This home is active</p><span class="ah-sw" role="switch" aria-checked="true" aria-label="This home is active"></span></div>
+          <p class="ah-hint">Turn off when the household moves on. Its visits stay.</p>
+        </div>
+      </div>
+      <div class="ah-sec ah-grid">
+        <div><p class="ah-sh">Notes</p><p class="ah-sx">Optional</p></div>
+        <div class="ah-fld" style="align-items:flex-start;padding:12px 14px;min-height:72px"><span class="ah-ph">Anything to remember about the household</span></div>
+      </div>
+      <div class="ah-foot">
+        <button class="ah-btn ah-dng"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Delete home</button>
+        <span style="font-size:12px;color:#A1A1AA">Never visited · Undo for a few seconds</span>
+        <span style="flex:1"></span>
+        <button class="ah-btn ah-ghost">Cancel</button>
+        <button class="ah-btn ah-pri">Save changes</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- COMBINE -->
+  <sc-if value="{{isCombine}}" hint-placeholder-val="{{ false }}">
+    <div class="ah-dlg" role="dialog" aria-label="Combine Garcia into another home">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:24px 28px 20px">
+        <div style="flex:1;min-width:0">
+          <a href="#" style="display:inline-flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;text-decoration:none"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Garcia</a>
+          <h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.01em;color:#0A0A0B">Combine Garcia into…</h2>
+          <p style="margin:4px 0 0;font-size:13px;color:#52525B">For a home entered twice. Garcia has 2 visits, so it can't just be deleted.</p>
+        </div>
+        <button class="ah-close" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="ah-sec">
+        <p class="ah-sh" style="margin-bottom:12px">Which home is real?</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="ah-radio on"><span class="ah-dot"></span><span style="flex:1"><span class="ah-name" style="display:block">the Garcias</span><span class="ah-meta" style="display:block">9 Birch Lane · Maria, José · 11 visits</span></span></label>
+          <label class="ah-radio"><span class="ah-dot"></span><span style="flex:1"><span class="ah-name" style="display:block">Mei &amp; Jun</span><span class="ah-meta" style="display:block">Hall B, Room 4</span></span></label>
+          <label class="ah-radio"><span class="ah-dot"></span><span style="flex:1"><span class="ah-name" style="display:block">the Okafors</span><span class="ah-meta" style="display:block">22 Elm Street</span></span></label>
+        </div>
+      </div>
+      <div class="ah-sec">
+        <p class="ah-sh" style="margin-bottom:12px">What happens</p>
+        <div class="ah-pv">
+          <span class="ah-pk">People</span><span>Maria, José, Elena Garcia<span class="ah-new">+ Elena</span></span>
+          <span class="ah-pk">Place</span><span>9 Birch Lane <span style="color:#71717A">· the Garcias' is kept</span></span>
+          <span class="ah-pk">Notes</span><span>Both kept, the Garcias' first</span>
+          <span class="ah-pk">Visits</span><span>2 visits move to the Garcias</span>
+          <span class="ah-pk">Garcia</span><span>Removed once everything has moved</span>
+        </div>
+      </div>
+      <div class="ah-foot">
+        <span style="flex:1"></span>
+        <button class="ah-btn ah-ghost">Back</button>
+        <button class="ah-btn ah-pri">Combine homes</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"view":{"editor":"enum","options":["list","edit","combine"],"default":"list"},"$preview":{"width":880,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.view ?? 'list';
+    const P = (ini, tone) => ({ ini, tone });
+    return {
+      isList: v === 'list', isEdit: v === 'edit', isCombine: v === 'combine',
+      homes: [
+        { label: 'Garcia', meta: 'No place yet · Elena Garcia', people: [P('EG', 'tn-cl')] },
+        { label: 'Mei & Jun', meta: 'Hall B, Room 4 · Mei Lin, Jun Park', people: [P('ML', 'tn-pl'), P('JP', 'tn-sg')] },
+        { label: 'the Garcias', meta: '9 Birch Lane · Maria, José', people: [P('MG', 'tn-oc'), P('JG', 'tn-sl')] },
+        { label: 'the Mendozas', meta: 'No place yet · Rosa Mendoza', people: [P('RM', 'tn-cl')] },
+        { label: 'the Okafors', meta: '22 Elm Street · Chidi, Ngozi', people: [P('CO', 'tn-sg'), P('NO', 'tn-oc')] },
+        { label: 'the Peinados', meta: '14 Alder Court · Ana, Luis, Sofia', people: [P('AP', 'tn-sl'), P('LP', 'tn-pl')] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

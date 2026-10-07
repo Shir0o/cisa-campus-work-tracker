@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>B · Homes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bh-bar{background:#F4F4F5;border-radius:14px;position:absolute}
+.bh-dlg{position:absolute;left:120px;top:32px;width:640px;background:#EAEAEC;border-radius:28px;box-shadow:0 16px 32px rgba(0,0,0,.16);padding:8px 8px 0;box-sizing:border-box}
+.bh-head{display:flex;align-items:flex-start;gap:14px;padding:16px 12px 12px 16px}
+.bh-h{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:600;line-height:32px;color:#0A0A0B}
+.bh-s{margin:2px 0 0;font-size:14px;color:#52525B}
+.bh-card{background:#FFFFFF;border-radius:20px;padding:12px 0;margin-top:8px}
+.bh-ov{margin:4px 20px 8px;font-size:12px;font-weight:600;letter-spacing:.02em;color:#52525B}
+.bh-li{display:flex;align-items:center;gap:16px;min-height:64px;padding:8px 12px 8px 20px;box-sizing:border-box}
+.bh-div{height:1px;background:#F0F0F2;margin-left:88px}
+.bh-stack{display:flex;width:52px;flex:none}
+.bh-av{width:32px;height:32px;border-radius:999px;display:grid;place-items:center;font-size:11px;font-weight:600;border:2px solid #FFFFFF;margin-right:-14px}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.bh-hl{margin:0;font-size:15px;font-weight:500;color:#0A0A0B}
+.bh-sp{margin:2px 0 0;font-size:13px;color:#52525B}
+.bh-icb{width:40px;height:40px;border-radius:999px;border:0;background:transparent;color:#52525B;display:grid;place-items:center;cursor:pointer;flex:none}
+.bh-btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.bh-ton{background:#E4E4E7;color:#0A0A0B;padding:0 20px 0 16px}
+.bh-fil{background:#131316;color:#FFFFFF}
+.bh-txt{background:transparent;color:#0A0A0B;padding:0 12px}
+.bh-red{background:transparent;color:#B1000F;padding:0 12px}
+.bh-act{display:flex;align-items:center;gap:8px;padding:16px 16px 20px}
+.bh-of{position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border:1px solid #A1A1AA;border-radius:12px;font-size:15px;color:#0A0A0B;box-sizing:border-box}
+.bh-fl{position:absolute;top:-9px;left:12px;padding:0 4px;background:#FFFFFF;font-size:12px;color:#52525B;line-height:16px}
+.bh-ph{color:#A1A1AA}
+.bh-sup{margin:4px 16px 0;font-size:12px;color:#52525B}
+.bh-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 4px;border-radius:8px;border:1px solid #D4D4D8;font-size:14px;color:#0A0A0B}
+.bh-cav{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.bh-sw{width:52px;height:32px;border-radius:999px;background:#131316;position:relative;flex:none}
+.bh-sw::after{content:"";position:absolute;right:4px;top:4px;width:24px;height:24px;border-radius:999px;background:#FFFFFF}
+.bh-rad{width:20px;height:20px;border-radius:999px;border:2px solid #52525B;box-sizing:border-box;flex:none;display:grid;place-items:center}
+.bh-rad.on{border-color:#0A0A0B}
+.bh-rad.on::after{content:"";width:10px;height:10px;border-radius:999px;background:#0A0A0B}
+.bh-lic{width:40px;height:40px;border-radius:999px;background:#F4F4F5;color:#0A0A0B;display:grid;place-items:center;flex:none}
+.bh-badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:6px;background:#EAEAEC;font-size:11px;font-weight:500;color:#0A0A0B;margin-left:6px}
+.bh-pad{padding:8px 20px 12px}
+</style>
+</helmet>
+<div style="position:relative;width:880px;height:1000px;overflow:hidden;font-family:Lexend,sans-serif;background:#FFFFFF">
+  <div class="bh-bar" style="left:48px;top:40px;width:220px;height:28px"></div>
+  <div class="bh-bar" style="left:48px;top:96px;width:784px;height:120px"></div>
+  <div class="bh-bar" style="left:48px;top:240px;width:784px;height:120px"></div>
+  <div class="bh-bar" style="left:48px;top:384px;width:784px;height:120px"></div>
+  <div style="position:absolute;inset:0;background:rgba(10,10,11,.32)"></div>
+
+  <sc-if value="{{isList}}" hint-placeholder-val="{{ true }}">
+    <div class="bh-dlg" role="dialog" aria-label="Homes">
+      <div class="bh-head">
+        <svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px;margin-top:4px;color:#0A0A0B"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+        <div style="flex:1;min-width:0"><h2 class="bh-h">Homes</h2><p class="bh-s">The households we go round to.</p></div>
+        <button class="bh-btn bh-ton"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a home</button>
+        <button class="bh-icb" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="bh-card">
+        <p class="bh-ov">Our homes · 6</p>
+        <sc-for list="{{homes}}" as="h" hint-placeholder-count="6">
+          <div>
+            <div class="bh-li">
+              <div class="bh-stack"><sc-for list="{{h.people}}" as="p" hint-placeholder-count="2"><span class="bh-av {{p.tone}}">{{p.ini}}</span></sc-for></div>
+              <div style="flex:1;min-width:0"><p class="bh-hl">{{h.label}}</p><p class="bh-sp">{{h.meta}}</p></div>
+              <button class="bh-icb" aria-label="Edit {{h.label}}"><svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+            </div>
+          </div>
+        </sc-for>
+        <div style="height:1px;background:#F0F0F2;margin:4px 0"></div>
+        <div class="bh-li" style="min-height:52px">
+          <div style="flex:1"><p class="bh-hl" style="font-size:14px">Inactive · 2</p><p class="bh-sp">Households that have moved on</p></div>
+          <button class="bh-icb" aria-label="Show inactive homes"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+      </div>
+      <div class="bh-card" style="background:#F4F4F5;border:1px solid #E4E4E7">
+        <p class="bh-ov">Suggested</p>
+        <div class="bh-li">
+          <div class="bh-stack"><span class="bh-av tn-oc">TN</span><span class="bh-av tn-sl">BN</span></div>
+          <div style="flex:1;min-width:0"><p class="bh-hl">the Nguyens<span class="bh-badge">from visits</span></p><p class="bh-sp">Thu, Bao · seen together 4 times</p></div>
+          <button class="bh-btn bh-txt">Review</button>
+        </div>
+      </div>
+      <div style="height:20px"></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isEdit}}" hint-placeholder-val="{{ false }}">
+    <div class="bh-dlg" role="dialog" aria-label="Edit the Mendozas">
+      <div class="bh-head">
+        <button class="bh-icb" aria-label="Back to all homes" style="margin:-4px -4px 0 -8px"><svg class="ic" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+        <div style="flex:1;min-width:0"><h2 class="bh-h">the Mendozas</h2><p class="bh-s">Added from surnames · no visits yet</p></div>
+        <button class="bh-icb" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="bh-card bh-pad" style="padding-top:20px">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="bh-of"><span class="bh-fl">Name</span>the Mendozas</div>
+          <div><div class="bh-of"><span class="bh-fl">Where they live</span><svg class="ic" viewBox="0 0 24 24" style="color:#52525B"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg><span class="bh-ph">Address or hall</span></div><p class="bh-sup">A visit's place comes from here.</p></div>
+          <div class="bh-of" style="height:auto;min-height:80px;align-items:flex-start;padding:16px"><span class="bh-fl">Notes (optional)</span><span class="bh-ph">Anything to remember about the household</span></div>
+        </div>
+      </div>
+      <div class="bh-card bh-pad">
+        <p class="bh-ov" style="margin-left:0">Who lives here</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="bh-chip"><span class="bh-cav tn-cl">RM</span>Rosa Mendoza<svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;color:#52525B"><path d="M18 6 6 18M6 6l12 12"/></svg></span><span class="bh-chip" style="padding:0 12px 0 8px"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add someone</span></div>
+      </div>
+      <div class="bh-card" style="padding:4px 0">
+        <div class="bh-li"><div style="flex:1"><p class="bh-hl">This home is active</p><p class="bh-sp">Turn off when the household moves on. Its visits stay.</p></div><span class="bh-sw" role="switch" aria-checked="true" aria-label="This home is active"></span></div>
+        <div style="height:1px;background:#F0F0F2;margin:0 20px"></div>
+        <div class="bh-li"><div style="flex:1"><p class="bh-hl">Delete this home</p><p class="bh-sp">Never visited, so nothing is lost. You can undo for a few seconds.</p></div><button class="bh-btn bh-red"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Delete</button></div>
+      </div>
+      <div class="bh-act"><span style="flex:1"></span><button class="bh-btn bh-txt">Cancel</button><button class="bh-btn bh-fil">Save changes</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isCombine}}" hint-placeholder-val="{{ false }}">
+    <div class="bh-dlg" role="dialog" aria-label="Combine Garcia into another home">
+      <div class="bh-head">
+        <button class="bh-icb" aria-label="Back to Garcia" style="margin:-4px -4px 0 -8px"><svg class="ic" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+        <div style="flex:1;min-width:0"><h2 class="bh-h">Combine Garcia into…</h2><p class="bh-s">Garcia has 2 visits, so it's combined rather than deleted.</p></div>
+        <button class="bh-icb" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="bh-card">
+        <p class="bh-ov">Which home is real?</p>
+        <div class="bh-li" style="background:#F4F4F5"><span class="bh-rad on"></span><div style="flex:1"><p class="bh-hl">the Garcias</p><p class="bh-sp">9 Birch Lane · Maria, José · 11 visits</p></div></div>
+        <div class="bh-li"><span class="bh-rad"></span><div style="flex:1"><p class="bh-hl">Mei &amp; Jun</p><p class="bh-sp">Hall B, Room 4</p></div></div>
+        <div class="bh-li"><span class="bh-rad"></span><div style="flex:1"><p class="bh-hl">the Okafors</p><p class="bh-sp">22 Elm Street</p></div></div>
+      </div>
+      <div class="bh-card">
+        <p class="bh-ov">What happens</p>
+        <div class="bh-li"><span class="bh-lic"><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 3a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg></span><div style="flex:1"><p class="bh-hl">Elena Garcia joins the Garcias</p><p class="bh-sp">Maria, José, Elena</p></div></div>
+        <div class="bh-li"><span class="bh-lic"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><div style="flex:1"><p class="bh-hl">2 visits move to the Garcias</p><p class="bh-sp">12 Mar and 4 Aug</p></div></div>
+        <div class="bh-li"><span class="bh-lic"><svg class="ic" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span><div style="flex:1"><p class="bh-hl">Place and name stay</p><p class="bh-sp">9 Birch Lane · notes from both are kept</p></div></div>
+        <div class="bh-li"><span class="bh-lic" style="color:#B1000F;background:#FFD4D8"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span><div style="flex:1"><p class="bh-hl">Garcia is removed</p><p class="bh-sp">Once everything above has moved</p></div></div>
+      </div>
+      <div class="bh-act"><span style="flex:1"></span><button class="bh-btn bh-txt">Back</button><button class="bh-btn bh-fil">Combine homes</button></div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"view":{"editor":"enum","options":["list","edit","combine"],"default":"list"},"$preview":{"width":880,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.view ?? 'list';
+    const P = (ini, tone) => ({ ini, tone });
+    return {
+      isList: v === 'list', isEdit: v === 'edit', isCombine: v === 'combine',
+      homes: [
+        { label: 'Garcia', meta: 'No place yet · Elena Garcia', people: [P('EG', 'tn-cl')] },
+        { label: 'Mei & Jun', meta: 'Hall B, Room 4 · Mei Lin, Jun Park', people: [P('ML', 'tn-pl'), P('JP', 'tn-sg')] },
+        { label: 'the Garcias', meta: '9 Birch Lane · Maria, José', people: [P('MG', 'tn-oc'), P('JG', 'tn-sl')] },
+        { label: 'the Mendozas', meta: 'No place yet · Rosa Mendoza', people: [P('RM', 'tn-cl')] },
+        { label: 'the Okafors', meta: '22 Elm Street · Chidi, Ngozi', people: [P('CO', 'tn-sg'), P('NO', 'tn-oc')] },
+        { label: 'the Peinados', meta: '14 Alder Court · Ana, Luis, Sofia', people: [P('AP', 'tn-sl'), P('LP', 'tn-pl')] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

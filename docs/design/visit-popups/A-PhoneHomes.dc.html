@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Phone Homes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ph{position:relative;width:390px;height:844px;box-sizing:border-box;border:8px solid #18181B;border-radius:52px;overflow:hidden;background:#FFFFFF;flex:none}
+.ph-bar{position:absolute;background:#F4F4F5;border-radius:12px}
+.ph-scrim{position:absolute;inset:0;background:rgba(10,10,11,.32)}
+.sh{position:absolute;left:0;right:0;bottom:0;top:56px;background:#FFFFFF;border-radius:24px 24px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.grab{width:36px;height:4px;border-radius:9px;background:#D4D4D8;margin:8px auto 0;flex:none}
+.hd{display:flex;align-items:center;gap:10px;padding:12px 20px 12px}
+.ttl{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700;color:#0A0A0B;flex:1}
+.x{width:40px;height:40px;border-radius:999px;border:0;background:#F4F4F5;color:#52525B;display:grid;place-items:center;flex:none}
+.back{width:40px;height:40px;border-radius:999px;border:0;background:transparent;color:#0A0A0B;display:grid;place-items:center;margin-left:-10px;flex:none}
+.body{flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:16px}
+.lbl{margin:0 0 6px;font-size:13px;font-weight:500;color:#0A0A0B}
+.hint{margin:6px 0 0;font-size:12px;color:#71717A}
+.fld{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;background:#F4F4F5;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.phd{color:#A1A1AA}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.add{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px dashed #D4D4D8;font-size:13px;color:#52525B;background:transparent}
+.av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600;flex:none}
+.av28{width:32px;height:32px;font-size:11px;border:2px solid #FFFFFF;margin-right:-10px}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.row{display:flex;align-items:center;gap:12px;min-height:60px;border-bottom:1px solid #F0F0F2}
+.stack{display:flex;width:54px;flex:none}
+.nm{margin:0;font-size:15px;font-weight:600;color:#0A0A0B}
+.mt{margin:2px 0 0;font-size:12px;color:#71717A}
+.foot{display:flex;gap:10px;padding:12px 20px 28px;border-top:1px solid #F0F0F2;background:#FFFFFF}
+.btn{height:48px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:15px;font-weight:500;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.sw{width:44px;height:26px;border-radius:999px;background:#131316;position:relative;flex:none}
+.sw::after{content:"";position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:999px;background:#FFFFFF}
+.radio{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E4E4E7;border-radius:14px}
+.radio.on{border:1.5px solid #0A0A0B;background:#FAFAFA}
+.dot{width:18px;height:18px;border-radius:999px;border:1.5px solid #A1A1AA;box-sizing:border-box;flex:none}
+.on .dot{border:5px solid #0A0A0B}
+.pv{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px 12px;padding:14px 16px;background:#F4F4F5;border-radius:14px;font-size:13px;color:#0A0A0B}
+.pk{color:#71717A}
+</style>
+</helmet>
+<div style="width:1410px;height:944px;box-sizing:border-box;padding:50px 60px;background:#FAFAFA;display:flex;gap:60px;font-family:Lexend,sans-serif">
+
+  <!-- Homes list -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Homes">
+      <div class="grab"></div>
+      <div class="hd"><h2 class="ttl">Homes</h2><button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="body" style="gap:0">
+        <sc-for list="{{homes}}" as="h" hint-placeholder-count="6">
+          <div class="row">
+            <div class="stack"><sc-for list="{{h.people}}" as="p" hint-placeholder-count="2"><span class="av av28 {{p.tone}}">{{p.ini}}</span></sc-for></div>
+            <div style="flex:1;min-width:0"><p class="nm">{{h.label}}</p><p class="mt">{{h.meta}}</p></div>
+            <svg class="ic" viewBox="0 0 24 24" style="color:#A1A1AA"><path d="m9 6 6 6-6 6"/></svg>
+          </div>
+        </sc-for>
+        <div class="row" style="min-height:48px;border-bottom:0"><svg class="ic" viewBox="0 0 24 24" style="color:#52525B"><path d="m9 6 6 6-6 6"/></svg><span style="font-size:13px;color:#52525B">Inactive <span style="color:#A1A1AA">· 2</span></span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#F4F4F5;border-radius:14px;margin-top:4px">
+          <div style="flex:1"><p class="nm" style="font-size:14px">the Nguyens</p><p class="mt">Suggested · seen together 4 times</p></div>
+          <button class="btn" style="height:36px;padding:0 14px;font-size:13px;background:#FFFFFF;border:1px solid #E4E4E7;color:#0A0A0B">Review</button>
+        </div>
+      </div>
+      <div class="foot"><button class="btn" style="flex:1;background:#131316;color:#FFFFFF"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a home</button></div>
+    </div>
+  </div>
+
+  <!-- Home editor -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Edit the Mendozas">
+      <div class="grab"></div>
+      <div class="hd"><button class="back" aria-label="All homes"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button><h2 class="ttl">the Mendozas</h2><button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="body">
+        <div><p class="lbl">Name</p><div class="fld">the Mendozas</div></div>
+        <div><p class="lbl">Where they live</p><div class="fld"><span class="phd">Address or hall</span></div><p class="hint">A visit's place comes from here.</p></div>
+        <div><p class="lbl">Who lives here</p><div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip"><span class="av tn-cl">RM</span>Rosa Mendoza</span><button class="add"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg>Add</button></div></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 0"><div style="flex:1"><p class="lbl" style="margin:0">This home is active</p><p class="hint" style="margin-top:2px">Off when the household moves on</p></div><span class="sw" role="switch" aria-checked="true" aria-label="This home is active"></span></div>
+        <div style="border-top:1px solid #F0F0F2;padding-top:14px;display:flex;flex-direction:column;gap:2px">
+          <button class="btn" style="height:44px;justify-content:flex-start;padding:0;background:transparent;color:#0A0A0B;font-size:14px"><svg class="ic" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M8.6 7.5l6.8 3"/></svg>Combine into another home…</button>
+          <button class="btn" style="height:44px;justify-content:flex-start;padding:0;background:transparent;color:#B1000F;font-size:14px"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Delete home <span style="color:#A1A1AA;font-size:12px">· never visited</span></button>
+        </div>
+      </div>
+      <div class="foot"><button class="btn" style="background:#F4F4F5;color:#0A0A0B">Cancel</button><button class="btn" style="flex:1;background:#131316;color:#FFFFFF">Save changes</button></div>
+    </div>
+  </div>
+
+  <!-- Combine -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Combine Garcia into another home">
+      <div class="grab"></div>
+      <div class="hd"><button class="back" aria-label="Back to Garcia"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button><h2 class="ttl">Combine Garcia into…</h2></div>
+      <div class="body">
+        <p class="hint" style="margin:-6px 0 0">Garcia has 2 visits, so it's combined, not deleted.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="radio on"><span class="dot"></span><span style="flex:1"><span class="nm" style="display:block;font-size:14px">the Garcias</span><span class="mt" style="display:block">9 Birch Lane · 11 visits</span></span></label>
+          <label class="radio"><span class="dot"></span><span style="flex:1"><span class="nm" style="display:block;font-size:14px">Mei &amp; Jun</span><span class="mt" style="display:block">Hall B, Room 4</span></span></label>
+          <label class="radio"><span class="dot"></span><span style="flex:1"><span class="nm" style="display:block;font-size:14px">the Okafors</span><span class="mt" style="display:block">22 Elm Street</span></span></label>
+        </div>
+        <div>
+          <p class="lbl">What happens</p>
+          <div class="pv">
+            <span class="pk">People</span><span>Maria, José, + Elena</span>
+            <span class="pk">Place</span><span>9 Birch Lane stays</span>
+            <span class="pk">Notes</span><span>Both kept</span>
+            <span class="pk">Visits</span><span>2 move to the Garcias</span>
+            <span class="pk">Garcia</span><span>Removed afterwards</span>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><button class="btn" style="background:#F4F4F5;color:#0A0A0B">Back</button><button class="btn" style="flex:1;background:#131316;color:#FFFFFF">Combine homes</button></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1410,"height":944}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = (ini, tone) => ({ ini, tone });
+    return {
+      homes: [
+        { label: 'Garcia', meta: 'No place yet · Elena', people: [P('EG', 'tn-cl')] },
+        { label: 'Mei & Jun', meta: 'Hall B, Room 4', people: [P('ML', 'tn-pl'), P('JP', 'tn-sg')] },
+        { label: 'the Garcias', meta: '9 Birch Lane', people: [P('MG', 'tn-oc'), P('JG', 'tn-sl')] },
+        { label: 'the Mendozas', meta: 'No place yet · Rosa', people: [P('RM', 'tn-cl')] },
+        { label: 'the Okafors', meta: '22 Elm Street', people: [P('CO', 'tn-sg'), P('NO', 'tn-oc')] },
+        { label: 'the Peinados', meta: '14 Alder Court', people: [P('AP', 'tn-sl'), P('LP', 'tn-pl')] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

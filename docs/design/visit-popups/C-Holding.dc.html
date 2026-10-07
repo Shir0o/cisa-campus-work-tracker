@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C · Who are we praying for?</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#405AA8}a:hover{color:#00174B}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cp-bar{background:#EEEDF4;border-radius:16px;position:absolute}
+.cp-li{display:flex;align-items:center;gap:16px;min-height:56px;padding:6px 24px;box-sizing:border-box;font-size:16px;color:#1A1B21}
+.cp-li.on{background:#DCE2F9}
+.cp-li.held{color:#76777F}
+.cp-av{width:40px;height:40px;border-radius:999px;display:grid;place-items:center;font-size:14px;font-weight:500;flex:none}
+.m-p{background:#DBE1FF;color:#00174B}.m-t{background:#FDD7FA;color:#2A1229}.m-s{background:#DCE2F9;color:#141B2C}
+.on .cp-av.m-s{background:#FFFFFF}
+.held .cp-av{opacity:.5}
+.cp-sp{display:block;font-size:14px;color:#45464F}
+.held .cp-sp{color:#76777F}
+.cp-cb{width:18px;height:18px;border-radius:2px;border:2px solid #45464F;box-sizing:border-box;flex:none;display:grid;place-items:center;color:transparent}
+.on .cp-cb{background:#405AA8;border-color:#405AA8;color:#FFFFFF}
+.held .cp-cb{background:#C5C6D0;border-color:#C5C6D0;color:#FFFFFF}
+.cp-btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+</style>
+</helmet>
+<div style="position:relative;width:720px;height:900px;overflow:hidden;font-family:Lexend,sans-serif;background:#FAF8FF">
+  <div class="cp-bar" style="left:40px;top:40px;width:240px;height:28px"></div>
+  <div class="cp-bar" style="left:40px;top:96px;width:640px;height:160px"></div>
+  <div class="cp-bar" style="left:40px;top:280px;width:640px;height:160px"></div>
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.32)"></div>
+
+  <div role="dialog" aria-label="Who are we praying for?" style="position:absolute;left:120px;top:32px;width:480px;background:#E8E7EF;border-radius:28px;box-shadow:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.3);padding:24px 0 20px;box-sizing:border-box">
+    <svg class="ic" viewBox="0 0 24 24" style="display:block;margin:0 auto 16px;width:24px;height:24px;color:#405AA8"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></svg>
+    <h2 style="margin:0;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:500;line-height:32px;color:#1A1B21">Who are we praying for?</h2>
+    <p style="margin:12px 0 0;text-align:center;font-size:14px;color:#45464F">Tick the people you want on this page.</p>
+    <div style="padding:20px 24px 8px"><div style="display:flex;align-items:center;gap:16px;height:56px;padding:0 16px;border-radius:999px;background:#E3E1E9;font-size:16px;color:#45464F"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search the people you know…</div></div>
+    <sc-for list="{{people}}" as="p" hint-placeholder-count="8">
+      <label class="{{p.cls}}"><span class="cp-cb"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span><span class="cp-av {{p.tone}}">{{p.ini}}</span><span style="flex:1;min-width:0">{{p.name}}<span class="cp-sp">{{p.sub}}</span></span></label>
+    </sc-for>
+    <div style="display:flex;align-items:center;gap:8px;padding:16px 24px 0;border-top:1px solid #C5C6D0;margin-top:8px">
+      <span style="font-size:14px;color:#45464F">2 added · 7 on our hearts</span>
+      <span style="flex:1"></span>
+      <button class="cp-btn" style="background:transparent;color:#405AA8;padding:0 12px">Cancel</button>
+      <button class="cp-btn" style="background:#405AA8;color:#FFFFFF">Done</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":720,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const r = (name, ini, tone, sub, st) => ({ name, ini, tone, sub, cls: 'cp-li' + (st ? ' ' + st : '') });
+    return {
+      people: [
+        r('Ana Peinado', 'A', 'm-p', 'Already on our prayer list', 'held'),
+        r('Bao Nguyen', 'B', 'm-s', 'Contact', 'on'),
+        r('Chidi Okafor', 'C', 'm-t', 'Our own', ''),
+        r('Elena Garcia', 'E', 'm-p', 'Local saint', 'on'),
+        r('Grace Kim', 'G', 'm-s', 'Already on our prayer list', 'held'),
+        r('Jun Park', 'J', 'm-t', 'Our own', ''),
+        r('Luis Peinado', 'L', 'm-p', 'Local saint', ''),
+        r('Mei Lin', 'M', 'm-s', 'Our own', ''),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

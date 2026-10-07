@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C · Homes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#405AA8}a:hover{color:#00174B}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ch-bar{background:#EEEDF4;border-radius:16px;position:absolute}
+.ch-dlg{position:absolute;left:120px;top:32px;width:640px;background:#E8E7EF;border-radius:28px;box-shadow:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.3);padding:24px 0 20px;box-sizing:border-box}
+.ch-h{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:500;line-height:32px;color:#1A1B21}
+.ch-s{margin:8px 0 0;font-size:14px;line-height:20px;color:#45464F}
+.ch-sh{margin:16px 24px 4px;font-size:14px;font-weight:500;color:#405AA8}
+.ch-li{display:flex;align-items:center;gap:16px;min-height:72px;padding:8px 16px 8px 24px;box-sizing:border-box}
+.ch-av{width:40px;height:40px;border-radius:999px;display:grid;place-items:center;font-size:14px;font-weight:500;flex:none}
+.m-p{background:#DBE1FF;color:#00174B}.m-t{background:#FDD7FA;color:#2A1229}.m-s{background:#DCE2F9;color:#141B2C}
+.ch-hl{margin:0;font-size:16px;color:#1A1B21}
+.ch-sp{margin:2px 0 0;font-size:14px;color:#45464F}
+.ch-icb{width:40px;height:40px;border-radius:999px;border:0;background:transparent;color:#45464F;display:grid;place-items:center;cursor:pointer;flex:none}
+.ch-btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.ch-pri{background:#405AA8;color:#FFFFFF}
+.ch-ton{background:#DCE2F9;color:#141B2C;padding:0 24px 0 16px}
+.ch-txt{background:transparent;color:#405AA8;padding:0 12px}
+.ch-err{background:transparent;color:#BA1A1A;padding:0 12px}
+.ch-act{display:flex;align-items:center;gap:8px;padding:20px 24px 0}
+.ch-ff{position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:16px 16px 0;background:#E3E1E9;border-radius:4px 4px 0 0;border-bottom:1px solid #45464F;font-size:16px;color:#1A1B21;box-sizing:border-box}
+.ch-ff .l{position:absolute;top:8px;left:16px;font-size:12px;color:#45464F}
+.ch-ph{color:#45464F}
+.ch-sup{margin:4px 16px 0;font-size:12px;color:#45464F}
+.ch-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 4px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#45464F}
+.ch-asst{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px 0 8px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#1A1B21}
+.ch-cav{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.ch-sw{width:52px;height:32px;border-radius:999px;background:#405AA8;position:relative;flex:none}
+.ch-sw::after{content:"";position:absolute;right:4px;top:4px;width:24px;height:24px;border-radius:999px;background:#FFFFFF}
+.ch-rad{width:20px;height:20px;border-radius:999px;border:2px solid #45464F;box-sizing:border-box;flex:none;display:grid;place-items:center}
+.ch-rad.on{border-color:#405AA8}
+.ch-rad.on::after{content:"";width:10px;height:10px;border-radius:999px;background:#405AA8}
+.ch-div{height:1px;background:#C5C6D0;margin:8px 0}
+</style>
+</helmet>
+<div style="position:relative;width:880px;height:1000px;overflow:hidden;font-family:Lexend,sans-serif;background:#FAF8FF">
+  <div class="ch-bar" style="left:48px;top:40px;width:220px;height:28px"></div>
+  <div class="ch-bar" style="left:48px;top:96px;width:784px;height:120px"></div>
+  <div class="ch-bar" style="left:48px;top:240px;width:784px;height:120px"></div>
+  <div class="ch-bar" style="left:48px;top:384px;width:784px;height:120px"></div>
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.32)"></div>
+
+  <sc-if value="{{isList}}" hint-placeholder-val="{{ true }}">
+    <div class="ch-dlg" role="dialog" aria-label="Homes">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:0 16px 0 24px">
+        <div style="flex:1;min-width:0"><h2 class="ch-h">Homes</h2><p class="ch-s">The households we go round to.</p></div>
+        <button class="ch-btn ch-ton"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a home</button>
+      </div>
+      <p class="ch-sh">Our homes</p>
+      <sc-for list="{{homes}}" as="h" hint-placeholder-count="6">
+        <div class="ch-li">
+          <span class="ch-av {{h.tone}}">{{h.ini}}</span>
+          <div style="flex:1;min-width:0"><p class="ch-hl">{{h.label}}</p><p class="ch-sp">{{h.meta}}</p></div>
+          <button class="ch-icb" aria-label="Edit {{h.label}}"><svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+        </div>
+      </sc-for>
+      <div class="ch-div"></div>
+      <div class="ch-li" style="min-height:56px"><div style="flex:1"><p class="ch-hl">Inactive</p></div><span style="font-size:14px;color:#45464F">2</span><button class="ch-icb" aria-label="Show inactive homes"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></div>
+      <div style="margin:4px 16px 0;padding:8px 0;border:1px solid #C5C6D0;border-radius:12px;background:#F4F3FA">
+        <div class="ch-li" style="padding-left:16px">
+          <span class="ch-av m-s">TN</span>
+          <div style="flex:1;min-width:0"><p class="ch-hl">the Nguyens</p><p class="ch-sp">Suggested from visits · Thu, Bao</p></div>
+          <button class="ch-btn ch-txt">Review</button>
+        </div>
+      </div>
+      <div class="ch-act"><span style="flex:1"></span><button class="ch-btn ch-txt">Done</button></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isEdit}}" hint-placeholder-val="{{ false }}">
+    <div class="ch-dlg" role="dialog" aria-label="Edit the Mendozas">
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:0 24px 0 12px">
+        <button class="ch-icb" aria-label="Back to all homes"><svg class="ic" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+        <div style="flex:1;min-width:0;padding-top:4px"><h2 class="ch-h">the Mendozas</h2><p class="ch-s">Added from surnames · no visits yet</p></div>
+      </div>
+      <div style="padding:20px 24px 0;display:flex;flex-direction:column;gap:16px">
+        <div class="ch-ff"><span class="l">Name</span>the Mendozas</div>
+        <div><div class="ch-ff"><span class="l">Where they live</span><span class="ch-ph">Address or hall</span></div><p class="ch-sup">A visit's place comes from here.</p></div>
+      </div>
+      <p class="ch-sh" style="margin-top:20px">Who lives here</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 24px 0">
+        <span class="ch-chip"><span class="ch-cav m-t">RM</span>Rosa Mendoza<svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+        <span class="ch-asst"><svg class="ic" viewBox="0 0 24 24" style="color:#405AA8;width:18px;height:18px"><path d="M12 5v14M5 12h14"/></svg>Add someone</span>
+      </div>
+      <div class="ch-li" style="margin-top:12px"><div style="flex:1"><p class="ch-hl">This home is active</p><p class="ch-sp">Turn off when the household moves on</p></div><span class="ch-sw" role="switch" aria-checked="true" aria-label="This home is active"></span></div>
+      <div style="padding:4px 24px 0"><div class="ch-ff" style="height:88px;align-items:flex-start;padding-top:26px"><span class="l">Notes (optional)</span><span class="ch-ph">Anything to remember about the household</span></div></div>
+      <div class="ch-act">
+        <button class="ch-btn ch-err"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Delete</button>
+        <span style="flex:1"></span>
+        <button class="ch-btn ch-txt">Cancel</button>
+        <button class="ch-btn ch-pri">Save</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isCombine}}" hint-placeholder-val="{{ false }}">
+    <div class="ch-dlg" role="dialog" aria-label="Combine Garcia into another home">
+      <svg class="ic" viewBox="0 0 24 24" style="display:block;margin:0 auto 16px;width:24px;height:24px;color:#405AA8"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M8.6 7.5l6.8 3"/></svg>
+      <h2 class="ch-h" style="text-align:center">Combine Garcia into…</h2>
+      <p class="ch-s" style="text-align:center;padding:0 24px">Garcia has 2 visits, so it's combined into the real home instead of deleted.</p>
+      <p class="ch-sh" style="margin-top:20px">Which home is real?</p>
+      <div class="ch-li" style="min-height:64px;background:#DCE2F9"><span class="ch-rad on"></span><div style="flex:1"><p class="ch-hl">the Garcias</p><p class="ch-sp">9 Birch Lane · Maria, José · 11 visits</p></div></div>
+      <div class="ch-li" style="min-height:64px"><span class="ch-rad"></span><div style="flex:1"><p class="ch-hl">Mei &amp; Jun</p><p class="ch-sp">Hall B, Room 4</p></div></div>
+      <div class="ch-li" style="min-height:64px"><span class="ch-rad"></span><div style="flex:1"><p class="ch-hl">the Okafors</p><p class="ch-sp">22 Elm Street</p></div></div>
+      <div class="ch-div" style="margin:8px 24px"></div>
+      <p class="ch-sh">What happens</p>
+      <div class="ch-li" style="min-height:56px"><svg class="ic" viewBox="0 0 24 24" style="color:#405AA8"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 3a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></svg><div style="flex:1"><p class="ch-hl" style="font-size:15px">Elena Garcia joins the Garcias</p></div></div>
+      <div class="ch-li" style="min-height:56px"><svg class="ic" viewBox="0 0 24 24" style="color:#405AA8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><div style="flex:1"><p class="ch-hl" style="font-size:15px">2 visits move to the Garcias</p></div></div>
+      <div class="ch-li" style="min-height:56px"><svg class="ic" viewBox="0 0 24 24" style="color:#405AA8"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg><div style="flex:1"><p class="ch-hl" style="font-size:15px">9 Birch Lane stays · both notes kept</p></div></div>
+      <div class="ch-li" style="min-height:56px"><svg class="ic" viewBox="0 0 24 24" style="color:#BA1A1A"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg><div style="flex:1"><p class="ch-hl" style="font-size:15px">Garcia is removed afterwards</p></div></div>
+      <div class="ch-act"><span style="flex:1"></span><button class="ch-btn ch-txt">Back</button><button class="ch-btn ch-pri">Combine</button></div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"view":{"editor":"enum","options":["list","edit","combine"],"default":"list"},"$preview":{"width":880,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.view ?? 'list';
+    const H = (label, meta, ini, tone) => ({ label, meta, ini, tone });
+    return {
+      isList: v === 'list', isEdit: v === 'edit', isCombine: v === 'combine',
+      homes: [
+        H('Garcia', 'No place yet · Elena', 'G', 'm-t'),
+        H('Mei & Jun', 'Hall B, Room 4 · Mei, Jun', 'M', 'm-s'),
+        H('the Garcias', '9 Birch Lane · Maria, José', 'G', 'm-p'),
+        H('the Mendozas', 'No place yet · Rosa', 'M', 'm-t'),
+        H('the Okafors', '22 Elm Street · Chidi, Ngozi', 'O', 'm-s'),
+        H('the Peinados', '14 Alder Court · Ana, Luis, Sofia', 'P', 'm-p'),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
