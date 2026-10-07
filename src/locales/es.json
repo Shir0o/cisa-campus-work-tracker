@@ -2226,6 +2226,10 @@
     "queue_dismissed": "Descartada.",
     "queue_not_cisa": "No es una persona de CISA",
     "queue_not_cisa_done": "Se eliminaron {count} sugerencia(s).",
+    "home_review_count": "{n} interacción por revisar",
+    "home_review_count_plural": "{n} interacciones por revisar",
+    "home_review_need_name": "De BNPB · {n} necesitan un nombre",
+    "home_review_cta": "Revisar",
     "loading": "Cargando…"
   }
 }
