@@ -20,7 +20,7 @@ import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/l
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
-import { buildCombinePlan, type CombineReferences } from "./src/lib/combineContactsPlan";
+import { buildCombinePlan, buildCombineUndoPlan, referenceKey, type CombineReferences, type CombineUndoCurrent } from "./src/lib/combineContactsPlan";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -2861,6 +2861,7 @@ ${JSON.stringify(contactsList)}`;
     if (!combineRecordId) {
       return res.status(400).json({ success: false, error: "combineRecordId is required" });
     }
+    const dryRun = req.body?.dryRun === true;
 
     try {
       const db = getAdminDb();
@@ -2890,7 +2891,104 @@ ${JSON.stringify(contactsList)}`;
         document: string;
         field: string;
         before: unknown;
+        after: unknown;
       }> = Array.isArray(record.rewrittenReferences) ? record.rewrittenReferences : [];
+
+      // Refuse while a later combine still has this kept contact absorbed: the
+      // kept contact no longer exists on its own. Name the later combine so the
+      // Full-timer can undo it first.
+      const laterCombinesSnap = await db
+        .collection("combineRecords")
+        .where("combinedInId", "==", keptId)
+        .get();
+      const laterCombine = laterCombinesSnap.docs
+        .map((d: any) => ({ id: d.id, ...d.data() }))
+        .find((c: any) => c.status === "done" && c.id !== combineRecordId);
+      if (laterCombine) {
+        const laterKeptId: string = laterCombine.keptId;
+        const laterKeptName: string = laterCombine.keptBefore?.name || laterKeptId;
+        return res.status(409).json({
+          success: false,
+          error: `"${keptBefore.name ?? keptId}" was later combined into "${laterKeptName}" (${laterKeptId}). Undo that combine (${laterCombine.id}) first.`,
+          laterCombineId: laterCombine.id,
+          laterKeptId,
+        });
+      }
+
+      // Read the current state once, then plan against it.
+      const [keptSnap, interactionsSnap, threadsSnap, teamThreadsSnap] = await Promise.all([
+        db.collection("contacts").doc(keptId).get(),
+        db.collection("contacts").doc(keptId).collection("interactions").get(),
+        db.collection("contacts").doc(keptId).collection("threads").get(),
+        db.collection("contacts").doc(keptId).collection("teamThreads").get(),
+      ]);
+
+      const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+        snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+
+      const movedCurrent: CombineUndoCurrent["movedCurrent"] = {};
+      await Promise.all(
+        movedDocuments.map(async (moved) => {
+          const parts = moved.newPath.split("/");
+          const snap = await db
+            .collection("contacts")
+            .doc(parts[1])
+            .collection(parts[2])
+            .doc(parts[3])
+            .get();
+          movedCurrent[moved.originalPath] = snap.exists
+            ? (snap.data() as Record<string, unknown>)
+            : null;
+        }),
+      );
+
+      const refDocs = new Map<string, Record<string, unknown> | null>();
+      await Promise.all(
+        rewrittenReferences.map(async (ref) => {
+          const key = `${ref.collection}/${ref.document}`;
+          if (refDocs.has(key)) return;
+          const snap = await db.collection(ref.collection).doc(ref.document).get();
+          refDocs.set(key, snap.exists ? (snap.data() as Record<string, unknown>) : null);
+        }),
+      );
+      const referenceValues: Record<string, unknown> = {};
+      for (const ref of rewrittenReferences) {
+        const data = refDocs.get(`${ref.collection}/${ref.document}`);
+        referenceValues[referenceKey(ref.collection, ref.document, ref.field)] =
+          data ? data[ref.field] : undefined;
+      }
+
+      const plan = buildCombineUndoPlan(
+        {
+          keptId,
+          combinedInId,
+          keptBefore,
+          combinedInBefore,
+          keptAfter: (record.keptAfter ?? {}) as Record<string, unknown>,
+          movedDocuments,
+          rewrittenReferences,
+        },
+        {
+          kept: (keptSnap.data() ?? {}) as Record<string, unknown>,
+          keptSubDocs: {
+            interactions: subDocs(interactionsSnap),
+            threads: subDocs(threadsSnap),
+            teamThreads: subDocs(teamThreadsSnap),
+          },
+          movedCurrent,
+          referenceValues,
+        },
+      );
+
+      const preview = {
+        goesBack: plan.goesBack,
+        stays: plan.stays,
+        notRestored: plan.notRestored,
+      };
+
+      if (dryRun) {
+        return res.status(200).json({ success: true, dryRun: true, preview });
+      }
 
       const now = new Date().toISOString();
 
@@ -2901,8 +2999,16 @@ ${JSON.stringify(contactsList)}`;
 
       const ops: WriteOp[] = [];
 
-      // The kept contact returns to its before-image.
-      ops.push({ op: "set", ref: db.collection("contacts").doc(keptId), data: keptBefore });
+      // The kept contact is restored field by field, so later edits and later
+      // additions survive.
+      if (plan.keptUpdates.length > 0) {
+        const keptUpdate: Record<string, unknown> = {};
+        for (const update of plan.keptUpdates) {
+          keptUpdate[update.field] = update.remove ? FieldValue.delete() : update.value;
+        }
+        ops.push({ op: "update", ref: db.collection("contacts").doc(keptId), data: keptUpdate });
+      }
+
       // The combined-in contact is recreated under its original id.
       ops.push({
         op: "set",
@@ -2910,8 +3016,8 @@ ${JSON.stringify(contactsList)}`;
         data: combinedInBefore,
       });
 
-      // Moved documents return to their original path on the combined-in contact.
-      for (const moved of movedDocuments) {
+      // Moved documents return to their original path carrying their current data.
+      for (const moved of plan.movedBack) {
         const originalParts = moved.originalPath.split("/");
         const newParts = moved.newPath.split("/");
         ops.push({
@@ -2921,7 +3027,7 @@ ${JSON.stringify(contactsList)}`;
             .doc(combinedInId)
             .collection(originalParts[2])
             .doc(originalParts[3]),
-          data: moved.originalData,
+          data: moved.data,
         });
         ops.push({
           op: "delete",
@@ -2929,21 +3035,21 @@ ${JSON.stringify(contactsList)}`;
         });
       }
 
-      // Rewritten references revert to their value before the combine. Grouped
-      // by document so a document with several rewritten fields is written once.
+      // Rewritten references revert only where they still hold the combine value.
+      // Grouped by document so a document with several rewritten fields is written once.
       const byDocument = new Map<
         string,
         { collection: string; document: string; data: Record<string, unknown> }
       >();
-      for (const ref of rewrittenReferences) {
+      for (const ref of plan.referenceReverts) {
         const key = `${ref.collection}/${ref.document}`;
         const entry = byDocument.get(key);
-        if (entry) entry.data[ref.field] = ref.before;
+        if (entry) entry.data[ref.field] = ref.value;
         else
           byDocument.set(key, {
             collection: ref.collection,
             document: ref.document,
-            data: { [ref.field]: ref.before },
+            data: { [ref.field]: ref.value },
           });
       }
       for (const entry of byDocument.values()) {
@@ -2985,7 +3091,7 @@ ${JSON.stringify(contactsList)}`;
         createdAt: now,
       });
 
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, preview });
     } catch (error: any) {
       console.error("Undo Combine Error:", error);
       return res

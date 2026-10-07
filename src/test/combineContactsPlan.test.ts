@@ -4,8 +4,12 @@ import {
   mergeContactProfiles,
   diffCombineFields,
   buildCombinePlan,
+  buildCombineUndoPlan,
+  referenceKey,
   checkCombineMatch,
   type CombineReferences,
+  type CombineUndoRecord,
+  type CombineUndoCurrent,
 } from '../lib/combineContactsPlan';
 import type { Contact } from '../types';
 
@@ -310,5 +314,125 @@ describe('buildCombinePlan', () => {
     }, META);
     const ref = plan.rewrittenReferences.find((r) => r.field === 'contactIds');
     expect(ref?.after).toEqual(['s1']);
+  });
+});
+
+describe('buildCombineUndoPlan', () => {
+  const record: CombineUndoRecord = {
+    keptId: 's1',
+    combinedInId: 'd1',
+    keptBefore: { name: 'Kept', tags: ['A'], email: 's@x.com' },
+    combinedInBefore: { name: 'In', tags: ['A', 'B'], email: 'd@x.com' },
+    keptAfter: {
+      name: 'Kept',
+      tags: ['A', 'B'],
+      email: 's@x.com',
+      updatedAt: 'T',
+      updatedByName: 'Test',
+    },
+    movedDocuments: [
+      {
+        originalPath: 'contacts/d1/interactions/i1',
+        newPath: 'contacts/s1/interactions/i1',
+        originalData: { content: 'hi' },
+      },
+      {
+        originalPath: 'contacts/d1/threads/t1',
+        newPath: 'contacts/s1/threads/t1',
+        originalData: { body: 'note' },
+      },
+    ],
+    rewrittenReferences: [
+      { collection: 'prayers', document: 'p1', field: 'contactId', before: 'd1', after: 's1' },
+      { collection: 'tasks', document: 'k1', field: 'contactId', before: 'd1', after: 's1' },
+      { collection: 'tasks', document: 'k1', field: 'contactName', before: 'In', after: 'Kept' },
+    ],
+  };
+
+  const baseCurrent = (): CombineUndoCurrent => ({
+    kept: { name: 'Kept', tags: ['A', 'B'], email: 's@x.com', updatedAt: 'T', updatedByName: 'Test' },
+    keptSubDocs: {
+      interactions: [{ id: 'i1', data: { content: 'hi' } }],
+      threads: [{ id: 't1', data: { body: 'note' } }],
+      teamThreads: [],
+    },
+    movedCurrent: {
+      'contacts/d1/interactions/i1': { content: 'hi' },
+      'contacts/d1/threads/t1': { body: 'note' },
+    },
+    referenceValues: {
+      [referenceKey('prayers', 'p1', 'contactId')]: 's1',
+      [referenceKey('tasks', 'k1', 'contactId')]: 's1',
+      [referenceKey('tasks', 'k1', 'contactName')]: 'Kept',
+    },
+  });
+
+  it('undoes a combine nothing has changed since, restoring the before-image', () => {
+    const plan = buildCombineUndoPlan(record, baseCurrent());
+
+    expect(plan.movedBack.map((m) => m.originalPath)).toEqual([
+      'contacts/d1/interactions/i1',
+      'contacts/d1/threads/t1',
+    ]);
+    expect(plan.referenceReverts).toHaveLength(3);
+    expect(plan.notRestored).toEqual([]);
+    expect(plan.stays).toEqual([]);
+    // Metadata the combine stamped is removed; unchanged fields are not touched.
+    expect(plan.keptUpdates).toContainEqual({ field: 'updatedAt', remove: true });
+    expect(plan.keptUpdates).toContainEqual({ field: 'updatedByName', remove: true });
+    expect(plan.keptUpdates.find((u) => u.field === 'name')).toBeUndefined();
+    // Only the tags the combine added are removed.
+    expect(plan.keptUpdates).toContainEqual({ field: 'tags', value: ['A'] });
+  });
+
+  it('returns a moved document edited after the combine with its edit', () => {
+    const current = baseCurrent();
+    current.movedCurrent['contacts/d1/interactions/i1'] = { content: 'edited' };
+    current.keptSubDocs.interactions = [{ id: 'i1', data: { content: 'edited' } }];
+
+    const plan = buildCombineUndoPlan(record, current);
+
+    const moved = plan.movedBack.find((m) => m.originalPath === 'contacts/d1/interactions/i1');
+    expect(moved?.data).toEqual({ content: 'edited' });
+  });
+
+  it('leaves a document added to the kept contact after the combine', () => {
+    const current = baseCurrent();
+    current.keptSubDocs.interactions.push({ id: 'new1', data: { content: 'later' } });
+
+    const plan = buildCombineUndoPlan(record, current);
+
+    expect(plan.stays).toContainEqual({ kind: 'interactions', id: 'new1', label: 'later' });
+    expect(plan.movedBack.map((m) => m.originalPath)).not.toContain('contacts/d1/interactions/new1');
+  });
+
+  it('keeps a kept-contact field edited after the combine and lists it as not restored', () => {
+    const current = baseCurrent();
+    current.kept.email = 'newer@x.com';
+
+    const plan = buildCombineUndoPlan(record, current);
+
+    expect(plan.keptUpdates.find((u) => u.field === 'email')).toBeUndefined();
+    expect(plan.notRestored).toContainEqual({ kind: 'field', label: 'email' });
+  });
+
+  it('removes only the merged-list items the combine added, keeping later additions', () => {
+    const current = baseCurrent();
+    current.kept.tags = ['A', 'B', 'C'];
+
+    const plan = buildCombineUndoPlan(record, current);
+
+    expect(plan.keptUpdates).toContainEqual({ field: 'tags', value: ['A', 'C'] });
+  });
+
+  it('reverts a rewritten reference only while it still holds the combine value', () => {
+    const current = baseCurrent();
+    current.referenceValues[referenceKey('prayers', 'p1', 'contactId')] = 'other';
+
+    const plan = buildCombineUndoPlan(record, current);
+
+    expect(plan.referenceReverts.find((r) => r.collection === 'prayers')).toBeUndefined();
+    expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'prayers.contactId' });
+    expect(plan.referenceReverts.find((r) => r.collection === 'tasks')).toBeDefined();
   });
 });
