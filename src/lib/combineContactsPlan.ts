@@ -151,7 +151,11 @@ export function findCombineCandidates(contacts: Contact[]): CombinePair[] {
 
       let kept = a;
       let combinedIn = b;
-      if (timeB > 0 && (timeA === 0 || timeB < timeA)) {
+      const bIsOlder =
+        timeB > 0 &&
+        (timeA === 0 ||
+          timeB < timeA);
+      if (bIsOlder) {
         kept = b;
         combinedIn = a;
       }
