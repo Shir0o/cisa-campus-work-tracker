@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Phone bottom sheets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ph{position:relative;width:390px;height:844px;box-sizing:border-box;border:8px solid #18181B;border-radius:52px;overflow:hidden;background:#FFFFFF}
+.ph-bar{position:absolute;background:#F4F4F5;border-radius:12px}
+.ph-scrim{position:absolute;inset:0;background:rgba(10,10,11,.32)}
+.sh{position:absolute;left:0;right:0;bottom:0;top:56px;background:#FFFFFF;border-radius:24px 24px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.grab{width:36px;height:4px;border-radius:9px;background:#D4D4D8;margin:8px auto 0;flex:none}
+.sh-body{flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:18px}
+.lbl{margin:0 0 6px;font-size:13px;font-weight:500;color:#0A0A0B}
+.hint{margin:6px 0 0;font-size:12px;color:#71717A}
+.fld{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;background:#F4F4F5;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.add{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px dashed #D4D4D8;font-size:13px;color:#52525B;background:transparent}
+.av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.foot{display:flex;gap:10px;padding:12px 20px 28px;border-top:1px solid #F0F0F2;background:#FFFFFF}
+.btn{height:48px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:15px;font-weight:500;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.seg{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;border-radius:999px;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B;background:#FFFFFF}
+.seg.on{background:#131316;border-color:#131316;color:#FFFFFF}
+.ttl{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700;color:#0A0A0B;flex:1}
+.x{width:40px;height:40px;border-radius:999px;border:0;background:#F4F4F5;color:#52525B;display:grid;place-items:center}
+</style>
+</helmet>
+<div style="width:940px;height:944px;box-sizing:border-box;padding:50px 60px;background:#FAFAFA;display:flex;gap:80px;font-family:Lexend,sans-serif">
+
+  <!-- Log a visit -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-bar" style="left:20px;top:64px;width:334px;height:96px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Log a visit">
+      <div class="grab"></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 20px 14px">
+        <h2 class="ttl">Log a visit</h2>
+        <button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="sh-body">
+        <div>
+          <p class="lbl">Who you saw</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="chip"><span class="av tn-sl">AP</span>Ana Peinado</span>
+            <span class="chip"><span class="av tn-pl">LP</span>Luis</span>
+            <button class="add"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+          </div>
+          <p class="hint" style="display:flex;align-items:center;gap:6px"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>the Peinados · last visited 9 weeks ago</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          <div><p class="lbl">When</p><div class="fld">Tue 6 Oct</div></div>
+          <div><p class="lbl">Time</p><div class="fld">7:30 pm</div></div>
+        </div>
+        <div><p class="lbl">Where</p><div class="fld"><svg class="ic" viewBox="0 0 24 24" style="color:#A1A1AA"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>14 Alder Court</div></div>
+        <div>
+          <p class="lbl">Who went</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip"><span class="av tn-sg">DR</span>Daniel</span><span class="chip"><span class="av tn-cl">HC</span>Hannah</span></div>
+        </div>
+        <div><p class="lbl">Why you went</p><div class="fld">Luis started the new job last Monday</div></div>
+        <div><p class="lbl">How it went</p><div class="fld" style="align-items:flex-start;padding:12px 14px;min-height:96px;line-height:1.5">Ana made arepas. Luis is tired but glad — the commute is the hard part.</div></div>
+      </div>
+      <div class="foot">
+        <button class="btn" style="background:#F4F4F5;color:#0A0A0B">Cancel</button>
+        <button class="btn" style="flex:1;background:#131316;color:#FFFFFF">Log the visit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log interaction -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-bar" style="left:20px;top:64px;width:334px;height:96px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Log an interaction">
+      <div class="grab"></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 20px 14px">
+        <h2 class="ttl">Log an interaction</h2>
+        <button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="sh-body">
+        <div>
+          <p class="lbl">Who</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="chip"><span class="av tn-sl">AP</span>Ana Peinado</span>
+            <span class="chip"><span class="av tn-oc">BN</span>Bao Nguyen</span>
+            <button class="add"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+          </div>
+          <p class="hint">Logged once for each person.</p>
+        </div>
+        <div>
+          <p class="lbl">What kind</p>
+          <div style="display:flex;gap:6px"><span class="seg">Message</span><span class="seg">Call</span><span class="seg on">Meeting</span></div>
+        </div>
+        <div><p class="lbl">When</p><div class="fld">Today · 6 Oct</div></div>
+        <div><p class="lbl">What was said</p><div class="fld" style="align-items:flex-start;padding:12px 14px;min-height:96px;line-height:1.5">Coffee after the Tuesday study. Bao wants to bring a friend from his lab.</div></div>
+        <div>
+          <p class="lbl">Follow-ups</p>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #E4E4E7;border-radius:14px;font-size:14px;color:#0A0A0B"><span style="width:16px;height:16px;border-radius:999px;border:1.5px solid #A1A1AA"></span><span style="flex:1">Text Bao the study time</span><span style="font-size:12px;color:#71717A">Fri</span></div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn" style="background:#F4F4F5;color:#0A0A0B">Cancel</button>
+        <button class="btn" style="flex:1;background:#131316;color:#FFFFFF">Log for 2 people</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":944}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

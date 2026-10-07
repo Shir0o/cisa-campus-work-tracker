@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>B · Log interaction</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bi-bar{background:#F4F4F5;border-radius:14px;position:absolute}
+.bi-card{background:#FFFFFF;border-radius:20px}
+.bi-ov{margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:.02em;color:#52525B}
+.bi-li{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 16px;box-sizing:border-box;font-size:15px;color:#0A0A0B}
+.bi-li.on{background:#F4F4F5}
+.bi-av{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.bi-sp{display:block;font-size:13px;color:#52525B}
+.bi-cb{width:18px;height:18px;border-radius:2px;border:2px solid #52525B;box-sizing:border-box;flex:none;display:grid;place-items:center;color:transparent}
+.on .bi-cb{background:#131316;border-color:#131316;color:#FFFFFF}
+.bi-seg{display:flex;border:1px solid #A1A1AA;border-radius:999px;overflow:hidden;height:40px}
+.bi-seg span{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:500;color:#0A0A0B;border-left:1px solid #A1A1AA}
+.bi-seg span:first-child{border-left:0}
+.bi-seg span.on{background:#E4E4E7}
+.bi-of{position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border:1px solid #A1A1AA;border-radius:12px;font-size:15px;color:#0A0A0B;box-sizing:border-box}
+.bi-fl{position:absolute;top:-9px;left:12px;padding:0 4px;background:#FFFFFF;font-size:12px;color:#52525B;line-height:16px}
+.bi-btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.bi-icb{width:40px;height:40px;border-radius:999px;border:0;background:transparent;color:#52525B;display:grid;place-items:center;cursor:pointer}
+</style>
+</helmet>
+<div style="position:relative;width:1120px;height:900px;overflow:hidden;font-family:Lexend,sans-serif;background:#FFFFFF">
+  <div class="bi-bar" style="left:48px;top:40px;width:260px;height:28px"></div>
+  <div class="bi-bar" style="left:48px;top:96px;width:500px;height:240px"></div>
+  <div class="bi-bar" style="left:572px;top:96px;width:500px;height:240px"></div>
+  <div class="bi-bar" style="left:48px;top:360px;width:1024px;height:200px"></div>
+  <div style="position:absolute;inset:0;background:rgba(10,10,11,.32)"></div>
+
+  <div role="dialog" aria-label="Log an interaction" style="position:absolute;left:80px;top:32px;width:960px;background:#EAEAEC;border-radius:28px;box-shadow:0 16px 32px rgba(0,0,0,.16);padding:8px;box-sizing:border-box">
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 12px 12px 16px">
+      <svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px;margin-top:4px;color:#0A0A0B"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <div style="flex:1;min-width:0">
+        <h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:600;line-height:32px;color:#0A0A0B">Log an interaction</h2>
+        <p style="margin:2px 0 0;font-size:14px;color:#52525B">A call, a message or a coffee — for one person or several at once.</p>
+      </div>
+      <button class="bi-icb" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:340px minmax(0,1fr);gap:8px">
+      <div class="bi-card" style="padding:12px 0">
+        <div style="padding:0 12px 8px"><div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-radius:999px;background:#F4F4F5;font-size:15px;color:#71717A"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search people</div></div>
+        <div style="display:flex;gap:8px;padding:4px 16px 10px">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px 0 8px;border-radius:8px;background:#E4E4E7;font-size:13px;color:#0A0A0B"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M20 6 9 17l-5-5"/></svg>On our hearts</span>
+          <span style="display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:8px;border:1px solid #D4D4D8;font-size:13px;color:#0A0A0B">Everyone</span>
+        </div>
+        <sc-for list="{{people}}" as="p" hint-placeholder-count="7">
+          <label class="{{p.cls}}"><span class="bi-av {{p.tone}}">{{p.ini}}</span><span style="flex:1;min-width:0">{{p.name}}<span class="bi-sp">{{p.sub}}</span></span><span class="bi-cb"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span></label>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="bi-card" style="padding:16px 20px 20px">
+          <p class="bi-ov">What kind</p>
+          <div class="bi-seg"><span>Message</span><span>Call</span><span class="on"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M20 6 9 17l-5-5"/></svg>Meeting</span></div>
+          <div class="bi-of" style="margin-top:24px;max-width:260px"><span class="bi-fl">When</span><svg class="ic" viewBox="0 0 24 24" style="color:#52525B"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Today · 6 Oct</div>
+          <div class="bi-of" style="margin-top:24px;height:auto;min-height:120px;align-items:flex-start;padding:16px;line-height:1.5"><span class="bi-fl">What was said</span>Coffee after the Tuesday study. Bao wants to bring a friend from his lab; Ana offered to drive them both on Friday.</div>
+        </div>
+        <div class="bi-card" style="padding:12px 0">
+          <p class="bi-ov" style="margin:4px 20px 4px">Follow-ups</p>
+          <div class="bi-li"><span style="width:20px;height:20px;border-radius:999px;border:2px solid #52525B;box-sizing:border-box"></span><span style="flex:1">Text Bao the study time</span><span style="font-size:13px;color:#52525B">Fri</span></div>
+          <div style="padding:4px 12px 0"><button class="bi-btn" style="background:transparent;color:#0A0A0B;padding:0 12px"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a follow-up</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:16px 8px 12px 16px">
+      <span style="font-size:13px;color:#52525B">Each person gets their own entry, and Last seen moves to today.</span>
+      <span style="flex:1"></span>
+      <button class="bi-btn" style="background:transparent;color:#0A0A0B;padding:0 12px">Cancel</button>
+      <button class="bi-btn" style="background:#131316;color:#FFFFFF">Log for 2 people</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1120,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (name, ini, tone, sub, on) => ({ name, ini, tone, sub, cls: on ? 'bi-li on' : 'bi-li' });
+    return {
+      people: [
+        row('Ana Peinado', 'AP', 'tn-sl', 'Local saint', true),
+        row('Bao Nguyen', 'BN', 'tn-oc', 'Contact', true),
+        row('Chidi Okafor', 'CO', 'tn-sg', 'Our own', false),
+        row('Elena Garcia', 'EG', 'tn-cl', 'Local saint', false),
+        row('Grace Kim', 'GK', 'tn-pl', 'Contact', false),
+        row('Jun Park', 'JP', 'tn-sg', 'Our own', false),
+        row('Mei Lin', 'ML', 'tn-pl', 'Our own', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

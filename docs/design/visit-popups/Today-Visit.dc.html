@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today · Log a visit</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tv-lbl{display:block;margin:0 0 8px;font-size:10px;font-weight:600;color:#52525B}
+.tv-in{display:flex;align-items:center;width:100%;box-sizing:border-box;background:#F4F4F5;border:1px solid #F0F0F2;border-radius:16px;padding:12px 16px;font-size:14px;color:#0A0A0B}
+.tv-ph{color:rgba(82,82,91,.6)}
+.tv-chip{display:inline-flex;align-items:center;gap:8px;padding:4px 8px 4px 6px;background:rgba(19,19,22,.1);color:#52525B;border-radius:999px;font-size:12px;font-weight:500}
+.tv-av{width:20px;height:20px;border-radius:999px;background:rgba(19,19,22,.15);display:grid;place-items:center;font-size:9px;font-weight:600}
+</style>
+</helmet>
+<div style="position:relative;width:880px;height:1260px;overflow:hidden;font-family:Lexend,sans-serif;background:#FFFFFF">
+  <div style="position:absolute;left:48px;top:40px;width:220px;height:28px;background:#F4F4F5;border-radius:14px"></div>
+  <div style="position:absolute;left:48px;top:96px;width:784px;height:120px;background:#F4F4F5;border-radius:14px"></div>
+  <div style="position:absolute;left:48px;top:240px;width:784px;height:120px;background:#F4F4F5;border-radius:14px"></div>
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,.4)"></div>
+
+  <div role="dialog" aria-label="Log a visit" style="position:absolute;left:104px;top:40px;width:672px;background:#EAEAEC;border:1px solid #F0F0F2;border-radius:32px;box-shadow:0 25px 50px -12px rgba(0,0,0,.25);overflow:hidden">
+    <div style="padding:24px;border-bottom:1px solid #F0F0F2;display:flex;align-items:center;gap:12px;background:rgba(234,234,236,.5)">
+      <div style="width:48px;height:48px;background:rgba(19,19,22,.1);color:#52525B;border-radius:16px;display:grid;place-items:center;flex:none"><svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></div>
+      <div style="min-width:0"><h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:400;color:#0A0A0B">Log a visit</h2><p style="margin:0;font-size:12px;color:#52525B">Write it down while you still remember the room.</p></div>
+      <button aria-label="Close" style="margin-left:auto;padding:8px;border:0;background:transparent;border-radius:999px;color:#0A0A0B"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:24px">
+      <div>
+        <span class="tv-lbl">Who did you see?</span>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:#F4F4F5;border:1px solid #F0F0F2;border-radius:16px">
+          <span class="tv-chip"><span class="tv-av">AP</span>Ana Peinado<svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          <span class="tv-chip"><span class="tv-av">LP</span>Luis Peinado<svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          <span class="tv-ph" style="flex:1;font-size:14px;padding:4px 8px">Anyone else?</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+        <div><span class="tv-lbl">When</span><div class="tv-in">06/10/2026, 19:30</div></div>
+        <div><span class="tv-lbl">Where</span><div class="tv-in">14 Alder Court</div></div>
+      </div>
+      <div>
+        <span class="tv-lbl">Who went</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="tv-chip"><span class="tv-av">DR</span>Daniel Reyes</span><span class="tv-chip"><span class="tv-av">HC</span>Hannah Cole</span></div>
+        <p style="margin:8px 0 0;font-size:12px;color:#52525B">Most visits are a pair.</p>
+      </div>
+      <div><span class="tv-lbl">Why you went</span><div class="tv-in">Luis started the new job last Monday</div></div>
+      <div><span class="tv-lbl">How it went</span><div class="tv-in" style="align-items:flex-start;min-height:96px;line-height:1.5">Ana made arepas. Luis is tired but glad — the commute is the hard part.</div></div>
+      <div>
+        <span class="tv-lbl">Anything to follow up? <span style="font-weight:400">(optional)</span></span>
+        <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:#131316;color:#FFFFFF;font-size:14px">Yes — put it on the list</span>
+        <div class="tv-in" style="margin-top:12px">Drop off the study notes on Friday</div>
+        <p style="margin:8px 0 0;font-size:12px;color:#52525B">Lands as a to-do for Daniel Reyes, due in a week.</p>
+      </div>
+      <div><span class="tv-lbl">A prayer that came out of it <span style="font-weight:400">(optional)</span></span><div class="tv-in"><span class="tv-ph">Something to carry</span></div></div>
+      <div><span class="tv-lbl">Photos <span style="font-weight:400">(optional)</span></span><div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:24px 0;border:1px dashed #F0F0F2;border-radius:16px;font-size:14px;color:#52525B"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Drop photos here, or click to choose</div></div>
+    </div>
+    <div style="padding:16px;border-top:1px solid #F0F0F2;display:flex;align-items:center;gap:12px;background:rgba(234,234,236,.5)">
+      <span style="font-size:12px;color:#52525B">⌘↵ to save</span>
+      <span style="margin-left:auto;padding:8px 16px;font-size:14px;color:#52525B">Cancel</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:999px;background:#131316;color:#FFFFFF;font-size:14px;font-weight:500"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Log the visit</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":880,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

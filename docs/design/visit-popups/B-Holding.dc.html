@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>B · Who are we praying for?</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bp-bar{background:#F4F4F5;border-radius:14px;position:absolute}
+.bp-li{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 16px;box-sizing:border-box;font-size:15px;color:#0A0A0B}
+.bp-li.on{background:#F4F4F5}
+.bp-li.held{color:#A1A1AA}
+.bp-av{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.held .bp-av{opacity:.5}
+.bp-sp{display:block;font-size:13px;color:#52525B}
+.held .bp-sp{color:#A1A1AA}
+.bp-cb{width:18px;height:18px;border-radius:2px;border:2px solid #52525B;box-sizing:border-box;flex:none;display:grid;place-items:center;color:transparent}
+.on .bp-cb{background:#131316;border-color:#131316;color:#FFFFFF}
+.held .bp-cb{border-color:#D4D4D8;background:#D4D4D8;color:#FFFFFF}
+.bp-btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+</style>
+</helmet>
+<div style="position:relative;width:720px;height:900px;overflow:hidden;font-family:Lexend,sans-serif;background:#FFFFFF">
+  <div class="bp-bar" style="left:40px;top:40px;width:240px;height:28px"></div>
+  <div class="bp-bar" style="left:40px;top:96px;width:640px;height:160px"></div>
+  <div class="bp-bar" style="left:40px;top:280px;width:640px;height:160px"></div>
+  <div style="position:absolute;inset:0;background:rgba(10,10,11,.32)"></div>
+
+  <div role="dialog" aria-label="Who are we praying for?" style="position:absolute;left:120px;top:32px;width:480px;background:#EAEAEC;border-radius:28px;box-shadow:0 16px 32px rgba(0,0,0,.16);padding:8px;box-sizing:border-box">
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 4px 12px 16px">
+      <svg class="ic" viewBox="0 0 24 24" style="width:24px;height:24px;margin-top:4px;color:#0A0A0B"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z"/></svg>
+      <div style="flex:1;min-width:0">
+        <h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:600;line-height:32px;color:#0A0A0B">Who are we praying for?</h2>
+        <p style="margin:2px 0 0;font-size:14px;color:#52525B">Tick the people you want on this page.</p>
+      </div>
+    </div>
+    <div style="background:#FFFFFF;border-radius:20px;padding:12px 0">
+      <div style="padding:0 12px 8px"><div style="display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-radius:999px;background:#F4F4F5;font-size:15px;color:#71717A"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search the people you know…</div></div>
+      <sc-for list="{{people}}" as="p" hint-placeholder-count="8">
+        <label class="{{p.cls}}"><span class="bp-av {{p.tone}}">{{p.ini}}</span><span style="flex:1;min-width:0">{{p.name}}<span class="bp-sp">{{p.sub}}</span></span><span class="bp-cb"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span></label>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:16px 8px 12px 16px">
+      <span style="font-size:13px;color:#52525B">2 added · 7 on our hearts</span>
+      <span style="flex:1"></span>
+      <button class="bp-btn" style="background:transparent;color:#0A0A0B;padding:0 12px">Cancel</button>
+      <button class="bp-btn" style="background:#131316;color:#FFFFFF">Done</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":720,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const r = (name, ini, tone, sub, st) => ({ name, ini, tone, sub, cls: 'bp-li' + (st ? ' ' + st : '') });
+    return {
+      people: [
+        r('Ana Peinado', 'AP', 'tn-sl', 'Already on our prayer list', 'held'),
+        r('Bao Nguyen', 'BN', 'tn-oc', 'Contact', 'on'),
+        r('Chidi Okafor', 'CO', 'tn-sg', 'Our own', ''),
+        r('Elena Garcia', 'EG', 'tn-cl', 'Local saint', 'on'),
+        r('Grace Kim', 'GK', 'tn-pl', 'Already on our prayer list', 'held'),
+        r('Jun Park', 'JP', 'tn-sg', 'Our own', ''),
+        r('Luis Peinado', 'LP', 'tn-pl', 'Local saint', ''),
+        r('Mei Lin', 'ML', 'tn-pl', 'Our own', ''),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

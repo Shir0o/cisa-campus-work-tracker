@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Dialog system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.a-dlg{background:#FFFFFF;border:1px solid #E4E4E7;border-radius:24px;box-shadow:0 16px 32px rgba(0,0,0,.16);overflow:hidden}
+.a-lbl{font-size:13px;font-weight:500;color:#0A0A0B;margin:0 0 6px}
+.a-hint{font-size:12px;color:#71717A;margin:6px 0 0}
+.a-fld{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;background:#F4F4F5;border:1px solid transparent;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.a-ph{color:#A1A1AA}
+.a-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.a-av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.a-btn{height:44px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.a-pri{background:#131316;color:#FFFFFF}
+.a-ghost{background:transparent;color:#52525B}
+.a-out{background:#FFFFFF;color:#0A0A0B;border:1px solid #E4E4E7}
+.a-dng{background:transparent;color:#B1000F}
+.a-num{width:22px;height:22px;border-radius:999px;background:#131316;color:#FFFFFF;font-size:11px;font-weight:600;display:grid;place-items:center;flex:none}
+.a-cap{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#71717A;font-weight:500;margin:0 0 12px}
+</style>
+</helmet>
+<div style="width:1100px;height:1260px;box-sizing:border-box;padding:56px;background:#FFFFFF;font-family:Lexend,sans-serif;color:#0A0A0B;display:flex;flex-direction:column;gap:40px">
+
+  <div>
+    <p class="a-cap">Direction A · Ink, structured</p>
+    <h1 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.02em">One dialog, five parts</h1>
+    <p style="margin:10px 0 0;font-size:15px;color:#52525B;max-width:640px;line-height:1.5">White on a scrim, so every field has an edge. Each question gets a labelled row. Still flat: the only shadow is Ink's popover shadow.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:560px minmax(0,1fr);gap:48px;align-items:start">
+    <!-- anatomy -->
+    <div style="background:rgba(10,10,11,.32);border-radius:28px;padding:28px">
+      <div class="a-dlg">
+        <div style="padding:22px 24px 18px;display:flex;align-items:flex-start;gap:12px">
+          <span class="a-num">1</span>
+          <div style="flex:1;min-width:0">
+            <p style="margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#A1A1AA;font-weight:500">Visits</p>
+            <h2 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.01em">Log a visit</h2>
+            <p style="margin:4px 0 0;font-size:13px;color:#52525B">Write it down while you still remember the room.</p>
+          </div>
+          <button aria-label="Close" style="width:40px;height:40px;border-radius:999px;border:0;background:#F4F4F5;color:#52525B;display:grid;place-items:center"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;padding:18px 24px;border-top:1px solid #F0F0F2">
+          <div style="display:flex;gap:8px;align-items:flex-start"><span class="a-num">2</span><div><p style="margin:0;font-size:13px;font-weight:600">When</p><p style="margin:2px 0 0;font-size:12px;color:#A1A1AA">and where</p></div></div>
+          <div>
+            <div style="display:flex;gap:8px;align-items:center"><span class="a-num">3</span><p class="a-lbl" style="margin:0">Date</p></div>
+            <div class="a-fld" style="margin-top:6px"><svg class="ic" viewBox="0 0 24 24" style="color:#71717A"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Tue 6 Oct · 7:30 pm</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;padding:18px 24px;border-top:1px solid #F0F0F2">
+          <div><p style="margin:0;font-size:13px;font-weight:600">Who</p></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span class="a-num">4</span>
+            <span class="a-chip"><span class="a-av" style="background:#E3E8F7;color:#3B4F9A">AP</span>Ana Peinado</span>
+            <span class="a-chip"><span class="a-av" style="background:#F3E2F0;color:#8A3A7E">LP</span>Luis</span>
+          </div>
+        </div>
+        <div style="padding:14px 24px;border-top:1px solid #F0F0F2;background:#FAFAFA;display:flex;align-items:center;gap:10px">
+          <span class="a-num">5</span>
+          <span style="font-size:12px;color:#A1A1AA">⌘ ↵ to save</span>
+          <span style="flex:1"></span>
+          <button class="a-btn a-ghost">Cancel</button>
+          <button class="a-btn a-pri"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Log the visit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- legend -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;gap:12px"><span class="a-num">1</span><div><p style="margin:0;font-size:14px;font-weight:600">Header</p><p style="margin:4px 0 0;font-size:13px;color:#52525B;line-height:1.5">An eyebrow naming the page, the title in Plus Jakarta 22/700, one line of purpose. The icon tile is gone; the close button is a 40 px filled circle.</p></div></div>
+      <div style="display:flex;gap:12px"><span class="a-num">2</span><div><p style="margin:0;font-size:14px;font-weight:600">Section</p><p style="margin:4px 0 0;font-size:13px;color:#52525B;line-height:1.5">A label column (13/600 plus a grey hint) on the left, fields on the right, a #F0F0F2 rule between sections. Stacks into one column under 560 px.</p></div></div>
+      <div style="display:flex;gap:12px"><span class="a-num">3</span><div><p style="margin:0;font-size:14px;font-weight:600">Field</p><p style="margin:4px 0 0;font-size:13px;color:#52525B;line-height:1.5">Label 13/500 in ink, not 10 px grey. A #F4F4F5 fill on white, radius 14, 44 tall, with an optional leading icon.</p></div></div>
+      <div style="display:flex;gap:12px"><span class="a-num">4</span><div><p style="margin:0;font-size:14px;font-weight:600">People</p><p style="margin:4px 0 0;font-size:13px;color:#52525B;line-height:1.5">Outlined pill with an avatar tinted from Ink's data hues, chosen from a hash of the name, so the same person always has the same colour.</p></div></div>
+      <div style="display:flex;gap:12px"><span class="a-num">5</span><div><p style="margin:0;font-size:14px;font-weight:600">Footer</p><p style="margin:4px 0 0;font-size:13px;color:#52525B;line-height:1.5">Pinned, #FAFAFA. Shortcut hint on the left; Cancel and the one primary action on the right. Destructive actions sit far left, in red text.</p></div></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px">
+    <div>
+      <p class="a-cap">Field states</p>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+        <div><p class="a-lbl">Default</p><div class="a-fld"><span class="a-ph">Hall, flat, room</span></div></div>
+        <div><p class="a-lbl">Focused</p><div class="a-fld" style="background:#FFFFFF;border:1.5px solid #0A0A0B">14 Alder Court</div></div>
+        <div><p class="a-lbl">From the home</p><div class="a-fld"><svg class="ic" viewBox="0 0 24 24" style="color:#71717A"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>14 Alder Court</div><p class="a-hint">From the Peinados' home</p></div>
+        <div><p class="a-lbl">Error</p><div class="a-fld" style="background:#FFF5F6;border:1.5px solid #B1000F"><span class="a-ph">Start typing a name</span></div><p class="a-hint" style="color:#B1000F">Pick at least one person.</p></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:28px">
+      <div>
+        <p class="a-cap">Buttons</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="a-btn a-pri">Log the visit</button>
+          <button class="a-btn a-out">Combine into…</button>
+          <button class="a-btn a-ghost">Cancel</button>
+          <button class="a-btn a-dng"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>Delete home</button>
+        </div>
+      </div>
+      <div>
+        <p class="a-cap">Sizes</p>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div style="width:96px;height:72px;border:1.5px solid #E4E4E7;border-radius:12px;display:grid;place-items:center;font-size:12px;color:#52525B">S · 480</div>
+          <div style="width:128px;height:88px;border:1.5px solid #E4E4E7;border-radius:12px;display:grid;place-items:center;font-size:12px;color:#52525B">M · 640</div>
+          <div style="width:192px;height:104px;border:1.5px solid #E4E4E7;border-radius:12px;display:grid;place-items:center;font-size:12px;color:#52525B">L · 960, two panes</div>
+          <div style="width:64px;height:112px;border:1.5px solid #E4E4E7;border-radius:14px;position:relative;overflow:hidden;background:#F4F4F5"><div style="position:absolute;left:0;right:0;bottom:0;height:84px;background:#FFFFFF;border-radius:12px 12px 0 0;border-top:1px solid #E4E4E7"><div style="width:18px;height:3px;border-radius:9px;background:#D4D4D8;margin:5px auto 0"></div></div></div>
+        </div>
+        <p class="a-hint" style="margin-top:10px">Scrim rgba(10,10,11,.32) · radius 24 · phone (&lt;768): bottom sheet, 92% tall, grabber, footer pinned above the keyboard.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

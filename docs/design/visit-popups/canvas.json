@@ -1,0 +1,387 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "A-Holding.dc.html": {
+      "h": 900,
+      "title": "A \u00b7 Who are we praying for?",
+      "w": 720,
+      "x": 8140,
+      "y": 1660
+    },
+    "A-Homes.dc.html": {
+      "h": 1000,
+      "title": "A \u00b7 Homes",
+      "w": 880,
+      "x": 1180,
+      "y": 1660
+    },
+    "A-HomesCombine.dc.html": {
+      "h": 1000,
+      "title": "A \u00b7 Combine homes \u2014 confirm",
+      "w": 880,
+      "x": 3100,
+      "y": 1660
+    },
+    "A-HomesEdit.dc.html": {
+      "h": 1000,
+      "title": "A \u00b7 Home editor \u2014 never visited, can delete",
+      "w": 880,
+      "x": 2140,
+      "y": 1660
+    },
+    "A-Interaction.dc.html": {
+      "h": 900,
+      "title": "A \u00b7 Log interaction",
+      "w": 1120,
+      "x": 6940,
+      "y": 1660
+    },
+    "A-Phone.dc.html": {
+      "h": 944,
+      "title": "A \u00b7 Phone \u2014 bottom sheets",
+      "w": 940,
+      "x": 8940,
+      "y": 1660
+    },
+    "A-Visit.dc.html": {
+      "h": 1260,
+      "title": "A \u00b7 Log a visit",
+      "w": 880,
+      "x": 4060,
+      "y": 1660
+    },
+    "A-VisitDark.dc.html": {
+      "h": 1260,
+      "title": "A \u00b7 Log a visit \u2014 dark",
+      "w": 880,
+      "x": 5980,
+      "y": 1660
+    },
+    "A-VisitEdit.dc.html": {
+      "h": 1260,
+      "title": "A \u00b7 Edit a visit",
+      "w": 880,
+      "x": 5020,
+      "y": 1660
+    },
+    "B-Holding.dc.html": {
+      "h": 900,
+      "title": "B \u00b7 Who are we praying for?",
+      "w": 720,
+      "x": 8140,
+      "y": 3320
+    },
+    "B-Homes.dc.html": {
+      "h": 1000,
+      "title": "B \u00b7 Homes",
+      "w": 880,
+      "x": 1180,
+      "y": 3320
+    },
+    "B-HomesCombine.dc.html": {
+      "h": 1000,
+      "title": "B \u00b7 Combine homes \u2014 confirm",
+      "w": 880,
+      "x": 3100,
+      "y": 3320
+    },
+    "B-HomesEdit.dc.html": {
+      "h": 1000,
+      "title": "B \u00b7 Home editor \u2014 never visited, can delete",
+      "w": 880,
+      "x": 2140,
+      "y": 3320
+    },
+    "B-Interaction.dc.html": {
+      "h": 900,
+      "title": "B \u00b7 Log interaction",
+      "w": 1120,
+      "x": 6940,
+      "y": 3320
+    },
+    "B-Phone.dc.html": {
+      "h": 944,
+      "title": "B \u00b7 Phone \u2014 full-screen dialogs",
+      "w": 940,
+      "x": 8940,
+      "y": 3320
+    },
+    "B-System.dc.html": {
+      "h": 1260,
+      "title": "B \u00b7 System",
+      "w": 1100,
+      "x": 0,
+      "y": 3320
+    },
+    "B-Visit.dc.html": {
+      "h": 1260,
+      "title": "B \u00b7 Log a visit",
+      "w": 880,
+      "x": 4060,
+      "y": 3320
+    },
+    "B-VisitDark.dc.html": {
+      "h": 1260,
+      "title": "B \u00b7 Log a visit \u2014 dark",
+      "w": 880,
+      "x": 5980,
+      "y": 3320
+    },
+    "B-VisitEdit.dc.html": {
+      "h": 1260,
+      "title": "B \u00b7 Edit a visit",
+      "w": 880,
+      "x": 5020,
+      "y": 3320
+    },
+    "C-Holding.dc.html": {
+      "h": 900,
+      "title": "C \u00b7 Who are we praying for?",
+      "w": 720,
+      "x": 8140,
+      "y": 4980
+    },
+    "C-Homes.dc.html": {
+      "h": 1000,
+      "title": "C \u00b7 Homes",
+      "w": 880,
+      "x": 1180,
+      "y": 4980
+    },
+    "C-HomesCombine.dc.html": {
+      "h": 1000,
+      "title": "C \u00b7 Combine homes \u2014 confirm",
+      "w": 880,
+      "x": 3100,
+      "y": 4980
+    },
+    "C-HomesEdit.dc.html": {
+      "h": 1000,
+      "title": "C \u00b7 Home editor \u2014 never visited, can delete",
+      "w": 880,
+      "x": 2140,
+      "y": 4980
+    },
+    "C-Interaction.dc.html": {
+      "h": 900,
+      "title": "C \u00b7 Log interaction",
+      "w": 1120,
+      "x": 6940,
+      "y": 4980
+    },
+    "C-Phone.dc.html": {
+      "h": 944,
+      "title": "C \u00b7 Phone \u2014 full-screen dialogs",
+      "w": 940,
+      "x": 8940,
+      "y": 4980
+    },
+    "C-System.dc.html": {
+      "h": 1260,
+      "title": "C \u00b7 System",
+      "w": 1100,
+      "x": 0,
+      "y": 4980
+    },
+    "C-Visit.dc.html": {
+      "h": 1260,
+      "title": "C \u00b7 Log a visit",
+      "w": 880,
+      "x": 4060,
+      "y": 4980
+    },
+    "C-VisitDark.dc.html": {
+      "h": 1260,
+      "title": "C \u00b7 Log a visit \u2014 dark",
+      "w": 880,
+      "x": 5980,
+      "y": 4980
+    },
+    "C-VisitEdit.dc.html": {
+      "h": 1260,
+      "title": "C \u00b7 Edit a visit",
+      "w": 880,
+      "x": 5020,
+      "y": 4980
+    },
+    "Main.dc.html": {
+      "h": 1260,
+      "title": "A \u00b7 System",
+      "w": 1100,
+      "x": 0,
+      "y": 1660
+    },
+    "Today-Holding.dc.html": {
+      "h": 900,
+      "title": "Today \u00b7 Who are we praying for?",
+      "w": 720,
+      "x": 8140,
+      "y": 0
+    },
+    "Today-Homes.dc.html": {
+      "h": 1000,
+      "title": "Today \u00b7 Homes",
+      "w": 880,
+      "x": 1180,
+      "y": 0
+    },
+    "Today-Interaction.dc.html": {
+      "h": 900,
+      "title": "Today \u00b7 Log interaction",
+      "w": 1120,
+      "x": 6940,
+      "y": 0
+    },
+    "Today-Visit.dc.html": {
+      "h": 1260,
+      "title": "Today \u00b7 Log a visit",
+      "w": 880,
+      "x": 4060,
+      "y": 0
+    },
+    "A-States.dc.html": {
+      "x": 0,
+      "y": 6640,
+      "w": 1100,
+      "h": 1260,
+      "title": "A \u00b7 Edge states"
+    },
+    "A-PhoneHomes.dc.html": {
+      "x": 1180,
+      "y": 6640,
+      "w": 1410,
+      "h": 944,
+      "title": "A \u00b7 Phone \u2014 Homes, editor, combine"
+    },
+    "A-PhoneMore.dc.html": {
+      "x": 2670,
+      "y": 6640,
+      "w": 1410,
+      "h": 944,
+      "title": "A \u00b7 Phone \u2014 edit visit, praying for, undo"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-06T17:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "s-a": {
+      "fill": "blue",
+      "size": 24,
+      "text": "A \u2014 stay in Ink, add structure.\n\nWhite dialog on a scrim, so fields finally have an edge. Each question becomes a section with its own label column, the way a settings page reads. Labels move from 10 px to 13 px. People carry a tinted avatar. Footer is pinned with the save shortcut on the left.\n\nStill flat: one popover shadow, no elevation system. Phone: a bottom sheet with a grabber.",
+      "w": 520,
+      "x": -620,
+      "y": 1660
+    },
+    "s-b": {
+      "fill": "teal",
+      "size": 24,
+      "text": "B \u2014 Ink's colours, Material's bones.\n\nThe dialog is a grey tray, and each section is a white card on it (tonal layering). Fields are outlined with floating labels and leading icons. People are input chips. Either/or choices are segmented buttons. Actions are right-aligned the Material way.\n\nNo hue is added. Phone: a full-screen dialog with Save in the top bar.",
+      "w": 520,
+      "x": -620,
+      "y": 3320
+    },
+    "s-c": {
+      "fill": "purple",
+      "size": 24,
+      "text": "C \u2014 Material 3, as Google draws it.\n\nA slate-blue seed generates the tonal palette: filled text fields, tonal and filled buttons, switches, a 28 px dialog with level-3 elevation, primary-coloured icons.\n\nIt is the most 'material' of the three, and the furthest from the rest of the app: these popups would be the only coloured, shadowed surfaces in an otherwise black-and-white Ink app. Type stays Lexend / Plus Jakarta rather than Roboto.",
+      "w": 520,
+      "x": -620,
+      "y": 4980
+    },
+    "s-today": {
+      "fill": "gray",
+      "size": 24,
+      "text": "What ships now, drawn from the source.\n\nWhy it reads plain: a #EAEAEC dialog holding #F4F4F5 fields with a #F0F0F2 border \u2014 grey on grey on grey, so nothing has an edge. Every label is 10 px. Sections are just vertical gaps, so a nine-question form reads as one long column. The icon tile is the only shape on the page.\n\nThe four popups also disagree with each other: Log interaction uses a sans title, Title Case and a different footer.",
+      "w": 520,
+      "x": 0,
+      "y": 0
+    },
+    "t-a": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "A \u00b7 Ink, structured \u2014 picked",
+      "w": 240,
+      "x": 0,
+      "y": 1360
+    },
+    "t-b": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "B \u00b7 Ink colours, Material anatomy",
+      "w": 240,
+      "x": 0,
+      "y": 3020
+    },
+    "t-c": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "C \u00b7 Material 3",
+      "w": 240,
+      "x": 0,
+      "y": 4680
+    },
+    "t-today": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "Today \u2014 what ships",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t-a2": {
+      "kind": "title1",
+      "maxW": 4080,
+      "text": "A \u00b7 Picked \u2014 phone and edge states",
+      "x": 0,
+      "y": 6340
+    }
+  },
+  "order": [
+    "Today-Homes.dc.html",
+    "Today-Visit.dc.html",
+    "Today-Interaction.dc.html",
+    "Today-Holding.dc.html",
+    "Main.dc.html",
+    "A-Homes.dc.html",
+    "A-HomesEdit.dc.html",
+    "A-HomesCombine.dc.html",
+    "A-Visit.dc.html",
+    "A-VisitEdit.dc.html",
+    "A-VisitDark.dc.html",
+    "A-Interaction.dc.html",
+    "A-Holding.dc.html",
+    "A-Phone.dc.html",
+    "B-System.dc.html",
+    "B-Homes.dc.html",
+    "B-HomesEdit.dc.html",
+    "B-HomesCombine.dc.html",
+    "B-Visit.dc.html",
+    "B-VisitEdit.dc.html",
+    "B-VisitDark.dc.html",
+    "B-Interaction.dc.html",
+    "B-Holding.dc.html",
+    "B-Phone.dc.html",
+    "C-System.dc.html",
+    "C-Homes.dc.html",
+    "C-HomesEdit.dc.html",
+    "C-HomesCombine.dc.html",
+    "C-Visit.dc.html",
+    "C-VisitEdit.dc.html",
+    "C-VisitDark.dc.html",
+    "C-Interaction.dc.html",
+    "C-Holding.dc.html",
+    "C-Phone.dc.html",
+    "A-States.dc.html",
+    "A-PhoneHomes.dc.html",
+    "A-PhoneMore.dc.html"
+  ],
+  "pages": [],
+  "title": "Visit popups \u2014 three directions"
+}

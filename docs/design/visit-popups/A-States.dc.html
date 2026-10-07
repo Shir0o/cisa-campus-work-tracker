@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Edge states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cap{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#71717A;font-weight:500;margin:0 0 4px}
+.why{margin:0 0 12px;font-size:13px;color:#52525B;line-height:1.45}
+.frag{background:#FFFFFF;border:1px solid #E4E4E7;border-radius:24px;box-shadow:0 16px 32px rgba(0,0,0,.08);overflow:hidden}
+.sec{padding:16px 20px}
+.lbl{margin:0 0 6px;font-size:13px;font-weight:500;color:#0A0A0B}
+.hint{margin:6px 0 0;font-size:12px;color:#71717A}
+.fld{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;background:#F4F4F5;border:1px solid transparent;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.ph{color:#A1A1AA}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600;flex:none}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.foot{display:flex;align-items:center;gap:10px;padding:14px 20px;border-top:1px solid #F0F0F2;background:#FAFAFA}
+.btn{height:44px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px}
+.pri{background:#131316;color:#FFFFFF}
+.ghost{background:transparent;color:#52525B}
+.row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #F0F0F2}
+.row:last-child{border-bottom:0}
+.nm{margin:0;font-size:14px;font-weight:600;color:#0A0A0B}
+.mt{margin:2px 0 0;font-size:12px;color:#71717A}
+.opt{display:flex;align-items:center;gap:12px;padding:10px 16px;font-size:14px;color:#0A0A0B}
+</style>
+</helmet>
+<div style="width:1100px;height:1260px;box-sizing:border-box;padding:48px 56px;background:#FAFAFA;font-family:Lexend,sans-serif;color:#0A0A0B;display:flex;flex-direction:column;gap:28px">
+  <div>
+    <p class="cap">Direction A · picked</p>
+    <h1 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:700;letter-spacing:-0.02em">The states between the happy paths</h1>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 32px">
+
+    <!-- 1 undo -->
+    <div>
+      <p class="cap">After Delete</p>
+      <p class="why">The home goes at once. The list closes the gap and a snackbar holds Undo for 8 seconds.</p>
+      <div class="frag" style="position:relative;height:188px">
+        <div class="sec" style="padding-top:8px">
+          <div class="row"><span class="av tn-cl">EG</span><div style="flex:1"><p class="nm">Garcia</p><p class="mt">No place yet · Elena Garcia</p></div></div>
+          <div class="row"><span class="av tn-pl">ML</span><div style="flex:1"><p class="nm">Mei &amp; Jun</p><p class="mt">Hall B, Room 4</p></div></div>
+        </div>
+        <div style="position:absolute;left:16px;right:16px;bottom:14px;display:flex;align-items:center;gap:12px;height:48px;padding:0 8px 0 16px;border-radius:14px;background:#131316;color:#FFFFFF;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)"><span style="flex:1">the Mendozas deleted</span><button class="btn" style="height:36px;padding:0 14px;background:transparent;color:#FFFFFF;font-weight:600">Undo</button></div>
+      </div>
+    </div>
+
+    <!-- 2 nobody -->
+    <div>
+      <p class="cap">Nobody ticked</p>
+      <p class="why">The error appears on Save, never earlier, and the page scrolls back to the field.</p>
+      <div class="frag">
+        <div class="sec">
+          <p class="lbl">Who you saw</p>
+          <div class="fld" style="background:#FFF5F6;border:1.5px solid #B1000F"><span class="ph">Start typing a name</span></div>
+          <p class="hint" style="color:#B1000F;display:flex;align-items:center;gap:6px"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>Pick at least one person.</p>
+        </div>
+        <div class="foot"><span style="flex:1"></span><button class="btn ghost">Cancel</button><button class="btn pri">Log the visit</button></div>
+      </div>
+    </div>
+
+    <!-- 3 someone new -->
+    <div>
+      <p class="cap">Someone new</p>
+      <p class="why">Matches first; the last row starts a record without leaving the popup.</p>
+      <div class="frag">
+        <div class="sec" style="padding-bottom:8px">
+          <p class="lbl">Who you saw</p>
+          <div class="fld" style="background:#FFFFFF;border:1.5px solid #0A0A0B">Gra<span style="width:1px;height:18px;background:#0A0A0B"></span></div>
+        </div>
+        <div style="margin:0 20px 16px;border:1px solid #E4E4E7;border-radius:14px;overflow:hidden">
+          <div class="opt" style="background:#F4F4F5"><span class="av tn-pl">GK</span><span style="flex:1">Grace Kim</span><span style="font-size:12px;color:#71717A">Contact</span></div>
+          <div class="opt"><span class="av tn-oc">GO</span><span style="flex:1">Grant Osei</span><span style="font-size:12px;color:#71717A">Our own</span></div>
+          <div class="opt" style="border-top:1px solid #F0F0F2"><span class="av" style="background:#F4F4F5;color:#0A0A0B"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg></span><span style="flex:1">Add “Gra” — someone new</span><span style="font-size:12px;color:#71717A">starts a record</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 no home -->
+    <div>
+      <p class="cap">No home yet</p>
+      <p class="why">Where is typed by hand, and the hint offers to make the home from this visit.</p>
+      <div class="frag">
+        <div class="sec">
+          <p class="lbl">Who you saw</p>
+          <span class="chip"><span class="av tn-pl">GK</span>Grace Kim</span>
+          <p class="hint" style="display:flex;align-items:center;gap:6px"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Grace has no home yet · <a href="#" style="color:#0A0A0B;text-decoration:underline">Add one</a></p>
+        </div>
+        <div class="sec" style="border-top:1px solid #F0F0F2">
+          <p class="lbl">Where</p>
+          <div class="fld"><svg class="ic" viewBox="0 0 24 24" style="color:#A1A1AA"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Kerr Hall, 3rd floor lounge</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 inactive -->
+    <div>
+      <p class="cap">Inactive, opened</p>
+      <p class="why">Still alphabetical, greyed, and each says when it went quiet. Tapping one opens its editor to reactivate it.</p>
+      <div class="frag">
+        <div class="sec" style="padding-top:8px;padding-bottom:8px">
+          <div class="row" style="padding-top:12px"><svg class="ic" viewBox="0 0 24 24" style="color:#52525B"><path d="m6 9 6 6 6-6"/></svg><span style="font-size:13px;color:#52525B">Inactive <span style="color:#A1A1AA">· 2 households that have moved on</span></span></div>
+          <div class="row" style="opacity:.6"><span class="av tn-sg">TB</span><div style="flex:1"><p class="nm">the Brennans</p><p class="mt">Moved away · inactive since Mar 2026 · 23 visits</p></div></div>
+          <div class="row" style="opacity:.6"><span class="av tn-sl">YS</span><div style="flex:1"><p class="nm">Yuki &amp; Sora</p><p class="mt">Graduated · inactive since Jun 2025 · 6 visits</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 no homes -->
+    <div>
+      <p class="cap">No homes yet</p>
+      <p class="why">The first open. Suggestions do the backfill, so they come first.</p>
+      <div class="frag">
+        <div class="sec" style="text-align:center;padding:22px 20px 18px">
+          <div style="width:44px;height:44px;border-radius:14px;background:#F4F4F5;display:grid;place-items:center;margin:0 auto 10px;color:#52525B"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></div>
+          <p style="margin:0;font-size:15px;font-weight:600">No homes yet</p>
+          <p class="hint" style="margin-top:4px">We found 6 from your visits and surnames.</p>
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:14px"><button class="btn pri" style="height:40px">Review suggestions</button><button class="btn" style="height:40px;background:#FFFFFF;border:1px solid #E4E4E7;color:#0A0A0B">Add a home</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 saving -->
+    <div>
+      <p class="cap">Saving</p>
+      <p class="why">Fields lock and the button holds its width. A failure keeps everything typed.</p>
+      <div class="frag">
+        <div class="foot" style="border-top:0"><span style="font-size:12px;color:#A1A1AA">⌘ ↵ to save</span><span style="flex:1"></span><button class="btn ghost" style="opacity:.4">Cancel</button><button class="btn pri" style="width:156px;justify-content:center"><svg class="ic" viewBox="0 0 24 24" style="opacity:.8"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>Saving…</button></div>
+        <div class="foot" style="background:#FFF5F6;border-top:1px solid #FFD4D8"><svg class="ic" viewBox="0 0 24 24" style="color:#B1000F"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span style="flex:1;font-size:13px;color:#B1000F">Couldn't save — you're offline. Nothing was lost.</span><button class="btn pri" style="height:36px">Try again</button></div>
+      </div>
+    </div>
+
+    <!-- 8 interaction none -->
+    <div>
+      <p class="cap">Log interaction, nobody picked</p>
+      <p class="why">The button names the count, so it reads “Pick someone” until there is one.</p>
+      <div class="frag">
+        <div class="foot" style="border-top:0"><span style="font-size:12px;color:#52525B">Nobody picked yet</span><span style="flex:1"></span><button class="btn ghost">Cancel</button><button class="btn pri" style="opacity:.35">Pick someone</button></div>
+        <div class="foot"><span style="font-size:12px;color:#52525B">Logged once for each of 3 people.</span><span style="flex:1"></span><button class="btn ghost">Cancel</button><button class="btn pri">Log for 3 people</button></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

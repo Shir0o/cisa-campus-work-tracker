@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C · Dialog system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#405AA8}a:hover{color:#00174B}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cap{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#45464F;font-weight:500;margin:0 0 14px}
+.num{width:22px;height:22px;border-radius:999px;background:#405AA8;color:#FFFFFF;font-size:11px;font-weight:600;display:grid;place-items:center;flex:none}
+.ff{position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:16px 16px 0;background:#E3E1E9;border-radius:4px 4px 0 0;border-bottom:1px solid #45464F;font-size:16px;color:#1A1B21;box-sizing:border-box}
+.ff .l{position:absolute;top:8px;left:16px;font-size:12px;color:#45464F}
+.sup{margin:4px 16px 0;font-size:12px;color:#45464F}
+.btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px}
+.sw{display:inline-block;width:52px;height:32px;border-radius:999px;background:#405AA8;position:relative}
+.sw::after{content:"";position:absolute;right:4px;top:4px;width:24px;height:24px;border-radius:999px;background:#FFFFFF}
+.leg{display:flex;gap:12px}
+.leg p{margin:0}
+.lt{font-size:14px;font-weight:600;color:#1A1B21}
+.ld{margin-top:4px !important;font-size:13px;color:#45464F;line-height:1.5}
+.sw-row{display:flex;gap:8px;flex-wrap:wrap}
+.tok{width:92px;border-radius:12px;overflow:hidden;border:1px solid #C5C6D0;font-size:11px;color:#45464F}
+.tok span{display:block;height:40px}
+.tok p{margin:0;padding:6px 8px;background:#FFFFFF;line-height:1.3}
+</style>
+</helmet>
+<div style="width:1100px;height:1260px;box-sizing:border-box;padding:56px;background:#FAF8FF;font-family:Lexend,sans-serif;color:#1A1B21;display:flex;flex-direction:column;gap:40px">
+  <div>
+    <p class="cap">Direction C · Material 3</p>
+    <h1 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.02em">Material, as Google draws it</h1>
+    <p style="margin:10px 0 0;font-size:15px;color:#45464F;max-width:700px;line-height:1.5">A slate-blue seed (the hue of Ink's slate data tone) generates every role. Filled fields, level-3 elevation, and a hero icon over a centred headline. Only these popups would carry colour; the pages behind them stay Ink.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:560px minmax(0,1fr);gap:48px;align-items:start">
+    <div style="background:rgba(0,0,0,.32);border-radius:28px;padding:28px">
+      <div style="background:#E8E7EF;border-radius:28px;padding:24px;box-shadow:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.3)">
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px"><span class="num">1</span><svg class="ic" viewBox="0 0 24 24" style="color:#405AA8;width:24px;height:24px"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></div>
+        <p style="margin:12px 0 0;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:500">Log a visit</p>
+        <div style="display:flex;align-items:center;gap:8px;margin:20px 0 10px"><span class="num">2</span><span style="font-size:14px;font-weight:500;color:#405AA8">When and where</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span class="num">3</span><div class="ff" style="flex:1"><span class="l">When</span>Tue 6 Oct · 7:30 pm</div></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:16px"><span class="num">4</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px 0 8px;border-radius:8px;background:#DCE2F9;font-size:14px;font-weight:500;color:#141B2C"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M20 6 9 17l-5-5"/></svg>Daniel Reyes</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:20px"><span class="num">5</span><span style="flex:1"></span><span class="btn" style="background:transparent;color:#405AA8;padding:0 12px">Cancel</span><span class="btn" style="background:#405AA8;color:#FFFFFF">Log the visit</span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="leg"><span class="num">1</span><div><p class="lt">Hero icon and headline</p><p class="ld">Icon in primary, headline centred in Plus Jakarta 24/500, no close button: you leave with Cancel or by tapping the scrim. Level-3 shadow on surface-container-high.</p></div></div>
+      <div class="leg"><span class="num">2</span><div><p class="lt">Subheads, not cards</p><p class="ld">Each section is named by a 14/500 subhead in primary. There are no section containers; space and colour do the grouping.</p></div></div>
+      <div class="leg"><span class="num">3</span><div><p class="lt">Filled text field</p><p class="ld">A surface-container-highest fill, squared bottom corners and a 1 px indicator line, which becomes 2 px in primary when focused.</p></div></div>
+      <div class="leg"><span class="num">4</span><div><p class="lt">Filter chips for teammates</p><p class="ld">The whole team is listed; picking someone fills their chip with secondary-container and adds a tick. People you saw use input chips.</p></div></div>
+      <div class="leg"><span class="num">5</span><div><p class="lt">Text and filled buttons in primary</p><p class="ld">Destructive actions use error-red text on the left.</p></div></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px">
+    <div>
+      <p class="cap">Tonal palette from the seed</p>
+      <div class="sw-row">
+        <div class="tok"><span style="background:#405AA8"></span><p>primary<br>#405AA8</p></div>
+        <div class="tok"><span style="background:#DBE1FF"></span><p>primary-cont.<br>#DBE1FF</p></div>
+        <div class="tok"><span style="background:#DCE2F9"></span><p>secondary-cont.<br>#DCE2F9</p></div>
+        <div class="tok"><span style="background:#FDD7FA"></span><p>tertiary-cont.<br>#FDD7FA</p></div>
+        <div class="tok"><span style="background:#E8E7EF"></span><p>cont.-high<br>#E8E7EF</p></div>
+      </div>
+      <p class="cap" style="margin-top:28px">Field states</p>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px">
+        <div class="ff" style="padding-top:0"><span style="color:#45464F">Where</span></div>
+        <div class="ff" style="border-bottom:2px solid #405AA8;background:#DDDCE4"><span class="l" style="color:#405AA8">Where</span>14 Alder Court</div>
+        <div><div class="ff"><span class="l">Where</span>14 Alder Court</div><p class="sup">From the Peinados' home</p></div>
+        <div><div class="ff" style="border-bottom:2px solid #BA1A1A"><span class="l" style="color:#BA1A1A">Who you saw</span></div><p class="sup" style="color:#BA1A1A">Pick at least one person.</p></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div>
+        <p class="cap">Controls</p>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span class="sw" role="switch" aria-checked="true" aria-label="Example switch"></span>
+          <span style="width:18px;height:18px;border-radius:2px;background:#405AA8;display:inline-grid;place-items:center;color:#FFFFFF"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <span style="width:20px;height:20px;border-radius:999px;border:2px solid #405AA8;box-sizing:border-box;display:inline-grid;place-items:center"><span style="width:10px;height:10px;border-radius:999px;background:#405AA8"></span></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 4px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#45464F"><span style="width:24px;height:24px;border-radius:999px;background:#DBE1FF;color:#00174B;display:grid;place-items:center;font-size:10px;font-weight:600">AP</span>Ana Peinado</span>
+        </div>
+      </div>
+      <div>
+        <p class="cap">Buttons</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <span class="btn" style="background:#405AA8;color:#FFFFFF">Combine</span>
+          <span class="btn" style="background:#DCE2F9;color:#141B2C">Add a home</span>
+          <span class="btn" style="background:transparent;color:#405AA8;padding:0 12px">Cancel</span>
+          <span class="btn" style="background:transparent;color:#BA1A1A;padding:0 12px">Delete</span>
+        </div>
+        <p style="margin:12px 0 0;font-size:12px;color:#45464F;line-height:1.5">Scrim rgba(0,0,0,.32) · radius 28 · phone (&lt;768): a full-screen dialog with Save as a text button in the top app bar. Dark mode uses the seed's dark scheme, so primary becomes #B4C5FF.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

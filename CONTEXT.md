@@ -363,6 +363,10 @@ _Avoid_: False positive, ignore, dismiss
 Reversing a past combine contacts or combine tags so the records it changed return to how they were, keeping anything added or edited since.
 _Avoid_: Revert, split, restore, unmerge
 
+**Combine homes**:
+Folding a **Home** that was entered twice into the one that is really that household. The kept Home keeps its own label and place (filling either from the combined-in Home only where it has none), takes in everyone who lived there, keeps both sets of notes, and becomes the Home of every visit logged against the combined-in Home, which is then removed. Shown as a preview of what moves before it happens. Full-timers only, as Homes are (ADR 0040).
+_Avoid_: Merge homes, dedupe homes, survivor, duplicate
+
 **Combine tags**:
 A Full-timer rewriting variant spellings of a tag across all contacts into one tag (e.g. `bfa table` → `BFA`), choosing from guesses or building their own, after a dry-run preview. It can be undone (ADR 0036, ADR 0039).
 _Avoid_: Merge tags, dedupe tags, auto-fix tags
@@ -410,7 +414,7 @@ Someone **not in the church life** — a student we met on campus, or a local wh
 _Avoid_: New contact, seeker, unbeliever, prospect, outsider — and never read the narrow sense into `Contact` in code
 
 **Home**:
-A household we visit, usually labelled by the family's last name ("the Peinados") — the label is free text, because a house sharing no one surname needs a name only the team would think of — and tied to the people in **the church life** who live there, usually **Local saints**, sometimes **Our own** living with family. Several may share one home, and someone may have none yet. The Home carries the place, because the person no longer does: `location` was retired from the contact form and survives only on older documents, which is why a visit's `where` has to be typed by hand today.
+A household we visit, usually labelled by the family's last name ("the Peinados") — the label is free text, because a house sharing no one surname needs a name only the team would think of — and tied to the people in **the church life** who live there, usually **Local saints**, sometimes **Our own** living with family. Several may share one home, and someone may have none yet. The Home carries the place, because the person no longer does: `location` was retired from the contact form and survives only on older documents, which is why a visit's `where` has to be typed by hand today. A Home outlives its household: when the last person leaves it goes inactive, keeping its visits. Only a Home made by mistake — one no visit was ever logged against — is removed outright, and a Home entered twice is folded into the real one with **Combine homes** (ADR 0040).
 _Avoid_: House, address, residence, location, venue
 
 **Who we haven't seen**:

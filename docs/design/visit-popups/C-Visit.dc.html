@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C · Log a visit</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#405AA8}a:hover{color:#00174B}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cv-root{position:relative;width:880px;height:1260px;overflow:hidden;font-family:Lexend,sans-serif;background:#FAF8FF}
+.cv-bar{background:#EEEDF4;border-radius:16px;position:absolute}
+.cv-scrim{position:absolute;inset:0;background:rgba(0,0,0,.32)}
+.cv-dlg{position:absolute;left:120px;top:32px;width:640px;background:#E8E7EF;border-radius:28px;box-shadow:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px rgba(0,0,0,.3);padding:24px;box-sizing:border-box}
+.on1{color:#1A1B21}.on2{color:#45464F}.pri{color:#405AA8}
+.cv-sh{margin:20px 0 12px;font-size:14px;font-weight:500;color:#405AA8}
+.cv-ff{position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;background:#E3E1E9;border-radius:4px 4px 0 0;border-bottom:1px solid #45464F;font-size:16px;color:#1A1B21;box-sizing:border-box}
+.cv-ff.lab{padding-top:16px}
+.cv-ff .l{position:absolute;top:8px;left:16px;font-size:12px;color:#45464F}
+.cv-ff.has-ic .l{left:46px}
+.cv-ff.has-ic.lab{padding-left:16px}
+.cv-ff.area{height:auto;min-height:112px;align-items:flex-start;padding:26px 16px 12px;line-height:1.5}
+.cv-ff.focus{border-bottom:2px solid #405AA8;background:#DDDCE4}
+.cv-ff.focus .l{color:#405AA8}
+.cv-ffic{color:#45464F;margin-top:0}
+.cv-sup{margin:4px 16px 0;font-size:12px;color:#45464F}
+.cv-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 4px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#45464F}
+.cv-chip .x{width:16px;height:16px}
+.cv-fil{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px 0 8px;border-radius:8px;background:#DCE2F9;font-size:14px;font-weight:500;color:#141B2C}
+.cv-asst{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px 0 8px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#1A1B21}
+.cv-asst svg{color:#405AA8}
+.cv-av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.m-p{background:#DBE1FF;color:#00174B}.m-t{background:#FDD7FA;color:#2A1229}.m-s{background:#DCE2F9;color:#141B2C}
+.cv-drop{display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border:1px dashed #757680;border-radius:12px;font-size:14px;font-weight:500;color:#405AA8}
+.cv-sw{width:52px;height:32px;border-radius:999px;background:#405AA8;position:relative;flex:none}
+.cv-sw::after{content:"";position:absolute;right:4px;top:4px;width:24px;height:24px;border-radius:999px;background:#FFFFFF}
+.cv-cb{width:18px;height:18px;border-radius:2px;background:#405AA8;color:#FFFFFF;display:grid;place-items:center;flex:none}
+.cv-btn{height:40px;padding:0 24px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.cv-txt{background:transparent;color:#405AA8;padding:0 12px}
+.cv-pbtn{background:#405AA8;color:#FFFFFF}
+.cv-hero{width:24px;height:24px;color:#405AA8;margin:0 auto 16px;display:block}
+/* dark */
+.dk.cv-root{background:#121318}
+.dk .cv-bar{background:#1E1F25}
+.dk .cv-scrim{background:rgba(0,0,0,.5)}
+.dk .cv-dlg{background:#292A2F}
+.dk .on1,.dk .cv-ff,.dk .cv-asst{color:#E3E1E9}
+.dk .on2,.dk .cv-ff .l,.dk .cv-sup,.dk .cv-ffic,.dk .cv-chip{color:#C5C6D0}
+.dk .pri,.dk .cv-sh,.dk .cv-hero,.dk .cv-asst svg,.dk .cv-drop,.dk .cv-txt,.dk .cv-ff.focus .l{color:#B4C5FF}
+.dk .cv-ff{background:#34343A;border-bottom-color:#C5C6D0}
+.dk .cv-ff.focus{background:#3A3A41;border-bottom-color:#B4C5FF}
+.dk .cv-chip,.dk .cv-asst,.dk .cv-drop{border-color:#8F909A}
+.dk .cv-fil{background:#3F4759;color:#DCE2F9}
+.dk .cv-sw,.dk .cv-cb,.dk .cv-pbtn{background:#B4C5FF;color:#0F2D78}
+.dk .cv-sw::after{background:#0F2D78}
+.dk .m-p{background:#284390;color:#DBE1FF}.dk .m-t{background:#5A3D5A;color:#FDD7FA}.dk .m-s{background:#3F4759;color:#DCE2F9}
+</style>
+</helmet>
+<div class="{{rootClass}}">
+  <div class="cv-bar" style="left:48px;top:40px;width:220px;height:28px"></div>
+  <div class="cv-bar" style="left:48px;top:96px;width:784px;height:120px"></div>
+  <div class="cv-bar" style="left:48px;top:240px;width:784px;height:120px"></div>
+  <div class="cv-bar" style="left:48px;top:384px;width:784px;height:120px"></div>
+  <div class="cv-scrim"></div>
+
+  <div class="cv-dlg" role="dialog" aria-label="{{title}}">
+    <svg class="ic cv-hero" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+    <h2 class="on1" style="margin:0;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:500;line-height:32px">{{title}}</h2>
+    <p class="on2" style="margin:12px 0 0;text-align:center;font-size:14px;line-height:20px">{{subtitle}}</p>
+
+    <p class="cv-sh">Who you saw</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <span class="cv-chip"><span class="cv-av m-p">AP</span>Ana Peinado<svg class="ic x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+      <span class="cv-chip"><span class="cv-av m-t">LP</span>Luis Peinado<svg class="ic x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+      <span class="cv-asst"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Anyone else?</span>
+      <span class="cv-asst"><svg class="ic" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>the Peinados · 9 weeks</span>
+    </div>
+
+    <p class="cv-sh">When and where</p>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+      <div class="cv-ff lab has-ic"><span class="l">When</span><svg class="ic cv-ffic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Tue 6 Oct · 7:30 pm</div>
+      <div><div class="cv-ff lab has-ic focus"><span class="l">Where</span><svg class="ic cv-ffic" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>14 Alder Court</div><p class="cv-sup">From the Peinados' home</p></div>
+    </div>
+
+    <p class="cv-sh">Who went</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <span class="cv-fil"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Daniel Reyes</span>
+      <span class="cv-fil"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Hannah Cole</span>
+      <span class="cv-chip" style="padding:0 16px">Priya Shah</span>
+      <span class="cv-chip" style="padding:0 16px">Sam Ortiz</span>
+    </div>
+    <p class="cv-sup" style="margin-left:0">Most visits are a pair.</p>
+
+    <p class="cv-sh">The visit</p>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="cv-ff lab"><span class="l">Why you went</span>Luis started the new job last Monday</div>
+      <div class="cv-ff area"><span class="l">How it went</span>Ana made arepas. Luis is tired but glad — the commute is the hard part. Their youngest asked about Friday's study.</div>
+      <div class="cv-drop"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Add photos</div>
+    </div>
+
+    <sc-if value="{{isLog}}" hint-placeholder-val="{{ true }}">
+      <div>
+        <p class="cv-sh">Afterwards</p>
+        <div style="display:flex;align-items:center;gap:16px"><span class="on1" style="flex:1;font-size:16px">Something to carry</span><span class="cv-sw" role="switch" aria-checked="true" aria-label="Something to carry"></span></div>
+        <div class="cv-ff lab" style="margin-top:12px"><span class="l">What to follow up</span>Drop off the study notes on Friday</div>
+        <p class="cv-sup">Lands as a to-do for Daniel, due in a week.</p>
+        <div class="cv-ff lab" style="margin-top:16px"><span class="l">A prayer that came out of it (optional)</span>That Luis finds his feet at the new job</div>
+        <label class="on1" style="display:flex;align-items:center;gap:14px;margin-top:14px;font-size:14px"><span class="cv-cb"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span>Put it on the prayer list</label>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:24px">
+      <button class="cv-btn cv-txt">Cancel</button>
+      <button class="cv-btn cv-pbtn">{{cta}}</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["log","edit"],"default":"log"},"dark":{"editor":"boolean","default":false},"$preview":{"width":880,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const edit = (this.props.mode ?? 'log') === 'edit';
+    const dark = this.props.dark === true || this.props.dark === 'true';
+    return {
+      isLog: !edit,
+      title: edit ? 'Edit a visit' : 'Log a visit',
+      subtitle: edit ? 'Fix the record — nothing here notifies anyone.' : 'Write it down while you still remember the room.',
+      cta: edit ? 'Save changes' : 'Log the visit',
+      rootClass: dark ? 'cv-root dk' : 'cv-root',
+    };
+  }
+}
+</script>
+</body>
+</html>

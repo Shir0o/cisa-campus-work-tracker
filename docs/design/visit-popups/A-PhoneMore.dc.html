@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Phone edit visit, praying for, undo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ph{position:relative;width:390px;height:844px;box-sizing:border-box;border:8px solid #18181B;border-radius:52px;overflow:hidden;background:#FFFFFF;flex:none}
+.ph-bar{position:absolute;background:#F4F4F5;border-radius:12px}
+.ph-scrim{position:absolute;inset:0;background:rgba(10,10,11,.32)}
+.sh{position:absolute;left:0;right:0;bottom:0;top:56px;background:#FFFFFF;border-radius:24px 24px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.grab{width:36px;height:4px;border-radius:9px;background:#D4D4D8;margin:8px auto 0;flex:none}
+.hd{display:flex;align-items:center;gap:10px;padding:12px 20px 12px}
+.ttl{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700;color:#0A0A0B;flex:1}
+.x{width:40px;height:40px;border-radius:999px;border:0;background:#F4F4F5;color:#52525B;display:grid;place-items:center;flex:none}
+.body{flex:1;overflow:hidden;padding:0 20px;display:flex;flex-direction:column;gap:16px}
+.lbl{margin:0 0 6px;font-size:13px;font-weight:500;color:#0A0A0B}
+.hint{margin:6px 0 0;font-size:12px;color:#71717A}
+.fld{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;background:#F4F4F5;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600;flex:none}
+.av32{width:32px;height:32px;font-size:11px}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}.tn-oc{background:#F6EBD2;color:#7F5A12}
+.foot{display:flex;gap:10px;padding:12px 20px 28px;border-top:1px solid #F0F0F2;background:#FFFFFF}
+.btn{height:48px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:15px;font-weight:500;border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.prow{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 10px;border-radius:12px;font-size:15px;color:#0A0A0B}
+.prow.on{background:#F4F4F5}
+.prow.held{color:#A1A1AA}
+.held .av{opacity:.5}
+.cb{width:22px;height:22px;border-radius:7px;border:1.5px solid #A1A1AA;box-sizing:border-box;flex:none;display:grid;place-items:center;color:transparent}
+.on .cb{background:#131316;border-color:#131316;color:#FFFFFF}
+.held .cb{border-color:#E4E4E7;background:#F4F4F5}
+.sub{display:block;font-size:12px;color:#71717A}
+.held .sub{color:#A1A1AA}
+.nm{margin:0;font-size:15px;font-weight:600;color:#0A0A0B}
+.mt{margin:2px 0 0;font-size:12px;color:#71717A}
+.row{display:flex;align-items:center;gap:12px;min-height:60px;padding:0 20px;border-bottom:1px solid #F0F0F2}
+</style>
+</helmet>
+<div style="width:1410px;height:944px;box-sizing:border-box;padding:50px 60px;background:#FAFAFA;display:flex;gap:60px;font-family:Lexend,sans-serif">
+
+  <!-- Edit a visit -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Edit a visit">
+      <div class="grab"></div>
+      <div class="hd" style="padding-bottom:4px"><h2 class="ttl">Edit a visit</h2><button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <p class="hint" style="margin:0 20px 12px">Fix the record — nothing here notifies anyone.</p>
+      <div class="body">
+        <div><p class="lbl">Who you saw</p><div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip"><span class="av tn-sl">AP</span>Ana Peinado</span><span class="chip"><span class="av tn-pl">LP</span>Luis</span></div></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"><div><p class="lbl">When</p><div class="fld">Tue 6 Oct</div></div><div><p class="lbl">Time</p><div class="fld">7:30 pm</div></div></div>
+        <div><p class="lbl">Where</p><div class="fld">14 Alder Court</div></div>
+        <div><p class="lbl">Who went</p><div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip"><span class="av tn-sg">DR</span>Daniel</span><span class="chip"><span class="av tn-cl">HC</span>Hannah</span></div></div>
+        <div><p class="lbl">How it went</p><div class="fld" style="align-items:flex-start;padding:12px 14px;min-height:96px;line-height:1.5">Ana made arepas. Luis is tired but glad — the commute is the hard part.</div></div>
+        <p class="hint" style="margin:0">No follow-up or prayer step on an edit — those were asked when it was logged.</p>
+      </div>
+      <div class="foot"><button class="btn" style="background:#F4F4F5;color:#0A0A0B">Cancel</button><button class="btn" style="flex:1;background:#131316;color:#FFFFFF">Save changes</button></div>
+    </div>
+  </div>
+
+  <!-- Who are we praying for -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Who are we praying for?" style="top:40px">
+      <div class="grab"></div>
+      <div class="hd" style="padding-bottom:4px"><h2 class="ttl">Who are we praying for?</h2><button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div style="padding:8px 20px 8px"><div class="fld" style="color:#A1A1AA"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Search the people you know…</div></div>
+      <div style="flex:1;overflow:hidden;padding:0 10px">
+        <sc-for list="{{people}}" as="p" hint-placeholder-count="8">
+          <label class="{{p.cls}}"><span class="cb"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span><span class="av av32 {{p.tone}}">{{p.ini}}</span><span style="flex:1;min-width:0">{{p.name}}<span class="sub">{{p.sub}}</span></span></label>
+        </sc-for>
+      </div>
+      <div class="foot"><span style="align-self:center;flex:1;font-size:13px;color:#52525B"><span style="color:#0A0A0B;font-weight:600">2 added</span> · 7 on our hearts</span><button class="btn" style="background:#131316;color:#FFFFFF;padding:0 28px">Done</button></div>
+    </div>
+  </div>
+
+  <!-- Undo after delete -->
+  <div class="ph">
+    <div class="ph-bar" style="left:20px;top:24px;width:160px;height:24px"></div>
+    <div class="ph-scrim"></div>
+    <div class="sh" role="dialog" aria-label="Homes">
+      <div class="grab"></div>
+      <div class="hd"><h2 class="ttl">Homes</h2><button class="x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div style="flex:1;overflow:hidden">
+        <div class="row"><span class="av av32 tn-cl">EG</span><div style="flex:1"><p class="nm">Garcia</p><p class="mt">No place yet · Elena</p></div></div>
+        <div class="row"><span class="av av32 tn-pl">ML</span><div style="flex:1"><p class="nm">Mei &amp; Jun</p><p class="mt">Hall B, Room 4</p></div></div>
+        <div class="row"><span class="av av32 tn-oc">MG</span><div style="flex:1"><p class="nm">the Garcias</p><p class="mt">9 Birch Lane</p></div></div>
+        <div class="row"><span class="av av32 tn-sg">CO</span><div style="flex:1"><p class="nm">the Okafors</p><p class="mt">22 Elm Street</p></div></div>
+        <div class="row"><span class="av av32 tn-sl">AP</span><div style="flex:1"><p class="nm">the Peinados</p><p class="mt">14 Alder Court</p></div></div>
+      </div>
+      <div style="margin:0 12px 12px;display:flex;align-items:center;gap:12px;height:52px;padding:0 8px 0 16px;border-radius:14px;background:#131316;color:#FFFFFF;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2)"><span style="flex:1">the Mendozas deleted</span><button class="btn" style="height:40px;padding:0 14px;background:transparent;color:#FFFFFF;font-weight:600">Undo</button></div>
+      <div class="foot"><button class="btn" style="flex:1;background:#131316;color:#FFFFFF"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add a home</button></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1410,"height":944}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const r = (name, ini, tone, sub, st) => ({ name, ini, tone, sub, cls: 'prow' + (st ? ' ' + st : '') });
+    return {
+      people: [
+        r('Ana Peinado', 'AP', 'tn-sl', 'Already on our prayer list', 'held'),
+        r('Bao Nguyen', 'BN', 'tn-oc', 'Contact', 'on'),
+        r('Chidi Okafor', 'CO', 'tn-sg', 'Our own', ''),
+        r('Elena Garcia', 'EG', 'tn-cl', 'Local saint', 'on'),
+        r('Grace Kim', 'GK', 'tn-pl', 'Already on our prayer list', 'held'),
+        r('Jun Park', 'JP', 'tn-sg', 'Our own', ''),
+        r('Luis Peinado', 'LP', 'tn-pl', 'Local saint', ''),
+        r('Mei Lin', 'ML', 'tn-pl', 'Our own', ''),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

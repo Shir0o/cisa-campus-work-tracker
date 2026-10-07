@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>C · Phone full-screen dialogs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#405AA8}a:hover{color:#00174B}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ph{position:relative;width:390px;height:844px;box-sizing:border-box;border:8px solid #18181B;border-radius:52px;overflow:hidden;background:#FAF8FF;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:4px;height:64px;padding:16px 12px 0 4px;flex:none;background:#FAF8FF}
+.icb{width:48px;height:48px;border-radius:999px;border:0;background:transparent;color:#1A1B21;display:grid;place-items:center}
+.ttl{margin:0;flex:1;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:500;color:#1A1B21}
+.save{height:40px;padding:0 12px;border:0;background:transparent;color:#405AA8;font-family:Lexend,sans-serif;font-size:14px;font-weight:600}
+.body{flex:1;overflow:hidden;padding:8px 16px 0;display:flex;flex-direction:column;gap:6px}
+.sh{margin:12px 0 8px;font-size:14px;font-weight:500;color:#405AA8}
+.ff{position:relative;display:flex;align-items:center;gap:12px;height:56px;padding:16px 16px 0;background:#E3E1E9;border-radius:4px 4px 0 0;border-bottom:1px solid #45464F;font-size:16px;color:#1A1B21;box-sizing:border-box}
+.ff .l{position:absolute;top:8px;left:16px;font-size:12px;color:#45464F}
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 4px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#45464F}
+.fil{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 16px 0 8px;border-radius:8px;background:#DCE2F9;font-size:14px;font-weight:500;color:#141B2C}
+.asst{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px 0 8px;border-radius:8px;border:1px solid #757680;font-size:14px;font-weight:500;color:#1A1B21}
+.av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.m-p{background:#DBE1FF;color:#00174B}.m-t{background:#FDD7FA;color:#2A1229}.m-s{background:#DCE2F9;color:#141B2C}
+.seg{display:flex;border:1px solid #757680;border-radius:999px;overflow:hidden;height:40px}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:500;color:#1A1B21;border-left:1px solid #757680}
+.seg span:first-child{border-left:0}
+.seg span.on{background:#DCE2F9;color:#141B2C}
+</style>
+</helmet>
+<div style="width:940px;height:944px;box-sizing:border-box;padding:50px 60px;background:#F4F3FA;display:flex;gap:80px;font-family:Lexend,sans-serif">
+
+  <div class="ph" role="dialog" aria-label="Log a visit">
+    <div class="top">
+      <button class="icb" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <h2 class="ttl">Log a visit</h2>
+      <button class="save">Save</button>
+    </div>
+    <div class="body">
+      <p class="sh">Who you saw</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip"><span class="av m-p">AP</span>Ana Peinado</span><span class="chip"><span class="av m-t">LP</span>Luis</span><span class="asst"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;color:#405AA8"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>the Peinados</span></div>
+      <p class="sh">When and where</p>
+      <div class="ff"><span class="l">When</span>Tue 6 Oct · 7:30 pm</div>
+      <div class="ff" style="margin-top:8px"><span class="l">Where</span>14 Alder Court</div>
+      <p class="sh">Who went</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="fil"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M20 6 9 17l-5-5"/></svg>Daniel</span><span class="fil"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M20 6 9 17l-5-5"/></svg>Hannah</span><span class="chip" style="padding:0 14px">Priya</span></div>
+      <p class="sh">The visit</p>
+      <div class="ff"><span class="l">Why you went</span>Luis started the new job</div>
+      <div class="ff" style="margin-top:8px;height:auto;min-height:96px;align-items:flex-start;padding-top:26px;line-height:1.5"><span class="l">How it went</span>Ana made arepas. Luis is tired but glad.</div>
+    </div>
+  </div>
+
+  <div class="ph" role="dialog" aria-label="Log an interaction">
+    <div class="top">
+      <button class="icb" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <h2 class="ttl">Log an interaction</h2>
+      <button class="save">Save</button>
+    </div>
+    <div class="body">
+      <p class="sh">Who · 2</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip"><span class="av m-p">AP</span>Ana Peinado</span><span class="chip"><span class="av m-s">BN</span>Bao Nguyen</span><span class="asst"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;color:#405AA8"><path d="M12 5v14M5 12h14"/></svg>Add</span></div>
+      <p class="sh">What kind</p>
+      <div class="seg"><span>Message</span><span>Call</span><span class="on"><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M20 6 9 17l-5-5"/></svg>Meeting</span></div>
+      <div class="ff" style="margin-top:16px"><span class="l">When</span>Today · 6 Oct</div>
+      <div class="ff" style="margin-top:8px;height:auto;min-height:112px;align-items:flex-start;padding-top:26px;line-height:1.5"><span class="l">What was said</span>Coffee after the Tuesday study. Bao wants to bring a friend from his lab.</div>
+      <p class="sh">Follow-ups</p>
+      <div style="display:flex;align-items:center;gap:14px;min-height:44px;font-size:16px;color:#1A1B21"><span style="width:20px;height:20px;border-radius:999px;border:2px solid #45464F;box-sizing:border-box"></span><span style="flex:1">Text Bao the study time</span><span style="font-size:14px;color:#45464F">Fri</span></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":944}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

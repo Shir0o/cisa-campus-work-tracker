@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A · Log a visit</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Lexend:wght@300;400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.av-root{position:relative;width:880px;height:1260px;overflow:hidden;font-family:Lexend,sans-serif;background:#FFFFFF}
+.av-bar{background:#F4F4F5;border-radius:14px;position:absolute}
+.av-scrim{position:absolute;inset:0;background:rgba(10,10,11,.32)}
+.av-dlg{position:absolute;left:120px;top:40px;width:640px;background:#FFFFFF;border:1px solid #E4E4E7;border-radius:24px;box-shadow:0 16px 32px rgba(0,0,0,.16);overflow:hidden}
+.t1{color:#0A0A0B}.t2{color:#52525B}.t3{color:#A1A1AA}
+.av-sec{display:grid;grid-template-columns:132px minmax(0,1fr);gap:24px;padding:20px 28px;border-top:1px solid #F0F0F2}
+.av-sh{margin:0;font-size:13px;font-weight:600;color:#0A0A0B}
+.av-sx{margin:3px 0 0;font-size:12px;color:#A1A1AA;line-height:1.4}
+.av-lbl{margin:0 0 6px;font-size:13px;font-weight:500;color:#0A0A0B}
+.av-hint{margin:6px 0 0;font-size:12px;color:#71717A}
+.av-fld{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;background:#F4F4F5;border:1px solid transparent;border-radius:14px;font-size:14px;color:#0A0A0B;box-sizing:border-box}
+.av-area{align-items:flex-start;padding:12px 14px;line-height:1.5;min-height:96px}
+.av-ph{color:#A1A1AA}
+.av-chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 4px;border-radius:999px;background:#FFFFFF;border:1px solid #E4E4E7;font-size:13px;color:#0A0A0B}
+.av-chip .x{color:#A1A1AA}
+.av-add{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px dashed #D4D4D8;font-size:13px;color:#52525B;background:transparent}
+.av-av{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600}
+.tn-sl{background:#E3E8F7;color:#3B4F9A}.tn-pl{background:#F3E2F0;color:#8A3A7E}.tn-sg{background:#E0F0E4;color:#2F6B42}.tn-cl{background:#F8E4DA;color:#9A4A2A}
+.av-home{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:6px 12px;border-radius:12px;background:#F4F4F5;font-size:12px;color:#52525B}
+.av-drop{display:flex;align-items:center;justify-content:center;gap:8px;height:64px;border:1.5px dashed #E4E4E7;border-radius:14px;font-size:13px;color:#71717A}
+.av-sw{width:40px;height:24px;border-radius:999px;background:#131316;position:relative;flex:none}
+.av-sw::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:999px;background:#FFFFFF}
+.av-cb{width:18px;height:18px;border-radius:6px;background:#131316;color:#FFFFFF;display:grid;place-items:center;flex:none}
+.av-foot{display:flex;align-items:center;gap:10px;padding:16px 28px;border-top:1px solid #F0F0F2;background:#FAFAFA}
+.av-btn{height:44px;padding:0 20px;border-radius:999px;font-family:Lexend,sans-serif;font-size:14px;font-weight:500;border:0;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.av-pri{background:#131316;color:#FFFFFF}
+.av-ghost{background:transparent;color:#52525B}
+.av-close{width:40px;height:40px;border-radius:999px;border:0;background:#F4F4F5;color:#52525B;display:grid;place-items:center;cursor:pointer}
+.av-kbd{font-size:12px;color:#A1A1AA}
+/* dark */
+.dk.av-root{background:#0A0A0B}
+.dk .av-bar{background:#161618}
+.dk .av-scrim{background:rgba(0,0,0,.6)}
+.dk .av-dlg{background:#161618;border-color:#2A2A2E;box-shadow:0 16px 32px rgba(0,0,0,.66)}
+.dk .t1,.dk .av-sh,.dk .av-lbl,.dk .av-fld,.dk .av-chip{color:#FAFAFA}
+.dk .t2,.dk .av-home,.dk .av-add,.dk .av-ghost{color:#A1A1AA}
+.dk .t3,.dk .av-sx,.dk .av-ph,.dk .av-kbd,.dk .av-hint,.dk .av-drop{color:#71717A}
+.dk .av-sec,.dk .av-foot{border-color:#232327}
+.dk .av-fld,.dk .av-home,.dk .av-close{background:#232327}
+.dk .av-close{color:#A1A1AA}
+.dk .av-chip{background:#161618;border-color:#2A2A2E}
+.dk .av-add,.dk .av-drop{border-color:#3F3F46}
+.dk .av-foot{background:#121214}
+.dk .av-pri,.dk .av-sw,.dk .av-cb{background:#FAFAFA;color:#0A0A0B}
+.dk .av-sw::after{background:#0A0A0B}
+.dk .tn-sl{background:rgba(120,145,235,.2);color:#B9C6F6}.dk .tn-pl{background:rgba(214,120,200,.2);color:#EBB8E2}.dk .tn-sg{background:rgba(110,200,140,.2);color:#A9DFBA}.dk .tn-cl{background:rgba(235,140,100,.2);color:#F2BDA4}
+</style>
+</helmet>
+<div class="{{rootClass}}">
+  <!-- the Visits page behind -->
+  <div class="av-bar" style="left:48px;top:40px;width:220px;height:28px"></div>
+  <div class="av-bar" style="left:48px;top:96px;width:784px;height:120px"></div>
+  <div class="av-bar" style="left:48px;top:240px;width:784px;height:120px"></div>
+  <div class="av-bar" style="left:48px;top:384px;width:784px;height:120px"></div>
+  <div class="av-scrim"></div>
+
+  <div class="av-dlg" role="dialog" aria-label="{{title}}">
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:24px 28px 20px">
+      <div style="flex:1;min-width:0">
+        <p class="t3" style="margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500">Visits</p>
+        <h2 class="t1" style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.01em">{{title}}</h2>
+        <p class="t2" style="margin:4px 0 0;font-size:13px">{{subtitle}}</p>
+      </div>
+      <button class="av-close" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+
+    <div class="av-sec">
+      <div><p class="av-sh">Who you saw</p><p class="av-sx">Everyone in the room</p></div>
+      <div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span class="av-chip"><span class="av-av tn-sl">AP</span>Ana Peinado<svg class="ic x" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          <span class="av-chip"><span class="av-av tn-pl">LP</span>Luis Peinado<svg class="ic x" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+          <button class="av-add"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg>Anyone else?</button>
+        </div>
+        <span class="av-home"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>the Peinados · last visited 9 weeks ago</span>
+      </div>
+    </div>
+
+    <div class="av-sec">
+      <div><p class="av-sh">When and where</p></div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        <div><p class="av-lbl">When</p><div class="av-fld"><svg class="ic t3" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Tue 6 Oct · 7:30 pm</div></div>
+        <div><p class="av-lbl">Where</p><div class="av-fld"><svg class="ic t3" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>14 Alder Court</div><p class="av-hint">From the Peinados' home</p></div>
+      </div>
+    </div>
+
+    <div class="av-sec">
+      <div><p class="av-sh">Who went</p><p class="av-sx">Most visits are a pair.</p></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span class="av-chip"><span class="av-av tn-sg">DR</span>Daniel Reyes</span>
+        <span class="av-chip"><span class="av-av tn-cl">HC</span>Hannah Cole</span>
+        <button class="av-add"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+      </div>
+    </div>
+
+    <div class="av-sec">
+      <div><p class="av-sh">The visit</p></div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div><p class="av-lbl">Why you went</p><div class="av-fld">Luis started the new job last Monday</div></div>
+        <div><p class="av-lbl">How it went</p><div class="av-fld av-area">Ana made arepas. Luis is tired but glad — the commute is the hard part. Their youngest asked about Friday's study.</div></div>
+        <div><p class="av-lbl">Photos <span class="t3" style="font-weight:400">· optional</span></p><div class="av-drop"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Drop photos here, or click to choose</div></div>
+      </div>
+    </div>
+
+    <sc-if value="{{isLog}}" hint-placeholder-val="{{ true }}">
+      <div class="av-sec">
+        <div><p class="av-sh">Afterwards</p><p class="av-sx">Only asked when you log it</p></div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="display:flex;align-items:center;gap:12px"><p class="av-lbl" style="margin:0;flex:1">Something to carry</p><span class="av-sw" role="switch" aria-checked="true" aria-label="Something to carry"></span></div>
+            <div class="av-fld" style="margin-top:8px">Drop off the study notes on Friday</div>
+            <p class="av-hint">Lands as a to-do for Daniel, due in a week.</p>
+          </div>
+          <div>
+            <p class="av-lbl">A prayer that came out of it <span class="t3" style="font-weight:400">· optional</span></p>
+            <div class="av-fld">That Luis finds his feet at the new job</div>
+            <label style="display:flex;align-items:center;gap:10px;margin-top:10px;font-size:13px" class="t2"><span class="av-cb"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span>Yes — put it on the list</label>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <div class="av-foot">
+      <span class="av-kbd">⌘ ↵ to save</span>
+      <span style="flex:1"></span>
+      <button class="av-btn av-ghost">Cancel</button>
+      <button class="av-btn av-pri"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>{{cta}}</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["log","edit"],"default":"log"},"dark":{"editor":"boolean","default":false},"$preview":{"width":880,"height":1260}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const edit = (this.props.mode ?? 'log') === 'edit';
+    const dark = this.props.dark === true || this.props.dark === 'true';
+    return {
+      isLog: !edit,
+      title: edit ? 'Edit a visit' : 'Log a visit',
+      subtitle: edit ? 'Fix the record — nothing here notifies anyone.' : 'Write it down while you still remember the room.',
+      cta: edit ? 'Save changes' : 'Log the visit',
+      rootClass: dark ? 'av-root dk' : 'av-root',
+    };
+  }
+}
+</script>
+</body>
+</html>
