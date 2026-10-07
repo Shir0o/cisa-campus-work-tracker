@@ -2073,13 +2073,40 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'homes', 'homeBad'), { ...validHome, members: 'not-a-list' }));
     });
 
-    it('HS4: No delete path for a home', async () => {
+    it('HS4: A Full-timer can delete a home (ADR 0040)', async () => {
       await seedRoles();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
       });
       const db = getFirestore({ uid: 'admin1' });
-      await assertFails(deleteDoc(doc(db, 'homes', 'home1')));
+      await assertSucceeds(deleteDoc(doc(db, 'homes', 'home1')));
+    });
+
+    it('HS5: A non-admin cannot delete a home', async () => {
+      await seedRoles();
+      for (const uid of ['manager1', 'operator1', 'viewer1']) {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await setDoc(doc(context.firestore(), 'homes', 'home1'), validHome);
+        });
+        await assertFails(deleteDoc(doc(getFirestore({ uid }), 'homes', 'home1')));
+      }
+    });
+
+    it('HS6: A home-targeted activity entry is accepted', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'activities', 'act_home'), {
+          userId: 'admin1',
+          userName: 'Admin',
+          action: 'deleted a home',
+          targetId: 'home1',
+          targetName: 'the Oseis',
+          targetType: 'home',
+          type: 'edit',
+          createdAt: '2026-01-01',
+        }),
+      );
     });
   });
 

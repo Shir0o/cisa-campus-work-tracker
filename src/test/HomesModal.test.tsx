@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import HomesModal from '../components/modals/HomesModal';
 import { useAuth } from '../components/AuthProvider';
-import { addHome, updateHome } from '../lib/homes';
+import { addHome, updateHome, deleteHome, restoreHome, combineHomes } from '../lib/homes';
 import { handleFirestoreError } from '../lib/firebase';
 import type { Contact, Home, Visit } from '../types';
 
@@ -29,6 +29,9 @@ vi.mock('../lib/homes', async (importOriginal) => {
     ...actual,
     addHome: vi.fn(() => Promise.resolve('h-new')),
     updateHome: vi.fn(() => Promise.resolve()),
+    deleteHome: vi.fn(() => Promise.resolve()),
+    restoreHome: vi.fn(() => Promise.resolve()),
+    combineHomes: vi.fn(() => Promise.resolve()),
   };
 });
 
@@ -169,5 +172,54 @@ describe('HomesModal', () => {
     // c1 is already in a home (even an inactive one) so it is not re-proposed;
     // c3 is co-visited with c1 but c1 is excluded, so c3 proposes nothing alone.
     expect(screen.queryByText('Suggested homes')).not.toBeInTheDocument();
+  });
+
+  it('deletes an unvisited home and offers Undo', async () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete home' }));
+
+    await waitFor(() => expect(deleteHome).toHaveBeenCalledWith('h1'));
+    expect(screen.getByText('Home deleted')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(restoreHome).toHaveBeenCalled());
+    expect((restoreHome as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({
+      id: 'h1',
+      label: 'the Oseis',
+    });
+  });
+
+  it('offers no delete for a home a visit was logged against', () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    const visits = [{ ...visit('v1', ['c1']), homeId: 'h1' }];
+    render(<HomesModal {...baseProps} homes={homes} visits={visits} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    expect(screen.queryByRole('button', { name: 'Delete home' })).not.toBeInTheDocument();
+  });
+
+  it('combines a home into another after a preview', async () => {
+    const homes = [
+      { id: 'h1', label: 'the Garcias', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Garcias (2)', members: ['c2', 'c3'], active: true },
+    ];
+    const visits = [
+      { ...visit('v1', ['c2']), homeId: 'h2' },
+      { ...visit('v2', ['c3']), homeId: 'h2' },
+    ];
+    render(<HomesModal {...baseProps} homes={homes} visits={visits} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Garcias (2)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Combine into…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the Garcias' }));
+
+    expect(screen.getByText('2 people and 2 visits move to the Garcias')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Combine homes' }));
+    await waitFor(() => expect(combineHomes).toHaveBeenCalled());
+    const [kept, combinedIn, , by] = (combineHomes as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(kept.id).toBe('h1');
+    expect(combinedIn.id).toBe('h2');
+    expect(by).toMatchObject({ uid: 'u1', name: 'Mei Tanaka' });
   });
 });
