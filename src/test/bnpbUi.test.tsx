@@ -150,3 +150,68 @@ describe('SuggestionsQueue settling', () => {
     expect(screen.getByText('actions.undo')).toBeInTheDocument();
   });
 });
+
+describe('SuggestionsQueue duplicate flag', () => {
+  const pending = {
+    id: 'sug-1',
+    syncId: 's1',
+    bnpbContactId: 'p-1',
+    bnpbName: 'Alex Chen',
+    occurredAt: '2026-09-10T15:00:00.000Z',
+    durationMinutes: 45,
+    summary: 'Coffee downtown',
+    medium: 'coffee',
+    text: 'Coffee downtown',
+    status: 'pending',
+  };
+
+  beforeEach(() => {
+    mockedUseAuth.mockReturnValue(asUser('yilongwang05@gmail.com') as never);
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, callback: unknown) => {
+      const path = (ref as { path?: string })?.path ?? '';
+      let docs: unknown[] = [];
+      if (path === 'users/u1/interactionSuggestions') {
+        docs = [{ id: pending.id, data: () => ({ ...pending }) }];
+      } else if (path === 'contacts') {
+        docs = [
+          { id: 'c1', data: () => ({ name: 'Alex Chen' }) },
+          { id: 'c2', data: () => ({ name: 'Bea Diaz' }) },
+        ];
+      } else if (path === 'contacts/c1/interactions') {
+        docs = [{ id: 'i1', data: () => ({ userId: 'u1', content: 'Called about the retreat', dateTime: '2026-09-10', type: 'call' }) }];
+      } else if (path === 'contacts/c2/interactions') {
+        docs = [{ id: 'i2', data: () => ({ userId: 'someone-else', content: 'Their note', dateTime: '2026-09-10', type: 'call' }) }];
+      }
+      if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs });
+      return vi.fn();
+    });
+  });
+
+  it('flags an owner Interaction logged the same day and offers Log anyway', async () => {
+    render(<SuggestionsQueue />);
+    fireEvent.change(await screen.findByPlaceholderText('bnpb.queue_search_contacts'), {
+      target: { value: 'Alex' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Alex Chen' }));
+
+    expect(await screen.findByText('bnpb.queue_maybe_logged')).toBeInTheDocument();
+    expect(screen.getByText('bnpb.queue_log_anyway')).toBeInTheDocument();
+  });
+
+  it('re-evaluates the flag when the Contact changes', async () => {
+    render(<SuggestionsQueue />);
+    fireEvent.change(await screen.findByPlaceholderText('bnpb.queue_search_contacts'), {
+      target: { value: 'Alex' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Alex Chen' }));
+    expect(await screen.findByText('bnpb.queue_maybe_logged')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('bnpb.queue_search_contacts'), {
+      target: { value: 'Bea' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Bea Diaz' }));
+
+    await waitFor(() => expect(screen.queryByText('bnpb.queue_maybe_logged')).not.toBeInTheDocument());
+    expect(screen.getByText('bnpb.queue_confirm')).toBeInTheDocument();
+  });
+});

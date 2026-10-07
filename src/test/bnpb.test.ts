@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Contact } from '../types';
+import type { Contact, Interaction } from '../types';
 import type { InteractionSuggestion } from '../lib/bnpb';
 
 const hoisted = vi.hoisted(() => {
@@ -46,13 +46,16 @@ import {
   INTERACTION_SUGGESTIONS_SUBCOLLECTION,
   NOT_A_CISA_PERSON_SUBCOLLECTION,
   SUGGESTION_LINKS_SUBCOLLECTION,
+  calendarDay,
   confirmSuggestion,
   dismissSuggestion,
+  findSameDayInteraction,
   formatDurationMinutes,
   isContactVisible,
   markNotACisaPerson,
   mediumToType,
   orderPendingSuggestions,
+  subscribeContactInteractions,
   subscribePendingSuggestions,
   undoSuggestionDismiss,
   undoNotACisaPerson,
@@ -118,6 +121,54 @@ describe('orderPendingSuggestions', () => {
       suggestion({ id: 'done', occurredAt: '2026-09-30T10:00:00.000Z', status: 'confirmed' }),
     ];
     expect(orderPendingSuggestions(list).map((s) => s.id)).toEqual(['new', 'old']);
+  });
+});
+
+describe('calendarDay', () => {
+  it('reads the leading calendar day from date-only and full timestamps', () => {
+    expect(calendarDay('2026-09-10')).toBe('2026-09-10');
+    expect(calendarDay('2026-09-10T15:00:00.000Z')).toBe('2026-09-10');
+    expect(calendarDay('nonsense')).toBeNull();
+  });
+});
+
+describe('findSameDayInteraction', () => {
+  const interaction = (over: Partial<Interaction> = {}): Interaction => ({
+    id: 'i1',
+    userId: 'u1',
+    userName: 'Owner',
+    content: 'Called about the retreat',
+    dateTime: '2026-09-10',
+    createdAt: '2026-09-10T00:00:00.000Z',
+    type: 'call',
+    ...over,
+  });
+
+  it('finds the owner interaction on the same calendar day', () => {
+    const found = findSameDayInteraction([interaction()], 'u1', '2026-09-10T15:00:00.000Z');
+    expect(found?.id).toBe('i1');
+  });
+
+  it('ignores another person logged on that contact that day', () => {
+    const list = [interaction({ userId: 'someone-else' })];
+    expect(findSameDayInteraction(list, 'u1', '2026-09-10T15:00:00.000Z')).toBeNull();
+  });
+
+  it('ignores a same-contact interaction on a different day', () => {
+    expect(findSameDayInteraction([interaction({ dateTime: '2026-09-09' })], 'u1', '2026-09-10')).toBeNull();
+  });
+
+  it('returns the latest match when several fall on the day', () => {
+    const list = [
+      interaction({ id: 'early', dateTime: '2026-09-10T08:00:00.000Z' }),
+      interaction({ id: 'late', dateTime: '2026-09-10T18:00:00.000Z' }),
+    ];
+    expect(findSameDayInteraction(list, 'u1', '2026-09-10')?.id).toBe('late');
+  });
+
+  it('returns null when the suggestion has no usable day', () => {
+    expect(findSameDayInteraction([interaction()], 'u1', 'not-a-date')).toBeNull();
+    expect(findSameDayInteraction([], 'u1', '2026-09-10')).toBeNull();
   });
 });
 
@@ -297,6 +348,33 @@ describe('subscribePendingSuggestions', () => {
     );
     expect(hoisted.mockOnSnapshot).toHaveBeenCalledTimes(1);
     expect(seen.map((s) => s.id)).toEqual(['new', 'old']);
+    expect(typeof unsub).toBe('function');
+  });
+});
+
+describe('subscribeContactInteractions', () => {
+  beforeEach(() => hoisted.mockOnSnapshot.mockClear());
+
+  it('streams the selected contact interactions', () => {
+    hoisted.mockOnSnapshot.mockImplementationOnce((_query: unknown, callback: unknown) => {
+      (callback as (snap: unknown) => void)({
+        docs: [
+          {
+            id: 'i1',
+            data: () => ({ userId: 'u1', content: 'Called', dateTime: '2026-09-10', type: 'call' }),
+          },
+        ],
+      });
+      return vi.fn();
+    });
+
+    const seen: Interaction[][] = [];
+    const unsub = subscribeContactInteractions(
+      'c1',
+      (list) => seen.push(list),
+      () => {},
+    );
+    expect(seen[0][0]).toMatchObject({ id: 'i1', content: 'Called', dateTime: '2026-09-10' });
     expect(typeof unsub).toBe('function');
   });
 });
