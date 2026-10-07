@@ -78,7 +78,7 @@ export function orderPendingSuggestions(list: InteractionSuggestion[]): Interact
   return list
     .filter((s) => s.status === 'pending')
     .slice()
-    .sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : 0));
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 }
 
 /** Whether `uid` may attach a suggestion to `contact` at their `role`. */
