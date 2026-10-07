@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { CalendarClock, Check, Loader2, Search, Timer, UserX, X } from 'lucide-react';
+import { CalendarClock, Check, Loader2, Search, Timer, TriangleAlert, UserX, X } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { UndoSnackbar } from '../components/UndoSnackbar';
@@ -12,15 +12,17 @@ import { db } from '../lib/firebase';
 import {
   confirmSuggestion,
   dismissSuggestion,
+  findSameDayInteraction,
   formatDurationMinutes,
   markNotACisaPerson,
   mediumToType,
+  subscribeContactInteractions,
   subscribePendingSuggestions,
   undoSuggestionDismiss,
   undoNotACisaPerson,
   type InteractionSuggestion,
 } from '../lib/bnpb';
-import type { Contact } from '../types';
+import type { Contact, Interaction } from '../types';
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -44,6 +46,7 @@ function SuggestionRow({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState('');
   const [contact, setContact] = useState<Contact | null>(null);
+  const [sameDay, setSameDay] = useState<Interaction | null>(null);
   const [text, setText] = useState(suggestion.text);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +60,18 @@ function SuggestionRow({
       (e) => console.error('suggestion contact subscription error', e),
     );
   }, [role, user?.uid]);
+
+  useEffect(() => {
+    if (!contact || !user) {
+      setSameDay(null);
+      return;
+    }
+    return subscribeContactInteractions(
+      contact.id,
+      (list) => setSameDay(findSameDayInteraction(list, user.uid, suggestion.occurredAt)),
+      (e) => console.error('suggestion same-day subscription error', e),
+    );
+  }, [contact, user, suggestion.occurredAt]);
 
   const matches = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -160,6 +175,19 @@ function SuggestionRow({
             </div>
           )}
           {error && <p className="mt-2 text-[13px] text-error">{error}</p>}
+          {sameDay && (
+            <div className="mt-3 rounded-2xl bg-warning-container text-warning p-3">
+              <p className="text-[13px] font-medium inline-flex items-center gap-1.5">
+                <TriangleAlert className="w-4 h-4 shrink-0" />
+                {t('bnpb.queue_maybe_logged')}
+              </p>
+              <p className="mt-1 text-[13px]">
+                {t('bnpb.queue_maybe_logged_body')
+                  .replace('{type}', sameDay.type || 'interaction')
+                  .replace('{text}', sameDay.content)}
+              </p>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -168,7 +196,7 @@ function SuggestionRow({
               className="min-h-[44px] px-4 py-2 rounded-full bg-primary text-on-primary text-[13px] font-medium inline-flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-              {t('bnpb.queue_confirm')}
+              {t(sameDay ? 'bnpb.queue_log_anyway' : 'bnpb.queue_confirm')}
             </button>
             <button
               type="button"

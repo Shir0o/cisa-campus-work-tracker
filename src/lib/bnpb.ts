@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { canSeeContact, type AppRole } from './permissions';
-import type { Contact } from '../types';
+import type { Contact, Interaction } from '../types';
 
 export const INTERACTION_SUGGESTIONS_SUBCOLLECTION = 'interactionSuggestions';
 export const SUGGESTION_LINKS_SUBCOLLECTION = 'suggestionLinks';
@@ -81,6 +81,58 @@ export function orderPendingSuggestions(list: InteractionSuggestion[]): Interact
     .filter((s) => s.status === 'pending')
     .slice()
     .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
+/**
+ * The calendar day a timestamp belongs to, as `YYYY-MM-DD` (#1422). A logged
+ * Interaction stores a bare date, while a BNPB `occurredAt` is a full
+ * timestamp; both lead with the day the person means, so the prefix is the
+ * comparison key and no timezone enters the answer.
+ */
+export function calendarDay(value: string): string | null {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+  return match ? match[1] : null;
+}
+
+/**
+ * The owner's own Interaction on the chosen Contact that shares `occurredAt`'s
+ * calendar day, if any (#1422). Entries another teammate logged never count,
+ * and when several of the owner's fall on the day the latest wins.
+ */
+export function findSameDayInteraction(
+  interactions: Interaction[],
+  uid: string,
+  occurredAt: string,
+): Interaction | null {
+  const day = calendarDay(occurredAt);
+  if (!day) return null;
+  let found: Interaction | null = null;
+  for (const interaction of interactions) {
+    if (interaction.userId !== uid) continue;
+    if (calendarDay(interaction.dateTime) !== day) continue;
+    if (!found || interaction.dateTime > found.dateTime) found = interaction;
+  }
+  return found;
+}
+
+/** Live Interactions for one Contact, for the same-day duplicate flag (#1422). */
+export function subscribeContactInteractions(
+  contactId: string,
+  cb: (interactions: Interaction[]) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  const q = query(collection(db, 'contacts', contactId, 'interactions'), orderBy('dateTime', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) =>
+      cb(
+        snap.docs.map(
+          (entry) => ({ id: entry.id, ...(entry.data() as Omit<Interaction, 'id'>) } as Interaction),
+        ),
+      ),
+    (error) =>
+      onError ? onError(error) : console.error('contact interactions subscription error', error),
+  );
 }
 
 /** Whether `uid` may attach a suggestion to `contact` at their `role`. */
