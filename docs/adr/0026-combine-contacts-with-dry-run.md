@@ -4,7 +4,7 @@ Date: 2026-09-17
 
 ## Status
 
-Accepted
+Accepted. Execution and disposal superseded by ADR 0038.
 
 ## Context
 
