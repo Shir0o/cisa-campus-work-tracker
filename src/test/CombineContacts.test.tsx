@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CombineContacts from '../views/CombineContacts';
 import type { Contact } from '../types';
@@ -85,7 +85,24 @@ vi.mock('../lib/firebase', () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   getIdToken.mockResolvedValue('token');
-  global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, combineRecordId: 'r1' }) }) as unknown as typeof fetch;
+  global.fetch = vi.fn().mockImplementation((_url: string, opts: { body: string }) => {
+    const body = JSON.parse(opts.body);
+    if (body.dryRun) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          success: true,
+          dryRun: true,
+          preview: {
+            goesBack: [{ kind: 'interactions', id: 'i1', label: 'hi' }],
+            stays: [{ kind: 'interactions', id: 'new1', label: 'later' }],
+            notRestored: [{ kind: 'field', label: 'email' }],
+          },
+        }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: async () => ({ success: true }) });
+  }) as unknown as typeof fetch;
 });
 
 describe('CombineContacts page', () => {
@@ -142,18 +159,29 @@ describe('CombineContacts page', () => {
     expect(screen.getAllByRole('button', { name: /undo combine/i })).toHaveLength(1);
   });
 
-  it('posts an undo to the server endpoint', async () => {
+  it('shows the undo preview before the confirm button, then posts the undo', async () => {
     render(<CombineContacts />);
     fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
     fireEvent.click(await screen.findByRole('button', { name: /undo combine/i }));
 
+    const preview = await screen.findByTestId('undo-preview');
+    expect(within(preview).getByText('hi')).toBeInTheDocument();
+    expect(within(preview).getByText('later')).toBeInTheDocument();
+    expect(within(preview).getByText('email')).toBeInTheDocument();
+    expect(within(preview).getByText(/goes back/i)).toBeInTheDocument();
+    expect(within(preview).getByText(/stays/i)).toBeInTheDocument();
+    expect(within(preview).getByText(/not restored/i)).toBeInTheDocument();
+
+    // The first call is the dry run that populated the preview.
+    const dryRunBody = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    expect(dryRunBody).toEqual({ combineRecordId: 'r1', dryRun: true });
+
+    fireEvent.click(within(preview).getByRole('button', { name: /confirm undo/i }));
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/combine-contacts/undo',
-        expect.objectContaining({ method: 'POST' }),
-      );
+      expect(JSON.parse((global.fetch as any).mock.calls[1][1].body)).toEqual({
+        combineRecordId: 'r1',
+        dryRun: false,
+      });
     });
-    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
-    expect(body).toEqual({ combineRecordId: 'r1' });
   });
 });

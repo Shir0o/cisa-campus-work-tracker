@@ -29,6 +29,19 @@ interface CombineRecord {
   combinedInBefore?: { name?: string };
 }
 
+/** The three lists the undo preview returns (issue #1429). */
+interface UndoPreviewItem {
+  kind: string;
+  id: string;
+  label: string;
+}
+
+interface UndoPreview {
+  goesBack: UndoPreviewItem[];
+  stays: UndoPreviewItem[];
+  notRestored: { kind: string; label: string }[];
+}
+
 const formatWhen = (iso?: string): string => {
   if (!iso) return '';
   const date = new Date(iso);
@@ -98,6 +111,9 @@ export default function CombineContacts() {
   const [records, setRecords] = useState<CombineRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [previewRecordId, setPreviewRecordId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<UndoPreview | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -161,24 +177,47 @@ export default function CombineContacts() {
     }
   };
 
-  const undo = async (recordId: string) => {
+  const undo = async (recordId: string, dryRun: boolean) => {
+    const token = await auth.currentUser?.getIdToken();
+    const response = await fetch('/api/combine-contacts/undo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ combineRecordId: recordId, dryRun }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body.error || 'Undo failed');
+    }
+    return body as { success: boolean; preview?: UndoPreview };
+  };
+
+  const loadPreview = async (recordId: string) => {
+    if (previewingId || undoingId) return;
+    setPreviewingId(recordId);
+    setCombineError(null);
+    setPreview(null);
+    try {
+      const body = await undo(recordId, true);
+      setPreview(body.preview ?? { goesBack: [], stays: [], notRestored: [] });
+      setPreviewRecordId(recordId);
+    } catch (e) {
+      setCombineError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
+  const confirmUndo = async (recordId: string) => {
     if (undoingId) return;
     setUndoingId(recordId);
     setCombineError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-contacts/undo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ combineRecordId: recordId }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || 'Undo failed');
-      }
+      await undo(recordId, false);
+      setPreviewRecordId(null);
+      setPreview(null);
     } catch (e) {
       setCombineError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -299,11 +338,11 @@ export default function CombineContacts() {
                     {record.status !== 'undone' && (
                       <button
                         type="button"
-                        disabled={undoingId !== null}
-                        onClick={() => undo(record.id)}
+                        disabled={undoingId !== null || previewingId !== null}
+                        onClick={() => loadPreview(record.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {isUndoing ? (
+                        {previewingId === record.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Undo2 className="w-4 h-4" />
@@ -312,6 +351,72 @@ export default function CombineContacts() {
                       </button>
                     )}
                   </div>
+
+                  {previewRecordId === record.id && preview && (
+                    <div
+                      data-testid="undo-preview"
+                      className="mt-4 border-t border-outline-variant/40 pt-4"
+                    >
+                      <div className="grid gap-4 sm:grid-cols-3 text-sm">
+                        <div>
+                          <p className="font-medium text-on-surface">
+                            {t('combine_contacts.undo_goes_back', 'Goes back')}
+                          </p>
+                          <ul className="mt-1 space-y-0.5 text-on-surface-variant">
+                            {preview.goesBack.map((item, index) => (
+                              <li key={`${item.kind}-${item.id}-${index}`}>{item.label}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-on-surface">
+                            {t('combine_contacts.undo_stays', 'Stays')}
+                          </p>
+                          <ul className="mt-1 space-y-0.5 text-on-surface-variant">
+                            {preview.stays.map((item, index) => (
+                              <li key={`${item.kind}-${item.id}-${index}`}>{item.label}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-medium text-on-surface">
+                            {t('combine_contacts.undo_not_restored', 'Not restored')}
+                          </p>
+                          <ul className="mt-1 space-y-0.5 text-on-surface-variant">
+                            {preview.notRestored.map((item, index) => (
+                              <li key={`${item.kind}-${item.label}-${index}`}>{item.label}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-4">
+                        <button
+                          type="button"
+                          disabled={undoingId !== null}
+                          onClick={() => {
+                            setPreviewRecordId(null);
+                            setPreview(null);
+                          }}
+                          className="px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors disabled:opacity-40"
+                        >
+                          {t('combine_contacts.undo_cancel', 'Cancel')}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={undoingId !== null}
+                          onClick={() => confirmUndo(record.id)}
+                          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {isUndoing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Undo2 className="w-4 h-4" />
+                          )}
+                          {t('combine_contacts.undo_confirm', 'Confirm undo')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </section>
               );
             })}

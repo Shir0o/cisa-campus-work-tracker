@@ -463,3 +463,186 @@ export function buildCombinePlan(
     rewrittenReferences,
   };
 }
+
+// ── Undo plan (issue #1429, ADR 0038) ──────────────────────────────────────
+//
+// Undo replays a combine in reverse but leaves work done since the combine
+// alone. This pure function takes the stored combine record and a snapshot of
+// the current database and returns both the three preview lists the Full-timer
+// reviews and the exact writes the server applies. It never reads or writes.
+
+/** The combine record fields undo needs. */
+export interface CombineUndoRecord {
+  keptId: string;
+  combinedInId: string;
+  keptBefore: Record<string, unknown>;
+  combinedInBefore: Record<string, unknown>;
+  keptAfter: Record<string, unknown>;
+  movedDocuments: MovedDocument[];
+  rewrittenReferences: RewrittenReference[];
+}
+
+/** Everything the undo plan reads from the current database. */
+export interface CombineUndoCurrent {
+  /** The kept contact as it is now. */
+  kept: Record<string, unknown>;
+  /** The kept contact's subcollection documents as they are now. */
+  keptSubDocs: Record<'interactions' | 'threads' | 'teamThreads', SubcollectionDoc[]>;
+  /** Current data at each moved document's new path, or null if it is gone. */
+  movedCurrent: Record<string, Record<string, unknown> | null>;
+  /** Current value of each rewritten reference, keyed by `referenceKey`. */
+  referenceValues: Record<string, unknown>;
+}
+
+/** One entry in the Goes back / Stays preview lists. */
+export interface CombineUndoItem {
+  kind: string;
+  id: string;
+  label: string;
+}
+
+/** One entry in the Not restored preview list. */
+export interface CombineUndoNotRestored {
+  kind: 'field' | 'reference';
+  label: string;
+}
+
+/** A field write on the kept contact: set `value`, or delete when `remove`. */
+export interface CombineUndoKeptUpdate {
+  field: string;
+  value?: unknown;
+  remove?: boolean;
+}
+
+/** The complete, executable undo plan. */
+export interface CombineUndoPlan {
+  goesBack: CombineUndoItem[];
+  stays: CombineUndoItem[];
+  notRestored: CombineUndoNotRestored[];
+  keptUpdates: CombineUndoKeptUpdate[];
+  movedBack: { originalPath: string; newPath: string; data: Record<string, unknown> }[];
+  referenceReverts: {
+    collection: string;
+    document: string;
+    field: string;
+    value: unknown;
+  }[];
+}
+
+/** The lookup key for a rewritten reference's current value. */
+export function referenceKey(collection: string, document: string, field: string): string {
+  return `${collection}/${document}/${field}`;
+}
+
+function valuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, i) => valuesEqual(item, b[i]));
+  }
+  return false;
+}
+
+/** Fields the combine stamps as bookkeeping, not person data. */
+const UNDO_META_FIELDS = new Set(['updatedAt', 'updatedByName', 'updatedBy']);
+
+/**
+ * Plans the undo of a combine from the record and the current database.
+ * Moved documents return with their current data, references and kept-contact
+ * fields revert only while they still hold what the combine wrote, and
+ * documents or list items added since stay.
+ */
+export function buildCombineUndoPlan(
+  record: CombineUndoRecord,
+  current: CombineUndoCurrent,
+): CombineUndoPlan {
+  const goesBack: CombineUndoItem[] = [];
+  const stays: CombineUndoItem[] = [];
+  const notRestored: CombineUndoNotRestored[] = [];
+  const keptUpdates: CombineUndoKeptUpdate[] = [];
+  const movedBack: CombineUndoPlan['movedBack'] = [];
+  const referenceReverts: CombineUndoPlan['referenceReverts'] = [];
+
+  // Moved documents return to their original path with their current data, so
+  // later edits come along. A moved document deleted since is left deleted.
+  for (const moved of record.movedDocuments) {
+    const parts = moved.originalPath.split('/');
+    const kind = parts[2];
+    const id = parts[3];
+    const data = current.movedCurrent[moved.originalPath];
+    if (data == null) continue;
+    goesBack.push({ kind, id, label: itemLabel(data, id) });
+    movedBack.push({ originalPath: moved.originalPath, newPath: moved.newPath, data });
+  }
+
+  // Documents created on the kept contact after the combine stay; they are the
+  // kept-contact subcollection documents the combine did not move.
+  for (const sub of SUBCOLLECTIONS) {
+    const movedIds = new Set(
+      record.movedDocuments
+        .filter((m) => m.originalPath.split('/')[2] === sub)
+        .map((m) => m.originalPath.split('/')[3]),
+    );
+    for (const doc of current.keptSubDocs[sub] ?? []) {
+      if (movedIds.has(doc.id)) continue;
+      stays.push({ kind: sub, id: doc.id, label: itemLabel(doc.data, doc.id) });
+    }
+  }
+
+  // Kept-contact fields revert only while they still equal what the combine
+  // wrote. Merged lists lose only the members the combine added.
+  const setFields = new Set<string>(COMBINE_SET_FIELDS);
+  for (const [field, afterValue] of Object.entries(record.keptAfter)) {
+    const beforeValue = record.keptBefore[field];
+
+    if (setFields.has(field)) {
+      const beforeList = listValue(beforeValue);
+      const afterList = listValue(afterValue);
+      const added = afterList.filter((item) => !beforeList.includes(item));
+      const currentList = listValue(current.kept[field]);
+      const filtered = currentList.filter((item) => !added.includes(item));
+      if (beforeValue === undefined) {
+        // The combine introduced the list; drop it entirely when nothing later
+        // was added, otherwise keep only the later additions.
+        if (filtered.length === 0) keptUpdates.push({ field, remove: true });
+        else keptUpdates.push({ field, value: filtered });
+      } else if (!valuesEqual(filtered, currentList)) {
+        keptUpdates.push({ field, value: filtered });
+      }
+      if (!valuesEqual(filtered, currentList)) {
+        for (const item of currentList) {
+          if (added.includes(item)) goesBack.push({ kind: 'field', id: field, label: `${field}: ${item}` });
+        }
+      }
+      continue;
+    }
+
+    if (!valuesEqual(current.kept[field], afterValue)) {
+      if (!UNDO_META_FIELDS.has(field)) notRestored.push({ kind: 'field', label: field });
+      continue;
+    }
+    if (beforeValue === undefined) {
+      keptUpdates.push({ field, remove: true });
+    } else if (!valuesEqual(beforeValue, afterValue)) {
+      keptUpdates.push({ field, value: beforeValue });
+      if (!UNDO_META_FIELDS.has(field)) goesBack.push({ kind: 'field', id: field, label: field });
+    }
+  }
+
+  // A rewritten reference reverts only while it still holds the combine value.
+  for (const ref of record.rewrittenReferences) {
+    const currentValue = current.referenceValues[referenceKey(ref.collection, ref.document, ref.field)];
+    if (valuesEqual(currentValue, ref.after)) {
+      referenceReverts.push({
+        collection: ref.collection,
+        document: ref.document,
+        field: ref.field,
+        value: ref.before,
+      });
+      goesBack.push({ kind: 'reference', id: `${ref.collection}/${ref.document}`, label: ref.field });
+    } else {
+      notRestored.push({ kind: 'reference', label: `${ref.collection}.${ref.field}` });
+    }
+  }
+
+  return { goesBack, stays, notRestored, keptUpdates, movedBack, referenceReverts };
+}

@@ -3198,7 +3198,7 @@ describe("POST /api/combine-contacts/undo", () => {
       phone: "",
       stage: "Contact",
       tags: ["A", "B"],
-      location: "",
+      location: "Dorm B",
       createdAt: "2026-02-01",
     });
     seedDoc("contacts/d1/interactions", "i1", { content: "hi", authorId: "other" });
@@ -3324,5 +3324,95 @@ describe("POST /api/combine-contacts/undo", () => {
     } finally {
       process.env.NODE_ENV = originalEnv;
     }
+  });
+
+  it("returns the three undo lists without writing when dryRun is set", async () => {
+    const recordId = await combineOnce();
+    const afterCombine = structuredClone(getCollection("contacts")["s1"]);
+
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId, dryRun: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.preview.goesBack.length).toBeGreaterThan(0);
+    expect(res.body.preview.stays).toEqual([]);
+    expect(res.body.preview.notRestored).toEqual([]);
+
+    // Nothing was written.
+    expect(getCollection("contacts")["s1"]).toEqual(afterCombine);
+    expect(getCollection("contacts")["d1"]).toBeUndefined();
+    expect(getCollection("combineRecords")[recordId].status).toBe("done");
+  });
+
+  it("leaves an interaction added to the kept contact after the combine", async () => {
+    const recordId = await combineOnce();
+    seedDoc("contacts/s1/interactions", "new1", { content: "later" });
+
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(res.status).toBe(200);
+    expect(getCollection("contacts/s1/interactions")["new1"]).toMatchObject({ content: "later" });
+    expect(getCollection("contacts/d1/interactions")["new1"]).toBeUndefined();
+    expect(res.body.preview.stays).toContainEqual({ kind: "interactions", id: "new1", label: "later" });
+  });
+
+  it("returns a moved interaction edited after the combine with its edit", async () => {
+    const recordId = await combineOnce();
+    seedDoc("contacts/s1/interactions", "i1", { content: "edited" });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("contacts/d1/interactions")["i1"]).toMatchObject({ content: "edited" });
+    expect(getCollection("contacts/s1/interactions")["i1"]).toBeUndefined();
+  });
+
+  it("keeps a kept-contact field edited after the combine and lists it as not restored", async () => {
+    const recordId = await combineOnce();
+    seedDoc("contacts", "s1", { ...getCollection("contacts")["s1"], location: "Elsewhere" });
+
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(res.status).toBe(200);
+    expect(getCollection("contacts")["s1"].location).toBe("Elsewhere");
+    expect(res.body.preview.notRestored).toContainEqual({ kind: "field", label: "location" });
+  });
+
+  it("removes only the list items the combine added, keeping later additions", async () => {
+    const recordId = await combineOnce();
+    seedDoc("contacts", "s1", { ...getCollection("contacts")["s1"], tags: ["A", "B", "C"] });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("contacts")["s1"].tags).toEqual(["A", "C"]);
+  });
+
+  it("refuses undo when the kept contact was later combined into someone else", async () => {
+    const firstRecord = await combineOnce();
+    seedDoc("contacts", "c1", {
+      name: "Later Kept",
+      email: "",
+      phone: "",
+      stage: "Lead",
+      location: "",
+    });
+    const second = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "c1", combinedInId: "s1" });
+    expect(second.status).toBe(200);
+
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: firstRecord });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain("c1");
+    // The first combine is still undoable once the later one is undone.
+    expect(getCollection("combineRecords")[firstRecord].status).toBe("done");
   });
 });
