@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { Check, Loader2, Users } from 'lucide-react';
+import { Check, Loader2, Undo2, Users } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useLanguage } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
@@ -13,6 +13,31 @@ import {
   type CombinePair,
 } from '../lib/combineContactsPlan';
 import type { Contact } from '../types';
+
+/** A permanent combine record (ADR 0038), as stored by the server. */
+interface CombineRecord {
+  id: string;
+  keptId: string;
+  combinedInId: string;
+  reason?: string;
+  status: 'pending' | 'done' | 'undone';
+  combinedByName?: string;
+  combinedAt?: string;
+  undoneByName?: string;
+  undoneAt?: string;
+  keptBefore?: { name?: string };
+  combinedInBefore?: { name?: string };
+}
+
+const formatWhen = (iso?: string): string => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
+};
+
+/** Fills {placeholders} in a translated string. */
+const fill = (template: string, values: Record<string, string>): string =>
+  template.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] ?? '');
 
 /** Display label per reviewed field, used as the i18n fallback. */
 const FIELD_LABELS: Record<string, string> = {
@@ -63,12 +88,16 @@ const renderValue = (value: string | string[]): string => {
  */
 export default function CombineContacts() {
   const { t } = useLanguage();
+  const [tab, setTab] = useState<'queue' | 'recent'>('queue');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [combiningId, setCombiningId] = useState<string | null>(null);
   const [combineError, setCombineError] = useState<string | null>(null);
+  const [records, setRecords] = useState<CombineRecord[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -85,6 +114,22 @@ export default function CombineContacts() {
       },
     );
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'recent') return;
+    const q = query(collection(db, 'combineRecords'), orderBy('combinedAt', 'desc'));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        setRecords(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CombineRecord[]);
+        setRecordsLoading(false);
+      },
+      (e) => {
+        setRecordsLoading(false);
+        handleFirestoreError(e, OperationType.LIST, 'combineRecords');
+      },
+    );
+  }, [tab]);
 
   const pairs = useMemo(
     () => findCombineCandidates(contacts).filter((p) => !skipped.has(pairKey(p))),
@@ -116,6 +161,31 @@ export default function CombineContacts() {
     }
   };
 
+  const undo = async (recordId: string) => {
+    if (undoingId) return;
+    setUndoingId(recordId);
+    setCombineError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/combine-contacts/undo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ combineRecordId: recordId }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || 'Undo failed');
+      }
+    } catch (e) {
+      setCombineError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUndoingId(null);
+    }
+  };
+
   return (
     <PageContainer>
       <header className="flex items-start justify-between gap-4 mb-6">
@@ -130,14 +200,36 @@ export default function CombineContacts() {
         </div>
       </header>
 
-      <div role="tablist" aria-label={t('combine_contacts.tabs', 'Combine contacts sections')} className="flex gap-1 border-b border-outline-variant mb-6">
+      <div
+        role="tablist"
+        aria-label={t('combine_contacts.tabs', 'Combine contacts sections')}
+        className="flex gap-1 border-b border-outline-variant mb-6"
+      >
         <button
           type="button"
           role="tab"
-          aria-selected="true"
-          className="px-4 py-2 text-sm font-medium text-primary border-b-2 border-primary"
+          aria-selected={tab === 'queue'}
+          onClick={() => setTab('queue')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'queue'
+              ? 'text-primary border-primary'
+              : 'text-on-surface-variant border-transparent hover:text-on-surface'
+          }`}
         >
           {t('combine_contacts.tab_queue', 'Queue')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'recent'}
+          onClick={() => setTab('recent')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'recent'
+              ? 'text-primary border-primary'
+              : 'text-on-surface-variant border-transparent hover:text-on-surface'
+          }`}
+        >
+          {t('combine_contacts.tab_recent', 'Recent combines')}
         </button>
       </div>
 
@@ -147,7 +239,85 @@ export default function CombineContacts() {
         </p>
       )}
 
-      {loading ? (
+      {tab === 'recent' ? (
+        recordsLoading ? (
+          <div className="space-y-4">
+            {[0, 1].map((i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : records.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="font-medium text-on-surface">
+              {t('combine_contacts.no_records', 'No combines yet')}
+            </p>
+            <p className="text-sm text-on-surface-variant mt-1">
+              {t(
+                'combine_contacts.no_records_sub',
+                'Combines you make will be listed here so they can be undone.',
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {records.map((record) => {
+              const keptName = record.keptBefore?.name || record.keptId;
+              const combinedInName = record.combinedInBefore?.name || record.combinedInId;
+              const isUndoing = undoingId === record.id;
+              return (
+                <section
+                  key={record.id}
+                  data-testid="combine-record"
+                  className="rounded-xl border border-outline-variant bg-surface p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-on-surface">
+                        {fill(t('combine_contacts.record_pair', '{combined} into {kept}'), {
+                          combined: combinedInName,
+                          kept: keptName,
+                        })}
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-accent mt-1">
+                        {record.reason || t('combine_contacts.picked', 'Picked from the directory')}
+                      </p>
+                      <p className="text-sm text-on-surface-variant mt-1">
+                        {fill(t('combine_contacts.combined_by', 'Combined by {name} on {date}'), {
+                          name: record.combinedByName || '',
+                          date: formatWhen(record.combinedAt),
+                        })}
+                      </p>
+                      {record.status === 'undone' && (
+                        <p className="text-sm text-on-surface-variant mt-1">
+                          {fill(t('combine_contacts.undone_by', 'Undone by {name} on {date}'), {
+                            name: record.undoneByName || '',
+                            date: formatWhen(record.undoneAt),
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    {record.status !== 'undone' && (
+                      <button
+                        type="button"
+                        disabled={undoingId !== null}
+                        onClick={() => undo(record.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isUndoing ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Undo2 className="w-4 h-4" />
+                        )}
+                        {t('combine_contacts.undo', 'Undo combine')}
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )
+      ) : loading ? (
         <div className="space-y-4">
           {[0, 1].map((i) => (
             <Skeleton key={i} className="h-40 w-full rounded-xl" />

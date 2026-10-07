@@ -2741,8 +2741,8 @@ ${JSON.stringify(contactsList)}`;
         combinedInId,
         reason,
         status: "pending",
-        keptBefore: keptSnap.data(),
-        combinedInBefore: combinedInSnap.data(),
+        keptBefore: { ...keptSnap.data() },
+        combinedInBefore: { ...combinedInSnap.data() },
         keptAfter: plan.keptData,
         movedDocuments: plan.movedDocuments,
         rewrittenReferences: plan.rewrittenReferences,
@@ -2829,6 +2829,168 @@ ${JSON.stringify(contactsList)}`;
       return res
         .status(500)
         .json({ success: false, error: error.message || "Failed to combine contacts" });
+    }
+  });
+
+  // Undo a combine (issue #1428, ADR 0038). Full-timers only. Replays the
+  // combine record in reverse: the kept contact returns to its before-image,
+  // the combined-in contact is recreated under its original id, moved
+  // documents return to their original path, and rewritten references revert.
+  // This ticket covers undoing a combine nothing has changed since; leaving
+  // later work alone is #1429. A combine can only be undone once.
+  app.post("/api/combine-contacts/undo", standardRateLimiter, async (req, res) => {
+    let actorId: string;
+    let actorName: string;
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        const authorized = await authorizeAdmin(req);
+        actorId = authorized.uid;
+        actorName = authorized.email || authorized.uid;
+      } else {
+        actorId = "test-user";
+        actorName = "Test User";
+      }
+    } catch (authErr: any) {
+      return res
+        .status(403)
+        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+    }
+
+    const combineRecordId =
+      typeof req.body?.combineRecordId === "string" ? req.body.combineRecordId : "";
+    if (!combineRecordId) {
+      return res.status(400).json({ success: false, error: "combineRecordId is required" });
+    }
+
+    try {
+      const db = getAdminDb();
+      const recordRef = db.collection("combineRecords").doc(combineRecordId);
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ success: false, error: "Combine record not found" });
+      }
+      const record = recordSnap.data() as any;
+      if (record.status === "undone") {
+        return res
+          .status(409)
+          .json({ success: false, error: "This combine has already been undone" });
+      }
+
+      const keptId: string = record.keptId;
+      const combinedInId: string = record.combinedInId;
+      const keptBefore: Record<string, unknown> = record.keptBefore ?? {};
+      const combinedInBefore: Record<string, unknown> = record.combinedInBefore ?? {};
+      const movedDocuments: Array<{
+        originalPath: string;
+        newPath: string;
+        originalData: Record<string, unknown>;
+      }> = Array.isArray(record.movedDocuments) ? record.movedDocuments : [];
+      const rewrittenReferences: Array<{
+        collection: string;
+        document: string;
+        field: string;
+        before: unknown;
+      }> = Array.isArray(record.rewrittenReferences) ? record.rewrittenReferences : [];
+
+      const now = new Date().toISOString();
+
+      type WriteOp =
+        | { op: "set"; ref: any; data: Record<string, unknown> }
+        | { op: "update"; ref: any; data: Record<string, unknown> }
+        | { op: "delete"; ref: any };
+
+      const ops: WriteOp[] = [];
+
+      // The kept contact returns to its before-image.
+      ops.push({ op: "set", ref: db.collection("contacts").doc(keptId), data: keptBefore });
+      // The combined-in contact is recreated under its original id.
+      ops.push({
+        op: "set",
+        ref: db.collection("contacts").doc(combinedInId),
+        data: combinedInBefore,
+      });
+
+      // Moved documents return to their original path on the combined-in contact.
+      for (const moved of movedDocuments) {
+        const originalParts = moved.originalPath.split("/");
+        const newParts = moved.newPath.split("/");
+        ops.push({
+          op: "set",
+          ref: db
+            .collection("contacts")
+            .doc(combinedInId)
+            .collection(originalParts[2])
+            .doc(originalParts[3]),
+          data: moved.originalData,
+        });
+        ops.push({
+          op: "delete",
+          ref: db.collection("contacts").doc(keptId).collection(newParts[2]).doc(newParts[3]),
+        });
+      }
+
+      // Rewritten references revert to their value before the combine. Grouped
+      // by document so a document with several rewritten fields is written once.
+      const byDocument = new Map<
+        string,
+        { collection: string; document: string; data: Record<string, unknown> }
+      >();
+      for (const ref of rewrittenReferences) {
+        const key = `${ref.collection}/${ref.document}`;
+        const entry = byDocument.get(key);
+        if (entry) entry.data[ref.field] = ref.before;
+        else
+          byDocument.set(key, {
+            collection: ref.collection,
+            document: ref.document,
+            data: { [ref.field]: ref.before },
+          });
+      }
+      for (const entry of byDocument.values()) {
+        ops.push({
+          op: "update",
+          ref: db.collection(entry.collection).doc(entry.document),
+          data: entry.data,
+        });
+      }
+
+      const BATCH_LIMIT = 400;
+      for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+        const batch = db.batch();
+        for (const op of ops.slice(i, i + BATCH_LIMIT)) {
+          if (op.op === "set") batch.set(op.ref, op.data);
+          else if (op.op === "update") batch.update(op.ref, op.data);
+          else batch.delete(op.ref);
+        }
+        await batch.commit();
+      }
+
+      await recordRef.update({
+        status: "undone",
+        undoneBy: actorId,
+        undoneByName: actorName,
+        undoneAt: now,
+      });
+
+      await db.collection("activities").add({
+        userId: actorId,
+        userName: actorName,
+        userPhoto: "",
+        action: "undid combine of",
+        targetId: keptId,
+        targetName: (keptBefore.name as string) ?? "",
+        targetType: "contact",
+        type: "edit",
+        description: `Undid combine of "${combinedInBefore.name ?? combinedInId}" (${combinedInId}) into "${keptBefore.name ?? keptId}" (${keptId}).`,
+        createdAt: now,
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Undo Combine Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, error: error.message || "Failed to undo combine" });
     }
   });
 
