@@ -74,7 +74,12 @@ const {
         return docHandle(id);
       },
       doc: (id?: string) => docHandle(id || `doc-${++seq}`),
-      where: (field: string, _op: string, value: any) => filtered((d) => d.data()[field] === value),
+      where: (field: string, op: string, value: any) =>
+        filtered((d) => {
+          const v = d.data()[field];
+          if (op === "array-contains") return Array.isArray(v) && v.includes(value);
+          return v === value;
+        }),
       orderBy: () => ({
         limit: (n: number) => ({ get: async () => snapshot(list().slice(0, n)) }),
       }),
@@ -88,7 +93,7 @@ const {
   const db = {
     collection,
     batch: () => {
-      const pending: Array<{ _col: string; _id: string; data: Doc }> = [];
+      const pending: Array<{ _col: string; _id: string; data: Doc; _delete?: boolean }> = [];
       return {
         set: (ref: any, data: Doc) => {
           const col = ref._col || ref.ref?._col || (ref._id && ref._id.includes("/") ? ref._id.split("/")[0] : "");
@@ -100,8 +105,17 @@ const {
           const id = ref._id || ref.id || ref.ref?._id || "";
           pending.push({ _col: col, _id: id, data });
         },
+        delete: (ref: any) => {
+          const col = ref._col || ref.ref?._col || "";
+          const id = ref._id || ref.id || ref.ref?._id || "";
+          pending.push({ _col: col, _id: id, data: {}, _delete: true });
+        },
         commit: async () => {
           for (const p of pending) {
+            if (p._delete) {
+              if (store[p._col]) delete store[p._col][p._id];
+              continue;
+            }
             const target = (store[p._col] ??= {})[p._id] ?? {};
             for (const [k, v] of Object.entries(p.data)) {
               if (v === DELETE_SENTINEL || (v && (v as any).__mockDelete)) {
@@ -3039,5 +3053,125 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       await sync("live-secret", payload());
       expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!.status).toBe("dismissed");
     });
+  });
+});
+
+describe("POST /api/combine-contacts", () => {
+  const seedCombine = () => {
+    seedDoc("contacts", "s1", {
+      name: "Kept Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Lead",
+      tags: ["A"],
+      location: "",
+    });
+    seedDoc("contacts", "d1", {
+      name: "In Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Contact",
+      tags: ["A", "B"],
+      location: "",
+      createdAt: "2026-02-01",
+    });
+    seedDoc("contacts/d1/interactions", "i1", { content: "hi", authorId: "other" });
+    seedDoc("contacts/d1/interactions", "i2", { content: "again", authorId: "other" });
+    seedDoc("contacts/d1/threads", "t1", { body: "note", authorId: "someone" });
+    seedDoc("contacts/d1/teamThreads", "tt1", { body: "team" });
+    seedDoc("prayers", "p1", { contactId: "d1", updatedAt: "x" });
+    seedDoc("tasks", "k1", { contactId: "d1", contactName: "In Name", text: "Call" });
+    seedDoc("visits", "v1", { contactIds: ["d1", "s1"] });
+  };
+
+  it("re-points every reference kind, deletes the combined-in contact, and writes a done record", async () => {
+    seedCombine();
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.combineRecordId).toBeTruthy();
+
+    const contacts = getCollection("contacts");
+    expect(contacts["d1"]).toBeUndefined();
+    expect(contacts["s1"].tags).toEqual(["A", "B"]);
+
+    // Authors and dates are preserved: the documents move untouched.
+    const keptInteractions = getCollection("contacts/s1/interactions");
+    expect(keptInteractions["i1"]).toMatchObject({ content: "hi", authorId: "other" });
+    expect(keptInteractions["i2"]).toMatchObject({ content: "again", authorId: "other" });
+    expect(getCollection("contacts/d1/interactions")["i1"]).toBeUndefined();
+    expect(getCollection("contacts/s1/threads")["t1"]).toMatchObject({ authorId: "someone" });
+    expect(getCollection("contacts/s1/teamThreads")["tt1"]).toMatchObject({ body: "team" });
+    expect(getCollection("contacts/d1/threads")["t1"]).toBeUndefined();
+
+    expect(getCollection("prayers")["p1"].contactId).toBe("s1");
+    expect(getCollection("tasks")["k1"].contactId).toBe("s1");
+    expect(getCollection("tasks")["k1"].contactName).toBe("Kept Name");
+    expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
+
+    const record = Object.values(getCollection("combineRecords"))[0] as any;
+    expect(record.status).toBe("done");
+    expect(record.keptId).toBe("s1");
+    expect(record.combinedInId).toBe("d1");
+    expect(record.keptBefore.name).toBe("Kept Name");
+    expect(record.combinedInBefore.name).toBe("In Name");
+    expect(record.movedDocuments).toHaveLength(4);
+    expect(record.rewrittenReferences.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("writes the record as pending before applying the changes", async () => {
+    seedCombine();
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1" });
+    expect(res.status).toBe(200);
+    const record = getCollection("combineRecords")[res.body.combineRecordId];
+    expect(record.status).toBe("done");
+    expect(record.combinedAt).toBeTruthy();
+    expect(record.completedAt).toBeTruthy();
+  });
+
+  it("records an Activity Log entry for the combine", async () => {
+    seedCombine();
+    await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "d1" });
+    const activities = Object.values(getCollection("activities"));
+    const entry = activities.find((a: any) => a.action === "combined contact into");
+    expect(entry).toBeDefined();
+    expect(entry).toMatchObject({ targetId: "s1", targetType: "contact" });
+    expect(entry.description).toContain("In Name");
+  });
+
+  it("returns 400 when an id is missing", async () => {
+    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1" });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when both ids are the same", async () => {
+    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "s1" });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when a contact is missing", async () => {
+    seedDoc("contacts", "s1", { name: "Kept", email: "", phone: "", stage: "Lead", location: "" });
+    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "nope" });
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses a non-Full-timer with 403", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "t@example.com" });
+      seedDoc("users", "trainee-1", { role: "trainee", approved: true });
+      const res = await request(app)
+        .post("/api/combine-contacts")
+        .set("Authorization", "Bearer tok")
+        .send({ keptId: "s1", combinedInId: "d1" });
+      expect(res.status).toBe(403);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
   });
 });

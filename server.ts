@@ -20,6 +20,8 @@ import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/l
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
+import { buildCombinePlan, type CombineReferences } from "./src/lib/combineContactsPlan";
+import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
@@ -2647,6 +2649,186 @@ ${JSON.stringify(contactsList)}`;
         success: false,
         error: error.message || "Failed to repair GroupMe contacts",
       });
+    }
+  });
+
+  // Combine contacts (issue #1427, ADR 0038). Full-timers only. The browser
+  // builds a read-only three-column preview; this endpoint re-reads every
+  // reference, rebuilds the same pure plan (src/lib/combineContactsPlan.ts),
+  // moves the subcollection documents, re-points the references, refreshes
+  // cached names, deletes the combined-in contact, and writes a permanent
+  // combine record that starts pending and ends done.
+  app.post("/api/combine-contacts", standardRateLimiter, async (req, res) => {
+    let actorId: string;
+    let actorName: string;
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        const authorized = await authorizeAdmin(req);
+        actorId = authorized.uid;
+        actorName = authorized.email || authorized.uid;
+      } else {
+        actorId = "test-user";
+        actorName = "Test User";
+      }
+    } catch (authErr: any) {
+      return res
+        .status(403)
+        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+    }
+
+    const keptId = typeof req.body?.keptId === "string" ? req.body.keptId : "";
+    const combinedInId = typeof req.body?.combinedInId === "string" ? req.body.combinedInId : "";
+    if (!keptId || !combinedInId) {
+      return res.status(400).json({ success: false, error: "keptId and combinedInId are required" });
+    }
+    if (keptId === combinedInId) {
+      return res.status(400).json({ success: false, error: "keptId and combinedInId must differ" });
+    }
+
+    try {
+      const db = getAdminDb();
+
+      const [keptSnap, combinedInSnap] = await Promise.all([
+        db.collection("contacts").doc(keptId).get(),
+        db.collection("contacts").doc(combinedInId).get(),
+      ]);
+      if (!keptSnap.exists || !combinedInSnap.exists) {
+        return res.status(404).json({ success: false, error: "One or both contacts were not found" });
+      }
+
+      const keptContact = { id: keptSnap.id, ...keptSnap.data() } as unknown as Contact;
+      const combinedInContact = { id: combinedInSnap.id, ...combinedInSnap.data() } as unknown as Contact;
+
+      const [interactionsSnap, threadsSnap, teamThreadsSnap, prayersSnap, tasksSnap, visitsSnap] =
+        await Promise.all([
+          db.collection("contacts").doc(combinedInId).collection("interactions").get(),
+          db.collection("contacts").doc(combinedInId).collection("threads").get(),
+          db.collection("contacts").doc(combinedInId).collection("teamThreads").get(),
+          db.collection("prayers").where("contactId", "==", combinedInId).get(),
+          db.collection("tasks").where("contactId", "==", combinedInId).get(),
+          db.collection("visits").where("contactIds", "array-contains", combinedInId).get(),
+        ]);
+
+      const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+        snap.docs.map((d) => ({ id: d.id, data: d.data() }));
+
+      const refs: CombineReferences = {
+        interactions: subDocs(interactionsSnap),
+        threads: subDocs(threadsSnap),
+        teamThreads: subDocs(teamThreadsSnap),
+        prayers: prayersSnap.docs.map((d: any) => ({ id: d.id, data: d.data() })),
+        tasks: tasksSnap.docs.map((d: any) => ({ id: d.id, data: d.data() })),
+        visits: visitsSnap.docs.map((d: any) => ({
+          id: d.id,
+          contactIds: (d.data().contactIds ?? []) as string[],
+          data: d.data(),
+        })),
+      };
+
+      const now = new Date().toISOString();
+      const plan = buildCombinePlan(keptContact, combinedInContact, refs, {
+        now,
+        updatedById: actorId,
+        updatedByName: actorName,
+      });
+
+      // The record is written first, as pending, so a failure partway through
+      // leaves something that can be inspected.
+      const reason = typeof req.body?.reason === "string" ? req.body.reason : "";
+      const recordRef = await db.collection("combineRecords").add({
+        kind: "contacts",
+        keptId,
+        combinedInId,
+        reason,
+        status: "pending",
+        keptBefore: keptSnap.data(),
+        combinedInBefore: combinedInSnap.data(),
+        keptAfter: plan.keptData,
+        movedDocuments: plan.movedDocuments,
+        rewrittenReferences: plan.rewrittenReferences,
+        combinedBy: actorId,
+        combinedByName: actorName,
+        combinedAt: now,
+      });
+
+      type WriteOp =
+        | { op: "set"; ref: any; data: Record<string, unknown> }
+        | { op: "update"; ref: any; data: Record<string, unknown> }
+        | { op: "delete"; ref: any };
+
+      const ops: WriteOp[] = [];
+      ops.push({
+        op: "update",
+        ref: db.collection("contacts").doc(keptId),
+        data: plan.keptData,
+      });
+      for (const moved of plan.movedDocuments) {
+        ops.push({
+          op: "set",
+          ref: db.collection("contacts").doc(keptId).collection(moved.newPath.split("/")[2]).doc(moved.originalPath.split("/")[3]),
+          data: moved.originalData,
+        });
+        ops.push({
+          op: "delete",
+          ref: db.collection("contacts").doc(combinedInId).collection(moved.originalPath.split("/")[2]).doc(moved.originalPath.split("/")[3]),
+        });
+      }
+      for (const prayer of refs.prayers) {
+        ops.push({ op: "update", ref: db.collection("prayers").doc(prayer.id), data: { contactId: keptId } });
+      }
+      for (const task of refs.tasks) {
+        ops.push({
+          op: "update",
+          ref: db.collection("tasks").doc(task.id),
+          data: { contactId: keptId, contactName: keptContact.name },
+        });
+      }
+      for (const visit of refs.visits) {
+        ops.push({
+          op: "update",
+          ref: db.collection("visits").doc(visit.id),
+          data: {
+            contactIds: [...new Set(visit.contactIds.map((id) => (id === combinedInId ? keptId : id)))],
+          },
+        });
+      }
+      ops.push({ op: "delete", ref: db.collection("contacts").doc(combinedInId) });
+
+      const BATCH_LIMIT = 400;
+      for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+        const batch = db.batch();
+        for (const op of ops.slice(i, i + BATCH_LIMIT)) {
+          if (op.op === "set") batch.set(op.ref, op.data);
+          else if (op.op === "update") batch.update(op.ref, op.data);
+          else batch.delete(op.ref);
+        }
+        await batch.commit();
+      }
+
+      await db.collection("combineRecords").doc(recordRef.id).update({
+        status: "done",
+        completedAt: new Date().toISOString(),
+      });
+
+      await db.collection("activities").add({
+        userId: actorId,
+        userName: actorName,
+        userPhoto: "",
+        action: "combined contact into",
+        targetId: keptId,
+        targetName: keptContact.name,
+        targetType: "contact",
+        type: "edit",
+        description: `Combined "${combinedInContact.name}" (${combinedInId}) into "${keptContact.name}" (${keptId}).`,
+        createdAt: now,
+      });
+
+      return res.status(200).json({ success: true, combineRecordId: recordRef.id });
+    } catch (error: any) {
+      console.error("Combine Contacts Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, error: error.message || "Failed to combine contacts" });
     }
   });
 

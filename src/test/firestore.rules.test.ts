@@ -1021,6 +1021,43 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // A combine record is a permanent snapshot of a contact combine (ADR 0038,
+  // #1427). Full-timers read it; only the server writes it (Admin SDK bypasses
+  // rules), so a browser write is always denied.
+  describe('Combine records (ADR 0038, #1427)', () => {
+    const seed = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'combineRecords/r1'), { kind: 'contacts', status: 'done', keptId: 'a', combinedInId: 'b' });
+      });
+    };
+
+    it('lets a Full-timer read a combine record', async () => {
+      await seed();
+      const admin = getFirestore({ uid: 'admin1' });
+      const snap = await assertSucceeds(getDoc(doc(admin, 'combineRecords/r1')));
+      expect(snap.data()?.keptId).toBe('a');
+      await assertSucceeds(getDocs(collection(admin, 'combineRecords')));
+    });
+
+    it('denies a Trainee reading a combine record', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(getDoc(doc(trainee, 'combineRecords/r1')));
+      await assertFails(getDocs(collection(trainee, 'combineRecords')));
+    });
+
+    it('is never writable from a browser, even by a Full-timer', async () => {
+      await seed();
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(admin, 'combineRecords/r2'), { kind: 'contacts' }));
+      await assertFails(updateDoc(doc(admin, 'combineRecords/r1'), { status: 'undone' }));
+      await assertFails(deleteDoc(doc(admin, 'combineRecords/r1')));
+    });
+  });
+
   // A contact's interactions and comments are part of its detail page, so they
   // are visible exactly when the contact is: a Trainee reads them only for
   // people in their `visibleTo`. A collection-group list cannot pin a parent,
