@@ -121,6 +121,23 @@ Before introducing new features, enforce these gates:
   git fetch origin main && git rebase origin/main
   npm run typecheck && npm run lint && npm run test:coverage && npm run build
   This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
+## 8. Regression Testing (E2E)
+**Each check lives at the cheapest layer that would have gone red on the escape.** The reasoning is in the e2e map (#1457); setup is in `e2e/README.md`.
+
+| What broke | Test it with |
+| --- | --- |
+| A client query or write the rules deny; `visibleTo` scope | A rules test in `src/test/firestore.rules.test.ts` pinning the exact query shape the client sends |
+| Contact data shape (ISO vs Timestamp `createdAt`, `null` email, missing `owner`) | A unit test with legacy-shape fixtures |
+| An i18n key | `npm run check:i18n` |
+| A flow across features or roles | The role's Playwright journey |
+| Visual | Milestone playtest |
+
+- **`E2E:` line**: triage gives every `ready-for-agent` feature issue an `E2E:` line naming the journey and the new assertion, or `E2E: none, covered by <layer>`. Implement against it, and tag the test title `(#NNN)`.
+- **Negative check**: a role journey also asserts that one seeded record outside that role's scope is absent.
+- **Selectors**: use `getByRole`/`getByLabel`, use `data-testid` for non-semantic elements, and scope any `getByText` inside a container.
+- **Stale spec**: when your UI change breaks a spec, update the spec in the same PR.
+- **Prove it goes red**: a test written for an escape or a bug fails with the fix reverted. Say how in the PR body.
+- **Run what you touched**: if you added or edited a spec, run `npm run test:e2e:emulator` (Node 24, JDK 21) before pushing and confirm your specs pass. CI covers the rest.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
 ---

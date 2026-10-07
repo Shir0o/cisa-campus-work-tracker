@@ -45,7 +45,7 @@ This single command:
 
 Prerequisites:
 
-- Node 20+
+- Node 24 (what CI uses)
 - **JDK 21+** — recent `firebase-tools` refuses to boot the emulators on older
   JVMs (this is also what CI installs). Check with `java -version`.
 - No `.test-credentials.json` and no API key needed: in emulator mode
