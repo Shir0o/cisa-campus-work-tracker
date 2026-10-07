@@ -3,11 +3,12 @@
 // BNPB pushes its Interactions through the server intake; each lands as one
 // pending suggestion per named person, privately under the owner's user
 // document. This module is the queue's deep module: it maps BNPB media to the
-// tracker's interaction types, renders the duration, orders the queue, and
-// settles a suggestion in one atomic batch. Matching, dismissing and "Not a
-// CISA person" are deliberately not here yet (later tickets in the family).
+// tracker's interaction types, renders the duration, orders the queue, settles
+// or dismisses a suggestion, and records "Not a CISA person" choices. Matching
+// is deliberately not here yet (a later ticket in the family).
 import {
   collection,
+  deleteField,
   doc,
   onSnapshot,
   orderBy,
@@ -21,6 +22,7 @@ import type { Contact } from '../types';
 
 export const INTERACTION_SUGGESTIONS_SUBCOLLECTION = 'interactionSuggestions';
 export const SUGGESTION_LINKS_SUBCOLLECTION = 'suggestionLinks';
+export const NOT_A_CISA_PERSON_SUBCOLLECTION = 'notACisaPeople';
 
 export type InteractionSuggestionStatus = 'pending' | 'confirmed' | 'dismissed' | 'withdrawn';
 
@@ -188,9 +190,111 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
 
 /** Firestore-safe, deterministic link id for a BNPB contact. */
 export function suggestionLinkId(bnpbContactId: string): string {
+  return hashId(bnpbContactId);
+}
+
+/** Firestore-safe, deterministic choice id for a BNPB contact. */
+export function notACisaPersonId(bnpbContactId: string): string {
+  return hashId(bnpbContactId);
+}
+
+function hashId(bnpbContactId: string): string {
   let hash = 0;
   for (let i = 0; i < bnpbContactId.length; i += 1) {
     hash = (hash * 31 + bnpbContactId.charCodeAt(i)) | 0;
   }
   return `b${(hash >>> 0).toString(36)}`;
+}
+
+export interface DismissSuggestionInput {
+  uid: string;
+  suggestion: InteractionSuggestion;
+}
+
+/** Dismisses one suggestion for good; the only way back is the offered Undo. */
+export async function dismissSuggestion(input: DismissSuggestionInput): Promise<void> {
+  const { uid, suggestion } = input;
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION, suggestion.id), {
+    status: 'dismissed',
+    dismissedBy: 'single',
+    dismissedAt: serverTimestamp(),
+  });
+  try {
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `users/${uid}/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}`);
+    throw error;
+  }
+}
+
+export interface UndoSuggestionDismissInput {
+  uid: string;
+  suggestionId: string;
+}
+
+/** Reverses a single dismissal, restoring the suggestion to pending. */
+export async function undoSuggestionDismiss(input: UndoSuggestionDismissInput): Promise<void> {
+  const { uid, suggestionId } = input;
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION, suggestionId), {
+    status: 'pending',
+    dismissedBy: deleteField(),
+    dismissedAt: deleteField(),
+  });
+  await batch.commit();
+}
+
+export interface MarkNotACisaPersonInput {
+  uid: string;
+  bnpbContactId: string;
+  /** The owner's pending suggestions; every one for this BNPB contact is dismissed. */
+  suggestions: InteractionSuggestion[];
+}
+
+/**
+ * Records a "Not a CISA person" choice for a BNPB contact and dismisses every
+ * pending suggestion naming them. Returns the dismissed suggestion ids so the
+ * caller's Undo can restore exactly these, and not ones dismissed one at a time.
+ */
+export async function markNotACisaPerson(input: MarkNotACisaPersonInput): Promise<string[]> {
+  const { uid, bnpbContactId, suggestions } = input;
+  const affected = suggestions.filter(
+    (s) => s.bnpbContactId === bnpbContactId && s.status === 'pending',
+  );
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, notACisaPersonId(bnpbContactId)), {
+    bnpbContactId,
+    createdAt: serverTimestamp(),
+  });
+  for (const suggestion of affected) {
+    batch.update(doc(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION, suggestion.id), {
+      status: 'dismissed',
+      dismissedBy: 'notACisaPerson',
+      dismissedAt: serverTimestamp(),
+    });
+  }
+  await batch.commit();
+  return affected.map((s) => s.id);
+}
+
+export interface UndoNotACisaPersonInput {
+  uid: string;
+  bnpbContactId: string;
+  suggestionIds: string[];
+}
+
+/** Removes a "Not a CISA person" choice and restores only what it dismissed. */
+export async function undoNotACisaPerson(input: UndoNotACisaPersonInput): Promise<void> {
+  const { uid, bnpbContactId, suggestionIds } = input;
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, notACisaPersonId(bnpbContactId)));
+  for (const suggestionId of suggestionIds) {
+    batch.update(doc(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION, suggestionId), {
+      status: 'pending',
+      dismissedBy: deleteField(),
+      dismissedAt: deleteField(),
+    });
+  }
+  await batch.commit();
 }

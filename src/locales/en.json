@@ -2219,6 +2219,10 @@
     "queue_confirm": "Confirm",
     "queue_confirmed": "Confirmed",
     "queue_not_visible": "You cannot attach this to that contact.",
+    "queue_dismiss": "Dismiss",
+    "queue_dismissed": "Dismissed.",
+    "queue_not_cisa": "Not a CISA person",
+    "queue_not_cisa_done": "Cleared {count} suggestion(s).",
     "loading": "Loading…"
   }
 }

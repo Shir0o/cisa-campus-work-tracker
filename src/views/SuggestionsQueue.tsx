@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { CalendarClock, Check, Loader2, Search, Timer } from 'lucide-react';
+import { CalendarClock, Check, Loader2, Search, Timer, UserX, X } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
+import { UndoSnackbar } from '../components/UndoSnackbar';
+import { useUndoSnack } from '../hooks/useUndoSnack';
 import { isAppOwner } from '../lib/permissions';
 import { contactVisibilityConstraints } from '../lib/contactQueries';
 import { db } from '../lib/firebase';
 import {
   confirmSuggestion,
+  dismissSuggestion,
   formatDurationMinutes,
+  markNotACisaPerson,
   mediumToType,
   subscribePendingSuggestions,
+  undoSuggestionDismiss,
+  undoNotACisaPerson,
   type InteractionSuggestion,
 } from '../lib/bnpb';
 import type { Contact } from '../types';
@@ -24,7 +30,15 @@ function formatWhen(iso: string): string {
   return `${day} · ${time}`;
 }
 
-function SuggestionRow({ suggestion }: { suggestion: InteractionSuggestion }) {
+function SuggestionRow({
+  suggestion,
+  onDismiss,
+  onNotACisaPerson,
+}: {
+  suggestion: InteractionSuggestion;
+  onDismiss: (suggestion: InteractionSuggestion) => void;
+  onNotACisaPerson: (suggestion: InteractionSuggestion) => void;
+}) {
   const { user, role } = useAuth();
   const { t } = useLanguage();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -146,15 +160,33 @@ function SuggestionRow({ suggestion }: { suggestion: InteractionSuggestion }) {
             </div>
           )}
           {error && <p className="mt-2 text-[13px] text-error">{error}</p>}
-          <button
-            type="button"
-            onClick={confirm}
-            disabled={busy || !contact}
-            className="mt-3 px-4 py-2 rounded-full bg-primary text-on-primary text-[13px] font-medium inline-flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-            {t('bnpb.queue_confirm')}
-          </button>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={busy || !contact}
+              className="min-h-[44px] px-4 py-2 rounded-full bg-primary text-on-primary text-[13px] font-medium inline-flex items-center gap-1.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              {t('bnpb.queue_confirm')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onDismiss(suggestion)}
+              className="min-h-[44px] px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-[13px] font-medium inline-flex items-center gap-1.5 hover:bg-surface transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              {t('bnpb.queue_dismiss')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onNotACisaPerson(suggestion)}
+              className="min-h-[44px] px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-[13px] font-medium inline-flex items-center gap-1.5 hover:bg-surface transition-colors"
+            >
+              <UserX className="w-3.5 h-3.5" />
+              {t('bnpb.queue_not_cisa')}
+            </button>
+          </div>
         </>
       )}
     </div>
@@ -171,6 +203,7 @@ export default function SuggestionsQueue() {
   const owner = isAppOwner(user?.email);
   const [suggestions, setSuggestions] = useState<InteractionSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   useEffect(() => {
     if (!owner || !user) return;
@@ -186,6 +219,38 @@ export default function SuggestionsQueue() {
       },
     );
   }, [owner, user]);
+
+  const dismiss = async (suggestion: InteractionSuggestion) => {
+    if (!user) return;
+    try {
+      await dismissSuggestion({ uid: user.uid, suggestion });
+      showUndoSnack(t('bnpb.queue_dismissed'), () => {
+        void undoSuggestionDismiss({ uid: user.uid, suggestionId: suggestion.id });
+      });
+    } catch (e) {
+      console.error('suggestion dismiss error', e);
+    }
+  };
+
+  const notACisaPerson = async (suggestion: InteractionSuggestion) => {
+    if (!user) return;
+    try {
+      const dismissedIds = await markNotACisaPerson({
+        uid: user.uid,
+        bnpbContactId: suggestion.bnpbContactId,
+        suggestions,
+      });
+      showUndoSnack(t('bnpb.queue_not_cisa_done').replace('{count}', String(dismissedIds.length)), () => {
+        void undoNotACisaPerson({
+          uid: user.uid,
+          bnpbContactId: suggestion.bnpbContactId,
+          suggestionIds: dismissedIds,
+        });
+      });
+    } catch (e) {
+      console.error('suggestion not-a-CISA-person error', e);
+    }
+  };
 
   if (!owner) return <Navigate to="/" replace />;
 
@@ -203,10 +268,17 @@ export default function SuggestionsQueue() {
       ) : (
         <div className="flex flex-col gap-3">
           {suggestions.map((s) => (
-            <SuggestionRow key={s.id} suggestion={s} />
+            <SuggestionRow
+              key={s.id}
+              suggestion={s}
+              onDismiss={dismiss}
+              onNotACisaPerson={notACisaPerson}
+            />
           ))}
         </div>
       )}
+
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </div>
   );
 }

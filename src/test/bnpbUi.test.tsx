@@ -23,7 +23,8 @@ vi.mock('firebase/firestore', () => ({
     return vi.fn();
   }),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
-  writeBatch: vi.fn(() => ({ set: vi.fn(), update: vi.fn(), commit: vi.fn() })),
+  deleteField: vi.fn(() => ({ __delete: true })),
+  writeBatch: vi.fn(() => ({ set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn() })),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -32,6 +33,7 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { CREATE: 'CREATE' },
 }));
 
+import { onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../components/AuthProvider';
 import BnpbSyncCard from '../components/settings/BnpbSyncCard';
 import SuggestionsQueue from '../views/SuggestionsQueue';
@@ -100,5 +102,51 @@ describe('SuggestionsQueue', () => {
     render(<SuggestionsQueue />);
     await waitFor(() => expect(screen.getByText('bnpb.queue_title')).toBeInTheDocument());
     expect(screen.getByText('bnpb.queue_empty')).toBeInTheDocument();
+  });
+});
+
+describe('SuggestionsQueue settling', () => {
+  const pending = {
+    id: 'sug-1',
+    syncId: 's1',
+    bnpbContactId: 'p-1',
+    bnpbName: 'Alex Chen',
+    occurredAt: '2026-09-10T15:00:00.000Z',
+    durationMinutes: 45,
+    summary: 'Coffee downtown',
+    medium: 'coffee',
+    text: 'Coffee downtown',
+    status: 'pending',
+  };
+
+  beforeEach(() => {
+    mockedUseAuth.mockReturnValue(asUser('yilongwang05@gmail.com') as never);
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, callback: unknown) => {
+      const path = (ref as { path?: string })?.path ?? '';
+      if (typeof callback === 'function') {
+        (callback as (snap: unknown) => void)(
+          path === 'users/u1/interactionSuggestions'
+            ? { docs: [{ id: pending.id, data: () => ({ ...pending }) }] }
+            : { docs: [] },
+        );
+      }
+      return vi.fn();
+    });
+  });
+
+  it('dismisses a suggestion with an Undo on the toast', async () => {
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByText('bnpb.queue_dismiss'));
+
+    expect(await screen.findByText('bnpb.queue_dismissed')).toBeInTheDocument();
+    expect(screen.getByText('actions.undo')).toBeInTheDocument();
+  });
+
+  it('marks a suggestion as Not a CISA person with an Undo on the toast', async () => {
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByText('bnpb.queue_not_cisa'));
+
+    expect(await screen.findByText('bnpb.queue_not_cisa_done')).toBeInTheDocument();
+    expect(screen.getByText('actions.undo')).toBeInTheDocument();
   });
 });

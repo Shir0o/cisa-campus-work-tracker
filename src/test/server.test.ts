@@ -2993,4 +2993,51 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       expect(typeof stored.lastPushAt).toBe("string");
     });
   });
+
+  describe("Not a CISA person (#1421)", () => {
+    const seedChoice = (bnpbContactId: string) =>
+      seedDoc(`users/${OWNER_UID}/notACisaPeople`, "choice-1", {
+        bnpbContactId,
+        createdAt: "2026-09-01T00:00:00.000Z",
+      });
+
+    it("writes new suggestions for a Not a CISA person as already dismissed", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      seedChoice("p-2");
+
+      const res = await sync("live-secret", payload());
+      expect(res.status).toBe(200);
+
+      const chosen = ownedSuggestions().find((s) => s.bnpbContactId === "p-2")!;
+      expect(chosen.status).toBe("dismissed");
+      expect(chosen.dismissedBy).toBe("notACisaPerson");
+      expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!.status).toBe("pending");
+    });
+
+    it("keeps a Not a CISA person suggestion dismissed on re-push", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      seedChoice("p-1");
+      await sync("live-secret", payload());
+      await sync("live-secret", payload());
+
+      const chosen = ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!;
+      expect(chosen.status).toBe("dismissed");
+    });
+
+    it("does not bring back a suggestion the owner dismissed by hand", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", payload());
+      const colStore = getCollection(`users/${OWNER_UID}/interactionSuggestions`);
+      const [key, settled] = Object.entries(colStore).find(
+        ([, d]) => (d as any).bnpbContactId === "p-1",
+      )!;
+      colStore[key] = { ...(settled as any), status: "dismissed", dismissedBy: "single" };
+
+      await sync("live-secret", payload());
+      expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!.status).toBe("dismissed");
+    });
+  });
 });

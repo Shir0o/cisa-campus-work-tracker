@@ -2219,6 +2219,10 @@
     "queue_confirm": "Confirmar",
     "queue_confirmed": "Confirmado",
     "queue_not_visible": "No puedes vincular esto a ese contacto.",
+    "queue_dismiss": "Descartar",
+    "queue_dismissed": "Descartada.",
+    "queue_not_cisa": "No es una persona de CISA",
+    "queue_not_cisa_done": "Se eliminaron {count} sugerencia(s).",
     "loading": "Cargando…"
   }
 }

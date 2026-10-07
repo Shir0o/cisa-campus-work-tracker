@@ -187,15 +187,16 @@ service cloud.firestore {
       // there is no manager or admin read: only the app owner, on their own
       // path. The server intake creates the documents and owns their payload;
       // a client may only settle one, changing the status, the chosen Contact,
-      // the edited text and the confirm stamp, and never the payload itself.
+      // the edited text and the confirm or dismissal stamp, and never the
+      // payload itself.
       match /interactionSuggestions/{suggestionId} {
         function settlesOnly() {
-          return incoming().diff(existing()).affectedKeys().hasOnly(['status', 'contactId', 'text', 'confirmedAt']);
+          return incoming().diff(existing()).affectedKeys().hasOnly(['status', 'contactId', 'text', 'confirmedAt', 'dismissedBy', 'dismissedAt']);
         }
         allow read: if isSuperAdmin() && isOwner(userId);
         allow create: if false;
         allow update: if isSuperAdmin() && isOwner(userId) && settlesOnly() &&
-          incoming().status in ['confirmed'] &&
+          incoming().status in ['pending', 'confirmed', 'dismissed'] &&
           incoming().syncId == existing().syncId &&
           incoming().bnpbContactId == existing().bnpbContactId;
         allow delete: if false;
@@ -212,6 +213,21 @@ service cloud.firestore {
         }
         allow read: if isSuperAdmin() && isOwner(userId);
         allow create, update: if isSuperAdmin() && isOwner(userId) && isValidId(linkId) && isValidSuggestionLink(incoming());
+        allow delete: if isSuperAdmin() && isOwner(userId);
+      }
+
+      // "Not a CISA person" choices (#1421, ADR 0037): one decision per BNPB
+      // contact, owner-only like the suggestions. The server intake reads it to
+      // write later suggestions already dismissed; the owner records it and
+      // removes it to Undo. No payload beyond the BNPB contact id.
+      match /notACisaPeople/{choiceId} {
+        function isValidNotACisaPerson(data) {
+          return data.keys().hasAll(['bnpbContactId', 'createdAt']) &&
+                 data.bnpbContactId is string && data.bnpbContactId.size() > 0 && data.bnpbContactId.size() <= 200 &&
+                 data.createdAt == request.time;
+        }
+        allow read: if isSuperAdmin() && isOwner(userId);
+        allow create, update: if isSuperAdmin() && isOwner(userId) && isValidId(choiceId) && isValidNotACisaPerson(incoming());
         allow delete: if isSuperAdmin() && isOwner(userId);
       }
     }
