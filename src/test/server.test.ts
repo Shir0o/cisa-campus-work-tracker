@@ -43,6 +43,7 @@ const {
         _id: docId,
         get: async () => ({ exists: docId in col, data: () => col[docId], id: docId, ref: handle }),
         set: async (d: Doc) => { col[docId] = { ...d }; },
+        delete: async () => { delete col[docId]; },
         // Copy rather than mutate: a snapshot taken before this update must
         // keep the values it was read with, as a real one does.
         update: async (u: Doc) => {
@@ -2747,5 +2748,249 @@ describe("POST /api/attendance-sync", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].status).toBe("pending");
     expect(stored[0].attdEventId).toBe("attd-event-1");
+  });
+});
+
+describe("BNPB personal sync tokens and intake (#1420)", () => {
+  const OWNER_UID = "owner-1";
+  const OWNER_EMAIL = "yilongwang05@gmail.com";
+  const sha = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
+
+  const signInOwner = () =>
+    mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, name: "Owner" });
+
+  const seedOwner = () =>
+    seedDoc("users", OWNER_UID, { email: OWNER_EMAIL, role: "admin", approved: true });
+
+  const seedToken = (plaintext: string, uid = OWNER_UID) =>
+    seedDoc("bnpb_sync_tokens", uid, {
+      uid,
+      tokenHash: sha(plaintext),
+      createdAt: "2026-09-01T00:00:00.000Z",
+      lastPushAt: null,
+    });
+
+  const ownedSuggestions = () =>
+    Object.values(getCollection(`users/${OWNER_UID}/interactionSuggestions`)) as Array<Record<string, any>>;
+
+  const payload = (overrides: Record<string, unknown> = {}) => ({
+    interactions: [
+      {
+        syncId: "s1",
+        occurredAt: "2026-09-10T15:00:00.000Z",
+        durationMinutes: 45,
+        summary: "Coffee downtown",
+        medium: "coffee",
+        updatedAt: "2026-09-10T15:30:00.000Z",
+        participants: [
+          { bnpbContactId: "p-1", firstName: "Alex", lastName: "Chen", nickname: "Al" },
+          { bnpbContactId: "p-2", firstName: "Beth", lastName: "Doe" },
+        ],
+      },
+    ],
+    ...overrides,
+  });
+
+  const sync = (token: string | undefined, body: unknown) => {
+    const req = request(app).post("/api/bnpb/sync");
+    return (token === undefined ? req : req.set("x-sync-token", token)).send(body as object);
+  };
+
+  describe("token endpoints", () => {
+    it("generates a token for the owner and stores only its hash", async () => {
+      signInOwner();
+      const res = await request(app)
+        .post("/api/bnpb/token")
+        .set("Authorization", "Bearer owner-token");
+
+      expect(res.status).toBe(200);
+      expect(typeof res.body.token).toBe("string");
+      expect(res.body.token.length).toBeGreaterThan(10);
+      const stored = getCollection("bnpb_sync_tokens")[OWNER_UID] as Record<string, any>;
+      expect(stored.tokenHash).toBe(sha(res.body.token));
+      expect(stored.tokenHash).not.toBe(res.body.token);
+    });
+
+    it("refuses to generate a token for a non-owner with 403", async () => {
+      mockVerifyIdToken.mockResolvedValue({ uid: "other-1", email: "other@example.com" });
+      const res = await request(app)
+        .post("/api/bnpb/token")
+        .set("Authorization", "Bearer other");
+      expect(res.status).toBe(403);
+      expect(getCollection("bnpb_sync_tokens")).toEqual({});
+    });
+
+    it("rejects an unauthenticated token request with 401", async () => {
+      mockVerifyIdToken.mockRejectedValue(new Error("bad token"));
+      const res = await request(app).post("/api/bnpb/token");
+      expect(res.status).toBe(401);
+    });
+
+    it("revoking deletes the token and refuses a non-owner", async () => {
+      signInOwner();
+      seedToken("old-secret");
+      const revoked = await request(app)
+        .post("/api/bnpb/token/revoke")
+        .set("Authorization", "Bearer owner-token");
+      expect(revoked.status).toBe(200);
+      expect(getCollection("bnpb_sync_tokens")[OWNER_UID]).toBeUndefined();
+
+      mockVerifyIdToken.mockResolvedValue({ uid: "other-1", email: "other@example.com" });
+      const denied = await request(app)
+        .post("/api/bnpb/token/revoke")
+        .set("Authorization", "Bearer other");
+      expect(denied.status).toBe(403);
+    });
+
+    it("reports status for the owner", async () => {
+      signInOwner();
+      seedToken("live-secret");
+      const res = await request(app)
+        .get("/api/bnpb/token")
+        .set("Authorization", "Bearer owner-token");
+      expect(res.status).toBe(200);
+      expect(res.body.active).toBe(true);
+      expect(res.body.createdAt).toBe("2026-09-01T00:00:00.000Z");
+      expect(res.body.lastPushAt).toBeNull();
+    });
+  });
+
+  describe("intake", () => {
+    it("rejects a missing, wrong or revoked token with 401", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      expect((await sync(undefined, payload())).status).toBe(401);
+      expect((await sync("wrong-secret", payload())).status).toBe(401);
+      const revoked = await request(app)
+        .post("/api/bnpb/sync")
+        .set("x-sync-token", "live-secret")
+        .send(payload());
+      expect(revoked.status).toBe(200);
+      seedDoc("bnpb_sync_tokens", OWNER_UID, { uid: OWNER_UID, tokenHash: sha("dead"), createdAt: "x", lastPushAt: null });
+      expect((await sync("live-secret", payload())).status).toBe(401);
+    });
+
+    it("rejects a token whose uid is not the owner with 401", async () => {
+      seedDoc("users", "other-1", { email: "other@example.com", role: "admin" });
+      seedToken("live-secret", "other-1");
+      const res = await sync("live-secret", payload());
+      expect(res.status).toBe(401);
+    });
+
+    it("rejects a malformed body with 400", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      expect((await sync("live-secret", { nope: true })).status).toBe(400);
+      expect((await sync("live-secret", { interactions: [{ syncId: "s1" }] })).status).toBe(400);
+    });
+
+    it("refuses a body over the per-request cap", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      const many = {
+        interactions: Array.from({ length: 201 }, (_, i) => ({
+          syncId: `s-${i}`,
+          occurredAt: "2026-09-10T15:00:00.000Z",
+          summary: "x",
+          medium: "call",
+          participants: [{ bnpbContactId: "p", firstName: "A" }],
+        })),
+      };
+      const res = await sync("live-secret", many);
+      expect(res.status).toBe(400);
+    });
+
+    it("creates one pending suggestion per participant and is idempotent on re-send", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      const first = await sync("live-secret", payload());
+      expect(first.status).toBe(200);
+      const created = ownedSuggestions();
+      expect(created).toHaveLength(2);
+      expect(created.every((s) => s.status === "pending")).toBe(true);
+      expect(new Set(created.map((s) => s.bnpbContactId))).toEqual(new Set(["p-1", "p-2"]));
+      expect(created.find((s) => s.bnpbContactId === "p-2")!.bnpbName).toBe("Beth Doe");
+      expect(created.find((s) => s.bnpbContactId === "p-1")!.text).toBe("Coffee downtown");
+
+      const second = await sync("live-secret", payload());
+      expect(second.status).toBe(200);
+      expect(ownedSuggestions()).toHaveLength(2);
+    });
+
+    it("updates pending suggestions on re-push and leaves confirmed ones untouched", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", payload());
+      const colStore = getCollection(`users/${OWNER_UID}/interactionSuggestions`);
+      const [settledKey, settledDoc] = Object.entries(colStore).find(([, d]) => (d as any).bnpbContactId === "p-1")!;
+      colStore[settledKey] = { ...(settledDoc as any), status: "confirmed", text: "Edited by owner" };
+
+      const edited = payload();
+      (edited.interactions[0] as any).summary = "Coffee uptown";
+      const res = await sync("live-secret", edited);
+      expect(res.status).toBe(200);
+      const after = ownedSuggestions();
+      const ownerSettled = after.find((s) => s.bnpbContactId === "p-1")!;
+      expect(ownerSettled.status).toBe("confirmed");
+      expect(ownerSettled.text).toBe("Edited by owner");
+      const stillPending = after.find((s) => s.bnpbContactId === "p-2")!;
+      expect(stillPending.status).toBe("pending");
+      expect(stillPending.summary).toBe("Coffee uptown");
+    });
+
+    it("withdraws pending suggestions for a tombstone and for a removed participant", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", payload());
+
+      const tomb = payload();
+      (tomb.interactions[0] as any).deleted = true;
+      expect((await sync("live-secret", tomb)).status).toBe(200);
+      expect(ownedSuggestions().every((s) => s.status === "withdrawn")).toBe(true);
+
+      await sync("live-secret", payload());
+      const removed = payload();
+      (removed.interactions[0] as any).participants = [
+        { bnpbContactId: "p-1", firstName: "Alex", lastName: "Chen", nickname: "Al" },
+      ];
+      expect((await sync("live-secret", removed)).status).toBe(200);
+      expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!.status).toBe("pending");
+      expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-2")!.status).toBe("withdrawn");
+    });
+
+    it("never stores fields outside the payload contract", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", {
+        interactions: [
+          {
+            syncId: "s1",
+            occurredAt: "2026-09-10T15:00:00.000Z",
+            summary: "Call",
+            medium: "call",
+            notes: "private thoughts",
+            location: "home",
+            markForPrayer: true,
+            followUpAt: "2026-10-01",
+            attachments: ["a"],
+            participants: [{ bnpbContactId: "p-1", firstName: "Alex" }],
+          },
+        ],
+      });
+      const [stored] = ownedSuggestions();
+      expect(stored.notes).toBeUndefined();
+      expect(stored.location).toBeUndefined();
+      expect(stored.markForPrayer).toBeUndefined();
+      expect(stored.followUpAt).toBeUndefined();
+      expect(stored.attachments).toBeUndefined();
+    });
+
+    it("records the last push time on the token", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", payload());
+      const stored = getCollection("bnpb_sync_tokens")[OWNER_UID] as Record<string, any>;
+      expect(typeof stored.lastPushAt).toBe("string");
+    });
   });
 });

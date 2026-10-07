@@ -2193,5 +2193,32 @@
     "not_found_title": "Página no encontrada",
     "not_found_body": "Esta página de ayuda no existe o no está disponible para tu rol.",
     "back_to_help": "Volver a la ayuda"
+  },
+  "bnpb": {
+    "settings_title": "BNPB",
+    "settings_sub": "Conecta BNPB para que las interacciones que registras allí lleguen aquí para revisarlas.",
+    "token_active": "Conectado",
+    "token_inactive": "No conectado",
+    "token_inactive_help": "Genera un token y pégalo en BNPB.",
+    "token_created": "Token creado {date}",
+    "token_last_push": "Último envío {date}",
+    "token_never_pushed": "Aún no hay envíos",
+    "generate": "Generar token",
+    "revoke": "Revocar",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "token_once": "Copia este token ahora — solo se muestra una vez.",
+    "token_help": "Pégalo en BNPB para conectar. Generar uno nuevo revoca el anterior.",
+    "error_generic": "Algo salió mal. Inténtalo de nuevo.",
+    "queue_title": "Cola de sugerencias",
+    "queue_sub": "Revisa lo que envió BNPB y confirma lo que pertenece al registro.",
+    "queue_empty": "No hay nada pendiente.",
+    "queue_text_label": "Lo que leerán los compañeros",
+    "queue_pick_contact": "¿Quién es?",
+    "queue_search_contacts": "Buscar contactos…",
+    "queue_confirm": "Confirmar",
+    "queue_confirmed": "Confirmado",
+    "queue_not_visible": "No puedes vincular esto a ese contacto.",
+    "loading": "Cargando…"
   }
 }

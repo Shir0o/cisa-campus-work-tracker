@@ -17,6 +17,7 @@ import { db, handleFirestoreError, OperationType, sendNotification } from '../li
 import { AppUser, Invitation } from '../types';
 import { FirstRunStore, firstRunKey } from '../lib/firstRun';
 import { useAuth } from '../components/AuthProvider';
+import BnpbSyncCard from '../components/settings/BnpbSyncCard';
 import PageContainer from '../components/layout/PageContainer';
 import {
   Shield,
@@ -3339,6 +3340,7 @@ export default function Settings() {
         </p>
       </header>
       <AccountSection />
+      <BnpbSyncCard />
       <SecuritySection />
       <AppearanceSection theme={theme} setTheme={setTheme} />
       <NavigationSection />

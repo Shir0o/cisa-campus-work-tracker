@@ -1,0 +1,204 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Contact } from '../types';
+import type { InteractionSuggestion } from '../lib/bnpb';
+
+const hoisted = vi.hoisted(() => {
+  let seq = 0;
+  const batch = {
+    set: vi.fn(),
+    update: vi.fn(),
+    commit: vi.fn().mockResolvedValue(undefined),
+  };
+  return {
+    batch,
+    nextId: () => `generated-${++seq}`,
+    mockOnSnapshot: vi.fn((_query?: unknown, callback?: unknown) => {
+      if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs: [] });
+      return vi.fn();
+    }),
+  };
+});
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((...args: unknown[]) => ({ path: args.filter((a) => typeof a === 'string').join('/') })),
+  doc: vi.fn((...args: unknown[]) => {
+    const parts = args.filter((a) => typeof a === 'string');
+    if (parts.length > 0) return { path: parts.join('/'), id: parts[parts.length - 1] };
+    const ref = args.find((a) => a && typeof a === 'object' && 'path' in a) as { path: string } | undefined;
+    return { path: ref?.path ?? 'collection', id: hoisted.nextId() };
+  }),
+  writeBatch: vi.fn(() => hoisted.batch),
+  onSnapshot: hoisted.mockOnSnapshot,
+  query: vi.fn((...args: unknown[]) => ({ args })),
+  orderBy: vi.fn((...args: unknown[]) => ({ args })),
+  serverTimestamp: vi.fn(() => ({ __ts: true })),
+}));
+
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  handleFirestoreError: vi.fn(),
+  OperationType: { CREATE: 'CREATE', UPDATE: 'UPDATE' },
+}));
+
+import {
+  INTERACTION_SUGGESTIONS_SUBCOLLECTION,
+  SUGGESTION_LINKS_SUBCOLLECTION,
+  confirmSuggestion,
+  formatDurationMinutes,
+  isContactVisible,
+  mediumToType,
+  orderPendingSuggestions,
+  subscribePendingSuggestions,
+} from '../lib/bnpb';
+
+const contact = (over: Partial<Contact> = {}): Contact => ({
+  id: 'c1',
+  name: 'Alex Chen',
+  location: '',
+  email: '',
+  phone: '',
+  stage: 'Lead',
+  lastSeen: '',
+  initials: 'AC',
+  ...over,
+});
+
+const suggestion = (over: Partial<InteractionSuggestion> = {}): InteractionSuggestion => ({
+  id: 'sug-1',
+  syncId: 's1',
+  bnpbContactId: 'p-1',
+  bnpbName: 'Alex Chen',
+  occurredAt: '2026-09-10T15:00:00.000Z',
+  durationMinutes: 45,
+  summary: 'Coffee downtown',
+  medium: 'coffee',
+  text: 'Coffee downtown',
+  status: 'pending',
+  ...over,
+});
+
+describe('mediumToType', () => {
+  it('maps the known media and falls back to interaction', () => {
+    expect(mediumToType('call')).toBe('call');
+    expect(mediumToType('Phone Call')).toBe('call');
+    expect(mediumToType('email')).toBe('email');
+    expect(mediumToType('text')).toBe('chat');
+    expect(mediumToType('message')).toBe('chat');
+    expect(mediumToType('Chat')).toBe('chat');
+    expect(mediumToType('coffee')).toBe('meeting');
+    expect(mediumToType('meal')).toBe('meeting');
+    expect(mediumToType('meeting')).toBe('meeting');
+    expect(mediumToType('in person')).toBe('meeting');
+    expect(mediumToType('letter')).toBe('interaction');
+  });
+});
+
+describe('formatDurationMinutes', () => {
+  it('renders the tracker duration string', () => {
+    expect(formatDurationMinutes(undefined)).toBeUndefined();
+    expect(formatDurationMinutes(null)).toBeUndefined();
+    expect(formatDurationMinutes(45)).toBe('45 min');
+    expect(formatDurationMinutes(60)).toBe('1h');
+    expect(formatDurationMinutes(90)).toBe('1h 30m');
+  });
+});
+
+describe('orderPendingSuggestions', () => {
+  it('keeps only pending suggestions, newest first', () => {
+    const list = [
+      suggestion({ id: 'old', occurredAt: '2026-09-01T10:00:00.000Z' }),
+      suggestion({ id: 'new', occurredAt: '2026-09-20T10:00:00.000Z' }),
+      suggestion({ id: 'done', occurredAt: '2026-09-30T10:00:00.000Z', status: 'confirmed' }),
+    ];
+    expect(orderPendingSuggestions(list).map((s) => s.id)).toEqual(['new', 'old']);
+  });
+});
+
+describe('isContactVisible', () => {
+  it('shows anyone to non-trainees and only tied contacts to a trainee', () => {
+    expect(isContactVisible('admin', 'u1', contact({ createdBy: 'other' }))).toBe(true);
+    expect(isContactVisible('operator', 'u1', contact({ createdBy: 'other' }))).toBe(true);
+    expect(isContactVisible('manager', 'u1', contact({ createdBy: 'other' }))).toBe(false);
+    expect(isContactVisible('manager', 'u1', contact({ createdBy: 'u1' }))).toBe(true);
+    expect(isContactVisible('manager', 'u1', null)).toBe(false);
+  });
+});
+
+describe('confirmSuggestion', () => {
+  beforeEach(() => {
+    hoisted.batch.set.mockClear();
+    hoisted.batch.update.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('writes the interaction, marks the suggestion confirmed and records the link', async () => {
+    await confirmSuggestion({
+      uid: 'u1',
+      user: { uid: 'u1', displayName: 'Owner', photoURL: '', email: 'owner@example.com' },
+      role: 'admin',
+      suggestion: suggestion(),
+      contact: contact({ id: 'c1' }),
+      text: '  Coffee and a walk  ',
+    });
+
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+    const sets = hoisted.batch.set.mock.calls.map(([ref, data]) => ({ path: ref.path, data }));
+    const interaction = sets.find((s) => s.path === 'contacts/c1/interactions');
+    expect(interaction).toBeTruthy();
+    expect(interaction!.data).toMatchObject({
+      userId: 'u1',
+      content: 'Coffee and a walk',
+      dateTime: '2026-09-10T15:00:00.000Z',
+      type: 'meeting',
+      duration: '45 min',
+    });
+    const link = sets.find((s) => s.path.startsWith(`users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/`));
+    expect(link).toBeTruthy();
+    expect(link!.data).toMatchObject({ bnpbContactId: 'p-1', contactId: 'c1' });
+
+    const [updateRef, updateData] = hoisted.batch.update.mock.calls[0];
+    expect(updateRef.path).toBe(`users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/sug-1`);
+    expect(updateData).toMatchObject({ status: 'confirmed', contactId: 'c1', text: 'Coffee and a walk' });
+  });
+
+  it('refuses to confirm onto a contact the person cannot see', async () => {
+    await expect(
+      confirmSuggestion({
+        uid: 'u1',
+        user: { uid: 'u1', displayName: 'Owner' },
+        role: 'manager',
+        suggestion: suggestion(),
+        contact: contact({ id: 'c1', createdBy: 'someone-else' }),
+        text: 'text',
+      }),
+    ).rejects.toThrow(/visible/i);
+    expect(hoisted.batch.commit).not.toHaveBeenCalled();
+  });
+});
+
+describe('subscribePendingSuggestions', () => {
+  beforeEach(() => hoisted.mockOnSnapshot.mockClear());
+
+  it('streams pending suggestions newest first', () => {
+    hoisted.mockOnSnapshot.mockImplementationOnce((_query: unknown, callback: unknown) => {
+      (callback as (snap: unknown) => void)({
+        docs: [
+          { id: 'done', data: () => ({ ...suggestion({ id: 'done', status: 'confirmed' }) }) },
+          { id: 'old', data: () => ({ ...suggestion({ id: 'old', occurredAt: '2026-09-01T10:00:00.000Z' }) }) },
+          { id: 'new', data: () => ({ ...suggestion({ id: 'new', occurredAt: '2026-09-20T10:00:00.000Z' }) }) },
+        ],
+      });
+      return vi.fn();
+    });
+
+    const seen: InteractionSuggestion[] = [];
+    const unsub = subscribePendingSuggestions(
+      'u1',
+      (list) => seen.push(...list),
+      () => {},
+    );
+    expect(hoisted.mockOnSnapshot).toHaveBeenCalledTimes(1);
+    expect(seen.map((s) => s.id)).toEqual(['new', 'old']);
+    expect(typeof unsub).toBe('function');
+  });
+});

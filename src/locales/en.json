@@ -2193,5 +2193,32 @@
     "not_found_title": "Page not found",
     "not_found_body": "This help page does not exist, or it is not available for your role.",
     "back_to_help": "Back to Help"
+  },
+  "bnpb": {
+    "settings_title": "BNPB",
+    "settings_sub": "Connect BNPB so the Interactions you log there arrive here for review.",
+    "token_active": "Connected",
+    "token_inactive": "Not connected",
+    "token_inactive_help": "Generate a token, then paste it into BNPB.",
+    "token_created": "Token created {date}",
+    "token_last_push": "Last push {date}",
+    "token_never_pushed": "No push yet",
+    "generate": "Generate token",
+    "revoke": "Revoke",
+    "copy": "Copy",
+    "copied": "Copied",
+    "token_once": "Copy this token now — it is shown only once.",
+    "token_help": "Paste it into BNPB to connect. Generating a new one revokes the old.",
+    "error_generic": "Something went wrong. Please try again.",
+    "queue_title": "Suggestion queue",
+    "queue_sub": "Review what BNPB sent and confirm what belongs in the tracker.",
+    "queue_empty": "Nothing waiting.",
+    "queue_text_label": "What teammates will read",
+    "queue_pick_contact": "Who is this?",
+    "queue_search_contacts": "Search contacts…",
+    "queue_confirm": "Confirm",
+    "queue_confirmed": "Confirmed",
+    "queue_not_visible": "You cannot attach this to that contact.",
+    "loading": "Loading…"
   }
 }
