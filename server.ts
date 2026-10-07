@@ -2911,6 +2911,7 @@ ${JSON.stringify(contactsList)}`;
   const BNPB_SYNC_MAX_INTERACTIONS = 200;
   const BNPB_SYNC_TOKEN_COLLECTION = 'bnpb_sync_tokens';
   const BNPB_SUGGESTIONS_SUBCOLLECTION = 'interactionSuggestions';
+  const BNPB_NOT_A_CISA_PERSON_SUBCOLLECTION = 'notACisaPeople';
 
   const personalSyncTokenHash = (token: string): string =>
     crypto.createHash('sha256').update(token, 'utf8').digest('hex');
@@ -3110,6 +3111,14 @@ ${JSON.stringify(contactsList)}`;
       }
 
       const suggestions = db.collection('users').doc(uid).collection(BNPB_SUGGESTIONS_SUBCOLLECTION);
+      const choicesSnap = await db
+        .collection('users')
+        .doc(uid)
+        .collection(BNPB_NOT_A_CISA_PERSON_SUBCOLLECTION)
+        .get();
+      const notACisa = new Set(
+        choicesSnap.docs.map((entry) => String((entry.data() as Record<string, unknown>).bnpbContactId ?? '')),
+      );
       const now = new Date().toISOString();
       let created = 0;
       let updated = 0;
@@ -3140,6 +3149,9 @@ ${JSON.stringify(contactsList)}`;
           if (existing && (existing.data.status === 'confirmed' || existing.data.status === 'dismissed')) {
             continue;
           }
+          // A "Not a CISA person" choice arrives already settled, so the owner
+          // is never asked again and an Undo of the choice can restore it.
+          const notCisa = notACisa.has(participant.bnpbContactId);
           const suggestion = {
             syncId: interaction.syncId,
             bnpbContactId: participant.bnpbContactId,
@@ -3149,7 +3161,8 @@ ${JSON.stringify(contactsList)}`;
             summary: interaction.summary,
             medium: interaction.medium,
             sourceUpdatedAt: interaction.updatedAt ?? null,
-            status: 'pending',
+            status: notCisa ? 'dismissed' : 'pending',
+            ...(notCisa ? { dismissedBy: 'notACisaPerson', dismissedAt: now } : {}),
             text: interaction.summary,
             createdAt: existing ? existing.data.createdAt ?? now : now,
             updatedAt: now,

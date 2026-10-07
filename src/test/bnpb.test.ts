@@ -7,6 +7,7 @@ const hoisted = vi.hoisted(() => {
   const batch = {
     set: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
     commit: vi.fn().mockResolvedValue(undefined),
   };
   return {
@@ -32,6 +33,7 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn((...args: unknown[]) => ({ args })),
   orderBy: vi.fn((...args: unknown[]) => ({ args })),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
+  deleteField: vi.fn(() => ({ __delete: true })),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -42,13 +44,18 @@ vi.mock('../lib/firebase', () => ({
 
 import {
   INTERACTION_SUGGESTIONS_SUBCOLLECTION,
+  NOT_A_CISA_PERSON_SUBCOLLECTION,
   SUGGESTION_LINKS_SUBCOLLECTION,
   confirmSuggestion,
+  dismissSuggestion,
   formatDurationMinutes,
   isContactVisible,
+  markNotACisaPerson,
   mediumToType,
   orderPendingSuggestions,
   subscribePendingSuggestions,
+  undoSuggestionDismiss,
+  undoNotACisaPerson,
 } from '../lib/bnpb';
 
 const contact = (over: Partial<Contact> = {}): Contact => ({
@@ -173,6 +180,97 @@ describe('confirmSuggestion', () => {
       }),
     ).rejects.toThrow(/visible/i);
     expect(hoisted.batch.commit).not.toHaveBeenCalled();
+  });
+});
+
+describe('dismissSuggestion', () => {
+  beforeEach(() => {
+    hoisted.batch.set.mockClear();
+    hoisted.batch.update.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('sets the suggestion dismissed as a single dismissal', async () => {
+    await dismissSuggestion({ uid: 'u1', suggestion: suggestion() });
+
+    const [ref, data] = hoisted.batch.update.mock.calls[0];
+    expect(ref.path).toBe(`users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/sug-1`);
+    expect(data).toMatchObject({ status: 'dismissed', dismissedBy: 'single' });
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('undoSuggestionDismiss', () => {
+  beforeEach(() => {
+    hoisted.batch.update.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('restores a single dismissal to pending', async () => {
+    await undoSuggestionDismiss({ uid: 'u1', suggestionId: 'sug-1' });
+
+    const [ref, data] = hoisted.batch.update.mock.calls[0];
+    expect(ref.path).toBe(`users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/sug-1`);
+    expect(data.status).toBe('pending');
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('markNotACisaPerson', () => {
+  beforeEach(() => {
+    hoisted.batch.set.mockClear();
+    hoisted.batch.update.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('records the choice and dismisses every pending suggestion for that BNPB contact', async () => {
+    const list = [
+      suggestion({ id: 'a', bnpbContactId: 'p-1' }),
+      suggestion({ id: 'b', bnpbContactId: 'p-1' }),
+      suggestion({ id: 'c', bnpbContactId: 'p-2' }),
+      suggestion({ id: 'd', bnpbContactId: 'p-1', status: 'confirmed' }),
+    ];
+
+    const restored = await markNotACisaPerson({ uid: 'u1', bnpbContactId: 'p-1', suggestions: list });
+
+    expect(restored).toEqual(['a', 'b']);
+    const choice = hoisted.batch.set.mock.calls.find(([ref]) =>
+      ref.path.startsWith(`users/u1/${NOT_A_CISA_PERSON_SUBCOLLECTION}/`),
+    );
+    expect(choice).toBeTruthy();
+    expect(choice![1]).toMatchObject({ bnpbContactId: 'p-1' });
+
+    const updates = hoisted.batch.update.mock.calls.map(([ref, data]) => ({ path: ref.path, data }));
+    expect(updates.map((u) => u.path)).toEqual([
+      `users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/a`,
+      `users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/b`,
+    ]);
+    expect(updates[0].data).toMatchObject({ status: 'dismissed', dismissedBy: 'notACisaPerson' });
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('undoNotACisaPerson', () => {
+  beforeEach(() => {
+    hoisted.batch.update.mockClear();
+    hoisted.batch.delete.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('removes the choice and restores exactly the suggestions it dismissed', async () => {
+    await undoNotACisaPerson({ uid: 'u1', bnpbContactId: 'p-1', suggestionIds: ['a', 'b'] });
+
+    expect(hoisted.batch.delete).toHaveBeenCalledTimes(1);
+    const deletedRef = hoisted.batch.delete.mock.calls[0][0];
+    expect(deletedRef.path.startsWith(`users/u1/${NOT_A_CISA_PERSON_SUBCOLLECTION}/`)).toBe(true);
+
+    const updates = hoisted.batch.update.mock.calls;
+    expect(updates.map(([ref]) => ref.path)).toEqual([
+      `users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/a`,
+      `users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/b`,
+    ]);
+    expect(updates[0][1].status).toBe('pending');
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
   });
 });
 

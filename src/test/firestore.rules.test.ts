@@ -4923,6 +4923,35 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets the owner dismiss a suggestion and undo it', async () => {
+      await seedSuggestion(OWNER_UID);
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      await assertSucceeds(updateDoc(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'sug-1'), {
+        status: 'dismissed',
+        dismissedBy: 'single',
+        dismissedAt: serverTimestamp(),
+      }));
+      await assertSucceeds(updateDoc(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'sug-1'), {
+        status: 'pending',
+        dismissedBy: deleteField(),
+        dismissedAt: deleteField(),
+      }));
+    });
+
+    it('keeps Not a CISA person choices owner-only', async () => {
+      await seedUser('op1', 'operator');
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const choice = { bnpbContactId: 'p-1', createdAt: serverTimestamp() };
+      await assertSucceeds(setDoc(doc(owner, 'users', OWNER_UID, 'notACisaPeople', 'b1'), choice));
+      await assertSucceeds(getDoc(doc(owner, 'users', OWNER_UID, 'notACisaPeople', 'b1')));
+      await assertSucceeds(deleteDoc(doc(owner, 'users', OWNER_UID, 'notACisaPeople', 'b1')));
+
+      const other = getFirestore({ uid: 'op1', email: 'op1@example.com' });
+      await assertFails(getDoc(doc(other, 'users', OWNER_UID, 'notACisaPeople', 'b1')));
+      await assertFails(setDoc(doc(other, 'users', OWNER_UID, 'notACisaPeople', 'b2'), choice));
+      await assertFails(getDoc(doc(other, 'users', 'op1', 'notACisaPeople', 'b1')));
+    });
+
     it('keeps Suggestion links owner-only', async () => {
       await seedUser('op1', 'operator');
       const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
