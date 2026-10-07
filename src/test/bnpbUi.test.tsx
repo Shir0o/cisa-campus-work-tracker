@@ -5,6 +5,17 @@ import React from 'react';
 vi.mock('react-router-dom', () => ({
   Navigate: ({ to }: { to: string }) =>
     React.createElement('div', { 'data-testid': 'navigate', 'data-to': to }),
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) =>
+    React.createElement('a', { href: to }, children),
+}));
+
+const hoisted = vi.hoisted(() => ({
+  batch: {
+    set: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
@@ -24,7 +35,7 @@ vi.mock('firebase/firestore', () => ({
   }),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
   deleteField: vi.fn(() => ({ __delete: true })),
-  writeBatch: vi.fn(() => ({ set: vi.fn(), update: vi.fn(), delete: vi.fn(), commit: vi.fn() })),
+  writeBatch: vi.fn(() => hoisted.batch),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -102,6 +113,84 @@ describe('SuggestionsQueue', () => {
     render(<SuggestionsQueue />);
     await waitFor(() => expect(screen.getByText('bnpb.queue_title')).toBeInTheDocument());
     expect(screen.getByText('bnpb.queue_empty')).toBeInTheDocument();
+  });
+});
+
+describe('SuggestionsQueue matching and grouping', () => {
+  const suggestion = (over: Record<string, unknown>) => ({
+    id: 'sug',
+    syncId: 's1',
+    bnpbContactId: 'p-1',
+    bnpbName: 'Alex Chen',
+    occurredAt: '2026-09-10T15:00:00.000Z',
+    durationMinutes: 45,
+    summary: 'Coffee downtown',
+    medium: 'coffee',
+    text: 'Coffee downtown',
+    status: 'pending',
+    ...over,
+  });
+
+  beforeEach(() => {
+    mockedUseAuth.mockReturnValue(asUser('yilongwang05@gmail.com') as never);
+    hoisted.batch.update.mockClear();
+    hoisted.batch.commit.mockClear();
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, callback: unknown) => {
+      const path = (ref as { path?: string })?.path ?? '';
+      let docs: unknown[] = [];
+      if (path === 'users/u1/interactionSuggestions') {
+        docs = [
+          { id: 'ready', data: () => suggestion({ id: 'ready' }) },
+          {
+            id: 'who-a',
+            data: () => suggestion({ id: 'who-a', bnpbContactId: 'p-9', bnpbName: 'Zoe Quinn', summary: 'Older' }),
+          },
+          {
+            id: 'who-b',
+            data: () =>
+              suggestion({
+                id: 'who-b',
+                bnpbContactId: 'p-9',
+                bnpbName: 'Zoe Quinn',
+                summary: 'Newer',
+                occurredAt: '2026-09-20T15:00:00.000Z',
+              }),
+          },
+        ];
+      } else if (path === 'contacts') {
+        docs = [{ id: 'c1', data: () => ({ name: 'Alex Chen' }) }];
+      }
+      if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs });
+      return vi.fn();
+    });
+  });
+
+  it('splits matched and unmatched into the two sections with badges and a month divider', async () => {
+    render(<SuggestionsQueue />);
+
+    expect(await screen.findByText('bnpb.queue_ready_title')).toBeInTheDocument();
+    expect(screen.getByText('bnpb.badge_exact')).toBeInTheDocument();
+    expect(screen.getByText('bnpb.queue_who_title')).toBeInTheDocument();
+    expect(screen.getByText('Zoe Quinn')).toBeInTheDocument();
+    expect(screen.getByText('bnpb.queue_who_count')).toBeInTheDocument();
+    expect(screen.getByText('September 2026')).toBeInTheDocument();
+  });
+
+  it('assigns a chosen Contact to every suggestion on a Who-is-this card', async () => {
+    render(<SuggestionsQueue />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Alex Chen' }));
+
+    await waitFor(() => expect(hoisted.batch.update).toHaveBeenCalledTimes(2));
+    const paths = hoisted.batch.update.mock.calls.map(([ref]) => (ref as { path: string }).path);
+    expect(paths).toEqual([
+      'users/u1/interactionSuggestions/who-b',
+      'users/u1/interactionSuggestions/who-a',
+    ]);
+    for (const [, data] of hoisted.batch.update.mock.calls) {
+      expect(data).toEqual({ contactId: 'c1' });
+    }
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -189,10 +278,6 @@ describe('SuggestionsQueue duplicate flag', () => {
 
   it('flags an owner Interaction logged the same day and offers Log anyway', async () => {
     render(<SuggestionsQueue />);
-    fireEvent.change(await screen.findByPlaceholderText('bnpb.queue_search_contacts'), {
-      target: { value: 'Alex' },
-    });
-    fireEvent.click(await screen.findByRole('button', { name: 'Alex Chen' }));
 
     expect(await screen.findByText('bnpb.queue_maybe_logged')).toBeInTheDocument();
     expect(screen.getByText('bnpb.queue_log_anyway')).toBeInTheDocument();
@@ -200,12 +285,9 @@ describe('SuggestionsQueue duplicate flag', () => {
 
   it('re-evaluates the flag when the Contact changes', async () => {
     render(<SuggestionsQueue />);
-    fireEvent.change(await screen.findByPlaceholderText('bnpb.queue_search_contacts'), {
-      target: { value: 'Alex' },
-    });
-    fireEvent.click(await screen.findByRole('button', { name: 'Alex Chen' }));
     expect(await screen.findByText('bnpb.queue_maybe_logged')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByText('bnpb.queue_change'));
     fireEvent.change(screen.getByPlaceholderText('bnpb.queue_search_contacts'), {
       target: { value: 'Bea' },
     });

@@ -46,6 +46,8 @@ import {
   INTERACTION_SUGGESTIONS_SUBCOLLECTION,
   NOT_A_CISA_PERSON_SUBCOLLECTION,
   SUGGESTION_LINKS_SUBCOLLECTION,
+  assignContactToSuggestions,
+  buildSuggestionQueue,
   calendarDay,
   confirmSuggestion,
   dismissSuggestion,
@@ -53,10 +55,15 @@ import {
   formatDurationMinutes,
   isContactVisible,
   markNotACisaPerson,
+  matchSuggestion,
   mediumToType,
+  monthKey,
+  nameSimilarity,
+  normalizeName,
   orderPendingSuggestions,
   subscribeContactInteractions,
   subscribePendingSuggestions,
+  subscribeSuggestionLinks,
   undoSuggestionDismiss,
   undoNotACisaPerson,
 } from '../lib/bnpb';
@@ -375,6 +382,221 @@ describe('subscribeContactInteractions', () => {
       () => {},
     );
     expect(seen[0][0]).toMatchObject({ id: 'i1', content: 'Called', dateTime: '2026-09-10' });
+    expect(typeof unsub).toBe('function');
+  });
+});
+
+describe('normalizeName and nameSimilarity', () => {
+  it('normalises case, accents and punctuation', () => {
+    expect(normalizeName('  José  O’Brien ')).toBe('jose o brien');
+  });
+
+  it('treats a whole-name containment as a strong short-name guess', () => {
+    expect(nameSimilarity('Alex', 'Alex Chen')).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('scores a typo high and a distant name low', () => {
+    expect(nameSimilarity('Alx Chen', 'Alex Chen')).toBeGreaterThan(0.7);
+    expect(nameSimilarity('Bob Smith', 'Alex Chen')).toBeLessThan(0.7);
+  });
+});
+
+describe('monthKey', () => {
+  it('reads the year and month from a timestamp', () => {
+    expect(monthKey('2026-09-10T15:00:00.000Z')).toBe('2026-09');
+    expect(monthKey('nonsense')).toBe('unknown');
+  });
+});
+
+describe('matchSuggestion', () => {
+  const contacts = [
+    contact({ id: 'c1', name: 'Alex Chen' }),
+    contact({ id: 'c2', name: 'Bea Diaz' }),
+  ];
+  const base = { contacts, links: new Map<string, string>(), role: 'admin', uid: 'u1' };
+
+  it('prefers the chosen contact stored on the suggestion', () => {
+    const match = matchSuggestion({ ...base, suggestion: suggestion({ contactId: 'c2' }) });
+    expect(match.basis).toBe('chosen');
+    expect(match.contact?.id).toBe('c2');
+  });
+
+  it('uses a remembered link ahead of the written name', () => {
+    const match = matchSuggestion({
+      ...base,
+      links: new Map([['p-1', 'c2']]),
+      suggestion: suggestion(),
+    });
+    expect(match.basis).toBe('remembered');
+    expect(match.contact?.id).toBe('c2');
+  });
+
+  it('falls through a link to a contact the owner can no longer see', () => {
+    const hidden = contact({ id: 'c2', name: 'Bea Diaz', createdBy: 'someone-else' });
+    const match = matchSuggestion({
+      contacts: [contact({ id: 'c1', name: 'Alex Chen', createdBy: 'u1' }), hidden],
+      links: new Map([['p-1', 'c2']]),
+      role: 'manager',
+      uid: 'u1',
+      suggestion: suggestion(),
+    });
+    expect(match.basis).toBe('exact');
+    expect(match.contact?.id).toBe('c1');
+  });
+
+  it('matches an exact name case- and accent-insensitively', () => {
+    const match = matchSuggestion({ ...base, suggestion: suggestion({ bnpbName: 'alex chen' }) });
+    expect(match.basis).toBe('exact');
+    expect(match.contact?.id).toBe('c1');
+  });
+
+  it('offers a fuzzy best guess for a near name', () => {
+    const match = matchSuggestion({ ...base, suggestion: suggestion({ bnpbName: 'Alx Chen' }) });
+    expect(match.basis).toBe('guess');
+    expect(match.contact?.id).toBe('c1');
+  });
+
+  it('leaves a distant name unmatched', () => {
+    const match = matchSuggestion({ ...base, suggestion: suggestion({ bnpbName: 'Zoe Quinn' }) });
+    expect(match.basis).toBe('unmatched');
+    expect(match.contact).toBeNull();
+  });
+
+  it('only matches contacts the owner can see', () => {
+    const hidden = contact({ id: 'c3', name: 'Alx Chen', createdBy: 'other' });
+    const match = matchSuggestion({
+      contacts: [contact({ id: 'c1', name: 'Alex Chen', createdBy: 'u1' }), hidden],
+      links: new Map(),
+      role: 'manager',
+      uid: 'u1',
+      suggestion: suggestion({ bnpbName: 'Alx Chen' }),
+    });
+    expect(match.contact?.id).toBe('c1');
+  });
+});
+
+describe('buildSuggestionQueue', () => {
+  const contacts = [contact({ id: 'c1', name: 'Alex Chen' })];
+
+  it('lists matched suggestions newest first under month dividers', () => {
+    const list = [
+      suggestion({ id: 'aug', occurredAt: '2026-08-05T10:00:00.000Z' }),
+      suggestion({ id: 'sep-old', occurredAt: '2026-09-01T10:00:00.000Z' }),
+      suggestion({ id: 'sep-new', occurredAt: '2026-09-20T10:00:00.000Z' }),
+    ];
+    const queue = buildSuggestionQueue({
+      suggestions: list,
+      contacts,
+      links: new Map(),
+      role: 'admin',
+      uid: 'u1',
+    });
+    expect(queue.ready.map((section) => section.month)).toEqual(['2026-09', '2026-08']);
+    expect(queue.ready[0].items.map((item) => item.suggestion.id)).toEqual(['sep-new', 'sep-old']);
+    expect(queue.whoIsThis).toEqual([]);
+  });
+
+  it('groups unmatched suggestions by BNPB contact with count, latest date and samples', () => {
+    const list = [
+      suggestion({
+        id: 'a',
+        bnpbContactId: 'p-9',
+        bnpbName: 'Zoe Quinn',
+        occurredAt: '2026-09-01T10:00:00.000Z',
+        summary: 'Older',
+      }),
+      suggestion({
+        id: 'b',
+        bnpbContactId: 'p-9',
+        bnpbName: 'Zoe Quinn',
+        occurredAt: '2026-09-20T10:00:00.000Z',
+        summary: 'Newer',
+      }),
+      suggestion({
+        id: 'c',
+        bnpbContactId: 'p-8',
+        bnpbName: 'Sam Poe',
+        occurredAt: '2026-09-10T10:00:00.000Z',
+        summary: 'Middle',
+      }),
+    ];
+    const queue = buildSuggestionQueue({
+      suggestions: list,
+      contacts,
+      links: new Map(),
+      role: 'admin',
+      uid: 'u1',
+    });
+    expect(queue.ready).toEqual([]);
+    expect(queue.whoIsThis.map((group) => group.bnpbContactId)).toEqual(['p-9', 'p-8']);
+    const zoe = queue.whoIsThis[0];
+    expect(zoe.count).toBe(2);
+    expect(zoe.latestOccurredAt).toBe('2026-09-20T10:00:00.000Z');
+    expect(zoe.samples.map((s) => s.id)).toEqual(['b', 'a']);
+    expect(zoe.suggestions.map((s) => s.id)).toEqual(['b', 'a']);
+  });
+
+  it('splits matched from unmatched across both sections', () => {
+    const list = [
+      suggestion({ id: 'matched', bnpbName: 'Alex Chen', occurredAt: '2026-09-20T10:00:00.000Z' }),
+      suggestion({ id: 'who', bnpbName: 'Zoe Quinn', occurredAt: '2026-09-19T10:00:00.000Z' }),
+    ];
+    const queue = buildSuggestionQueue({
+      suggestions: list,
+      contacts,
+      links: new Map(),
+      role: 'admin',
+      uid: 'u1',
+    });
+    expect(queue.ready[0].items.map((i) => i.suggestion.id)).toEqual(['matched']);
+    expect(queue.whoIsThis.map((g) => g.suggestions[0].id)).toEqual(['who']);
+  });
+});
+
+describe('assignContactToSuggestions', () => {
+  beforeEach(() => {
+    hoisted.batch.set.mockClear();
+    hoisted.batch.update.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('sets the chosen contact on every suggestion without confirming or linking', async () => {
+    await assignContactToSuggestions({ uid: 'u1', contactId: 'c1', suggestionIds: ['a', 'b'] });
+
+    const updates = hoisted.batch.update.mock.calls.map(([ref, data]) => ({ path: ref.path, data }));
+    expect(updates).toEqual([
+      { path: `users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/a`, data: { contactId: 'c1' } },
+      { path: `users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/b`, data: { contactId: 'c1' } },
+    ]);
+    expect(hoisted.batch.set).not.toHaveBeenCalled();
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing when there are no suggestions to assign', async () => {
+    await assignContactToSuggestions({ uid: 'u1', contactId: 'c1', suggestionIds: [] });
+    expect(hoisted.batch.update).not.toHaveBeenCalled();
+    expect(hoisted.batch.commit).not.toHaveBeenCalled();
+  });
+});
+
+describe('subscribeSuggestionLinks', () => {
+  beforeEach(() => hoisted.mockOnSnapshot.mockClear());
+
+  it('maps each BNPB contact id to its remembered Contact id', () => {
+    hoisted.mockOnSnapshot.mockImplementationOnce((_q: unknown, callback: unknown) => {
+      (callback as (snap: unknown) => void)({
+        docs: [
+          { id: 'b1', data: () => ({ bnpbContactId: 'p-1', contactId: 'c1' }) },
+          { id: 'b2', data: () => ({}) },
+        ],
+      });
+      return vi.fn();
+    });
+
+    let seen: Map<string, string> | null = null;
+    const unsub = subscribeSuggestionLinks('u1', (links) => (seen = links), () => {});
+    expect(seen!.get('p-1')).toBe('c1');
+    expect(seen!.size).toBe(1);
     expect(typeof unsub).toBe('function');
   });
 });
