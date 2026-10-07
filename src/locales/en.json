@@ -2226,6 +2226,10 @@
     "queue_dismissed": "Dismissed.",
     "queue_not_cisa": "Not a CISA person",
     "queue_not_cisa_done": "Cleared {count} suggestion(s).",
+    "home_review_count": "{n} interaction to review",
+    "home_review_count_plural": "{n} interactions to review",
+    "home_review_need_name": "From BNPB · {n} need a name",
+    "home_review_cta": "Review",
     "loading": "Loading…"
   }
 }

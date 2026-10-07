@@ -91,6 +91,7 @@ import {
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
 import NotReachedCard from "../components/landing/NotReachedCard";
+import BnpbReviewCard from "../components/landing/BnpbReviewCard";
 import OnYouCard from "../components/landing/OnYouCard";
 import PointerCard from "../components/landing/PointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
@@ -1232,6 +1233,9 @@ export default function MyDay() {
             </button>
           </div>
         </header>
+
+        {/* ── BNPB suggestions waiting for the owner (#1423) ── */}
+        <BnpbReviewCard className="mt-8" />
 
         {/* ── Questions for the team — person-less trainee questions (#545) ── */}
         {uid && <AskStack className="mt-8" />}
