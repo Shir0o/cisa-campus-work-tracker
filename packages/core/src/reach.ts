@@ -127,6 +127,7 @@ export interface ReachTies {
   coCreators?: string[] | null;
   founders?: string[] | null;
   carers?: string[] | null;
+  unfollowedBy?: string[] | null;
 }
 
 /** One person the Not-reached-yet card reads: their kind, when they were added,
@@ -144,6 +145,7 @@ export type ReachScope = "yours" | "team";
  *  co-created them, or carry them. */
 export function isTiedTo(person: ReachTies | null | undefined, viewerUid: string): boolean {
   if (!person || !viewerUid) return false;
+  if (person.unfollowedBy && person.unfollowedBy.includes(viewerUid)) return false;
   return (
     person.createdBy === viewerUid ||
     person.addedBy === viewerUid ||

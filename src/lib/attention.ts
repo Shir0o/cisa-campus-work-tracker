@@ -16,13 +16,14 @@ export type AttentionKind = "contact" | "interaction" | "thread" | "task" | "not
  *  here, on the reader's own screen, from preferences they already have
  *  loaded. */
 export function isTiedTo(
-  contact: Pick<Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> | undefined,
+  contact: (Pick<Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> & { unfollowedBy?: string[] }) | undefined,
   uid: string,
   personalContactIds?: Set<string> | null,
   contactId?: string | null,
 ): boolean {
   if (contactId && personalContactIds?.has(contactId)) return true;
   if (!contact || !uid) return false;
+  if (contact.unfollowedBy && contact.unfollowedBy.includes(uid)) return false;
   return (
     contact.createdBy === uid ||
     contact.addedBy === uid ||

@@ -65,6 +65,9 @@ export interface Contact {
    *  contact visibility server-side (#1024 phase 4). Maintained alongside the
    *  ties themselves. */
   visibleTo?: string[];
+  /** Teammates who stepped back from their creator/contact ties (#1498), suppressing
+   *  automatic "On you" cards and notifications unless explicitly @mentioned. */
+  unfollowedBy?: string[];
   season?: string;
   prayerRequest?: string;
   lastContactedBy?: string;

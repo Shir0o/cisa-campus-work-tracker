@@ -28,7 +28,7 @@ import { formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord, Gathering, Rhythm } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, visibleToOf } from "../../lib/permissions";
+import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf } from "../../lib/permissions";
 import { partnersOf } from "../../lib/partners";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
@@ -693,6 +693,73 @@ export default function ContactDetailsModal({
     });
 
     setReassigningCreator(false);
+  };
+
+  const handleReleaseContact = async () => {
+    if (!contact || !currentUid) return;
+    const confirmMsg = t(
+      'modals.contactDetails.release_confirm',
+      'Release {name} from your queue? You will stop receiving notifications and "On you" items for this person, while creation history remains preserved.',
+    ).replace('{name}', firstName);
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    const nextUnfollowed = [...new Set([...(contact.unfollowedBy || []), currentUid])];
+    const nextCarers = (contact.carers || []).filter((id) => id !== currentUid);
+    const nextCoCreators = (contact.coCreators || []).filter((id) => id !== currentUid);
+    const isFounder = (contact.founders || []).includes(currentUid);
+    const nextFounders = isFounder
+      ? (contact.founders || []).filter((id) => id !== currentUid)
+      : (contact.founders || []);
+
+    const nextContactState = {
+      ...contact,
+      unfollowedBy: nextUnfollowed,
+      carers: nextCarers,
+      coCreators: nextCoCreators,
+      founders: nextFounders,
+    };
+    const nextVisibleTo = visibleToOf(nextContactState);
+
+    const patch: Record<string, unknown> = {
+      unfollowedBy: arrayUnion(currentUid),
+      visibleTo: nextVisibleTo,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUid,
+      updatedByName: user?.displayName || user?.email?.split('@')[0] || t('modals.contactDetails.unknown_user'),
+    };
+    if ((contact.carers || []).includes(currentUid)) {
+      patch.carers = arrayRemove(currentUid);
+    }
+    if ((contact.coCreators || []).includes(currentUid)) {
+      patch.coCreators = arrayRemove(currentUid);
+    }
+    if (isFounder) {
+      patch.founders = arrayRemove(currentUid);
+    }
+
+    try {
+      await updateDoc(doc(db, "contacts", contact.id), patch);
+      contact.unfollowedBy = nextUnfollowed;
+      contact.carers = nextCarers;
+      contact.coCreators = nextCoCreators;
+      if (isFounder) contact.founders = nextFounders;
+      contact.visibleTo = nextVisibleTo;
+
+      await logActivity({
+        action: "released a contact from queue",
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: "contact",
+        type: "edit",
+        description: `Released ${contact.name.split(" ")[0]} from personal queue`,
+      });
+
+      showUndoSnack(t('modals.contactDetails.release_done', 'Released from your queue'));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
+    }
   };
 
   // The kind chip in the head writes the same two booleans and stamp the edit
@@ -1557,6 +1624,8 @@ export default function ContactDetailsModal({
               role={role}
               isAdmin={isAdmin}
               showDelete={canDelete}
+              showRelease={canReleaseContact(currentUid, currentContact)}
+              onRelease={handleReleaseContact}
               canEditKind={isAdmin && !isImpersonating}
               openPrayerCount={openPrayers.length}
               canDelegate={canShare}

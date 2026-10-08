@@ -530,6 +530,37 @@ describe('MyDay', () => {
     });
   });
 
+  it('clears unfollowedBy when taking a released contact back into Your sheep (#1498)', async () => {
+    h.prefsData = { personalContactIds: [], desktopMessagingApp: 'google' };
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          contactDoc('mara', {
+            name: 'Mara Vale',
+            initials: 'MV',
+            stage: 'Regular',
+            createdBy: 'u-test',
+            unfollowedBy: ['u-test'],
+            visibleTo: ['u-test'],
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Your contacts/i })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Your contacts/i }));
+    await waitFor(() => expect(screen.getByText('Mara Vale')).toBeInTheDocument());
+    const checkboxes = await screen.findAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    const patch = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>;
+    expect(patch).toMatchObject({
+      carers: { __op: 'arrayUnion', args: ['u-test'] },
+      unfollowedBy: { __op: 'arrayRemove', args: ['u-test'] },
+    });
+  });
+
   it('sorts the desktop contacts picker with personal contacts first alphabetically', async () => {
     h.prefsData = { personalContactIds: ['mara'], desktopMessagingApp: 'google' };
     vi.mocked(onSnapshot).mockImplementation(

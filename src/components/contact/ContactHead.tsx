@@ -10,6 +10,7 @@ import {
   Phone,
   Trash2,
   UserCog,
+  UserMinus,
   UserPlus,
   X,
 } from "lucide-react";
@@ -105,6 +106,8 @@ function MoreMenu({
   showChangeCreator,
   onChangeCreator,
   onDelete,
+  showRelease,
+  onRelease,
 }: {
   contact: Contact;
   onLogInteraction: () => void;
@@ -118,6 +121,8 @@ function MoreMenu({
   showChangeCreator: boolean;
   onChangeCreator: () => void;
   onDelete: () => void;
+  showRelease?: boolean;
+  onRelease?: () => void;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -174,6 +179,11 @@ function MoreMenu({
               <Edit3 className="w-4 h-4" /> {t('modals.contactDetails.edit_details')}
             </button>
           )}
+          {showRelease && onRelease && (
+            <button onClick={() => { setOpen(false); onRelease(); }} className={item}>
+              <UserMinus className="w-4 h-4" /> {t('modals.contactDetails.release_from_queue', 'Release from my queue')}
+            </button>
+          )}
           {showChangeCreator && (
             <button onClick={() => { setOpen(false); onChangeCreator(); }} className={item}>
               <UserCog className="w-4 h-4" /> {t('modals.contactDetails.change_creator')}
@@ -204,6 +214,8 @@ export default function ContactHead({
   role,
   isAdmin,
   showDelete,
+  showRelease,
+  onRelease,
   canEditKind,
   openPrayerCount,
   canDelegate,
@@ -239,6 +251,8 @@ export default function ContactHead({
   role: string;
   isAdmin: boolean;
   showDelete: boolean;
+  showRelease?: boolean;
+  onRelease?: () => void;
   canEditKind: boolean;
   openPrayerCount: number;
   canDelegate: boolean;
@@ -329,6 +343,22 @@ export default function ContactHead({
                     {t('actions.edit') || 'Edit'}
                   </button>
                 )}
+                <MoreMenu
+                  contact={contact}
+                  onLogInteraction={onLogInteraction}
+                  onAddPrayer={onStartPrayer}
+                  onCall={onCall}
+                  onText={onText}
+                  onEmail={onEmail}
+                  onEdit={onEdit}
+                  showEdit={role !== 'viewer'}
+                  showDelete={showDelete}
+                  showChangeCreator={isAdmin}
+                  onChangeCreator={onChangeCreator}
+                  onDelete={onDelete}
+                  showRelease={showRelease}
+                  onRelease={onRelease}
+                />
               </div>
             </div>
 
@@ -555,6 +585,8 @@ export default function ContactHead({
                   showChangeCreator={isAdmin}
                   onChangeCreator={onChangeCreator}
                   onDelete={onDelete}
+                  showRelease={showRelease}
+                  onRelease={onRelease}
                 />
                 <button
                   onClick={onClose}

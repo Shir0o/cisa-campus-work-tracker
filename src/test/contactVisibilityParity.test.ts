@@ -16,6 +16,7 @@ import {
   canSeeContact as webCanSee,
   canManageCollaborators as webCanManage,
   canRemoveContactMember as webCanRemove,
+  canReleaseContact as webCanRelease,
   visibleContacts as webVisibleContacts,
   journeyContacts as webJourneyContacts,
   visibleToOf as webVisibleToOf,
@@ -30,6 +31,7 @@ import {
   canSeeContact as coreCanSee,
   canManageCollaborators as coreCanManage,
   canRemoveContactMember as coreCanRemove,
+  canReleaseContact as coreCanRelease,
   visibleContacts as coreVisibleContacts,
   journeyContacts as coreJourneyContacts,
   visibleToOf as coreVisibleToOf,
@@ -140,6 +142,16 @@ describe('contact visibility: web and core mirrors agree (#1047)', () => {
           coreJourneyContacts(role, reader, list),
         );
       }
+    }
+  });
+
+  it('agrees on who can release a contact (#1498)', () => {
+    for (const reader of READERS) {
+      each((label, contact) => {
+        expect(webCanRelease(reader, contact), `${label} / ${reader}`).toBe(
+          coreCanRelease(reader, contact),
+        );
+      });
     }
   });
 });
