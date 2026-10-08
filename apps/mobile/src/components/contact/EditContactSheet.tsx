@@ -12,7 +12,6 @@ import {
 import {
   MET_VIA,
   SIGNUP_YEARS,
-  TAG_SUGGESTIONS,
   firstName as getFirstName,
   normalizeTagList,
   signUpYearToForm,
@@ -23,6 +22,7 @@ import {
 import { Sheet } from '../ui';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
+import { useStandardTags } from '../../lib/useStandardTags';
 import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { Kicker, PrimaryButton, SecondaryButton } from '../queue/atoms';
 import { Room, V2Input, V2TextArea } from '../v2/Widget';
@@ -56,6 +56,7 @@ function EditContactSheetBody({
   const { c, font, radius, fs } = useV2Theme();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const standardTags = useStandardTags();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -432,7 +433,7 @@ function EditContactSheetBody({
             <View style={{ gap: 8 }}>
               <Kicker>{t('mobile.contact.tags')}</Kicker>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-                {TAG_SUGGESTIONS.map((sug) => {
+                {standardTags.map((sug) => {
                   const active = tags.includes(sug);
                   return (
                     <Pressable
@@ -458,9 +459,9 @@ function EditContactSheetBody({
                     </Pressable>
                   );
                 })}
-                {/* Any custom tags already applied that are not in TAG_SUGGESTIONS */}
+                {/* Any custom tags already applied that are not in the standard list */}
                 {tags
-                  .filter((tg) => !TAG_SUGGESTIONS.includes(tg as any))
+                  .filter((tg) => !standardTags.includes(tg as any))
                   .map((tg) => (
                     <Pressable
                       key={tg}

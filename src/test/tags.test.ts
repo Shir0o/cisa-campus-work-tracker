@@ -11,6 +11,10 @@ import {
   planTagCombiningWithRules,
   guessTagCombines,
   planTagApplies,
+  isSeasonTag,
+  resolveStandardTags,
+  standardTagsForGuessing,
+  STANDARD_TAG_SEED,
 } from '../lib/tags';
 
 const guessFor = (
@@ -312,6 +316,48 @@ describe('planTagApplies', () => {
   it('only plans rows that would actually change', () => {
     const contacts = [{ id: '1', name: 'S1', tags: ['Saved'] }];
     expect(planTagApplies(contacts, [{ variants: ['Saved'], target: 'Saved' }])).toEqual([]);
+  });
+});
+
+describe('standard tags (ADR 0039)', () => {
+  it('seeds the six former constants', () => {
+    expect(STANDARD_TAG_SEED).toEqual(TAG_SUGGESTIONS);
+  });
+
+  it('recognizes season tags, and only season tags', () => {
+    expect(isSeasonTag('Fall 2026')).toBe(true);
+    expect(isSeasonTag("Fall '26")).toBe(true);
+    expect(isSeasonTag('BFA')).toBe(false);
+    expect(isSeasonTag('Fall table')).toBe(false);
+  });
+
+  it('falls back to the seed when the document has not loaded', () => {
+    expect(resolveStandardTags(undefined)).toEqual(STANDARD_TAG_SEED);
+    expect(resolveStandardTags(null)).toEqual(STANDARD_TAG_SEED);
+  });
+
+  it('keeps a loaded list (empty stays empty) and normalizes it', () => {
+    expect(resolveStandardTags([])).toEqual([]);
+    expect(resolveStandardTags(['Welcome', 'welcome'])).toEqual(['Welcome']);
+  });
+
+  it('treats season tags as standard for guessing without storing them', () => {
+    const tags = standardTagsForGuessing(['Welcome'], [{ tags: ['Fall 2025', "Fall '26"] }]);
+    expect(tags).toContain('Welcome');
+    expect(tags).toContain('Fall 2025');
+    expect(tags).toContain('Fall 2026');
+  });
+
+  it('uses the stored standard list as the guess target', () => {
+    const guesses = guessTagCombines([{ tags: ['Welcome table'] }], resolveStandardTags(['Welcome']));
+    expect(guessFor(guesses, 'Welcome', 'strong')).toBeDefined();
+  });
+
+  it('removing a standard tag never mutates contacts', () => {
+    const contacts = [{ id: '1', name: 'A', tags: ['BFA table'] }];
+    const before = JSON.parse(JSON.stringify(contacts));
+    guessTagCombines(contacts, resolveStandardTags(['Saved']));
+    expect(contacts).toEqual(before);
   });
 });
 

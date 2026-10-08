@@ -792,11 +792,22 @@ service cloud.firestore {
                (!('updatedBy' in data) || data.updatedBy == null || (data.updatedBy is string && data.updatedBy.size() <= 128));
       }
 
+      // The Full-timer-edited standard tags list (#1437, ADR 0039): one ordered
+      // list serving the suggestion chips and the combine targets. Season tags
+      // are standard by pattern and are never stored here.
+      function isValidStandardTagsSettings(data) {
+        return data.keys().hasOnly(['tags']) &&
+               data.tags is list && data.tags.size() <= 200;
+      }
+
       allow create, update: if docId == 'integrations' && isAdmin() && isValidIntegrationsSettings(incoming());
       allow create, update: if docId == 'whats_new' && isAdmin() && isValidWhatsNewSettings(incoming());
       allow create, update: if docId == 'reminder_schedule' && isAdmin() && isValidReminderSchedule(incoming());
 
-      allow read: if docId != 'integrations' || isAdmin();
+      // Standard tags are readable by approved users, not the public.
+      allow read: if (docId != 'integrations' && docId != 'standard_tags') || isAdmin();
+      allow read: if docId == 'standard_tags' && isApprovedUser();
+      allow create, update: if docId == 'standard_tags' && isAdmin() && isValidStandardTagsSettings(incoming());
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
       allow create, update: if docId == 'walking' && isAdmin() && isValidWalkingSettings(incoming());
       allow create, update: if docId == 'partners' && isAdmin() && isValidPartnerSettings(incoming());

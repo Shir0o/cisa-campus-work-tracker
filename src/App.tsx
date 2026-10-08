@@ -43,6 +43,7 @@ import { NotificationPermissionBanner } from "./components/notifications/Notific
 import { canAccessRoute, defaultRouteForRole, fallbackRouteFor, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
+import { StandardTagsProvider } from "./lib/standardTags";
 import { currentHref } from "./lib/navTrail";
 import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
@@ -570,6 +571,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         setSearchOpen,
       }}
     >
+      <StandardTagsProvider>
       <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
         {/* Single shell wrapper. The chrome inside it varies with the viewport
             (rail vs top-bar), but the wrapper and the inner content column are
@@ -677,6 +679,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         <NotificationPermissionBanner />
         <Toaster />
       </div>
+      </StandardTagsProvider>
     </LayoutContext.Provider>
   );
 }

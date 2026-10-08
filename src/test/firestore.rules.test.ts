@@ -3899,6 +3899,52 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Settings (standard tags)', () => {
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('STD1: An approved user can read settings/standard_tags', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'standard_tags'), { tags: ['Saved', 'BFA'] });
+      });
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(getDoc(doc(db, 'settings', 'standard_tags')));
+    });
+
+    it('STD2: An unauthenticated reader cannot read settings/standard_tags', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'standard_tags'), { tags: ['Saved'] });
+      });
+      const db = getFirestore();
+      await assertFails(getDoc(doc(db, 'settings', 'standard_tags')));
+    });
+
+    it('STD3: A Full-timer can write settings/standard_tags', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'settings', 'standard_tags'), { tags: ['Saved', 'Welcome'] }));
+    });
+
+    it('STD4: A manager cannot write settings/standard_tags', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'standard_tags'), { tags: ['Saved'] }));
+    });
+
+    it('STD5: Rejects stray keys and a non-list tags field', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'settings', 'standard_tags'), { tags: ['Saved'], evil: true }));
+      await assertFails(setDoc(doc(db, 'settings', 'standard_tags'), { tags: 'Saved' }));
+    });
+  });
+
   describe('Settings (weekly reminder schedule)', () => {
     const seedRoles = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {

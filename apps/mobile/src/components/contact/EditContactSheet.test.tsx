@@ -15,6 +15,11 @@ jest.mock('../../lib/data/contacts', () => ({
   updateContact: jest.fn(),
 }));
 
+// Standard tags read settings/standard_tags; the chip test only needs the seed.
+jest.mock('../../lib/useStandardTags', () => ({
+  useStandardTags: () => ['Saved', 'Baptized', 'Interested', 'Open', 'Club Rush', 'BFA'],
+}));
+
 describe('EditContactSheet', () => {
   const mockContact: Contact = {
     id: 'contact_123',

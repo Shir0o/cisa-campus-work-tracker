@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { Check, Combine, Loader2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Combine, Loader2, Plus, X } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   guessTagCombines,
   planTagApplies,
+  standardTagsForGuessing,
   type TagCombine,
   type TagGuess,
   type TagGuessReason,
 } from '../lib/tags';
+import { useStandardTags, saveStandardTags } from '../lib/standardTags';
 import { useLanguage } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -31,6 +33,8 @@ const reasonLabel = (t: (key: string, fallback?: string) => string, guess: TagGu
  * directory, replacing the old modal: strong guesses start checked, weak
  * guesses start unchecked, and each can be edited (a variant removed, the
  * target changed) before applying through the Full-timer-only server endpoint.
+ * A side panel edits the standard tags list (#1437): reorder, remove, add —
+ * the list the chips and the guesses read.
  */
 export default function CombineTags() {
   const { t } = useLanguage();
@@ -44,6 +48,11 @@ export default function CombineTags() {
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [applied, setApplied] = useState<number | null>(null);
+  // The stored standard tags, edited locally while a save is in flight.
+  const storedStandardTags = useStandardTags();
+  const [standardDraft, setStandardDraft] = useState<string[] | null>(null);
+  const [newStandardTag, setNewStandardTag] = useState('');
+  const standardTags = standardDraft ?? storedStandardTags;
 
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -61,7 +70,10 @@ export default function CombineTags() {
     );
   }, []);
 
-  const guesses = useMemo(() => guessTagCombines(contacts), [contacts]);
+  const guesses = useMemo(
+    () => guessTagCombines(contacts, standardTagsForGuessing(standardTags, contacts)),
+    [contacts, standardTags],
+  );
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -109,6 +121,29 @@ export default function CombineTags() {
     const resolved = resolve(guess);
     setEdited((prev) => ({ ...prev, [guess.id]: { ...resolved, target } }));
     setApplied(null);
+  };
+
+  // Standard tags (#1437): removing or reordering only edits this list, never a
+  // contact's tags (ADR 0039).
+  const updateStandardTags = (next: string[]) => {
+    setStandardDraft(next);
+    void saveStandardTags(next);
+  };
+
+  const moveStandardTag = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= standardTags.length) return;
+    const next = [...standardTags];
+    [next[index], next[target]] = [next[target], next[index]];
+    updateStandardTags(next);
+  };
+
+  const addStandardTag = () => {
+    const value = newStandardTag.trim();
+    setNewStandardTag('');
+    if (!value) return;
+    if (standardTags.some((tag) => tag.toLowerCase() === value.toLowerCase())) return;
+    updateStandardTags([...standardTags, value]);
   };
 
   const contactCountFor = (guess: TagGuess) => {
@@ -243,91 +278,185 @@ export default function CombineTags() {
         </p>
       )}
 
-      {loading ? (
-        <div className="space-y-4">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="py-16 text-center">
-          <p className="font-medium text-on-surface">
-            {t('combine_tags.load_error', 'Could not load contacts')}
-          </p>
-        </div>
-      ) : guesses.length === 0 ? (
-        <div className="py-16 text-center">
-          <Check className="w-10 h-10 text-primary mx-auto mb-3" />
-          <p className="font-medium text-on-surface">
-            {t('combine_tags.no_guesses', 'No tag combines found')}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {strong.length > 0 && (
-            <section data-testid="strong-guesses">
-              <h2 className="mb-3 text-sm font-semibold text-on-surface">
-                {t('combine_tags.strong', 'Strong guesses')}
-              </h2>
-              <div className="space-y-2">{strong.map(renderGuess)}</div>
-            </section>
-          )}
-
-          {weak.length > 0 && (
-            <section data-testid="weak-guesses">
-              <h2 className="mb-3 text-sm font-semibold text-on-surface">
-                {t('combine_tags.weak', 'Weak guesses')}
-              </h2>
-              <div className="space-y-2">{weak.map(renderGuess)}</div>
-            </section>
-          )}
-
-          <section>
-            <h2 className="mb-3 text-sm font-semibold text-on-surface">
-              {t('combine_tags.contacts_would_change', '{n} contacts would change')
-                .replace('{n}', String(rows.length))}
-            </h2>
-            {rows.length === 0 ? (
-              <p className="text-sm text-on-surface-variant italic">
-                {t('combine_tags.nothing_to_combine', 'Nothing to combine')}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="space-y-8 min-w-0">
+          {loading ? (
+            <div className="space-y-4">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="py-16 text-center">
+              <p className="font-medium text-on-surface">
+                {t('combine_tags.load_error', 'Could not load contacts')}
               </p>
-            ) : (
-              <div className="space-y-2">
-                {rows.slice(0, 100).map((row) => (
-                  <div
-                    key={row.contactId}
-                    className="rounded-2xl border border-outline-variant/60 bg-surface p-4"
-                  >
-                    <p className="font-medium text-on-surface">{row.name}</p>
-                    <p className="text-sm text-on-surface-variant mt-1">
-                      <span className="text-on-surface-variant/70">{t('combine_tags.before', 'Before:')}</span>{' '}
-                      {row.from.join(', ') || '—'}
-                    </p>
-                    <p className="text-sm text-on-surface-variant mt-0.5">
-                      <span className="text-on-surface-variant/70">{t('combine_tags.after', 'After:')}</span>{' '}
-                      {row.to.join(', ') || '—'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+            </div>
+          ) : guesses.length === 0 ? (
+            <div className="py-16 text-center">
+              <Check className="w-10 h-10 text-primary mx-auto mb-3" />
+              <p className="font-medium text-on-surface">
+                {t('combine_tags.no_guesses', 'No tag combines found')}
+              </p>
+            </div>
+          ) : (
+            <>
+              {strong.length > 0 && (
+                <section data-testid="strong-guesses">
+                  <h2 className="mb-3 text-sm font-semibold text-on-surface">
+                    {t('combine_tags.strong', 'Strong guesses')}
+                  </h2>
+                  <div className="space-y-2">{strong.map(renderGuess)}</div>
+                </section>
+              )}
 
-          <div className="sticky bottom-4 flex justify-end">
+              {weak.length > 0 && (
+                <section data-testid="weak-guesses">
+                  <h2 className="mb-3 text-sm font-semibold text-on-surface">
+                    {t('combine_tags.weak', 'Weak guesses')}
+                  </h2>
+                  <div className="space-y-2">{weak.map(renderGuess)}</div>
+                </section>
+              )}
+
+              <section>
+                <h2 className="mb-3 text-sm font-semibold text-on-surface">
+                  {t('combine_tags.contacts_would_change', '{n} contacts would change').replace(
+                    '{n}',
+                    String(rows.length),
+                  )}
+                </h2>
+                {rows.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant italic">
+                    {t('combine_tags.nothing_to_combine', 'Nothing to combine')}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {rows.slice(0, 100).map((row) => (
+                      <div
+                        key={row.contactId}
+                        className="rounded-2xl border border-outline-variant/60 bg-surface p-4"
+                      >
+                        <p className="font-medium text-on-surface">{row.name}</p>
+                        <p className="text-sm text-on-surface-variant mt-1">
+                          <span className="text-on-surface-variant/70">
+                            {t('combine_tags.before', 'Before:')}
+                          </span>{' '}
+                          {row.from.join(', ') || '—'}
+                        </p>
+                        <p className="text-sm text-on-surface-variant mt-0.5">
+                          <span className="text-on-surface-variant/70">
+                            {t('combine_tags.after', 'After:')}
+                          </span>{' '}
+                          {row.to.join(', ') || '—'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <div className="sticky bottom-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={apply}
+                  disabled={rows.length === 0 || applying}
+                  className="inline-flex items-center gap-2 h-12 px-6 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {applying && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {applying
+                    ? t('combine_tags.applying', 'Applying…')
+                    : t('combine_tags.apply', 'Combine {n} contacts').replace(
+                        '{n}',
+                        String(rows.length),
+                      )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <aside
+          data-testid="standard-tags-panel"
+          className="space-y-3 self-start rounded-2xl border border-outline-variant/60 bg-surface p-4 lg:sticky lg:top-4"
+        >
+          <div>
+            <h2 className="text-sm font-semibold text-on-surface">
+              {t('combine_tags.standard_tags', 'Standard tags')}
+            </h2>
+            <p className="text-xs text-on-surface-variant mt-1">
+              {t(
+                'combine_tags.standard_tags_hint',
+                'Suggested when tagging and preferred by the guesses. Removing one never changes a contact.',
+              )}
+            </p>
+          </div>
+
+          <ul className="space-y-1">
+            {standardTags.map((tag, index) => (
+              <li
+                key={tag}
+                data-testid={`standard-tag-${tag}`}
+                className="flex items-center gap-1 rounded-lg border border-outline-variant/50 px-2 py-1"
+              >
+                <span className="flex-1 min-w-0 truncate text-sm text-on-surface">{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => moveStandardTag(index, -1)}
+                  disabled={index === 0}
+                  aria-label={t('combine_tags.move_up', 'Move {tag} up').replace('{tag}', tag)}
+                  className="p-1 text-on-surface-variant hover:text-on-surface disabled:opacity-30"
+                >
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveStandardTag(index, 1)}
+                  disabled={index === standardTags.length - 1}
+                  aria-label={t('combine_tags.move_down', 'Move {tag} down').replace('{tag}', tag)}
+                  className="p-1 text-on-surface-variant hover:text-on-surface disabled:opacity-30"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateStandardTags(standardTags.filter((item) => item !== tag))}
+                  data-testid={`remove-standard-tag-${tag}`}
+                  aria-label={t('combine_tags.remove_standard', 'Remove {tag}').replace('{tag}', tag)}
+                  className="p-1 text-on-surface-variant hover:text-on-surface"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={newStandardTag}
+              onChange={(event) => setNewStandardTag(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addStandardTag();
+                }
+              }}
+              placeholder={t('combine_tags.add_standard_placeholder', 'Add a standard tag')}
+              aria-label={t('combine_tags.add_standard', 'Add a standard tag')}
+              className="flex-1 min-w-0 h-9 px-2 rounded-lg bg-surface-container-high border border-outline outline-none text-sm text-on-surface"
+            />
             <button
               type="button"
-              onClick={apply}
-              disabled={rows.length === 0 || applying}
-              className="inline-flex items-center gap-2 h-12 px-6 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={addStandardTag}
+              className="inline-flex items-center gap-1 h-9 px-3 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20"
             >
-              {applying && <Loader2 className="w-4 h-4 animate-spin" />}
-              {applying
-                ? t('combine_tags.applying', 'Applying…')
-                : t('combine_tags.apply', 'Combine {n} contacts').replace('{n}', String(rows.length))}
+              <Plus className="w-3.5 h-3.5" />
+              {t('combine_tags.add', 'Add')}
             </button>
           </div>
-        </div>
-      )}
+        </aside>
+      </div>
     </PageContainer>
   );
 }
