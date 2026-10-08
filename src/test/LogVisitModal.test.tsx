@@ -94,10 +94,15 @@ describe('LogVisitModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('will not save until someone has been picked', () => {
+  it('shows the no-people error only after Save, and saves nothing', () => {
     render(<LogVisitModal {...baseProps} />);
+    expect(screen.queryByText('Pick at least one person.')).not.toBeInTheDocument();
+    const save = screen.getByRole('button', { name: /Log the visit/ });
+    expect(save).not.toBeDisabled();
+
+    fireEvent.click(save);
     expect(screen.getByText('Pick at least one person.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Log the visit/ })).toBeDisabled();
+    expect(addVisit).not.toHaveBeenCalled();
   });
 
   it('searches for a person, adds them, and offers their place as the where', async () => {
@@ -266,8 +271,12 @@ describe('LogVisitModal', () => {
     expect(screen.getByText('Edit a visit')).toBeInTheDocument();
     expect(screen.getByLabelText('Where')).toHaveValue('Whitman Hall, room 214');
     expect(screen.getByLabelText('How it went')).toHaveValue('A long chat.');
-    expect(screen.getByLabelText('What to follow up')).toHaveValue('Ask after her mum');
+    // The edit state drops the Afterwards section — follow-up and prayer — and
+    // names its action Save changes (#1446).
+    expect(screen.queryByLabelText('What to follow up')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/A prayer that came out of it/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Afterwards')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save changes/ })).toBeInTheDocument();
   });
 
   it('saves an edit against the visit it opened, carrying the old people through', async () => {
@@ -386,6 +395,78 @@ describe('LogVisitModal', () => {
     // Chosen contact chip is rendered
     expect(await screen.findByRole('button', { name: /Remove Kofi Mensah/ })).toBeInTheDocument();
     expect(screen.getByText('⌘↵ to save')).toBeInTheDocument();
+  });
+
+  it('labels the dialog by its title and moves focus in and back out (#1446)', async () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(<LogVisitModal {...baseProps} />);
+    const dialog = screen.getByRole('dialog', { name: 'Log a visit' });
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it('closes at once when nothing has been typed (#1446)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(baseProps.onClose).toHaveBeenCalled();
+  });
+
+  it('asks before discarding when something has been typed, and keeps it on cancel (#1446)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it('asks before discarding on Escape when something has been typed (#1446)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+  });
+
+  it('keeps everything typed after a failed save and retries on Try again (#1446)', async () => {
+    (addVisit as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('offline'));
+
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+    fireEvent.change(screen.getByLabelText('How it went'), { target: { value: 'Talked on the porch.' } });
+    fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+    expect(await screen.findByText("Couldn't save — you're offline. Nothing was lost.")).toBeInTheDocument();
+    expect(screen.getByLabelText('How it went')).toHaveValue('Talked on the porch.');
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(addVisit).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+  });
+
+  it('shows the home and when it was last visited under the people seen (#1446)', async () => {
+    const dated = [
+      { id: 'c1', name: 'Ama Osei', location: 'Whitman Hall', lastContactedDate: '2026-08-04' },
+    ] as Contact[];
+    render(<LogVisitModal {...baseProps} contacts={dated} />);
+    pick('Ama');
+
+    expect(await screen.findByText(/last visited/)).toBeInTheDocument();
+    expect(screen.getAllByText(/the Oseis/).length).toBeGreaterThan(0);
   });
 });
 

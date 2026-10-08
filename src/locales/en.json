@@ -1790,7 +1790,24 @@
     "cmd_save": "⌘↵ to save",
     "pick_one_person": "Pick at least one person.",
     "add_someone_new": "Add {name} — someone new",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "visits_eyebrow": "Visits",
+    "visit_noun": "visit",
+    "section_who_you_saw": "Who you saw",
+    "section_who_hint": "Everyone in the room",
+    "section_when_where": "When and where",
+    "section_the_visit": "The visit",
+    "section_afterwards": "Afterwards",
+    "section_afterwards_hint": "Only asked when you log it",
+    "home_last_visited": "{home} · last visited {ago} ago",
+    "where_from_home": "From {home}",
+    "couldnt_save_offline": "Couldn't save — you're offline. Nothing was lost.",
+    "try_again": "Try again"
+  },
+  "popup": {
+    "discard_question": "Discard this {noun}?",
+    "keep_editing": "Keep editing",
+    "discard": "Discard"
   },
   "visitCard": {
     "no_address_noted": "no address noted",
