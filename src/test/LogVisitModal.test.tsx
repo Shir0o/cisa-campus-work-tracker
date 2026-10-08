@@ -462,6 +462,25 @@ describe('LogVisitModal', () => {
     await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
   });
 
+  it('offers to start a home when nobody seen has one (#1448)', () => {
+    const onAddHome = vi.fn();
+    render(<LogVisitModal {...baseProps} homes={[]} onAddHome={onAddHome} />);
+    pick('Ama');
+
+    expect(screen.getByText(/Ama has no home yet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add one' }));
+    expect(onAddHome).toHaveBeenCalledWith(['c1']);
+  });
+
+  it('offers no home when the person seen already has one (#1448)', () => {
+    const onAddHome = vi.fn();
+    render(<LogVisitModal {...baseProps} onAddHome={onAddHome} />);
+    pick('Ama');
+
+    expect(screen.queryByText(/has no home yet/)).not.toBeInTheDocument();
+    expect(onAddHome).not.toHaveBeenCalled();
+  });
+
   it('shows the home and when it was last visited under the people seen (#1446)', async () => {
     const dated = [
       { id: 'c1', name: 'Ama Osei', location: 'Whitman Hall', lastContactedDate: '2026-08-04' },

@@ -78,6 +78,11 @@ describe('HomesModal', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('renders in the shared popup frame (#1448)', () => {
+    render(<HomesModal {...baseProps} />);
+    expect(screen.getByRole('dialog', { name: 'Homes' })).toBeInTheDocument();
+  });
+
   it('creates a home by hand', async () => {
     render(<HomesModal {...baseProps} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add a home' }));
@@ -130,6 +135,21 @@ describe('HomesModal', () => {
     expect(input).toMatchObject({ label: 'the Peinados', members: ['c1'], active: true });
   });
 
+  it('edits the active switch and notes', async () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'This home is active' }));
+    fireEvent.change(screen.getByPlaceholderText('Anything to remember about the household'), {
+      target: { value: 'Likes tea' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(updateHome).toHaveBeenCalled());
+    const [, input] = (updateHome as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(input).toMatchObject({ active: false, notes: 'Likes tea' });
+  });
+
   it('marks a home inactive when the last member is removed', async () => {
     const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
     render(<HomesModal {...baseProps} homes={homes} />);
@@ -172,6 +192,128 @@ describe('HomesModal', () => {
     // c1 is already in a home (even an inactive one) so it is not re-proposed;
     // c3 is co-visited with c1 but c1 is excluded, so c3 proposes nothing alone.
     expect(screen.queryByText('Suggested homes')).not.toBeInTheDocument();
+  });
+
+  it('lists homes alphabetically ignoring a leading "the"', () => {
+    const homes = [
+      { id: 'h1', label: 'the Okafors', members: ['c1'], active: true },
+      { id: 'h2', label: 'Garcia', members: ['c2'], active: true },
+      { id: 'h3', label: 'the Brennans', members: ['c3'], active: true },
+    ];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    const labels = screen
+      .getAllByRole('button', { name: /^Edit home: / })
+      .map((b) => b.getAttribute('aria-label'));
+    expect(labels).toEqual(['Edit home: the Brennans', 'Edit home: Garcia', 'Edit home: the Okafors']);
+  });
+
+  it('collapses inactive homes into their own section with visit counts (#1448)', () => {
+    const homes = [
+      { id: 'h1', label: 'the Oseis', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Brennans', members: ['c2'], active: false, place: 'Elm Street' },
+    ];
+    const visits = [
+      { ...visit('v1', ['c2']), homeId: 'h2' },
+      { ...visit('v2', ['c2']), homeId: 'h2' },
+      { ...visit('v3', ['c2']), homeId: 'h2' },
+    ];
+    render(<HomesModal {...baseProps} homes={homes} visits={visits} />);
+
+    // Collapsed by default.
+    expect(screen.queryByText('the Brennans')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Inactive/ }));
+    expect(screen.getByText('the Brennans')).toBeInTheDocument();
+    expect(screen.getByText(/3 visits/)).toBeInTheDocument();
+  });
+
+  it('leads the empty state with Review suggestions and the count (#1448)', () => {
+    render(<HomesModal {...baseProps} visits={[visit('v1', ['c1', 'c3'])]} />);
+    expect(screen.getByText('No homes yet')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review suggestions' })).toBeInTheDocument();
+    expect(screen.getByText('We found 1 from your visits and surnames.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add a home' })).toBeInTheDocument();
+  });
+
+  it('is dirty-aware: closing with edits asks, and keeps them on cancel (#1448)', async () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Peinados' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard changes to this home?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('the Peinados');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+  });
+
+  it('dismisses the discard question on Escape and keeps the editor open (#1448)', () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Peinados' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('the Peinados');
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it('returns to the list from the editor with the back arrow (#1448)', () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to all homes' }));
+
+    expect(screen.getByRole('dialog', { name: 'Homes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add a home' })).toBeInTheDocument();
+  });
+
+  it('asks before discarding edits made when leaving with the back arrow (#1448)', () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Peinados' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Back to all homes' }));
+
+    expect(screen.getByRole('alertdialog', { name: 'Discard changes to this home?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(screen.getByRole('button', { name: 'Add a home' })).toBeInTheDocument();
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it('opens the editor prefilled with people handed in (#1448)', async () => {
+    render(<HomesModal {...baseProps} initialMembers={['c1']} />);
+    expect(screen.getByLabelText('Name')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ama Osei' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Oseis' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create home' }));
+    await waitFor(() => expect(addHome).toHaveBeenCalled());
+    const [input] = (addHome as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(input.members).toEqual(['c1']);
+    expect(baseProps.onHomeSaved).toHaveBeenCalled();
+  });
+
+  it('returns from the Combine step to the home editor with the back arrow (#1448)', () => {
+    const homes = [
+      { id: 'h1', label: 'the Garcias', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Garcias (2)', members: ['c2'], active: true },
+    ];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Garcias (2)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Combine into…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the home' }));
+
+    expect(screen.getByRole('dialog', { name: 'the Garcias (2)' })).toBeInTheDocument();
   });
 
   it('deletes an unvisited home and offers Undo', async () => {

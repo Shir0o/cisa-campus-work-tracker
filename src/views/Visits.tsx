@@ -47,6 +47,8 @@ export default function Visits() {
   const [editing, setEditing] = useState<Visit | null>(null);
   const [seedContactId, setSeedContactId] = useState<string | null>(null);
   const [seedHomeId, setSeedHomeId] = useState<string | null>(null);
+  // People to prefill a new Home with when "Add one" is tapped in Log a visit.
+  const [seedHomeMembers, setSeedHomeMembers] = useState<string[] | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
@@ -118,6 +120,17 @@ export default function Visits() {
     setSeedHomeId(null);
   };
 
+  // "Add one" from Log a visit opens the Home editor above the visit, prefilled
+  // with the people seen, so the write-up underneath is never lost.
+  const openHomeForMembers = (memberIds: string[]) => {
+    setSeedHomeMembers(memberIds);
+    setHomesOpen(true);
+  };
+  const closeHomes = () => {
+    setHomesOpen(false);
+    setSeedHomeMembers(null);
+  };
+
   const openContact = (contactId: string) => {
     const contact = contacts.find((c) => c.id === contactId);
     if (contact) setSelectedContact(contact);
@@ -162,6 +175,7 @@ export default function Visits() {
         homes={homes}
         initialContactId={seedContactId}
         initialHomeId={seedHomeId}
+        onAddHome={openHomeForMembers}
       />
       <LogVisitModal
         isOpen={editing !== null}
@@ -173,11 +187,16 @@ export default function Visits() {
       />
       <HomesModal
         isOpen={homesOpen}
-        onClose={() => setHomesOpen(false)}
+        onClose={closeHomes}
         homes={homes}
         contacts={contacts}
         visits={visits}
-        onHomeSaved={() => setHomesOpen(false)}
+        initialMembers={seedHomeMembers ?? undefined}
+        // A seeded save (started from Log a visit) closes the popup back to the
+        // visit; a normal save keeps the list open.
+        onHomeSaved={() => {
+          if (seedHomeMembers) closeHomes();
+        }}
       />
     </>
   );

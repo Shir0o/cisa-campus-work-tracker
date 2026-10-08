@@ -1802,13 +1802,16 @@
     "home_last_visited": "{home} · last visited {ago} ago",
     "where_from_home": "From {home}",
     "couldnt_save_offline": "Couldn't save — you're offline. Nothing was lost.",
-    "try_again": "Try again"
+    "try_again": "Try again",
+    "no_home_yet": "{name} has no home yet",
+    "add_one": "Add one"
   },
   "popup": {
     "discard_question": "Discard this {noun}?",
     "keep_editing": "Keep editing",
     "discard": "Discard",
-    "dismiss_sheet": "Dismiss"
+    "dismiss_sheet": "Dismiss",
+    "back": "Back"
   },
   "visitCard": {
     "no_address_noted": "no address noted",
@@ -2186,6 +2189,28 @@
     "combine_visits": "{count} visits",
     "combine_move_summary": "{people} and {visits} move to {target}",
     "combine_move_people_only": "{people} move to {target}",
+    "eyebrow": "Visits",
+    "list_subtitle": "The households we go round to.",
+    "new_home": "New home",
+    "section_the_home": "The home",
+    "section_status": "Status",
+    "where_hint": "A visit's place comes from here.",
+    "active_hint": "Turn off when the household moves on. Its visits stay.",
+    "discard_question": "Discard changes to this home?",
+    "never_visited_hint": "Never visited · Undo for a few seconds",
+    "no_homes_yet_title": "No homes yet",
+    "suggestions_found": "We found {count} from your visits and surnames.",
+    "review_suggestions": "Review suggestions",
+    "inactive_section": "Inactive",
+    "households_moved_on": "households that have moved on",
+    "visit_one": "1 visit",
+    "visit_many": "{count} visits",
+    "combine_heading": "Combine {source} into…",
+    "combine_subtitle": "For a home entered twice — {visits} move to the one you keep.",
+    "combine_pick_title": "Which home is real?",
+    "combine_what_happens": "What happens",
+    "combine_working": "Combining…",
+    "combine_back_home": "Back to the home",
     "close": "Close"
   },
   "reminders": {
