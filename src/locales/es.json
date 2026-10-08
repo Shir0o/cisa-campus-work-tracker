@@ -1802,13 +1802,16 @@
     "home_last_visited": "{home} · última visita hace {ago}",
     "where_from_home": "De {home}",
     "couldnt_save_offline": "No se pudo guardar: estás sin conexión. No se perdió nada.",
-    "try_again": "Intentar de nuevo"
+    "try_again": "Intentar de nuevo",
+    "no_home_yet": "{name} aún no tiene hogar",
+    "add_one": "Añadir uno"
   },
   "popup": {
     "discard_question": "¿Descartar esta {noun}?",
     "keep_editing": "Seguir editando",
     "discard": "Descartar",
-    "dismiss_sheet": "Cerrar"
+    "dismiss_sheet": "Cerrar",
+    "back": "Atrás"
   },
   "visitCard": {
     "no_address_noted": "sin dirección anotada",
@@ -2186,6 +2189,28 @@
     "combine_visits": "{count} visitas",
     "combine_move_summary": "{people} y {visits} se trasladan a {target}",
     "combine_move_people_only": "{people} se trasladan a {target}",
+    "eyebrow": "Visitas",
+    "list_subtitle": "Los hogares que visitamos.",
+    "new_home": "Nuevo hogar",
+    "section_the_home": "El hogar",
+    "section_status": "Estado",
+    "where_hint": "El lugar de una visita viene de aquí.",
+    "active_hint": "Desactívalo cuando el hogar se mude. Sus visitas se conservan.",
+    "discard_question": "¿Descartar los cambios de este hogar?",
+    "never_visited_hint": "Nunca visitado · Deshacer unos segundos",
+    "no_homes_yet_title": "Aún no hay hogares",
+    "suggestions_found": "Encontramos {count} en tus visitas y apellidos.",
+    "review_suggestions": "Revisar sugerencias",
+    "inactive_section": "Inactivos",
+    "households_moved_on": "hogares que se han mudado",
+    "visit_one": "1 visita",
+    "visit_many": "{count} visitas",
+    "combine_heading": "Combinar {source} en…",
+    "combine_subtitle": "Para un hogar introducido dos veces: {visits} se trasladan al que conserves.",
+    "combine_pick_title": "¿Cuál de los hogares es el real?",
+    "combine_what_happens": "Qué ocurre",
+    "combine_working": "Combinando…",
+    "combine_back_home": "Volver al hogar",
     "close": "Cerrar"
   },
   "reminders": {

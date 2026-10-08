@@ -3,9 +3,12 @@
 // inactive rather than being deleted when the last person leaves. Homes are
 // suggested, never derived — every proposal is confirmed and editable before
 // it saves, so a wrong home is harder to notice than a missing one.
-import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRightLeft, Check, House, Loader2, Pencil, Plus, Sparkles, Trash2, X } from 'lucide-react';
+//
+// The list, the editor and the Combine step all render inside the shared popup
+// frame (spec #1444, #1448). Delete and Combine are #1408 / ADR 0040; this
+// restyles them in the frame rather than inventing them.
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRightLeft, ChevronRight, House, MapPin, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import {
   addHome,
   combineHomes,
@@ -26,6 +29,8 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { pickableContacts } from '../../lib/permissions';
+import { PopupField, PopupFrame, PopupSection, avatarTint } from '../ui/PopupFrame';
+import { Switch } from '../ui/Switch';
 import type { Contact, Home, Visit } from '../../types';
 
 interface HomesModalProps {
@@ -35,6 +40,8 @@ interface HomesModalProps {
   contacts: Contact[];
   visits: Visit[];
   onHomeSaved: (home: Home) => void;
+  /** People to prefill a brand-new Home with (e.g. "Add one" from Log a visit). */
+  initialMembers?: string[];
 }
 
 interface Draft {
@@ -48,238 +55,34 @@ interface Draft {
 
 const emptyDraft = (): Draft => ({ label: '', place: '', notes: '', memberIds: [], active: true });
 
-function HomeForm({
-  draft,
-  contacts,
-  onChange,
-  onSave,
-  saving,
-  isNew,
-  canDelete,
-  canCombine,
-  onDelete,
-  onStartCombine,
-}: {
-  draft: Draft;
-  contacts: Contact[];
-  onChange: (draft: Draft) => void;
-  onSave: () => void;
-  saving: boolean;
-  isNew: boolean;
-  canDelete: boolean;
-  canCombine: boolean;
-  onDelete: () => void;
-  onStartCombine: () => void;
-}) {
-  const { t } = useLanguage();
-  const label = 'block text-[10px] font-semibold text-on-surface-variant mb-2';
-  const input =
-    'w-full bg-surface-container-low border border-outline-variant rounded-2xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary transition-colors';
+/** Alphabetical ignoring a leading "the", so "the Oseis" files under O (ADR 0031 §4). */
+const homeSortKey = (label: string): string => label.toLowerCase().replace(/^the\s+/, '').trim();
 
-  const toggleMember = (id: string) => {
-    const memberIds = draft.memberIds.includes(id)
-      ? draft.memberIds.filter((x) => x !== id)
-      : [...draft.memberIds, id];
-    // A home with nobody left in it goes inactive, not away — its visits keep
-    // their meaning.
-    onChange({ ...draft, memberIds, active: memberIds.length > 0 ? draft.active : false });
-  };
+const byHomeLabel = (a: Home, b: Home): number => {
+  const ka = homeSortKey(a.label);
+  const kb = homeSortKey(b.label);
+  return ka < kb ? -1 : ka > kb ? 1 : 0;
+};
 
+/** A small overlapping stack of member avatars for a list row. */
+function MemberStack({ memberIds, contacts }: { memberIds: string[]; contacts: Contact[] }) {
+  if (!memberIds.length) return null;
   return (
-    <div className="space-y-5">
-      <div>
-        <label className={label} htmlFor="home-label">
-          {t('homes.label')}
-        </label>
-        <input
-          id="home-label"
-          value={draft.label}
-          onChange={(e) => onChange({ ...draft, label: e.target.value })}
-          placeholder={t('homes.label_placeholder')}
-          className={input}
-        />
-      </div>
-      <div>
-        <label className={label} htmlFor="home-place">
-          {t('homes.place')}
-        </label>
-        <input
-          id="home-place"
-          value={draft.place}
-          onChange={(e) => onChange({ ...draft, place: e.target.value })}
-          placeholder={t('homes.place_placeholder')}
-          className={input}
-        />
-      </div>
-      <div>
-        <label className={label}>{t('homes.who_lives_here')}</label>
-        <div className="flex flex-wrap gap-2">
-          {contacts.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              aria-pressed={draft.memberIds.includes(c.id)}
-              onClick={() => toggleMember(c.id)}
-              className={cn(
-                'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] border transition-colors',
-                draft.memberIds.includes(c.id)
-                  ? 'bg-primary/10 border-accent-line text-accent'
-                  : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
-              )}
-            >
-              <span className="w-5 h-5 rounded-full bg-primary/15 grid place-items-center text-[9px] font-semibold">
-                {initialsOf(c.name)}
-              </span>
-              {c.name}
-            </button>
-          ))}
-        </div>
-      </div>
-      {!isNew && (
-        <label className="flex items-center gap-2 text-sm text-on-surface">
-          <input
-            type="checkbox"
-            checked={draft.active}
-            onChange={(e) => onChange({ ...draft, active: e.target.checked })}
-            className="accent-primary"
-          />
-          {t('homes.active_home')}
-        </label>
-      )}
-      <div>
-        <label className={label} htmlFor="home-notes">
-          {t('homes.notes')}{' '}
-          <span className="normal-case tracking-normal font-normal">{t('homes.optional')}</span>
-        </label>
-        <textarea
-          id="home-notes"
-          rows={2}
-          value={draft.notes}
-          onChange={(e) => onChange({ ...draft, notes: e.target.value })}
-          placeholder={t('homes.notes_placeholder')}
-          className={cn(input, 'resize-y')}
-        />
-      </div>
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          onClick={onSave}
-          disabled={!draft.label.trim() || saving}
-          className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-          {saving ? t('homes.saving') : isNew ? t('homes.create_home') : t('homes.save_changes')}
-        </button>
-      </div>
-      {!isNew && (canCombine || canDelete) && (
-        <div className="flex items-center gap-3 pt-4 mt-1 border-t border-outline-variant flex-wrap">
-          {canCombine && (
-            <button
-              onClick={onStartCombine}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
-            >
-              <ArrowRightLeft className="w-4 h-4" /> {t('homes.combine_into')}
-            </button>
-          )}
-          {canDelete && (
-            <button
-              onClick={onDelete}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-error hover:bg-error/10 transition-colors ml-auto"
-            >
-              <Trash2 className="w-4 h-4" /> {t('homes.delete_home')}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** The "Combine into…" flow for a Home entered twice (ADR 0040 §2): pick the
- *  Home to keep, then confirm against a preview of what moves. */
-function CombinePanel({
-  source,
-  target,
-  homes,
-  visits,
-  busy,
-  onPick,
-  onBack,
-  onCancel,
-  onConfirm,
-}: {
-  source: Home;
-  target: Home | null;
-  homes: Home[];
-  visits: Visit[];
-  busy: boolean;
-  onPick: (target: Home) => void;
-  onBack: () => void;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const { t } = useLanguage();
-  const others = homes.filter((h) => h.id !== source.id);
-  const people = source.members.length;
-  const movingVisits = visits.filter((v) => v.homeId === source.id).length;
-  const peopleLabel =
-    people === 1
-      ? t('homes.combine_one_person')
-      : t('homes.combine_people').replace('{count}', String(people));
-  const visitsLabel =
-    movingVisits === 1
-      ? t('homes.combine_one_visit')
-      : t('homes.combine_visits').replace('{count}', String(movingVisits));
-  const summary = (
-    movingVisits === 0
-      ? t('homes.combine_move_people_only').replace('{people}', peopleLabel)
-      : t('homes.combine_move_summary').replace('{people}', peopleLabel).replace('{visits}', visitsLabel)
-  ).replace('{target}', target?.label ?? '');
-
-  return (
-    <div>
-      <button onClick={onCancel} className="text-sm text-accent hover:underline mb-4">
-        {t('homes.back_to_list')}
-      </button>
-      <h3 className="font-serif text-[19px] text-on-surface mb-1">{t('homes.combine_title')}</h3>
-      {!target ? (
-        <>
-          <p className="text-xs text-on-surface-variant mb-3">{t('homes.combine_pick_hint')}</p>
-          <div className="flex flex-col gap-2">
-            {others.map((h) => (
-              <button
-                key={h.id}
-                onClick={() => onPick(h)}
-                aria-label={`${t('homes.combine_keep')} ${h.label}`}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface border border-outline-variant text-left hover:border-accent-line transition-colors"
-              >
-                <span className="w-9 h-9 bg-primary/10 text-accent rounded-2xl grid place-items-center shrink-0">
-                  <House className="w-4 h-4" />
-                </span>
-                <span className="text-sm font-semibold text-on-surface">{h.label}</span>
-                <span className="ml-auto text-xs font-medium text-accent">{t('homes.combine_keep')}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="text-sm text-on-surface mb-4">{summary}</p>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onConfirm}
-              disabled={busy}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40"
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-              {t('homes.combine_confirm')}
-            </button>
-            <button onClick={onBack} className="text-sm text-accent hover:underline">
-              {t('homes.combine_back')}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+    <span className="flex shrink-0">
+      {memberIds.slice(0, 3).map((id) => {
+        const c = contacts.find((x) => x.id === id);
+        return (
+          <span
+            key={id}
+            style={avatarTint(id)}
+            aria-hidden="true"
+            className="-mr-2.5 grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--bg-elev)] text-[10px] font-semibold last:mr-0"
+          >
+            {initialsOf(c?.name ?? '?')}
+          </span>
+        );
+      })}
+    </span>
   );
 }
 
@@ -290,6 +93,7 @@ export default function HomesModal({
   contacts,
   visits,
   onHomeSaved,
+  initialMembers,
 }: HomesModalProps) {
   const { t } = useLanguage();
   const { user, effectiveUserId } = useAuth();
@@ -297,12 +101,17 @@ export default function HomesModal({
   const myName = user?.displayName || 'A full-timer';
 
   const [editing, setEditing] = useState<Draft | null>(null);
+  const [baseline, setBaseline] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [combining, setCombining] = useState<{ source: Home; target: Home | null } | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const seededRef = useRef<string | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   const realContacts = useMemo(() => pickableContacts(contacts), [contacts]);
+  const nameOf = (id: string) => contacts.find((c) => c.id === id)?.name ?? '?';
 
   const excluded = useMemo(() => homedMemberIds(homes), [homes]);
   const suggestions = useMemo<HomeProposal[]>(() => {
@@ -312,9 +121,20 @@ export default function HomesModal({
     return [...coVisit, ...surname];
   }, [visits, realContacts, excluded]);
 
-  const startNew = () => setEditing(emptyDraft());
+  const sortedHomes = useMemo(() => homes.slice().sort(byHomeLabel), [homes]);
+  const activeHomes = useMemo(() => sortedHomes.filter((h) => h.active), [sortedHomes]);
+  const inactiveHomes = useMemo(() => sortedHomes.filter((h) => !h.active), [sortedHomes]);
+  const visitCount = (homeId: string) => visits.filter((v) => v.homeId === homeId).length;
+  const visitCountLabel = (n: number) =>
+    n === 1 ? t('homes.visit_one') : t('homes.visit_many').replace('{count}', String(n));
+
+  const beginEdit = (draft: Draft) => {
+    setEditing(draft);
+    setBaseline(draft);
+  };
+  const startNew = () => beginEdit(emptyDraft());
   const startEdit = (home: Home) =>
-    setEditing({
+    beginEdit({
       id: home.id,
       label: home.label,
       place: home.place ?? '',
@@ -323,11 +143,55 @@ export default function HomesModal({
       active: home.active,
     });
   const startSuggestion = (proposal: HomeProposal) =>
-    setEditing({ ...emptyDraft(), label: proposal.label, memberIds: proposal.memberIds.slice() });
+    beginEdit({ ...emptyDraft(), label: proposal.label, memberIds: proposal.memberIds.slice() });
+
+  // Reset on open, and seed a new Home from the people handed in ("Add one"
+  // from Log a visit) so the editor opens prefilled.
+  useEffect(() => {
+    if (!isOpen) {
+      setEditing(null);
+      setBaseline(null);
+      setCombining(null);
+      setShowInactive(false);
+      seededRef.current = null;
+      return;
+    }
+    const seedKey = initialMembers?.length ? initialMembers.join('\u0000') : '';
+    if (seedKey && seededRef.current !== seedKey) {
+      seededRef.current = seedKey;
+      const memberIds = initialMembers!.filter((id) => realContacts.some((c) => c.id === id));
+      setEditing({ ...emptyDraft(), memberIds });
+      setBaseline({ ...emptyDraft(), memberIds });
+    }
+  }, [isOpen, initialMembers, realContacts]);
 
   const editingHome = editing?.id ? homes.find((h) => h.id === editing.id) ?? null : null;
   const canDelete = !!editingHome && isHomeUnvisited(editingHome.id, visits);
   const canCombine = !!editingHome && homes.length > 1;
+
+  const dirty =
+    !!editing &&
+    !!baseline &&
+    (editing.label !== baseline.label ||
+      editing.place !== baseline.place ||
+      editing.notes !== baseline.notes ||
+      editing.memberIds.join('\u0000') !== baseline.memberIds.join('\u0000') ||
+      editing.active !== baseline.active);
+
+  const leaveEditor = () => {
+    setEditing(null);
+    setBaseline(null);
+  };
+
+  const toggleMember = (id: string) => {
+    if (!editing) return;
+    const memberIds = editing.memberIds.includes(id)
+      ? editing.memberIds.filter((x) => x !== id)
+      : [...editing.memberIds, id];
+    // A home with nobody left in it goes inactive, not away — its visits keep
+    // their meaning.
+    setEditing({ ...editing, memberIds, active: memberIds.length > 0 ? editing.active : false });
+  };
 
   /** Delete a Home made by mistake (ADR 0040 §1) — immediate, with Undo. */
   const remove = async () => {
@@ -344,7 +208,7 @@ export default function HomesModal({
         type: 'edit',
         description: `Deleted the home "${home.label}".`,
       });
-      setEditing(null);
+      leaveEditor();
       showUndoSnack(t('homes.deleted_snack'), () => {
         void restoreHome(home, { uid: me, name: myName }).catch((e) =>
           handleFirestoreError(e, OperationType.WRITE, `homes/${home.id}`),
@@ -373,7 +237,7 @@ export default function HomesModal({
         description: `Combined "${source.label}" (${source.id}) into "${target.label}" (${target.id}).`,
       });
       setCombining(null);
-      setEditing(null);
+      leaveEditor();
       onHomeSaved(target);
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, `homes/${target.id}`);
@@ -400,7 +264,7 @@ export default function HomesModal({
         const id = await addHome(input, { uid: me, name: myName });
         onHomeSaved({ id, ...input });
       }
-      setEditing(null);
+      leaveEditor();
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'homes');
     } finally {
@@ -408,197 +272,389 @@ export default function HomesModal({
     }
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      setEditing(null);
-      setCombining(null);
-    }
-  }, [isOpen]);
+  const inputCls =
+    'w-full rounded-sm bg-surface-container-low border border-transparent px-3.5 py-2.5 text-sm text-on-surface placeholder:text-[var(--text-mute)] focus:outline-none focus:border-outline transition-colors';
+
+  // ── views ──────────────────────────────────────────────────────────────────
+
+  const listBody = (
+    <div className="text-on-surface">
+      {homes.length === 0 ? (
+        <div className="px-7 py-8 text-center">
+          <div className="mx-auto mb-2.5 grid h-11 w-11 place-items-center rounded-2xl bg-surface-container-low text-on-surface-variant">
+            <House className="h-5 w-5" />
+          </div>
+          <p className="text-[15px] font-semibold">{t('homes.no_homes_yet_title')}</p>
+          <p className="mt-1 text-[13px] text-[var(--text-mute)]">
+            {t('homes.suggestions_found').replace('{count}', String(suggestions.length))}
+          </p>
+          <div className="mt-3.5 flex justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => suggestionsRef.current?.scrollIntoView?.({ block: 'nearest' })}
+              className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-medium text-on-primary"
+            >
+              {t('homes.review_suggestions')}
+            </button>
+            <button
+              type="button"
+              onClick={startNew}
+              className="inline-flex h-10 items-center rounded-full border border-outline-variant bg-[var(--bg-elev)] px-4 text-sm font-medium text-on-surface"
+            >
+              {t('homes.add_home')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="border-t border-outline-variant px-7 py-5">
+          <div className="flex items-center gap-3 pb-1.5">
+            <p className="flex-1 text-[13px] font-semibold">
+              {t('homes.our_homes')}{' '}
+              <span className="font-medium text-[var(--text-mute)]">· {homes.length}</span>
+            </p>
+            <button
+              type="button"
+              onClick={startNew}
+              className="inline-flex h-9 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-on-primary"
+            >
+              <Plus className="h-4 w-4" /> {t('homes.add_home')}
+            </button>
+          </div>
+          <div>
+            {activeHomes.map((home) => (
+              <div
+                key={home.id}
+                className="flex items-center gap-3 border-b border-outline-variant px-1 py-3 last:border-b-0"
+              >
+                <MemberStack memberIds={home.members} contacts={contacts} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{home.label}</p>
+                  <p className="mt-0.5 truncate text-xs text-on-surface-variant">
+                    {[home.place, home.members.map(nameOf).join(', ')].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startEdit(home)}
+                  aria-label={`${t('homes.edit_home')}: ${home.label}`}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-variant"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          {inactiveHomes.length > 0 && (
+            <div className="mt-1 border-t border-outline-variant">
+              <button
+                type="button"
+                onClick={() => setShowInactive((v) => !v)}
+                className="flex w-full items-center gap-2 py-3 text-left text-[13px] text-on-surface-variant"
+              >
+                <ChevronRight className={cn('h-4 w-4 transition-transform', showInactive && 'rotate-90')} />
+                {t('homes.inactive_section')}{' '}
+                <span className="text-[var(--text-mute)]">
+                  · {inactiveHomes.length} {t('homes.households_moved_on')}
+                </span>
+              </button>
+              {showInactive &&
+                inactiveHomes.map((home) => (
+                  <div key={home.id} className="flex items-center gap-3 px-1 py-3 opacity-60">
+                    <MemberStack memberIds={home.members} contacts={contacts} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{home.label}</p>
+                      <p className="mt-0.5 truncate text-xs text-on-surface-variant">
+                        {[home.place, home.members.map(nameOf).join(', '), visitCountLabel(visitCount(home.id))]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <div ref={suggestionsRef} className="border-t border-outline-variant px-7 py-5">
+          <p className="text-[13px] font-semibold">{t('homes.suggestions')}</p>
+          <p className="mt-1 text-xs text-[var(--text-mute)]">{t('homes.suggestions_hint')}</p>
+          <div className="mt-3 flex flex-col gap-2">
+            {suggestions.map((p, i) => {
+              const names = p.memberIds.map(nameOf).filter(Boolean);
+              return (
+                <div
+                  key={`${p.source}-${i}`}
+                  className="flex items-center gap-3 rounded-xl border border-outline-variant px-3.5 py-3"
+                >
+                  <MemberStack memberIds={p.memberIds} contacts={contacts} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">
+                      {p.label || t('homes.unnamed_home')}
+                      <span className="ml-1.5 rounded-full bg-surface-container-low px-2 py-0.5 text-[11px] font-medium text-on-surface-variant">
+                        {p.source === 'co-visit' ? t('homes.from_visits') : t('homes.from_surnames')}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-on-surface-variant">{names.join(', ')}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => startSuggestion(p)}
+                    className="inline-flex h-9 shrink-0 items-center rounded-full border border-outline-variant bg-[var(--bg-elev)] px-4 text-sm font-medium text-on-surface"
+                  >
+                    {t('homes.confirm')}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const isNew = !editing?.id;
+  const editorBody = editing && (
+    <>
+      <PopupSection label={t('homes.section_the_home')}>
+        <div className="flex flex-col gap-4">
+          <PopupField label={t('homes.label')} htmlFor="home-label">
+            <input
+              id="home-label"
+              value={editing.label}
+              onChange={(e) => setEditing({ ...editing, label: e.target.value })}
+              placeholder={t('homes.label_placeholder')}
+              className={inputCls}
+            />
+          </PopupField>
+          <PopupField label={t('homes.place')} htmlFor="home-place" hint={t('homes.where_hint')}>
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-mute)]" />
+              <input
+                id="home-place"
+                value={editing.place}
+                onChange={(e) => setEditing({ ...editing, place: e.target.value })}
+                placeholder={t('homes.place_placeholder')}
+                className={cn(inputCls, 'pl-10')}
+              />
+            </div>
+          </PopupField>
+        </div>
+      </PopupSection>
+
+      <PopupSection label={t('homes.who_lives_here')}>
+        <div className="flex flex-wrap gap-2">
+          {realContacts.map((c) => {
+            const on = editing.memberIds.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleMember(c.id)}
+                className={cn(
+                  'inline-flex h-8 items-center gap-2 rounded-full border pl-1 pr-2.5 text-[13px] transition-colors',
+                  on
+                    ? 'border-accent-line bg-primary/10 text-accent'
+                    : 'border-outline-variant bg-[var(--bg-elev)] text-on-surface',
+                )}
+              >
+                <span
+                  style={avatarTint(c.id)}
+                  aria-hidden="true"
+                  className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-semibold"
+                >
+                  {initialsOf(c.name)}
+                </span>
+                {c.name}
+              </button>
+            );
+          })}
+        </div>
+      </PopupSection>
+
+      {!isNew && (
+        <PopupSection label={t('homes.section_status')}>
+          <div className="flex items-center gap-3">
+            <span className="flex-1 text-[13px]">{t('homes.active_home')}</span>
+            <Switch
+              checked={editing.active}
+              onChange={(v) => setEditing({ ...editing, active: v })}
+              aria-label={t('homes.active_home')}
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-[var(--text-mute)]">{t('homes.active_hint')}</p>
+        </PopupSection>
+      )}
+
+      <PopupSection label={t('homes.notes')}>
+        <textarea
+          id="home-notes"
+          rows={3}
+          value={editing.notes}
+          onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+          placeholder={t('homes.notes_placeholder')}
+          className={cn(inputCls, 'resize-y')}
+        />
+      </PopupSection>
+
+      {!isNew && canCombine && (
+        <div className="border-t border-outline-variant px-7 py-4">
+          <button
+            type="button"
+            onClick={() => editingHome && setCombining({ source: editingHome, target: null })}
+            className="inline-flex h-11 items-center gap-2 text-sm font-medium text-on-surface transition-colors hover:text-accent"
+          >
+            <ArrowRightLeft className="h-4 w-4" /> {t('homes.combine_into')}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
+  const combineBody = combining && (
+    <>
+      <div className="border-t border-outline-variant px-7 py-5">
+        <p className="mb-3 text-[13px] font-semibold">{t('homes.combine_pick_title')}</p>
+        <div className="flex flex-col gap-2">
+          {homes
+            .filter((h) => h.id !== combining.source.id)
+            .sort(byHomeLabel)
+            .map((h) => {
+              const selected = combining.target?.id === h.id;
+              return (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setCombining({ ...combining, target: h })}
+                  aria-label={`${t('homes.combine_keep')} ${h.label}`}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors',
+                    selected ? 'border-primary bg-surface-container-low' : 'border-outline-variant',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'grid h-5 w-5 shrink-0 place-items-center rounded-full border',
+                      selected ? 'border-primary' : 'border-outline',
+                    )}
+                  >
+                    {selected && <span className="h-2 w-2 rounded-full bg-primary" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{h.label}</span>
+                    <span className="block truncate text-xs text-on-surface-variant">
+                      {[h.place, h.members.map(nameOf).join(', '), visitCountLabel(visitCount(h.id))]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+        </div>
+      </div>
+      {combining.target && (
+        <div className="border-t border-outline-variant px-7 py-5">
+          <p className="mb-2 text-[13px] font-semibold">{t('homes.combine_what_happens')}</p>
+          <div className="rounded-xl bg-surface-container-low px-3.5 py-3 text-[13px]">
+            {combineSummary(combining.source, combining.target, visits, t)}
+          </div>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <>
-      <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('homes.title')}
-            className="relative w-full max-w-2xl max-h-[90vh] bg-surface-container rounded-[2rem] shadow-2xl overflow-hidden border border-outline-variant flex flex-col"
-          >
-            <div className="p-6 border-b border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
-              <div className="w-12 h-12 bg-primary/10 text-accent rounded-2xl flex items-center justify-center shrink-0">
-                <House className="w-6 h-6" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="font-serif text-2xl text-on-surface">{t('homes.title')}</h2>
-                <p className="text-xs text-on-surface-variant">{t('homes.subtitle')}</p>
-              </div>
-              <button
-                onClick={onClose}
-                aria-label={t('homes.close')}
-                className="ml-auto p-2 rounded-full hover:bg-surface-variant transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {combining ? (
-                <CombinePanel
-                  source={combining.source}
-                  target={combining.target}
-                  homes={homes}
-                  visits={visits}
-                  busy={busy}
-                  onPick={(target) => setCombining({ ...combining, target })}
-                  onBack={() => setCombining({ ...combining, target: null })}
-                  onCancel={() => setCombining(null)}
-                  onConfirm={confirmCombine}
-                />
-              ) : editing ? (
-                <div>
-                  <button
-                    onClick={() => setEditing(null)}
-                    className="text-sm text-accent hover:underline mb-4"
-                  >
-                    {t('homes.back_to_list')}
-                  </button>
-                  <HomeForm
-                    draft={editing}
-                    contacts={realContacts}
-                    onChange={setEditing}
-                    onSave={save}
-                    saving={saving}
-                    isNew={!editing.id}
-                    canDelete={canDelete}
-                    canCombine={canCombine}
-                    onDelete={remove}
-                    onStartCombine={() =>
-                      editingHome && setCombining({ source: editingHome, target: null })
-                    }
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                      <h3 className="font-serif text-[19px] text-on-surface">{t('homes.our_homes')}</h3>
-                      <p className="text-xs text-on-surface-variant">{t('homes.our_homes_hint')}</p>
-                    </div>
-                    <button
-                      onClick={startNew}
-                      className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium"
-                    >
-                      <Plus className="w-4 h-4" /> {t('homes.add_home')}
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {homes.length === 0 && (
-                      <p className="text-sm text-on-surface-variant">{t('homes.no_homes_yet')}</p>
-                    )}
-                    {homes.map((home) => (
-                      <div
-                        key={home.id}
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface border border-outline-variant"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-on-surface">{home.label}</span>
-                            {home.place && (
-                              <span className="text-xs text-on-surface-variant">{home.place}</span>
-                            )}
-                            {!home.active && (
-                              <span className="text-xs text-on-surface-variant">{t('homes.inactive')}</span>
-                            )}
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {home.members.map((id) => {
-                              const c = contacts.find((x) => x.id === id);
-                              return (
-                                <span
-                                  key={id}
-                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-accent text-[11px] font-medium"
-                                >
-                                  {initialsOf(c?.name ?? '?')} {c?.name ?? '?'}
-                                </span>
-                              );
-                            })}
-                            {home.members.length === 0 && (
-                              <span className="text-xs text-on-surface-variant">{t('homes.no_members')}</span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => startEdit(home)}
-                          aria-label={`${t('homes.edit_home')}: ${home.label}`}
-                          className="p-2 rounded-full hover:bg-surface-variant transition-colors text-on-surface-variant"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {suggestions.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Sparkles className="w-4 h-4 text-accent" />
-                        <h3 className="font-serif text-[19px] text-on-surface">{t('homes.suggestions')}</h3>
-                      </div>
-                      <p className="text-xs text-on-surface-variant mb-3">{t('homes.suggestions_hint')}</p>
-                      <div className="flex flex-col gap-2">
-                        {suggestions.map((p, i) => {
-                          const names = p.memberIds
-                            .map((id) => contacts.find((x) => x.id === id)?.name)
-                            .filter(Boolean);
-                          return (
-                            <div
-                              key={`${p.source}-${i}`}
-                              className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface border border-outline-variant"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-semibold text-on-surface">
-                                  {p.label || t('homes.unnamed_home')}
-                                  <span className="ml-2 text-[10px] font-medium text-on-surface-variant uppercase">
-                                    {p.source === 'co-visit' ? t('homes.from_visits') : t('homes.from_surnames')}
-                                  </span>
-                                </div>
-                                <div className="mt-1 text-xs text-on-surface-variant">
-                                  {names.join(', ')}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => startSuggestion(p)}
-                                className="px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium"
-                              >
-                                {t('homes.confirm')}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </motion.div>
-        </div>
+      {combining ? (
+        <PopupFrame
+          open={isOpen}
+          onClose={onClose}
+          size="md"
+          onBack={() => setCombining(null)}
+          backLabel={t('homes.combine_back_home')}
+          title={t('homes.combine_heading').replace('{source}', combining.source.label)}
+          subtitle={t('homes.combine_subtitle').replace(
+            '{visits}',
+            visitCountLabel(visitCount(combining.source.id)),
+          )}
+          cancelLabel={t('modals.cancel')}
+          onCancel={() => setCombining(null)}
+          primary={{
+            label: t('homes.combine_confirm'),
+            onClick: () => void confirmCombine(),
+            disabled: !combining.target,
+            saving: busy,
+            savingLabel: t('homes.combine_working'),
+          }}
+        >
+          {combineBody}
+        </PopupFrame>
+      ) : editing ? (
+        <PopupFrame
+          open={isOpen}
+          onClose={() => {
+            leaveEditor();
+            onClose();
+          }}
+          size="md"
+          onBack={leaveEditor}
+          backLabel={t('homes.back_to_list')}
+          title={isNew ? t('homes.new_home') : editing.label.trim() || t('homes.unnamed_home')}
+          subtitle={isNew ? undefined : visitCountLabel(visitCount(editing.id as string))}
+          dirty={dirty}
+          discardQuestion={t('homes.discard_question')}
+          destructive={canDelete ? { label: t('homes.delete_home'), onClick: () => void remove() } : null}
+          footerHint={canDelete ? t('homes.never_visited_hint') : undefined}
+          cancelLabel={t('modals.cancel')}
+          onCancel={leaveEditor}
+          primary={{
+            label: isNew ? t('homes.create_home') : t('homes.save_changes'),
+            onClick: () => void save(),
+            disabled: !editing.label.trim(),
+            saving,
+            savingLabel: t('homes.saving'),
+          }}
+        >
+          {editorBody}
+        </PopupFrame>
+      ) : (
+        <PopupFrame
+          open={isOpen}
+          onClose={onClose}
+          size="md"
+          eyebrow={t('homes.eyebrow')}
+          title={t('homes.title')}
+          subtitle={t('homes.list_subtitle')}
+        >
+          {listBody}
+        </PopupFrame>
       )}
-      </AnimatePresence>
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </>
   );
+}
+
+/** The preview sentence for Combine: what moves to the Home being kept. */
+function combineSummary(
+  source: Home,
+  target: Home,
+  visits: Visit[],
+  t: (key: string, fallback?: string) => string,
+): string {
+  const people = source.members.length;
+  const movingVisits = visits.filter((v) => v.homeId === source.id).length;
+  const peopleLabel =
+    people === 1 ? t('homes.combine_one_person') : t('homes.combine_people').replace('{count}', String(people));
+  const visitsLabel =
+    movingVisits === 1
+      ? t('homes.combine_one_visit')
+      : t('homes.combine_visits').replace('{count}', String(movingVisits));
+  return (movingVisits === 0
+    ? t('homes.combine_move_people_only').replace('{people}', peopleLabel)
+    : t('homes.combine_move_summary').replace('{people}', peopleLabel).replace('{visits}', visitsLabel)
+  ).replace('{target}', target.label);
 }

@@ -36,6 +36,8 @@ interface LogVisitModalProps {
   /** Home pre-picked from the "Who we haven't seen" reading — its people and
    *  its place come with it, so a gap and the recording are one motion. */
   initialHomeId?: string | null;
+  /** Start a Home for the people seen who have none (spec #1444/#1448). */
+  onAddHome?: (memberIds: string[]) => void;
 }
 
 /** A follow-up lands as a to-do a week out — long enough to be a real intention,
@@ -71,6 +73,7 @@ export default function LogVisitModal({
   visit = null,
   initialContactId = null,
   initialHomeId = null,
+  onAddHome,
 }: LogVisitModalProps) {
   const { user, effectiveUserId } = useAuth();
   const { t } = useLanguage();
@@ -391,6 +394,10 @@ export default function LogVisitModal({
   });
 
   const chosenHome = homeFor(ids);
+  // Nobody seen lives in a Home yet — offer to start one from this visit.
+  const nobodyHasHome =
+    chosen.length > 0 && chosen.every((c) => !homes.some((h) => h.members.includes(c.id)));
+  const firstName = chosen[0]?.name.split(' ')[0] ?? '';
   const lastVisitMs = chosen.reduce((max, c) => {
     const ms = Date.parse(c.lastContactedDate || c.lastSeen || '');
     return Number.isFinite(ms) ? Math.max(max, ms) : max;
@@ -491,6 +498,20 @@ export default function LogVisitModal({
             <p className="mt-2.5 inline-flex items-center gap-2 rounded bg-surface-container-low px-3 py-1.5 text-[12px] text-on-surface-variant">
               <House className="h-3.5 w-3.5" />
               {homeLine}
+            </p>
+          )}
+          {!chosenHome && nobodyHasHome && onAddHome && (
+            <p className="mt-2.5 inline-flex items-center gap-2 text-[12px] text-on-surface-variant">
+              <House className="h-3.5 w-3.5" />
+              {t('modals.no_home_yet').replace('{name}', firstName)}
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => onAddHome(ids)}
+                className="font-medium text-on-surface underline"
+              >
+                {t('modals.add_one')}
+              </button>
             </p>
           )}
           {showPeopleError && (
