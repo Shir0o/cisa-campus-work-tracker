@@ -100,6 +100,19 @@ export interface Contact {
    *  The story so far quoted, with who said them and when (#1298). A message
    *  can be added once and taken back out; it stays where it was said. */
   storyMessageIds?: string[];
+  /** Stamped on the kept contact by a combine (ADR 0038, #1434), so every role
+   *  that can read the contact sees the "Combined from …" banner. Cleared when
+   *  the combine is undone (a later combine's undo restores the earlier one). */
+  combinedFrom?: CombinedFrom;
+}
+
+/** The "Combined from X on date by person" note a combine leaves on the kept
+ *  contact (#1434). The record id lets a Full-timer open what moved or undo it. */
+export interface CombinedFrom {
+  name: string;
+  at: string;
+  byName: string;
+  combineRecordId?: string;
 }
 
 export interface Stage {

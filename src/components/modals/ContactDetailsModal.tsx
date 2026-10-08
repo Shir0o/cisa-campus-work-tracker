@@ -62,6 +62,7 @@ import { emptyComposer, type ComposerValue } from "../../lib/contactComposer";
 import { subscribeRhythms } from "../../lib/rhythms";
 
 import ContactHead from "../contact/ContactHead";
+import CombinedFromBanner from "../contact/CombinedFromBanner";
 import ContactEditForm from "../contact/ContactEditForm";
 import ContactStory from "../contact/ContactStory";
 import ContactComposer from "../contact/ContactComposer";
@@ -1657,6 +1658,13 @@ export default function ContactDetailsModal({
               }}
               conversationUnread={fullTimersUnread}
             />
+
+            {!isEditing && currentContact.combinedFrom && (
+              <CombinedFromBanner
+                combinedFrom={currentContact.combinedFrom}
+                isFullTimer={isAdmin && !isImpersonating}
+              />
+            )}
 
             {reachPromptType && (
               <ContactReachPrompt

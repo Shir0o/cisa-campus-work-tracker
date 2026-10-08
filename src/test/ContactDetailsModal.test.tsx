@@ -216,6 +216,63 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByText('Christian')).toBeInTheDocument();
     expect(screen.getByText('Bible study, Prayer group')).toBeInTheDocument();
   });
+  it('shows the combined-from banner on a kept contact with Full-timer controls (#1434)', () => {
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{
+          ...mockContact,
+          combinedFrom: {
+            name: 'Jane Duplicate',
+            at: '2026-10-01T10:00:00.000Z',
+            byName: 'Admin Tony',
+            combineRecordId: 'rec-1',
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('combined-from-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Combined from Jane Duplicate/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /See what moved/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Undo combine/i })).toBeInTheDocument();
+  });
+
+  it('shows the banner text but no undo control to a non-Full-timer (#1434)', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'trainee-1', displayName: 'Trainee' },
+      isAdmin: false,
+      role: 'trainee',
+      effectiveUserId: 'trainee-1',
+    });
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{
+          ...mockContact,
+          combinedFrom: {
+            name: 'Jane Duplicate',
+            at: '2026-10-01T10:00:00.000Z',
+            byName: 'Admin Tony',
+            combineRecordId: 'rec-1',
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/Combined from Jane Duplicate/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /See what moved/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Undo combine/i })).not.toBeInTheDocument();
+  });
+
+  it('shows no banner on a contact that was not combined', () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    expect(screen.queryByTestId('combined-from-banner')).not.toBeInTheDocument();
+  });
+
   it('avoids dash placeholders when last-connected is missing', () => {
     render(
       <ContactDetailsModal

@@ -1135,7 +1135,7 @@ function valuesEqual(a: unknown, b: unknown): boolean {
 }
 
 /** Fields the combine stamps as bookkeeping, not person data. */
-const UNDO_META_FIELDS = new Set(['updatedAt', 'updatedByName', 'updatedBy']);
+const UNDO_META_FIELDS = new Set(['updatedAt', 'updatedByName', 'updatedBy', 'combinedFrom']);
 
 /**
  * Plans the undo of a combine from the record and the current database.

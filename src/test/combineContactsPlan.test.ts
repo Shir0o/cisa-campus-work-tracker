@@ -849,4 +849,48 @@ describe('buildCombineUndoPlan', () => {
     });
     expect(plan.notRestored).toEqual([]);
   });
+
+  it('removes the combined-from banner stamped by the combine (#1434)', () => {
+    const banner = { name: 'In', at: 'T', byName: 'Test', combineRecordId: 'r1' };
+    const withBanner: CombineUndoRecord = {
+      ...record,
+      keptAfter: { ...record.keptAfter, combinedFrom: banner },
+    };
+    const current = { ...baseCurrent(), kept: { ...baseCurrent().kept, combinedFrom: banner } };
+
+    const plan = buildCombineUndoPlan(withBanner, current);
+
+    expect(plan.keptUpdates).toContainEqual({ field: 'combinedFrom', remove: true });
+    expect(plan.notRestored).toEqual([]);
+  });
+
+  it('restores the earlier combined-from banner when a later combine is undone (#1434)', () => {
+    const earlier = { name: 'First', at: 'T1', byName: 'A', combineRecordId: 'r0' };
+    const later = { name: 'Second', at: 'T2', byName: 'B', combineRecordId: 'r1' };
+    const withBanner: CombineUndoRecord = {
+      ...record,
+      keptBefore: { ...record.keptBefore, combinedFrom: earlier },
+      keptAfter: { ...record.keptAfter, combinedFrom: later },
+    };
+    const current = { ...baseCurrent(), kept: { ...baseCurrent().kept, combinedFrom: later } };
+
+    const plan = buildCombineUndoPlan(withBanner, current);
+
+    expect(plan.keptUpdates).toContainEqual({ field: 'combinedFrom', value: earlier });
+  });
+
+  it('leaves a combined-from banner edited after the combine alone (#1434)', () => {
+    const later = { name: 'Second', at: 'T2', byName: 'B', combineRecordId: 'r1' };
+    const withBanner: CombineUndoRecord = {
+      ...record,
+      keptAfter: { ...record.keptAfter, combinedFrom: later },
+    };
+    const edited = { ...later, byName: 'Someone else' };
+    const current = { ...baseCurrent(), kept: { ...baseCurrent().kept, combinedFrom: edited } };
+
+    const plan = buildCombineUndoPlan(withBanner, current);
+
+    expect(plan.keptUpdates.find((u) => u.field === 'combinedFrom')).toBeUndefined();
+    expect(plan.notRestored).toEqual([]);
+  });
 });

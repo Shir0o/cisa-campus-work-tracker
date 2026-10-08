@@ -74,6 +74,19 @@ export interface Contact {
    *  migration seed — so an absent stamp is what "Not sorted yet" counts. */
   kindSetBy?: string;
   kindSetAt?: string;
+  /** Stamped on the kept contact by a combine (ADR 0038, #1434), so every role
+   *  that can read the contact sees the "Combined from …" banner. Cleared when
+   *  the combine is undone (a later combine's undo restores the earlier one). */
+  combinedFrom?: CombinedFrom;
+}
+
+/** The "Combined from X on date by person" note a combine leaves on the kept
+ *  contact (#1434). The record id lets a Full-timer open what moved or undo it. */
+export interface CombinedFrom {
+  name: string;
+  at: string;
+  byName: string;
+  combineRecordId?: string;
 }
 
 /** A record of having gone to where someone lives (ADR 0031). The web app's

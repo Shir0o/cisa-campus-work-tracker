@@ -220,6 +220,32 @@ describe('ContactScreen', () => {
     expect(getByText('Interested')).toBeTruthy();
   });
 
+  it('shows the combined-from note without an undo control (#1434)', async () => {
+    (useContactDetailData as jest.Mock).mockReturnValue({
+      ...baseLoadedData,
+      loading: false,
+      contact: {
+        ...mockContact,
+        combinedFrom: {
+          name: 'Jane Duplicate',
+          at: '2026-10-01T10:00:00.000Z',
+          byName: 'Admin Tony',
+          combineRecordId: 'rec-1',
+        },
+      },
+    });
+
+    const { getByTestId, getByText, queryByText } = await render(
+      <ThemeProvider>
+        <ContactScreen contactId="contact1" initialTab="story" />
+      </ThemeProvider>,
+    );
+
+    expect(getByTestId('combined-from')).toBeTruthy();
+    expect(getByText(/Combined from Jane Duplicate/)).toBeTruthy();
+    expect(queryByText(/Undo combine/i)).toBeNull();
+  });
+
   it('renders empty/error state when contact is not found', async () => {
     (useContactDetailData as jest.Mock).mockReturnValue({
       ...baseLoadedData,

@@ -3264,6 +3264,30 @@ describe("POST /api/combine-contacts", () => {
     expect(entry.description).toContain("In Name");
   });
 
+  it("stamps the kept contact with a combined-from banner and clears it on undo (#1434)", async () => {
+    seedCombine();
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+    expect(res.status).toBe(200);
+
+    const banner = getCollection("contacts")["s1"].combinedFrom;
+    expect(banner).toMatchObject({
+      name: "In Name",
+      byName: "Test User",
+      combineRecordId: res.body.combineRecordId,
+    });
+    expect(banner.at).toBeTruthy();
+    expect(getCollection("combineRecords")[res.body.combineRecordId].keptAfter.combinedFrom).toEqual(
+      banner,
+    );
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: res.body.combineRecordId });
+    expect(getCollection("contacts")["s1"].combinedFrom).toBeUndefined();
+  });
+
   it("applies the Full-timer's picks to the written profile and stores them", async () => {
     seedCombine();
     const res = await request(app).post("/api/combine-contacts").send({
