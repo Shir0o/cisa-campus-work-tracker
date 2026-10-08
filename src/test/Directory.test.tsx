@@ -1099,6 +1099,54 @@ describe('Directory', () => {
     expect(screen.queryByRole('button', { name: /combine contacts/i })).not.toBeInTheDocument();
   });
 
+  // #1433: with exactly two contacts selected, a Full-timer can combine them
+  // through the same review, even though the detector never paired them.
+  it('combines exactly two selected contacts from the directory (#1433)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User' },
+      role: 'admin',
+      effectiveUserId: 'u-admin',
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+    const selectByName = (name: string) => {
+      const card = screen.getByText(name).closest('.group') as HTMLElement;
+      fireEvent.click(within(card).getByTitle('Select'));
+    };
+
+    // Not offered with only one selected.
+    selectByName('Alice Johnson');
+    expect(screen.queryByTestId('combine-two')).not.toBeInTheDocument();
+
+    selectByName('Bob Smith');
+    fireEvent.click(screen.getByTestId('combine-two'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/directory/combine-contacts?kept=c1&combinedIn=c2',
+    );
+  });
+
+  it('does not offer Combine these two to non-admins (#1433)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-test', displayName: 'Operator User' },
+      role: 'operator',
+      isAdmin: false,
+      isManager: false,
+      effectiveUserId: 'u-test',
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
+
+    const select = screen.getAllByTitle('Select');
+    fireEvent.click(select[0]);
+    fireEvent.click(screen.getAllByTitle('Select')[1]);
+
+    expect(screen.queryByTestId('combine-two')).not.toBeInTheDocument();
+  });
+
   it('retains search and filters across an open-then-close contact detail cycle (#1067)', async () => {
     const { unmount } = render(<Directory />);
     await waitFor(() => {

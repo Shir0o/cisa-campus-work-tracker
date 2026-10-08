@@ -833,6 +833,15 @@ export default function Directory() {
     }
     setToast(t('directory.no_emails_to_copy'));
   };
+  // Combine two contacts the detector can't find (#1433): hand the picked pair
+  // to the Combine contacts review page.
+  const handleCombineTwo = () => {
+    if (role !== 'admin' || selectedIds.size !== 2) return;
+    const [first, second] = [...selectedIds];
+    navigate(
+      `/directory/combine-contacts?kept=${encodeURIComponent(first)}&combinedIn=${encodeURIComponent(second)}`,
+    );
+  };
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(t('directory.confirm_remove').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people')))) return;
@@ -1366,6 +1375,16 @@ export default function Directory() {
               >
                 <Copy className="w-4 h-4" /> {t('directory.copy_emails')}
               </button>
+              {role === 'admin' && selectedIds.size === 2 && (
+                <button
+                  onClick={handleCombineTwo}
+                  data-testid="combine-two"
+                  className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 px-3 py-2 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors min-h-[44px]"
+                  title={t('directory.combine_two', 'Combine these two…')}
+                >
+                  <Users className="w-4 h-4" /> {t('directory.combine_two', 'Combine these two…')}
+                </button>
+              )}
               {isManager && (
                 <button
                   onClick={handleBulkDelete}

@@ -196,6 +196,30 @@ export function historyScore(history: ContactHistory): number {
 }
 
 /**
+ * Chooses which of two contacts is kept and which is combined in. The record
+ * with more history is kept by default; when the histories tie (or none is
+ * supplied) the older record (by createdAt) is kept. Shared by detected pairs
+ * and pairs the Full-timer picks from the directory (#1433).
+ */
+export function chooseKeptContact(
+  a: Contact,
+  b: Contact,
+  historyById: Record<string, ContactHistory> = {},
+): { kept: Contact; combinedIn: Contact } {
+  const scoreA = historyById[a.id] ? historyScore(historyById[a.id]) : 0;
+  const scoreB = historyById[b.id] ? historyScore(historyById[b.id]) : 0;
+
+  if (scoreA !== scoreB) {
+    return scoreB > scoreA ? { kept: b, combinedIn: a } : { kept: a, combinedIn: b };
+  }
+
+  const timeA = a.createdAt ? timestampMillis(a.createdAt) : 0;
+  const timeB = b.createdAt ? timestampMillis(b.createdAt) : 0;
+  const bIsOlder = timeB !== 0 && (timeA === 0 || timeB < timeA);
+  return bIsOlder ? { kept: b, combinedIn: a } : { kept: a, combinedIn: b };
+}
+
+/**
  * Scans contacts for candidate duplicate pairs. Each contact is paired at most
  * once per pass. The record with more history is kept by default; when the
  * histories tie (or none is supplied) the older record (by createdAt) is kept.
@@ -222,26 +246,7 @@ export function findCombineCandidates(
       const reason = checkCombineMatch(a, b);
       if (!reason) continue;
 
-      const scoreA = historyById[a.id] ? historyScore(historyById[a.id]) : 0;
-      const scoreB = historyById[b.id] ? historyScore(historyById[b.id]) : 0;
-
-      let kept = a;
-      let combinedIn = b;
-      if (scoreA !== scoreB) {
-        if (scoreB > scoreA) {
-          kept = b;
-          combinedIn = a;
-        }
-      } else {
-        const timeA = a.createdAt ? timestampMillis(a.createdAt) : 0;
-        const timeB = b.createdAt ? timestampMillis(b.createdAt) : 0;
-        const bIsOlder = timeB !== 0 && (timeA === 0 || timeB < timeA);
-        if (bIsOlder) {
-          kept = b;
-          combinedIn = a;
-        }
-      }
-
+      const { kept, combinedIn } = chooseKeptContact(a, b, historyById);
       pairs.push({ kept, combinedIn, reason });
       claimedIds.add(a.id);
       claimedIds.add(b.id);

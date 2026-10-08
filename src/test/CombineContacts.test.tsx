@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import CombineContacts from '../views/CombineContacts';
 import { setDoc, deleteDoc } from 'firebase/firestore';
 import type { Contact } from '../types';
@@ -29,6 +30,28 @@ const contacts: Contact[] = [
     initials: 'AS',
     createdAt: '2026-02-01T00:00:00.000Z',
     notes: 'second note',
+  },
+  {
+    id: 'c3',
+    name: 'Bob Jones',
+    email: 'bob@example.com',
+    phone: '',
+    stage: 'Contact',
+    location: '',
+    lastSeen: '',
+    initials: 'BJ',
+    createdAt: '2026-03-01T00:00:00.000Z',
+  },
+  {
+    id: 'c4',
+    name: 'Bobby Jones',
+    email: 'bobby@example.com',
+    phone: '',
+    stage: 'Contact',
+    location: '',
+    lastSeen: '',
+    initials: 'BJ',
+    createdAt: '2026-04-01T00:00:00.000Z',
   },
 ];
 
@@ -142,8 +165,15 @@ beforeEach(() => {
 });
 
 describe('CombineContacts page', () => {
+  const renderPage = (entries: string[] = ['/directory/combine-contacts']) =>
+    render(
+      <MemoryRouter initialEntries={entries}>
+        <CombineContacts />
+      </MemoryRouter>,
+    );
+
   it('renders the Queue tab and a three-column diff for a detected pair', () => {
-    render(<CombineContacts />);
+    renderPage();
     expect(screen.getByRole('tab', { name: /queue/i })).toBeInTheDocument();
     expect(screen.getAllByText('Alice Smith').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Alice Second').length).toBeGreaterThan(0);
@@ -153,12 +183,12 @@ describe('CombineContacts page', () => {
   });
 
   it('has no Combine all button', () => {
-    render(<CombineContacts />);
+    renderPage();
     expect(screen.queryByRole('button', { name: /combine all/i })).not.toBeInTheDocument();
   });
 
   it('posts the pair to the server endpoint when Combine is clicked', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /^combine$/i }));
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -171,7 +201,7 @@ describe('CombineContacts page', () => {
   });
 
   it('changes the result column when a pick is chosen and sends it with the stamps', async () => {
-    render(<CombineContacts />);
+    renderPage();
     const pick = await screen.findByTestId('pick-name');
     const row = pick.closest('tr') as HTMLTableRowElement;
     fireEvent.change(pick, { target: { value: 'combined-in' } });
@@ -186,7 +216,7 @@ describe('CombineContacts page', () => {
   });
 
   it('offers Kept, Combined-in or Both for notes', async () => {
-    render(<CombineContacts />);
+    renderPage();
     const notes = await screen.findByTestId('pick-notes');
     const row = notes.closest('tr') as HTMLTableRowElement;
     expect(row.querySelectorAll('td')[3].textContent).toContain('second note');
@@ -196,7 +226,7 @@ describe('CombineContacts page', () => {
   });
 
   it('flips which contact is kept when swapped', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /swap/i }));
     fireEvent.click(screen.getByRole('button', { name: /^combine$/i }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
@@ -211,13 +241,13 @@ describe('CombineContacts page', () => {
         json: async () => ({ success: false, conflict: true, error: 'Contacts changed. Rebuild.' }),
       }),
     );
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /^combine$/i }));
     expect(await screen.findByText('Contacts changed. Rebuild.')).toBeInTheDocument();
   });
 
   it('shows the What moves groups with counts that expand to the items', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /what moves/i }));
 
     const section = await screen.findByTestId('what-moves');
@@ -229,23 +259,23 @@ describe('CombineContacts page', () => {
   });
 
   it('removes a pair when it is skipped', () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
   });
 
   it('Skip for now keeps the pair hidden only until the page is reopened', () => {
-    const { unmount } = render(<CombineContacts />);
+    const { unmount } = renderPage();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
     unmount();
 
-    render(<CombineContacts />);
+    renderPage();
     expect(screen.getByTestId('combine-pair')).toBeInTheDocument();
   });
 
   it('marks a pair Not the same person, removing it from the Queue for everyone', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /not the same person/i }));
 
     await waitFor(() => expect(setDoc).toHaveBeenCalled());
@@ -270,7 +300,7 @@ describe('CombineContacts page', () => {
         markedAt: '2026-03-05T00:00:00.000Z',
       },
     ];
-    render(<CombineContacts />);
+    renderPage();
     // The marked pair is no longer suggested.
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
 
@@ -290,7 +320,7 @@ describe('CombineContacts page', () => {
     (setDoc as unknown as { mockRejectedValueOnce: (e: Error) => void }).mockRejectedValueOnce(
       new Error('denied'),
     );
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('button', { name: /not the same person/i }));
 
     expect(await screen.findByText('denied')).toBeInTheDocument();
@@ -310,7 +340,7 @@ describe('CombineContacts page', () => {
     (deleteDoc as unknown as { mockRejectedValueOnce: (e: Error) => void }).mockRejectedValueOnce(
       new Error('denied'),
     );
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('tab', { name: /not the same person/i }));
     const markRow = await screen.findByTestId('not-same-mark');
     fireEvent.click(within(markRow).getByRole('button', { name: /remove mark/i }));
@@ -320,7 +350,7 @@ describe('CombineContacts page', () => {
   });
 
   it('lists combine records with who, when and the match reason in Recent combines', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
 
     expect(await screen.findByText('Matching email')).toBeInTheDocument();
@@ -330,7 +360,7 @@ describe('CombineContacts page', () => {
   });
 
   it('marks undone records as undone with who undid them', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
 
     expect(await screen.findByText(/Undone by Grace/i)).toBeInTheDocument();
@@ -339,7 +369,7 @@ describe('CombineContacts page', () => {
   });
 
   it('shows the undo preview before the confirm button, then posts the undo', async () => {
-    render(<CombineContacts />);
+    renderPage();
     fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
     fireEvent.click(await screen.findByRole('button', { name: /undo combine/i }));
 
@@ -362,5 +392,39 @@ describe('CombineContacts page', () => {
         dryRun: false,
       });
     });
+  });
+
+  // #1433: a Full-timer picks any two contacts from the directory and combines
+  // them through the same review, without a match reason.
+  it('opens the review for two contacts picked from the directory (#1433)', async () => {
+    renderPage(['/directory/combine-contacts?kept=c3&combinedIn=c4']);
+
+    const pairs = await screen.findAllByTestId('combine-pair');
+    const pair = pairs[0];
+    expect(within(pair).getAllByText('Bob Jones').length).toBeGreaterThan(0);
+    expect(within(pair).getAllByText('Bobby Jones').length).toBeGreaterThan(0);
+    expect(within(pair).getByText('Picked from the directory')).toBeInTheDocument();
+  });
+
+  it('records a directory-picked combine as picked from the directory (#1433)', async () => {
+    renderPage(['/directory/combine-contacts?kept=c3&combinedIn=c4']);
+
+    const pairs = await screen.findAllByTestId('combine-pair');
+    fireEvent.click(within(pairs[0]).getByRole('button', { name: /^combine$/i }));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    expect(body).toMatchObject({
+      keptId: 'c3',
+      combinedInId: 'c4',
+      reason: 'Picked from the directory',
+    });
+  });
+
+  it('ignores a picked pair whose ids are missing from the directory (#1433)', async () => {
+    renderPage(['/directory/combine-contacts?kept=c3&combinedIn=missing']);
+
+    await waitFor(() => expect(screen.getByTestId('combine-pair')).toBeInTheDocument());
+    expect(screen.getAllByTestId('combine-pair')).toHaveLength(1);
   });
 });
