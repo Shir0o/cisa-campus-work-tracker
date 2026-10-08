@@ -1807,7 +1807,8 @@
   "popup": {
     "discard_question": "¿Descartar esta {noun}?",
     "keep_editing": "Seguir editando",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "dismiss_sheet": "Cerrar"
   },
   "visitCard": {
     "no_address_noted": "sin dirección anotada",

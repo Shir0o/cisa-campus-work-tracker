@@ -8,10 +8,11 @@
 // existing Ink tokens so dark mode follows automatically; radii follow the
 // ADR 0009 ladder (dialog 24, nested panels 14, controls 10, pills full).
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, type PanInfo } from 'motion/react';
 import { AlertCircle, Check, Loader2, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../LanguageProvider';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 
 const SIZES = {
   sm: 'max-w-[480px]',
@@ -166,6 +167,9 @@ export function PopupFrame({
   children,
 }: PopupFrameProps) {
   const { t } = useLanguage();
+  // Under 768 px the frame becomes a bottom sheet: the same content, ~92dvh
+  // tall, with a grabber and the footer pinned above the keyboard (spec #1447).
+  const isPhone = useMediaQuery('(max-width: 768px)');
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -191,6 +195,12 @@ export function PopupFrame({
     else onClose();
   };
 
+  // A swipe down far enough (or fast enough) dismisses the phone sheet, through
+  // the same dirty-confirm path as Close and the scrim.
+  const onSheetDragEnd = (_e: unknown, info: PanInfo) => {
+    if (info.offset.y > 96 || info.velocity.y > 480) requestClose();
+  };
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -208,7 +218,12 @@ export function PopupFrame({
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div
+          className={cn(
+            'fixed inset-0 z-[100] flex justify-center',
+            isPhone ? 'items-end p-0' : 'items-center p-4',
+          )}
+        >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -219,19 +234,37 @@ export function PopupFrame({
           />
           <motion.div
             ref={dialogRef}
-            initial={{ opacity: 0, scale: 0.96, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 16 }}
+            initial={isPhone ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.96, y: 16 }}
+            animate={isPhone ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={isPhone ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.96, y: 16 }}
+            transition={isPhone ? { type: 'spring', damping: 32, stiffness: 320 } : undefined}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
             tabIndex={-1}
             className={cn(
-              'relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl border border-outline-variant bg-[var(--bg-elev)] shadow-[var(--shadow-pop)] outline-none',
-              SIZES[size],
+              'relative flex w-full flex-col overflow-hidden border border-outline-variant bg-[var(--bg-elev)] shadow-[var(--shadow-pop)] outline-none',
+              isPhone
+                ? 'h-[92dvh] max-h-[92dvh] rounded-t-xl rounded-b-none'
+                : cn('max-h-[90vh] rounded-xl', SIZES[size]),
             )}
           >
-            <header className="flex items-start gap-3 px-7 pb-5 pt-6">
+            {isPhone && (
+              <motion.button
+                type="button"
+                onClick={requestClose}
+                aria-label={t('popup.dismiss_sheet')}
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={{ top: 0, bottom: 0.5 }}
+                onDragEnd={onSheetDragEnd}
+                data-testid="popup-sheet-grabber"
+                className="group flex h-11 w-full shrink-0 cursor-grab items-center justify-center active:cursor-grabbing"
+              >
+                <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-outline-variant transition-colors group-hover:bg-outline" />
+              </motion.button>
+            )}
+            <header className={cn('flex items-start gap-3 px-7', isPhone ? 'pb-4 pt-1' : 'pb-5 pt-6')}>
               <div className="min-w-0 flex-1">
                 {eyebrow && (
                   <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--text-mute)]">
@@ -247,7 +280,10 @@ export function PopupFrame({
                 type="button"
                 onClick={requestClose}
                 aria-label={t('modals.close')}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:text-on-surface"
+                className={cn(
+                  'grid shrink-0 place-items-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:text-on-surface',
+                  isPhone ? 'h-11 w-11' : 'h-10 w-10',
+                )}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -255,7 +291,10 @@ export function PopupFrame({
 
             <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
 
-            <footer className="border-t border-outline-variant bg-surface-container-low">
+            <footer
+              className="shrink-0 border-t border-outline-variant bg-surface-container-low"
+              style={isPhone ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
+            >
               {error ? (
                 <div className="flex items-center gap-3 px-7 py-4">
                   <p role="alert" className="flex min-w-0 flex-1 items-center gap-2 text-[13px] text-error">
@@ -265,7 +304,10 @@ export function PopupFrame({
                   <button
                     type="button"
                     onClick={error.onRetry}
-                    className="inline-flex h-9 shrink-0 items-center rounded-full bg-primary px-5 text-sm font-medium text-on-primary"
+                    className={cn(
+                      'inline-flex shrink-0 items-center rounded-full bg-primary px-5 text-sm font-medium text-on-primary',
+                      isPhone ? 'h-11' : 'h-9',
+                    )}
                   >
                     {error.retryLabel}
                   </button>
@@ -312,14 +354,20 @@ export function PopupFrame({
                     <button
                       type="button"
                       onClick={() => setConfirming(false)}
-                      className="rounded-full px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
+                      className={cn(
+                        'rounded-full px-4 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface',
+                        isPhone ? 'h-11' : 'py-2',
+                      )}
                     >
                       {t('popup.keep_editing')}
                     </button>
                     <button
                       type="button"
                       onClick={onClose}
-                      className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary"
+                      className={cn(
+                        'rounded-full bg-primary px-4 text-sm font-medium text-on-primary',
+                        isPhone ? 'h-11' : 'py-2',
+                      )}
                     >
                       {t('popup.discard')}
                     </button>
