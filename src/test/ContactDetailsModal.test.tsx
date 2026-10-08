@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
-import { addThreadMessage, closeFollowUpAsk } from '../lib/threads';
+import { addThreadMessage, closeFollowUpAsk, reopenFollowUpAsk } from '../lib/threads';
 import { useAuth } from '../components/AuthProvider';
 import { handleFirestoreError, logActivity, sendNotification } from '../lib/firebase';
 import { Frecency, __resetFrecencyCache } from '../lib/frecency';
@@ -23,6 +23,7 @@ vi.mock('../lib/threads', () => ({
   repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
   addThreadMessage: vi.fn(() => Promise.resolve()),
   closeFollowUpAsk: vi.fn(() => Promise.resolve()),
+  reopenFollowUpAsk: vi.fn(() => Promise.resolve()),
   deleteThreadMessage: vi.fn(() => Promise.resolve()),
   contactStakeholdersOf: vi.fn((c) => c || {}),
   THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
@@ -3224,6 +3225,31 @@ describe('desktop story layout (design D)', () => {
     expect(within(drawer).queryByRole('button', { name: 'Never mind' })).toBeNull();
     fireEvent.click(within(drawer).getByRole('button', { name: 'I followed up' }));
     expect(closeFollowUpAsk).toHaveBeenCalledWith('contact-abc', 'ask-1', { uid: 'user-123', name: 'Admin Tony' });
+  });
+
+  it('reopens a closed Follow-up ask right in the stream (#1496)', () => {
+    hoisted.messages = [
+      {
+        id: 'ask-1',
+        interactionId: null,
+        from: 'user-9',
+        fromName: 'Maria Santos',
+        kind: 'nudge',
+        body: 'Can someone text him?',
+        at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+        closedBy: 'user-123',
+        closedByName: 'Admin Tony',
+        closedAt: new Date(Date.now() - 3_600_000).toISOString(),
+      },
+    ];
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
+    const drawer = screen.getByRole('region', { name: 'Conversation' });
+
+    expect(within(drawer).getByText(/Admin Tony followed up ·/)).toBeInTheDocument();
+    const reopenBtn = within(drawer).getByRole('button', { name: 'Reopen' });
+    expect(reopenBtn).toBeInTheDocument();
+    fireEvent.click(reopenBtn);
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith('contact-abc', 'ask-1');
   });
 
   it('a read-only viewer reads the Conversation but gets no composer', () => {

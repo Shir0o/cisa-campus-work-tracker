@@ -1929,6 +1929,7 @@
     "ask_never_mind": "No importa",
     "ask_done": "{name} hizo el seguimiento · {when}",
     "ask_withdrawn": "{name} lo retiró · {when}",
+    "ask_reopen": "Reabrir",
     "replies_one": "1 respuesta",
     "replies_many": "{n} respuestas",
     "last_reply": "Última respuesta {when}",

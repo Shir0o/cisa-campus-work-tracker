@@ -117,6 +117,8 @@ export interface StreamAdapter<M extends StreamSourceMessage = StreamSourceMessa
   reply(parent: M, input: { body: string; mentionedUserIds: string[] }): unknown;
   /** Close a Follow-up ask: someone followed up, or the asker withdrew it. */
   closeAsk(message: M, how: "followedUp" | "neverMind"): unknown;
+  /** Reopen a closed or withdrawn Follow-up ask (#1496). */
+  reopenAsk?(message: M): unknown;
   delete(message: M): unknown;
 
   // Optional capabilities: a source that sets none of these reads exactly as

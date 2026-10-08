@@ -347,6 +347,28 @@ describe("Stream — kinds and Follow-up asks (K1–K3)", () => {
     expect(within(row("gone ask")).getByText(/Maria Santos withdrew this · /)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "I followed up" })).toBeNull();
   });
+
+  it("offers Reopen on closed and withdrawn asks when adapter supports reopenAsk (#1496)", () => {
+    const reopenAsk = vi.fn();
+    const adapter = fakeAdapter({
+      reopenAsk,
+      messages: [
+        openAsk({ id: "done", body: "done ask", closedBy: "josh", closedByName: "Josh Park", closedAt: ago(2 * 3_600_000) }),
+        openAsk({ id: "gone", body: "gone ask", closedBy: "maria", closedByName: "Maria Santos", closedAt: ago(3_600_000) }),
+      ],
+    });
+    renderStream(adapter);
+
+    const reopenDoneBtn = within(row("done ask")).getByRole("button", { name: "Reopen" });
+    expect(reopenDoneBtn).toBeInTheDocument();
+    fireEvent.click(reopenDoneBtn);
+    expect(reopenAsk).toHaveBeenCalledWith(expect.objectContaining({ id: "done" }));
+
+    const reopenGoneBtn = within(row("gone ask")).getByRole("button", { name: "Reopen" });
+    expect(reopenGoneBtn).toBeInTheDocument();
+    fireEvent.click(reopenGoneBtn);
+    expect(reopenAsk).toHaveBeenCalledWith(expect.objectContaining({ id: "gone" }));
+  });
 });
 
 describe("Stream — the composer (C1–C3)", () => {

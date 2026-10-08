@@ -3,6 +3,7 @@
 // changes — only a new caller for each operation.
 import {
   closeFollowUpAsk,
+  reopenFollowUpAsk,
   deleteThreadMessage,
   editThreadMessage,
   type ThreadMessage,
@@ -65,6 +66,7 @@ export function conversationAdapter({
     // Both close the ask as the viewer. Only the asker is offered Never mind,
     // and an ask closed by its own asker is what reads as withdrawn.
     closeAsk: (m) => closeFollowUpAsk(contactId, m.id, { uid: me.uid, name: me.name }),
+    reopenAsk: (m) => reopenFollowUpAsk(contactId, m.id),
     delete: (m) => deleteThreadMessage(contactId, m.id, m.scope),
     // A rewrite is the author's alone — unlike delete, which a Full-timer may
     // also do. The rule enforces the same; the control must not promise more.

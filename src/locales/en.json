@@ -1929,6 +1929,7 @@
     "ask_never_mind": "Never mind",
     "ask_done": "{name} followed up · {when}",
     "ask_withdrawn": "{name} withdrew this · {when}",
+    "ask_reopen": "Reopen",
     "replies_one": "1 reply",
     "replies_many": "{n} replies",
     "last_reply": "Last reply {when}",
