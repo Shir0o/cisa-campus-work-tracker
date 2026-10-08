@@ -413,11 +413,11 @@ describe('ContactDetailsModal Component', () => {
     openAbout();
 
     // Click add tag button
-    const addTagBtn = screen.getByRole('button', { name: /^add$/i });
+    const addTagBtn = await screen.findByRole('button', { name: /^add$/i });
     fireEvent.click(addTagBtn);
 
     // Type new tag
-    const tagInput = screen.getByPlaceholderText(/new tag/i);
+    const tagInput = await screen.findByPlaceholderText(/new tag/i);
     fireEvent.change(tagInput, { target: { value: 'active-member' } });
 
     // Wait for the state update to propagate to the input value

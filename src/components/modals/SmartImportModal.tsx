@@ -14,7 +14,6 @@ import {
   ChevronUp,
   Trash2,
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, logActivity, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
