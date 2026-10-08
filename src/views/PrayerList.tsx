@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { Check, ChevronRight, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
+import { ChevronRight, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import {
@@ -38,6 +38,7 @@ import type { TodoPerson } from '../lib/todos';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import PrayerListMobile from './PrayerListMobile';
+import PickHeldModal from '../components/modals/PickHeldModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { followUpContact } from '../lib/followUp';
@@ -503,14 +504,14 @@ export default function PrayerList() {
     );
   };
 
-  // "Choose people" — the added become empty this-week composers; the removed
-  // are hidden from the page (same bookkeeping as startHolding/stopHolding).
-  const applyPick = (added: string[], removed: string[]) => {
-    if (added.length) setStartedIds((prev) => new Set([...prev, ...added]));
-    if (added.length || removed.length) {
+  // "Choose people" — the picked become empty this-week composers, and any
+  // hidden ones come back. The picker only adds (ticket #1450): taking someone
+  // off stays the card's own affordance.
+  const applyPick = (added: string[]) => {
+    if (added.length) {
+      setStartedIds((prev) => new Set([...prev, ...added]));
       setHiddenIds((prev) => {
         const next = new Set(prev);
-        removed.forEach((id) => next.add(id));
         added.forEach((id) => next.delete(id));
         try {
           localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
@@ -539,8 +540,6 @@ export default function PrayerList() {
           entries={filteredEntries}
           team={team}
           suggestions={suggestions}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
           genderFilter={genderFilter}
           setGenderFilter={setGenderFilter}
           startHolding={startHolding}
@@ -726,14 +725,13 @@ export default function PrayerList() {
         </div>
       )}
 
-      {picking && (
-        <PickHeldModal
-          contacts={contacts}
-          heldIds={entries.map((e) => e.contact.id)}
-          onClose={() => setPicking(false)}
-          onApply={applyPick}
-        />
-      )}
+      <PickHeldModal
+        open={picking}
+        contacts={contacts}
+        heldIds={entries.map((e) => e.contact.id)}
+        onClose={() => setPicking(false)}
+        onApply={applyPick}
+      />
 
       {todoFor && (
         <FromEntryTodoComposer
@@ -1683,148 +1681,6 @@ function AddThisWeek({
         >
           {translate('actions.cancel')}
         </button>
-      </div>
-    </div>
-  );
-}
-
-// ── "Choose people" — tick who shows up on this page (design PickHeldModal) ──
-function PickHeldModal({
-  contacts,
-  heldIds,
-  onClose,
-  onApply,
-}: {
-  contacts: Contact[];
-  heldIds: string[];
-  onClose: () => void;
-  onApply: (added: string[], removed: string[]) => void;
-}) {
-  const { t } = useLanguage();
-  const [q, setQ] = useState('');
-  const [sel, setSel] = useState<string[]>(() => heldIds.slice());
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const list = useMemo(() => {
-    const sorted = [...contacts].sort((a, b) => a.name.localeCompare(b.name));
-    const needle = q.trim().toLowerCase();
-    if (!needle) return sorted;
-    return sorted.filter((c) =>
-      `${c.name} ${(c.tags || []).join(' ')}`.toLowerCase().includes(needle),
-    );
-  }, [contacts, q]);
-
-  const toggle = (id: string) =>
-    setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
-  const added = sel.filter((id) => !heldIds.includes(id));
-  const removed = heldIds.filter((id) => !sel.includes(id));
-  const changed = added.length + removed.length;
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('prayers.who_are_we_holding')}
-    >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md max-h-[85vh] bg-surface-container rounded-[2rem] shadow-2xl border border-outline-variant flex flex-col overflow-hidden">
-        <div className="p-6 border-b border-outline-variant bg-surface-container-high/50">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-serif text-2xl text-on-surface">{t('prayers.who_are_we_holding')}</h2>
-              <p className="text-xs text-on-surface-variant mt-1">{t('prayers.tick_people_you_want')}</p>
-            </div>
-            <button
-              onClick={onClose}
-              aria-label={t('actions.close')}
-              className="p-2 rounded-full hover:bg-surface-variant transition-colors shrink-0"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="relative mt-4">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            <input
-              autoFocus
-              type="text"
-              placeholder={t('prayers.search_people_you_know')}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {list.length === 0 && (
-            <p className="text-center py-6 text-xs text-on-surface-variant italic">{t('prayers.no_one_matches_name')}</p>
-          )}
-          {list.map((c) => {
-            const checked = sel.includes(c.id);
-            const wasHeld = heldIds.includes(c.id);
-            return (
-              <button
-                key={c.id}
-                onClick={() => toggle(c.id)}
-                aria-pressed={checked}
-                className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-surface-variant text-left transition-colors"
-              >
-                <span
-                  className={cn(
-                    'w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors',
-                    checked ? 'bg-primary border-primary text-on-primary' : 'border-outline-variant',
-                  )}
-                >
-                  {checked && <Check className="w-3 h-3" />}
-                </span>
-                <Avatar contact={c} size="sm" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-on-surface truncate">{c.name}</span>
-                  <span className="block text-xs text-on-surface-variant truncate mt-0.5">
-                    {[c.year, c.major].filter(Boolean).join(' · ')}
-                  </span>
-                </span>
-                {wasHeld && <span className="text-[11px] text-on-surface-variant shrink-0">{t('prayers.already_held')}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="p-4 border-t border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
-          <span className="text-xs text-on-surface-variant">
-            {t('prayers.people_on_our_hearts')
-              .replace('{count}', String(sel.length))
-              .replace('{unit}', sel.length === 1 ? t('prayers.person') : t('prayers.people'))}
-            {changed > 0 && (
-              <span className="text-accent font-medium">
-                {added.length > 0 ? ` · +${added.length}` : ''}
-                {removed.length > 0 ? ` · −${removed.length}` : ''}
-              </span>
-            )}
-          </span>
-          <button
-            onClick={onClose}
-            className="ml-auto px-4 py-2 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            {t('actions.cancel')}
-          </button>
-          <button
-            onClick={() => onApply(added, removed)}
-            disabled={!changed}
-            className="px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          >
-            {t('actions.save')}
-          </button>
-        </div>
       </div>
     </div>
   );

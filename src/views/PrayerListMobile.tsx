@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ChevronRight, Clock, MessageSquare, Plus, Search, Trash2, X } from 'lucide-react';
+import { ChevronRight, Clock, MessageSquare, Plus, Trash2, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useLayout } from '../App';
+import PickHeldModal from '../components/modals/PickHeldModal';
 
 type Status = PrayerRecord['status'];
 
@@ -17,8 +18,6 @@ interface PrayerListMobileProps {
   entries: { contact: Contact; prayers: PrayerRecord[] }[];
   team?: { uid?: string; id?: string; name?: string }[];
   suggestions: Contact[];
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
   genderFilter?: 'all' | 'brothers' | 'sisters';
   setGenderFilter?: (v: 'all' | 'brothers' | 'sisters') => void;
   startHolding: (contact: Contact) => void;
@@ -101,8 +100,6 @@ export default function PrayerListMobile({
   entries,
   team,
   suggestions,
-  searchQuery,
-  setSearchQuery,
   genderFilter = 'all',
   setGenderFilter,
   startHolding,
@@ -124,14 +121,14 @@ export default function PrayerListMobile({
   const { t } = useLanguage();
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // Suggestions for bottom sheet
-  const allAddable = useMemo(() => {
-    const held = new Set(entries.map((e) => e.contact.id));
-    const q = searchQuery.trim().toLowerCase();
-    return contacts
-      .filter((c) => !held.has(c.id) && (q === "" || c.name.toLowerCase().includes(q)))
-      .slice(0, 30);
-  }, [contacts, entries, searchQuery]);
+  // The picker only adds; taking someone off stays the card's × (ticket #1450).
+  const applyPick = (added: string[]) => {
+    added.forEach((id) => {
+      const c = contacts.find((x) => x.id === id);
+      if (c) startHolding(c);
+    });
+    setPickerOpen(false);
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page page-prayer prm" data-role="ft">
@@ -158,10 +155,7 @@ export default function PrayerListMobile({
         {/* Hold someone button */}
         {isOperator && (
           <button
-            onClick={() => {
-              setSearchQuery("");
-              setPickerOpen(true);
-            }}
+            onClick={() => setPickerOpen(true)}
             className="mt-4 w-full min-h-[48px] display flex items-center justify-between bg-accent-soft border border-accent-line text-accent rounded-2xl px-4 text-sm font-semibold active:brightness-95 transition-all prm-choose"
           >
             <div className="flex items-center gap-2">
@@ -237,74 +231,14 @@ export default function PrayerListMobile({
         ))}
       </div>
 
-      {pickerOpen && (
-        <div
-          className="fixed inset-0 z-[200] bg-black/35 flex items-end justify-center scrim"
-          onClick={() => setPickerOpen(false)}
-        >
-          <div
-            className="bg-surface rounded-t-2xl shadow-2xl w-full max-h-[85vh] flex flex-col overflow-hidden modal ibxs animate-in slide-in-from-bottom duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 rounded-full bg-outline/20 mx-auto my-3 shrink-0 ibxs-grab" />
-            <div className="flex items-center justify-between px-5 pt-1 ibxs-head">
-              <div className="ibxs-headtext">
-                <h3 className="font-serif text-lg text-on-surface ibxs-title">{t('prayers.hold_someone_in_prayer')}</h3>
-                <p className="text-xs text-on-surface-variant mt-0.5 ibxs-meta">
-                  {t('prayers.anyone_from_roster')}
-                </p>
-              </div>
-              <button
-                onClick={() => setPickerOpen(false)}
-                className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
-                aria-label={t('actions.close')}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto px-4 pb-8 pt-4 flex flex-col gap-4 mds-body">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder={t('prayers.search_anyone_to_hold')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 h-11 bg-surface-container border border-outline rounded-xl text-sm focus:border-primary outline-none transition-all text-on-surface"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5 prm-picker">
-                {allAddable.length === 0 && (
-                  <div className="text-center py-6 text-xs text-on-surface-variant italic">
-                    {searchQuery ? t('prayers.no_one_matches_that') : t('prayers.everyone_already_here')}
-                  </div>
-                )}
-                {allAddable.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      startHolding(c);
-                      setPickerOpen(false);
-                    }}
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-variant text-left w-full pr-picker-row"
-                  >
-                    <Avatar contact={c} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-on-surface truncate pr-picker-name">{c.name}</div>
-                      <div className="text-xs text-on-surface-variant truncate pr-picker-meta mt-0.5">{[c.year, c.major].filter(Boolean).join(' · ')}</div>
-                    </div>
-                    <Plus className="w-4 h-4 text-accent shrink-0 ml-2 pr-picker-add" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-        )}
-      {/* Hold someone in prayer picker bottom sheet */}
+      {/* "Who are we praying for?" — the shared frame, a sheet on a phone. */}
+      <PickHeldModal
+        open={pickerOpen}
+        contacts={contacts}
+        heldIds={entries.map((e) => e.contact.id)}
+        onClose={() => setPickerOpen(false)}
+        onApply={applyPick}
+      />
     </div>
   );
 }

@@ -296,3 +296,16 @@ needed on the kinds.
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
 | 62 | The pre-frame build offered **four** interaction kinds — Message, Email, Call, Meeting — while design A and spec #1444 story 43 name three: Message, Call, Meeting. | **Design / spec** | The frame renders the three kinds and drops the Email tile. Interactions already stored with `type: "email"` still render through `ActivityItem` — only the manual Email button is gone. |
+
+### 2026-10-08 — Who are we praying for? in the popup frame
+
+Found building [#1450](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1450)
+against [`visit-popups/A-Holding.dc.html`](visit-popups/A-Holding.dc.html) (the
+`A · Who are we praying for?` board). The frame, the S size, the search field,
+the avatar list, the greyed "already on our prayer list" rows and the footer
+counts all match the spec (#1444, stories 49–51). One decision was needed on
+removal.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 63 | The pre-frame picker let you **untick** an already-held person to take them off the page, and `CONTEXT.md` described "Choose people" as the same bookkeeping as **Remove from prayer list**. Design A and spec #1444 story 50 grey held people and say they "can't be ticked again". | **Design / spec** | The picker only adds: held people are non-tickable, and removal stays the card's own × / row-menu action. `applyPick` no longer takes a `removed` list. |

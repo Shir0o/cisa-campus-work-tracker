@@ -710,7 +710,7 @@ describe('PrayerList', () => {
     expect(updateDoc).toHaveBeenCalled();
   });
 
-  it('opens the choose-people picker and adds a selected person', async () => {
+  it('opens the choose-people picker in the popup frame and adds a selected person', async () => {
     const contacts = [
       ...mockContacts,
       {
@@ -736,12 +736,18 @@ describe('PrayerList', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Choose people/i }));
 
-    // Alice and Bob are already held; Carol is not.
-    expect(screen.getByText('Who are we praying for?')).toBeInTheDocument();
-    expect(screen.getAllByText('already on our prayer list').length).toBe(2);
+    // The picker renders through the shared frame as a labelled dialog.
+    const dialog = screen.getByRole('dialog', { name: 'Who are we praying for?' });
+    // Alice and Bob are already held: greyed, labelled, and can't be ticked.
+    expect(within(dialog).getAllByText('already on our prayer list')).toHaveLength(2);
+    expect(within(dialog).getByText('Alice Johnson').closest('button')).toBeDisabled();
 
-    fireEvent.click(screen.getByText('Carol Lee').closest('button')!);
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    // Carol is not held, so ticking her counts in the footer.
+    fireEvent.click(within(dialog).getByText('Carol Lee').closest('button')!);
+    expect(within(dialog).getByText('1 added')).toBeInTheDocument();
+    expect(within(dialog).getByText(/3 people on our hearts/)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
 
     await waitFor(() =>
       expect(screen.getByText(/Write what we're praying for Carol this week/i)).toBeInTheDocument(),

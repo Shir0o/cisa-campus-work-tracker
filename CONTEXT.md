@@ -55,7 +55,7 @@ Permanently deleting a logged conversation from a contact's Interactions log (ca
 _Avoid_: Archive entry, trash a conversation
 
 **Remove from prayer list**:
-Taking a person off `/prayer` — the row menu's destructive action on the web card, the × on the mobile card. It hides them from *your* page only: the id joins the `cisa.prayer.hidden` set in that browser's local storage, the same bookkeeping "Choose people" does when you untick a name. Nothing is deleted and no teammate's page changes; Undo puts them straight back. Distinct from **Archived**, which is a mark on a single prayer, not something you do to a person (#714, #715).
+Taking a person off `/prayer` — the row menu's destructive action on the web card, the × on the mobile card. It hides them from *your* page only: the id joins the `cisa.prayer.hidden` set in that browser's local storage — the same set "Choose people" clears when you add someone back, though since #1450 that picker only adds and never removes. Nothing is deleted and no teammate's page changes; Undo puts them straight back. Distinct from **Archived**, which is a mark on a single prayer, not something you do to a person (#714, #715).
 _Avoid_: Archive from prayer list, unhold, stop carrying
 
 **Global Search (⌘K)**:

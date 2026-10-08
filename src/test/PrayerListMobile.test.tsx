@@ -10,6 +10,13 @@ vi.mock('../App', () => ({
   }),
 }));
 
+// The popup frame turns into a bottom sheet below 768px (spec #1444/#1447); the
+// phone picker test flips this to true to assert the sheet, and back afterwards.
+const mediaQuery = vi.hoisted(() => ({ phone: false }));
+vi.mock('../lib/useMediaQuery', () => ({
+  useMediaQuery: () => mediaQuery.phone,
+}));
+
 vi.mock('../lib/firebase', () => ({
   db: {},
   auth: { currentUser: null },
@@ -39,8 +46,6 @@ const baseProps = {
   prayers: [] as any[],
   entries: [] as any[],
   suggestions: [] as any[],
-  searchQuery: '',
-  setSearchQuery: vi.fn(),
   startHolding: vi.fn(),
   onAddBurden: vi.fn().mockResolvedValue(true),
   onUpdateStatus: vi.fn(),
@@ -84,7 +89,9 @@ describe('PrayerListMobile', () => {
   it('shows the Hold button only for operators and opens the picker', () => {
     const { rerender } = renderWithRouter({ isOperator: true, contacts: [contact()] });
     fireEvent.click(screen.getByText('Pray for someone'));
-    expect(screen.getByText(/Anyone from the roster/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Who are we praying for?' }),
+    ).toBeInTheDocument();
 
     rerender(
       <MemoryRouter>
@@ -96,23 +103,30 @@ describe('PrayerListMobile', () => {
     expect(document.querySelector('.prm-choose')).toBeNull();
   });
 
-  it('starts holding a contact chosen from the picker', () => {
+  it('starts holding a contact chosen from the picker', async () => {
     const startHolding = vi.fn();
     renderWithRouter({ contacts: [contact()], startHolding });
     fireEvent.click(screen.getByText('Pray for someone'));
     fireEvent.click(screen.getByText('Alice Smith'));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(startHolding).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
-    expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Who are we praying for?' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
-  it('searches the picker via the search input', () => {
-    const setSearchQuery = vi.fn();
-    renderWithRouter({ contacts: [contact()], setSearchQuery });
-    fireEvent.click(screen.getByText('Pray for someone'));
-    fireEvent.change(screen.getByPlaceholderText('Search anyone to pray for…'), {
-      target: { value: 'Ali' },
+  it('searches the picker', () => {
+    renderWithRouter({
+      contacts: [contact({ id: 'c1', name: 'Alice Smith' }), contact({ id: 'c2', name: 'Bob Jones' })],
     });
-    expect(setSearchQuery).toHaveBeenCalledWith('Ali');
+    fireEvent.click(screen.getByText('Pray for someone'));
+    fireEvent.change(screen.getByPlaceholderText('Search the people you know…'), {
+      target: { value: 'Bob' },
+    });
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
   });
 
   it('navigates to /answered when the Answered tab is tapped', () => {
@@ -243,15 +257,37 @@ describe('PrayerListMobile', () => {
     expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
   });
 
-  it('closes the picker via the scrim and via the close button', () => {
+  it('closes the picker via the close button and Escape', async () => {
     renderWithRouter({ contacts: [contact()] });
     fireEvent.click(screen.getByText('Pray for someone'));
-    fireEvent.click(document.querySelector('.scrim')!);
-    expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Who are we praying for?' }),
+      ).not.toBeInTheDocument(),
+    );
 
     fireEvent.click(screen.getByText('Pray for someone'));
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Who are we praying for?' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('renders the picker as a bottom sheet on a phone', () => {
+    mediaQuery.phone = true;
+    try {
+      renderWithRouter({ contacts: [contact()] });
+      fireEvent.click(screen.getByText('Pray for someone'));
+      expect(
+        screen.getByRole('dialog', { name: 'Who are we praying for?' }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('popup-sheet-grabber')).toBeInTheDocument();
+    } finally {
+      mediaQuery.phone = false;
+    }
   });
 
   it('leaves the removal alone until the × is pressed', () => {
