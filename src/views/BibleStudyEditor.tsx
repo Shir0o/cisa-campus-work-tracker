@@ -589,7 +589,7 @@ export default function BibleStudyEditor() {
                 {
                   id: 'passage',
                   label: 'Passage',
-                  onSelect: () => insertBlockAtSectionEnd('> ', 2),
+                  onSelect: () => insertBlockAtSectionEnd('> Scripture text goes here', 2),
                 },
                 {
                   id: 'verse',
@@ -600,7 +600,7 @@ export default function BibleStudyEditor() {
                   // A whole-line block, so it lands on the next line like a Prompt (#1182).
                   id: 'keyline',
                   label: 'Key line',
-                  onSelect: () => insertPromptAtNextLine('Key: '),
+                  onSelect: () => insertPromptAtNextLine('Key: The main takeaway — Ref'),
                 },
                 {
                   id: 'blank',
@@ -615,7 +615,7 @@ export default function BibleStudyEditor() {
                 {
                   id: 'bullet-list',
                   label: t('study.bullet_list'),
-                  onSelect: () => insertBlockAtSectionEnd('- ', 2),
+                  onSelect: () => insertBlockAtSectionEnd('- First point\n- Second point', 2),
                 },
               ]}
             />
@@ -625,22 +625,22 @@ export default function BibleStudyEditor() {
                 {
                   id: 'question',
                   label: 'Question',
-                  onSelect: () => insertPromptAtNextLine('Question: '),
+                  onSelect: () => insertPromptAtNextLine('Question:\n  - Point 1\n  - Point 2'),
                 },
                 {
                   id: 'discuss',
                   label: 'Discuss',
-                  onSelect: () => insertPromptAtNextLine('Discuss: '),
+                  onSelect: () => insertPromptAtNextLine('Discuss:\n  - Point 1\n  - Point 2'),
                 },
                 {
                   id: 'activity',
                   label: 'Activity',
-                  onSelect: () => insertPromptAtNextLine('Activity: '),
+                  onSelect: () => insertPromptAtNextLine('Activity:\n  - Point 1\n  - Point 2'),
                 },
                 {
                   id: 'apply',
                   label: 'Apply',
-                  onSelect: () => insertPromptAtNextLine('Apply: '),
+                  onSelect: () => insertPromptAtNextLine('Apply:\n  - Point 1\n  - Point 2'),
                 },
               ]}
             />

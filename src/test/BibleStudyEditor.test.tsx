@@ -428,7 +428,7 @@ describe('BibleStudyEditor view', () => {
         // The Passage block lands at the end of Section 1, before Section 2's
         // heading — never at the end of the document.
         expect(area.value).toBe(
-          '## Section 1\n- Point 1\n\n> \n\n## Section 2\n- Point 2',
+          '## Section 1\n- Point 1\n\n> Scripture text goes here\n\n## Section 2\n- Point 2',
         );
       });
     });
@@ -448,7 +448,7 @@ describe('BibleStudyEditor view', () => {
 
       await waitFor(() => {
         expect(area.value).toBe(
-          '## Section 1\n- Point 1\n\nDiscuss: \n\n## Section 2\n- Point 2',
+          '## Section 1\n- Point 1\n\nDiscuss:\n  - Point 1\n  - Point 2\n\n## Section 2\n- Point 2',
         );
       });
     });
@@ -467,7 +467,7 @@ describe('BibleStudyEditor view', () => {
 
       await waitFor(() => {
         expect(area.value).toBe(
-          '## Section 1\n- Point 1\n\nKey: \n\n## Section 2\n- Point 2',
+          '## Section 1\n- Point 1\n\nKey: The main takeaway — Ref\n\n## Section 2\n- Point 2',
         );
       });
     });
@@ -485,7 +485,7 @@ describe('BibleStudyEditor view', () => {
 
       await waitFor(() => {
         expect(area.value).toBe(
-          '## Section 1\n- Point 1\n\n> \n\n## Section 2\n- Point 2',
+          '## Section 1\n- Point 1\n\n> Scripture text goes here\n\n## Section 2\n- Point 2',
         );
       });
     });
@@ -506,7 +506,7 @@ describe('BibleStudyEditor view', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
-        expect(area.value).toBe('## Section 1\n- Point 1\n\n> ');
+        expect(area.value).toBe('## Section 1\n- Point 1\n\n> Scripture text goes here');
       });
     });
 
@@ -527,7 +527,7 @@ describe('BibleStudyEditor view', () => {
         // The caret's line is untouched — the block lands at the Section's
         // end, not at the caret.
         expect(area.value).toBe(
-          '## Section 1\n- Point 1\n\n> \n\n## Section 2\n- Point 2',
+          '## Section 1\n- Point 1\n\n> Scripture text goes here\n\n## Section 2\n- Point 2',
         );
       });
     });
@@ -548,7 +548,7 @@ describe('BibleStudyEditor view', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
-        expect(area.value).toBe('Just prose, no headings.\n\n> ');
+        expect(area.value).toBe('Just prose, no headings.\n\n> Scripture text goes here');
       });
     });
 
@@ -571,7 +571,7 @@ describe('BibleStudyEditor view', () => {
       fireEvent.click(screen.getByRole('menuitem', { name: /Passage/i }));
 
       await waitFor(() => {
-        expect(area.value).toBe('Intro prose\n\n> \n\n## Alpha\n- point');
+        expect(area.value).toBe('Intro prose\n\n> Scripture text goes here\n\n## Alpha\n- point');
       });
     });
 
@@ -692,10 +692,10 @@ describe('BibleStudyEditor view', () => {
       // type the move the room will make — the same "ready to type"
       // contract the other block inserters have.
       expect(area.value).toBe(
-        '## Section 1\n- Point 1\n\nApply: \n\n## Section 2\n- Point 2',
+        '## Section 1\n- Point 1\n\nApply:\n  - Point 1\n  - Point 2\n\n## Section 2\n- Point 2',
       );
     });
-    expect(area.selectionStart).toBe(area.value.indexOf('Apply: ') + 'Apply: '.length);
+    expect(area.selectionStart).toBe(area.value.indexOf('Apply:\n  - Point 1\n  - Point 2') + 'Apply:\n  - Point 1\n  - Point 2'.length);
   });
 
   it('clicking an outline row moves the textarea caret to that heading', async () => {
