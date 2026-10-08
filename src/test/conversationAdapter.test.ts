@@ -125,6 +125,7 @@ describe("conversationAdapter", () => {
   it("reopens the ask via reopenFollowUpAsk (#1496)", () => {
     make().reopenAsk!(msg({ id: "ask", kind: "nudge", from: "maria" }));
     expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "ask");
+    expect(make({ me: { uid: "v", name: "Viewer", role: "viewer" } }).reopenAsk).toBeUndefined();
   });
 
   it("deletes the one message", () => {
