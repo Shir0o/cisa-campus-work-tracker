@@ -1058,6 +1058,41 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // A Not the same person mark (ADR 0038, #1432) is a Full-timer's remembered
+  // judgement that a detected pair is two different people. Full-timers create
+  // and delete marks from the browser; Trainees can neither read nor write them.
+  describe('Not the same person marks (ADR 0038, #1432)', () => {
+    const mark = { contactIds: ['a', 'b'], markedBy: 'admin1', markedByName: 'Faith' };
+
+    const seed = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'notSamePersonMarks/a|b'), mark);
+      });
+    };
+
+    it('lets a Full-timer read, create and delete a mark', async () => {
+      await seed();
+      const admin = getFirestore({ uid: 'admin1' });
+      const snap = await assertSucceeds(getDoc(doc(admin, 'notSamePersonMarks/a|b')));
+      expect(snap.data()?.markedByName).toBe('Faith');
+      await assertSucceeds(getDocs(collection(admin, 'notSamePersonMarks')));
+      await assertSucceeds(setDoc(doc(admin, 'notSamePersonMarks/c|d'), mark));
+      await assertSucceeds(deleteDoc(doc(admin, 'notSamePersonMarks/a|b')));
+    });
+
+    it('denies a Trainee reading, creating or deleting a mark', async () => {
+      await seed();
+      const trainee = getFirestore({ uid: 'manager1' });
+      await assertFails(getDoc(doc(trainee, 'notSamePersonMarks/a|b')));
+      await assertFails(getDocs(collection(trainee, 'notSamePersonMarks')));
+      await assertFails(setDoc(doc(trainee, 'notSamePersonMarks/c|d'), mark));
+      await assertFails(deleteDoc(doc(trainee, 'notSamePersonMarks/a|b')));
+    });
+  });
+
   // A contact's interactions and comments are part of its detail page, so they
   // are visible exactly when the contact is: a Trainee reads them only for
   // people in their `visibleTo`. A collection-group list cannot pin a parent,

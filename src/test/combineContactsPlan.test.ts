@@ -8,6 +8,7 @@ import {
   referenceKey,
   checkCombineMatch,
   historyScore,
+  contactPairKey,
   type CombineReferences,
   type CombineUndoRecord,
   type CombineUndoCurrent,
@@ -659,6 +660,23 @@ describe('findCombineCandidates by history', () => {
       b: { interactions: 1, comments: 0, rosterEntries: 0 },
     });
     expect(pairs[0].kept.id).toBe('a');
+  });
+});
+
+describe('Not the same person marks (#1432)', () => {
+  const contacts: Partial<Contact>[] = [
+    { id: '1', name: 'John Doe', email: 'john@example.com', createdAt: '2026-01-01' },
+    { id: '2', name: 'Johnny D', email: 'john@example.com', createdAt: '2026-01-02' },
+  ];
+
+  it('builds one pair key regardless of order', () => {
+    expect(contactPairKey('b', 'a')).toBe(contactPairKey('a', 'b'));
+  });
+
+  it('excludes a pair that was marked Not the same person', () => {
+    expect(findCombineCandidates(contacts as Contact[])).toHaveLength(1);
+    const excluded = new Set([contactPairKey('2', '1')]);
+    expect(findCombineCandidates(contacts as Contact[], {}, excluded)).toHaveLength(0);
   });
 });
 

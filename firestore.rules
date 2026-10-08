@@ -833,6 +833,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Not the same person marks (ADR 0038, issue #1432): a Full-timer's
+    // remembered judgement that a detected pair is two different people. They
+    // create and delete marks from the browser; only Full-timers may.
+    match /notSamePersonMarks/{markId} {
+      allow read, create, delete: if isAdmin();
+      allow update: if false;
+    }
+
     // 7. Activities Collection
     match /activities/{activityId} {      function isValidActivity(data) {
         return data.userId == request.auth.uid &&

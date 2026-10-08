@@ -154,6 +154,15 @@ export function normalizeName(name?: string | null): string {
   return name ? name.trim().toLowerCase() : '';
 }
 
+/**
+ * A stable key for a pair of contact IDs, independent of order. It is the
+ * document ID of a Not the same person mark (#1432) and the key detection
+ * excludes a marked pair by.
+ */
+export function contactPairKey(a: string, b: string): string {
+  return [a, b].sort().join('|');
+}
+
 /** Returns a human match reason when two contacts look like the same person. */
 export function checkCombineMatch(a: Contact, b: Contact): string | null {
   const emailA = normalizeEmail(a.email);
@@ -190,10 +199,12 @@ export function historyScore(history: ContactHistory): number {
  * Scans contacts for candidate duplicate pairs. Each contact is paired at most
  * once per pass. The record with more history is kept by default; when the
  * histories tie (or none is supplied) the older record (by createdAt) is kept.
+ * Pairs in `excludedPairKeys` (Not the same person marks) are never suggested.
  */
 export function findCombineCandidates(
   contacts: Contact[],
   historyById: Record<string, ContactHistory> = {},
+  excludedPairKeys: ReadonlySet<string> = new Set(),
 ): CombinePair[] {
   const pairs: CombinePair[] = [];
   const claimedIds = new Set<string>();
@@ -205,6 +216,8 @@ export function findCombineCandidates(
     for (let j = i + 1; j < contacts.length; j++) {
       const b = contacts[j];
       if (!b?.id || claimedIds.has(b.id)) continue;
+
+      if (excludedPairKeys.has(contactPairKey(a.id, b.id))) continue;
 
       const reason = checkCombineMatch(a, b);
       if (!reason) continue;
