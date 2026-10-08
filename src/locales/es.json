@@ -1278,6 +1278,7 @@
   "modals": {
     "smartImport": {
       "modal_title": "Importación inteligente de texto",
+      "import_noun": "importación",
       "subtitle": "Pega notas, correos o chats: Gemini AI extrae contactos, 1 a 1 y discusiones con una revisión previa.",
       "close_modal": "Cerrar modal",
       "paste_unstructured": "Pega texto sin estructura abajo",
@@ -1343,11 +1344,13 @@
       "failed_to_save": "No se pudieron guardar los elementos importados en la base de datos."
     },
     "contactDetails": {
+      "title": "Detalles del contacto",
       "access_restricted": "Acceso restringido",
       "no_permission": "No tienes permiso para ver este registro de contacto.",
       "close": "Cerrar",
       "cancel": "Cancelar",
       "edit_details": "Editar detalles",
+      "discard_edit": "¿Descartar estos cambios?",
       "save": "Guardar",
       "people": "Personas",
       "edit": "Editar",
@@ -1686,6 +1689,7 @@
     "members_list": "Lista de miembros",
     "member": "Miembro",
     "chat_noun": "chat",
+    "contact_noun": "contacto",
     "leave_group": "Salir del grupo",
     "hide_from_my_list": "Ocultar de mi lista",
     "delete_for_everyone": "Eliminar para todos",

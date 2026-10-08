@@ -1,10 +1,40 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { setDoc, addDoc } from 'firebase/firestore';
 import SmartImportModal from '../components/modals/SmartImportModal';
 import { useAuth } from '../components/AuthProvider';
 import React from 'react';
+
+// The shared popup frame renders through motion/react; keep the elements plain
+// so jsdom doesn't animate, and run its open-focus callback synchronously so it
+// can't race the userEvent typing below.
+vi.mock('motion/react', () => {
+  const cache = new Map<PropertyKey, any>();
+  const motion = new Proxy(
+    {},
+    {
+      get: (_target, prop) => {
+        if (!cache.has(prop)) {
+          cache.set(prop, ({ children, ...props }: any) => {
+            const Tag = prop as any;
+            return <Tag {...props}>{children}</Tag>;
+          });
+        }
+        return cache.get(prop);
+      },
+    },
+  );
+  return { motion, AnimatePresence: ({ children }: any) => <>{children}</> };
+});
+
+beforeAll(() => {
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+    cb(0);
+    return 0;
+  });
+  vi.stubGlobal('cancelAnimationFrame', () => {});
+});
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
@@ -616,6 +646,13 @@ describe('SmartImportModal', () => {
       expect(screen.getByText('dry-run mismatch')).toBeInTheDocument();
     });
     expect(screen.queryByText('Import Completed!')).not.toBeInTheDocument();
+  });
+
+  it('renders through the shared popup frame, labelled with its title (#1454)', () => {
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: 'Smart Text Import' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Parse with Gemini AI/i })).toBeInTheDocument();
   });
 });
 

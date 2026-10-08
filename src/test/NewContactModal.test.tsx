@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { addDoc, getDocs } from 'firebase/firestore';
 import NewContactModal from '../components/modals/NewContactModal';
 import { useAuth } from '../components/AuthProvider';
@@ -34,6 +34,19 @@ vi.mock('../lib/firebase', () => ({
   sendNotification: vi.fn(),
 }));
 
+// The shared popup frame animates with motion/react; jsdom has no layout, and
+// an unmounted frame's exit animation can leave stale nodes behind. Render the
+// motion elements as plain tags, the same treatment the other frame consumers'
+// tests use.
+vi.mock('motion/react', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    p: ({ children, ...props }: any) => <p {...props}>{children}</p>,
+    button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 vi.mock('../lib/seasons', async () => {
   const actual = await vi.importActual<typeof import('../lib/seasons')>('../lib/seasons');
   return {
@@ -54,6 +67,18 @@ vi.mock('../lib/seasons', async () => {
 });
 
 describe('NewContactModal', () => {
+  // The shared popup frame focuses its first field on open via
+  // requestAnimationFrame. jsdom schedules that ~16ms out, which races the
+  // userEvent typing below (mid-typing focus steals a blur). Run the callback
+  // synchronously so focus lands before the test types.
+  beforeAll(() => {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
@@ -518,6 +543,13 @@ describe('NewContactModal', () => {
   it('does not render when isOpen is false', () => {
     const { container } = render(<NewContactModal isOpen={false} onClose={vi.fn()} />);
     expect(screen.queryByText('New Contact')).not.toBeInTheDocument();
+  });
+
+  it('renders through the shared popup frame, labelled with its title (#1454)', () => {
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: 'New Contact' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Add Contact/i })).toBeInTheDocument();
   });
 });
 

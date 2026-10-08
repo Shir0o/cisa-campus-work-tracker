@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Briefcase, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
+import { User, Briefcase, Mail, Phone, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
 import { stampFounders, stampPartners } from '../../lib/partners';
@@ -17,6 +17,7 @@ import { normalizeTagList, tagStyle } from '../../lib/tags';
 import { useStandardTags } from '../../lib/standardTags';
 import { contactKind, kindLabelKey } from '../../lib/contactKind';
 import KindFields from '../ui/KindFields';
+import { PopupFrame } from '../ui/PopupFrame';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -53,15 +54,42 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
   const [showMore, setShowMore] = useState(false);
   const season = useSeason();
 
+  const dirty = Boolean(
+    formData.firstName ||
+      formData.lastName ||
+      formData.email ||
+      formData.phone ||
+      formData.notes ||
+      formData.spiritualBackground ||
+      formData.gender ||
+      formData.tags.length ||
+      tagInput.trim() ||
+      formData.inChurchLife ||
+      formData.isStudent,
+  );
+
+  // A fresh form each time the popup opens: the frame asks about discarding a
+  // dirty one, so a reopened popup never starts already "dirty".
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleEsc);
-    }
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+    if (!isOpen) return;
+    genderManuallySet.current = false;
+    setPhoneError(null);
+    setTagInput('');
+    setShowMore(false);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      inChurchLife: false,
+      isStudent: false,
+      email: '',
+      phone: '',
+      stage: '',
+      gender: '',
+      tags: [],
+      notes: '',
+      spiritualBackground: '',
+    });
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -124,8 +152,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!formData.firstName.trim()) return;
     if (phoneError) return;
     setLoading(true);
@@ -259,51 +287,28 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 md:p-10">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1]"
-          />
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
-          >
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl">
-                  <User className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-semibold text-on-surface">{t('modals.new_contact')}</h2>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent text-[11px] font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" />
-                      {season.label}{season.clubRush ? ' · club rush' : ''}
-                    </span>
-                  </div>
-                  <p className="text-sm text-on-surface-variant font-medium">{t('modals.tagged_for_season')}</p>
-                </div>
-              </div>
-              <button 
-                onClick={onClose}
-                className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Form */}
-            <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
-              <form id="new-contact-form" onSubmit={handleSubmit} className="space-y-6">
+    <PopupFrame
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      eyebrow={season.clubRush ? `${season.label} · club rush` : season.label}
+      title={t('modals.new_contact')}
+      subtitle={t('modals.tagged_for_season')}
+      dirty={dirty}
+      noun={t('modals.contact_noun')}
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      primary={{
+        label: t('modals.add_contact'),
+        onClick: () => void handleSubmit(),
+        disabled: loading,
+        saving: loading,
+        savingLabel: t('modals.adding_contact'),
+      }}
+    >
+      {/* Form */}
+      <div className="overflow-y-auto p-6">
+        <form id="new-contact-form" onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* First Name */}
                   <div className="space-y-1.5">
@@ -570,33 +575,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
               </motion.div>
             )}
           </form>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center gap-3 bg-surface-container-low/50">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 h-11 rounded-full font-semibold text-accent hover:bg-primary/5 transition-all text-sm cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              form="new-contact-form"
-              disabled={loading}
-              type="submit"
-              className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-sm"
-            >
-              {loading ? (
-                <span className="animate-pulse">{t('modals.adding_contact')}</span>
-              ) : (
-                t('modals.add_contact')
-              )}
-            </button>
-          </div>
-        </motion.div>
         </div>
-      )}
-    </AnimatePresence>
+    </PopupFrame>
   );
 }

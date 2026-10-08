@@ -172,4 +172,11 @@ describe('AttendanceSyncModal', () => {
       expect(screen.getByText('Network down')).toBeInTheDocument();
     });
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1454)', () => {
+    renderModal();
+    expect(screen.getByRole('dialog', { name: 'Review attendance sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirm sync' })).toBeInTheDocument();
+  });
 });
