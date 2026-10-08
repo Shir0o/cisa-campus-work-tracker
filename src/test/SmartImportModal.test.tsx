@@ -617,5 +617,12 @@ describe('SmartImportModal', () => {
     });
     expect(screen.queryByText('Import Completed!')).not.toBeInTheDocument();
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1454)', () => {
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: 'Smart Text Import' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Parse with Gemini AI/i })).toBeInTheDocument();
+  });
 });
 

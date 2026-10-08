@@ -1278,6 +1278,7 @@
   "modals": {
     "smartImport": {
       "modal_title": "Smart Text Import",
+      "import_noun": "import",
       "subtitle": "Paste notes, emails, or chat logs — Gemini AI parses contacts, 1-on-1s, and discussions with a dry-run review.",
       "close_modal": "Close modal",
       "paste_unstructured": "Paste unstructured text below",
@@ -1343,11 +1344,13 @@
       "failed_to_save": "Failed to save imported items to database."
     },
     "contactDetails": {
+      "title": "Contact details",
       "access_restricted": "Access Restricted",
       "no_permission": "You do not have permission to view this contact record.",
       "close": "Close",
       "cancel": "Cancel",
       "edit_details": "Edit details",
+      "discard_edit": "Discard these changes?",
       "save": "Save",
       "people": "People",
       "edit": "Edit",
@@ -1686,6 +1689,7 @@
     "members_list": "Members List",
     "member": "Member",
     "chat_noun": "chat",
+    "contact_noun": "contact",
     "leave_group": "Leave Group",
     "hide_from_my_list": "Hide from my list",
     "delete_for_everyone": "Delete for everyone",

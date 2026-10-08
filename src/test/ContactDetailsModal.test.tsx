@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
 import { addThreadMessage, closeFollowUpAsk, reopenFollowUpAsk } from '../lib/threads';
@@ -77,14 +77,21 @@ vi.mock('../lib/firebase', () => ({
 }));
 
 vi.mock('motion/react', () => {
+  // Memoise one component per tag. The frame re-renders (media queries,
+  // dirty state); a fresh anonymous component per render would remount the
+  // whole subtree and detach the node a test is about to click.
+  const cache = new Map<PropertyKey, any>();
   const motion = new Proxy(
     {},
     {
-      get: (target, prop) => {
-        return ({ children, ...props }: any) => {
-          const Tag = prop as any;
-          return <Tag {...props}>{children}</Tag>;
-        };
+      get: (_target, prop) => {
+        if (!cache.has(prop)) {
+          cache.set(prop, ({ children, ...props }: any) => {
+            const Tag = prop as any;
+            return <Tag {...props}>{children}</Tag>;
+          });
+        }
+        return cache.get(prop);
       },
     }
   );
@@ -109,6 +116,12 @@ const mockContact = {
   notes: 'Some notes about John Doe.',
   initials: 'JD',
 };
+
+// The shared popup frame focuses its first field on open via
+// requestAnimationFrame. jsdom schedules that ~16ms out, which races the
+// userEvent typing in these tests. Run the callback synchronously so focus
+// lands before the test types.
+beforeAll(() => {});
 
 describe('ContactDetailsModal Component', () => {
   const mockOnClose = vi.fn();
@@ -301,9 +314,20 @@ describe('ContactDetailsModal Component', () => {
     expect(container.querySelector('.cd-page-main')).toBeTruthy();
     // The aside is gone — its sections live in Overview now.
     expect(container.querySelector('.cd-page-aside')).toBeNull();
-    // No popup chrome: no backdrop, no dialog role, no max-w-2xl card.
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(container.querySelector('.bg-black\\/40')).toBeNull();
+    // It renders through the shared popup frame (#1454): a labelled dialog
+    // rather than a bare page.
+    expect(screen.getByRole('dialog', { name: 'Contact details' })).toBeInTheDocument();
+  });
+
+  it('renders through the shared popup frame with its pinned footer (#1454)', () => {
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+    expect(screen.getByRole('dialog', { name: 'Contact details' })).toBeInTheDocument();
+    // Editing surfaces the frame's pinned footer: Cancel + one primary.
+    fireEvent.click(openEditMenu());
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save changes/i })).toBeInTheDocument();
   });
   it('About sheet holds the profile fields, prayer count and delete entry point', () => {
     render(

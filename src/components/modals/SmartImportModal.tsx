@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Wand2,
   Sparkles,
   Check,
-  X,
   User,
   MessageSquare,
   FileText,
@@ -22,6 +20,7 @@ import { db, logActivity, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { Translate } from '../Translate';
+import { PopupFrame } from '../ui/PopupFrame';
 import {
   ParsedContactItem,
   ParsedInteractionItem,
@@ -224,38 +223,49 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-surface border border-outline-variant rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden text-on-surface"
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-accent">
-              <Wand2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-serif text-xl font-semibold">{t('modals.smartImport.modal_title')}</h2>
-              <p className="text-xs text-on-surface-variant">
-                {t('modals.smartImport.subtitle')}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-full transition-colors"
-            aria-label={t('modals.smartImport.close_modal')}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const showCancel = step === 'input' || step === 'preview';
+  const cancelLabel = step === 'preview' ? t('modals.smartImport.back_to_text') : t('modals.smartImport.cancel');
+  const dirty = Boolean(
+    inputText.trim() || parsedContacts.length || parsedInteractions.length || parsedDiscussions.length,
+  );
+  const primary =
+    step === 'input'
+      ? {
+          label: t('modals.smartImport.parse_with_gemini'),
+          onClick: () => void handleParse(),
+          disabled: !inputText.trim(),
+          savingLabel: t('modals.smartImport.parsing'),
+        }
+      : step === 'preview'
+      ? {
+          label: t('modals.smartImport.confirm_import').replace('{n}', String(totalSelected)),
+          onClick: () => void handleConfirmImport(),
+          disabled: totalSelected === 0,
+          savingLabel: t('modals.smartImport.writing'),
+        }
+      : step === 'success'
+      ? {
+          label: t('modals.smartImport.done'),
+          onClick: handleClose,
+          savingLabel: t('modals.smartImport.done'),
+        }
+      : undefined;
 
+  return (
+    <PopupFrame
+      open={isOpen}
+      onClose={handleClose}
+      size="lg"
+      title={t('modals.smartImport.modal_title')}
+      subtitle={t('modals.smartImport.subtitle')}
+      dirty={dirty}
+      noun={t('modals.smartImport.import_noun')}
+      cancelLabel={showCancel ? cancelLabel : undefined}
+      onCancel={step === 'preview' ? () => setStep('input') : handleClose}
+      primary={primary}
+    >
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="p-6 space-y-6">
           {error && (
             <div className="p-4 rounded-xl bg-error/10 border border-error/20 text-error text-sm flex items-center gap-3">
               <AlertCircle className="w-5 h-5 shrink-0" />
@@ -859,59 +869,9 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
                 {t('modals.smartImport.success_summary').replace('{contacts}', String(importSummary.contactsCount)).replace('{interactions}', String(importSummary.interactionsCount)).replace('{discussions}', String(importSummary.discussionsCount))}
               </p>
-              <div className="pt-4">
-                <button
-                  onClick={handleClose}
-                  className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity"
-                >
-                  {t('modals.smartImport.done')}
-                </button>
-              </div>
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        {step !== 'importing' && step !== 'success' && (
-          <div className="px-6 py-4 border-t border-outline-variant bg-surface-container-low flex items-center justify-between">
-            {step === 'preview' ? (
-              <button
-                onClick={() => setStep('input')}
-                className="px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
-              >
-                {t('modals.smartImport.back_to_text')}
-              </button>
-            ) : (
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
-              >
-                {t('modals.smartImport.cancel')}
-              </button>
-            )}
-
-            {step === 'input' && (
-              <button
-                onClick={handleParse}
-                disabled={!inputText.trim()}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                <Wand2 className="w-4 h-4" /> {t('modals.smartImport.parse_with_gemini')}
-              </button>
-            )}
-
-            {step === 'preview' && (
-              <button
-                onClick={handleConfirmImport}
-                disabled={totalSelected === 0}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                <Check className="w-4 h-4" /> {t('modals.smartImport.confirm_import').replace('{n}', String(totalSelected))}
-              </button>
-            )}
-          </div>
-        )}
-      </motion.div>
-    </div>
+    </PopupFrame>
   );
 }

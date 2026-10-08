@@ -322,3 +322,18 @@ design decision was needed beyond where the primary action lives.
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
 | 64 | Combine contacts and Combine tags are full-page routes reached from the Directory, so they have no single natural primary action of their own (the pair diff and the tag queue carry their own actions). | **Neither — the spec is silent** | Both render through the shared frame on their existing routes; the pinned footer carries Cancel plus one primary: **Combine {n} contacts** for Combine tags (the page's own sticky action, moved into the footer) and **Done** for Combine contacts, whose combining stays on each queue row. |
+
+### 2026-10-08 — Large one-off popups in the frame
+
+Found building [#1454](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1454)
+against the direction A rows. New contact, Attendance sync and Smart import are
+self-contained popups and move into the frame directly. Contact details is a
+**route-level page** (the Field Notes contact view, ADR 0034), reached from My
+Day, Outreach, History, Attendance and elsewhere; its own test asserted "no
+popup chrome" by design. Spec #1444 story 55 still lists it among the large
+one-offs, so it is rendered through the frame on its existing route like the
+Combine pages.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 65 | The contact page was a full-page surface with no dialog role, and `ContactDetailsModal.test.tsx` pinned that ("no popup chrome: no backdrop, no dialog role"). Its desktop header owns the name, stage and call/log/prayer actions, and Escape closes an open Thread or pane first. | **Spec #1444** | It renders through the shared frame at the L size on its existing route. The frame is labelled **Contact details** (the head keeps the name and actions, so the title does not duplicate it), the pinned footer carries Cancel + **Save changes** only while editing, and the frame's Close/Escape/scrim route through the page's layered close so Thread → pane → page is unchanged. The stale "no popup chrome" assertion is updated in the same PR. |

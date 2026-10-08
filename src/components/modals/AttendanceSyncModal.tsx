@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { AlertTriangle, CalendarDays, Check, Loader2, Users, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../LanguageProvider';
+import { PopupFrame } from '../ui/PopupFrame';
 import type { Contact, Gathering, Rhythm } from '../../types';
 import type { AttendancePreview, PendingAttendanceImport } from '../../lib/sync/attdCorrelator';
 import { confirmAttendanceImport, discardPendingAttendanceImport } from '../../lib/sync/attdSync';
@@ -157,44 +157,28 @@ function AttendanceSyncModalBody({
   if (preview === null) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[110] flex items-start justify-center overflow-y-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 10 }}
-          className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-outline-variant bg-surface shadow-2xl"
-        >
-          <header className="flex items-start gap-3 border-b border-outline-variant/70 px-5 py-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
-              <Users className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-serif text-xl text-on-surface">
-                {t('attendanceSync.modal_title', 'Review attendance sync')}
-              </h2>
-              <p className="text-sm text-on-surface-variant">
-                {pendingImport.eventName} - {preview.sessionDate}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t('attendanceSync.close', 'Close review')}
-              className="rounded-full p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-high"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </header>
-
-          <div className="max-h-[65vh] space-y-5 overflow-y-auto px-5 py-5">
+    <PopupFrame
+      open={isOpen}
+      onClose={onClose}
+      size="lg"
+      eyebrow={pendingImport.eventName}
+      title={t('attendanceSync.modal_title', 'Review attendance sync')}
+      subtitle={`${pendingImport.eventName} - ${preview.sessionDate}`}
+      destructive={{ label: t('attendanceSync.discard', 'Discard draft'), onClick: () => void handleDiscard() }}
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      primary={{
+        label: t('attendanceSync.confirm', 'Confirm sync'),
+        onClick: () => void handleConfirm(),
+        disabled: submitting || targetRhythmId === '',
+        saving: submitting,
+        savingLabel: t('attendanceSync.saving', 'Confirming…'),
+      }}
+    >
+          <div className="space-y-5 px-7 py-5">
+            {error ? (
+              <p role="alert" className="text-sm text-error">{error}</p>
+            ) : null}
             <section className="grid gap-4 rounded-2xl border border-outline-variant/60 bg-surface-container-lowest p-4 md:grid-cols-2">
               <label className="space-y-1.5 text-sm">
                 <span className="font-medium text-on-surface">{t('attendanceSync.rhythm', 'Rhythm')}</span>
@@ -349,32 +333,6 @@ function AttendanceSyncModalBody({
               </div>
             </section>
           </div>
-
-          <footer className="flex flex-wrap items-center gap-3 border-t border-outline-variant/70 bg-surface-container-low px-5 py-4">
-            {error ? (
-              <p className="min-w-full text-sm text-error">{error}</p>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleDiscard}
-              disabled={submitting}
-              className="rounded-full border border-outline-variant px-4 py-2 text-sm font-medium text-on-surface disabled:opacity-50"
-            >
-              {t('attendanceSync.discard', 'Discard draft')}
-            </button>
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={submitting || targetRhythmId === ''}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50"
-            >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              {t('attendanceSync.confirm', 'Confirm sync')}
-            </button>
-          </footer>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </PopupFrame>
   );
 }
