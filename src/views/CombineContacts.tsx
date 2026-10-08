@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   collection,
   getCountFromServer,
@@ -17,6 +18,7 @@ import {
   findCombineCandidates,
   mergeContactProfiles,
   diffCombineFields,
+  chooseKeptContact,
   contactPairKey,
   type CombineFieldRow,
   type CombineMoveGroup,
@@ -140,6 +142,9 @@ const MOVE_KIND_LABELS: Record<CombineMoveGroup['kind'], string> = {
 
 const pairKey = (pair: CombinePair) => contactPairKey(pair.kept.id, pair.combinedIn.id);
 
+/** The match reason recorded for a pair the Full-timer picked from the directory (#1433). */
+const PICKED_FROM_DIRECTORY = 'Picked from the directory';
+
 const renderValue = (value: string | string[]): string => {
   if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '';
   return value;
@@ -155,6 +160,11 @@ const renderValue = (value: string | string[]): string => {
 export default function CombineContacts() {
   const { t } = useLanguage();
   const { effectiveUserId, effectiveUserName } = useAuth();
+  const [searchParams] = useSearchParams();
+  // A pair the Full-timer picked in the directory (issue #1433) arrives as two
+  // query params. It goes through the same review, without a match reason.
+  const manualKeptId = searchParams.get('kept');
+  const manualCombinedInId = searchParams.get('combinedIn');
   const [tab, setTab] = useState<'queue' | 'recent' | 'not-same'>('queue');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,6 +238,8 @@ export default function CombineContacts() {
       ids.add(p.kept.id);
       ids.add(p.combinedIn.id);
     });
+    if (manualKeptId) ids.add(manualKeptId);
+    if (manualCombinedInId) ids.add(manualCombinedInId);
     if (ids.size === 0) return;
     let cancelled = false;
     (async () => {
@@ -258,18 +270,34 @@ export default function CombineContacts() {
     return () => {
       cancelled = true;
     };
-  }, [contacts]);
+  }, [contacts, manualKeptId, manualCombinedInId]);
 
   const pairs = useMemo(() => {
     const markedKeys = new Set(marks.map((m) => contactPairKey(m.contactIds[0], m.contactIds[1])));
-    return findCombineCandidates(contacts, historyById, markedKeys)
+    const list = findCombineCandidates(contacts, historyById, markedKeys);
+
+    // A pair picked from the directory (#1433) opens the same review without a
+    // match reason. It is skipped when detection already covers the pair.
+    if (manualKeptId && manualCombinedInId && manualKeptId !== manualCombinedInId) {
+      const a = contacts.find((c) => c.id === manualKeptId);
+      const b = contacts.find((c) => c.id === manualCombinedInId);
+      const manualKey = a && b ? contactPairKey(a.id, b.id) : null;
+      const alreadyDetected =
+        manualKey !== null && list.some((p) => contactPairKey(p.kept.id, p.combinedIn.id) === manualKey);
+      if (a && b && !alreadyDetected) {
+        const { kept, combinedIn } = chooseKeptContact(a, b, historyById);
+        list.unshift({ kept, combinedIn, reason: PICKED_FROM_DIRECTORY });
+      }
+    }
+
+    return list
       .filter((p) => !skipped.has(pairKey(p)))
       .map((p) =>
         swappedKeys.has(pairKey(p))
           ? { kept: p.combinedIn, combinedIn: p.kept, reason: p.reason }
           : p,
       );
-  }, [contacts, historyById, skipped, swappedKeys, marks]);
+  }, [contacts, historyById, skipped, swappedKeys, marks, manualKeptId, manualCombinedInId]);
 
   const picksFor = (key: string): CombinePicks => picksByPair[key] ?? {};
 

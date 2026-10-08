@@ -9,6 +9,7 @@ import {
   checkCombineMatch,
   historyScore,
   contactPairKey,
+  chooseKeptContact,
   type CombineReferences,
   type CombineUndoRecord,
   type CombineUndoCurrent,
@@ -660,6 +661,24 @@ describe('findCombineCandidates by history', () => {
       b: { interactions: 1, comments: 0, rosterEntries: 0 },
     });
     expect(pairs[0].kept.id).toBe('a');
+  });
+});
+
+describe('chooseKeptContact (#1433)', () => {
+  const older: Partial<Contact> = { id: 'old', name: 'Jon S.', email: 'jon@x.com', createdAt: '2026-01-01' };
+  const newer: Partial<Contact> = { id: 'new', name: 'Jonathan Smith', email: 'js@x.com', createdAt: '2026-02-01' };
+
+  it('keeps the older record when history ties or is unknown', () => {
+    expect(chooseKeptContact(older as Contact, newer as Contact).kept.id).toBe('old');
+  });
+
+  it('keeps the record with more history even when it is newer', () => {
+    const { kept, combinedIn } = chooseKeptContact(older as Contact, newer as Contact, {
+      old: { interactions: 0, comments: 0, rosterEntries: 0 },
+      new: { interactions: 2, comments: 1, rosterEntries: 0 },
+    });
+    expect(kept.id).toBe('new');
+    expect(combinedIn.id).toBe('old');
   });
 });
 
