@@ -10,12 +10,14 @@ import { describe, it, expect } from 'vitest';
 import {
   guessTagCombines as webGuess,
   planTagApplies as webPlan,
+  planTagUndo as webUndo,
   type TagCombine,
 } from '../lib/tags';
 // Direct relative import into the workspace package -- resolved for tests only.
 import {
   guessTagCombines as coreGuess,
   planTagApplies as corePlan,
+  planTagUndo as coreUndo,
 } from '../../packages/core/src/tags';
 
 const CORPUS: Array<Array<string> | null> = [
@@ -64,5 +66,15 @@ describe('tag guesser mirror parity (web vs core)', () => {
 
   it('planTagApplies agrees for the edited combines', () => {
     expect(webPlan(CONTACTS, COMBINES)).toEqual(corePlan(CONTACTS, COMBINES));
+  });
+
+  it('planTagUndo agrees for the same record and current tags', () => {
+    const entries = [
+      { contactId: 'c0', name: 'C0', before: ['club rush'], after: ['Club Rush'] },
+      { contactId: 'c1', name: 'C1', before: ['BFA table'], after: ['BFA'] },
+      { contactId: 'c2', name: 'C2', before: ['bible study'], after: ['Bible study'] },
+    ];
+    const current = { c0: ['Club Rush'], c1: ['BFA', 'Fall 2025'], c2: ['Bible study'] };
+    expect(webUndo(entries, current)).toEqual(coreUndo(entries, current));
   });
 });

@@ -21,7 +21,7 @@ import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } fro
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { buildCombinePlan, buildCombineUndoPlan, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks } from "./src/lib/combineContactsPlan";
-import { planTagApplies, type TagCombine } from "./src/lib/tags";
+import { planTagApplies, planTagUndo, type TagCombine, type TagUndoEntry } from "./src/lib/tags";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -3324,6 +3324,142 @@ ${JSON.stringify(contactsList)}`;
       return res
         .status(500)
         .json({ success: false, error: error.message || "Failed to combine tags" });
+    }
+  });
+
+  // Undo a tag combine (issue #1436, spec #1426). Full-timers only. Replays the
+  // tag combine record: each contact returns to its before-tags only while its
+  // current tags still equal what the combine wrote. Contacts re-tagged (or
+  // deleted) since are skipped and reported. Standard tags added by the combine
+  // stay. A combine can only be undone once.
+  app.post("/api/combine-tags/undo", standardRateLimiter, async (req, res) => {
+    let actorId: string;
+    let actorName: string;
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        const authorized = await authorizeAdmin(req);
+        actorId = authorized.uid;
+        actorName = authorized.email || authorized.uid;
+      } else {
+        actorId = "test-user";
+        actorName = "Test User";
+      }
+    } catch (authErr: any) {
+      return res
+        .status(403)
+        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+    }
+
+    const combineRecordId =
+      typeof req.body?.combineRecordId === "string" ? req.body.combineRecordId : "";
+    if (!combineRecordId) {
+      return res.status(400).json({ success: false, error: "combineRecordId is required" });
+    }
+    const dryRun = req.body?.dryRun === true;
+
+    try {
+      const db = getAdminDb();
+      const recordRef = db.collection("combineRecords").doc(combineRecordId);
+      const recordSnap = await recordRef.get();
+      if (!recordSnap.exists) {
+        return res.status(404).json({ success: false, error: "Combine record not found" });
+      }
+      const record = recordSnap.data() as any;
+      if (record.kind !== "tags") {
+        return res.status(400).json({ success: false, error: "Not a tag combine record" });
+      }
+      if (record.status === "undone") {
+        return res
+          .status(409)
+          .json({ success: false, error: "This combine has already been undone" });
+      }
+
+      const entries: TagUndoEntry[] = (Array.isArray(record.contacts) ? record.contacts : [])
+        .map((c: any) => ({
+          contactId: String(c?.contactId ?? ""),
+          name: String(c?.name ?? ""),
+          before: Array.isArray(c?.before) ? c.before : [],
+          after: Array.isArray(c?.after) ? c.after : [],
+        }))
+        .filter((entry: TagUndoEntry) => entry.contactId);
+
+      const currentTagsByContact: Record<string, string[] | null> = {};
+      for (const entry of entries) {
+        const snap = await db.collection("contacts").doc(entry.contactId).get();
+        currentTagsByContact[entry.contactId] = snap.exists
+          ? ((snap.data()?.tags ?? []) as string[])
+          : null;
+      }
+
+      const plan = planTagUndo(entries, currentTagsByContact);
+      const preview = {
+        restored: plan.restore.map((row) => ({
+          contactId: row.contactId,
+          name: row.name,
+          current: row.current,
+          before: row.before,
+        })),
+        skipped: plan.skipped.map((row) => ({
+          contactId: row.contactId,
+          name: row.name,
+          current: row.current,
+          after: row.after,
+        })),
+      };
+
+      if (dryRun) {
+        return res.status(200).json({ success: true, dryRun: true, preview });
+      }
+
+      const now = new Date().toISOString();
+
+      const BATCH_LIMIT = 400;
+      for (let i = 0; i < plan.restore.length; i += BATCH_LIMIT) {
+        const batch = db.batch();
+        for (const row of plan.restore.slice(i, i + BATCH_LIMIT)) {
+          batch.update(db.collection("contacts").doc(row.contactId), {
+            tags: row.before,
+            updatedAt: now,
+            updatedBy: actorId,
+            updatedByName: actorName,
+          });
+        }
+        await batch.commit();
+      }
+
+      await recordRef.update({
+        status: "undone",
+        undoneBy: actorId,
+        undoneByName: actorName,
+        undoneAt: now,
+      });
+
+      for (const row of plan.restore) {
+        await db.collection("activities").add({
+          userId: actorId,
+          userName: actorName,
+          userPhoto: "",
+          action: "undid tag combine",
+          targetId: row.contactId,
+          targetName: row.name,
+          targetType: "contact",
+          type: "edit",
+          description: `Restored tags: [${row.current.join(", ")}] → [${row.before.join(", ")}]`,
+          createdAt: now,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        preview,
+        restoredCount: plan.restore.length,
+        skippedCount: plan.skipped.length,
+      });
+    } catch (error: any) {
+      console.error("Undo Tag Combine Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, error: error.message || "Failed to undo tag combine" });
     }
   });
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { ArrowDown, ArrowUp, Check, Combine, Loader2, Plus, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Combine, Loader2, Plus, Undo2, X } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   guessTagCombines,
@@ -28,6 +28,36 @@ const REASON_KEYS: Record<TagGuessReason, string> = {
 const reasonLabel = (t: (key: string, fallback?: string) => string, guess: TagGuess): string =>
   guess.reasons.map((reason) => t(`combine_tags.reason_${reason}`, REASON_KEYS[reason])).join(' · ');
 
+/** A permanent tag combine record (issue #1435), as stored by the server. */
+interface TagCombineRecord {
+  id: string;
+  kind?: string;
+  status: 'pending' | 'done' | 'undone';
+  combinedByName?: string;
+  combinedAt?: string;
+  undoneByName?: string;
+  undoneAt?: string;
+  contacts?: Array<{ contactId: string; name: string }>;
+}
+
+/** A contact the undo skipped because it was re-tagged after the combine. */
+interface TagUndoSkipped {
+  contactId: string;
+  name: string;
+  current: string[];
+  after: string[];
+}
+
+const formatWhen = (iso?: string): string => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
+};
+
+/** Fills {placeholders} in a translated string. */
+const fill = (template: string, values: Record<string, string>): string =>
+  template.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] ?? '');
+
 /**
  * Combine tags (issue #1435, spec #1426). A Full-timer page reached from the
  * directory, replacing the old modal: strong guesses start checked, weak
@@ -53,6 +83,16 @@ export default function CombineTags() {
   const [standardDraft, setStandardDraft] = useState<string[] | null>(null);
   const [newStandardTag, setNewStandardTag] = useState('');
   const standardTags = standardDraft ?? storedStandardTags;
+  // Recent tag combines (issue #1436), so a wrong combine can be undone.
+  const [records, setRecords] = useState<TagCombineRecord[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(true);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [undoError, setUndoError] = useState<string | null>(null);
+  const [undoResult, setUndoResult] = useState<{
+    recordId: string;
+    restored: number;
+    skipped: TagUndoSkipped[];
+  } | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -66,6 +106,24 @@ export default function CombineTags() {
         setError(true);
         setLoading(false);
         handleFirestoreError(e, OperationType.LIST, 'contacts');
+      },
+    );
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, 'combineRecords'), orderBy('combinedAt', 'desc'));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        setRecords(
+          snapshot.docs
+            .map((d) => ({ id: d.id, ...d.data() })) as TagCombineRecord[],
+        );
+        setRecordsLoading(false);
+      },
+      (e) => {
+        setRecordsLoading(false);
+        handleFirestoreError(e, OperationType.LIST, 'combineRecords');
       },
     );
   }, []);
@@ -178,6 +236,39 @@ export default function CombineTags() {
       setApplyError(e instanceof Error ? e.message : String(e));
     } finally {
       setApplying(false);
+    }
+  };
+
+  const tagRecords = records.filter((record) => record.kind === 'tags');
+
+  const undoRecord = async (record: TagCombineRecord) => {
+    if (undoingId) return;
+    setUndoingId(record.id);
+    setUndoError(null);
+    setUndoResult(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/combine-tags/undo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ combineRecordId: record.id }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || t('combine_tags.undo_failed', 'Could not undo combine'));
+      }
+      setUndoResult({
+        recordId: record.id,
+        restored: body.restoredCount ?? 0,
+        skipped: (body.preview?.skipped ?? []) as TagUndoSkipped[],
+      });
+    } catch (e) {
+      setUndoError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUndoingId(null);
     }
   };
 
@@ -374,6 +465,105 @@ export default function CombineTags() {
               </div>
             </>
           )}
+
+          <section data-testid="recent-tag-combines" className="space-y-3">
+            <h2 className="text-sm font-semibold text-on-surface">
+              {t('combine_tags.recent', 'Recent tag combines')}
+            </h2>
+            {undoError && (
+              <p className="rounded-lg border border-outline-variant bg-surface-variant/40 px-4 py-3 text-sm text-on-surface">
+                {undoError}
+              </p>
+            )}
+            {recordsLoading ? (
+              <Skeleton className="h-20 w-full rounded-2xl" />
+            ) : tagRecords.length === 0 ? (
+              <p className="text-sm text-on-surface-variant italic">
+                {t('combine_tags.no_recent', 'No tag combines yet')}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {tagRecords.map((record) => {
+                  const count = record.contacts?.length ?? 0;
+                  const result = undoResult?.recordId === record.id ? undoResult : null;
+                  return (
+                    <div
+                      key={record.id}
+                      data-testid="tag-combine-record"
+                      className="rounded-2xl border border-outline-variant/60 bg-surface p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-on-surface">
+                            {t('combine_tags.contact_count', '{n} contacts').replace(
+                              '{n}',
+                              String(count),
+                            )}
+                          </p>
+                          <p className="text-xs text-on-surface-variant mt-1">
+                            {fill(t('combine_tags.combined_by', 'By {name} on {date}'), {
+                              name: record.combinedByName || '',
+                              date: formatWhen(record.combinedAt),
+                            })}
+                          </p>
+                          {record.status === 'undone' && (
+                            <p className="text-xs text-on-surface-variant mt-1">
+                              {fill(t('combine_tags.undone_by', 'Undone by {name} on {date}'), {
+                                name: record.undoneByName || '',
+                                date: formatWhen(record.undoneAt),
+                              })}
+                            </p>
+                          )}
+                        </div>
+                        {record.status !== 'undone' && (
+                          <button
+                            type="button"
+                            disabled={undoingId !== null}
+                            onClick={() => undoRecord(record)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {undoingId === record.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Undo2 className="w-4 h-4" />
+                            )}
+                            {t('combine_tags.undo', 'Undo combine')}
+                          </button>
+                        )}
+                      </div>
+                      {result && (
+                        <div
+                          data-testid="tag-undo-result"
+                          className="mt-3 border-t border-outline-variant/40 pt-3 text-sm"
+                        >
+                          <p className="text-on-surface-variant">
+                            {fill(t('combine_tags.undo_restored', 'Restored {n} contacts'), {
+                              n: String(result.restored),
+                            })}
+                          </p>
+                          {result.skipped.length > 0 && (
+                            <>
+                              <p className="text-on-surface-variant mt-1">
+                                {t(
+                                  'combine_tags.undo_skipped',
+                                  'Skipped contacts changed since:',
+                                )}
+                              </p>
+                              <ul className="mt-1 ml-4 list-disc text-on-surface-variant">
+                                {result.skipped.map((item) => (
+                                  <li key={item.contactId}>{item.name || item.contactId}</li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
 
         <aside
