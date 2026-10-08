@@ -309,3 +309,16 @@ removal.
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
 | 63 | The pre-frame picker let you **untick** an already-held person to take them off the page, and `CONTEXT.md` described "Choose people" as the same bookkeeping as **Remove from prayer list**. Design A and spec #1444 story 50 grey held people and say they "can't be ticked again". | **Design / spec** | The picker only adds: held people are non-tickable, and removal stays the card's own × / row-menu action. `applyPick` no longer takes a `removed` list. |
+
+### 2026-10-08 — Admin tools in the popup frame
+
+Found building [#1452](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1452)
+against the direction A rows. Tag gender and Moving up a year were already
+centred cards, so they move into the frame directly. Combine contacts and
+Combine tags are **route pages**, not popups (they are admin-only surfaces with
+tabs, a queue and a side panel), and spec #1444 draws no admin-tool board. No
+design decision was needed beyond where the primary action lives.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 64 | Combine contacts and Combine tags are full-page routes reached from the Directory, so they have no single natural primary action of their own (the pair diff and the tag queue carry their own actions). | **Neither — the spec is silent** | Both render through the shared frame on their existing routes; the pinned footer carries Cancel plus one primary: **Combine {n} contacts** for Combine tags (the page's own sticky action, moved into the footer) and **Done** for Combine contacts, whose combining stays on each queue row. |

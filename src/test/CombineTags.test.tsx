@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CombineTags from '../views/CombineTags';
 import type { Contact } from '../types';
@@ -60,8 +61,20 @@ describe('CombineTags', () => {
     global.fetch = vi.fn().mockResolvedValue(jsonResponse({ success: true, changedCount: 2 }));
   });
 
+  const renderPage = () =>
+    render(
+      <MemoryRouter>
+        <CombineTags />
+      </MemoryRouter>,
+    );
+
+  it('renders in the shared popup frame (#1452)', () => {
+    renderPage();
+    expect(screen.getByRole('dialog', { name: 'Combine tags' })).toBeInTheDocument();
+  });
+
   it('starts strong guesses checked and weak guesses unchecked', () => {
-    render(<CombineTags />);
+    renderPage();
 
     const strong = within(screen.getByTestId('strong-guesses'));
     expect(strong.getAllByRole('checkbox')[0]).toBeChecked();
@@ -73,7 +86,7 @@ describe('CombineTags', () => {
   });
 
   it('offers Prayer walk table → Prayer walk and intersted → Interested as weak guesses', () => {
-    render(<CombineTags />);
+    renderPage();
     const prayer = within(screen.getByTestId('tag-guess-guess-prayer-walk-weak'));
     expect(prayer.getAllByText('Prayer walk table').length).toBeGreaterThan(0);
     expect((prayer.getByRole('combobox') as HTMLInputElement).value).toBe('Prayer walk');
@@ -82,7 +95,7 @@ describe('CombineTags', () => {
   });
 
   it('updates the count and the result when a variant is removed', () => {
-    render(<CombineTags />);
+    renderPage();
 
     expect(screen.getByRole('button', { name: /Combine 2 contacts/i })).toBeEnabled();
 
@@ -95,7 +108,7 @@ describe('CombineTags', () => {
   });
 
   it('updates the result when a guess target is changed', () => {
-    render(<CombineTags />);
+    renderPage();
 
     const interested = within(screen.getByTestId('tag-guess-guess-interested-weak'));
     fireEvent.click(interested.getByRole('checkbox'));
@@ -106,7 +119,7 @@ describe('CombineTags', () => {
   });
 
   it('applies the enabled combines through the server', async () => {
-    render(<CombineTags />);
+    renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
 
@@ -122,7 +135,7 @@ describe('CombineTags', () => {
 
   it('shows the server error message when applying fails', async () => {
     global.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'Forbidden' }, false));
-    render(<CombineTags />);
+    renderPage();
 
     fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
 
@@ -131,20 +144,20 @@ describe('CombineTags', () => {
 
   it('shows an empty state when there are no guesses', () => {
     setContacts([{ id: 'q1', name: 'Quiet', tags: ['Saved'] } as Contact]);
-    render(<CombineTags />);
+    renderPage();
     expect(screen.getByText('No tag combines found')).toBeInTheDocument();
   });
 
   describe('standard tags panel (#1437)', () => {
     it('renders the seed list before the stored list loads', () => {
-      render(<CombineTags />);
+      renderPage();
       const panel = within(screen.getByTestId('standard-tags-panel'));
       expect(panel.getByTestId('standard-tag-Saved')).toBeInTheDocument();
       expect(panel.getByTestId('standard-tag-BFA')).toBeInTheDocument();
     });
 
     it('adds a standard tag and persists only the list', () => {
-      render(<CombineTags />);
+      renderPage();
       const panel = within(screen.getByTestId('standard-tags-panel'));
 
       fireEvent.change(panel.getByLabelText('Add a standard tag'), {
@@ -162,7 +175,7 @@ describe('CombineTags', () => {
 
     it('uses a newly added standard tag as a preferred guess target', () => {
       setContacts([{ id: 'c1', name: 'Ada', tags: ['Welcome table'] } as Contact]);
-      render(<CombineTags />);
+      renderPage();
       expect(screen.getByText('No tag combines found')).toBeInTheDocument();
 
       const panel = within(screen.getByTestId('standard-tags-panel'));
@@ -177,7 +190,7 @@ describe('CombineTags', () => {
     });
 
     it('removes a standard tag without touching contacts', () => {
-      render(<CombineTags />);
+      renderPage();
       const panel = within(screen.getByTestId('standard-tags-panel'));
 
       fireEvent.click(panel.getByTestId('remove-standard-tag-Saved'));
@@ -189,7 +202,7 @@ describe('CombineTags', () => {
     });
 
     it('reorders a standard tag and persists the new order', () => {
-      render(<CombineTags />);
+      renderPage();
       const panel = within(screen.getByTestId('standard-tags-panel'));
 
       fireEvent.click(panel.getByLabelText('Move Saved down'));
@@ -217,7 +230,7 @@ describe('CombineTags', () => {
         { id: 'a1', name: 'Ann', tags: ['Saved', 'BFA', 'Old Tag'] } as Contact,
         { id: 'a2', name: 'Ben', tags: ['Saved'] } as Contact,
       ]);
-      render(<CombineTags />);
+      renderPage();
 
       const section = within(screen.getByTestId('all-tags'));
       expect(section.getByTestId('all-tag-Saved')).toHaveTextContent('2 contacts');
@@ -229,7 +242,7 @@ describe('CombineTags', () => {
 
     it('opens the Combine into bar only once two or more tags are selected', () => {
       setContacts(plainContacts);
-      render(<CombineTags />);
+      renderPage();
 
       expect(screen.queryByTestId('combine-into-bar')).not.toBeInTheDocument();
 
@@ -243,7 +256,7 @@ describe('CombineTags', () => {
 
     it('adds a user-built combine that applies through the server like a guess', async () => {
       setContacts(plainContacts);
-      render(<CombineTags />);
+      renderPage();
 
       selectTwo('Outreach booth', 'BFA');
       fireEvent.change(screen.getByTestId('combine-into-target'), {
@@ -268,7 +281,7 @@ describe('CombineTags', () => {
 
     it('removes a user-built combine and drops it from the plan', () => {
       setContacts(plainContacts);
-      render(<CombineTags />);
+      renderPage();
 
       selectTwo('Outreach booth', 'BFA');
       fireEvent.change(screen.getByTestId('combine-into-target'), {
@@ -286,7 +299,7 @@ describe('CombineTags', () => {
 
     it('offers Also make standard only for a new name and adds it to standard tags when checked', async () => {
       setContacts(plainContacts);
-      render(<CombineTags />);
+      renderPage();
 
       selectTwo('Outreach booth', 'BFA');
 
@@ -327,7 +340,7 @@ describe('CombineTags', () => {
 
     it('lists a tag combine with who, when and how many contacts it changed', () => {
       h.records = [{ id: record.id, data: () => record }];
-      render(<CombineTags />);
+      renderPage();
 
       const section = within(screen.getByTestId('recent-tag-combines'));
       expect(section.getByText(/Ada/)).toBeInTheDocument();
@@ -347,7 +360,7 @@ describe('CombineTags', () => {
           },
         }),
       );
-      render(<CombineTags />);
+      renderPage();
 
       fireEvent.click(screen.getByRole('button', { name: /Undo combine/i }));
 
@@ -371,7 +384,7 @@ describe('CombineTags', () => {
           }),
         },
       ];
-      render(<CombineTags />);
+      renderPage();
 
       const section = within(screen.getByTestId('recent-tag-combines'));
       expect(section.getByText(/Bea/)).toBeInTheDocument();

@@ -172,6 +172,11 @@ describe('CombineContacts page', () => {
       </MemoryRouter>,
     );
 
+  it('renders in the shared popup frame (#1452)', () => {
+    renderPage();
+    expect(screen.getByRole('dialog', { name: 'Combine contacts' })).toBeInTheDocument();
+  });
+
   it('renders the Queue tab and a three-column diff for a detected pair', () => {
     renderPage();
     expect(screen.getByRole('tab', { name: /queue/i })).toBeInTheDocument();

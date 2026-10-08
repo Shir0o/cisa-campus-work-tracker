@@ -2152,7 +2152,9 @@
     "same_year": "{year} (mismo año)",
     "graduated": "Se graduó / dejó los estudios",
     "choice_for": "Año de {name}",
-    "confirm": "Confirmar {n}"
+    "confirm": "Confirmar {n}",
+    "discard": "¿Descartar estos cambios de año?",
+    "saving": "Confirmando…"
   },
   "contactKind": {
     "local_saint": "Santo local",

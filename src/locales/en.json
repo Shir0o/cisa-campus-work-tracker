@@ -2152,7 +2152,9 @@
     "same_year": "{year} (same year)",
     "graduated": "Graduated / left school",
     "choice_for": "Year for {name}",
-    "confirm": "Confirm {n}"
+    "confirm": "Confirm {n}",
+    "discard": "Discard these year changes?",
+    "saving": "Confirming…"
   },
   "contactKind": {
     "local_saint": "Local saint",
