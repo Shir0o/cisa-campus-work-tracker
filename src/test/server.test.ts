@@ -3683,3 +3683,88 @@ describe("POST /api/combine-contacts/undo", () => {
     expect(getCollection("combineRecords")[firstRecord].status).toBe("done");
   });
 });
+
+describe("POST /api/combine-tags", () => {
+  const seedTags = () => {
+    seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
+    seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
+    seedDoc("contacts", "c", { name: "Cara", tags: ["Saved"] });
+  };
+
+  it("rewrites affected tags, drops duplicates, and writes a done tags record", async () => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.combineRecordId).toBeTruthy();
+    expect(res.body.changedCount).toBe(2);
+
+    const contacts = getCollection("contacts");
+    expect(contacts["a"].tags).toEqual(["BFA"]);
+    expect(contacts["b"].tags).toEqual(["BFA"]);
+    expect(contacts["c"].tags).toEqual(["Saved"]);
+
+    const record = getCollection("combineRecords")[res.body.combineRecordId];
+    expect(record.kind).toBe("tags");
+    expect(record.status).toBe("done");
+    expect(record.combinedByName).toBe("Test User");
+    expect(record.combines).toEqual([{ variants: ["BFA table", "bfa-table"], target: "BFA" }]);
+    expect(record.contacts).toEqual([
+      { contactId: "a", name: "Alice", before: ["BFA table", "BFA"], after: ["BFA"] },
+      { contactId: "b", name: "Bob", before: ["bfa-table"], after: ["BFA"] },
+    ]);
+  });
+
+  it("logs one Activity Log entry per changed contact", async () => {
+    seedTags();
+    await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+
+    const activities = Object.values(getCollection("activities")).filter(
+      (activity: any) => activity.action === "combined tags on",
+    );
+    expect(activities).toHaveLength(2);
+    expect(activities[0]).toMatchObject({ targetType: "contact", type: "edit" });
+  });
+
+  it("previews without writing on a dry run", async () => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }], dryRun: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    expect(res.body.rows).toEqual([
+      { contactId: "a", name: "Alice", from: ["BFA table", "BFA"], to: ["BFA"] },
+      { contactId: "b", name: "Bob", from: ["bfa-table"], to: ["BFA"] },
+    ]);
+    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
+    expect(Object.values(getCollection("combineRecords"))).toHaveLength(0);
+  });
+
+  it("returns 400 when no combines are given", async () => {
+    const res = await request(app).post("/api/combine-tags").send({ combinations: [] });
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses a non-Full-timer with 403", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "t@example.com" });
+      seedDoc("users", "trainee-1", { role: "trainee", approved: true });
+      const res = await request(app)
+        .post("/api/combine-tags")
+        .set("Authorization", "Bearer tok")
+        .send({ combines: [{ variants: ["BFA table"], target: "BFA" }] });
+      expect(res.status).toBe(403);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+});

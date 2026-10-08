@@ -9,7 +9,15 @@ import {
   getEffectiveContactTags,
   clusterTags,
   planTagCombiningWithRules,
+  guessTagCombines,
+  planTagApplies,
 } from '../lib/tags';
+
+const guessFor = (
+  guesses: ReturnType<typeof guessTagCombines>,
+  target: string,
+  tier: 'strong' | 'weak',
+) => guesses.find((g) => g.target === target && g.tier === tier);
 
 describe('normalizeTag', () => {
   it('turns short season labels into full year labels', () => {
@@ -192,6 +200,118 @@ describe('tagToneKey and tagStyle', () => {
       '--tone': 'var(--t-sage)',
       '--tone-soft': 'var(--t-sage-soft)',
     });
+  });
+});
+
+describe('guessTagCombines — tiers', () => {
+  it('marks case, punctuation or spacing variants as strong', () => {
+    const guesses = guessTagCombines([
+      { tags: ['club rush'] },
+      { tags: ['Club Rush'] },
+      { tags: ['club-rush'] },
+    ]);
+    const guess = guessFor(guesses, 'Club Rush', 'strong')!;
+    expect(guess).toBeDefined();
+    expect(guess.reasons).toContain('case-punctuation');
+    expect(guess.variants.sort()).toEqual(['club rush', 'club-rush'].sort());
+  });
+
+  it('marks a standard tag plus a context word as strong', () => {
+    const guesses = guessTagCombines([{ tags: ['BFA table'] }, { tags: ['bfa-table'] }]);
+    const guess = guessFor(guesses, 'BFA', 'strong')!;
+    expect(guess).toBeDefined();
+    expect(guess.reasons).toContain('standard-context');
+    expect(guess.variants.sort()).toEqual(['BFA table', 'bfa-table'].sort());
+  });
+
+  it('marks a standard tag plus a non-context word as weak', () => {
+    const guesses = guessTagCombines([{ tags: ['BFA leaders'] }, { tags: ['BFA'] }]);
+    const guess = guessFor(guesses, 'BFA', 'weak')!;
+    expect(guess).toBeDefined();
+    expect(guess.reasons).toContain('standard-extra');
+    expect(guess.variants).toEqual(['BFA leaders']);
+  });
+
+  it('marks another tag plus extra words as weak (Prayer walk table → Prayer walk)', () => {
+    const guesses = guessTagCombines([{ tags: ['Prayer walk table'] }, { tags: ['Prayer walk'] }]);
+    const guess = guessFor(guesses, 'Prayer walk', 'weak')!;
+    expect(guess).toBeDefined();
+    expect(guess.reasons).toContain('extra-words');
+    expect(guess.variants).toEqual(['Prayer walk table']);
+  });
+
+  it('marks one-letter typos as weak (intersted → Interested)', () => {
+    const guesses = guessTagCombines([{ tags: ['intersted'] }]);
+    const guess = guessFor(guesses, 'Interested', 'weak')!;
+    expect(guess).toBeDefined();
+    expect(guess.reasons).toContain('typo');
+    expect(guess.variants).toEqual(['intersted']);
+  });
+
+  it('prefers frequency, then clean Title Case, when choosing a non-standard target', () => {
+    const guesses = guessTagCombines([
+      { tags: ['bible study'] },
+      { tags: ['Bible Study'] },
+      { tags: ['Bible Study'] },
+      { tags: ['BIBLE STUDY'] },
+    ]);
+    expect(guessFor(guesses, 'Bible Study', 'strong')).toBeDefined();
+  });
+
+  it('uses the standard tags passed in as the anchor source', () => {
+    const guesses = guessTagCombines([{ tags: ['Welcome table'] }], ['Welcome']);
+    const guess = guessFor(guesses, 'Welcome', 'strong')!;
+    expect(guess).toBeDefined();
+    expect(guess.reasons).toContain('standard-context');
+  });
+
+  it('never guesses different seasons together', () => {
+    const guesses = guessTagCombines([{ tags: ['Fall 2025', 'Fall 2026'] }]);
+    expect(guesses).toEqual([]);
+  });
+
+  it('still folds spelling variants of the same season', () => {
+    const guesses = guessTagCombines([{ tags: ["Fall '26", 'Fall 2026'] }]);
+    const guess = guessFor(guesses, 'Fall 2026', 'strong')!;
+    expect(guess).toBeDefined();
+    expect(guess.variants).toEqual(["Fall '26"]);
+  });
+
+  it('counts the affected contacts per guess', () => {
+    const guesses = guessTagCombines([
+      { tags: ['BFA table'] },
+      { tags: ['bfa-table'] },
+      { tags: ['BFA'] },
+    ]);
+    expect(guessFor(guesses, 'BFA', 'strong')!.contactCount).toBe(2);
+  });
+});
+
+describe('planTagApplies', () => {
+  it('applies the combine and removes duplicate tags on each contact', () => {
+    const contacts = [
+      { id: '1', name: 'S1', tags: ['BFA table', 'BFA'] },
+      { id: '2', name: 'S2', tags: ['BFA table'] },
+      { id: '3', name: 'S3', tags: ['Saved'] },
+    ];
+    expect(planTagApplies(contacts, [{ variants: ['BFA table'], target: 'BFA' }])).toEqual([
+      { contactId: '1', name: 'S1', from: ['BFA table', 'BFA'], to: ['BFA'] },
+      { contactId: '2', name: 'S2', from: ['BFA table'], to: ['BFA'] },
+    ]);
+  });
+
+  it('reflects an edited target', () => {
+    const contacts = [{ id: '1', name: 'S1', tags: ['bible studies'] }];
+    expect(
+      planTagApplies(contacts, [{ variants: ['bible studies'], target: 'Bible study' }]),
+    ).toEqual([
+      { contactId: '1', name: 'S1', from: ['bible studies'], to: ['Bible study'] },
+    ]);
+  });
+
+  it('only plans rows that would actually change', () => {
+    const contacts = [{ id: '1', name: 'S1', tags: ['Saved'] }];
+    expect(planTagApplies(contacts, [{ variants: ['Saved'], target: 'Saved' }])).toEqual([]);
   });
 });
 

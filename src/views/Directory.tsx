@@ -40,7 +40,6 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import Select from '../components/ui/Select';
 import PageContainer from '../components/layout/PageContainer';
-import CombineTagsModal from '../components/modals/CombineTagsModal';
 import TagGenderModal from '../components/modals/TagGenderModal';
 import MovingUpAYearModal from '../components/modals/MovingUpAYearModal';
 import { RowActions } from '../components/ui/RowActions';
@@ -392,7 +391,6 @@ export default function Directory() {
   // there is no pre-chosen answer to confirm by accident.
   const [bulkKind, setBulkKind] = useState<ContactKind | ''>('');
   const [bulkStage, setBulkStage] = useState('');
-  const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [isTagGenderOpen, setIsTagGenderOpen] = useState(false);
   // Moving up a year (#1351): a Full-timer's sorting work, beside Not sorted yet.
   const [movingUpAt, setMovingUpAt] = useState<Date | null>(null);
@@ -446,16 +444,15 @@ export default function Directory() {
       if (e.key === 'Escape') {
         setIsTagModalOpen(false);
         setIsStageModalOpen(false);
-        setIsCombineTagsOpen(false);
         setIsTagGenderOpen(false);
         setShowFilterMenu(false);
       }
     };
-    if (isTagModalOpen || isStageModalOpen || isKindModalOpen || isCombineTagsOpen || isTagGenderOpen || showFilterMenu) {
+    if (isTagModalOpen || isStageModalOpen || isKindModalOpen || isTagGenderOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isTagModalOpen, isStageModalOpen, isKindModalOpen, isCombineTagsOpen, showFilterMenu]);
+  }, [isTagModalOpen, isStageModalOpen, isKindModalOpen, showFilterMenu]);
 
   // Days since last connected (interaction/comment, else createdAt) for a contact.
   const daysFor = (c: Contact): number | null => {
@@ -934,7 +931,7 @@ export default function Directory() {
             </button>
           )}
           <button
-            onClick={() => setIsCombineTagsOpen(true)}
+            onClick={() => navigate('/directory/combine-tags')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0 min-h-[44px]"
             title={t('directory.combine_tags')}
           >
@@ -1015,7 +1012,7 @@ export default function Directory() {
                     type="button"
                     onClick={() => {
                       setHeaderMoreOpen(false);
-                      setIsCombineTagsOpen(true);
+                      navigate('/directory/combine-tags');
                     }}
                     role="menuitem"
                     className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm text-on-surface hover:bg-surface-variant transition-colors min-h-[44px]"
@@ -1544,13 +1541,7 @@ export default function Directory() {
         </div>
       )}
 
-      {/* ── Combine Tags Modal (dry-run) ── */}
-      {isCombineTagsOpen && (
-        <CombineTagsModal
-          contacts={userContacts}
-          onClose={() => setIsCombineTagsOpen(false)}
-        />
-      )}
+      {/* ── Combine tags lives on its own page (issue #1435) ── */}
 
       {/* ── Combine contacts lives on its own page (issue #1427) ── */}
 
