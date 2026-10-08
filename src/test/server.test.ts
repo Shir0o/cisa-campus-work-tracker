@@ -3264,6 +3264,64 @@ describe("POST /api/combine-contacts", () => {
     expect(entry.description).toContain("In Name");
   });
 
+  it("applies the Full-timer's picks to the written profile and stores them", async () => {
+    seedCombine();
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      picks: { fields: { name: "combined-in" }, notes: "combined-in" },
+    });
+    expect(res.status).toBe(200);
+    expect(getCollection("contacts")["s1"].name).toBe("In Name");
+    const record = getCollection("combineRecords")[res.body.combineRecordId];
+    expect(record.picks).toEqual({ fields: { name: "combined-in" }, notes: "combined-in" });
+  });
+
+  it("refuses with a conflict and writes nothing when a contact changed since the preview", async () => {
+    seedCombine();
+    seedDoc("contacts", "d1", {
+      name: "In Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Contact",
+      tags: ["A", "B"],
+      location: "",
+      createdAt: "2026-02-01",
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    });
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      keptUpdatedAt: null,
+      combinedInUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(res.status).toBe(409);
+    expect(res.body.conflict).toBe(true);
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+    expect(Object.values(getCollection("combineRecords"))).toHaveLength(0);
+  });
+
+  it("proceeds when the last-updated stamps match what the browser saw", async () => {
+    seedCombine();
+    seedDoc("contacts", "s1", {
+      name: "Kept Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Lead",
+      tags: ["A"],
+      location: "",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+    });
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      keptUpdatedAt: "2026-05-01T00:00:00.000Z",
+      combinedInUpdatedAt: null,
+    });
+    expect(res.status).toBe(200);
+    expect(getCollection("contacts")["d1"]).toBeUndefined();
+  });
+
   it("returns 400 when an id is missing", async () => {
     const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1" });
     expect(res.status).toBe(400);
