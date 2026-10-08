@@ -336,4 +336,19 @@ describe('ChatDetailsModal Component', () => {
     });
     errSpy.mockRestore();
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1453)', () => {
+    setupOnSnapshot(mockUsers);
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+    expect(screen.getByRole('dialog', { name: 'Group Details' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+  });
 });

@@ -478,4 +478,12 @@ describe('AttachDataModal Component', () => {
     expect(await screen.findByText(/No notes found matching your query/i)).toBeInTheDocument();
     expect(screen.queryByText('Notes doc')).not.toBeInTheDocument();
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1453)', () => {
+    setupOnSnapshot(mockContacts);
+    render(<AttachDataModal isOpen={true} onClose={mockOnClose} onAttach={mockOnAttach} />);
+    expect(screen.getByRole('dialog', { name: 'Attach Reference Data' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+  });
 });
