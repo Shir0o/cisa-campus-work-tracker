@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import LogVisitModal from '../components/modals/LogVisitModal';
 import { useAuth } from '../components/AuthProvider';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { addVisit, attachVisitPhotos, updateVisit } from '../lib/visits';
 import { addTodo, updateTodo } from '../lib/todos';
 import { addPrayerBurden, unhidePrayerContact } from '../lib/prayers';
@@ -11,6 +12,8 @@ import { addDoc } from 'firebase/firestore';
 import type { AppUser, Contact, Home, Visit } from '../types';
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
+
+vi.mock('../lib/useMediaQuery', () => ({ useMediaQuery: vi.fn(() => false) }));
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
@@ -75,6 +78,7 @@ const baseProps = { isOpen: true, onClose: vi.fn(), contacts, staff, homes };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(false);
   (useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     user: { uid: 'u1', displayName: 'Mei Tanaka', photoURL: '' },
     effectiveUserId: 'u1',
@@ -467,6 +471,60 @@ describe('LogVisitModal', () => {
 
     expect(await screen.findByText(/last visited/)).toBeInTheDocument();
     expect(screen.getAllByText(/the Oseis/).length).toBeGreaterThan(0);
+  });
+
+  describe('on a phone, as a bottom sheet (#1447)', () => {
+    beforeEach(() => (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true));
+
+    it('opens with a grabber, for both Log and Edit a visit', () => {
+      const { unmount } = render(<LogVisitModal {...baseProps} />);
+      expect(screen.getByRole('dialog', { name: 'Log a visit' })).toBeInTheDocument();
+      expect(screen.getByTestId('popup-sheet-grabber')).toBeInTheDocument();
+      unmount();
+
+      const visit = {
+        id: 'v1',
+        date: '2026-08-10',
+        contactIds: ['c1'],
+        contactNames: ['Ama Osei'],
+        went: ['u1'],
+        wentNames: ['Mei Tanaka'],
+        where: 'Whitman Hall',
+        purpose: '',
+        how: 'A chat.',
+        followUp: '',
+        photos: [],
+        createdAt: '',
+        createdById: 'u1',
+        createdByName: 'Mei Tanaka',
+      } as Visit;
+      render(<LogVisitModal {...baseProps} visit={visit} />);
+      expect(screen.getByRole('dialog', { name: 'Edit a visit' })).toBeInTheDocument();
+      expect(screen.getByTestId('popup-sheet-grabber')).toBeInTheDocument();
+    });
+
+    it('dismisses at once by swipe when nothing has been typed', () => {
+      render(<LogVisitModal {...baseProps} />);
+      // The swipe is simulated by invoking the sheet's dismiss path (the
+      // grabber), the same path drag-end routes through.
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(baseProps.onClose).toHaveBeenCalled();
+    });
+
+    it('asks before discarding on swipe when something has been typed, and keeps it on cancel', () => {
+      render(<LogVisitModal {...baseProps} />);
+      pick('Ama');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
+      expect(baseProps.onClose).not.toHaveBeenCalled();
+    });
   });
 });
 
