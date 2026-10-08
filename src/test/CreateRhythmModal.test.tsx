@@ -96,6 +96,26 @@ describe('CreateRhythmModal (issue #957)', () => {
     const submit = screen.getByRole('button', { name: /Create/i });
     expect(submit).toBeDisabled();
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1451)', () => {
+    render(<CreateRhythmModal isOpen={true} onClose={onClose} />);
+    expect(screen.getByRole('dialog', { name: 'Start a Rhythm' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Create/i })).toBeInTheDocument();
+  });
+
+  it('asks before discarding a typed rhythm, and keeps it on cancel (#1451)', () => {
+    render(<CreateRhythmModal isOpen={true} onClose={onClose} contacts={contacts} />);
+    fireEvent.change(screen.getByPlaceholderText(/e.g. Wednesday Bible Study/i), {
+      target: { value: 'College Meeting' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this Rhythm?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByPlaceholderText(/e.g. Wednesday Bible Study/i)).toHaveValue('College Meeting');
+  });
 });
 
 describe('CreateRhythmModal - field edits (issue #957)', () => {

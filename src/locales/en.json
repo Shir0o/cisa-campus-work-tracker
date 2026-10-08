@@ -1820,7 +1820,9 @@
     "couldnt_save_offline": "Couldn't save — you're offline. Nothing was lost.",
     "try_again": "Try again",
     "no_home_yet": "{name} has no home yet",
-    "add_one": "Add one"
+    "add_one": "Add one",
+    "gathering_noun": "gathering",
+    "rhythm_noun": "Rhythm"
   },
   "popup": {
     "discard_question": "Discard this {noun}?",

@@ -9,10 +9,6 @@ import {
 } from '../lib/data/board';
 import { guestAccessUrl, type BoardDoc } from '../lib/board';
 
-vi.mock('../components/LanguageProvider', () => ({
-  useLanguage: () => ({ t: (_k: string, f?: string) => f ?? _k, language: 'en', isSpanish: false }),
-}));
-
 vi.mock('../lib/data/board', () => ({
   enableGuestAccess: vi.fn().mockResolvedValue(undefined),
   setGuestPermission: vi.fn().mockResolvedValue(undefined),
@@ -106,7 +102,21 @@ describe('ShareDocModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create guest link' }));
     expect(await screen.findByText('Could not update the link. Try again.')).toBeTruthy();
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('renders through the shared popup frame, labelled with its title (#1451)', () => {
+    render(<ShareDocModal doc={baseDoc()} currentUserId="u-1" onClose={() => {}} />);
+    expect(screen.getByRole('dialog', { name: 'Share link' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create guest link' })).toBeInTheDocument();
+  });
+
+  it('offers Done as the primary action once a link is live (#1451)', () => {
+    const onClose = vi.fn();
+    render(<ShareDocModal doc={baseDoc({ guestAccess: { enabled: true, key: 'sec_abc', permission: 'view' } })} currentUserId="u-1" onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(onClose).toHaveBeenCalled();
   });
 

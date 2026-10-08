@@ -145,4 +145,25 @@ describe('AddEventModal Component', () => {
     const submitBtn = screen.getByRole('button', { name: /Log gathering/i });
     expect(submitBtn).toBeDisabled();
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1451)', () => {
+    render(<AddEventModal isOpen={true} onClose={mockOnClose} currentEventCount={0} />);
+    expect(screen.getByRole('dialog', { name: 'Log a gathering' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Log gathering/i })).toBeInTheDocument();
+  });
+
+  it('asks before discarding a typed gathering, and keeps it on cancel (#1451)', () => {
+    render(<AddEventModal isOpen={true} onClose={mockOnClose} currentEventCount={0} />);
+    const name = screen.getByPlaceholderText(/e.g. Welcome BBQ/i);
+    fireEvent.change(name, { target: { value: 'Welcome BBQ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this gathering?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(mockOnClose).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/e.g. Welcome BBQ/i)).toHaveValue('Welcome BBQ');
+  });
 });
