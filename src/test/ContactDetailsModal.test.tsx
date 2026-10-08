@@ -3786,6 +3786,41 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
     });
   });
 
+  it('releases contact from queue when user triggers Release from my queue (#1498)', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, createdBy: 'user-123', carers: ['user-123'] }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    const releaseBtn = await screen.findByText('Release from my queue');
+    fireEvent.click(releaseBtn);
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining('Release John from your queue?'),
+    );
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          unfollowedBy: expect.arrayContaining(['user-123']),
+          carers: expect.anything(),
+        }),
+      );
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'released a contact from queue',
+          targetId: 'contact-abc',
+        }),
+      );
+    });
+  });
+
   it('delegates: shares the person and posts a mention carrying the note', async () => {
     render(
       <ContactDetailsModal

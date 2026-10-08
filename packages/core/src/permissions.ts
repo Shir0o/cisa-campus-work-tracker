@@ -202,6 +202,24 @@ export function canRemoveContactMember(
   return canManageCollaborators(role, actorId, contact);
 }
 
+/** Whether `uid` may release a contact from their own queue (#1498).
+ *  A user who is currently tied to the contact (as creator, adder, founder,
+ *  coCreator, or carer) and has not already unfollowed can release themselves. */
+export function canReleaseContact(
+  uid: string | null | undefined,
+  contact: { createdBy?: string | null; addedBy?: string | null; founders?: string[] | null; coCreators?: string[] | null; carers?: string[] | null; unfollowedBy?: string[] | null } | null | undefined,
+): boolean {
+  if (!contact || !uid) return false;
+  if ((contact.unfollowedBy || []).includes(uid)) return false;
+  return (
+    contact.createdBy === uid ||
+    contact.addedBy === uid ||
+    (contact.founders || []).includes(uid) ||
+    (contact.coCreators || []).includes(uid) ||
+    (contact.carers || []).includes(uid)
+  );
+}
+
 export function visibleContacts<T extends { addedBy?: string; createdBy?: string; coCreators?: string[]; founders?: string[]; carers?: string[] }>(
   role: AppRole | string | null,
   staffId: string | null | undefined,

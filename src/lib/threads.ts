@@ -241,35 +241,41 @@ export interface ThreadStakeholders {
   coCreators?: string[] | null;
   founders?: string[] | null;
   carers?: string[] | null;
+  unfollowedBy?: string[] | null;
 }
 
 /** Extracts all stakeholders from a contact record. */
 export function contactStakeholdersOf(
-  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers"> | null,
+  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy"> | null,
 ): ThreadStakeholders {
   if (!contact) return {};
-  return {
+  const stakeholders: ThreadStakeholders = {
     createdBy: contact.createdBy ?? null,
     addedBy: contact.addedBy ?? null,
     coCreators: contact.coCreators ?? null,
     founders: contact.founders ?? null,
     carers: contact.carers ?? null,
   };
+  if (contact.unfollowedBy) {
+    stakeholders.unfollowedBy = contact.unfollowedBy;
+  }
+  return stakeholders;
 }
 
-/** The uids on the contact document, deduped, minus the poster. */
+/** The uids on the contact document, deduped, minus the poster and any unfollowedBy teammates. */
 export function stakeholderUidsOf(
   stakeholders: ThreadStakeholders | null | undefined,
   from: string,
 ): string[] {
   if (!stakeholders) return [];
+  const unfollowed = new Set(stakeholders.unfollowedBy || []);
   const all = [
     stakeholders.createdBy,
     stakeholders.addedBy,
     ...(stakeholders.coCreators || []),
     ...(stakeholders.founders || []),
     ...(stakeholders.carers || []),
-  ].filter((id): id is string => !!id);
+  ].filter((id): id is string => !!id && !unfollowed.has(id));
   return [...new Set(all)].filter((id) => id !== from);
 }
 

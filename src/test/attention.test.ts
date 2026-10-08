@@ -419,7 +419,13 @@ describe("isTiedTo", () => {
     expect(isTiedTo(c, "t9", new Set(["c1"]), "c1")).toBe(true);
   });
 
-  it("is false when the contact is missing and nothing is kept", () => {
-    expect(isTiedTo(undefined, "t1")).toBe(false);
+  it("is false when the creator has unfollowed the contact (#1498)", () => {
+    const unfollowed = { createdBy: "t1", unfollowedBy: ["t1"] };
+    expect(isTiedTo(unfollowed, "t1")).toBe(false);
+  });
+
+  it("still honors an explicit personalContactIds pin even if in unfollowedBy", () => {
+    const unfollowed = { createdBy: "t1", unfollowedBy: ["t1"] };
+    expect(isTiedTo(unfollowed, "t1", new Set(["c1"]), "c1")).toBe(true);
   });
 });

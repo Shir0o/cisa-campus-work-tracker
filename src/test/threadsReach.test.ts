@@ -27,6 +27,14 @@ describe("stakeholderUidsOf — everyone tied to the contact", () => {
   it("ignores empty and missing ids rather than notifying nobody-shaped uids", () => {
     expect(stakeholderUidsOf({ createdBy: "", coCreators: [""] }, "ft1")).toEqual([]);
   });
+
+  it("excludes users present in unfollowedBy (#1498)", () => {
+    const uids = stakeholderUidsOf(
+      { createdBy: "t1", coCreators: ["t2", "t3"], unfollowedBy: ["t1", "t3"] },
+      "ft1",
+    );
+    expect(uids).toEqual(["t2"]);
+  });
 });
 
 describe("a follow-up ask is open until someone says they did it", () => {

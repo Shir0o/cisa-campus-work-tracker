@@ -863,10 +863,14 @@ export default function MyDay() {
     const nextCarers = takingOn
       ? [...new Set([...(contact.carers || []), uid])]
       : (contact.carers || []).filter((carer) => carer !== uid);
-    void updateDoc(doc(db, "contacts", id), {
+    const patch: Record<string, unknown> = {
       carers: takingOn ? arrayUnion(uid) : arrayRemove(uid),
       visibleTo: visibleToOf({ ...contact, carers: nextCarers }),
-    });
+    };
+    if (takingOn && (contact.unfollowedBy || []).includes(uid)) {
+      patch.unfollowedBy = arrayRemove(uid);
+    }
+    void updateDoc(doc(db, "contacts", id), patch);
   };
 
   const jumpToSource = (docId: string) =>

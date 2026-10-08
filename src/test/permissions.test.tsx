@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
 import { applyPartners } from '../lib/partners';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
@@ -805,6 +805,20 @@ describe('collaborator management rights (#1054) — web mirror', () => {
     expect(canRemoveContactMember('manager', 'u-collab', contact, 'u-collab')).toBe(true);
     expect(canRemoveContactMember('admin', 'u-ft', contact, 'u-collab')).toBe(true);
     expect(canRemoveContactMember('manager', 'u-other', contact, 'u-collab')).toBe(false);
+  });
+
+  it('canReleaseContact: a user tied to a contact who has not yet unfollowed can release themselves (#1498)', () => {
+    // Tied via createdBy
+    expect(canReleaseContact('t1', { createdBy: 't1' })).toBe(true);
+    // Already unfollowed
+    expect(canReleaseContact('t1', { createdBy: 't1', unfollowedBy: ['t1'] })).toBe(false);
+    // Tied via carers
+    expect(canReleaseContact('t2', { carers: ['t2'] })).toBe(true);
+    // Untied user cannot release
+    expect(canReleaseContact('t9', { createdBy: 't1' })).toBe(false);
+    // Missing uid or contact
+    expect(canReleaseContact(null, { createdBy: 't1' })).toBe(false);
+    expect(canReleaseContact('t1', null)).toBe(false);
   });
 });
 
