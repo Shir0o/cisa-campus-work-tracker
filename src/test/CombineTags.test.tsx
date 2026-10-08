@@ -200,6 +200,118 @@ describe('CombineTags', () => {
     });
   });
 
+  describe('user-built combines (#1438)', () => {
+    const plainContacts: Contact[] = [
+      { id: 'a1', name: 'Ann', tags: ['Outreach booth', 'BFA'] } as Contact,
+      { id: 'a2', name: 'Ben', tags: ['Outreach booth', 'Saved'] } as Contact,
+    ];
+
+    const selectTwo = (first: string, second: string) => {
+      const section = within(screen.getByTestId('all-tags'));
+      fireEvent.click(section.getByLabelText(`Select ${first}`));
+      fireEvent.click(section.getByLabelText(`Select ${second}`));
+    };
+
+    it('lists every tag with its contact count and whether it is standard', () => {
+      setContacts([
+        { id: 'a1', name: 'Ann', tags: ['Saved', 'BFA', 'Old Tag'] } as Contact,
+        { id: 'a2', name: 'Ben', tags: ['Saved'] } as Contact,
+      ]);
+      render(<CombineTags />);
+
+      const section = within(screen.getByTestId('all-tags'));
+      expect(section.getByTestId('all-tag-Saved')).toHaveTextContent('2 contacts');
+      expect(section.getByTestId('all-tag-BFA')).toHaveTextContent('1 contacts');
+      expect(section.getByTestId('standard-marker-Saved')).toBeInTheDocument();
+      expect(section.getByTestId('standard-marker-BFA')).toBeInTheDocument();
+      expect(section.queryByTestId('standard-marker-Old Tag')).not.toBeInTheDocument();
+    });
+
+    it('opens the Combine into bar only once two or more tags are selected', () => {
+      setContacts(plainContacts);
+      render(<CombineTags />);
+
+      expect(screen.queryByTestId('combine-into-bar')).not.toBeInTheDocument();
+
+      const section = within(screen.getByTestId('all-tags'));
+      fireEvent.click(section.getByLabelText('Select Outreach booth'));
+      expect(screen.queryByTestId('combine-into-bar')).not.toBeInTheDocument();
+
+      fireEvent.click(section.getByLabelText('Select BFA'));
+      expect(screen.getByTestId('combine-into-bar')).toBeInTheDocument();
+    });
+
+    it('adds a user-built combine that applies through the server like a guess', async () => {
+      setContacts(plainContacts);
+      render(<CombineTags />);
+
+      selectTwo('Outreach booth', 'BFA');
+      fireEvent.change(screen.getByTestId('combine-into-target'), {
+        target: { value: 'Outreach' },
+      });
+      fireEvent.click(screen.getByTestId('combine-into-button'));
+
+      const combine = within(screen.getByTestId('user-combine'));
+      expect(combine.getByText(/Outreach booth/)).toBeInTheDocument();
+      expect(combine.getByText('Outreach')).toBeInTheDocument();
+      expect(screen.queryByTestId('combine-into-bar')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
+
+      await waitFor(() => expect(screen.getByTestId('tag-combine-applied')).toBeInTheDocument());
+      const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(body.combines).toContainEqual({
+        variants: ['Outreach booth', 'BFA'],
+        target: 'Outreach',
+      });
+    });
+
+    it('removes a user-built combine and drops it from the plan', () => {
+      setContacts(plainContacts);
+      render(<CombineTags />);
+
+      selectTwo('Outreach booth', 'BFA');
+      fireEvent.change(screen.getByTestId('combine-into-target'), {
+        target: { value: 'Outreach' },
+      });
+      fireEvent.click(screen.getByTestId('combine-into-button'));
+
+      expect(screen.getByRole('button', { name: /Combine 2 contacts/i })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText('Remove combine'));
+
+      expect(screen.queryByTestId('user-combine')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Combine 0 contacts/i })).toBeDisabled();
+    });
+
+    it('offers Also make standard only for a new name and adds it to standard tags when checked', async () => {
+      setContacts(plainContacts);
+      render(<CombineTags />);
+
+      selectTwo('Outreach booth', 'BFA');
+
+      fireEvent.change(screen.getByTestId('combine-into-target'), {
+        target: { value: 'BFA' },
+      });
+      expect(screen.queryByTestId('also-make-standard')).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('combine-into-target'), {
+        target: { value: 'Outreach' },
+      });
+      const makeStandard = screen.getByTestId('also-make-standard') as HTMLInputElement;
+      expect(makeStandard).not.toBeChecked();
+
+      fireEvent.click(makeStandard);
+      fireEvent.click(screen.getByTestId('combine-into-button'));
+      fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
+
+      await waitFor(() => expect(screen.getByTestId('tag-combine-applied')).toBeInTheDocument());
+      expect(h.setDoc).toHaveBeenCalledWith(expect.anything(), {
+        tags: ['Saved', 'Baptized', 'Interested', 'Open', 'Club Rush', 'BFA', 'Outreach'],
+      });
+    });
+  });
+
   describe('recent tag combines (#1436)', () => {
     const record = {
       id: 'r1',

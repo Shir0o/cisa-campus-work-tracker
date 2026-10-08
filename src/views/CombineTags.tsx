@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Check, Combine, Loader2, Plus, Undo2, X } from 'luc
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   guessTagCombines,
+  isSeasonTag,
   planTagApplies,
   standardTagsForGuessing,
   type TagCombine,
@@ -48,6 +49,14 @@ interface TagUndoSkipped {
   after: string[];
 }
 
+/** A combine the Full-timer built from the All tags list (issue #1438). */
+interface CustomCombine {
+  id: string;
+  variants: string[];
+  target: string;
+  makeStandard: boolean;
+}
+
 const formatWhen = (iso?: string): string => {
   if (!iso) return '';
   const date = new Date(iso);
@@ -78,6 +87,11 @@ export default function CombineTags() {
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [applied, setApplied] = useState<number | null>(null);
+  // The All tags list (#1438): tags picked for a user-built combine.
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [combineTarget, setCombineTarget] = useState('');
+  const [alsoMakeStandard, setAlsoMakeStandard] = useState(false);
+  const [customCombines, setCustomCombines] = useState<CustomCombine[]>([]);
   // The stored standard tags, edited locally while a save is in flight.
   const storedStandardTags = useStandardTags();
   const [standardDraft, setStandardDraft] = useState<string[] | null>(null);
@@ -139,22 +153,48 @@ export default function CombineTags() {
     return [...tags].sort();
   }, [contacts]);
 
+  // Every tag with its contact count and whether it is standard (#1438). Season
+  // tags count as standard by pattern (ADR 0039).
+  const allTagRows = useMemo(() => {
+    const standardNorms = new Set(
+      standardTagsForGuessing(standardTags, contacts).map((tag) => tag.toLowerCase()),
+    );
+    const counts = new Map<string, number>();
+    contacts.forEach((contact) => {
+      new Set((contact.tags ?? []).map((tag) => (tag ?? '').trim()).filter(Boolean)).forEach((tag) =>
+        counts.set(tag, (counts.get(tag) ?? 0) + 1),
+      );
+    });
+    return [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count, standard: standardNorms.has(tag.toLowerCase()) }))
+      .sort((a, b) => a.tag.localeCompare(b.tag));
+  }, [contacts, standardTags]);
+
+  const isNewTarget =
+    combineTarget.trim().length > 0 &&
+    !allTagRows.some((row) => row.tag.toLowerCase() === combineTarget.trim().toLowerCase()) &&
+    !isSeasonTag(combineTarget);
+
   const resolve = (guess: TagGuess) => edited[guess.id] ?? { variants: guess.variants, target: guess.target };
 
   const isEnabled = (guess: TagGuess) => toggled[guess.id] ?? guess.tier === 'strong';
 
-  const activeCombines = useMemo<TagCombine[]>(
-    () =>
-      guesses
-        .filter((guess) => isEnabled(guess))
-        .map((guess) => {
-          const resolved = resolve(guess);
-          return { variants: resolved.variants, target: resolved.target };
-        })
-        .filter((combine) => combine.variants.length > 0 && combine.target.trim().length > 0),
+  const activeCombines = useMemo<TagCombine[]>(() => {
+    const fromGuesses = guesses
+      .filter((guess) => isEnabled(guess))
+      .map((guess) => {
+        const resolved = resolve(guess);
+        return { variants: resolved.variants, target: resolved.target };
+      });
+    const fromCustom = customCombines.map((combine) => ({
+      variants: combine.variants,
+      target: combine.target,
+    }));
+    return [...fromGuesses, ...fromCustom].filter(
+      (combine) => combine.variants.length > 0 && combine.target.trim().length > 0,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [guesses, toggled, edited],
-  );
+  }, [guesses, toggled, edited, customCombines]);
 
   const rows = useMemo(() => planTagApplies(contacts, activeCombines), [contacts, activeCombines]);
 
@@ -204,6 +244,37 @@ export default function CombineTags() {
     updateStandardTags([...standardTags, value]);
   };
 
+  // Build your own combine (#1438): pick tags from the All tags list, name a
+  // target, and add it to the review alongside the guesses.
+  const toggleSelect = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
+    );
+  };
+
+  const addCustomCombine = () => {
+    const target = combineTarget.trim();
+    if (selectedTags.length < 2 || !target) return;
+    setCustomCombines((prev) => [
+      ...prev,
+      {
+        id: `custom-${target.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${prev.length}`,
+        variants: [...selectedTags],
+        target,
+        makeStandard: alsoMakeStandard,
+      },
+    ]);
+    setSelectedTags([]);
+    setCombineTarget('');
+    setAlsoMakeStandard(false);
+    setApplied(null);
+  };
+
+  const removeCustomCombine = (id: string) => {
+    setCustomCombines((prev) => prev.filter((combine) => combine.id !== id));
+    setApplied(null);
+  };
+
   const contactCountFor = (guess: TagGuess) => {
     const resolved = resolve(guess);
     if (resolved.variants.length === 0) return 0;
@@ -230,8 +301,22 @@ export default function CombineTags() {
       }
       const body = await response.json();
       setApplied(body.changedCount ?? rows.length);
+      // A user-built combine can make its new name a standard tag in the same
+      // step (#1438, ADR 0039). This only edits the standard tags list.
+      const additions = customCombines
+        .filter((combine) => combine.makeStandard)
+        .map((combine) => combine.target.trim())
+        .filter(Boolean);
+      if (additions.length > 0) {
+        const next = [...standardTags];
+        for (const addition of additions) {
+          if (!next.some((tag) => tag.toLowerCase() === addition.toLowerCase())) next.push(addition);
+        }
+        updateStandardTags(next);
+      }
       setEdited({});
       setToggled({});
+      setCustomCombines([]);
     } catch (e) {
       setApplyError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -383,15 +468,16 @@ export default function CombineTags() {
                 {t('combine_tags.load_error', 'Could not load contacts')}
               </p>
             </div>
-          ) : guesses.length === 0 ? (
-            <div className="py-16 text-center">
-              <Check className="w-10 h-10 text-primary mx-auto mb-3" />
-              <p className="font-medium text-on-surface">
-                {t('combine_tags.no_guesses', 'No tag combines found')}
-              </p>
-            </div>
           ) : (
             <>
+              {guesses.length === 0 && customCombines.length === 0 && (
+                <div className="py-16 text-center">
+                  <Check className="w-10 h-10 text-primary mx-auto mb-3" />
+                  <p className="font-medium text-on-surface">
+                    {t('combine_tags.no_guesses', 'No tag combines found')}
+                  </p>
+                </div>
+              )}
               {strong.length > 0 && (
                 <section data-testid="strong-guesses">
                   <h2 className="mb-3 text-sm font-semibold text-on-surface">
@@ -409,6 +495,128 @@ export default function CombineTags() {
                   <div className="space-y-2">{weak.map(renderGuess)}</div>
                 </section>
               )}
+
+              {customCombines.length > 0 && (
+                <section data-testid="user-combines" className="space-y-2">
+                  <h2 className="text-sm font-semibold text-on-surface">
+                    {t('combine_tags.your_combines', 'Your combines')}
+                  </h2>
+                  {customCombines.map((combine) => (
+                    <div
+                      key={combine.id}
+                      data-testid="user-combine"
+                      className="flex items-center gap-3 rounded-2xl border border-primary/40 bg-surface p-4"
+                    >
+                      <span className="flex-1 min-w-0 truncate text-sm text-on-surface-variant line-through">
+                        {combine.variants.join(', ')}
+                      </span>
+                      <span className="text-sm text-primary font-bold">→</span>
+                      <span className="text-sm font-semibold text-primary">{combine.target}</span>
+                      {combine.makeStandard && (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                          {t('combine_tags.also_make_standard', 'Also make standard')}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeCustomCombine(combine.id)}
+                        aria-label={t('combine_tags.remove_combine', 'Remove combine')}
+                        className="p-1 text-on-surface-variant hover:text-on-surface"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              <section data-testid="all-tags">
+                <h2 className="mb-3 text-sm font-semibold text-on-surface">
+                  {t('combine_tags.all_tags', 'All tags')}
+                </h2>
+                <div className="space-y-1">
+                  {allTagRows.map(({ tag, count, standard }) => (
+                    <label
+                      key={tag}
+                      data-testid={`all-tag-${tag}`}
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${
+                        selectedTags.includes(tag)
+                          ? 'border-primary/40 bg-surface'
+                          : 'border-outline-variant/40 bg-surface-variant/20'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTags.includes(tag)}
+                        onChange={() => toggleSelect(tag)}
+                        aria-label={t('combine_tags.select_tag', 'Select {tag}').replace('{tag}', tag)}
+                        className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/30"
+                      />
+                      <span className="flex-1 min-w-0 truncate text-sm text-on-surface">{tag}</span>
+                      {standard && (
+                        <span
+                          data-testid={`standard-marker-${tag}`}
+                          className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
+                        >
+                          {t('combine_tags.standard_badge', 'Standard')}
+                        </span>
+                      )}
+                      <span className="text-xs text-on-surface-variant">
+                        {t('combine_tags.contact_count', '{n} contacts').replace(
+                          '{n}',
+                          String(count),
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {selectedTags.length >= 2 && (
+                  <div
+                    data-testid="combine-into-bar"
+                    className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-primary/40 bg-surface p-3"
+                  >
+                    <span className="flex-1 min-w-0 truncate text-sm text-on-surface-variant line-through">
+                      {selectedTags.join(', ')}
+                    </span>
+                    <span className="text-sm text-primary font-bold">→</span>
+                    <input
+                      type="text"
+                      list="combine-tags-all"
+                      value={combineTarget}
+                      onChange={(event) => {
+                        setCombineTarget(event.target.value);
+                        setApplied(null);
+                      }}
+                      placeholder={t('combine_tags.combine_into_placeholder', 'Combine into…')}
+                      aria-label={t('combine_tags.combine_into', 'Combine into')}
+                      data-testid="combine-into-target"
+                      className="h-9 min-w-40 flex-1 rounded-lg bg-surface-container-high border border-outline px-2 text-sm text-on-surface outline-none"
+                    />
+                    {isNewTarget && (
+                      <label className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
+                        <input
+                          type="checkbox"
+                          checked={alsoMakeStandard}
+                          onChange={(event) => setAlsoMakeStandard(event.target.checked)}
+                          data-testid="also-make-standard"
+                          className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/30"
+                        />
+                        {t('combine_tags.also_make_standard', 'Also make standard')}
+                      </label>
+                    )}
+                    <button
+                      type="button"
+                      onClick={addCustomCombine}
+                      disabled={!combineTarget.trim()}
+                      data-testid="combine-into-button"
+                      className="inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {t('combine_tags.combine_into', 'Combine into')}
+                    </button>
+                  </div>
+                )}
+              </section>
 
               <section>
                 <h2 className="mb-3 text-sm font-semibold text-on-surface">
