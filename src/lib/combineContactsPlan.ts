@@ -222,7 +222,7 @@ export function findCombineCandidates(
       } else {
         const timeA = a.createdAt ? timestampMillis(a.createdAt) : 0;
         const timeB = b.createdAt ? timestampMillis(b.createdAt) : 0;
-        const bIsOlder = timeB > 0 && (timeA === 0 || timeB < timeA);
+        const bIsOlder = timeB !== 0 && (timeA === 0 || timeB < timeA);
         if (bIsOlder) {
           kept = b;
           combinedIn = a;
@@ -451,17 +451,19 @@ function hasValue(value: unknown): boolean {
   return true;
 }
 
+type Dict = Record<string, unknown>;
+
 function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((item, i) => deepEqual(item, b[i]));
   }
   if (a && b && typeof a === 'object' && typeof b === 'object') {
-    const keysA = Object.keys(a as Record<string, unknown>);
-    const keysB = Object.keys(b as Record<string, unknown>);
+    const keysA = Object.keys(a as Dict);
+    const keysB = Object.keys(b as Dict);
     return (
       keysA.length === keysB.length &&
-      keysA.every((key) => deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
+      keysA.every((key) => deepEqual((a as Dict)[key], (b as Dict)[key]))
     );
   }
   return false;
