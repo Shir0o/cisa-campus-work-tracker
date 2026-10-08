@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { conversationAdapter } from "../components/stream/conversationAdapter";
-import { addThreadMessage, closeFollowUpAsk, deleteThreadMessage, editThreadMessage, type ThreadMessage } from "../lib/threads";
+import { addThreadMessage, closeFollowUpAsk, deleteThreadMessage, editThreadMessage, reopenFollowUpAsk, type ThreadMessage } from "../lib/threads";
 
 vi.mock("../lib/threads", () => ({
   addThreadMessage: vi.fn(() => Promise.resolve("new-id")),
   closeFollowUpAsk: vi.fn(() => Promise.resolve()),
+  reopenFollowUpAsk: vi.fn(() => Promise.resolve()),
   deleteThreadMessage: vi.fn(() => Promise.resolve()),
   editThreadMessage: vi.fn(() => Promise.resolve()),
 }));
@@ -119,6 +120,12 @@ describe("conversationAdapter", () => {
   it.each(["followedUp", "neverMind"] as const)("%s closes the ask as the viewer, so the asker closing it reads as withdrawn", (how) => {
     make().closeAsk(msg({ id: "ask", kind: "nudge", from: "maria" }), how);
     expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "ask", { uid: "maria", name: "Maria Santos" });
+  });
+
+  it("reopens the ask via reopenFollowUpAsk (#1496)", () => {
+    make().reopenAsk!(msg({ id: "ask", kind: "nudge", from: "maria" }));
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "ask");
+    expect(make("viewer").reopenAsk).toBeUndefined();
   });
 
   it("deletes the one message", () => {

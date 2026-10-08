@@ -200,6 +200,7 @@ interface RowProps<M extends StreamSourceMessage> {
   maxLength?: number;
   onDelete: () => void;
   onCloseAsk: (how: "followedUp" | "neverMind") => void;
+  onReopenAsk?: () => void;
   /** Source extras (#1259): each optional, each off by default. */
   badge?: string | null;
   photo?: string | null;
@@ -232,6 +233,7 @@ function Row<M extends StreamSourceMessage>({
   maxLength,
   onDelete,
   onCloseAsk,
+  onReopenAsk,
   badge,
   photo,
   gone,
@@ -367,15 +369,29 @@ function Row<M extends StreamSourceMessage>({
               </>
             )}
             {ask.status === "followedUp" && (
-              <span className="strm-s-done">
-                <Check className="w-3.5 h-3.5" aria-hidden />
-                {t("stream.ask_done").replace("{name}", ask.by.name).replace("{when}", f.ago(ask.at))}
-              </span>
+              <>
+                <span className="strm-s-done">
+                  <Check className="w-3.5 h-3.5" aria-hidden />
+                  {t("stream.ask_done").replace("{name}", ask.by.name).replace("{when}", f.ago(ask.at))}
+                </span>
+                {onReopenAsk && (
+                  <button type="button" className="strm-btn strm-btn-ghost strm-btn-sm" onClick={onReopenAsk}>
+                    {t("stream.ask_reopen")}
+                  </button>
+                )}
+              </>
             )}
             {ask.status === "withdrawn" && (
-              <span className="strm-s-gone">
-                {t("stream.ask_withdrawn").replace("{name}", ask.by.name).replace("{when}", f.ago(ask.at))}
-              </span>
+              <>
+                <span className="strm-s-gone">
+                  {t("stream.ask_withdrawn").replace("{name}", ask.by.name).replace("{when}", f.ago(ask.at))}
+                </span>
+                {onReopenAsk && (
+                  <button type="button" className="strm-btn strm-btn-ghost strm-btn-sm" onClick={onReopenAsk}>
+                    {t("stream.ask_reopen")}
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -599,6 +615,7 @@ export default function Stream<M extends StreamSourceMessage>({
     addedToStory: !!storyMessageIds?.has(row.message.id),
     onDelete: () => void adapter.delete(row.message),
     onCloseAsk: (how: "followedUp" | "neverMind") => void adapter.closeAsk(row.message, how),
+    onReopenAsk: adapter.reopenAsk ? () => void adapter.reopenAsk!(row.message) : undefined,
     photo: adapter.avatarUrl?.(row.message) ?? null,
     gone: adapter.goneLabel?.(row.message) ?? null,
     deleteLabel: adapter.deleteLabel?.(row.message),

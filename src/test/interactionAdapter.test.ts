@@ -4,11 +4,12 @@ import {
   interactionParentId,
   interactionThreadSummary,
 } from "../components/stream/interactionAdapter";
-import { addThreadMessage, closeFollowUpAsk, deleteThreadMessage, editThreadMessage, type ThreadMessage } from "../lib/threads";
+import { addThreadMessage, closeFollowUpAsk, deleteThreadMessage, editThreadMessage, reopenFollowUpAsk, type ThreadMessage } from "../lib/threads";
 
 vi.mock("../lib/threads", () => ({
   addThreadMessage: vi.fn(() => Promise.resolve("new-id")),
   closeFollowUpAsk: vi.fn(() => Promise.resolve()),
+  reopenFollowUpAsk: vi.fn(() => Promise.resolve()),
   deleteThreadMessage: vi.fn(() => Promise.resolve()),
   editThreadMessage: vi.fn(() => Promise.resolve()),
 }));
@@ -129,6 +130,9 @@ describe("interactionAdapter", () => {
     const a = make();
     a.closeAsk(msg({ id: "ask", kind: "nudge" }), "followedUp");
     expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "ask", { uid: "maria", name: "Maria Santos" });
+    a.reopenAsk!(msg({ id: "ask", kind: "nudge" }));
+    expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "ask");
+    expect(make("viewer").reopenAsk).toBeUndefined();
     a.delete(msg({ id: "gone" }));
     expect(deleteThreadMessage).toHaveBeenCalledWith("c1", "gone", null);
   });
