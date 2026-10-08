@@ -649,6 +649,49 @@ export function planTagApplies(
   return rows;
 }
 
+/** One affected contact in a tag combine record (issue #1435). */
+export interface TagUndoEntry {
+  contactId: string;
+  name: string;
+  before: string[];
+  after: string[];
+}
+
+/** A contact the undo will restore or skip, with the tags it holds now. */
+export interface TagUndoRow extends TagUndoEntry {
+  current: string[];
+}
+
+export interface TagUndoPlan {
+  restore: TagUndoRow[];
+  skipped: TagUndoRow[];
+}
+
+/**
+ * Plan the undo of a tag combine (issue #1436). A contact is restored only
+ * while its current tags still equal what the combine wrote; a contact
+ * re-tagged (or deleted) since is skipped and reported. Pure: the browser
+ * preview and the server share it so they agree.
+ */
+export function planTagUndo(
+  entries: TagUndoEntry[],
+  currentTagsByContact: Record<string, string[] | null | undefined>,
+): TagUndoPlan {
+  const restore: TagUndoRow[] = [];
+  const skipped: TagUndoRow[] = [];
+  for (const entry of entries ?? []) {
+    const raw = currentTagsByContact[entry.contactId] ?? null;
+    const current = raw == null ? [] : raw.map((tag) => (tag ?? '').trim());
+    const row: TagUndoRow = { ...entry, current };
+    const unchanged =
+      raw != null &&
+      current.length === entry.after.length &&
+      current.every((tag, index) => tag === entry.after[index]);
+    (unchanged ? restore : skipped).push(row);
+  }
+  return { restore, skipped };
+}
+
 export type TagToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
 
 const ALL_TAG_TONES: TagToneKey[] = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum', 'rose'];

@@ -3768,3 +3768,143 @@ describe("POST /api/combine-tags", () => {
     }
   });
 });
+
+describe("POST /api/combine-tags/undo", () => {
+  const seedTags = () => {
+    seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
+    seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
+    seedDoc("contacts", "c", { name: "Cara", tags: ["Saved"] });
+  };
+
+  const combineOnce = async (): Promise<string> => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+    expect(res.status).toBe(200);
+    return res.body.combineRecordId as string;
+  };
+
+  it("restores every contact's tags on an apply-then-undo round trip", async () => {
+    const recordId = await combineOnce();
+    expect(getCollection("contacts")["a"].tags).toEqual(["BFA"]);
+    expect(getCollection("contacts")["b"].tags).toEqual(["BFA"]);
+
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
+    expect(getCollection("contacts")["b"].tags).toEqual(["bfa-table"]);
+    expect(getCollection("contacts")["c"].tags).toEqual(["Saved"]);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
+  });
+
+  it("skips a contact re-tagged after the combine and reports it", async () => {
+    const recordId = await combineOnce();
+    seedDoc("contacts", "b", { name: "Bob", tags: ["BFA", "Fall 2026"] });
+
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(res.status).toBe(200);
+    // Bob keeps his later tagging; Alice alone goes back.
+    expect(getCollection("contacts")["b"].tags).toEqual(["BFA", "Fall 2026"]);
+    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
+    expect(res.body.preview.skipped).toEqual([
+      { contactId: "b", name: "Bob", current: ["BFA", "Fall 2026"], after: ["BFA"] },
+    ]);
+  });
+
+  it("marks the record undone with who and when", async () => {
+    const recordId = await combineOnce();
+    await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+
+    const record = getCollection("combineRecords")[recordId] as any;
+    expect(record.status).toBe("undone");
+    expect(record.undoneAt).toBeTruthy();
+    expect(record.undoneBy).toBe("test-user");
+    expect(record.undoneByName).toBe("Test User");
+  });
+
+  it("refuses to undo the same combine twice", async () => {
+    const recordId = await combineOnce();
+    await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+    const second = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: recordId });
+    expect(second.status).toBe(409);
+  });
+
+  it("returns 404 for a missing combine record", async () => {
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: "nope" });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when the record id is missing", async () => {
+    const res = await request(app).post("/api/combine-tags/undo").send({});
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses a contact combine record", async () => {
+    seedDoc("combineRecords", "contacts-1", {
+      kind: "contacts",
+      status: "done",
+      keptId: "a",
+      combinedInId: "b",
+    });
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: "contacts-1" });
+    expect(res.status).toBe(400);
+  });
+
+  it("records an Activity Log entry for the undo", async () => {
+    const recordId = await combineOnce();
+    await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+
+    const entries = Object.values(getCollection("activities")).filter(
+      (activity: any) => activity.action === "undid tag combine",
+    );
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({ targetType: "contact", type: "edit" });
+  });
+
+  it("returns the undo preview without writing when dryRun is set", async () => {
+    const recordId = await combineOnce();
+    const afterCombine = structuredClone(getCollection("contacts")["a"]);
+
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: recordId, dryRun: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.preview.restored).toHaveLength(2);
+    expect(res.body.preview.skipped).toEqual([]);
+    expect(getCollection("contacts")["a"]).toEqual(afterCombine);
+    expect(getCollection("combineRecords")[recordId].status).toBe("done");
+  });
+
+  it("refuses a non-Full-timer with 403", async () => {
+    const recordId = await combineOnce();
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "t@example.com" });
+      seedDoc("users", "trainee-1", { role: "trainee", approved: true });
+      const res = await request(app)
+        .post("/api/combine-tags/undo")
+        .set("Authorization", "Bearer tok")
+        .send({ combineRecordId: recordId });
+      expect(res.status).toBe(403);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+});

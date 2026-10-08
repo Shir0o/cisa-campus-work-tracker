@@ -11,6 +11,7 @@ import {
   planTagCombiningWithRules,
   guessTagCombines,
   planTagApplies,
+  planTagUndo,
   isSeasonTag,
   resolveStandardTags,
   standardTagsForGuessing,
@@ -316,6 +317,50 @@ describe('planTagApplies', () => {
   it('only plans rows that would actually change', () => {
     const contacts = [{ id: '1', name: 'S1', tags: ['Saved'] }];
     expect(planTagApplies(contacts, [{ variants: ['Saved'], target: 'Saved' }])).toEqual([]);
+  });
+});
+
+describe('planTagUndo', () => {
+  const entries = [
+    { contactId: 'a', name: 'Alice', before: ['BFA table', 'BFA'], after: ['BFA'] },
+    { contactId: 'b', name: 'Bob', before: ['bfa-table'], after: ['BFA'] },
+    { contactId: 'c', name: 'Cara', before: ['Saved'], after: ['Saved'] },
+  ];
+
+  it('restores a contact whose tags still equal the combine result', () => {
+    const plan = planTagUndo(entries, { a: ['BFA'], b: ['BFA'], c: ['Saved'] });
+    expect(plan.restore).toEqual([
+      { contactId: 'a', name: 'Alice', before: ['BFA table', 'BFA'], after: ['BFA'], current: ['BFA'] },
+      { contactId: 'b', name: 'Bob', before: ['bfa-table'], after: ['BFA'], current: ['BFA'] },
+      { contactId: 'c', name: 'Cara', before: ['Saved'], after: ['Saved'], current: ['Saved'] },
+    ]);
+    expect(plan.skipped).toEqual([]);
+  });
+
+  it('skips a contact re-tagged after the combine and reports its current tags', () => {
+    const plan = planTagUndo(entries, { a: ['BFA'], b: ['BFA', 'Fall 2026'], c: ['Saved'] });
+    expect(plan.restore.map((row) => row.contactId)).toEqual(['a', 'c']);
+    expect(plan.skipped).toEqual([
+      {
+        contactId: 'b',
+        name: 'Bob',
+        before: ['bfa-table'],
+        after: ['BFA'],
+        current: ['BFA', 'Fall 2026'],
+      },
+    ]);
+  });
+
+  it('skips a contact that no longer exists', () => {
+    const plan = planTagUndo(entries, {});
+    expect(plan.restore).toEqual([]);
+    expect(plan.skipped.map((row) => row.contactId)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('restores every entry when nothing changed', () => {
+    const plan = planTagUndo(entries, { a: ['BFA'], b: ['BFA'], c: ['Saved'] });
+    expect(plan.restore.map((row) => row.contactId)).toEqual(['a', 'b', 'c']);
+    expect(plan.skipped).toEqual([]);
   });
 });
 

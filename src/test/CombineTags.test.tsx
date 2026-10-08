@@ -12,7 +12,11 @@ const defaultContacts: Contact[] = [
   { id: 'c5', name: 'Eve', tags: ['Prayer walk'] } as Contact,
 ];
 
-const h = vi.hoisted(() => ({ contacts: [] as { id: string; data: () => unknown }[], setDoc: vi.fn() }));
+const h = vi.hoisted(() => ({
+  contacts: [] as { id: string; data: () => unknown }[],
+  records: [] as { id: string; data: () => unknown }[],
+  setDoc: vi.fn(),
+}));
 
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ t: (_key: string, fallback?: string) => fallback || _key, language: 'en' }),
@@ -24,8 +28,8 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn((q: unknown) => q),
   orderBy: vi.fn(),
   setDoc: h.setDoc,
-  onSnapshot: vi.fn((_q: unknown, cb: (snapshot: unknown) => void) => {
-    cb({ docs: h.contacts });
+  onSnapshot: vi.fn((q: { __name?: string }, cb: (snapshot: unknown) => void) => {
+    cb({ docs: q?.__name === 'combineRecords' ? h.records : h.contacts });
     return () => {};
   }),
 }));
@@ -51,6 +55,7 @@ describe('CombineTags', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setContacts(defaultContacts);
+    h.records = [];
     getIdToken.mockResolvedValue('token');
     global.fetch = vi.fn().mockResolvedValue(jsonResponse({ success: true, changedCount: 2 }));
   });
@@ -192,6 +197,73 @@ describe('CombineTags', () => {
       expect(h.setDoc).toHaveBeenCalledWith(expect.anything(), {
         tags: ['Baptized', 'Saved', 'Interested', 'Open', 'Club Rush', 'BFA'],
       });
+    });
+  });
+
+  describe('recent tag combines (#1436)', () => {
+    const record = {
+      id: 'r1',
+      kind: 'tags',
+      status: 'done',
+      combinedByName: 'Ada',
+      combinedAt: '2026-10-01T00:00:00.000Z',
+      contacts: [
+        { contactId: 'c1', name: 'Alice', before: ['BFA table', 'BFA'], after: ['BFA'] },
+        { contactId: 'c2', name: 'Bob', before: ['bfa-table'], after: ['BFA'] },
+      ],
+    };
+
+    it('lists a tag combine with who, when and how many contacts it changed', () => {
+      h.records = [{ id: record.id, data: () => record }];
+      render(<CombineTags />);
+
+      const section = within(screen.getByTestId('recent-tag-combines'));
+      expect(section.getByText(/Ada/)).toBeInTheDocument();
+      expect(section.getByText(/2 contacts/i)).toBeInTheDocument();
+    });
+
+    it('undoes a tag combine and lists the skipped contacts', async () => {
+      h.records = [{ id: record.id, data: () => record }];
+      global.fetch = vi.fn().mockResolvedValue(
+        jsonResponse({
+          success: true,
+          restoredCount: 1,
+          preview: {
+            skipped: [
+              { contactId: 'c2', name: 'Bob', current: ['BFA', 'Fall 2026'], after: ['BFA'] },
+            ],
+          },
+        }),
+      );
+      render(<CombineTags />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Undo combine/i }));
+
+      await waitFor(() => expect(screen.getByTestId('tag-undo-result')).toBeInTheDocument());
+      const result = screen.getByTestId('tag-undo-result');
+      expect(result.textContent).toContain('Bob');
+      expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(
+        '/api/combine-tags/undo',
+      );
+    });
+
+    it('hides undo for an already-undone combine and shows who undid it', () => {
+      h.records = [
+        {
+          id: record.id,
+          data: () => ({
+            ...record,
+            status: 'undone',
+            undoneByName: 'Bea',
+            undoneAt: '2026-10-02T00:00:00.000Z',
+          }),
+        },
+      ];
+      render(<CombineTags />);
+
+      const section = within(screen.getByTestId('recent-tag-combines'));
+      expect(section.getByText(/Bea/)).toBeInTheDocument();
+      expect(section.queryByRole('button', { name: /Undo combine/i })).not.toBeInTheDocument();
     });
   });
 });
