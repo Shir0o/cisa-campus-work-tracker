@@ -1790,7 +1790,24 @@
     "cmd_save": "⌘↵ para guardar",
     "pick_one_person": "Elige al menos a una persona.",
     "add_someone_new": "Añadir a {name} — alguien nuevo",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "visits_eyebrow": "Visitas",
+    "visit_noun": "visita",
+    "section_who_you_saw": "A quiénes viste",
+    "section_who_hint": "Todos los que estaban",
+    "section_when_where": "Cuándo y dónde",
+    "section_the_visit": "La visita",
+    "section_afterwards": "Después",
+    "section_afterwards_hint": "Solo se pregunta al registrar",
+    "home_last_visited": "{home} · última visita hace {ago}",
+    "where_from_home": "De {home}",
+    "couldnt_save_offline": "No se pudo guardar: estás sin conexión. No se perdió nada.",
+    "try_again": "Intentar de nuevo"
+  },
+  "popup": {
+    "discard_question": "¿Descartar esta {noun}?",
+    "keep_editing": "Seguir editando",
+    "discard": "Descartar"
   },
   "visitCard": {
     "no_address_noted": "sin dirección anotada",

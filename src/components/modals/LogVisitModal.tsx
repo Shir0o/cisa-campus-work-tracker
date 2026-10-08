@@ -3,11 +3,10 @@
 // A visit is written after the fact, so this is a single quiet column rather
 // than a capture flow: who you saw, when, where, who went, why, how it went,
 // and the two things a visit tends to leave behind — something to chase and
-// something to carry.
+// something to carry. It renders inside the shared popup frame (spec #1444).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
-import { Check, House, Image as ImageIcon, Loader2, Plus, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { AlertCircle, House, Image as ImageIcon, Loader2, MapPin, Plus, X } from 'lucide-react';
+import { format, formatDistanceToNowStrict } from 'date-fns';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { addVisit, attachVisitPhotos, initialsOf, updateVisit, type VisitInput } from '../../lib/visits';
 import { db, handleFirestoreError, logActivity, OperationType } from '../../lib/firebase';
@@ -22,6 +21,7 @@ import { useCommand } from '../../lib/commands';
 import { pickableContacts, pickableStaff, visibleToOf } from '../../lib/permissions';
 import { stampFounders } from '../../lib/partners';
 import { useSeason } from '../../lib/seasons';
+import { PersonPill, PopupField, PopupFrame, PopupSection } from '../ui/PopupFrame';
 
 interface LogVisitModalProps {
   isOpen: boolean;
@@ -45,6 +45,22 @@ const FOLLOW_UP_DAYS = 7;
 /** Stable default so the reset effect's `homes` dep isn't a new array each
  *  render (which would re-run the effect — and the state it resets — forever). */
 const NO_HOMES: Home[] = [];
+
+/** The starting shape of the form, captured on open, so "dirty" means the
+ *  person changed something rather than the popup merely being pre-filled. */
+interface VisitSnapshot {
+  date: string;
+  ids: string[];
+  went: string[];
+  where: string;
+  whereTouched: boolean;
+  purpose: string;
+  how: string;
+  followUpOn: boolean;
+  followUp: string;
+  prayer: string;
+  photos: number;
+}
 
 export default function LogVisitModal({
   isOpen,
@@ -75,9 +91,13 @@ export default function LogVisitModal({
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [q, setQ] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [showPeopleError, setShowPeopleError] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
   const [localCreatedContacts, setLocalCreatedContacts] = useState<Contact[]>([]);
+  const [baseline, setBaseline] = useState<VisitSnapshot | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const peopleRef = useRef<HTMLDivElement>(null);
 
   const me = effectiveUserId || user?.uid || '';
   const myName = user?.displayName || 'A full-timer';
@@ -118,19 +138,43 @@ export default function LogVisitModal({
         : initialContactId
           ? [initialContactId]
           : [];
-    setDate(visit ? visit.date : format(new Date(), 'yyyy-MM-dd'));
+    const startDate = visit ? visit.date : format(new Date(), 'yyyy-MM-dd');
+    const startWent = visit ? visit.went.slice() : me ? [me] : [];
+    const startWhere = visit ? visit.where : initialHome?.place ?? homeFor(startIds)?.place ?? '';
+    const startWhereTouched = !!visit?.where;
+    const startPurpose = visit ? visit.purpose : '';
+    const startHow = visit ? visit.how : '';
+    const startFollowUpOn = !!visit?.followUp;
+    const startFollowUp = visit?.followUp || '';
+    const startPhotos = visit ? (visit.photos || []).slice() : [];
+    setDate(startDate);
     setIds(startIds);
-    setWent(visit ? visit.went.slice() : me ? [me] : []);
-    setWhere(visit ? visit.where : initialHome?.place ?? homeFor(startIds)?.place ?? '');
-    setWhereTouched(!!visit?.where);
-    setPurpose(visit ? visit.purpose : '');
-    setHow(visit ? visit.how : '');
-    setFollowUpOn(!!visit?.followUp);
-    setFollowUp(visit?.followUp || '');
+    setWent(startWent);
+    setWhere(startWhere);
+    setWhereTouched(startWhereTouched);
+    setPurpose(startPurpose);
+    setHow(startHow);
+    setFollowUpOn(startFollowUpOn);
+    setFollowUp(startFollowUp);
     setPrayer('');
-    setExistingPhotos(visit ? (visit.photos || []).slice() : []);
+    setExistingPhotos(startPhotos);
     setNewPhotos([]);
     setQ('');
+    setSaveError(false);
+    setShowPeopleError(false);
+    setBaseline({
+      date: startDate,
+      ids: startIds,
+      went: startWent,
+      where: startWhere,
+      whereTouched: startWhereTouched,
+      purpose: startPurpose,
+      how: startHow,
+      followUpOn: startFollowUpOn,
+      followUp: startFollowUp,
+      prayer: '',
+      photos: startPhotos.length,
+    });
   }, [isOpen, visit, initialContactId, initialHomeId, homes, me]);
 
   const chosen = useMemo(
@@ -229,7 +273,14 @@ export default function LogVisitModal({
   };
 
   const submit = async () => {
-    if (!ids.length || saving) return;
+    if (saving) return;
+    if (!ids.length) {
+      setShowPeopleError(true);
+      peopleRef.current?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    setShowPeopleError(false);
+    setSaveError(false);
     setSaving(true);
     try {
       const input: VisitInput = {
@@ -313,23 +364,22 @@ export default function LogVisitModal({
       onClose();
     } catch (e) {
       console.error('Error saving visit:', e);
-      handleFirestoreError(e, OperationType.WRITE, 'visits');
+      setSaveError(true);
+      // handleFirestoreError records and rethrows; the footer is where the
+      // person hears about it, so keep the throw from escaping the handler.
+      try {
+        handleFirestoreError(e, OperationType.WRITE, 'visits');
+      } catch {
+        /* already surfaced above */
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  // Esc closes — the same shortcut the design gives the modal. ⌘↵ save lives
-  // in the central shortcut registry (#337) so it both binds and teaches itself.
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
+  // ⌘↵ save lives in the central shortcut registry (#337) so it both binds and
+  // teaches itself. Escape and Close are the frame's job — it asks about dirty
+  // state before it closes.
   useCommand({
     id: 'logvisit.save',
     scope: 'overlay',
@@ -340,362 +390,344 @@ export default function LogVisitModal({
     handler: () => void submit(),
   });
 
-  const label = 'block text-[10px] font-semibold text-on-surface-variant   mb-2';
-  const input =
-    'w-full bg-surface-container-low border border-outline-variant rounded-2xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary transition-colors';
+  const chosenHome = homeFor(ids);
+  const lastVisitMs = chosen.reduce((max, c) => {
+    const ms = Date.parse(c.lastContactedDate || c.lastSeen || '');
+    return Number.isFinite(ms) ? Math.max(max, ms) : max;
+  }, 0);
+  const homeLine = chosenHome
+    ? lastVisitMs
+      ? t('modals.home_last_visited')
+          .replace('{home}', chosenHome.label)
+          .replace('{ago}', formatDistanceToNowStrict(new Date(lastVisitMs)))
+      : chosenHome.label
+    : '';
+
+  const dirty =
+    !!baseline &&
+    (date !== baseline.date ||
+      ids.join('\u0000') !== baseline.ids.join('\u0000') ||
+      went.join('\u0000') !== baseline.went.join('\u0000') ||
+      where !== baseline.where ||
+      whereTouched !== baseline.whereTouched ||
+      purpose !== baseline.purpose ||
+      how !== baseline.how ||
+      followUpOn !== baseline.followUpOn ||
+      followUp !== baseline.followUp ||
+      prayer !== baseline.prayer ||
+      existingPhotos.length !== baseline.photos ||
+      newPhotos.length > 0);
+
+  const inputCls =
+    'w-full rounded-sm bg-surface-container-low border border-transparent px-3.5 py-2.5 text-sm text-on-surface placeholder:text-[var(--text-mute)] focus:outline-none focus:border-outline transition-colors';
+  const toggleCls = (on: boolean) =>
+    cn(
+      'px-3 py-1.5 rounded-full text-[13px] border transition-colors',
+      on
+        ? 'bg-primary/10 border-accent-line text-accent'
+        : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
+    );
   const photoRemove =
     'absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors';
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={editing ? t('modals.edit_a_visit') : t('modals.log_a_visit')}
-            className="relative w-full max-w-2xl max-h-[90vh] bg-surface-container rounded-[2rem] shadow-2xl overflow-hidden border border-outline-variant flex flex-col"
+    <PopupFrame
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      eyebrow={t('modals.visits_eyebrow')}
+      title={editing ? t('modals.edit_a_visit') : t('modals.log_a_visit')}
+      subtitle={editing ? t('modals.visit_fix_record') : t('modals.visit_write_down')}
+      dirty={dirty}
+      noun={t('modals.visit_noun')}
+      footerHint={t('modals.cmd_save')}
+      error={
+        saveError
+          ? {
+              message: t('modals.couldnt_save_offline'),
+              retryLabel: t('modals.try_again'),
+              onRetry: () => void submit(),
+            }
+          : null
+      }
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      primary={{
+        label: editing ? t('modals.save_changes') : t('modals.log_the_visit'),
+        onClick: () => void submit(),
+        saving,
+        savingLabel: t('modals.saving'),
+      }}
+    >
+      {/* Who you saw */}
+      <PopupSection label={t('modals.section_who_you_saw')} hint={t('modals.section_who_hint')}>
+        <div ref={peopleRef}>
+          <div
+            className={cn(
+              'flex flex-wrap items-center gap-2 rounded border bg-surface-container-low p-2',
+              showPeopleError ? 'border-error' : 'border-outline-variant',
+            )}
           >
-            <div className="p-6 border-b border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
-              <div className="w-12 h-12 bg-primary/10 text-accent rounded-2xl flex items-center justify-center shrink-0">
-                <House className="w-6 h-6" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="font-serif text-2xl text-on-surface">{editing ? t('modals.edit_a_visit') : t('modals.log_a_visit')}</h2>
-                <p className="text-xs text-on-surface-variant">
-                  {editing ? t('modals.visit_fix_record') : t('modals.visit_write_down')}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                aria-label={t('modals.close')}
-                className="ml-auto p-2 rounded-full hover:bg-surface-variant transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Who did you see */}
-              <div>
-                <label className={label} htmlFor="visit-who">
-                  {t('modals.who_did_you_see')}
-                </label>
-                <div className="flex flex-wrap items-center gap-2 p-2 bg-surface-container-low border border-outline-variant rounded-2xl">
-                  {chosen.map((c) => (
-                    <span
-                      key={c.id}
-                      className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1 bg-primary/10 text-accent rounded-full text-xs font-medium"
-                    >
-                      <span className="w-5 h-5 rounded-full bg-primary/15 grid place-items-center text-[9px] font-semibold">
-                        {initialsOf(c.name)}
-                      </span>
-                      {c.name}
-                      <button onClick={() => setPeople(ids.filter((i) => i !== c.id))} aria-label={`Remove ${c.name}`}>
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    id="visit-who"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder={chosen.length ? t('modals.anyone_else') : t('modals.start_typing_name')}
-                    className="flex-1 min-w-[10rem] bg-transparent px-2 py-1 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
-                  />
-                </div>
-                {(matches.length > 0 || canAddNew) && (
-                  <div className="mt-2 rounded-2xl border border-outline-variant overflow-hidden">
-                    {matches.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setPeople([...ids, c.id]);
-                          setQ('');
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-variant transition-colors"
-                      >
-                        <span className="w-7 h-7 rounded-full bg-primary/10 text-accent grid place-items-center text-[10px] font-semibold">
-                          {initialsOf(c.name)}
-                        </span>
-                        <span className="text-sm text-on-surface">{c.name}</span>
-                      </button>
-                    ))}
-                    {canAddNew && (
-                      <button
-                        type="button"
-                        disabled={addingContact}
-                        onClick={handleAddSomeoneNew}
-                        className={cn(
-                          'w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-variant transition-colors text-accent font-medium',
-                          matches.length > 0 && 'border-t border-outline-variant/60',
-                        )}
-                      >
-                        <span className="w-7 h-7 rounded-full bg-primary/15 text-accent grid place-items-center text-xs">
-                          {addingContact ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                        </span>
-                        <span className="text-sm">
-                          {t('modals.add_someone_new').replace('{name}', newName)}
-                        </span>
-                        <span className="ml-auto text-xs text-on-surface-variant">{t('modals.starts_a_record')}</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* When / where */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={label} htmlFor="visit-date">
-                    {t('modals.when')}
-                  </label>
-                  <input
-                    id="visit-date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className={input}
-                  />
-                </div>
-                <div>
-                  <label className={label} htmlFor="visit-where">
-                    {t('modals.where')}
-                  </label>
-                  <input
-                    id="visit-where"
-                    value={where}
-                    placeholder={t('modals.where_placeholder')}
-                    onChange={(e) => {
-                      setWhere(e.target.value);
-                      setWhereTouched(true);
-                    }}
-                    className={input}
-                  />
-                </div>
-              </div>
-
-              {/* Who went */}
-              <div>
-                <span className={label}>{t('modals.who_went')}</span>
-                <div className="flex flex-wrap gap-2">
-                  {realStaff.map((s) => (
-                    <button
-                      key={s.uid}
-                      aria-pressed={went.includes(s.uid)}
-                      onClick={() =>
-                        setWent((w) => (w.includes(s.uid) ? w.filter((x) => x !== s.uid) : [...w, s.uid]))
-                      }
-                      className={cn(
-                        'px-3 py-1.5 rounded-full text-[13px] border transition-colors',
-                        went.includes(s.uid)
-                          ? 'bg-primary/10 border-accent-line text-accent'
-                          : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
-                      )}
-                    >
-                      {s.displayName}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-on-surface-variant">{t('modals.most_visits_are_a_pair')}</p>
-              </div>
-
-              {/* Why */}
-              <div>
-                <label className={label} htmlFor="visit-purpose">
-                  {t('modals.why_you_went')}{' '}
-                  <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
-                </label>
-                <input
-                  id="visit-purpose"
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
-                  placeholder={t('modals.why_placeholder')}
-                  className={input}
-                />
-              </div>
-
-              {/* How */}
-              <div>
-                <label className={label} htmlFor="visit-how">
-                  {t('modals.how_it_went')}
-                </label>
-                <textarea
-                  id="visit-how"
-                  rows={5}
-                  value={how}
-                  onChange={(e) => setHow(e.target.value)}
-                  placeholder={t('modals.how_placeholder')}
-                  className={cn(input, 'resize-y')}
-                />
-              </div>
-
-              {/* Follow-up */}
-              <div>
-                <span className={label}>
-                  {t('modals.anything_follow_up')}{' '}
-                  <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
-                </span>
+            {chosen.map((c) => (
+              <PersonPill
+                key={c.id}
+                id={c.id}
+                name={c.name}
+                initials={initialsOf(c.name)}
+                onRemove={() => setPeople(ids.filter((i) => i !== c.id))}
+                removeLabel={`Remove ${c.name}`}
+              />
+            ))}
+            <input
+              id="visit-who"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={chosen.length ? t('modals.anyone_else') : t('modals.start_typing_name')}
+              aria-label={t('modals.who_did_you_see')}
+              className="min-w-[10rem] flex-1 bg-transparent px-2 py-1 text-sm text-on-surface placeholder:text-[var(--text-mute)] focus:outline-none"
+            />
+          </div>
+          {homeLine && (
+            <p className="mt-2.5 inline-flex items-center gap-2 rounded bg-surface-container-low px-3 py-1.5 text-[12px] text-on-surface-variant">
+              <House className="h-3.5 w-3.5" />
+              {homeLine}
+            </p>
+          )}
+          {showPeopleError && (
+            <p role="alert" className="mt-1.5 flex items-center gap-1.5 text-[12px] text-error">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {t('modals.pick_one_person')}
+            </p>
+          )}
+          {(matches.length > 0 || canAddNew) && (
+            <div className="mt-2 overflow-hidden rounded border border-outline-variant">
+              {matches.map((c) => (
                 <button
-                  aria-pressed={followUpOn}
-                  onClick={() => setFollowUpOn((v) => !v)}
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setPeople([...ids, c.id]);
+                    setQ('');
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-variant"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="grid h-7 w-7 place-items-center rounded-full bg-primary/10 text-[10px] font-semibold text-accent"
+                  >
+                    {initialsOf(c.name)}
+                  </span>
+                  <span className="text-sm text-on-surface">{c.name}</span>
+                </button>
+              ))}
+              {canAddNew && (
+                <button
+                  type="button"
+                  disabled={addingContact}
+                  onClick={handleAddSomeoneNew}
                   className={cn(
-                    'px-3 py-1.5 rounded-full text-[13px] border transition-colors',
-                    followUpOn
-                      ? 'bg-primary/10 border-accent-line text-accent'
-                      : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
+                    'flex w-full items-center gap-3 px-4 py-2.5 text-left font-medium text-accent transition-colors hover:bg-surface-variant',
+                    matches.length > 0 && 'border-t border-outline-variant/60',
                   )}
                 >
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-primary/15 text-xs text-accent">
+                    {addingContact ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  </span>
+                  <span className="text-sm">{t('modals.add_someone_new').replace('{name}', newName)}</span>
+                  <span className="ml-auto text-xs text-on-surface-variant">{t('modals.starts_a_record')}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </PopupSection>
+
+      {/* When and where */}
+      <PopupSection label={t('modals.section_when_where')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <PopupField label={t('modals.when')} htmlFor="visit-date">
+            <input id="visit-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
+          </PopupField>
+          <PopupField
+            label={t('modals.where')}
+            htmlFor="visit-where"
+            hint={chosenHome && !whereTouched ? t('modals.where_from_home').replace('{home}', chosenHome.label) : undefined}
+          >
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-mute)]" />
+              <input
+                id="visit-where"
+                value={where}
+                placeholder={t('modals.where_placeholder')}
+                onChange={(e) => {
+                  setWhere(e.target.value);
+                  setWhereTouched(true);
+                }}
+                className={cn(inputCls, 'pl-10')}
+              />
+            </div>
+          </PopupField>
+        </div>
+      </PopupSection>
+
+      {/* Who went */}
+      <PopupSection label={t('modals.who_went')} hint={t('modals.most_visits_are_a_pair')}>
+        <div className="flex flex-wrap gap-2">
+          {realStaff.map((s) => (
+            <button
+              key={s.uid}
+              type="button"
+              aria-pressed={went.includes(s.uid)}
+              onClick={() => setWent((w) => (w.includes(s.uid) ? w.filter((x) => x !== s.uid) : [...w, s.uid]))}
+              className={toggleCls(went.includes(s.uid))}
+            >
+              {s.displayName}
+            </button>
+          ))}
+        </div>
+      </PopupSection>
+
+      {/* The visit */}
+      <PopupSection label={t('modals.section_the_visit')}>
+        <div className="flex flex-col gap-4">
+          <PopupField label={t('modals.why_you_went')} htmlFor="visit-purpose" optional={t('modals.optional')}>
+            <input
+              id="visit-purpose"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              placeholder={t('modals.why_placeholder')}
+              className={inputCls}
+            />
+          </PopupField>
+          <PopupField label={t('modals.how_it_went')} htmlFor="visit-how">
+            <textarea
+              id="visit-how"
+              rows={5}
+              value={how}
+              onChange={(e) => setHow(e.target.value)}
+              placeholder={t('modals.how_placeholder')}
+              className={cn(inputCls, 'resize-y')}
+            />
+          </PopupField>
+          <PopupField label={t('modals.photos')} optional={t('modals.optional')}>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                addPhotos(e.dataTransfer.files);
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded border border-dashed border-outline-variant py-6 text-sm text-on-surface-variant transition-colors hover:border-primary hover:text-on-surface"
+            >
+              <ImageIcon className="h-4 w-4" />
+              {photoCount
+                ? t('modals.photo_add_more')
+                    .replace('{n}', String(photoCount))
+                    .replace('{s}', photoCount > 1 ? 's' : '')
+                : t('modals.drop_photos')}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              data-testid="visit-photo-input"
+              onChange={(e) => addPhotos(e.target.files)}
+            />
+            {photoCount > 0 && (
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {existingPhotos.map((p) => (
+                  <li key={p.path} className="relative">
+                    <img
+                      src={p.url}
+                      alt={p.name || 'photo'}
+                      className="h-20 w-20 rounded-sm border border-outline-variant object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setExistingPhotos((x) => x.filter((y) => y.path !== p.path))}
+                      aria-label={`Remove ${p.name || 'photo'}`}
+                      className={photoRemove}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+                {newPhotos.map((_f, i) => (
+                  <li key={i} className="relative">
+                    <img
+                      src={newPhotoUrls[i] ?? ''}
+                      alt={`Photo attachment ${i + 1}`}
+                      className="h-20 w-20 rounded-sm border border-primary/30 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewPhotos((x) => x.filter((_, j) => j !== i))}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className={photoRemove}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PopupField>
+        </div>
+      </PopupSection>
+
+      {/* Afterwards — only on the way in; an edit shouldn't re-ask. */}
+      {!editing && (
+        <PopupSection label={t('modals.section_afterwards')} hint={t('modals.section_afterwards_hint')}>
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="flex-1 text-[13px] font-medium text-on-surface">{t('modals.something_to_carry')}</span>
+                <button type="button" aria-pressed={followUpOn} onClick={() => setFollowUpOn((v) => !v)} className={toggleCls(followUpOn)}>
                   {followUpOn ? t('modals.yes_put_on_list') : t('modals.nothing_to_chase')}
                 </button>
-                {followUpOn && (
-                  <>
-                    <input
-                      value={followUp}
-                      onChange={(e) => setFollowUp(e.target.value)}
-                      placeholder={t('modals.follow_up_placeholder')}
-                      aria-label={t('modals.what_to_follow_up')}
-                      className={cn(input, 'mt-3')}
-                    />
-                    {!editing && (
-                      <p className="mt-2 text-xs text-on-surface-variant">
-                        {t('modals.lands_as_todo').replace(
-                          '{name}',
-                          staff.find((s) => s.uid === (went[0] || me))?.displayName || t('modals.whoever_went'),
-                        )}
-                      </p>
-                    )}
-                  </>
-                )}
               </div>
-
-              {/* Prayer — only on the way in; an edit shouldn't re-ask for one. */}
-              {!editing && (
-                <div>
-                  <label className={label} htmlFor="visit-prayer">
-                    {t('modals.prayer_came_out')}{' '}
-                    <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
-                  </label>
+              {followUpOn && (
+                <>
                   <input
-                    id="visit-prayer"
-                    value={prayer}
-                    onChange={(e) => setPrayer(e.target.value)}
-                    placeholder={
-                      chosen[0] ? `${t('modals.something_to_carry')} ${chosen[0].name.split(' ')[0]}` : t('modals.something_to_carry')
-                    }
-                    className={input}
+                    value={followUp}
+                    onChange={(e) => setFollowUp(e.target.value)}
+                    placeholder={t('modals.follow_up_placeholder')}
+                    aria-label={t('modals.what_to_follow_up')}
+                    className={cn(inputCls, 'mt-3')}
                   />
-                  {prayer.trim() && chosen[0] && (
-                    <p className="mt-2 text-xs text-on-surface-variant">
-                      {t('modals.added_to_prayers').replace('{name}', chosen[0].name.split(' ')[0])}
+                  {!editing && (
+                    <p className="mt-2 text-xs text-[var(--text-mute)]">
+                      {t('modals.lands_as_todo').replace(
+                        '{name}',
+                        staff.find((s) => s.uid === (went[0] || me))?.displayName || t('modals.whoever_went'),
+                      )}
                     </p>
                   )}
-                </div>
+                </>
               )}
-
-              {/* Photos */}
-              <div>
-                <span className={label}>
-                  {t('modals.photos')}{' '}
-                  <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
-                </span>
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    addPhotos(e.dataTransfer.files);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-6 rounded-2xl border border-dashed border-outline-variant text-sm text-on-surface-variant hover:border-primary hover:text-on-surface transition-colors"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  {photoCount
-                    ? t('modals.photo_add_more')
-                        .replace('{n}', String(photoCount))
-                        .replace('{s}', photoCount > 1 ? 's' : '')
-                    : t('modals.drop_photos')}
-                </button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  data-testid="visit-photo-input"
-                  onChange={(e) => addPhotos(e.target.files)}
-                />
-                {photoCount > 0 && (
-                  <ul className="mt-3 flex flex-wrap gap-2">
-                    {existingPhotos.map((p) => (
-                      <li key={p.path} className="relative">
-                        <img
-                          src={p.url}
-                          alt={p.name || 'photo'}
-                          className="w-20 h-20 object-cover rounded-xl border border-outline-variant"
-                        />
-                        <button
-                          onClick={() => setExistingPhotos((x) => x.filter((y) => y.path !== p.path))}
-                          aria-label={`Remove ${p.name || 'photo'}`}
-                          className={photoRemove}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </li>
-                    ))}
-                    {newPhotos.map((_f, i) => (
-                      <li key={i} className="relative">
-                        <img
-                          src={newPhotoUrls[i] ?? ''}
-                          alt={`Photo attachment ${i + 1}`}
-                          className="w-20 h-20 object-cover rounded-xl border border-primary/30"
-                        />
-                        <button
-                          onClick={() => setNewPhotos((x) => x.filter((_, j) => j !== i))}
-                          aria-label={`Remove photo ${i + 1}`}
-                          className={photoRemove}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
             </div>
-
-            <div className="p-4 border-t border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
-              <span className="text-xs text-on-surface-variant">
-                {ids.length ? t('modals.cmd_save') : t('modals.pick_one_person')}
-              </span>
-              <button
-                onClick={onClose}
-                className="ml-auto px-4 py-2 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
-              >
-                {t('modals.cancel')}
-              </button>
-              <button
-                onClick={submit}
-                disabled={!ids.length || saving}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                {saving ? t('modals.saving') : editing ? t('modals.save_changes') : t('modals.log_the_visit')}
-              </button>
-            </div>
-          </motion.div>
-        </div>
+            <PopupField label={t('modals.prayer_came_out')} htmlFor="visit-prayer" optional={t('modals.optional')}>
+              <input
+                id="visit-prayer"
+                value={prayer}
+                onChange={(e) => setPrayer(e.target.value)}
+                placeholder={
+                  chosen[0] ? `${t('modals.something_to_carry')} ${chosen[0].name.split(' ')[0]}` : t('modals.something_to_carry')
+                }
+                className={inputCls}
+              />
+              {prayer.trim() && chosen[0] && (
+                <p className="mt-2 text-xs text-[var(--text-mute)]">
+                  {t('modals.added_to_prayers').replace('{name}', chosen[0].name.split(' ')[0])}
+                </p>
+              )}
+            </PopupField>
+          </div>
+        </PopupSection>
       )}
-    </AnimatePresence>
+    </PopupFrame>
   );
 }
