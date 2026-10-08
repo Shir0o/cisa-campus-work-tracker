@@ -142,9 +142,7 @@ describe('EditEventModal', () => {
   it('does not submit when the form is empty', async () => {
     render(<EditEventModal isOpen onClose={vi.fn()} event={{ ...EVENT, name: '' }} />);
 
-    const form = screen.getByPlaceholderText(/Friday Night Gathering/).closest('form')!;
-    fireEvent.submit(form);
-
+    expect(screen.getByRole('button', { name: /Save changes/i })).toBeDisabled();
     expect(updateDoc).not.toHaveBeenCalled();
   });
 
@@ -161,5 +159,25 @@ describe('EditEventModal', () => {
       'UPDATE',
       'events/e1',
     );
+  });
+
+  it('renders through the shared popup frame, labelled with its title (#1451)', () => {
+    render(<EditEventModal isOpen onClose={vi.fn()} event={EVENT} />);
+    expect(screen.getByRole('dialog', { name: 'Edit gathering' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save changes/i })).toBeInTheDocument();
+  });
+
+  it('asks before discarding a typed edit, and keeps it on cancel (#1451)', () => {
+    render(<EditEventModal isOpen onClose={vi.fn()} event={EVENT} />);
+    fireEvent.change(screen.getByDisplayValue('Friday Gathering'), {
+      target: { value: 'Friday Night Gathering' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this gathering?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByDisplayValue('Friday Night Gathering')).toBeInTheDocument();
   });
 });

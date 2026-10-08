@@ -1820,7 +1820,9 @@
     "couldnt_save_offline": "No se pudo guardar: estás sin conexión. No se perdió nada.",
     "try_again": "Intentar de nuevo",
     "no_home_yet": "{name} aún no tiene hogar",
-    "add_one": "Añadir uno"
+    "add_one": "Añadir uno",
+    "gathering_noun": "reunión",
+    "rhythm_noun": "Ritmo"
   },
   "popup": {
     "discard_question": "¿Descartar esta {noun}?",

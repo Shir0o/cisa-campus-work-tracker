@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Tag, MapPin, Loader2, CalendarHeart, Users, Ban } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import type { Contact, Gathering } from '../../types';
 import DatePicker from '../ui/DatePicker';
 import { useLanguage } from '../LanguageProvider';
+import { PopupField, PopupFrame } from '../ui/PopupFrame';
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -22,6 +21,7 @@ interface EditEventModalProps {
 export default function EditEventModal({ isOpen, onClose, event, contacts = [] }: EditEventModalProps) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [formData, setFormData] = useState({ name: '', location: '', date: '' });
   const [selectedRoster, setSelectedRoster] = useState<string[]>([]);
   const [rosterSearch, setRosterSearch] = useState('');
@@ -35,17 +35,11 @@ export default function EditEventModal({ isOpen, onClose, event, contacts = [] }
       });
       setSelectedRoster(event.roster ?? []);
       setRosterSearch('');
+      setDirty(false);
     }
   }, [isOpen, event]);
 
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!event || !formData.name.trim() || !formData.date) return;
     setLoading(true);
     try {
@@ -82,166 +76,125 @@ export default function EditEventModal({ isOpen, onClose, event, contacts = [] }
     }
   };
 
+  const inputCls =
+    'w-full rounded-sm bg-surface-container-low border border-transparent px-3.5 py-2.5 text-sm text-on-surface placeholder:text-[var(--text-mute)] focus:outline-none focus:border-outline transition-colors';
+
   return (
-    <AnimatePresence>
-      {isOpen && event && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-24 px-6 overflow-y-auto pb-12">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[-1]"
+    <PopupFrame
+      open={isOpen && Boolean(event)}
+      onClose={onClose}
+      size="sm"
+      eyebrow={t('nav.attendance')}
+      title={t('modals.edit_gathering')}
+      subtitle={t('modals.fix_detail')}
+      dirty={dirty}
+      noun={t('modals.gathering_noun')}
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      destructive={
+        event
+          ? {
+              label: event.cancelled
+                ? t('attendance.undo_cancel', 'Un-cancel this gathering')
+                : t('attendance.cancel_gathering', 'Cancel this gathering'),
+              onClick: () => void handleCancel(),
+            }
+          : null
+      }
+      primary={{
+        label: t('modals.save_changes'),
+        onClick: () => void handleSubmit(),
+        disabled: loading || !formData.name.trim() || !formData.date,
+        saving: loading,
+        savingLabel: t('modals.saving'),
+      }}
+    >
+      <div className="space-y-5 px-7 py-5">
+        <PopupField label={t('modals.name')} htmlFor="edit-event-name">
+          <input
+            id="edit-event-name"
+            type="text"
+            value={formData.name}
+            onChange={(e) => {
+              setFormData((f) => ({ ...f, name: e.target.value }));
+              setDirty(true);
+            }}
+            className={inputCls}
+            placeholder={t('modals.event_name_placeholder')}
           />
+        </PopupField>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            className="relative w-full max-w-sm bg-surface-container rounded-3xl shadow-2xl border border-outline-variant"
-          >
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-outline-variant flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
-                <CalendarHeart className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="font-serif text-xl text-on-surface leading-tight">{t('modals.edit_gathering')}</h2>
-                <p className="text-sm text-on-surface-variant">{t('modals.fix_detail')}</p>
-              </div>
-              <button
-                onClick={onClose}
-                className="ml-auto p-1.5 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <DatePicker
+          label={t('modals.date')}
+          value={formData.date}
+          onChange={(val) => {
+            setFormData((f) => ({ ...f, date: val }));
+            setDirty(true);
+          }}
+          required
+        />
+
+        <PopupField label={t('modals.location')} optional={t('modals.optional')} htmlFor="edit-event-location">
+          <input
+            id="edit-event-location"
+            type="text"
+            value={formData.location}
+            onChange={(e) => {
+              setFormData((f) => ({ ...f, location: e.target.value }));
+              setDirty(true);
+            }}
+            className={inputCls}
+            placeholder={t('modals.location_placeholder')}
+          />
+        </PopupField>
+
+        {contacts.length > 0 && (
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] font-medium text-on-surface">{t('attendance.expected_roster')}</p>
+              <span className="text-[11px] font-medium text-accent">
+                {t('modals.selected_count').replace('{n}', String(selectedRoster.length))}
+              </span>
             </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
-              {/* Name */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                  <Tag className="w-3 h-3" /> {t('modals.name')}
-                </label>
-                <input
-                  required
-                  autoFocus
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  placeholder={t('modals.event_name_placeholder')}
-                />
-              </div>
-
-              {/* Date */}
-              <DatePicker
-                label={t('modals.date')}
-                value={formData.date}
-                onChange={(val) => setFormData((f) => ({ ...f, date: val }))}
-                required
-              />
-
-              {/* Location */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                  <MapPin className="w-3 h-3" /> {t('modals.location')} <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">{t('modals.optional')}</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData((f) => ({ ...f, location: e.target.value }))}
-                  className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  placeholder={t('modals.location_placeholder')}
-                />
-              </div>
-
-              {/* Expected Roster (optional) */}
-              {contacts.length > 0 && (
-                <div className="space-y-2 p-3 rounded-2xl bg-surface-container-high border border-outline/30">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1">
-                      <Users className="w-3 h-3" /> {t('attendance.expected_roster', 'Expected Roster')}
-                    </label>
-                    <span className="text-[11px] font-medium text-accent">
-                      {selectedRoster.length} selected
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={rosterSearch}
-                    onChange={(e) => setRosterSearch(e.target.value)}
-                    placeholder={t('attendance.add_attendee_or_walkin', 'Add attendee or walk-in...')}
-                    className="w-full h-8 px-3 rounded-lg bg-surface border border-outline/40 text-xs text-on-surface outline-none focus:border-primary"
-                  />
-                  <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
-                    {contacts
-                      .filter((c) => !rosterSearch.trim() || c.name.toLowerCase().includes(rosterSearch.toLowerCase()))
-                      .slice(0, 20)
-                      .map((c) => {
-                        const isSelected = selectedRoster.includes(c.id);
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedRoster((prev) =>
-                                isSelected ? prev.filter((id) => id !== c.id) : [...prev, c.id],
-                              )
-                            }
-                            className={cn(
-                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left',
-                              isSelected
-                                ? 'bg-primary/10 text-accent font-medium'
-                                : 'hover:bg-surface text-on-surface-variant',
-                            )}
-                          >
-                            <span>{c.name}</span>
-                            <span className="text-[10px]">{isSelected ? '✓' : '+'}</span>
-                          </button>
+            <input
+              type="text"
+              value={rosterSearch}
+              onChange={(e) => setRosterSearch(e.target.value)}
+              placeholder={t('attendance.add_attendee_or_walkin')}
+              className={cn(inputCls, 'text-xs')}
+            />
+            <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
+              {contacts
+                .filter((c) => !rosterSearch.trim() || c.name.toLowerCase().includes(rosterSearch.toLowerCase()))
+                .slice(0, 20)
+                .map((c) => {
+                  const isSelected = selectedRoster.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedRoster((prev) =>
+                          isSelected ? prev.filter((id) => id !== c.id) : [...prev, c.id],
                         );
-                      })}
-                  </div>
-                </div>
-              )}
-
-              {/* Cancel this gathering */}
-              <button
-                type="button"
-                onClick={handleCancel}
-                className={cn(
-                  'w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-medium transition-colors',
-                  event.cancelled
-                    ? 'bg-primary/10 text-accent hover:bg-primary/20'
-                    : 'text-error hover:bg-error-container/40',
-                )}
-              >
-                <Ban className="w-3.5 h-3.5" />
-                {event.cancelled ? t('attendance.undo_cancel', 'Un-cancel this gathering') : t('attendance.cancel_gathering', 'Cancel this gathering')}
-              </button>
-
-              {/* Actions */}
-              <div className="pt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 h-10 rounded-xl font-semibold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
-                >
-                  {t('modals.cancel')}
-                </button>
-                <button
-                  disabled={loading || !formData.name.trim() || !formData.date}
-                  type="submit"
-                  className="flex-[1.5] h-10 rounded-xl bg-primary text-on-primary font-semibold text-xs   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale cursor-pointer"
-                >
-                  {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : t('modals.save_changes')}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+                        setDirty(true);
+                      }}
+                      className={cn(
+                        'flex w-full items-center justify-between rounded-[10px] px-2.5 py-1.5 text-left text-xs transition-colors',
+                        isSelected
+                          ? 'bg-primary/10 font-medium text-accent'
+                          : 'text-on-surface-variant hover:bg-surface-container',
+                      )}
+                    >
+                      <span>{c.name}</span>
+                      <span className="text-[10px]">{isSelected ? '✓' : '+'}</span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+      </div>
+    </PopupFrame>
   );
 }
