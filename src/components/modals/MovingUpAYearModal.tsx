@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { doc, writeBatch } from 'firebase/firestore';
-import { X } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { YEARS } from '../../lib/contactYear';
 import { kindLabelKey } from '../../lib/contactKind';
@@ -14,6 +13,7 @@ import {
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import Select from '../ui/Select';
+import { PopupFrame } from '../ui/PopupFrame';
 import type { Contact } from '../../types';
 
 interface MovingUpAYearModalProps {
@@ -41,11 +41,14 @@ const decode = (value: string): YearChoice | null =>
 export default function MovingUpAYearModal({ people, now, onClose }: MovingUpAYearModalProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [choices, setChoices] = useState<Record<string, string>>(() =>
-    Object.fromEntries(people.map((p) => [p.id, encode(proposeYear(p))])),
+  const initial = useMemo(
+    () => Object.fromEntries(people.map((p) => [p.id, encode(proposeYear(p))])),
+    [people],
   );
+  const [choices, setChoices] = useState<Record<string, string>>(initial);
   const [saving, setSaving] = useState(false);
   const chosen = people.filter((p) => choices[p.id]);
+  const dirty = people.some((p) => choices[p.id] !== initial[p.id]);
 
   const handleConfirm = async () => {
     if (chosen.length === 0 || saving || !user?.uid) return;
@@ -85,92 +88,65 @@ export default function MovingUpAYearModal({ people, now, onClose }: MovingUpAYe
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="moving-up-a-year-title"
-        className="relative w-full max-w-lg bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant max-h-[85vh] flex flex-col"
-      >
-        <div className="p-6 border-b border-outline-variant flex items-start justify-between gap-4">
-          <div>
-            <h2 id="moving-up-a-year-title" className="font-serif text-2xl text-on-surface">
-              {t('movingUpAYear.title')}
-            </h2>
-            <p className="text-sm text-on-surface-variant mt-1">
-              {t('movingUpAYear.subtitle')
-                .replace('{n}', String(people.length))
-                .replace('{year}', schoolYearOf(now))}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
-            aria-label={t('modals.close')}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <ul className="p-4 sm:p-6 overflow-y-auto space-y-2">
-          {people.map((person) => {
-            const current = (person.year ?? '').trim();
-            const offList = current && !LISTED.includes(current);
-            return (
-              <li
-                key={person.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-outline-variant/60 bg-surface px-4 py-3"
+    <PopupFrame
+      open
+      onClose={onClose}
+      size="md"
+      eyebrow={t('movingUpAYear.years_to_confirm')}
+      title={t('movingUpAYear.title')}
+      subtitle={t('movingUpAYear.subtitle')
+        .replace('{n}', String(people.length))
+        .replace('{year}', schoolYearOf(now))}
+      dirty={dirty}
+      discardQuestion={t('movingUpAYear.discard')}
+      cancelLabel={t('directory.cancel')}
+      onCancel={onClose}
+      primary={{
+        label: t('movingUpAYear.confirm').replace('{n}', String(chosen.length)),
+        onClick: handleConfirm,
+        disabled: chosen.length === 0,
+        saving,
+        savingLabel: t('movingUpAYear.saving'),
+      }}
+    >
+      <ul className="space-y-2 px-4 py-5 sm:px-6">
+        {people.map((person) => {
+          const current = (person.year ?? '').trim();
+          const offList = current && !LISTED.includes(current);
+          return (
+            <li
+              key={person.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-outline-variant/60 bg-surface px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-on-surface truncate">{person.name}</p>
+                <p className="text-xs text-on-surface-variant">{current || t('movingUpAYear.no_year')}</p>
+              </div>
+              <Select
+                data-testid={`year-choice-${person.id}`}
+                aria-label={t('movingUpAYear.choice_for').replace('{name}', person.name)}
+                value={choices[person.id]}
+                onChange={(e) => setChoices((prev) => ({ ...prev, [person.id]: e.target.value }))}
+                wrapperClassName="w-full sm:w-auto"
+                className="h-10 text-sm"
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-on-surface truncate">{person.name}</p>
-                  <p className="text-xs text-on-surface-variant">{current || t('movingUpAYear.no_year')}</p>
-                </div>
-                <Select
-                  data-testid={`year-choice-${person.id}`}
-                  aria-label={t('movingUpAYear.choice_for').replace('{name}', person.name)}
-                  value={choices[person.id]}
-                  onChange={(e) => setChoices((prev) => ({ ...prev, [person.id]: e.target.value }))}
-                  wrapperClassName="w-full sm:w-auto"
-                  className="h-10 text-sm"
-                >
-                  <option value="" disabled>{t('movingUpAYear.choose')}</option>
-                  {offList && (
-                    <option value={`year:${current}`}>
-                      {t('movingUpAYear.same_year').replace('{year}', current)}
-                    </option>
-                  )}
-                  {LISTED.map((year) => (
-                    <option key={year} value={`year:${year}`}>
-                      {year === current ? t('movingUpAYear.same_year').replace('{year}', year) : year}
-                    </option>
-                  ))}
-                  <option value="graduated">{t('movingUpAYear.graduated')}</option>
-                </Select>
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="p-6 border-t border-outline-variant flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
-          >
-            {t('directory.cancel')}
-          </button>
-          <button
-            type="button"
-            disabled={chosen.length === 0 || saving}
-            onClick={handleConfirm}
-            className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {t('movingUpAYear.confirm').replace('{n}', String(chosen.length))}
-          </button>
-        </div>
-      </div>
-    </div>
+                <option value="" disabled>{t('movingUpAYear.choose')}</option>
+                {offList && (
+                  <option value={`year:${current}`}>
+                    {t('movingUpAYear.same_year').replace('{year}', current)}
+                  </option>
+                )}
+                {LISTED.map((year) => (
+                  <option key={year} value={`year:${year}`}>
+                    {year === current ? t('movingUpAYear.same_year').replace('{year}', year) : year}
+                  </option>
+                ))}
+                <option value="graduated">{t('movingUpAYear.graduated')}</option>
+              </Select>
+            </li>
+          );
+        })}
+      </ul>
+    </PopupFrame>
   );
 }

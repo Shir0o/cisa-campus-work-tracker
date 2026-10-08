@@ -86,6 +86,11 @@ beforeEach(() => {
 });
 
 describe('TagGenderModal', () => {
+  it('renders in the shared popup frame (#1452)', () => {
+    render(<TagGenderModal contacts={alreadyTaggedContacts} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: 'Tag M / F' })).toBeInTheDocument();
+  });
+
   it('lays over the app shell with z-[100] above the sidebar', () => {
     const { container } = render(<TagGenderModal contacts={alreadyTaggedContacts} onClose={vi.fn()} />);
     const dialog = container.querySelector('div[class*="z-[100]"]');

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { ArrowDown, ArrowUp, Check, Combine, Loader2, Plus, Undo2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Loader2, Plus, Undo2, X } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   guessTagCombines,
@@ -13,8 +14,8 @@ import {
 } from '../lib/tags';
 import { useStandardTags, saveStandardTags } from '../lib/standardTags';
 import { useLanguage } from '../components/LanguageProvider';
-import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
+import { PopupFrame } from '../components/ui/PopupFrame';
 import type { Contact } from '../types';
 
 /** The reason a guess was made, as shown next to it (issue #1435). */
@@ -77,6 +78,7 @@ const fill = (template: string, values: Record<string, string>): string =>
  */
 export default function CombineTags() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -419,26 +421,40 @@ export default function CombineTags() {
     );
   };
 
+  const dirty =
+    Object.keys(edited).length > 0 ||
+    Object.keys(toggled).length > 0 ||
+    customCombines.length > 0 ||
+    selectedTags.length > 0 ||
+    combineTarget.trim().length > 0;
+
   return (
-    <PageContainer>
+    <PopupFrame
+      open
+      onClose={() => navigate('/directory')}
+      size="lg"
+      title={t('combine_tags.title', 'Combine tags')}
+      subtitle={t('combine_tags.subtitle', 'Review guessed tag combines, edit them, then apply through the server.')}
+      dirty={dirty}
+      discardQuestion={t('combine_tags.discard', 'Discard the tag combines you have set up?')}
+      cancelLabel={t('actions.cancel', 'Cancel')}
+      onCancel={() => navigate('/directory')}
+      primary={{
+        label: applying
+          ? t('combine_tags.applying', 'Applying…')
+          : t('combine_tags.apply', 'Combine {n} contacts').replace('{n}', String(rows.length)),
+        onClick: apply,
+        disabled: rows.length === 0,
+        saving: applying,
+        savingLabel: t('combine_tags.applying', 'Applying…'),
+      }}
+    >
+      <div className="px-7 py-5">
       <datalist id="combine-tags-all">
         {allTags.map((tag) => (
           <option key={tag} value={tag} />
         ))}
       </datalist>
-
-      <header className="mb-6">
-        <h1 className="font-serif text-3xl text-on-surface flex items-center gap-2">
-          <Combine className="w-6 h-6 text-primary" />
-          {t('combine_tags.title', 'Combine tags')}
-        </h1>
-        <p className="text-sm text-on-surface-variant mt-1">
-          {t(
-            'combine_tags.subtitle',
-            'Review guessed tag combines, edit them, then apply through the server.',
-          )}
-        </p>
-      </header>
 
       {applyError && (
         <p className="mb-4 rounded-lg border border-outline-variant bg-surface-variant/40 px-4 py-3 text-sm text-on-surface">
@@ -654,23 +670,6 @@ export default function CombineTags() {
                   </div>
                 )}
               </section>
-
-              <div className="sticky bottom-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={apply}
-                  disabled={rows.length === 0 || applying}
-                  className="inline-flex items-center gap-2 h-12 px-6 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {applying && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {applying
-                    ? t('combine_tags.applying', 'Applying…')
-                    : t('combine_tags.apply', 'Combine {n} contacts').replace(
-                        '{n}',
-                        String(rows.length),
-                      )}
-                </button>
-              </div>
             </>
           )}
 
@@ -855,6 +854,7 @@ export default function CombineTags() {
           </div>
         </aside>
       </div>
-    </PageContainer>
+      </div>
+    </PopupFrame>
   );
 }
