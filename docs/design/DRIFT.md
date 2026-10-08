@@ -284,3 +284,15 @@ needed a decision.
 | --- | --- | --- | --- |
 | 60 | Direction (a) draws no "By" chip: `Composer.html` pre-dates [#1288](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1288), which added logging on a teammate's behalf, and the issue asks the composer to carry it forward. | **The issue** | The foot row gains a Full-timer-only `By: {name}` chip that opens a menu of Me and the team, replacing 5/13's native `<select>`. A Trainee sees no chip. |
 | 61 | The canvas draws the time chip (`Yesterday, 8:15 pm ▾`) but not the menu it opens, and the issue says the time "can be back-dated". | **Neither — the canvas is silent** | The chip opens quick presets (Now, 15 minutes ago, 1 hour ago, Yesterday, 2 days ago) rather than a native datetime picker, so the whole composer is free of the controls the ticket retires. An exact-time picker is a small addition if presets prove too coarse. |
+
+### 2026-10-08 — Log interaction in the popup frame
+
+Found building [#1449](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1449)
+against [`visit-popups/A-Interaction.dc.html`](visit-popups/A-Interaction.dc.html)
+and the `A · Phone — bottom sheets` board. The frame, the two-pane layout, the
+sentence-case copy and the footer all match the spec (#1444). One decision was
+needed on the kinds.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 62 | The pre-frame build offered **four** interaction kinds — Message, Email, Call, Meeting — while design A and spec #1444 story 43 name three: Message, Call, Meeting. | **Design / spec** | The frame renders the three kinds and drops the Email tile. Interactions already stored with `type: "email"` still render through `ActivityItem` — only the manual Email button is gone. |
