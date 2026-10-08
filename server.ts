@@ -21,6 +21,7 @@ import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } fro
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { buildCombinePlan, buildCombineUndoPlan, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks } from "./src/lib/combineContactsPlan";
+import { planTagApplies, type TagCombine } from "./src/lib/tags";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -3204,6 +3205,125 @@ ${JSON.stringify(contactsList)}`;
       return res
         .status(500)
         .json({ success: false, error: error.message || "Failed to undo combine" });
+    }
+  });
+
+  // Combine tags (issue #1435, spec #1426). Full-timers only. The browser
+  // guesses and edits combines; this endpoint recomputes the affected contacts
+  // with the shared pure module (src/lib/tags.ts planTagApplies), rewrites
+  // their tags (dropping duplicates), and writes a combine record of kind tags
+  // holding each contact's tags before and after. Undo is #1436.
+  app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
+    let actorId: string;
+    let actorName: string;
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        const authorized = await authorizeAdmin(req);
+        actorId = authorized.uid;
+        actorName = authorized.email || authorized.uid;
+      } else {
+        actorId = "test-user";
+        actorName = "Test User";
+      }
+    } catch (authErr: any) {
+      return res
+        .status(403)
+        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+    }
+
+    const rawCombines = req.body?.combines;
+    if (!Array.isArray(rawCombines) || rawCombines.length === 0) {
+      return res.status(400).json({ success: false, error: "combines are required" });
+    }
+    const combines: TagCombine[] = rawCombines
+      .filter((c: any) => c && typeof c === "object")
+      .map((c: any) => ({
+        variants: Array.isArray(c.variants)
+          ? c.variants.filter((v: any) => typeof v === "string")
+          : [],
+        target: typeof c.target === "string" ? c.target : "",
+      }))
+      .filter((c: TagCombine) => c.target && c.variants.length > 0);
+    if (combines.length === 0) {
+      return res.status(400).json({ success: false, error: "combines are required" });
+    }
+
+    try {
+      const db = getAdminDb();
+      const contactsSnap = await db.collection("contacts").get();
+      const contacts = contactsSnap.docs.map((d: any) => ({
+        id: d.id,
+        name: String(d.data().name ?? ""),
+        tags: (d.data().tags ?? []) as string[],
+      }));
+
+      const rows = planTagApplies(contacts, combines);
+
+      if (req.body?.dryRun === true) {
+        return res.status(200).json({ success: true, dryRun: true, rows });
+      }
+
+      const now = new Date().toISOString();
+      const recordRef = db.collection("combineRecords").doc();
+      await recordRef.set({
+        kind: "tags",
+        combines,
+        contacts: rows.map((row) => ({
+          contactId: row.contactId,
+          name: row.name,
+          before: row.from,
+          after: row.to,
+        })),
+        status: "pending",
+        combinedBy: actorId,
+        combinedByName: actorName,
+        combinedAt: now,
+      });
+
+      const BATCH_LIMIT = 400;
+      for (let i = 0; i < rows.length; i += BATCH_LIMIT) {
+        const batch = db.batch();
+        for (const row of rows.slice(i, i + BATCH_LIMIT)) {
+          batch.update(db.collection("contacts").doc(row.contactId), {
+            tags: row.to,
+            updatedAt: now,
+            updatedBy: actorId,
+            updatedByName: actorName,
+          });
+        }
+        await batch.commit();
+      }
+
+      let logged = 0;
+      for (const row of rows) {
+        await db.collection("activities").add({
+          userId: actorId,
+          userName: actorName,
+          userPhoto: "",
+          action: "combined tags on",
+          targetId: row.contactId,
+          targetName: row.name,
+          targetType: "contact",
+          type: "edit",
+          description: `Tags: [${row.from.join(", ")}] → [${row.to.join(", ")}]`,
+          createdAt: now,
+        });
+        logged++;
+      }
+
+      await recordRef.update({ status: "done", completedAt: new Date().toISOString() });
+
+      return res.status(200).json({
+        success: true,
+        combineRecordId: recordRef.id,
+        changedCount: rows.length,
+        logged,
+      });
+    } catch (error: any) {
+      console.error("Combine Tags Error:", error);
+      return res
+        .status(500)
+        .json({ success: false, error: error.message || "Failed to combine tags" });
     }
   });
 

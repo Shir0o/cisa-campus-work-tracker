@@ -1057,11 +1057,11 @@ describe('Directory', () => {
       expect(screen.queryByText('Tag M / F')).not.toBeInTheDocument();
     });
 
-    // Reopen and test Combine Tags item
+    // Reopen and test Combine Tags item navigates to its own page (#1435)
     fireEvent.click(moreBtn);
     const newCombineItem = await screen.findByRole('menuitem', { name: /combine tags/i });
     fireEvent.click(newCombineItem);
-    expect(await screen.findByText('No duplicate or overlapping tags found.')).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/directory/combine-tags');
   });
 
   it('navigates to the Combine contacts page from the admin action', async () => {

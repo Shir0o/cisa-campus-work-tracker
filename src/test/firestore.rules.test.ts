@@ -1056,6 +1056,21 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(admin, 'combineRecords/r1'), { status: 'undone' }));
       await assertFails(deleteDoc(doc(admin, 'combineRecords/r1')));
     });
+
+    it('applies the same gate to a tags combine record (#1435)', async () => {
+      await seed();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'combineRecords/t1'), {
+          kind: 'tags',
+          status: 'done',
+          combines: [],
+        });
+      });
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDoc(doc(admin, 'combineRecords/t1')));
+      await assertFails(setDoc(doc(admin, 'combineRecords/t2'), { kind: 'tags' }));
+      await assertFails(updateDoc(doc(admin, 'combineRecords/t1'), { status: 'undone' }));
+    });
   });
 
   // A Not the same person mark (ADR 0038, #1432) is a Full-timer's remembered

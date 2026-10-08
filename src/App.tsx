@@ -54,6 +54,7 @@ const Outreach = lazyWithRetry(() => import("./views/Outreach"));
 const OutreachBoard = lazyWithRetry(() => import("./views/OutreachBoard"));
 const Directory = lazyWithRetry(() => import("./views/Directory"));
 const CombineContacts = lazyWithRetry(() => import("./views/CombineContacts"));
+const CombineTags = lazyWithRetry(() => import("./views/CombineTags"));
 const History = lazyWithRetry(() => import("./views/History"));
 const PrayerList = lazyWithRetry(() => import("./views/PrayerList"));
 const AnsweredList = lazyWithRetry(() => import("./views/AnsweredList"));
@@ -953,6 +954,19 @@ export default function App() {
                       <RoleGuard minRole="admin">
                         <DashboardLayout>
                           <CombineContacts />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/directory/combine-tags"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <CombineTags />
                         </DashboardLayout>
                       </RoleGuard>
                     </ProtectedRoute>
