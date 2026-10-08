@@ -293,6 +293,53 @@ export const TAG_SUGGESTIONS = [
   'BFA',
 ];
 
+/**
+ * The seed for the standard tags document (ADR 0039): one Full-timer-edited
+ * list serving both the suggestion chips and the combine targets. The stored
+ * doc replaces it once it loads; season tags are standard by pattern, never
+ * stored.
+ */
+export const STANDARD_TAG_SEED: string[] = [...TAG_SUGGESTIONS];
+
+/** True when a tag names a season cohort ("Fall 2026") — standard by pattern. */
+export function isSeasonTag(tag: string): boolean {
+  return /^(Spring|Summer|Fall|Winter)\s+\d{4}$/.test(normalizeTag(tag));
+}
+
+/**
+ * Resolve the standard tags from the stored document's `tags` field (#1437).
+ * `undefined`/`null` means the document has not loaded, so fall back to the
+ * seed; a loaded-but-empty list stays empty. Order is preserved, values are
+ * normalized and de-duplicated.
+ */
+export function resolveStandardTags(stored?: string[] | null): string[] {
+  if (stored == null) return [...STANDARD_TAG_SEED];
+  return normalizeTagList(stored.filter((tag) => typeof tag === 'string'));
+}
+
+/**
+ * The standard tags plus every season tag the contacts carry: season tags are
+ * standard by pattern without being stored, so the guesser prefers them too.
+ */
+export function standardTagsForGuessing(
+  stored: string[] | null | undefined,
+  contacts: Array<{ tags?: string[] | null }>,
+): string[] {
+  const tags = resolveStandardTags(stored);
+  const seen = new Set(tags.map((tag) => normalizeTag(tag).toLowerCase()));
+  for (const contact of contacts) {
+    for (const value of contact.tags ?? []) {
+      const norm = normalizeTag(value);
+      if (!isSeasonTag(norm)) continue;
+      const key = norm.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tags.push(norm);
+    }
+  }
+  return tags;
+}
+
 export type TagGuessTier = 'strong' | 'weak';
 
 export type TagGuessReason =

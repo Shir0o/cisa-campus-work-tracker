@@ -13,7 +13,8 @@ import { useSeason } from '../../lib/seasons';
 import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage } from '../../types';
 import { inferGenderFromName, genderTag } from '../../lib/gender';
-import { normalizeTagList, TAG_SUGGESTIONS, tagStyle } from '../../lib/tags';
+import { normalizeTagList, tagStyle } from '../../lib/tags';
+import { useStandardTags } from '../../lib/standardTags';
 import { contactKind, kindLabelKey } from '../../lib/contactKind';
 import KindFields from '../ui/KindFields';
 
@@ -27,6 +28,7 @@ interface NewContactModalProps {
 export default function NewContactModal({ isOpen, onClose, initialStage }: NewContactModalProps) {
   const { user, isAdmin, role } = useAuth();
   const { t } = useLanguage();
+  const standardTags = useStandardTags();
   if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -506,7 +508,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                   />
                   {(() => {
-                    const availableSuggestions = TAG_SUGGESTIONS.filter(
+                    const availableSuggestions = standardTags.filter(
                       (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
                     );
                     if (availableSuggestions.length === 0) return null;

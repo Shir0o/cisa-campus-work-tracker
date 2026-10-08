@@ -15,7 +15,8 @@ import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
 import KindFields from "../ui/KindFields";
 import { YEARS } from "../../lib/contactYear";
-import { tagStyle, TAG_SUGGESTIONS, normalizeTagList } from "../../lib/tags";
+import { tagStyle, normalizeTagList } from "../../lib/tags";
+import { useStandardTags } from "../../lib/standardTags";
 import type { Stage } from "../../types";
 
 export interface ContactFormData {
@@ -71,6 +72,7 @@ export default function ContactEditForm({
   loading: boolean;
 }) {
   const { t } = useLanguage();
+  const standardTags = useStandardTags();
 
   return (
     <form
@@ -299,7 +301,7 @@ export default function ContactEditForm({
             className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
           />
           {(() => {
-            const availableSuggestions = TAG_SUGGESTIONS.filter(
+            const availableSuggestions = standardTags.filter(
               (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
             );
             if (availableSuggestions.length === 0) return null;

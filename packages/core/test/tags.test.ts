@@ -7,6 +7,10 @@ import {
   TAG_SUGGESTIONS,
   clusterTags,
   planTagCombiningWithRules,
+  isSeasonTag,
+  resolveStandardTags,
+  standardTagsForGuessing,
+  STANDARD_TAG_SEED,
 } from '../src/tags';
 
 describe('normalizeTag', () => {
@@ -164,5 +168,31 @@ describe('TAG_SUGGESTIONS', () => {
     for (const year of ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate']) {
       expect(TAG_SUGGESTIONS).not.toContain(year);
     }
+  });
+});
+
+describe('standard tags (ADR 0039)', () => {
+  it('seeds the six former constants', () => {
+    expect(STANDARD_TAG_SEED).toEqual(TAG_SUGGESTIONS);
+  });
+
+  it('recognizes season tags, and only season tags', () => {
+    expect(isSeasonTag('Fall 2026')).toBe(true);
+    expect(isSeasonTag("Fall '26")).toBe(true);
+    expect(isSeasonTag('BFA')).toBe(false);
+  });
+
+  it('falls back to the seed when the document has not loaded; keeps a loaded list', () => {
+    expect(resolveStandardTags(undefined)).toEqual(STANDARD_TAG_SEED);
+    expect(resolveStandardTags(null)).toEqual(STANDARD_TAG_SEED);
+    expect(resolveStandardTags([])).toEqual([]);
+    expect(resolveStandardTags(['Welcome', 'welcome'])).toEqual(['Welcome']);
+  });
+
+  it('treats season tags as standard for guessing without storing them', () => {
+    const tags = standardTagsForGuessing(['Welcome'], [{ tags: ['Fall 2025', "Fall '26"] }]);
+    expect(tags).toContain('Welcome');
+    expect(tags).toContain('Fall 2025');
+    expect(tags).toContain('Fall 2026');
   });
 });

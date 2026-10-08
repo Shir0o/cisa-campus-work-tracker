@@ -66,6 +66,7 @@ export * from './data/comments';
 export * from './data/outreach';
 export * from './data/contactActivity';
 export * from './data/goal';
+export * from './data/standardTags';
 export * from './todoNotifications';
 export * from './bibleStudy';
 export * from './data/bibleStudy';

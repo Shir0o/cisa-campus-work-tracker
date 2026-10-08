@@ -12,7 +12,7 @@ const defaultContacts: Contact[] = [
   { id: 'c5', name: 'Eve', tags: ['Prayer walk'] } as Contact,
 ];
 
-const h = vi.hoisted(() => ({ contacts: [] as { id: string; data: () => unknown }[] }));
+const h = vi.hoisted(() => ({ contacts: [] as { id: string; data: () => unknown }[], setDoc: vi.fn() }));
 
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ t: (_key: string, fallback?: string) => fallback || _key, language: 'en' }),
@@ -20,8 +20,10 @@ vi.mock('../components/LanguageProvider', () => ({
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, name: string) => ({ __name: name })),
+  doc: vi.fn(() => ({})),
   query: vi.fn((q: unknown) => q),
   orderBy: vi.fn(),
+  setDoc: h.setDoc,
   onSnapshot: vi.fn((_q: unknown, cb: (snapshot: unknown) => void) => {
     cb({ docs: h.contacts });
     return () => {};
@@ -126,5 +128,70 @@ describe('CombineTags', () => {
     setContacts([{ id: 'q1', name: 'Quiet', tags: ['Saved'] } as Contact]);
     render(<CombineTags />);
     expect(screen.getByText('No tag combines found')).toBeInTheDocument();
+  });
+
+  describe('standard tags panel (#1437)', () => {
+    it('renders the seed list before the stored list loads', () => {
+      render(<CombineTags />);
+      const panel = within(screen.getByTestId('standard-tags-panel'));
+      expect(panel.getByTestId('standard-tag-Saved')).toBeInTheDocument();
+      expect(panel.getByTestId('standard-tag-BFA')).toBeInTheDocument();
+    });
+
+    it('adds a standard tag and persists only the list', () => {
+      render(<CombineTags />);
+      const panel = within(screen.getByTestId('standard-tags-panel'));
+
+      fireEvent.change(panel.getByLabelText('Add a standard tag'), {
+        target: { value: 'Welcome' },
+      });
+      fireEvent.click(panel.getByRole('button', { name: 'Add' }));
+
+      expect(panel.getByTestId('standard-tag-Welcome')).toBeInTheDocument();
+      // Only the standard-tags document is written — never a contact.
+      expect(h.setDoc).toHaveBeenCalledTimes(1);
+      expect(h.setDoc).toHaveBeenCalledWith(expect.anything(), {
+        tags: ['Saved', 'Baptized', 'Interested', 'Open', 'Club Rush', 'BFA', 'Welcome'],
+      });
+    });
+
+    it('uses a newly added standard tag as a preferred guess target', () => {
+      setContacts([{ id: 'c1', name: 'Ada', tags: ['Welcome table'] } as Contact]);
+      render(<CombineTags />);
+      expect(screen.getByText('No tag combines found')).toBeInTheDocument();
+
+      const panel = within(screen.getByTestId('standard-tags-panel'));
+      fireEvent.change(panel.getByLabelText('Add a standard tag'), {
+        target: { value: 'Welcome' },
+      });
+      fireEvent.click(panel.getByRole('button', { name: 'Add' }));
+
+      const guess = within(screen.getByTestId('tag-guess-guess-welcome-strong'));
+      expect(guess.getByDisplayValue('Welcome')).toBeInTheDocument();
+      expect(guess.getAllByText('Welcome table').length).toBeGreaterThan(0);
+    });
+
+    it('removes a standard tag without touching contacts', () => {
+      render(<CombineTags />);
+      const panel = within(screen.getByTestId('standard-tags-panel'));
+
+      fireEvent.click(panel.getByTestId('remove-standard-tag-Saved'));
+
+      expect(panel.queryByTestId('standard-tag-Saved')).not.toBeInTheDocument();
+      expect(h.setDoc).toHaveBeenCalledWith(expect.anything(), {
+        tags: ['Baptized', 'Interested', 'Open', 'Club Rush', 'BFA'],
+      });
+    });
+
+    it('reorders a standard tag and persists the new order', () => {
+      render(<CombineTags />);
+      const panel = within(screen.getByTestId('standard-tags-panel'));
+
+      fireEvent.click(panel.getByLabelText('Move Saved down'));
+
+      expect(h.setDoc).toHaveBeenCalledWith(expect.anything(), {
+        tags: ['Baptized', 'Saved', 'Interested', 'Open', 'Club Rush', 'BFA'],
+      });
+    });
   });
 });

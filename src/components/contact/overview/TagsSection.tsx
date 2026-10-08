@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { useLanguage } from "../../LanguageProvider";
-import { tagStyle, TAG_SUGGESTIONS } from "../../../lib/tags";
+import { tagStyle } from "../../../lib/tags";
+import { useStandardTags } from "../../../lib/standardTags";
 
 export default function TagsSection({
   tags,
@@ -24,6 +25,7 @@ export default function TagsSection({
   onAddTag: (tag: string) => void;
 }) {
   const { t } = useLanguage();
+  const standardTags = useStandardTags();
 
   return (
     <div className="cd-sec">
@@ -64,7 +66,7 @@ export default function TagsSection({
               />
             </span>
             {(() => {
-              const available = TAG_SUGGESTIONS.filter(
+              const available = standardTags.filter(
                 (s) => !tags.some((t) => t.toLowerCase() === s.toLowerCase())
               );
               if (available.length === 0) return null;
