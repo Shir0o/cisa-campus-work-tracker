@@ -20,7 +20,7 @@ import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/l
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
-import { buildCombinePlan, buildCombineUndoPlan, referenceKey, type CombineReferences, type CombineUndoCurrent } from "./src/lib/combineContactsPlan";
+import { buildCombinePlan, buildCombineUndoPlan, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks } from "./src/lib/combineContactsPlan";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -2699,6 +2699,28 @@ ${JSON.stringify(contactsList)}`;
       const keptContact = { id: keptSnap.id, ...keptSnap.data() } as unknown as Contact;
       const combinedInContact = { id: combinedInSnap.id, ...combinedInSnap.data() } as unknown as Contact;
 
+      // The browser sends the last-updated stamp of each contact as it saw it.
+      // If either has changed since, refuse with a conflict so the page can
+      // rebuild the preview rather than commit a result built on stale data.
+      const body = req.body ?? {};
+      if (body.keptUpdatedAt !== undefined || body.combinedInUpdatedAt !== undefined) {
+        const currentKeptStamp = timestampMillis(keptSnap.data()?.updatedAt);
+        const currentCombinedInStamp = timestampMillis(combinedInSnap.data()?.updatedAt);
+        if (
+          timestampMillis(body.keptUpdatedAt) !== currentKeptStamp ||
+          timestampMillis(body.combinedInUpdatedAt) !== currentCombinedInStamp
+        ) {
+          return res.status(409).json({
+            success: false,
+            conflict: true,
+            error: "One or both contacts changed since this preview was built. Rebuild the preview and try again.",
+          });
+        }
+      }
+
+      const picks: CombinePicks =
+        body.picks && typeof body.picks === "object" ? (body.picks as CombinePicks) : {};
+
       const [
         interactionsSnap,
         threadsSnap,
@@ -2792,7 +2814,7 @@ ${JSON.stringify(contactsList)}`;
         now,
         updatedById: actorId,
         updatedByName: actorName,
-      });
+      }, picks);
 
       // A dry run returns the review's "What moves" list without writing.
       if (req.body?.dryRun === true) {
@@ -2807,6 +2829,7 @@ ${JSON.stringify(contactsList)}`;
         keptId,
         combinedInId,
         reason,
+        picks,
         status: "pending",
         keptBefore: { ...keptSnap.data() },
         combinedInBefore: { ...combinedInSnap.data() },

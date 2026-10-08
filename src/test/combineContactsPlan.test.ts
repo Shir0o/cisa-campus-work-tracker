@@ -7,9 +7,11 @@ import {
   buildCombineUndoPlan,
   referenceKey,
   checkCombineMatch,
+  historyScore,
   type CombineReferences,
   type CombineUndoRecord,
   type CombineUndoCurrent,
+  type ContactHistory,
 } from '../lib/combineContactsPlan';
 import type { Contact } from '../types';
 
@@ -192,7 +194,7 @@ describe('diffCombineFields', () => {
     expect(rows.find((r) => r.field === 'phone')).toMatchObject({ kind: 'filled-in', result: '5551234' });
     expect(rows.find((r) => r.field === 'location')).toMatchObject({ kind: 'kept', result: 'Dorm A' });
     expect(rows.find((r) => r.field === 'tags')).toMatchObject({ kind: 'merged', added: ['B'] });
-    expect(rows.find((r) => r.field === 'notes')).toMatchObject({ kind: 'notes-combined' });
+    expect(rows.find((r) => r.field === 'notes')).toMatchObject({ kind: 'merged' });
   });
 
   it('labels identical fields as same', () => {
@@ -204,10 +206,10 @@ describe('diffCombineFields', () => {
     expect(rows.find((r) => r.field === 'email')).toMatchObject({ kind: 'same' });
   });
 
-  it('flags a conflicting name as kept', () => {
+  it('flags a conflicting name as a pick with the kept result by default', () => {
     const rows = rowsFor();
     expect(rows.find((r) => r.field === 'name')).toMatchObject({
-      kind: 'kept',
+      kind: 'pick',
       kept: 'Survivor',
       combinedIn: 'Duplicate',
       result: 'Survivor',
@@ -495,6 +497,168 @@ describe('buildCombinePlan', () => {
     ] as const) {
       expect(plan.moves.find((m) => m.kind === kind)?.count).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('combine picks and fixed field rules (#1431)', () => {
+  const kept = {
+    id: 's1',
+    name: 'Kept Name',
+    email: 's@x.com',
+    phone: '',
+    stage: 'Lead',
+    location: 'Dorm A',
+    lastSeen: '2026-03-10',
+    initials: 'K',
+    createdAt: '2026-02-01T00:00:00.000Z',
+    addedBy: 'u-later',
+    lastContactedDate: '2026-01-01',
+    interests: ['music'],
+    storyMessageIds: ['m1'],
+    tags: ['A'],
+    notes: 'kept notes',
+    attendance: { e1: true },
+  } as unknown as Contact;
+
+  const combinedIn = {
+    id: 'd1',
+    name: 'In Name',
+    email: 'd@x.com',
+    phone: '',
+    stage: 'Contact',
+    location: '',
+    lastSeen: '2026-04-01',
+    initials: 'I',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    addedBy: 'u-earlier',
+    lastContactedDate: '2026-05-01',
+    interests: ['sports'],
+    storyMessageIds: ['m2'],
+    tags: ['A', 'B'],
+    notes: 'in notes',
+    isStudent: true,
+    attendance: { e2: true },
+  } as unknown as Contact;
+
+  it('uses the Full-timer pick when a single value conflicts', () => {
+    const keptPick = mergeContactProfiles(kept, combinedIn);
+    expect(keptPick.name).toBe('Kept Name');
+
+    const combinedInPick = mergeContactProfiles(kept, combinedIn, {
+      fields: { name: 'combined-in' as const },
+    });
+    expect(combinedInPick.name).toBe('In Name');
+  });
+
+  it('keeps one side of the notes or both', () => {
+    expect(mergeContactProfiles(kept, combinedIn).notes).toContain('kept notes');
+    expect(mergeContactProfiles(kept, combinedIn).notes).toContain('in notes');
+    expect(mergeContactProfiles(kept, combinedIn, { notes: 'kept' }).notes).toBe('kept notes');
+    expect(mergeContactProfiles(kept, combinedIn, { notes: 'combined-in' }).notes).toBe('in notes');
+  });
+
+  it('takes first added and added by from the earlier record', () => {
+    const merged = mergeContactProfiles(kept, combinedIn);
+    expect(merged.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(merged.addedBy).toBe('u-earlier');
+  });
+
+  it('compares ISO strings and Firestore timestamps when deciding the earlier record', () => {
+    const keptTs = {
+      ...kept,
+      createdAt: { seconds: 1738368000, nanoseconds: 0 },
+    } as unknown as Contact;
+    const combinedInTs = {
+      ...combinedIn,
+      createdAt: { _seconds: 1735689600, nanoseconds: 0 },
+      addedBy: 'u-older',
+    } as unknown as Contact;
+
+    const merged = mergeContactProfiles(keptTs, combinedInTs);
+    expect(merged.addedBy).toBe('u-older');
+    expect(merged.createdAt).toEqual({ _seconds: 1735689600, nanoseconds: 0 });
+  });
+
+  it('takes last contacted and last seen from the later record', () => {
+    const merged = mergeContactProfiles(kept, combinedIn);
+    expect(merged.lastSeen).toBe('2026-04-01');
+    expect(merged.lastContactedDate).toBe('2026-05-01');
+  });
+
+  it('merges interests, story links and the legacy attendance map', () => {
+    const merged = mergeContactProfiles(kept, combinedIn) as Contact & {
+      attendance?: Record<string, unknown>;
+    };
+    expect(merged.interests).toEqual(['music', 'sports']);
+    expect(merged.storyMessageIds).toEqual(['m1', 'm2']);
+    expect(merged.attendance).toEqual({ e1: true, e2: true });
+  });
+
+  it('lets the kept contact win per event in the legacy attendance map', () => {
+    const shared = { ...combinedIn, attendance: { e1: 'absent', e3: true } } as unknown as Contact;
+    const merged = mergeContactProfiles(kept, shared) as Contact & {
+      attendance?: Record<string, unknown>;
+    };
+    expect(merged.attendance).toEqual({ e1: true, e3: true });
+  });
+
+  it('labels every row kind, including picks, earlier wins and latest wins', () => {
+    const merged = mergeContactProfiles(kept, combinedIn);
+    const rows = diffCombineFields(kept, combinedIn, merged);
+    const byField = (f: string) => rows.find((r) => r.field === f);
+
+    expect(byField('name')).toMatchObject({ kind: 'pick', result: 'Kept Name' });
+    expect(byField('location')).toMatchObject({ kind: 'kept' });
+    expect(byField('stage')).toMatchObject({ kind: 'pick' });
+    expect(byField('phone')).toMatchObject({ kind: 'same' });
+    expect(byField('notes')).toMatchObject({ kind: 'merged' });
+    expect(byField('tags')).toMatchObject({ kind: 'merged', added: ['B'] });
+    expect(byField('interests')).toMatchObject({ kind: 'merged', added: ['sports'] });
+    expect(byField('storyMessageIds')).toMatchObject({ kind: 'merged', added: ['m2'] });
+    expect(byField('createdAt')).toMatchObject({ kind: 'earlier-wins' });
+    expect(byField('addedBy')).toMatchObject({ kind: 'earlier-wins', result: 'u-earlier' });
+    expect(byField('lastSeen')).toMatchObject({ kind: 'latest-wins', result: '2026-04-01' });
+    expect(byField('lastContactedDate')).toMatchObject({ kind: 'latest-wins' });
+    expect(byField('attendance')).toMatchObject({ kind: 'merged', added: ['e2'] });
+  });
+
+  it('reflects the pick in the result column and the written profile', () => {
+    const picks = { fields: { name: 'combined-in' as const } };
+    const merged = mergeContactProfiles(kept, combinedIn, picks);
+    const rows = diffCombineFields(kept, combinedIn, merged);
+    expect(rows.find((r) => r.field === 'name')?.result).toBe('In Name');
+
+    const plan = buildCombinePlan(kept, combinedIn, EMPTY_REFS, META, picks);
+    expect(plan.keptData.name).toBe('In Name');
+  });
+});
+
+describe('findCombineCandidates by history', () => {
+  const contacts: Partial<Contact>[] = [
+    { id: 'a', name: 'Alex', email: 'alex@x.com', createdAt: '2026-01-01' },
+    { id: 'b', name: 'Alex', email: 'alex@x.com', createdAt: '2026-02-01' },
+  ];
+
+  it('scores history as interactions plus comments plus roster entries', () => {
+    const history: ContactHistory = { interactions: 2, comments: 1, rosterEntries: 3 };
+    expect(historyScore(history)).toBe(6);
+  });
+
+  it('keeps the record with more history even when it is newer', () => {
+    const pairs = findCombineCandidates(contacts as Contact[], {
+      a: { interactions: 0, comments: 0, rosterEntries: 0 },
+      b: { interactions: 3, comments: 1, rosterEntries: 2 },
+    });
+    expect(pairs[0].kept.id).toBe('b');
+    expect(pairs[0].combinedIn.id).toBe('a');
+  });
+
+  it('falls back to the older record when history ties', () => {
+    const pairs = findCombineCandidates(contacts as Contact[], {
+      a: { interactions: 1, comments: 0, rosterEntries: 0 },
+      b: { interactions: 1, comments: 0, rosterEntries: 0 },
+    });
+    expect(pairs[0].kept.id).toBe('a');
   });
 });
 

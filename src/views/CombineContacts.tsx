@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { Check, Loader2, Undo2, Users } from 'lucide-react';
+import {
+  collection,
+  getCountFromServer,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from 'firebase/firestore';
+import { Check, Loader2, Repeat, Undo2, Users } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useLanguage } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
@@ -12,6 +19,9 @@ import {
   type CombineFieldRow,
   type CombineMoveGroup,
   type CombinePair,
+  type CombinePick,
+  type CombinePicks,
+  type ContactHistory,
 } from '../lib/combineContactsPlan';
 import type { Contact } from '../types';
 
@@ -69,12 +79,22 @@ const FIELD_LABELS: Record<string, string> = {
   howHeard: 'How they heard',
   metVia: 'How we met',
   prayerRequest: 'Prayer request',
+  isStudent: 'Student',
+  inChurchLife: 'In the church life',
+  yearConfirmedFor: 'Year confirmed for',
   notes: 'Notes',
   tags: 'Tags',
   founders: 'Founders',
   carers: 'Cared for by',
   coCreators: 'Co-creators',
   visibleTo: 'Visible to',
+  interests: 'Interests',
+  storyMessageIds: 'Story links',
+  attendance: 'Legacy attendance',
+  createdAt: 'First added',
+  addedBy: 'Added by',
+  lastContactedDate: 'Last contacted',
+  lastSeen: 'Last seen',
 };
 
 /** Human label per decision kind, used as the i18n fallback. */
@@ -82,8 +102,10 @@ const KIND_LABELS: Record<CombineFieldRow['kind'], string> = {
   same: 'Same',
   kept: 'Kept',
   'filled-in': 'Filled in',
+  pick: 'You pick',
   merged: 'Merged',
-  'notes-combined': 'Notes combined',
+  'earlier-wins': 'Earlier wins',
+  'latest-wins': 'Latest wins',
 };
 
 /** Human label per "What moves" group, used as the i18n fallback. */
@@ -108,7 +130,7 @@ const MOVE_KIND_LABELS: Record<CombineMoveGroup['kind'], string> = {
   activities: 'Activity Log entries',
 };
 
-const pairKey = (pair: CombinePair) => `${pair.kept.id}-${pair.combinedIn.id}`;
+const pairKey = (pair: CombinePair) => [pair.kept.id, pair.combinedIn.id].sort().join('|');
 
 const renderValue = (value: string | string[]): string => {
   if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '';
@@ -139,6 +161,9 @@ export default function CombineContacts() {
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const [movesByPair, setMovesByPair] = useState<Record<string, CombineMoveGroup[]>>({});
   const [movesLoading, setMovesLoading] = useState<string | null>(null);
+  const [picksByPair, setPicksByPair] = useState<Record<string, CombinePicks>>({});
+  const [swappedKeys, setSwappedKeys] = useState<Set<string>>(new Set());
+  const [historyById, setHistoryById] = useState<Record<string, ContactHistory>>({});
 
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -172,14 +197,82 @@ export default function CombineContacts() {
     );
   }, [tab]);
 
-  const pairs = useMemo(
-    () => findCombineCandidates(contacts).filter((p) => !skipped.has(pairKey(p))),
-    [contacts, skipped],
-  );
+  // The default kept contact is the record with more history. Count each
+  // candidate's interactions, comments and roster entries once they are known.
+  useEffect(() => {
+    const ids = new Set<string>();
+    findCombineCandidates(contacts).forEach((p) => {
+      ids.add(p.kept.id);
+      ids.add(p.combinedIn.id);
+    });
+    if (ids.size === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const entries = await Promise.all(
+          [...ids].map(async (id): Promise<[string, ContactHistory]> => {
+            const [interactions, comments, events, rhythms] = await Promise.all([
+              getCountFromServer(collection(db, 'contacts', id, 'interactions')),
+              getCountFromServer(collection(db, 'contacts', id, 'comments')),
+              getCountFromServer(query(collection(db, 'events'), where('roster', 'array-contains', id))),
+              getCountFromServer(query(collection(db, 'rhythms'), where('roster', 'array-contains', id))),
+            ]);
+            return [
+              id,
+              {
+                interactions: interactions.data().count,
+                comments: comments.data().count,
+                rosterEntries: events.data().count + rhythms.data().count,
+              },
+            ];
+          }),
+        );
+        if (!cancelled) setHistoryById(Object.fromEntries(entries));
+      } catch {
+        // History only steers the default; without it we keep the older record.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contacts]);
+
+  const pairs = useMemo(() => {
+    return findCombineCandidates(contacts, historyById)
+      .filter((p) => !skipped.has(pairKey(p)))
+      .map((p) =>
+        swappedKeys.has(pairKey(p))
+          ? { kept: p.combinedIn, combinedIn: p.kept, reason: p.reason }
+          : p,
+      );
+  }, [contacts, historyById, skipped, swappedKeys]);
+
+  const picksFor = (key: string): CombinePicks => picksByPair[key] ?? {};
+
+  const setFieldPick = (key: string, field: string, value: CombinePick) => {
+    setPicksByPair((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], fields: { ...prev[key]?.fields, [field]: value } },
+    }));
+  };
+
+  const setNotesPick = (key: string, value: CombinePick | 'both') => {
+    setPicksByPair((prev) => ({ ...prev, [key]: { ...prev[key], notes: value } }));
+  };
+
+  const swapPair = (key: string) => {
+    setSwappedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const combine = async (pair: CombinePair) => {
     if (combiningId) return;
-    setCombiningId(pairKey(pair));
+    const key = pairKey(pair);
+    setCombiningId(key);
     setCombineError(null);
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -189,7 +282,14 @@ export default function CombineContacts() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ keptId: pair.kept.id, combinedInId: pair.combinedIn.id, reason: pair.reason }),
+        body: JSON.stringify({
+          keptId: pair.kept.id,
+          combinedInId: pair.combinedIn.id,
+          reason: pair.reason,
+          picks: picksFor(key),
+          keptUpdatedAt: pair.kept.updatedAt ?? null,
+          combinedInUpdatedAt: pair.combinedIn.updatedAt ?? null,
+        }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -498,9 +598,10 @@ export default function CombineContacts() {
       ) : (
         <div className="space-y-6">
           {pairs.map((pair) => {
-            const merged = mergeContactProfiles(pair.kept, pair.combinedIn);
-            const rows = diffCombineFields(pair.kept, pair.combinedIn, merged);
             const key = pairKey(pair);
+            const picks = picksFor(key);
+            const merged = mergeContactProfiles(pair.kept, pair.combinedIn, picks);
+            const rows = diffCombineFields(pair.kept, pair.combinedIn, merged);
             const isCombining = combiningId === key;
             const moves = movesByPair[key];
             const isLoadingMoves = movesLoading === key;
@@ -514,14 +615,25 @@ export default function CombineContacts() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-accent">
                     {pair.reason}
                   </span>
-                  <button
-                    type="button"
-                    disabled={combiningId !== null}
-                    onClick={() => setSkipped((prev) => new Set(prev).add(key))}
-                    className="text-sm text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
-                  >
-                    {t('combine_contacts.skip', 'Skip for now')}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={combiningId !== null}
+                      onClick={() => swapPair(key)}
+                      className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
+                    >
+                      <Repeat className="w-4 h-4" />
+                      {t('combine_contacts.swap', 'Swap')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={combiningId !== null}
+                      onClick={() => setSkipped((prev) => new Set(prev).add(key))}
+                      className="text-sm text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
+                    >
+                      {t('combine_contacts.skip', 'Skip for now')}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -545,7 +657,36 @@ export default function CombineContacts() {
                           <td className="py-2 pr-4 text-on-surface-variant">{renderValue(row.combinedIn)}</td>
                           <td className="py-2 pr-4 text-on-surface">{renderValue(row.result)}</td>
                           <td className="py-2 text-on-surface-variant">
-                            {t('combine_contacts.kind_' + row.kind, KIND_LABELS[row.kind])}
+                            {row.kind === 'pick' ? (
+                              <select
+                                data-testid={`pick-${row.field}`}
+                                value={picks.fields?.[row.field] ?? 'kept'}
+                                onChange={(e) =>
+                                  setFieldPick(key, row.field, e.target.value as CombinePick)
+                                }
+                                className="rounded-lg border border-outline-variant bg-surface px-2 py-1 text-sm text-on-surface"
+                              >
+                                <option value="kept">{t('combine_contacts.pick_kept', 'Kept')}</option>
+                                <option value="combined-in">
+                                  {t('combine_contacts.pick_combined_in', 'Combined-in')}
+                                </option>
+                              </select>
+                            ) : row.field === 'notes' && row.kind === 'merged' ? (
+                              <select
+                                data-testid="pick-notes"
+                                value={picks.notes ?? 'both'}
+                                onChange={(e) => setNotesPick(key, e.target.value as CombinePick | 'both')}
+                                className="rounded-lg border border-outline-variant bg-surface px-2 py-1 text-sm text-on-surface"
+                              >
+                                <option value="both">{t('combine_contacts.notes_both', 'Both')}</option>
+                                <option value="kept">{t('combine_contacts.pick_kept', 'Kept')}</option>
+                                <option value="combined-in">
+                                  {t('combine_contacts.pick_combined_in', 'Combined-in')}
+                                </option>
+                              </select>
+                            ) : (
+                              t('combine_contacts.kind_' + row.kind, KIND_LABELS[row.kind])
+                            )}
                           </td>
                         </tr>
                       ))}

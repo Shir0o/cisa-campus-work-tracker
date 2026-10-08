@@ -15,6 +15,7 @@ const contacts: Contact[] = [
     lastSeen: '',
     initials: 'AS',
     createdAt: '2026-01-01T00:00:00.000Z',
+    notes: 'first note',
   },
   {
     id: 'c2',
@@ -26,6 +27,7 @@ const contacts: Contact[] = [
     lastSeen: '',
     initials: 'AS',
     createdAt: '2026-02-01T00:00:00.000Z',
+    notes: 'second note',
   },
 ];
 
@@ -64,6 +66,8 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, name: string) => ({ __name: name })),
   query: vi.fn((q: unknown) => q),
   orderBy: vi.fn(),
+  where: vi.fn(() => ({})),
+  getCountFromServer: vi.fn(async () => ({ data: () => ({ count: 0 }) })),
   onSnapshot: vi.fn((q: { __name?: string }, cb: (snap: unknown) => void) => {
     if (q?.__name === 'combineRecords') {
       cb({ docs: combineRecords.map((r) => ({ id: r.id, data: () => r })) });
@@ -146,6 +150,52 @@ describe('CombineContacts page', () => {
     });
     const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
     expect(body).toMatchObject({ keptId: 'c1', combinedInId: 'c2' });
+  });
+
+  it('changes the result column when a pick is chosen and sends it with the stamps', async () => {
+    render(<CombineContacts />);
+    const pick = await screen.findByTestId('pick-name');
+    const row = pick.closest('tr') as HTMLTableRowElement;
+    fireEvent.change(pick, { target: { value: 'combined-in' } });
+    expect(row.querySelectorAll('td')[3].textContent).toBe('Alice Second');
+
+    fireEvent.click(screen.getByRole('button', { name: /^combine$/i }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    expect(body.picks).toEqual({ fields: { name: 'combined-in' } });
+    expect(body).toHaveProperty('keptUpdatedAt');
+    expect(body).toHaveProperty('combinedInUpdatedAt');
+  });
+
+  it('offers Kept, Combined-in or Both for notes', async () => {
+    render(<CombineContacts />);
+    const notes = await screen.findByTestId('pick-notes');
+    const row = notes.closest('tr') as HTMLTableRowElement;
+    expect(row.querySelectorAll('td')[3].textContent).toContain('second note');
+
+    fireEvent.change(notes, { target: { value: 'kept' } });
+    expect(row.querySelectorAll('td')[3].textContent).toBe('first note');
+  });
+
+  it('flips which contact is kept when swapped', async () => {
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('button', { name: /swap/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^combine$/i }));
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    expect(body).toMatchObject({ keptId: 'c2', combinedInId: 'c1' });
+  });
+
+  it('shows a conflict message when the server refuses a stale preview', async () => {
+    (global.fetch as any).mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        json: async () => ({ success: false, conflict: true, error: 'Contacts changed. Rebuild.' }),
+      }),
+    );
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('button', { name: /^combine$/i }));
+    expect(await screen.findByText('Contacts changed. Rebuild.')).toBeInTheDocument();
   });
 
   it('shows the What moves groups with counts that expand to the items', async () => {

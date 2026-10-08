@@ -48,7 +48,25 @@ export interface CombineReferences {
 }
 
 /** How one field's result was decided. */
-export type CombineFieldKind = 'same' | 'kept' | 'filled-in' | 'merged' | 'notes-combined';
+export type CombineFieldKind =
+  | 'same'
+  | 'kept'
+  | 'filled-in'
+  | 'pick'
+  | 'merged'
+  | 'earlier-wins'
+  | 'latest-wins';
+
+/** Which side of a conflicting single-value field the Full-timer chose. */
+export type CombinePick = 'kept' | 'combined-in';
+
+/** The Full-timer's decisions for one review. */
+export interface CombinePicks {
+  /** Per conflicting single-value field; defaults to the kept contact. */
+  fields?: Record<string, CombinePick>;
+  /** Notes: which side, or both (`both` is the default when both have notes). */
+  notes?: CombinePick | 'both';
+}
 
 /** One row of the kept | combined-in | result diff. */
 export interface CombineFieldRow {
@@ -154,10 +172,29 @@ export function checkCombineMatch(a: Contact, b: Contact): string | null {
 }
 
 /**
- * Scans contacts for candidate duplicate pairs. Each contact is paired at most
- * once per pass, and the older record (by createdAt) is kept by default.
+ * How much history a contact carries, used to choose the default kept record.
+ * Interactions, comments and roster entries (Gatherings and rhythms).
  */
-export function findCombineCandidates(contacts: Contact[]): CombinePair[] {
+export interface ContactHistory {
+  interactions: number;
+  comments: number;
+  rosterEntries: number;
+}
+
+/** The single number two contacts' histories are compared by. */
+export function historyScore(history: ContactHistory): number {
+  return history.interactions + history.comments + history.rosterEntries;
+}
+
+/**
+ * Scans contacts for candidate duplicate pairs. Each contact is paired at most
+ * once per pass. The record with more history is kept by default; when the
+ * histories tie (or none is supplied) the older record (by createdAt) is kept.
+ */
+export function findCombineCandidates(
+  contacts: Contact[],
+  historyById: Record<string, ContactHistory> = {},
+): CombinePair[] {
   const pairs: CombinePair[] = [];
   const claimedIds = new Set<string>();
 
@@ -172,18 +209,24 @@ export function findCombineCandidates(contacts: Contact[]): CombinePair[] {
       const reason = checkCombineMatch(a, b);
       if (!reason) continue;
 
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const scoreA = historyById[a.id] ? historyScore(historyById[a.id]) : 0;
+      const scoreB = historyById[b.id] ? historyScore(historyById[b.id]) : 0;
 
       let kept = a;
       let combinedIn = b;
-      const bIsOlder =
-        timeB > 0 &&
-        (timeA === 0 ||
-          timeB < timeA);
-      if (bIsOlder) {
-        kept = b;
-        combinedIn = a;
+      if (scoreA !== scoreB) {
+        if (scoreB > scoreA) {
+          kept = b;
+          combinedIn = a;
+        }
+      } else {
+        const timeA = a.createdAt ? timestampMillis(a.createdAt) : 0;
+        const timeB = b.createdAt ? timestampMillis(b.createdAt) : 0;
+        const bIsOlder = timeB > 0 && (timeA === 0 || timeB < timeA);
+        if (bIsOlder) {
+          kept = b;
+          combinedIn = a;
+        }
       }
 
       pairs.push({ kept, combinedIn, reason });
@@ -215,23 +258,84 @@ export const COMBINE_SCALAR_FIELDS = [
   'prayerRequest',
 ] as const;
 
+/** Flags where a conflict is also the Full-timer's pick. */
+export const COMBINE_FLAG_FIELDS = ['isStudent', 'inChurchLife', 'yearConfirmedFor'] as const;
+
+/** Every single-value field the Full-timer picks between. */
+export const COMBINE_PICK_FIELDS = [
+  'name',
+  ...COMBINE_SCALAR_FIELDS,
+  ...COMBINE_FLAG_FIELDS,
+] as const;
+
 /** Relationship sets merged as a union. */
 export const COMBINE_SET_FIELDS = ['tags', 'founders', 'carers', 'coCreators', 'visibleTo'] as const;
+
+/** Lists always merged as a union, beyond the relationship sets. */
+export const COMBINE_MERGED_FIELDS = ['interests', 'storyMessageIds'] as const;
 
 /** Every profile field surfaced in the review, in display order. */
 export const COMBINE_FIELD_ORDER = [
   'name',
   ...COMBINE_SCALAR_FIELDS,
+  ...COMBINE_FLAG_FIELDS,
   'notes',
   ...COMBINE_SET_FIELDS,
+  ...COMBINE_MERGED_FIELDS,
+  'attendance',
+  'createdAt',
+  'addedBy',
+  'lastContactedDate',
+  'lastSeen',
 ] as const;
+
+/** Reads a date stored as an ISO string, epoch milliseconds or a Firestore
+ *  timestamp (Admin SDK `seconds`, REST `_seconds`, or a `toDate()` object). */
+export function timestampMillis(value: unknown): number {
+  if (value == null) return 0;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof value === 'object') {
+    const v = value as { toDate?: () => Date; seconds?: number; _seconds?: number };
+    if (typeof v.toDate === 'function') return v.toDate().getTime();
+    if (typeof v.seconds === 'number') return v.seconds * 1000;
+    if (typeof v._seconds === 'number') return v._seconds * 1000;
+  }
+  return 0;
+}
+
+/** The kept contact's win when both sides hold the same scalar field. */
+function pickString(keptValue: string, combinedInValue: string, pick?: CombinePick): string {
+  if (pick === 'combined-in') return combinedInValue || keptValue;
+  return keptValue || combinedInValue;
+}
+
+/** Same as {@link pickString} but keeps the raw value (flags). */
+function pickRaw<T>(keptValue: T | undefined, combinedInValue: T | undefined, pick?: CombinePick): T | undefined {
+  if (pick === 'combined-in') return combinedInValue ?? keptValue;
+  return keptValue ?? combinedInValue;
+}
+
+/** The legacy per-contact attendance map (kept until #958 finishes migrating). */
+type LegacyAttendance = Record<string, unknown>;
+
+function attendanceOf(contact: Contact): LegacyAttendance {
+  return (contact as { attendance?: LegacyAttendance }).attendance ?? {};
+}
 
 /**
  * Combines profile attributes of the combined-in contact into the kept
- * contact: sets union, scalar values from the kept contact with gaps
- * backfilled, and non-empty notes joined with a divider.
+ * contact: sets union, single values per the Full-timer's picks with gaps
+ * backfilled, notes one side or both, and the fixed earlier/later rules.
  */
-export function mergeContactProfiles(kept: Contact, combinedIn: Contact): Contact {
+export function mergeContactProfiles(
+  kept: Contact,
+  combinedIn: Contact,
+  picks: CombinePicks = {},
+): Contact {
   const unionArray = (arrA?: string[] | null, arrB?: string[] | null): string[] => {
     const set = new Set<string>();
     (arrA ?? []).forEach((item) => item && set.add(item));
@@ -239,79 +343,181 @@ export function mergeContactProfiles(kept: Contact, combinedIn: Contact): Contac
     return Array.from(set);
   };
 
-  let combinedNotes = kept.notes?.trim() ?? '';
+  const keptNotes = kept.notes?.trim() ?? '';
   const combinedInNotes = combinedIn.notes?.trim() ?? '';
-  if (combinedInNotes) {
-    if (combinedNotes && !combinedNotes.includes(combinedInNotes)) {
-      combinedNotes = `${combinedNotes}\n\n--- Combined Notes ---\n\n${combinedInNotes}`;
-    } else if (!combinedNotes) {
-      combinedNotes = combinedInNotes;
-    }
+  let combinedNotes: string;
+  if (keptNotes && combinedInNotes) {
+    if (picks.notes === 'kept') combinedNotes = keptNotes;
+    else if (picks.notes === 'combined-in') combinedNotes = combinedInNotes;
+    else if (keptNotes.includes(combinedInNotes)) combinedNotes = keptNotes;
+    else combinedNotes = `${keptNotes}\n\n--- Combined Notes ---\n\n${combinedInNotes}`;
+  } else {
+    combinedNotes = keptNotes || combinedInNotes;
   }
 
-  return {
+  // First added and added by come from the earlier record.
+  const keptTime = timestampMillis(kept.createdAt);
+  const combinedInTime = timestampMillis(combinedIn.createdAt);
+  let earlier: Contact = kept;
+  if (combinedInTime !== 0 && (keptTime === 0 || combinedInTime < keptTime)) earlier = combinedIn;
+  const other = earlier === kept ? combinedIn : kept;
+
+  // Last contacted and last seen take the later value.
+  const laterOf = (field: 'lastContactedDate' | 'lastSeen'): string => {
+    const k = kept[field] ?? '';
+    const c = combinedIn[field] ?? '';
+    const kt = timestampMillis(k);
+    const ct = timestampMillis(c);
+    if (ct !== 0 && (kt === 0 || ct > kt)) return c;
+    return k || c;
+  };
+
+  const merged: Contact = {
     ...kept,
-    name: kept.name,
-    location: kept.location || combinedIn.location || '',
-    email: kept.email || combinedIn.email || '',
-    phone: kept.phone || combinedIn.phone || '',
-    stage: kept.stage || combinedIn.stage || 'Lead',
+    name: pickString(kept.name ?? '', combinedIn.name ?? '', picks.fields?.name),
     notes: combinedNotes,
-    spiritualBackground: kept.spiritualBackground || combinedIn.spiritualBackground || '',
-    pronouns: kept.pronouns || combinedIn.pronouns || '',
-    gender: kept.gender || combinedIn.gender || '',
-    year: kept.year || combinedIn.year || '',
-    major: kept.major || combinedIn.major || '',
-    instagram: kept.instagram || combinedIn.instagram || '',
-    howHeard: kept.howHeard || combinedIn.howHeard || '',
-    metVia: kept.metVia || combinedIn.metVia || '',
-    prayerRequest: kept.prayerRequest || combinedIn.prayerRequest || '',
+    location: pickString(kept.location ?? '', combinedIn.location ?? '', picks.fields?.location),
+    email: pickString(kept.email ?? '', combinedIn.email ?? '', picks.fields?.email),
+    phone: pickString(kept.phone ?? '', combinedIn.phone ?? '', picks.fields?.phone),
+    stage: pickString(kept.stage ?? '', combinedIn.stage ?? '', picks.fields?.stage) || 'Lead',
+    spiritualBackground: pickString(
+      kept.spiritualBackground ?? '',
+      combinedIn.spiritualBackground ?? '',
+      picks.fields?.spiritualBackground,
+    ),
+    pronouns: pickString(kept.pronouns ?? '', combinedIn.pronouns ?? '', picks.fields?.pronouns),
+    gender: pickString(kept.gender ?? '', combinedIn.gender ?? '', picks.fields?.gender),
+    year: pickString(kept.year ?? '', combinedIn.year ?? '', picks.fields?.year),
+    major: pickString(kept.major ?? '', combinedIn.major ?? '', picks.fields?.major),
+    instagram: pickString(kept.instagram ?? '', combinedIn.instagram ?? '', picks.fields?.instagram),
+    howHeard: pickString(kept.howHeard ?? '', combinedIn.howHeard ?? '', picks.fields?.howHeard),
+    metVia: pickString(kept.metVia ?? '', combinedIn.metVia ?? '', picks.fields?.metVia),
+    prayerRequest: pickString(
+      kept.prayerRequest ?? '',
+      combinedIn.prayerRequest ?? '',
+      picks.fields?.prayerRequest,
+    ),
     tags: unionArray(kept.tags, combinedIn.tags),
     founders: unionArray(kept.founders, combinedIn.founders),
     carers: unionArray(kept.carers, combinedIn.carers),
     coCreators: unionArray(kept.coCreators, combinedIn.coCreators),
     visibleTo: unionArray(kept.visibleTo, combinedIn.visibleTo),
+    interests: unionArray(kept.interests, combinedIn.interests),
+    storyMessageIds: unionArray(kept.storyMessageIds, combinedIn.storyMessageIds),
+    createdAt: earlier.createdAt ?? other.createdAt,
+    addedBy: earlier.addedBy || other.addedBy,
+    lastSeen: laterOf('lastSeen'),
+    lastContactedDate: laterOf('lastContactedDate'),
     // The combined-in contact's interactions move over, so its reach does too (#1335).
     reachedAt: kept.reachedAt || combinedIn.reachedAt,
   };
+
+  merged.isStudent = pickRaw(kept.isStudent, combinedIn.isStudent, picks.fields?.isStudent);
+  merged.inChurchLife = pickRaw(kept.inChurchLife, combinedIn.inChurchLife, picks.fields?.inChurchLife);
+  merged.yearConfirmedFor = pickRaw(
+    kept.yearConfirmedFor,
+    combinedIn.yearConfirmedFor,
+    picks.fields?.yearConfirmedFor,
+  );
+
+  // The legacy per-event attendance map merges with the kept contact winning
+  // any event both carry.
+  const attendance = { ...attendanceOf(combinedIn), ...attendanceOf(kept) };
+  if (Object.keys(attendance).length > 0) {
+    (merged as { attendance?: LegacyAttendance }).attendance = attendance;
+  }
+
+  return merged;
 }
 
 function scalarValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+/** A review cell for a value that may be a flag. */
+function cellValue(value: unknown): string {
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return scalarValue(value);
+}
+
 function listValue(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+function hasValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, i) => deepEqual(item, b[i]));
+  }
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const keysA = Object.keys(a as Record<string, unknown>);
+    const keysB = Object.keys(b as Record<string, unknown>);
+    return (
+      keysA.length === keysB.length &&
+      keysA.every((key) => deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
+    );
+  }
+  return false;
+}
+
+function pickKind(keptValue: unknown, combinedInValue: unknown): CombineFieldKind {
+  if (deepEqual(keptValue ?? '', combinedInValue ?? '')) return 'same';
+  const k = hasValue(keptValue);
+  const c = hasValue(combinedInValue);
+  if (!k && c) return 'filled-in';
+  if (k && !c) return 'kept';
+  return 'pick';
+}
+
+/** A date cell for the review, normalising Firestore timestamps to ISO. */
+function stampLabel(value: unknown): string {
+  if (typeof value === 'string') return value;
+  const ms = timestampMillis(value);
+  return ms === 0 ? '' : new Date(ms).toISOString();
+}
+
+function mergedListRow(field: string, keptValue: unknown, combinedInValue: unknown, mergedValue: unknown): CombineFieldRow {
+  const keptList = listValue(keptValue);
+  const combinedInList = listValue(combinedInValue);
+  const resultList = listValue(mergedValue);
+  const keptSet = new Set(keptList);
+  const added = resultList.filter((item) => !keptSet.has(item));
+  return {
+    field,
+    kind: added.length > 0 ? 'merged' : 'same',
+    kept: keptList,
+    combinedIn: combinedInList,
+    result: resultList,
+    ...(added.length > 0 ? { added } : {}),
+  };
 }
 
 /**
  * Lists one row per profile field: what the kept contact has, what the
  * combined-in contact has, and the result the Full-timer is about to commit.
+ * The result is taken from `merged`, so a pick made before calling this is
+ * reflected in the result column.
  */
 export function diffCombineFields(kept: Contact, combinedIn: Contact, merged: Contact): CombineFieldRow[] {
   const rows: CombineFieldRow[] = [];
 
-  rows.push({
-    field: 'name',
-    kind: scalarValue(kept.name) === scalarValue(combinedIn.name) ? 'same' : 'kept',
-    kept: scalarValue(kept.name),
-    combinedIn: scalarValue(combinedIn.name),
-    result: scalarValue(merged.name),
-  });
-
-  for (const field of COMBINE_SCALAR_FIELDS) {
-    const keptValue = scalarValue(kept[field]);
-    const combinedInValue = scalarValue(combinedIn[field]);
-    let kind: CombineFieldKind;
-    if (keptValue === combinedInValue) kind = 'same';
-    else if (!keptValue && combinedInValue) kind = 'filled-in';
-    else kind = 'kept';
+  for (const field of COMBINE_PICK_FIELDS) {
+    const keptValue = (kept as unknown as Record<string, unknown>)[field];
+    const combinedInValue = (combinedIn as unknown as Record<string, unknown>)[field];
+    const mergedValue = (merged as unknown as Record<string, unknown>)[field];
     rows.push({
       field,
-      kind,
-      kept: keptValue,
-      combinedIn: combinedInValue,
-      result: scalarValue(merged[field]),
+      kind: pickKind(keptValue, combinedInValue),
+      kept: cellValue(keptValue),
+      combinedIn: cellValue(combinedInValue),
+      result: cellValue(mergedValue),
     });
   }
 
@@ -320,7 +526,7 @@ export function diffCombineFields(kept: Contact, combinedIn: Contact, merged: Co
   let notesKind: CombineFieldKind;
   if (keptNotes === combinedInNotes) notesKind = 'same';
   else if (!keptNotes && combinedInNotes) notesKind = 'filled-in';
-  else if (keptNotes && combinedInNotes) notesKind = 'notes-combined';
+  else if (keptNotes && combinedInNotes) notesKind = 'merged';
   else notesKind = 'kept';
   rows.push({
     field: 'notes',
@@ -328,24 +534,50 @@ export function diffCombineFields(kept: Contact, combinedIn: Contact, merged: Co
     kept: keptNotes,
     combinedIn: combinedInNotes,
     result: scalarValue(merged.notes),
+    ...(notesKind === 'merged' ? { added: [combinedInNotes] } : {}),
   });
 
   for (const field of COMBINE_SET_FIELDS) {
-    const keptList = listValue(kept[field]);
-    const combinedInList = listValue(combinedIn[field]);
-    const mergedList = listValue(merged[field]);
-    const keptSet = new Set(keptList);
-    const added = mergedList.filter((item) => !keptSet.has(item));
-    const kind: CombineFieldKind = added.length > 0 ? 'merged' : 'same';
-    rows.push({
-      field,
-      kind,
-      kept: keptList,
-      combinedIn: combinedInList,
-      result: mergedList,
-      ...(added.length > 0 ? { added } : {}),
-    });
+    rows.push(mergedListRow(field, kept[field], combinedIn[field], merged[field]));
   }
+
+  for (const field of COMBINE_MERGED_FIELDS) {
+    rows.push(mergedListRow(field, kept[field], combinedIn[field], merged[field]));
+  }
+
+  const keptAttendance = Object.keys(attendanceOf(kept));
+  const combinedInAttendance = Object.keys(attendanceOf(combinedIn));
+  const mergedAttendance = Object.keys(attendanceOf(merged));
+  rows.push(mergedListRow('attendance', keptAttendance, combinedInAttendance, mergedAttendance));
+
+  rows.push({
+    field: 'createdAt',
+    kind: 'earlier-wins',
+    kept: stampLabel(kept.createdAt),
+    combinedIn: stampLabel(combinedIn.createdAt),
+    result: stampLabel(merged.createdAt),
+  });
+  rows.push({
+    field: 'addedBy',
+    kind: 'earlier-wins',
+    kept: scalarValue(kept.addedBy),
+    combinedIn: scalarValue(combinedIn.addedBy),
+    result: scalarValue(merged.addedBy),
+  });
+  rows.push({
+    field: 'lastContactedDate',
+    kind: 'latest-wins',
+    kept: scalarValue(kept.lastContactedDate),
+    combinedIn: scalarValue(combinedIn.lastContactedDate),
+    result: scalarValue(merged.lastContactedDate),
+  });
+  rows.push({
+    field: 'lastSeen',
+    kind: 'latest-wins',
+    kept: scalarValue(kept.lastSeen),
+    combinedIn: scalarValue(combinedIn.lastSeen),
+    result: scalarValue(merged.lastSeen),
+  });
 
   return rows;
 }
@@ -392,8 +624,9 @@ export function buildCombinePlan(
   combinedIn: Contact,
   refs: CombineReferences,
   meta: { now: string; updatedById?: string; updatedByName: string },
+  picks: CombinePicks = {},
 ): CombinePlan {
-  const merged = mergeContactProfiles(kept, combinedIn);
+  const merged = mergeContactProfiles(kept, combinedIn, picks);
 
   const keptData: Record<string, unknown> = {
     name: merged.name,
@@ -416,10 +649,21 @@ export function buildCombinePlan(
     carers: merged.carers,
     coCreators: merged.coCreators,
     visibleTo: merged.visibleTo,
+    interests: merged.interests,
+    storyMessageIds: merged.storyMessageIds,
+    lastSeen: merged.lastSeen,
     updatedAt: meta.now,
     updatedByName: meta.updatedByName,
   };
   if (meta.updatedById) keptData.updatedBy = meta.updatedById;
+  if (merged.createdAt !== undefined) keptData.createdAt = merged.createdAt;
+  if (merged.addedBy) keptData.addedBy = merged.addedBy;
+  if (merged.lastContactedDate) keptData.lastContactedDate = merged.lastContactedDate;
+  if (merged.isStudent !== undefined) keptData.isStudent = merged.isStudent;
+  if (merged.inChurchLife !== undefined) keptData.inChurchLife = merged.inChurchLife;
+  if (merged.yearConfirmedFor) keptData.yearConfirmedFor = merged.yearConfirmedFor;
+  const mergedAttendance = attendanceOf(merged);
+  if (Object.keys(mergedAttendance).length > 0) keptData.attendance = mergedAttendance;
   if (merged.reachedAt) keptData.reachedAt = merged.reachedAt;
 
   const movedDocuments: MovedDocument[] = [];
