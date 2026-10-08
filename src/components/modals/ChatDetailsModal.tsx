@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, UserPlus, LogOut, User, Loader2, Mail, ShieldAlert, Trash2 } from 'lucide-react';
+import { UserPlus, LogOut, User, Loader2, Mail, ShieldAlert } from 'lucide-react';
 import { collection, query, where, getDocs, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { AppUser, ChatRoom, Contact } from '../../types';
@@ -11,6 +10,7 @@ import { inviteToGroup, leaveGroup, deleteChatRoom, canRemoveConvForEveryone } f
 import { ConvHides } from '../../lib/convHides';
 import { getUserInitials } from '../../lib/utils';
 import { useLayout } from '../../App';
+import { PopupFrame } from '../ui/PopupFrame';
 
 interface ChatDetailsModalProps {
   isOpen: boolean;
@@ -149,273 +149,244 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
     );
   };
 
+  const handleDeleteForEveryone = async () => {
+    if (!confirm('Delete this conversation for everyone? It leaves everyone\'s list, messages and all.')) return;
+    setLoading(true);
+    try {
+      await deleteChatRoom(room.id);
+      onLeftGroup();
+      onClose();
+    } catch (err) {
+      console.error('Failed to delete room:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isUserAdmin = userRole === 'admin';
   const otherMember = members.find(m => m.uid !== currentUser?.uid);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-scrim/55 backdrop-blur-sm"
-          />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', duration: 0.4 }}
-            className="relative w-full max-w-md max-h-[600px] bg-surface rounded-3xl border border-outline-variant shadow-2xl overflow-hidden flex flex-col z-[101]"
-          >
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
-              <div>
-                <h3 className="font-serif text-xl text-on-surface">
-                  {room.type === 'group' ? t('modals.group_details') : t('modals.conversation_details')}
-                </h3>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  {room.type === 'group' ? t('modals.members_count').replace('{n}', String(room.memberIds.length)) : t('modals.direct_chat_info')}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+    <PopupFrame
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      title={room.type === 'group' ? t('modals.group_details') : t('modals.conversation_details')}
+      subtitle={
+        room.type === 'group'
+          ? t('modals.members_count').replace('{n}', String(room.memberIds.length))
+          : t('modals.direct_chat_info')
+      }
+      destructive={
+        canRemoveConvForEveryone(room, currentUser?.uid, isUserAdmin)
+          ? { label: t('modals.delete_for_everyone'), onClick: () => void handleDeleteForEveryone() }
+          : null
+      }
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      primary={{ label: t('actions.done'), onClick: onClose, savingLabel: t('actions.done') }}
+    >
+      {/* Scrollable Content */}
+      <div className="space-y-5 bg-surface-container-lowest p-5">
+        {loadingMembers ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-2 text-on-surface-variant">
+            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+            <span className="text-xs">{t('modals.loading_info')}</span>
+          </div>
+        ) : room.type === 'direct' && otherMember ? (
+          /* DIRECT CHAT VIEW */
+          <div className="space-y-4 text-center">
+            <div className="w-20 h-20 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-3xl mx-auto border border-outline-variant/30">
+              {otherMember.photoURL ? (
+                <img
+                  src={otherMember.photoURL}
+                  alt={otherMember.displayName}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                getUserInitials(otherMember.displayName)
+              )}
+            </div>
+            <div>
+              <h4 className="font-serif text-xl text-on-surface">{otherMember.displayName}</h4>
+              <p className="text-sm text-on-surface-variant flex items-center justify-center gap-1.5 mt-1">
+                <Mail className="w-4 h-4 text-on-surface-variant/75" />
+                {otherMember.email}
+              </p>
+              <span className="inline-block text-[11px] font-semibold   bg-stage-accent-soft text-stage-accent rounded-full px-2.5 py-0.5 mt-2">
+                {t('modals.role')}: {otherMember.role}
+              </span>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-surface-container-lowest">
-              {loadingMembers ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2 text-on-surface-variant">
-                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                  <span className="text-xs">{t('modals.loading_info')}</span>
-                </div>
-              ) : room.type === 'direct' && otherMember ? (
-                /* DIRECT CHAT VIEW */
-                <div className="space-y-4 text-center">
-                  <div className="w-20 h-20 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-3xl mx-auto border border-outline-variant/30">
-                    {otherMember.photoURL ? (
-                      <img
-                        src={otherMember.photoURL}
-                        alt={otherMember.displayName}
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    ) : (
-                      getUserInitials(otherMember.displayName)
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-serif text-xl text-on-surface">{otherMember.displayName}</h4>
-                    <p className="text-sm text-on-surface-variant flex items-center justify-center gap-1.5 mt-1">
-                      <Mail className="w-4 h-4 text-on-surface-variant/75" />
-                      {otherMember.email}
-                    </p>
-                    <span className="inline-block text-[11px] font-semibold   bg-stage-accent-soft text-stage-accent rounded-full px-2.5 py-0.5 mt-2">
-                      {t('modals.role')}: {otherMember.role}
+            {recipientContact && (
+              <div className="pt-4 border-t border-outline-variant/60">
+                <button
+                  onClick={handleOpenContactProfile}
+                  className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-semibold text-sm  hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <User className="w-4 h-4" />
+                  {t('modals.view_directory_profile')}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* GROUP CHAT VIEW */
+          <div className="space-y-4">
+            {/* Group Name Card */}
+            <div className="p-4 rounded-3xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
+              <span className="text-[10px] font-semibold text-on-surface-variant  ">{t('modals.group_name')}</span>
+              <span className="font-serif text-lg text-on-surface">{room.name}</span>
+              <span className="text-[11px] text-on-surface-variant">{t('modals.created_by')} {room.createdByName}</span>
+            </div>
+
+            {/* Members Section */}
+            <div className="space-y-2.5">
+              <h4 className="text-xs font-semibold text-on-surface-variant px-1  ">
+                {t('modals.members_list')} ({members.length})
+              </h4>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto p-0.5">
+                {members.map(m => (
+                  <div key={m.uid} className="flex items-center gap-3 p-2 rounded-xl bg-surface border border-outline-variant/30">
+                    <div className="w-8 h-8 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-xs shrink-0">
+                      {m.photoURL ? (
+                        <img
+                          src={m.photoURL}
+                          alt={m.displayName}
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : (
+                        getUserInitials(m.displayName)
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h5 className="font-semibold text-xs text-on-surface truncate">{m.displayName}</h5>
+                      <p className="text-[10px] text-on-surface-variant truncate">{m.email}</p>
+                    </div>
+                    <span className="text-[9px] font-semibold  bg-surface-container-high text-on-surface-variant rounded px-1.5 py-0.5 shrink-0">
+                      {m.role}
                     </span>
                   </div>
+                ))}
+              </div>
+            </div>
 
-                  {recipientContact && (
-                    <div className="pt-4 border-t border-outline-variant/60">
-                      <button
-                        onClick={handleOpenContactProfile}
-                        className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-semibold text-sm  hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <User className="w-4 h-4" />
-                        {t('modals.view_directory_profile')}
-                      </button>
-                    </div>
-                  )}
-                </div>
+            {/* Invite New Members Toggle */}
+            <div className="border-t border-outline-variant/60 pt-4 space-y-3">
+              {!showInviteSection ? (
+                <button
+                  onClick={() => setShowInviteSection(true)}
+                  className="w-full py-2.5 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-high font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors text-on-surface"
+                >
+                  <UserPlus className="w-4 h-4 text-accent" />
+                  {t('modals.invite_new_members')}
+                </button>
               ) : (
-                /* GROUP CHAT VIEW */
-                <div className="space-y-4">
-                  {/* Group Name Card */}
-                  <div className="p-4 rounded-3xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
-                    <span className="text-[10px] font-semibold text-on-surface-variant  ">{t('modals.group_name')}</span>
-                    <span className="font-serif text-lg text-on-surface">{room.name}</span>
-                    <span className="text-[11px] text-on-surface-variant">{t('modals.created_by')} {room.createdByName}</span>
+                <div className="space-y-3 p-3 rounded-3xl bg-surface-container-low border border-outline-variant/50">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-xs font-semibold text-on-surface-variant  ">
+                      {t('modals.select_members_to_add').replace('{n}', String(selectedInviteUids.length))}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setShowInviteSection(false);
+                        setSelectedInviteUids([]);
+                      }}
+                      className="text-xs text-accent font-semibold hover:underline"
+                    >
+                      {t('modals.cancel')}
+                    </button>
                   </div>
 
-                  {/* Members Section */}
-                  <div className="space-y-2.5">
-                    <h4 className="text-xs font-semibold text-on-surface-variant px-1  ">
-                      {t('modals.members_list')} ({members.length})
-                    </h4>
-                    <div className="space-y-2 max-h-[220px] overflow-y-auto p-0.5">
-                      {members.map(m => (
-                        <div key={m.uid} className="flex items-center gap-3 p-2 rounded-xl bg-surface border border-outline-variant/30">
-                          <div className="w-8 h-8 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-xs shrink-0">
-                            {m.photoURL ? (
-                              <img
-                                src={m.photoURL}
-                                alt={m.displayName}
-                                className="w-full h-full object-cover rounded-full"
-                              />
-                            ) : (
-                              getUserInitials(m.displayName)
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h5 className="font-semibold text-xs text-on-surface truncate">{m.displayName}</h5>
-                            <p className="text-[10px] text-on-surface-variant truncate">{m.email}</p>
-                          </div>
-                          <span className="text-[9px] font-semibold  bg-surface-container-high text-on-surface-variant rounded px-1.5 py-0.5 shrink-0">
-                            {m.role}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Invite New Members Toggle */}
-                  <div className="border-t border-outline-variant/60 pt-4 space-y-3">
-                    {!showInviteSection ? (
-                      <button
-                        onClick={() => setShowInviteSection(true)}
-                        className="w-full py-2.5 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-high font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors text-on-surface"
-                      >
-                        <UserPlus className="w-4 h-4 text-accent" />
-                        Invite new members
-                      </button>
-                    ) : (
-                      <div className="space-y-3 p-3 rounded-3xl bg-surface-container-low border border-outline-variant/50">
-                        <div className="flex justify-between items-center px-1">
-                          <span className="text-xs font-semibold text-on-surface-variant  ">
-                            Select Members to Add ({selectedInviteUids.length})
-                          </span>
-                          <button
-                            onClick={() => {
-                              setShowInviteSection(false);
-                              setSelectedInviteUids([]);
-                            }}
-                            className="text-xs text-accent font-semibold hover:underline"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-
-                        <div className="space-y-2 max-h-[140px] overflow-y-auto p-0.5">
-                          {allUsers.length === 0 ? (
-                            <div className="text-center py-4 text-on-surface-variant text-xs">
-                              All approved users are already in this group.
-                            </div>
-                          ) : (
-                            allUsers.map((u) => {
-                              const isChecked = selectedInviteUids.includes(u.uid);
-                              return (
-                                <div
-                                  key={u.uid}
-                                  onClick={() => toggleInviteUid(u.uid)}
-                                  className={`p-2 rounded-lg border flex items-center gap-3.5 cursor-pointer text-left transition-all ${
-                                    isChecked
-                                      ? 'border-primary bg-primary/5'
-                                      : 'border-outline-variant/40 bg-surface hover:bg-surface-container-high'
-                                  }`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => {}} // toggled on container click
-                                    className="w-3.5 h-3.5 rounded text-accent border-outline accent-primary cursor-pointer shrink-0"
-                                  />
-                                  <div className="w-6 h-6 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-[10px] shrink-0">
-                                    {u.photoURL ? (
-                                      <img
-                                        src={u.photoURL}
-                                        alt={u.displayName}
-                                        className="w-full h-full object-cover rounded-full"
-                                      />
-                                    ) : (
-                                      getUserInitials(u.displayName)
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <h5 className="font-semibold text-[11px] text-on-surface truncate">
-                                      {u.displayName}
-                                    </h5>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-
-                        {allUsers.length > 0 && (
-                          <button
-                            onClick={handleInviteMembers}
-                            disabled={loading || selectedInviteUids.length === 0}
-                            className="w-full py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs  hover:bg-primary/95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {loading ? 'Adding...' : `Add Selected`}
-                          </button>
-                        )}
+                  <div className="space-y-2 max-h-[140px] overflow-y-auto p-0.5">
+                    {allUsers.length === 0 ? (
+                      <div className="text-center py-4 text-on-surface-variant text-xs">
+                        {t('modals.all_members_in_group')}
                       </div>
+                    ) : (
+                      allUsers.map((u) => {
+                        const isChecked = selectedInviteUids.includes(u.uid);
+                        return (
+                          <div
+                            key={u.uid}
+                            onClick={() => toggleInviteUid(u.uid)}
+                            className={`p-2 rounded-lg border flex items-center gap-3.5 cursor-pointer text-left transition-all ${
+                              isChecked
+                                ? 'border-primary bg-primary/5'
+                                : 'border-outline-variant/40 bg-surface hover:bg-surface-container-high'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}} // toggled on container click
+                              className="w-3.5 h-3.5 rounded text-accent border-outline accent-primary cursor-pointer shrink-0"
+                            />
+                            <div className="w-6 h-6 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-[10px] shrink-0">
+                              {u.photoURL ? (
+                                <img
+                                  src={u.photoURL}
+                                  alt={u.displayName}
+                                  className="w-full h-full object-cover rounded-full"
+                                />
+                              ) : (
+                                getUserInitials(u.displayName)
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="font-semibold text-[11px] text-on-surface truncate">
+                                {u.displayName}
+                              </h5>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
+
+                  {allUsers.length > 0 && (
+                    <button
+                      onClick={handleInviteMembers}
+                      disabled={loading || selectedInviteUids.length === 0}
+                      className="w-full py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs  hover:bg-primary/95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? t('modals.saving') : t('modals.add_selected')}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
+          </div>
+        )}
+      </div>
 
-            {/* Footer / Actions */}
-            <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex flex-col gap-2.5 bg-surface-container-low">
-              {room.type === 'group' && (
-                <button
-                  onClick={handleLeaveGroup}
-                  disabled={loading}
-                  className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Leave Group
-                </button>
-              )}
+      {/* Actions — Leave / Hide. Delete for everyone lives in the frame's
+          destructive slot, far left of the footer. */}
+      <div className="space-y-2.5 border-t border-outline-variant bg-surface-container-low px-5 py-4">
+        {room.type === 'group' && (
+          <button
+            onClick={handleLeaveGroup}
+            disabled={loading}
+            className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          >
+            <LogOut className="w-4 h-4" />
+            {t('modals.leave_group')}
+          </button>
+        )}
 
-              <button
-                onClick={() => {
-                  if (currentUser?.uid) {
-                    ConvHides.hide(currentUser.uid, room.id);
-                    onLeftGroup();
-                    onClose();
-                  }
-                }}
-                className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                Hide from my list
-              </button>
-
-              {canRemoveConvForEveryone(room, currentUser?.uid, isUserAdmin) && (
-                <button
-                  onClick={async () => {
-                    if (confirm('Delete this conversation for everyone? It leaves everyone\'s list, messages and all.')) {
-                      setLoading(true);
-                      try {
-                        await deleteChatRoom(room.id);
-                        onLeftGroup();
-                        onClose();
-                      } catch (err) {
-                        console.error('Failed to delete room:', err);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }
-                  }}
-                  disabled={loading}
-                  className="w-full h-10 rounded-full border border-error/45 text-error hover:bg-error/5 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete for everyone
-                </button>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+        <button
+          onClick={() => {
+            if (currentUser?.uid) {
+              ConvHides.hide(currentUser.uid, room.id);
+              onLeftGroup();
+              onClose();
+            }
+          }}
+          className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+        >
+          {t('modals.hide_from_my_list')}
+        </button>
+      </div>
+    </PopupFrame>
   );
 }

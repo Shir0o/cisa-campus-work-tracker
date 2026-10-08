@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
   Search,
@@ -8,7 +7,6 @@ import {
   UserPlus,
   Paperclip,
   Pin,
-  Send,
   Bell,
   Check
 } from 'lucide-react';
@@ -19,6 +17,7 @@ import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { getOrCreateDirectChat, createGroupChat, createAnnouncementRoom } from '../../services/chat';
 import { getUserInitials, firstName } from '../../lib/utils';
+import { PopupFrame } from '../ui/PopupFrame';
 import AttachDataModal from './AttachDataModal';
 
 interface CreateChatModalProps {
@@ -48,16 +47,6 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
   const [selectedUids, setSelectedUids] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleEsc);
-    }
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen || !currentUser) return;
@@ -164,41 +153,80 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
     }
   };
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-scrim/55 backdrop-blur-sm"
-          />
+  const frameTitle =
+    tab === 'announcement' && announceStep === 2
+      ? announceName.trim() || t('modals.announcement')
+      : tab === 'announcement' && announceStep === 3
+      ? t('modals.review')
+      : t('modals.new_message');
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', duration: 0.4 }}
-            className="relative w-full max-w-md h-[560px] bg-surface rounded-3xl border border-outline-variant shadow-2xl overflow-hidden flex flex-col z-[101]"
-          >
-            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
-              <h3 className="font-serif text-xl text-on-surface">
-                {tab === 'announcement' && announceStep === 2
-                  ? announceName.trim() || t('modals.announcement')
-                  : tab === 'announcement' && announceStep === 3
-                  ? t('modals.review')
-                  : t('modals.new_message')}
-              </h3>
-              <button
-                onClick={onClose}
-                aria-label={t('common.close')}
-                className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+  const dirty =
+    tab === 'message'
+      ? selectedUids.length > 0 || groupName.trim().length > 0
+      : announceName.trim().length > 0 ||
+        announceBody.trim().length > 0 ||
+        announceAttachments.length > 0;
+
+  const footerHint =
+    tab === 'announcement' && announceStep === 1 ? (
+      t('modals.announcement_gate_note')
+    ) : tab === 'announcement' && announceStep > 1 ? (
+      <button
+        type="button"
+        onClick={() => setAnnounceStep((prev) => (prev - 1) as 1 | 2)}
+        className="rounded-full px-3 py-1 text-[12px] font-medium text-on-surface-variant transition-colors hover:text-on-surface"
+      >
+        {t('modals.back')}
+      </button>
+    ) : undefined;
+
+  const primary =
+    tab === 'message'
+      ? {
+          label:
+            selectedUids.length > 1
+              ? t('modals.start_group').replace('{n}', String(selectedUids.length))
+              : t('modals.start_conversation'),
+          onClick: () => void startMessage(),
+          disabled: loading || selectedUids.length === 0,
+          saving: loading,
+          savingLabel: t('modals.starting'),
+        }
+      : announceStep === 1
+      ? {
+          label: t('modals.next'),
+          onClick: () => setAnnounceStep(2),
+          disabled: !announceName.trim() || announcementMemberUids.length === 0,
+          savingLabel: t('modals.saving'),
+        }
+      : announceStep === 2
+      ? {
+          label: t('modals.review'),
+          onClick: () => setAnnounceStep(3),
+          savingLabel: t('modals.saving'),
+        }
+      : {
+          label: t('modals.send_to_n').replace('{n}', String(announcementMemberUids.length)),
+          onClick: () => void handleSendAnnouncement(),
+          disabled: loading,
+          saving: loading,
+          savingLabel: t('modals.sending'),
+        };
+
+  return (
+    <>
+      <PopupFrame
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      title={frameTitle}
+      dirty={dirty}
+      noun={t('modals.chat_noun')}
+      footerHint={footerHint}
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      primary={primary}
+    >
 
             {(tab === 'message' || announceStep === 1) && (
               <div className="flex border-b border-outline-variant shrink-0 bg-surface-container-low/55 p-1.5 gap-1">
@@ -568,107 +596,16 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center gap-3 bg-surface-container-low">
-              {tab === 'message' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex-1 h-11 rounded-full font-semibold text-accent hover:bg-primary/5 transition-all text-sm cursor-pointer"
-                  >
-                    {t('modals.cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void startMessage()}
-                    disabled={loading || selectedUids.length === 0}
-                    className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    {loading ? (
-                      <span className="animate-pulse">{t('modals.starting')}</span>
-                    ) : selectedUids.length > 1 ? (
-                      t('modals.start_group').replace('{n}', String(selectedUids.length))
-                    ) : (
-                      t('modals.start_conversation')
-                    )}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="text-xs text-on-surface-variant/70 flex-1 truncate">
-                    {announceStep === 1 && t('modals.announcement_gate_note')}
-                  </span>
-                  {announceStep > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setAnnounceStep((prev) => (prev - 1) as 1 | 2)}
-                      className="px-4 h-11 rounded-full font-semibold text-on-surface hover:bg-surface-container-high transition-all text-sm cursor-pointer"
-                    >
-                      {t('modals.back')}
-                    </button>
-                  )}
-                  {announceStep === 1 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 h-11 rounded-full font-semibold text-accent hover:bg-primary/5 transition-all text-sm cursor-pointer"
-                      >
-                        {t('modals.cancel')}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!announceName.trim() || announcementMemberUids.length === 0}
-                        onClick={() => setAnnounceStep(2)}
-                        className="px-6 h-11 rounded-full bg-primary text-on-primary font-semibold hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                      >
-                        {t('modals.next')}
-                      </button>
-                    </>
-                  )}
-                  {announceStep === 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setAnnounceStep(3)}
-                      className="px-6 h-11 rounded-full bg-primary text-on-primary font-semibold hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer text-sm"
-                    >
-                      {t('modals.review')}
-                    </button>
-                  )}
-                  {announceStep === 3 && (
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => void handleSendAnnouncement()}
-                      className="px-6 h-11 rounded-full bg-primary text-on-primary font-semibold hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 text-sm flex items-center gap-2"
-                    >
-                      {loading ? (
-                        <span className="animate-pulse">{t('modals.sending')}</span>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>
-                            {t('modals.send_to_n').replace('{n}', String(announcementMemberUids.length))}
-                          </span>
-                        </>
-                      )}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          </motion.div>
+      </PopupFrame>
 
-          <AttachDataModal
-            isOpen={isAttachOpen}
-            onClose={() => setIsAttachOpen(false)}
-            onAttach={(att) => {
-              setAnnounceAttachments((prev) => [...prev, att]);
-              setIsAttachOpen(false);
-            }}
-          />
-        </div>
-      )}
-    </AnimatePresence>
+      <AttachDataModal
+        isOpen={isAttachOpen}
+        onClose={() => setIsAttachOpen(false)}
+        onAttach={(att) => {
+          setAnnounceAttachments((prev) => [...prev, att]);
+          setIsAttachOpen(false);
+        }}
+      />
+    </>
   );
 }

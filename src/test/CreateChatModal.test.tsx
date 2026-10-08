@@ -372,4 +372,25 @@ describe('CreateChatModal Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Message$/i }));
     expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
   });
+
+  it('renders through the shared popup frame, labelled with its title (#1453)', () => {
+    setupOnSnapshot(mockUsers);
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+    expect(screen.getByRole('dialog', { name: 'New message' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeInTheDocument();
+  });
+
+  it('asks before discarding a chat you have started, and keeps it on cancel (#1453)', () => {
+    setupOnSnapshot(mockUsers);
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this chat?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
 });
