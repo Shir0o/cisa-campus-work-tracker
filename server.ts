@@ -2824,7 +2824,16 @@ ${JSON.stringify(contactsList)}`;
       // The record is written first, as pending, so a failure partway through
       // leaves something that can be inspected.
       const reason = typeof req.body?.reason === "string" ? req.body.reason : "";
-      const recordRef = await db.collection("combineRecords").add({
+      const recordRef = db.collection("combineRecords").doc();
+      // Stamp the banner every reader of the kept contact will see, and keep it
+      // in keptAfter so undo removes it (or restores an earlier combine's, #1434).
+      plan.keptData.combinedFrom = {
+        name: combinedInContact.name,
+        at: now,
+        byName: actorName,
+        combineRecordId: recordRef.id,
+      };
+      await recordRef.set({
         kind: "contacts",
         keptId,
         combinedInId,

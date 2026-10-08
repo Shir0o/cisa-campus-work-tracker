@@ -363,6 +363,18 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
             </Text>
           )}
 
+          {!!contact.combinedFrom && (
+            <Text
+              testID="combined-from"
+              style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 10 }}
+            >
+              {t('mobile.contact.combined_from', 'Combined from {name} on {date} by {person}')
+                .replace('{name}', contact.combinedFrom.name)
+                .replace('{date}', new Date(contact.combinedFrom.at).toLocaleDateString())
+                .replace('{person}', contact.combinedFrom.byName)}
+            </Text>
+          )}
+
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
             <HeroAction label={t('mobile.contact.text')} disabled={!contact.phone} onPress={() => openMessage(contact.phone)} />
             <HeroAction label={t('mobile.contact.call')} disabled={!contact.phone} onPress={() => openCall(contact.phone)} />
