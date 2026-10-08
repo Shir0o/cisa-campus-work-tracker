@@ -10,12 +10,14 @@ import {
 import { Check, Loader2, Repeat, Undo2, Users } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useLanguage } from '../components/LanguageProvider';
+import { useAuth } from '../components/AuthProvider';
 import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   findCombineCandidates,
   mergeContactProfiles,
   diffCombineFields,
+  contactPairKey,
   type CombineFieldRow,
   type CombineMoveGroup,
   type CombinePair,
@@ -23,6 +25,12 @@ import {
   type CombinePicks,
   type ContactHistory,
 } from '../lib/combineContactsPlan';
+import {
+  markNotSamePerson,
+  unmarkNotSamePerson,
+  NOT_SAME_PERSON_MARKS,
+  type NotSamePersonMark,
+} from '../lib/combineContactsMarks';
 import type { Contact } from '../types';
 
 /** A permanent combine record (ADR 0038), as stored by the server. */
@@ -130,7 +138,7 @@ const MOVE_KIND_LABELS: Record<CombineMoveGroup['kind'], string> = {
   activities: 'Activity Log entries',
 };
 
-const pairKey = (pair: CombinePair) => [pair.kept.id, pair.combinedIn.id].sort().join('|');
+const pairKey = (pair: CombinePair) => contactPairKey(pair.kept.id, pair.combinedIn.id);
 
 const renderValue = (value: string | string[]): string => {
   if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : '';
@@ -146,11 +154,14 @@ const renderValue = (value: string | string[]): string => {
  */
 export default function CombineContacts() {
   const { t } = useLanguage();
-  const [tab, setTab] = useState<'queue' | 'recent'>('queue');
+  const { effectiveUserId, effectiveUserName } = useAuth();
+  const [tab, setTab] = useState<'queue' | 'recent' | 'not-same'>('queue');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [marks, setMarks] = useState<NotSamePersonMark[]>([]);
+  const [markingKey, setMarkingKey] = useState<string | null>(null);
   const [combiningId, setCombiningId] = useState<string | null>(null);
   const [combineError, setCombineError] = useState<string | null>(null);
   const [records, setRecords] = useState<CombineRecord[]>([]);
@@ -197,6 +208,18 @@ export default function CombineContacts() {
     );
   }, [tab]);
 
+  // Not the same person marks, readable by Full-timers (the page is admin-only).
+  useEffect(() => {
+    const q = query(collection(db, NOT_SAME_PERSON_MARKS));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        setMarks(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as NotSamePersonMark[]);
+      },
+      (e) => handleFirestoreError(e, OperationType.LIST, NOT_SAME_PERSON_MARKS),
+    );
+  }, []);
+
   // The default kept contact is the record with more history. Count each
   // candidate's interactions, comments and roster entries once they are known.
   useEffect(() => {
@@ -238,14 +261,15 @@ export default function CombineContacts() {
   }, [contacts]);
 
   const pairs = useMemo(() => {
-    return findCombineCandidates(contacts, historyById)
+    const markedKeys = new Set(marks.map((m) => contactPairKey(m.contactIds[0], m.contactIds[1])));
+    return findCombineCandidates(contacts, historyById, markedKeys)
       .filter((p) => !skipped.has(pairKey(p)))
       .map((p) =>
         swappedKeys.has(pairKey(p))
           ? { kept: p.combinedIn, combinedIn: p.kept, reason: p.reason }
           : p,
       );
-  }, [contacts, historyById, skipped, swappedKeys]);
+  }, [contacts, historyById, skipped, swappedKeys, marks]);
 
   const picksFor = (key: string): CombinePicks => picksByPair[key] ?? {};
 
@@ -268,6 +292,58 @@ export default function CombineContacts() {
       return next;
     });
   };
+
+  const markPair = async (pair: CombinePair) => {
+    if (!effectiveUserId || markingKey) return;
+    const key = pairKey(pair);
+    const ids = [pair.kept.id, pair.combinedIn.id].sort();
+    setMarkingKey(key);
+    setCombineError(null);
+    try {
+      await markNotSamePerson({
+        contactA: pair.kept.id,
+        contactB: pair.combinedIn.id,
+        uid: effectiveUserId,
+        name: effectiveUserName ?? '',
+      });
+      setMarks((prev) =>
+        prev.some((m) => m.id === key)
+          ? prev
+          : [
+              ...prev,
+              {
+                id: key,
+                contactIds: ids,
+                markedBy: effectiveUserId,
+                markedByName: effectiveUserName ?? '',
+                markedAt: new Date().toISOString(),
+              },
+            ],
+      );
+    } catch (e) {
+      setCombineError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMarkingKey(null);
+    }
+  };
+
+  const removeMark = async (mark: NotSamePersonMark) => {
+    setCombineError(null);
+    try {
+      await unmarkNotSamePerson(mark.contactIds[0], mark.contactIds[1]);
+      setMarks((prev) => prev.filter((m) => m.id !== mark.id));
+    } catch (e) {
+      setCombineError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const nameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    contacts.forEach((c) => {
+      map[c.id] = c.name;
+    });
+    return map;
+  }, [contacts]);
 
   const combine = async (pair: CombinePair) => {
     if (combiningId) return;
@@ -424,6 +500,19 @@ export default function CombineContacts() {
         >
           {t('combine_contacts.tab_recent', 'Recent combines')}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'not-same'}
+          onClick={() => setTab('not-same')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'not-same'
+              ? 'text-primary border-primary'
+              : 'text-on-surface-variant border-transparent hover:text-on-surface'
+          }`}
+        >
+          {t('combine_contacts.tab_not_same', 'Not the same person')}
+        </button>
       </div>
 
       {combineError && (
@@ -576,6 +665,54 @@ export default function CombineContacts() {
             })}
           </div>
         )
+      ) : tab === 'not-same' ? (
+        marks.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="font-medium text-on-surface">
+              {t('combine_contacts.no_marks', 'No pairs marked Not the same person')}
+            </p>
+            <p className="text-sm text-on-surface-variant mt-1">
+              {t(
+                'combine_contacts.no_marks_sub',
+                'Pairs you mark as different people will be listed here, and can be unmarked.',
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {marks.map((mark) => (
+              <section
+                key={mark.id}
+                data-testid="not-same-mark"
+                className="rounded-xl border border-outline-variant bg-surface p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-on-surface">
+                      {fill(t('combine_contacts.mark_pair', '{first} and {second}'), {
+                        first: nameById[mark.contactIds[0]] || mark.contactIds[0],
+                        second: nameById[mark.contactIds[1]] || mark.contactIds[1],
+                      })}
+                    </p>
+                    <p className="text-sm text-on-surface-variant mt-1">
+                      {fill(t('combine_contacts.marked_by', 'Marked by {name} on {date}'), {
+                        name: mark.markedByName || '',
+                        date: formatWhen(typeof mark.markedAt === 'string' ? mark.markedAt : undefined),
+                      })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeMark(mark)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors"
+                  >
+                    {t('combine_contacts.remove_mark', 'Remove mark')}
+                  </button>
+                </div>
+              </section>
+            ))}
+          </div>
+        )
       ) : loading ? (
         <div className="space-y-4">
           {[0, 1].map((i) => (
@@ -624,6 +761,14 @@ export default function CombineContacts() {
                     >
                       <Repeat className="w-4 h-4" />
                       {t('combine_contacts.swap', 'Swap')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={combiningId !== null || markingKey === key}
+                      onClick={() => markPair(pair)}
+                      className="text-sm text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
+                    >
+                      {t('combine_contacts.not_same', 'Not the same person')}
                     </button>
                     <button
                       type="button"

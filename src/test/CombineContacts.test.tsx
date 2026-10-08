@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CombineContacts from '../views/CombineContacts';
+import { setDoc, deleteDoc } from 'firebase/firestore';
 import type { Contact } from '../types';
 
 const contacts: Contact[] = [
@@ -62,15 +63,31 @@ vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ t: (_key: string, fallback?: string) => fallback || _key, language: 'en' }),
 }));
 
+vi.mock('../components/AuthProvider', () => ({
+  useAuth: () => ({ effectiveUserId: 'admin1', effectiveUserName: 'Faith' }),
+}));
+
+const h = vi.hoisted(() => ({
+  marks: [] as { id: string; contactIds: string[]; markedBy: string; markedByName: string; markedAt: string }[],
+}));
+
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, name: string) => ({ __name: name })),
   query: vi.fn((q: unknown) => q),
   orderBy: vi.fn(),
   where: vi.fn(() => ({})),
   getCountFromServer: vi.fn(async () => ({ data: () => ({ count: 0 }) })),
+  doc: vi.fn((_db: unknown, col: string, id: string) => ({ __col: col, id })),
+  setDoc: vi.fn(async () => {}),
+  deleteDoc: vi.fn(async () => {}),
+  serverTimestamp: vi.fn(() => 'ts'),
   onSnapshot: vi.fn((q: { __name?: string }, cb: (snap: unknown) => void) => {
     if (q?.__name === 'combineRecords') {
       cb({ docs: combineRecords.map((r) => ({ id: r.id, data: () => r })) });
+      return () => {};
+    }
+    if (q?.__name === 'notSamePersonMarks') {
+      cb({ docs: h.marks.map((m) => ({ id: m.id, data: () => m })) });
       return () => {};
     }
     cb({ docs: contacts.map((c) => ({ id: c.id, data: () => c })) });
@@ -88,6 +105,7 @@ vi.mock('../lib/firebase', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  h.marks = [];
   getIdToken.mockResolvedValue('token');
   global.fetch = vi.fn().mockImplementation((_url: string, opts: { body: string }) => {
     const body = JSON.parse(opts.body);
@@ -214,6 +232,91 @@ describe('CombineContacts page', () => {
     render(<CombineContacts />);
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+  });
+
+  it('Skip for now keeps the pair hidden only until the page is reopened', () => {
+    const { unmount } = render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    unmount();
+
+    render(<CombineContacts />);
+    expect(screen.getByTestId('combine-pair')).toBeInTheDocument();
+  });
+
+  it('marks a pair Not the same person, removing it from the Queue for everyone', async () => {
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('button', { name: /not the same person/i }));
+
+    await waitFor(() => expect(setDoc).toHaveBeenCalled());
+    const [ref, data] = (setDoc as unknown as { mock: { calls: [unknown, Record<string, unknown>][] } })
+      .mock.calls[0];
+    expect(ref).toEqual({ __col: 'notSamePersonMarks', id: 'c1|c2' });
+    expect(data).toMatchObject({
+      contactIds: ['c1', 'c2'],
+      markedBy: 'admin1',
+      markedByName: 'Faith',
+    });
+    expect(await screen.findByText(/No duplicate contacts found/i)).toBeInTheDocument();
+  });
+
+  it('lists Not the same person marks with who and when, and removing one brings the pair back', async () => {
+    h.marks = [
+      {
+        id: 'c1|c2',
+        contactIds: ['c1', 'c2'],
+        markedBy: 'admin1',
+        markedByName: 'Faith',
+        markedAt: '2026-03-05T00:00:00.000Z',
+      },
+    ];
+    render(<CombineContacts />);
+    // The marked pair is no longer suggested.
+    expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /not the same person/i }));
+    const markRow = await screen.findByTestId('not-same-mark');
+    expect(within(markRow).getByText(/Faith/)).toBeInTheDocument();
+    expect(within(markRow).getByText(/Alice Smith/)).toBeInTheDocument();
+
+    fireEvent.click(within(markRow).getByRole('button', { name: /remove mark/i }));
+    await waitFor(() => expect(deleteDoc).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('tab', { name: /queue/i }));
+    expect(await screen.findByTestId('combine-pair')).toBeInTheDocument();
+  });
+
+  it('keeps the pair and shows an error when the mark cannot be saved', async () => {
+    (setDoc as unknown as { mockRejectedValueOnce: (e: Error) => void }).mockRejectedValueOnce(
+      new Error('denied'),
+    );
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('button', { name: /not the same person/i }));
+
+    expect(await screen.findByText('denied')).toBeInTheDocument();
+    expect(screen.getByTestId('combine-pair')).toBeInTheDocument();
+  });
+
+  it('shows an error when removing a mark fails', async () => {
+    h.marks = [
+      {
+        id: 'c1|c2',
+        contactIds: ['c1', 'c2'],
+        markedBy: 'admin1',
+        markedByName: 'Faith',
+        markedAt: '2026-03-05T00:00:00.000Z',
+      },
+    ];
+    (deleteDoc as unknown as { mockRejectedValueOnce: (e: Error) => void }).mockRejectedValueOnce(
+      new Error('denied'),
+    );
+    render(<CombineContacts />);
+    fireEvent.click(screen.getByRole('tab', { name: /not the same person/i }));
+    const markRow = await screen.findByTestId('not-same-mark');
+    fireEvent.click(within(markRow).getByRole('button', { name: /remove mark/i }));
+
+    expect(await screen.findByText('denied')).toBeInTheDocument();
+    expect(screen.getByTestId('not-same-mark')).toBeInTheDocument();
   });
 
   it('lists combine records with who, when and the match reason in Recent combines', async () => {
