@@ -132,7 +132,7 @@ describe("interactionAdapter", () => {
     expect(closeFollowUpAsk).toHaveBeenCalledWith("c1", "ask", { uid: "maria", name: "Maria Santos" });
     a.reopenAsk!(msg({ id: "ask", kind: "nudge" }));
     expect(reopenFollowUpAsk).toHaveBeenCalledWith("c1", "ask");
-    expect(make({ me: { uid: "v", name: "Viewer", role: "viewer" } }).reopenAsk).toBeUndefined();
+    expect(make("viewer").reopenAsk).toBeUndefined();
     a.delete(msg({ id: "gone" }));
     expect(deleteThreadMessage).toHaveBeenCalledWith("c1", "gone", null);
   });
