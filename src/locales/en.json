@@ -43,6 +43,7 @@
     "delete": "Delete",
     "edit": "Edit",
     "close": "Close",
+    "done": "Done",
     "search": "Search",
     "filter": "Filter",
     "view_original": "View original",
@@ -566,8 +567,11 @@
     "not_reached_tied_to": "Tied to {names}"
   },
   "prayers": {
+    "eyebrow": "On our hearts",
     "who_are_we_holding": "Who are we praying for?",
     "tick_people_you_want": "Tick the people you want on this page.",
+    "added_count": "{n} added",
+    "discard_picks": "Discard the people you picked?",
     "no_one_matches_name": "No one matches that name.",
     "already_held": "already on our prayer list",
     "find_someone": "Find someone…",

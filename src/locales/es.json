@@ -43,6 +43,7 @@
     "delete": "Eliminar",
     "edit": "Editar",
     "close": "Cerrar",
+    "done": "Hecho",
     "search": "Buscar",
     "filter": "Filtrar",
     "view_original": "Ver original",
@@ -566,8 +567,11 @@
     "not_reached_tied_to": "Vinculado con {names}"
   },
   "prayers": {
+    "eyebrow": "En nuestro corazón",
     "who_are_we_holding": "¿Por quiénes oramos?",
     "tick_people_you_want": "Marca a las personas que quieras en esta página.",
+    "added_count": "{n} añadidos",
+    "discard_picks": "¿Descartar a quienes elegiste?",
     "no_one_matches_name": "Nadie coincide con ese nombre.",
     "already_held": "ya en nuestra lista de oración",
     "find_someone": "Buscar a alguien…",
