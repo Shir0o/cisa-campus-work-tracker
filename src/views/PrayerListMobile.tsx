@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ChevronRight, Clock, MessageSquare, Plus, Trash2, X } from 'lucide-react';
@@ -8,6 +8,7 @@ import { getContactGrade, getContactCarers, getContactAddedBy, isContactStale, g
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useLayout } from '../App';
+import { useCommand } from '../lib/commands';
 import PickHeldModal from '../components/modals/PickHeldModal';
 
 type Status = PrayerRecord['status'];
@@ -855,10 +856,12 @@ function AddThisWeekMobile({
   const [open, setOpen] = useState(!!defaultOpen);
   const [saving, setSaving] = useState(false);
   const [val, setVal] = useState('');
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const cmdId = useId();
 
   const save = async () => {
     const textValue = val.trim();
-    if (!textValue) return;
+    if (!textValue || saving) return;
     setSaving(true);
     const ok = await onAdd(textValue);
     setSaving(false);
@@ -867,6 +870,17 @@ function AddThisWeekMobile({
       setOpen(false);
     }
   };
+
+  useCommand({
+    id: `prayer.addThisWeekMobile:${cmdId}`,
+    scope: 'compose',
+    description: translate('prayers.add_prayer'),
+    shortcut: { key: 'Enter', mod: true },
+    minRole: 'operator',
+    when: (e) => e.target === taRef.current,
+    available: () => open && !!val.trim() && !saving,
+    handler: () => void save(),
+  });
 
   if (!open) {
     return (
@@ -883,6 +897,7 @@ function AddThisWeekMobile({
   return (
     <div className="flex flex-col gap-2 mt-1">
       <textarea
+        ref={taRef}
         autoFocus
         rows={3}
         value={val}
