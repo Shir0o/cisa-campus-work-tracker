@@ -40,7 +40,10 @@ export interface TranslationCronDeps {
     limit: number,
   ): Promise<FetchBatchResult>;
   getCachedHashes(hashes: string[]): Promise<Set<string>>;
-  translateTexts(texts: string[]): Promise<string[]>;
+  /** Translates a batch. A `null` entry means that string failed and must be
+   *  left uncached so a later sweep retries it (never write the original as
+   *  its own translation). */
+  translateTexts(texts: string[]): Promise<Array<string | null>>;
   saveTranslations(
     items: Array<{ hash: string; originalText: string; translatedText: string }>,
   ): Promise<void>;
@@ -56,6 +59,9 @@ export interface CronRunResult {
   translatedCount: number;
   cachedCount: number;
   scannedDocsCount: number;
+  /** Strings Gemini rejected after retries. They stay uncached so the next
+   *  full sweep picks them up. */
+  failedCount: number;
 }
 
 const SPANISH_MARKERS = new Set([
@@ -110,23 +116,22 @@ export function extractTranslatableTexts(
 
   switch (collection) {
     case "prayers":
-      if (typeof data.title === "string") candidates.push(data.title);
-      if (typeof data.description === "string") candidates.push(data.description);
-      if (typeof data.updateNotes === "string") candidates.push(data.updateNotes);
-      if (typeof data.answeredNotes === "string") candidates.push(data.answeredNotes);
+      // Real stored fields on a PrayerRecord (src/types.ts). The retired
+      // title/description/updateNotes/answeredNotes lists extracted nothing.
+      if (typeof data.burden === "string") candidates.push(data.burden);
+      if (typeof data.answer === "string") candidates.push(data.answer);
+      if (typeof data.archiveReason === "string") candidates.push(data.archiveReason);
       break;
     case "contacts":
       if (typeof data.notes === "string") candidates.push(data.notes);
-      if (typeof data.nextSteps === "string") candidates.push(data.nextSteps);
-      if (typeof data.spiritualCondition === "string") candidates.push(data.spiritualCondition);
+      if (typeof data.spiritualBackground === "string") candidates.push(data.spiritualBackground);
+      if (typeof data.prayerRequest === "string") candidates.push(data.prayerRequest);
       break;
     case "interactions":
       if (typeof data.content === "string") candidates.push(data.content);
-      if (typeof data.summary === "string") candidates.push(data.summary);
       break;
     case "todos":
       if (typeof data.title === "string") candidates.push(data.title);
-      if (typeof data.description === "string") candidates.push(data.description);
       break;
     case "coordinationNotes":
       if (typeof data.title === "string") candidates.push(data.title);
@@ -191,18 +196,25 @@ export async function advanceTranslationCron(
   }
 
   let translatedCount = 0;
+  let failedCount = 0;
   if (uncachedEntries.length > 0) {
     const textsToTranslate = uncachedEntries.map((e) => e.text);
     const translatedTexts = await deps.translateTexts(textsToTranslate);
 
     const itemsToSave: Array<{ hash: string; originalText: string; translatedText: string }> = [];
     for (let i = 0; i < uncachedEntries.length; i++) {
-      const translated = translatedTexts[i] ?? uncachedEntries[i].text;
-      itemsToSave.push({
-        hash: uncachedEntries[i].hash,
-        originalText: uncachedEntries[i].text,
-        translatedText: translated,
-      });
+      const translated = translatedTexts[i];
+      if (typeof translated === "string" && translated.length > 0) {
+        itemsToSave.push({
+          hash: uncachedEntries[i].hash,
+          originalText: uncachedEntries[i].text,
+          translatedText: translated,
+        });
+      } else {
+        // A failed string is not written to the cache — writing the original
+        // as its own translation would hide it from future sweeps.
+        failedCount++;
+      }
     }
 
     await deps.saveTranslations(itemsToSave);
@@ -233,5 +245,6 @@ export async function advanceTranslationCron(
     translatedCount,
     cachedCount: allHashes.length - uncachedEntries.length,
     scannedDocsCount: docs.length,
+    failedCount,
   };
 }

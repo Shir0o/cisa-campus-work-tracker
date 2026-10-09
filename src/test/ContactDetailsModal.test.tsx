@@ -840,13 +840,15 @@ describe('ContactDetailsModal Component', () => {
     await screen.findByText('John Doe');
     openAbout();
 
-    // Click add tag button
-    const addTagBtn = screen.getByRole('button', { name: /^add$/i });
+    // Click add tag button (the tags input mounts after the About tab settles,
+    // so wait for it rather than racing on a synchronous getBy).
+    const addTagBtn = await screen.findByRole('button', { name: /^add$/i });
     await act(async () => {
       fireEvent.click(addTagBtn);
     });
 
     const getTagInput = () => screen.getByPlaceholderText(/new tag/i);
+    await screen.findByPlaceholderText(/new tag/i);
 
     // Type tag
     await act(async () => {

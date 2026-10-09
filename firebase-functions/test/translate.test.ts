@@ -40,50 +40,74 @@ describe("translationHash", () => {
 });
 
 describe("extractTranslatableTexts", () => {
-  it("extracts translatable fields from prayer document", () => {
+  it("extracts the real stored prayer fields (burden, answer, archiveReason)", () => {
+    const prayerDoc = {
+      burden: "Health for brother",
+      status: "answered",
+      answer: "Fully healed",
+      archiveReason: "Answered and closed",
+      spanishNote: "Dios es bueno",
+    };
+    const texts = extractTranslatableTexts("prayers", prayerDoc);
+    expect(texts).toContain("Health for brother");
+    expect(texts).toContain("Fully healed");
+    expect(texts).toContain("Answered and closed");
+    expect(texts).not.toContain("Dios es bueno"); // Spanish skipped
+  });
+
+  it("ignores the retired prayer fields that are not stored", () => {
     const prayerDoc = {
       title: "Health for brother",
       description: "Needs strength this week",
       updateNotes: "Feeling better",
       answeredNotes: "Fully healed",
-      spanishNote: "Dios es bueno",
     };
-    const texts = extractTranslatableTexts("prayers", prayerDoc);
-    expect(texts).toContain("Health for brother");
-    expect(texts).toContain("Needs strength this week");
-    expect(texts).toContain("Feeling better");
-    expect(texts).toContain("Fully healed");
-    expect(texts).not.toContain("Dios es bueno"); // Spanish skipped
+    expect(extractTranslatableTexts("prayers", prayerDoc)).toEqual([]);
   });
 
-  it("extracts translatable fields from contact doc", () => {
+  it("extracts the real stored contact fields (notes, spiritualBackground, prayerRequest)", () => {
     const contactDoc = {
       name: "John Doe",
       notes: "Met at outreach table",
-      nextSteps: "Follow up next Tuesday",
+      spiritualBackground: "Grew up Catholic",
+      prayerRequest: "Please pray for my family",
     };
     const texts = extractTranslatableTexts("contacts", contactDoc);
     expect(texts).toContain("Met at outreach table");
-    expect(texts).toContain("Follow up next Tuesday");
+    expect(texts).toContain("Grew up Catholic");
+    expect(texts).toContain("Please pray for my family");
   });
 
-  it("extracts translatable fields from interaction doc", () => {
+  it("ignores the retired contact fields that are not stored", () => {
+    const contactDoc = {
+      nextSteps: "Follow up next Tuesday",
+      spiritualCondition: "Curious",
+    };
+    expect(extractTranslatableTexts("contacts", contactDoc)).toEqual([]);
+  });
+
+  it("extracts the real stored interaction field (content)", () => {
     const interactionDoc = {
       content: "Shared the gospel at student union",
       location: "Student Union",
     };
     const texts = extractTranslatableTexts("interactions", interactionDoc);
     expect(texts).toContain("Shared the gospel at student union");
+    expect(texts).not.toContain("Student Union");
   });
 
-  it("extracts translatable fields from todo doc", () => {
+  it("ignores the retired interaction summary field", () => {
+    expect(extractTranslatableTexts("interactions", { summary: "Short recap" })).toEqual([]);
+  });
+
+  it("extracts the real stored todo field (title)", () => {
     const todoDoc = {
       title: "Bring bibles to campus",
       description: "Box of 20 English New Testaments",
     };
     const texts = extractTranslatableTexts("todos", todoDoc);
     expect(texts).toContain("Bring bibles to campus");
-    expect(texts).toContain("Box of 20 English New Testaments");
+    expect(texts).not.toContain("Box of 20 English New Testaments");
   });
 
   it("extracts translatable fields from coordinationNotes doc", () => {
@@ -108,8 +132,8 @@ describe("advanceTranslationCron", () => {
       saveCursor: vi.fn(async () => {}),
       fetchBatch: vi.fn(async () => ({
         docs: [
-          { id: "p1", data: { title: "Pray for finals", description: "Exam week" } },
-          { id: "p2", data: { title: "Pray for fellowship", description: "Friday dinner" } },
+          { id: "p1", data: { burden: "Pray for finals", answer: "Exam week" } },
+          { id: "p2", data: { burden: "Pray for fellowship", answer: "Friday dinner" } },
         ],
         hasMore: false,
       })),
@@ -148,6 +172,64 @@ describe("advanceTranslationCron", () => {
     expect(deps.saveTranslations).not.toHaveBeenCalled();
     expect(result.translatedCount).toBe(0);
     expect(result.cachedCount).toBe(4);
+  });
+
+  it("saves successful chunks, skips failed strings, and still advances the cursor", async () => {
+    const deps = makeDeps({
+      translateTexts: vi.fn(async () => ["[es] a", null, "[es] c", null]),
+    });
+    const result = await advanceTranslationCron(deps, { maxItemsPerRun: 10 });
+
+    // 2 docs * 2 texts each = 4 strings; the nulls are failures.
+    expect(deps.saveTranslations).toHaveBeenCalledWith([
+      {
+        hash: expect.any(String),
+        originalText: "Pray for finals",
+        translatedText: "[es] a",
+      },
+      {
+        hash: expect.any(String),
+        originalText: "Pray for fellowship",
+        translatedText: "[es] c",
+      },
+    ]);
+    expect(result.translatedCount).toBe(2);
+    expect(result.failedCount).toBe(2);
+    // The cursor advances even though some strings failed.
+    expect(deps.saveCursor).toHaveBeenCalledWith({
+      currentCollection: "interactions",
+      lastDocId: null,
+      updatedAt: expect.any(String),
+    });
+  });
+
+  it("resolves, caches nothing, and advances the cursor when every string fails", async () => {
+    const deps = makeDeps({
+      translateTexts: vi.fn(async () => [null, null, null, null]),
+    });
+    const result = await advanceTranslationCron(deps, { maxItemsPerRun: 10 });
+
+    expect(result.translatedCount).toBe(0);
+    expect(result.failedCount).toBe(4);
+    expect(deps.saveTranslations).toHaveBeenCalledWith([]);
+    expect(deps.saveCursor).toHaveBeenCalledWith({
+      currentCollection: "interactions",
+      lastDocId: null,
+      updatedAt: expect.any(String),
+    });
+  });
+
+  it("counts a short translation result as failed rather than writing the original text", async () => {
+    const deps = makeDeps({
+      translateTexts: vi.fn(async () => ["[es] a"]),
+    });
+    const result = await advanceTranslationCron(deps, { maxItemsPerRun: 10 });
+
+    expect(result.translatedCount).toBe(1);
+    expect(result.failedCount).toBe(3);
+    const saved = (deps.saveTranslations as any).mock.calls[0][0];
+    expect(saved).toHaveLength(1);
+    expect(saved[0].translatedText).toBe("[es] a");
   });
 
   it("updates lastDocId without cycling collection when hasMore is true", async () => {
