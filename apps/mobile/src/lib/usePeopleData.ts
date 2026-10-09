@@ -49,7 +49,10 @@ export function usePeopleData(uid: string | null, role?: AppRole | string | null
       { role, staffId: uid },
     );
     const unsubStages = subscribeStages(setStages, (e) => onLoadError(e, 'stages'));
-    const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'));
+    const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'), {
+      role,
+      staffId: uid,
+    });
     // "In your care" — the picker's choice, else the people I added. Same
     // notion of ownership as My Day and the full-timer's home.
     const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>

@@ -1166,6 +1166,37 @@ describeRules('Firestore Security Rules', () => {
         }
       });
     }
+
+    // #1411: the phone People page's last-touch feed is this exact fan-out for
+    // a Trainee — their visible contacts, then each person's newest
+    // interactions and comments. It must never issue the collection-group feed.
+    it('lets a Trainee\'s tied touches fan-out through, and refuses the untied person (#1411)', async () => {
+      await seedSubcollections();
+      const trainee = getFirestore({ uid: 'manager1' });
+
+      // The fan-out's first hop: only the contacts the Trainee can see.
+      const visible = await assertSucceeds(
+        getDocs(query(collection(trainee, 'contacts'), where('visibleTo', 'array-contains', 'manager1'))),
+      );
+      expect(visible.docs.map((d) => d.id)).toEqual(['tied']);
+
+      // The per-person reads the fan-out fans into, for both touch kinds.
+      const readPaths: string[] = [];
+      for (const sub of ['interactions', 'comments']) {
+        const one = sub === 'interactions' ? 'i1' : 'c1';
+        const mine = await assertSucceeds(getDocs(forContact(trainee, 'tied', sub)));
+        expect(mine.docs.map((d) => d.ref.path)).toEqual([`contacts/tied/${sub}/${one}`]);
+        readPaths.push(`contacts/tied/${sub}/${one}`);
+        // Negative check: the untied person's touches never reach the feed.
+        await assertFails(getDocs(forContact(trainee, 'untied', sub)));
+      }
+      expect(readPaths).toEqual(['contacts/tied/interactions/i1', 'contacts/tied/comments/c1']);
+
+      // The unscoped collection-group feeds stay denied for a Trainee.
+      for (const sub of ['interactions', 'comments']) {
+        await assertFails(getDocs(feed(trainee, sub)));
+      }
+    });
   });
 
   // Threads are part of a contact's detail page too. The nested rule already
