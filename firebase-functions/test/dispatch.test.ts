@@ -21,7 +21,8 @@ function makeDeps(devices: Record<string, RegisteredDevice[]>, overrides: Partia
     fullTimerIds: vi.fn(async () => ["ft1", "ft2"]),
     devicesOf: vi.fn(async (uid: string) => devices[uid] ?? []),
     claimCoalesce: vi.fn(async () => true),
-    send: vi.fn(async () => "ok" as const),
+    send: vi.fn(async () => ({ status: "ok" }) as const),
+    recordTicket: vi.fn(async () => {}),
     removeDevice: vi.fn(async () => {}),
     ...overrides,
   };
@@ -76,12 +77,27 @@ describe("dispatchNotification", () => {
   it("drops a device the push service reports as gone", async () => {
     const deps = makeDeps(
       { u1: [expoDevice("d1", "t1"), webDevice("d2", "https://push/z")] },
-      { send: vi.fn(async (_u, d) => (d.kind === "web" ? ("gone" as const) : ("ok" as const))) },
+      { send: vi.fn(async (_u, d) => (d.kind === "web" ? { status: "gone" as const } : { status: "ok" as const })) },
     );
     const result = await dispatchNotification({ id: "n5", userId: "u1", ...base }, deps);
 
     expect(deps.removeDevice).toHaveBeenCalledWith("u1", "d2");
     expect(result).toMatchObject({ sent: 1, removed: 1 });
+  });
+
+  it("keeps the Expo ticket id with its recipient and device for a later receipt check (#1439)", async () => {
+    const deps = makeDeps(
+      { u1: [expoDevice("d1", "t1"), webDevice("d2", "https://push/x")] },
+      {
+        send: vi.fn(async (_u, d) =>
+          d.kind === "expo" ? ({ status: "ok", ticketId: "tk1" } as const) : ({ status: "ok" } as const),
+        ),
+      },
+    );
+    await dispatchNotification({ id: "n10", userId: "u1", ...base }, deps);
+
+    expect(deps.recordTicket).toHaveBeenCalledWith("u1", "d1", "tk1");
+    expect(deps.recordTicket).toHaveBeenCalledTimes(1);
   });
 
   it("keeps going when one device fails to send", async () => {
@@ -90,7 +106,7 @@ describe("dispatchNotification", () => {
       {
         send: vi.fn(async (_u, d) => {
           if (d.kind === "expo" && d.token === "t1") throw new Error("boom");
-          return "ok" as const;
+          return { status: "ok" } as const;
         }),
       },
     );

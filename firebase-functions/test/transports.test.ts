@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { expoSender, webPushSender, EXPO_PUSH_URL } from "../src/transports";
+import {
+  expoSender,
+  expoReceiptFetcher,
+  webPushSender,
+  EXPO_PUSH_URL,
+  EXPO_RECEIPTS_URL,
+} from "../src/transports";
 import { capPushPayload } from "../src/dispatch";
 
 const utf8 = (s: string) => new TextEncoder().encode(s).length;
@@ -13,7 +19,7 @@ describe("expoSender", () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ data: [{ status: "ok", id: "x" }] }));
     const send = expoSender(fetchImpl as unknown as typeof fetch, "tok");
 
-    expect(await send("ExponentPushToken[a]", payload)).toBe("ok");
+    expect(await send("ExponentPushToken[a]", payload)).toEqual({ status: "ok", ticketId: "x" });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(EXPO_PUSH_URL);
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
@@ -41,7 +47,7 @@ describe("expoSender", () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({ data: [{ status: "error", details: { error: "DeviceNotRegistered" } }] }),
     );
-    expect(await expoSender(fetchImpl as unknown as typeof fetch, "tok")("t", payload)).toBe("gone");
+    expect(await expoSender(fetchImpl as unknown as typeof fetch, "tok")("t", payload)).toEqual({ status: "gone" });
   });
 
   it("throws on any other Expo error so the failure is logged", async () => {
@@ -66,7 +72,7 @@ describe("webPushSender", () => {
     const sendNotification = vi.fn(async () => ({}));
     const send = webPushSender({ sendNotification } as never);
 
-    expect(await send(sub, payload)).toBe("ok");
+    expect(await send(sub, payload)).toEqual({ status: "ok" });
     expect(sendNotification).toHaveBeenCalledWith(
       sub,
       JSON.stringify({ title: "T", body: "B", link: "/people/c1", targetId: "c1", notificationId: "n1" }),
@@ -78,7 +84,7 @@ describe("webPushSender", () => {
     const sendNotification = vi.fn(async () => {
       throw Object.assign(new Error("expired"), { statusCode });
     });
-    expect(await webPushSender({ sendNotification } as never)(sub, payload)).toBe("gone");
+    expect(await webPushSender({ sendNotification } as never)(sub, payload)).toEqual({ status: "gone" });
   });
 
   it("rethrows other push-service errors", async () => {
@@ -86,6 +92,27 @@ describe("webPushSender", () => {
       throw Object.assign(new Error("server"), { statusCode: 500 });
     });
     await expect(webPushSender({ sendNotification } as never)(sub, payload)).rejects.toThrow("server");
+  });
+});
+
+describe("expoReceiptFetcher", () => {
+  it("posts the ticket ids and returns the receipt map", async () => {
+    const receipts = { tk1: { status: "ok" }, tk2: { status: "error", details: { error: "DeviceNotRegistered" } } };
+    const fetchImpl = vi.fn(async () => jsonResponse({ data: receipts }));
+    const fetchReceipts = expoReceiptFetcher(fetchImpl as unknown as typeof fetch, "tok");
+
+    expect(await fetchReceipts(["tk1", "tk2"])).toEqual(receipts);
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(EXPO_RECEIPTS_URL);
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
+    expect(JSON.parse(init.body as string)).toEqual({ ids: ["tk1", "tk2"] });
+  });
+
+  it("throws on a request-level Expo error so the run is retried", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ errors: [{ message: "slow down" }] }));
+    await expect(
+      expoReceiptFetcher(fetchImpl as unknown as typeof fetch, "tok")(["tk1"]),
+    ).rejects.toThrow(/slow down/);
   });
 });
 

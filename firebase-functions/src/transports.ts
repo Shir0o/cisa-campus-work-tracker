@@ -3,8 +3,10 @@
 // on anything else so the failure is logged rather than swallowed.
 import type webpush from "web-push";
 import type { PushPayload, SendOutcome } from "./dispatch";
+import type { ExpoReceipt } from "./receipts";
 
 export const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+export const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 
 /** Native iOS/Android via Expo's push service. */
 export function expoSender(fetchImpl: typeof fetch, accessToken: string | undefined) {
@@ -31,14 +33,38 @@ export function expoSender(fetchImpl: typeof fetch, accessToken: string | undefi
       ]),
     });
     const json = (await res.json()) as {
-      data?: Array<{ status: string; message?: string; details?: { error?: string } }>;
+      data?: Array<{ status: string; id?: string; message?: string; details?: { error?: string } }>;
       errors?: Array<{ message?: string }>;
     };
     if (json.errors?.length) throw new Error(`Expo push rejected: ${json.errors.map((e) => e.message).join("; ")}`);
     const ticket = json.data?.[0];
-    if (ticket?.status === "ok") return "ok";
-    if (ticket?.details?.error === "DeviceNotRegistered") return "gone";
+    if (ticket?.status === "ok") return { status: "ok", ticketId: ticket.id };
+    if (ticket?.details?.error === "DeviceNotRegistered") return { status: "gone" };
     throw new Error(`Expo push failed: ${ticket?.message ?? ticket?.details?.error ?? "no ticket"}`);
+  };
+}
+
+/** Fetches the delivery receipts for Expo tickets. A ticket only means Expo
+ *  queued the message; the receipt carries the real FCM/APNs outcome. */
+export function expoReceiptFetcher(fetchImpl: typeof fetch, accessToken: string | undefined) {
+  return async (ticketIds: string[]): Promise<Record<string, ExpoReceipt>> => {
+    const res = await fetchImpl(EXPO_RECEIPTS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ ids: ticketIds }),
+    });
+    const json = (await res.json()) as {
+      data?: Record<string, ExpoReceipt>;
+      errors?: Array<{ message?: string }>;
+    };
+    if (json.errors?.length) {
+      throw new Error(`Expo receipts rejected: ${json.errors.map((e) => e.message).join("; ")}`);
+    }
+    return json.data ?? {};
   };
 }
 
@@ -51,10 +77,10 @@ export function webPushSender(client: Pick<typeof webpush, "sendNotification">) 
   ): Promise<SendOutcome> => {
     try {
       await client.sendNotification(sub, JSON.stringify(p), { TTL: 86_400, urgency: "high" });
-      return "ok";
+      return { status: "ok" };
     } catch (e) {
       const status = (e as { statusCode?: number }).statusCode;
-      if (status === 404 || status === 410) return "gone";
+      if (status === 404 || status === 410) return { status: "gone" };
       throw e;
     }
   };

@@ -21,7 +21,8 @@ import {
   type PushDevice,
   type RegisteredDevice,
 } from "./dispatch";
-import { expoSender, webPushSender } from "./transports";
+import { expoSender, expoReceiptFetcher, webPushSender } from "./transports";
+import { processExpoReceipts, type PendingReceipt } from "./receipts";
 import { advanceTranslationCron } from "./translate";
 import { firestoreTranslationDeps, geminiTranslator } from "./translateFirestore";
 import {
@@ -51,6 +52,17 @@ function isPushDevice(d: DocumentData): d is PushDevice {
   if (d.kind === "expo") return typeof d.token === "string";
   if (d.kind === "web") return typeof d.endpoint === "string" && typeof d.keys?.p256dh === "string" && typeof d.keys?.auth === "string";
   return false;
+}
+
+/** Delete a device the push service reports gone. The legacy single-token
+ *  field is cleared the same way, so old installs are pruned too. Shared by
+ *  dispatch and the receipt check. */
+async function removeDevice(db: Firestore, uid: string, deviceId: string): Promise<void> {
+  if (deviceId === LEGACY_DEVICE_ID) {
+    await db.collection("users").doc(uid).update({ pushToken: FieldValue.delete() });
+  } else {
+    await db.collection("users").doc(uid).collection("pushDevices").doc(deviceId).delete();
+  }
 }
 
 function firestoreDeps(db: Firestore): Omit<DispatchDeps, "send"> {
@@ -88,13 +100,15 @@ function firestoreDeps(db: Firestore): Omit<DispatchDeps, "send"> {
         return true;
       });
     },
-    async removeDevice(uid, deviceId) {
-      if (deviceId === LEGACY_DEVICE_ID) {
-        await db.collection("users").doc(uid).update({ pushToken: FieldValue.delete() });
-      } else {
-        await db.collection("users").doc(uid).collection("pushDevices").doc(deviceId).delete();
-      }
+    async recordTicket(uid, deviceId, ticketId) {
+      await db.collection("pushTickets").add({
+        uid,
+        deviceId,
+        ticketId,
+        createdAt: FieldValue.serverTimestamp(),
+      });
     },
+    removeDevice: (uid, deviceId) => removeDevice(db, uid, deviceId),
   };
 }
 
@@ -116,7 +130,34 @@ function sinkSender(db: Firestore): DispatchDeps["send"] {
       ...payload,
       at: FieldValue.serverTimestamp(),
     });
-    return "ok";
+    // No Expo ticket under the emulator: nothing to receipt-check.
+    return { status: "ok" };
+  };
+}
+
+/** Live deps for the receipt check over Firestore: the recorded tickets, an
+ *  Expo receipt fetch, and the same device removal dispatch uses. */
+function firestoreReceiptDeps(db: Firestore) {
+  const fetchReceipts = expoReceiptFetcher(fetch, EXPO_ACCESS_TOKEN.value() || undefined);
+  return {
+    async pendingTickets(): Promise<PendingReceipt[]> {
+      const snap = await db.collection("pushTickets").orderBy("createdAt").limit(1000).get();
+      return snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          uid: data.uid,
+          deviceId: data.deviceId,
+          ticketId: data.ticketId,
+          createdAt: data.createdAt?.toMillis?.() ?? 0,
+        };
+      });
+    },
+    fetchReceipts,
+    removeDevice: (uid: string, deviceId: string) => removeDevice(db, uid, deviceId),
+    async deleteTicket(id: string) {
+      await db.collection("pushTickets").doc(id).delete();
+    },
   };
 }
 
@@ -156,6 +197,28 @@ export const pushBellQa = triggerFor("qa-db");
 // The web app talks to the emulator's (default) database (src/lib/firebase.ts).
 // The live project has no (default) database, so this exists only there.
 export const pushBellEmulator = process.env.FUNCTIONS_EMULATOR === "true" ? triggerFor("(default)") : undefined;
+
+/** Every 15 minutes, read the Expo receipts for pushes sent earlier so a
+ *  refused delivery is logged and a dead device is deleted (#1439). */
+function scheduledReceiptsFor(database: string) {
+  return onSchedule(
+    {
+      schedule: "*/15 * * * *",
+      timeZone: "America/Los_Angeles",
+      region: "us-east1",
+      secrets: [EXPO_ACCESS_TOKEN],
+      timeoutSeconds: 300,
+    },
+    async () => {
+      const db = getFirestore(database);
+      const result = await processExpoReceipts(firestoreReceiptDeps(db));
+      console.log(`[ScheduledReceipts] ${database} run complete:`, result);
+    },
+  );
+}
+
+export const scheduledReceiptsProd = scheduledReceiptsFor("prod");
+export const scheduledReceiptsQa = scheduledReceiptsFor("qa-db");
 
 function scheduledTranslationFor(database: string) {
   return onSchedule(
