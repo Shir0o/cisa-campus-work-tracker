@@ -554,7 +554,7 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('auto-unhides contact from the prayer list when a prayer is added (#565)', async () => {
+  it('leaves a removed contact hidden when a prayer is added on the contact tab (#1406)', async () => {
     localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['contact-abc', 'other-contact']));
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
@@ -577,7 +577,9 @@ describe('ContactDetailsModal Component', () => {
     });
 
     const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
-    expect(hidden).not.toContain('contact-abc');
+    // A prayer typed on the contact's own tab does not put them back on
+    // "On our hearts" (#1406); only an explicit add on /prayer does.
+    expect(hidden).toContain('contact-abc');
     expect(hidden).toContain('other-contact');
 
     localStorage.removeItem('cisa.prayer.hidden');

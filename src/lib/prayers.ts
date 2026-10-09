@@ -22,12 +22,13 @@ export async function addPrayerBurden(
       burden: text,
       status: "pending",
       prayerPage: true,
+      // A prayer written here (a visit, say) belongs to the contact, not the
+      // team page — only an explicit add on /prayer makes it the team's (#1406).
+      teamPrayer: false,
       updatedAt: now,
       updatedBy: by.uid || null,
       updatedByName: by.name || null,
     });
-    // Auto-unhide contact from "On our hearts" page (#565)
-    unhidePrayerContact(contactId);
     return ref?.id ?? null;
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "prayers");

@@ -196,8 +196,10 @@ describe('LogVisitModal', () => {
 
     await waitFor(() => {
       expect(addPrayerBurden).toHaveBeenCalledWith('c1', 'Peace for her dad', expect.anything());
-      expect(unhidePrayerContact).toHaveBeenCalledWith('c1');
     });
+    // A visit prayer is the contact's own; it must not surface the person on
+    // "On our hearts" (#1406).
+    expect(unhidePrayerContact).not.toHaveBeenCalled();
     const input = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(input.prayerId).toBe('prayer-1');
     // Kept on the visit too, so the card can read it back without going looking.

@@ -38,7 +38,6 @@ import { interactionAdapter } from "../stream/interactionAdapter";
 import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
 import { walkingRecipient } from "../../lib/walking";
-import { unhidePrayerContact } from "../../lib/prayers";
 import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
 import { normalizeTagList } from "../../lib/tags";
@@ -1195,18 +1194,15 @@ export default function ContactDetailsModal({
         date: now,
         burden,
         status: "pending",
-        // A burden typed on a contact's tab is that contact's, not the team's.
-        // `isTeamPrayer` treats an absent flag as team, so this must be
-        // explicit or the prayer surfaces on "On our hearts" (#1042).
+        // A burden typed on a contact's tab belongs to that contact; only
+        // burdens written on "On our hearts" belong on the team page (#1042).
+        // It must not put a removed person back on that page (#1406).
         teamPrayer: false,
         updatedAt: now,
         updatedBy: user?.uid || "",
         updatedByName:
           user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       });
-
-      // Auto-unhide contact from "On our hearts" page (#565)
-      unhidePrayerContact(contact.id);
 
       logActivity({
         action: "added a prayer burden for",
