@@ -194,10 +194,12 @@ export function useContactDetailData(contactId: string) {
     // data/prayers.ts's wrapper stays a plain write (matching the Prayer tab's
     // own addPrayer) — a prayer written down here is additionally logged, so it
     // surfaces in "Looking back" and in the person's audit trail on the desk.
+    // It belongs to the contact, not the team page (#1406), so the flag is
+    // explicit: only an add on the prayer page makes a burden the team's.
     addPrayer: async (input: { burden: string; context?: string }) => {
       if (!contact || !uid) return;
       const burden = [input.burden.trim(), input.context?.trim()].filter(Boolean).join('\n\n');
-      await addPrayerApi({ contactId, burden }, by);
+      await addPrayerApi({ contactId, burden, teamPrayer: false }, by);
       void logActivity({
         action: 'added a prayer burden for',
         targetId: contactId,

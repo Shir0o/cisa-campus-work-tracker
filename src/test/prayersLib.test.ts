@@ -43,7 +43,7 @@ describe('addPrayerBurden', () => {
     localStorage.clear();
   });
 
-  it('starts a burden on the prayer page, hands back its id, and unhides the contact', async () => {
+  it('saves a visit prayer as the contact’s own, hands back its id, and leaves the hidden set alone (#1406)', async () => {
     localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1', 'c2']));
     const id = await addPrayerBurden('c1', '  Peace for her dad  ', by);
     expect(id).toBe('p-new');
@@ -53,11 +53,13 @@ describe('addPrayerBurden', () => {
       burden: 'Peace for her dad',
       status: 'pending',
       prayerPage: true,
+      // An off-page prayer belongs to the contact, not the team (#1406).
+      teamPrayer: false,
       updatedBy: 'u1',
       updatedByName: 'Mei Tanaka',
     });
-    // Verify auto-unhide from localStorage
-    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c2']);
+    // Logging a visit must not put the person back on "On our hearts" (#1406).
+    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1', 'c2']);
   });
 
   it('writes nothing for an empty burden or a missing person', async () => {
