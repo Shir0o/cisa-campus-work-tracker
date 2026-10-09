@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { expoSender, webPushSender, EXPO_PUSH_URL } from "../src/transports";
+import { capPushPayload } from "../src/dispatch";
+
+const utf8 = (s: string) => new TextEncoder().encode(s).length;
 
 const payload = { title: "T", body: "B", link: "/people/c1", targetId: "c1", notificationId: "n1" };
 
@@ -83,5 +86,33 @@ describe("webPushSender", () => {
       throw Object.assign(new Error("server"), { statusCode: 500 });
     });
     await expect(webPushSender({ sendNotification } as never)(sub, payload)).rejects.toThrow("server");
+  });
+});
+
+describe("push payload size (#1440)", () => {
+  it("keeps a capped long-message payload under 4096 bytes on both transports", async () => {
+    const capped = capPushPayload({
+      title: "Ana mentioned you on Lila",
+      body: "a reply that runs on and on ".repeat(1_000),
+      link: "/people/c1?tab=thread",
+      targetId: "c1",
+      notificationId: "n1",
+    });
+
+    const fetchImpl = vi.fn(async () => jsonResponse({ data: [{ status: "ok" }] }));
+    await expoSender(fetchImpl as unknown as typeof fetch, "tok")(
+      "ExponentPushToken[aaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+      capped,
+    );
+    const [, expoInit] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(utf8(expoInit.body as string)).toBeLessThan(4096);
+
+    const sendNotification = vi.fn(async () => ({}));
+    await webPushSender({ sendNotification } as never)(
+      { endpoint: "https://push/x", keys: { p256dh: "p", auth: "a" } },
+      capped,
+    );
+    const wire = sendNotification.mock.calls[0][1] as string;
+    expect(utf8(wire)).toBeLessThan(4096);
   });
 });

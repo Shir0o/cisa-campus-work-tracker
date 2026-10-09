@@ -1,5 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
-import { dispatchNotification, type DispatchDeps, type RegisteredDevice } from "../src/dispatch";
+import {
+  dispatchNotification,
+  capPushPayload,
+  MAX_PUSH_PAYLOAD_BYTES,
+  type DispatchDeps,
+  type PushPayload,
+  type RegisteredDevice,
+} from "../src/dispatch";
+
+const utf8 = (s: string) => new TextEncoder().encode(s).length;
 
 const expoDevice = (id: string, token: string): RegisteredDevice => ({ id, device: { kind: "expo", token } });
 const webDevice = (id: string, endpoint: string): RegisteredDevice => ({
@@ -104,5 +113,56 @@ describe("dispatchNotification", () => {
       { kind: "expo", token: "t1" },
       { title: "T", body: "", link: "/", targetId: null, notificationId: "n8" },
     );
+  });
+
+  it("caps a long bell message in the payload handed to every device (#1440)", async () => {
+    const deps = makeDeps({ u1: [expoDevice("d1", "t1")] });
+    await dispatchNotification({ id: "n9", userId: "u1", title: "T", message: "x".repeat(10_000) }, deps);
+
+    const sent = vi.mocked(deps.send).mock.calls[0][2];
+    expect(utf8(JSON.stringify(sent))).toBeLessThanOrEqual(MAX_PUSH_PAYLOAD_BYTES);
+    expect(sent.body.endsWith("…")).toBe(true);
+  });
+});
+
+describe("capPushPayload", () => {
+  const base: PushPayload = { title: "T", body: "B", link: "/people/c1", targetId: "c1", notificationId: "n1" };
+
+  it("passes a payload within budget through unchanged", () => {
+    const p = { ...base, body: "a short message" };
+    expect(capPushPayload(p)).toEqual(p);
+  });
+
+  it("caps the serialized payload to the byte budget, keeping the other fields", () => {
+    const p = { ...base, body: "x".repeat(10_000) };
+    const capped = capPushPayload(p);
+
+    expect(utf8(JSON.stringify(capped))).toBeLessThanOrEqual(MAX_PUSH_PAYLOAD_BYTES);
+    expect(capped.body.endsWith("…")).toBe(true);
+    expect(utf8(capped.body)).toBeLessThan(utf8(p.body));
+    expect(capped).toMatchObject({
+      title: p.title,
+      link: p.link,
+      targetId: p.targetId,
+      notificationId: p.notificationId,
+    });
+  });
+
+  it("bounds an over-long title too", () => {
+    const p = { ...base, title: "T".repeat(5_000) };
+    const capped = capPushPayload(p);
+
+    expect(utf8(JSON.stringify(capped))).toBeLessThanOrEqual(MAX_PUSH_PAYLOAD_BYTES);
+    expect(capped.title).not.toBe(p.title);
+    expect(capped.title.endsWith("…")).toBe(true);
+  });
+
+  it("never splits a multi-byte character when truncating", () => {
+    const p = { ...base, body: "😀".repeat(5_000) };
+    const capped = capPushPayload(p);
+
+    expect(utf8(JSON.stringify(capped))).toBeLessThanOrEqual(MAX_PUSH_PAYLOAD_BYTES);
+    expect(capped.body.includes("\uFFFD")).toBe(false);
+    for (const ch of capped.body.slice(0, -1)) expect(ch).toBe("😀");
   });
 });
