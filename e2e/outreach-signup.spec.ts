@@ -42,4 +42,53 @@ test.describe('Outreach & Sign-Up Intake Flow', () => {
     await submitBtn.click();
     await expect(page.getByText(/Thank you for signing up, Jordan\./)).toBeVisible({ timeout: 10_000 });
   });
+
+  test.describe('Sign-up preserves the phone number (#1493)', () => {
+    test.describe.configure({ mode: 'serial' });
+
+    const unique = `Phone Lead ${Date.now()}`;
+    const firstName = unique.split(' ')[0];
+    const phone = '555-014-7788';
+
+    test('Public sign-up preserves phone number and full-timer sees it in directory (#1493)', async ({ page }) => {
+      // Anonymous public intake — the flow that silently dropped the number.
+      await page.goto('/signup');
+      await expect(page.getByRole('heading', { name: 'Tell us about you.' })).toBeVisible({ timeout: 15_000 });
+
+      await page.locator('#signup-name').fill(unique);
+      await page.getByRole('button', { name: 'Female', exact: true }).click();
+      await page.getByRole('button', { name: 'Sophomore', exact: true }).click();
+      await page.locator('#signup-major').fill('Economics');
+      await page.locator('#signup-phone').fill(phone);
+      await page.locator('#signup-email').fill(`phone.lead.${Date.now()}@example.com`);
+      await page.getByRole('button', { name: 'Prayer group', exact: true }).click();
+
+      await page.getByRole('button', { name: 'Send it' }).click();
+      await expect(page.getByText(new RegExp(`Thank you for signing up, ${firstName}\\.`))).toBeVisible({ timeout: 10_000 });
+
+      // A Full-timer sees the new lead, and the "Has phone" filter keeps it —
+      // only a contact whose phone actually persisted survives that filter.
+      await signInAs(page, 'fulltimer');
+      await page.goto('/directory');
+      await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
+
+      await page.getByPlaceholder(/find someone/i).first().fill(unique);
+      await expect(page.getByText(unique).first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByRole('button', { name: 'Filters' }).first().click();
+      await page.getByTestId('filter-has-phone').check();
+      await expect(page.getByText(unique).first()).toBeVisible({ timeout: 10_000 });
+    });
+
+    test('Trainee does not see the untied public sign-up (#1493)', async ({ page }) => {
+      // Negative check: an anonymous sign-up has no ties, so a Trainee's
+      // visibleTo-scoped directory query must not surface it.
+      await signInAs(page, 'trainee');
+      await page.goto('/directory');
+      await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
+
+      await page.getByPlaceholder(/find someone/i).first().fill(unique);
+      await expect(page.getByText(unique)).toHaveCount(0);
+    });
+  });
 });

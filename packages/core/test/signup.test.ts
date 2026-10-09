@@ -239,6 +239,31 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     expect(contactCall).toBeDefined();
     expect(contactCall![1].stage).toBe('Unassigned');
   });
+
+  it('persists the submitted phone number on the contact (#1493)', async () => {
+    // #1493: the mobile intake routes through this writer, which dropped
+    // `phone` from the payload entirely — the field never reached Firestore.
+    const mockDb: any = {};
+    await submitSignUp(mockDb, form({ phone: '555-019-2834' }), []);
+
+    const contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall).toBeDefined();
+    expect(contactCall![1].phone).toBe('555-019-2834');
+  });
+
+  it('trims the phone and falls back to null when blank (#1493)', async () => {
+    const mockDb: any = {};
+
+    await submitSignUp(mockDb, form({ phone: '  555-019-2834  ' }), []);
+    let contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall![1].phone).toBe('555-019-2834');
+
+    mockAddDoc.mockClear();
+    await submitSignUp(mockDb, form({ phone: '   ' }), []);
+    contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall![1].phone).toBeNull();
+  });
+
   it('does not read the stages collection when assigning the contact stage (#678)', async () => {
     // #678: the stages collection no longer drives the default — sign-up is
     // "Unassigned" unconditionally. Asserting that `getDocs` is never called

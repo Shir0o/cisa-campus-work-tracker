@@ -41,6 +41,10 @@ export async function submitSignUp(
   const contactData: Record<string, any> = {
     name: form.name.trim(),
     email: form.email.trim(),
+    // #1493: the mobile intake routes through this writer, so omitting the
+    // phone here silently dropped every club-rush sign-up's number before it
+    // reached Firestore. Web's own writer kept it; this restores parity.
+    phone: form.phone.trim() || null,
     stage,
     // The public form is filled in by a stranger, so nothing it submits may
     // assert membership (#1152): they are a student, and never in the church
