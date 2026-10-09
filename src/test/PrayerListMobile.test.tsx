@@ -372,6 +372,76 @@ describe('PrayerListMobile', () => {
     expect(onAddBurden).toHaveBeenCalledWith('c1', 'Peace for exams');
   });
 
+  it('submits the mobile week composer with ⌘+Enter (#1402)', async () => {
+    const onAddBurden = vi.fn().mockResolvedValue(true);
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [] }], onAddBurden });
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
+    const textarea = screen.getByPlaceholderText('What are we praying for Alice this week?');
+    fireEvent.change(textarea, { target: { value: 'Peace for exams' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    await waitFor(() => expect(onAddBurden).toHaveBeenCalledWith('c1', 'Peace for exams'));
+    expect(screen.queryByPlaceholderText('What are we praying for Alice this week?')).not.toBeInTheDocument();
+  });
+
+  it('treats Ctrl+Enter like ⌘+Enter in the mobile week composer (#1402)', async () => {
+    const onAddBurden = vi.fn().mockResolvedValue(true);
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [] }], onAddBurden });
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
+    const textarea = screen.getByPlaceholderText('What are we praying for Alice this week?');
+    fireEvent.change(textarea, { target: { value: 'Peace for exams' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() => expect(onAddBurden).toHaveBeenCalledWith('c1', 'Peace for exams'));
+  });
+
+  it('does not submit the mobile week composer on plain Enter (#1402)', () => {
+    const onAddBurden = vi.fn().mockResolvedValue(true);
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [] }], onAddBurden });
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
+    const textarea = screen.getByPlaceholderText('What are we praying for Alice this week?');
+    fireEvent.change(textarea, { target: { value: 'Peace for exams' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+
+    expect(onAddBurden).not.toHaveBeenCalled();
+  });
+
+  it('ignores ⌘+Enter in the mobile week composer when empty or whitespace-only (#1402)', () => {
+    const onAddBurden = vi.fn().mockResolvedValue(true);
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [] }], onAddBurden });
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
+    const textarea = screen.getByPlaceholderText('What are we praying for Alice this week?');
+    fireEvent.change(textarea, { target: { value: '   ' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    expect(onAddBurden).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText('What are we praying for Alice this week?')).toBeInTheDocument();
+  });
+
+  it('does not fire a second save while the mobile week composer is saving (#1402)', () => {
+    let resolveAdd!: (value: boolean) => void;
+    const onAddBurden = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveAdd = resolve;
+        }),
+    );
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [] }], onAddBurden });
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));
+    const textarea = screen.getByPlaceholderText('What are we praying for Alice this week?');
+    fireEvent.change(textarea, { target: { value: 'Peace for exams' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    expect(onAddBurden).toHaveBeenCalledTimes(1);
+    resolveAdd(true);
+  });
+
   it('cancels the add-composer and keeps the empty card', () => {
     renderWithRouter({ entries: [{ contact: contact(), prayers: [] }] });
     fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));

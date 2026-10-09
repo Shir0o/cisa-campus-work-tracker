@@ -1,4 +1,4 @@
-import React, { useReducer, useState, useEffect, useMemo, useRef } from 'react';
+import React, { useReducer, useState, useEffect, useMemo, useRef, useId } from 'react';
 import {
   collection,
   onSnapshot,
@@ -37,6 +37,7 @@ import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import type { TodoPerson } from '../lib/todos';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { useCommand } from '../lib/commands';
 import PrayerListMobile from './PrayerListMobile';
 import PickHeldModal from '../components/modals/PickHeldModal';
 import { RowActions } from '../components/ui/RowActions';
@@ -1629,10 +1630,12 @@ function AddThisWeek({
   const [open, setOpen] = useState(!!defaultOpen);
   const [saving, setSaving] = useState(false);
   const [val, setVal] = useState('');
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const cmdId = useId();
 
   const save = async () => {
     const textValue = val.trim();
-    if (!textValue) return;
+    if (!textValue || saving) return;
     setSaving(true);
     const ok = await onAdd(textValue);
     setSaving(false);
@@ -1641,6 +1644,17 @@ function AddThisWeek({
       setOpen(false);
     }
   };
+
+  useCommand({
+    id: `prayer.addThisWeek:${cmdId}`,
+    scope: 'compose',
+    description: translate('prayers.add_prayer'),
+    shortcut: { key: 'Enter', mod: true },
+    minRole: 'operator',
+    when: (e) => e.target === taRef.current,
+    available: () => open && !!val.trim() && !saving,
+    handler: () => void save(),
+  });
 
   if (!open) {
     return (
@@ -1657,6 +1671,7 @@ function AddThisWeek({
   return (
     <div>
       <textarea
+        ref={taRef}
         autoFocus
         rows={3}
         value={val}

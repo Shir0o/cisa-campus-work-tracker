@@ -429,6 +429,84 @@ describe('PrayerList', () => {
     });
   });
 
+  it('submits the week composer with ⌘+Enter (#1402)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
+    const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
+    fireEvent.change(textarea, { target: { value: 'Pray for rest' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    // On success the field clears and the composer closes.
+    expect(screen.queryByPlaceholderText(/What are we praying for Alice this week/i)).not.toBeInTheDocument();
+  });
+
+  it('treats Ctrl+Enter like ⌘+Enter in the week composer (#1402)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
+    const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
+    fireEvent.change(textarea, { target: { value: 'Pray for rest' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+  });
+
+  it('does not submit the week composer on plain Enter (#1402)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
+    const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
+    fireEvent.change(textarea, { target: { value: 'Pray for rest' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+
+    expect(addDoc).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/What are we praying for Alice this week/i)).toBeInTheDocument();
+  });
+
+  it('ignores ⌘+Enter when the week composer is empty or whitespace-only (#1402)', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
+    const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
+    fireEvent.change(textarea, { target: { value: '   ' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    expect(addDoc).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/What are we praying for Alice this week/i)).toBeInTheDocument();
+  });
+
+  it('does not fire a second save while the week composer is saving (#1402)', async () => {
+    let resolveAdd!: (value: unknown) => void;
+    vi.mocked(addDoc).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveAdd = resolve;
+      }) as any,
+    );
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/i));
+    const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
+    fireEvent.change(textarea, { target: { value: 'Pray for rest' } });
+
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    expect(addDoc).toHaveBeenCalledTimes(1);
+    resolveAdd({ id: 'new-prayer-id' });
+    await waitFor(() => expect(addDoc).toHaveBeenCalledTimes(1));
+  });
+
   it('handles editing an existing prayer burden and canceling edits', async () => {
     render(<PrayerList />);
 
