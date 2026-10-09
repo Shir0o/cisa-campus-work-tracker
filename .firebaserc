@@ -3,6 +3,14 @@
     "default": "sac-campus-hub",
     "sac-campus-hub": "sac-campus-hub"
   },
-  "targets": {},
+  "targets": {
+    "sac-campus-hub": {
+      "storage": {
+        "main": [
+          "sac-campus-hub.firebasestorage.app"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

@@ -23,6 +23,7 @@ on:
     branches: [main]
     paths:
       - storage.rules
+      - src/test/storage.rules.test.ts
       - firebase.json
       - .firebaserc
       - .github/workflows/deploy-storage-rules.yml
@@ -36,8 +37,37 @@ permissions:
   contents: read
 
 jobs:
+  # Gate the deploy on the emulator-backed rules tests. These run only when the
+  # Storage emulator is up (FIREBASE_STORAGE_EMULATOR_HOST is set by
+  # emulators:exec), so they stay skipped in the normal CI / local `npm test`
+  # run — mirroring deploy-firestore-rules.yml and deploy-database-rules.yml.
+  test-rules:
+    name: Rules tests (Storage emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      - name: Run rules tests against the Storage emulator
+        run: >
+          firebase emulators:exec
+          --only storage
+          --project demo-campus-hub
+          "npx vitest run src/test/storage.rules.test.ts"
+
   deploy:
     name: Deploy Cloud Storage rules
+    needs: test-rules
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # id-token: write is required to mint the GitHub OIDC token that WIF exchanges
