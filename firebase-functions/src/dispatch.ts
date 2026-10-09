@@ -52,6 +52,63 @@ export interface DispatchDeps {
 export const BROADCAST_TO_FULL_TIMERS = "ALL_ADMINS";
 const COALESCE_WINDOW_MS = 60 * 60_000;
 
+/** Web Push and Expo both reject a request body larger than 4096 bytes. Web
+ *  Push encrypts the JSON we hand it (aes128gcm adds a header, tag and padding
+ *  delimiter) and Expo wraps it in a message envelope, so the serialized
+ *  payload is capped well under that ceiling. */
+export const MAX_PUSH_PAYLOAD_BYTES = 3200;
+
+/** Titles are short labels; the body takes whatever budget is left. */
+const MAX_PUSH_TITLE_BYTES = 200;
+
+const ELLIPSIS = "…";
+const encoder = new TextEncoder();
+
+function encodedBytes(s: string): number {
+  return encoder.encode(s).length;
+}
+
+/** Trim `s` to `maxBytes` UTF-8 bytes, marking the cut with an ellipsis.
+ *  Iterates by code point, so a multi-byte character or surrogate pair is
+ *  never split. */
+function truncateWithEllipsis(s: string, maxBytes: number): string {
+  if (encodedBytes(s) <= maxBytes) return s;
+  const room = maxBytes - encodedBytes(ELLIPSIS);
+  let out = "";
+  let used = 0;
+  for (const cp of s) {
+    const size = encodedBytes(cp);
+    if (used + size > room) break;
+    out += cp;
+    used += size;
+  }
+  return out + ELLIPSIS;
+}
+
+/** Trim a payload so its serialized JSON fits the transport budget, body first
+ *  (keeping as much as fits) then title. The bell entry keeps its full message
+ *  (ADR 0031); only the pushed copy is shortened. */
+export function capPushPayload(p: PushPayload): PushPayload {
+  if (encodedBytes(JSON.stringify(p)) <= MAX_PUSH_PAYLOAD_BYTES) return p;
+
+  const title = truncateWithEllipsis(p.title, MAX_PUSH_TITLE_BYTES);
+  const titled: PushPayload = title === p.title ? p : { ...p, title };
+  if (encodedBytes(JSON.stringify(titled)) <= MAX_PUSH_PAYLOAD_BYTES) return titled;
+
+  // Binary-search the longest body prefix whose serialized payload fits. The
+  // length is measured on the serialized JSON, so escaping can't push it over.
+  const chars = [...titled.body];
+  let lo = 0;
+  let hi = chars.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const body = chars.slice(0, mid).join("") + ELLIPSIS;
+    if (encodedBytes(JSON.stringify({ ...titled, body })) <= MAX_PUSH_PAYLOAD_BYTES) lo = mid;
+    else hi = mid - 1;
+  }
+  return { ...titled, body: chars.slice(0, lo).join("") + ELLIPSIS };
+}
+
 export interface DispatchResult {
   recipients: string[];
   sent: number;
@@ -65,13 +122,13 @@ export async function dispatchNotification(
 ): Promise<DispatchResult> {
   const recipients =
     n.userId === BROADCAST_TO_FULL_TIMERS ? await deps.fullTimerIds() : [n.userId];
-  const payload: PushPayload = {
+  const payload = capPushPayload({
     title: n.title,
     body: n.message ?? "",
     link: n.link || "/",
     targetId: n.targetId ?? null,
     notificationId: n.id,
-  };
+  });
   const result: DispatchResult = { recipients, sent: 0, coalesced: 0, removed: 0 };
 
   for (const uid of recipients) {
