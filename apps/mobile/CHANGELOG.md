@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.9.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.4...v1.9.0) (2026-10-08)
+
+
+### Features
+
+* **contacts:** edit year and major; year tags move into year ([#1348](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1348)) ([#1354](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1354)) ([a259476](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a2594767aa9c8ecaebd8dddb789230d9da805a88))
+* **contacts:** show combined-from banner on the kept contact ([#1434](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1434)) ([#1506](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1506)) ([ae97bee](https://github.com/Shir0o/cisa-campus-work-tracker/commit/ae97beeef64f6d3d328bdeb5162ed702e13964f6))
+* **contacts:** store and edit standard tags ([#1437](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1437)) ([#1508](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1508)) ([969e16c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/969e16c52fe11ca1e662e25a181884a4023aa48b))
+* **streams:** edit your own Conversation message, web and phone ([#1280](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1280)) ([#1307](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1307)) ([f8740a1](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f8740a1eb1c2e06aff21167a8a2390be3b1849c6))
+* **streams:** phone announcements read on view, with the poster's receipts ([#1277](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1277)) ([#1283](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1283)) ([557538e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/557538e151ea0f9212dfd491869d84dec2d5f6d6))
+* **streams:** phone chat and announcements ([#1262](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1262)) ([#1276](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1276)) ([a50a9da](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a50a9da624fa917fa50006223c3e4f2ddf34b835))
+* **streams:** phone chat audience headers, hidden-message decision, left-aligned skeleton ([#1279](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1279)) ([#1294](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1294)) ([d88332a](https://github.com/Shir0o/cisa-campus-work-tracker/commit/d88332a326cbba0d1226ffc6fa284e23311848d5))
+* **streams:** phone composer — [@mention](https://github.com/mention) picker and chat attachments ([#1278](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1278)) ([#1285](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1285)) ([e13b910](https://github.com/Shir0o/cisa-campus-work-tracker/commit/e13b9106d0d3e13e275669c84c3a039a6fe1736e))
+* **streams:** phone person screen — Conversation, Full-timers switch, Story Threads ([#1261](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1261)) ([#1273](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1273)) ([4057fcb](https://github.com/Shir0o/cisa-campus-work-tracker/commit/4057fcb7133ff76b20cd2d7de95416cc95c3ae8c))
+* **streams:** tick checklist, drop dead CSS and keys, parity, Make a to-do ([#1327](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1327)) ([42c03c9](https://github.com/Shir0o/cisa-campus-work-tracker/commit/42c03c96dace467adc8548a9744bb7dea58f5ab9)), closes [#1304](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1304)
+
+
+### Bug Fixes
+
+* **announcements:** ship the behaviour the rework promised ([#1243](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1243)) ([#1267](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1267)) ([db0077e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/db0077e5ee22fd42e425cd3aa27b9acccdb56523))
+* **contacts:** retire the contact Group (role) field ([#1345](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1345)) ([#1352](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1352)) ([713c715](https://github.com/Shir0o/cisa-campus-work-tracker/commit/713c715d6091feed87c9fdac065710acf46252c3))
+* **gatherings:** keep only roster members under We missed ([#1394](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1394)) ([bc7e4e2](https://github.com/Shir0o/cisa-campus-work-tracker/commit/bc7e4e28eb1c6cacb43d8ee675aa1d22d79857bd)), closes [#1383](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1383)
+* **mobile:** save how-we-met and location edits ([#1355](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1355)) ([a071839](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a071839b7b8ee815bef52aea9fb57665229d8ff7))
+* **notifications:** open a message's Thread from its notification ([#1303](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1303)) ([#1333](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1333)) ([31b962c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/31b962c7ae5566cc187f8b27e933971799b20177))
+
 ## [1.8.4](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.3...v1.8.4) (2026-09-29)
 
 
