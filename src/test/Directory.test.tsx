@@ -1363,6 +1363,40 @@ describe('Directory', () => {
     expect(screen.queryByText('BFA Reached')).not.toBeInTheDocument();
   });
 
+  it('the Has phone filter narrows to contacts whose phone is a non-empty string (#1391)', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'has-phone', data: () => ({ name: 'Has Phone', role: 'Student', stage: 'Lead', createdAt: days(2), phone: '555-0100' }) },
+            { id: 'empty-phone', data: () => ({ name: 'Empty Phone', role: 'Student', stage: 'Lead', createdAt: days(2), phone: '' }) },
+            { id: 'null-phone', data: () => ({ name: 'Null Phone', role: 'Student', stage: 'Lead', createdAt: days(2), phone: null }) },
+            { id: 'no-phone', data: () => ({ name: 'No Phone', role: 'Student', stage: 'Lead', createdAt: days(2) }) },
+          ],
+          size: 4,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => expect(screen.getByText('Has Phone')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Filters'));
+    fireEvent.click(screen.getByTestId('filter-has-phone'));
+
+    expect(screen.getByText('Has Phone')).toBeInTheDocument();
+    expect(screen.queryByText('Empty Phone')).not.toBeInTheDocument();
+    expect(screen.queryByText('Null Phone')).not.toBeInTheDocument();
+    expect(screen.queryByText('No Phone')).not.toBeInTheDocument();
+  });
+
   it('a Full-timer sees a person reached long before the 500 newest interactions as reached, everywhere (#1335)', async () => {
     (useAuth as any).mockReturnValue({ user: { uid: 'admin-1' }, effectiveUserId: 'admin-1', role: 'admin' });
     const days = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();

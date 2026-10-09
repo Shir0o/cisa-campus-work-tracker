@@ -21,6 +21,7 @@ export interface DirectoryFilterState {
   kindSegment: KindSegment;
   filterUnsorted: boolean;
   filterNotReached: boolean;
+  filterHasPhone: boolean;
   filterAddedWhen: 'all' | 'today' | 'week' | 'month';
   customRange: { from: string; to: string };
   selectedTags: string[];
@@ -34,6 +35,7 @@ export const DEFAULT_DIRECTORY_FILTERS: DirectoryFilterState = {
   kindSegment: 'contact',
   filterUnsorted: false,
   filterNotReached: false,
+  filterHasPhone: false,
   filterAddedWhen: 'all',
   customRange: { from: '', to: '' },
   selectedTags: [],
@@ -49,6 +51,9 @@ export function readDirectoryFilters(userKey: string): DirectoryFilterState {
   delete saved.filterRole;
   return {
     ...saved,
+    // State saved before this field existed (#1391) reads as off rather than
+    // an uncontrolled `undefined`.
+    filterHasPhone: saved.filterHasPhone ?? false,
     customRange: { ...saved.customRange },
     selectedTags: [...saved.selectedTags],
   };

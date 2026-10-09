@@ -13,6 +13,7 @@ const state = {
   filterSpiritualBackground: 'Christian',
   filterInterest: 'Bible study',
   filterAddedWhen: 'month',
+  filterHasPhone: true,
   customRange: { from: '2026-01-01', to: '2026-02-01' },
   selectedTags: ['Freshman', 'Senior'],
 } as const;
@@ -25,6 +26,18 @@ describe("directoryFilters — retaining People directory filters across contact
   it("returns the defaults when nothing has been retained yet", () => {
     expect(readDirectoryFilters('u1')).toEqual(DEFAULT_DIRECTORY_FILTERS);
     expect(DEFAULT_DIRECTORY_FILTERS.filterInterest).toBe('All');
+  });
+
+  it("defaults filterHasPhone to false and round-trips it (#1391)", () => {
+    expect(DEFAULT_DIRECTORY_FILTERS.filterHasPhone).toBe(false);
+    writeDirectoryFilters('u1', { ...state, filterHasPhone: true } as any);
+    expect(readDirectoryFilters('u1').filterHasPhone).toBe(true);
+  });
+
+  it("defaults filterHasPhone to false for state saved before the field existed (#1391)", () => {
+    const { filterHasPhone: _dropped, ...stale } = state;
+    writeDirectoryFilters('u1', stale as any);
+    expect(readDirectoryFilters('u1').filterHasPhone).toBe(false);
   });
 
   it("restores exactly what was retained (open-then-close contact detail cycle)", () => {

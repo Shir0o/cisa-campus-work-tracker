@@ -429,6 +429,7 @@
     "all_interests": "Todos los intereses",
     "no_contact_logged": "Aún no hay contacto registrado.",
     "not_reached_yet": "Aún no alcanzado",
+    "has_phone": "Tiene teléfono",
     "reach": "Alcance",
     "tag_not_reached_label": "{tag}, {n} sin alcanzar aún",
     "tag_counts_note": "Los números muestran quién aún no ha sido alcanzado entre las personas añadidas en los últimos 30 días",

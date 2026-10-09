@@ -381,6 +381,7 @@ export default function Directory() {
   const [kindSegment, setKindSegment] = useState<KindSegment>(restoredFilters.kindSegment);
   const [filterUnsorted, setFilterUnsorted] = useState<boolean>(restoredFilters.filterUnsorted);
   const [filterNotReached, setFilterNotReached] = useState<boolean>(restoredFilters.filterNotReached);
+  const [filterHasPhone, setFilterHasPhone] = useState<boolean>(restoredFilters.filterHasPhone);
   const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>(restoredFilters.filterAddedWhen);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ ...restoredFilters.customRange });
   const [selectedTags, setSelectedTags] = useState<string[]>(restoredFilters.selectedTags);
@@ -433,11 +434,12 @@ export default function Directory() {
       kindSegment,
       filterUnsorted,
       filterNotReached,
+      filterHasPhone,
       filterAddedWhen,
       customRange,
       selectedTags,
     });
-  }, [effectiveUserId, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags]);
+  }, [effectiveUserId, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -579,6 +581,11 @@ export default function Directory() {
       result = result.filter(c => !(reachByContactMap.get(c.id)?.reached ?? false));
     }
 
+    // Has phone (#1391): only people reachable by text, no format validation.
+    if (filterHasPhone) {
+      result = result.filter(c => typeof c.phone === 'string' && c.phone.trim() !== '');
+    }
+
     // Name-first tiering (#1192): a contact whose name matches the query outranks
     // one that only matched on email/role/background/tags/ties. Stable — the
     // underlying userContacts order holds within each tier.
@@ -587,7 +594,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterAddedWhen, customRange, selectedTags, searchMatches, reachByContactMap]);
+  }, [userContacts, searchQuery, filterStage, filterSpiritualBackground, filterInterest, kindSegment, filterUnsorted, filterNotReached, filterHasPhone, filterAddedWhen, customRange, selectedTags, searchMatches, reachByContactMap]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -782,12 +789,13 @@ export default function Directory() {
     setKindSegment('contact');
     setFilterUnsorted(false);
     setFilterNotReached(false);
+    setFilterHasPhone(false);
     setFilterAddedWhen('all');
     setCustomRange({ from: '', to: '' });
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterSpiritualBackground !== 'All' || filterInterest !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterSpiritualBackground !== 'All' || filterInterest !== 'All' || kindSegment !== 'contact' || filterUnsorted || filterNotReached || filterHasPhone || filterAddedWhen !== 'all' || customRange.from !== '' || customRange.to !== '' || selectedTags.length > 0;
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
@@ -1206,6 +1214,16 @@ export default function Directory() {
                           className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
                         />
                         <span className="text-sm text-on-surface">{t('directory.not_reached_yet')}</span>
+                      </label>
+                      <label className="flex items-center gap-2.5 min-h-[40px] px-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          data-testid="filter-has-phone"
+                          checked={filterHasPhone}
+                          onChange={(e) => setFilterHasPhone(e.target.checked)}
+                          className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
+                        />
+                        <span className="text-sm text-on-surface">{t('directory.has_phone')}</span>
                       </label>
                     </div>
 
