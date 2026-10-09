@@ -429,6 +429,7 @@
     "unassigned": "Unassigned",
     "no_contact_logged": "No contact logged yet.",
     "not_reached_yet": "Not reached yet",
+    "has_phone": "Has phone",
     "reach": "Reach",
     "tag_not_reached_label": "{tag}, {n} not reached yet",
     "tag_counts_note": "Numbers show who's not reached yet among people added in the last 30 days",
