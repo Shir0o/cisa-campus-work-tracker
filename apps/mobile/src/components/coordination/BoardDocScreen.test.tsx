@@ -103,6 +103,8 @@ describe('BoardDocScreen Spanish Translation', () => {
     };
 
     setCachedTranslation('Campus Outreach Review', 'Revisión de alcance en el campus', 'es');
+    // A body already confidently in Spanish is shown as-is to a Spanish reader
+    // (ADR 0037), so the cached string is not used for the markdown.
     setCachedTranslation(mockDoc.md, '# Enfoque Semanal Traducido\n- [ ] Hablar con los estudiantes', 'es');
 
     (useBoardDocData as jest.Mock).mockReturnValue({
@@ -123,7 +125,7 @@ describe('BoardDocScreen Spanish Translation', () => {
 
     await waitFor(() => {
       expect(getByText('Revisión de alcance en el campus')).toBeTruthy();
-      expect(getByText('Enfoque Semanal Traducido')).toBeTruthy();
+      expect(getByText('Enfoque Semanal')).toBeTruthy();
       expect(getByText('Hablar con los estudiantes')).toBeTruthy();
       expect(getByText('Personal y capacitandos')).toBeTruthy();
       expect(getByText('Carlos mantiene esta página. La escritura se realiza en el sitio web de escritorio; aquí estás leyendo.')).toBeTruthy();

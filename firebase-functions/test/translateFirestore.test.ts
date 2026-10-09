@@ -148,7 +148,7 @@ describe("firestoreTranslationDeps", () => {
 
     const deps = firestoreTranslationDeps(mockDb, async () => []);
     await deps.saveTranslations([
-      { hash: "h1", originalText: "Peace", translatedText: "Paz" },
+      { hash: "h1", originalText: "Peace", translatedText: "Paz", targetLang: "en" },
     ]);
 
     expect(mockDb.batch).toHaveBeenCalled();
@@ -157,7 +157,7 @@ describe("firestoreTranslationDeps", () => {
       expect.objectContaining({
         originalText: "Peace",
         translatedText: "Paz",
-        targetLang: "es",
+        targetLang: "en",
       }),
       { merge: true },
     );
@@ -190,7 +190,10 @@ describe("geminiTranslator", () => {
     })) as any;
 
     const translate = geminiTranslator(mockFetch, "test-api-key");
-    const results = await translate(["Prayer", "Brothers"]);
+    const results = await translate([
+      { text: "Prayer", targetLang: "es" },
+      { text: "Brothers", targetLang: "es" },
+    ]);
 
     expect(results).toEqual(["Oración", "Hermanos"]);
     expect(mockFetch).toHaveBeenCalledWith(
@@ -203,7 +206,7 @@ describe("geminiTranslator", () => {
 
   it("throws if GEMINI_API_KEY is missing", async () => {
     const translate = geminiTranslator(fetch, "");
-    await expect(translate(["Hello"])).rejects.toThrow("GEMINI_API_KEY is not configured");
+    await expect(translate([{ text: "Hello", targetLang: "en" }])).rejects.toThrow("GEMINI_API_KEY is not configured");
   });
 
   it("throws if API response is not ok", async () => {
@@ -214,7 +217,7 @@ describe("geminiTranslator", () => {
     })) as any;
 
     const translate = geminiTranslator(mockFetch, "test-api-key");
-    await expect(translate(["Hello"])).rejects.toThrow("Gemini translation failed: HTTP 403");
+    await expect(translate([{ text: "Hello", targetLang: "en" }])).rejects.toThrow("Gemini translation failed: HTTP 403");
   });
 
   const okResponse = (translations: Array<{ id: number; translatedText: string }>) => ({
@@ -232,7 +235,7 @@ describe("geminiTranslator", () => {
     const sleep = vi.fn(async () => {});
 
     const translate = geminiTranslator(mockFetch, "test-api-key", { maxAttempts: 3, sleep });
-    const results = await translate(["Prayer"]);
+    const results = await translate([{ text: "Prayer", targetLang: "es" }]);
 
     expect(results).toEqual(["Oración"]);
     expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -249,7 +252,7 @@ describe("geminiTranslator", () => {
       maxAttempts: 3,
       sleep: async () => {},
     });
-    await expect(translate(["Brothers"])).resolves.toEqual(["Hermanos"]);
+    await expect(translate([{ text: "Brothers", targetLang: "es" }])).resolves.toEqual(["Hermanos"]);
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
@@ -268,7 +271,10 @@ describe("geminiTranslator", () => {
       maxAttempts: 3,
       sleep: async () => {},
     });
-    const results = await translate([...firstChunk, "later string"]);
+    const results = await translate([
+      ...firstChunk.map((text) => ({ text, targetLang: "es" as const })),
+      { text: "later string", targetLang: "es" },
+    ]);
 
     expect(results.slice(0, GEMINI_TRANSLATE_CHUNK_SIZE)).toEqual(firstChunk.map(() => null));
     expect(results[GEMINI_TRANSLATE_CHUNK_SIZE]).toBe("Siguiente");
@@ -280,8 +286,35 @@ describe("geminiTranslator", () => {
     ) as any;
 
     const translate = geminiTranslator(mockFetch, "test-api-key");
-    const results = await translate(["Prayer", "Missing"]);
+    const results = await translate([
+      { text: "Prayer", targetLang: "es" },
+      { text: "Missing", targetLang: "es" },
+    ]);
 
     expect(results).toEqual(["Oración", null]);
+  });
+
+  it("groups mixed-language requests into one call per target and preserves order", async () => {
+    const prompts: string[] = [];
+    const mockFetch = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(init.body);
+      prompts.push(body.contents[0].parts[0].text);
+      const items = JSON.parse(body.contents[0].parts[0].text.split("\n\n")[1]);
+      return okResponse(
+        items.map((i: { id: number }) => ({ id: i.id, translatedText: `t-${i.text}` })),
+      );
+    }) as any;
+
+    const translate = geminiTranslator(mockFetch, "test-api-key");
+    const results = await translate([
+      { text: "Prayer", targetLang: "es" },
+      { text: "Oración", targetLang: "en" },
+      { text: "Brothers", targetLang: "es" },
+    ]);
+
+    expect(results).toEqual(["t-Prayer", "t-Oración", "t-Brothers"]);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(prompts.some((p) => p.includes("into Spanish"))).toBe(true);
+    expect(prompts.some((p) => p.includes("into English"))).toBe(true);
   });
 });

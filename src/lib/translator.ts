@@ -3,13 +3,14 @@
 
 import { splitMarkdownByH1, joinMarkdownSections } from "./markdown";
 
-// ── Already-Spanish detection (ADR 0027) ──────────────────────────────────────
-// Reading translation only ever moves English-authored content toward Spanish.
-// A Spanish-mode reader who meets content already written in Spanish should see
-// it as-is rather than have it re-translated "into Spanish". This lightweight
-// heuristic decides whether a string is confidently Spanish; anything else
-// (English, a third language, mixed, or too short to judge) is left to the
-// normal translation path — we would rather over-translate than silently skip.
+// ── Language judgment (ADR 0037) ─────────────────────────────────────────────
+// Mirror of the shared judgment in @cisa/core (packages/core/src/translation.ts).
+// The web app deliberately takes no @cisa/core dependency, so this copy is kept
+// in step by src/test/languageParity.test.ts. Reading translation runs in both
+// directions: content confidently in the reader's language is shown as-is with
+// no Gemini call; anything else is translated whole into the reader's language.
+
+export type LanguageSignal = "en" | "es" | "mixed" | "none";
 
 const SPANISH_MARKERS = new Set([
   "el", "la", "los", "las", "de", "que", "y", "en", "es", "un", "una",
@@ -28,9 +29,9 @@ const ENGLISH_MARKERS = new Set([
   "study", "bible", "me", "and", "but", "so", "not",
 ]);
 
-export function isAlreadySpanish(text: string): boolean {
+export function detectLanguage(text: string): LanguageSignal {
   const trimmed = text.trim();
-  if (!trimmed) return false;
+  if (!trimmed) return "none";
 
   const words = trimmed.toLowerCase().match(/[a-zñáéíóúü]+/g) ?? [];
   let spanish = 0;
@@ -43,11 +44,37 @@ export function isAlreadySpanish(text: string): boolean {
   // Spanish-only script features are a strong independent signal.
   const accentSignal = /[¿¡]|[áéíóúü]|ñ/.test(trimmed);
 
-  if (spanish === 0 && english === 0) {
-    return accentSignal && words.length >= 2;
-  }
+  // The es decision is exactly ADR 0027's isAlreadySpanish, so Spanish-mode
+  // readers see identical behavior. A Spanish majority wins over a stray
+  // English marker ("muchas gracias a dios" is still Spanish).
+  const confidentSpanish =
+    (spanish > english && spanish >= 2) || (accentSignal && spanish > 0);
 
-  return (spanish > english && spanish >= 2) || (accentSignal && spanish > 0);
+  if (spanish === 0 && english === 0) {
+    return accentSignal && words.length >= 2 ? "es" : "none";
+  }
+  if (confidentSpanish) return "es";
+  if (spanish > 0 && english > 0) return "mixed";
+  if (english > 0) return english >= 2 ? "en" : "none";
+  // A lone weak Spanish marker ("el") is no confident signal.
+  return "none";
+}
+
+/** True when the text is confidently already Spanish (ADR 0027 callers). */
+export function isAlreadySpanish(text: string): boolean {
+  return detectLanguage(text) === "es";
+}
+
+/**
+ * Whether a reader in `targetLang` should see the text exactly as written with
+ * no Gemini call. English-mode readers also get no-signal text as-is; Spanish
+ * readers keep the old behavior and have no-signal text translated.
+ */
+export function shouldShowAsIs(text: string, targetLang: string): boolean {
+  const signal = detectLanguage(text);
+  if (targetLang === "en") return signal === "en" || signal === "none";
+  if (targetLang === "es") return signal === "es";
+  return false;
 }
 
 // ── Pure SHA-256 implementation (synchronous, 0 dependency, matches server hash) ──
@@ -173,7 +200,6 @@ const STORAGE_PREFIX = "cisa_tr_";
 
 export function getCachedTranslation(text: string, targetLang: string = "es"): string | null {
   if (!text || !text.trim()) return text;
-  if (targetLang === "en") return text;
 
   const hash = computeTranslationHash(targetLang, text);
 
@@ -344,15 +370,14 @@ async function flushBatch() {
 
 export function translateText(text: string, targetLang: string = "es"): Promise<string> {
   if (!text || !text.trim()) return Promise.resolve(text);
-  if (targetLang === "en") return Promise.resolve(text);
 
   const cached = getCachedTranslation(text, targetLang);
   if (cached !== null) {
     return Promise.resolve(cached);
   }
 
-  if (targetLang === "es" && isAlreadySpanish(text)) {
-    setCachedTranslation(text, text, "es");
+  if (shouldShowAsIs(text, targetLang)) {
+    setCachedTranslation(text, text, targetLang);
     return Promise.resolve(text);
   }
 
@@ -378,7 +403,6 @@ export function translateText(text: string, targetLang: string = "es"): Promise<
 
 export async function translateBatch(texts: string[], targetLang: string = "es"): Promise<string[]> {
   if (!texts || texts.length === 0) return [];
-  if (targetLang === "en") return texts;
 
   return Promise.all(texts.map((t) => translateText(t, targetLang)));
 }
@@ -388,7 +412,6 @@ export async function translateBatch(texts: string[], targetLang: string = "es")
 // that changed since the last translation are actually sent to the model.
 export async function translateMarkdown(markdown: string, targetLang: string = "es"): Promise<string> {
   if (!markdown || !markdown.trim()) return markdown;
-  if (targetLang === "en") return markdown;
 
   const sections = splitMarkdownByH1(markdown);
   const translated = await translateBatch(sections, targetLang);
@@ -400,7 +423,6 @@ export async function prefetchTranslations(
   targetLang: string = "es",
 ): Promise<void> {
   if (!texts || texts.length === 0) return;
-  if (targetLang === "en") return;
 
   const validTexts = Array.from(
     new Set(

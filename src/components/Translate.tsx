@@ -35,16 +35,14 @@ export function Translate({
   const { language } = useLanguage();
   const effectiveLang = targetLang ?? language;
 
-  const isTranslated =
-    effectiveLang !== "en" &&
-    Boolean(content && content.trim() && translatedText !== originalText);
+  const isTranslated = Boolean(content && content.trim() && translatedText !== originalText);
 
   const displayText = showingOriginal ? originalText : translatedText;
 
   return (
     <Component
       className={cn(
-        isPending && effectiveLang !== "en" ? "transition-opacity duration-200 opacity-70 animate-pulse" : "",
+        isPending ? "transition-opacity duration-200 opacity-70 animate-pulse" : "",
         className,
       )}
       {...rest}

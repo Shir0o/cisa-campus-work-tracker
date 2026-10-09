@@ -33,7 +33,6 @@ declare global {
 
 export default function EmbedCoordinationDoc() {
   const { t, language } = useLanguage();
-  const isSpanish = language === 'es';
   const { docId } = useParams<{ docId: string }>();
   const { user, isAdmin, loading } = useAuth();
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -50,9 +49,7 @@ export default function EmbedCoordinationDoc() {
   const { translatedText: translatedDocMd } = useTranslateMarkdown(activeDoc?.md);
 
   const displayDoc = activeDoc
-    ? isSpanish
-      ? { ...activeDoc, title: translatedDocTitle, md: translatedDocMd }
-      : activeDoc
+    ? { ...activeDoc, title: translatedDocTitle, md: translatedDocMd }
     : activeDoc;
 
   // People detail is a full page (the design's ContactDetail), not a popup.
@@ -159,9 +156,9 @@ export default function EmbedCoordinationDoc() {
   // happens when the user confirms via addNote below. Mirrors
   // CoordinationNotes.tsx's promoteDoc, minus the live-editing-preview branch
   // (this embed always shows exactly one, already-active doc).
-  const onPromote = (d: BoardDoc) => {
-    const titleToUse = isSpanish ? translatedDocTitle : d.title;
-    const mdToUse = isSpanish ? translatedDocMd : d.md;
+  const onPromote = (_d: BoardDoc) => {
+    const titleToUse = translatedDocTitle;
+    const mdToUse = translatedDocMd;
     setNoteForm({ type: 'record', series: guessSeries(titleToUse), title: titleToUse, body: mdExcerpt(mdToUse) });
   };
 

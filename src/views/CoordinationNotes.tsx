@@ -156,6 +156,7 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useTranslate, useTranslateMarkdown } from '../hooks/useTranslate';
+import { shouldShowAsIs } from '../lib/translator';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
 export interface TeamMember {
@@ -636,7 +637,6 @@ export function mdExcerpt(md: string): string {
 export default function CoordinationNotes() {
   const { isAdmin, user, role } = useAuth();
   const { t, language } = useLanguage();
-  const isSpanish = language === 'es';
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   // Full-timers (admins) edit; Trainees + Students read a role-scoped subset.
@@ -1068,9 +1068,7 @@ export default function CoordinationNotes() {
   const { translatedText: translatedActiveTitle } = useTranslate(active?.title);
   const { translatedText: translatedActiveMarkdown } = useTranslateMarkdown(active?.md);
   const displayActive = active
-    ? isSpanish
-      ? { ...active, title: translatedActiveTitle, md: translatedActiveMarkdown }
-      : active
+    ? { ...active, title: translatedActiveTitle, md: translatedActiveMarkdown }
     : null;
 
   const sensors = useSensors(
@@ -1234,9 +1232,9 @@ export default function CoordinationNotes() {
   // Session 4 — "Keep as a note": promote the open page into Notes & learnings,
   // prefilling the form with its title, an excerpt, and a guessed series.
   const promoteDoc = (d: BoardDoc) => {
-    const titleToUse = isSpanish && d.id === activeId ? translatedActiveTitle : d.title;
+    const titleToUse = d.id === activeId ? translatedActiveTitle : d.title;
     const md = d.id === activeId ? liveActiveMd ?? d.md : d.md;
-    const mdToUse = isSpanish && d.id === activeId ? translatedActiveMarkdown : md;
+    const mdToUse = d.id === activeId ? translatedActiveMarkdown : md;
     setNoteForm({ type: 'record', series: guessSeries(titleToUse), title: titleToUse, body: mdExcerpt(mdToUse) });
     document.getElementById('board-notes-section')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
@@ -2586,7 +2584,12 @@ export function DocEditor({
   const isSpanish = language === 'es';
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
   const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
+  // Reading translation runs both ways (ADR 0037): Spanish mode always shows the
+  // reading view (unchanged); English mode shows it when the page is not
+  // confidently English, and keeps its inline editor for English pages.
+  const needsTranslation = !shouldShowAsIs(d.md || d.title || '', language);
   const [isEditingInSpanish, setIsEditingInSpanish] = useState(false);
+  const showReadingView = (isSpanish || needsTranslation) && !isEditingInSpanish;
   const [shareOpen, setShareOpen] = useState(false);
   // The header button doubles as the sharing indicator: accented + dotted when a
   // live guest link exists, so a Full-timer can see the page is shared at a glance.
@@ -3234,7 +3237,7 @@ export function DocEditor({
       </div>
 
       {/* title */}
-      {isSpanish && !isEditingInSpanish ? (
+      {showReadingView ? (
         <div className="flex items-center gap-2 px-5 lg:px-8 pt-3 pb-2">
           <h1 className="bdoc-fs-title font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight">
             {translatedTitle}
@@ -3298,7 +3301,7 @@ export function DocEditor({
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {isSpanish && (
+          {(isSpanish || needsTranslation) && (
             <button
               type="button"
               onClick={() => setIsEditingInSpanish((v) => !v)}
@@ -3360,7 +3363,7 @@ export function DocEditor({
           onMouseUp={refreshSelectionFab}
           onKeyUp={refreshSelectionFab}
         >
-          {isSpanish && !isEditingInSpanish ? (
+          {showReadingView ? (
             <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
                 {translatedMarkdown || t('coordination.this_page_empty')}
@@ -3706,7 +3709,6 @@ export function NoteForm({
 }) {
   const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
   const { t, language } = useLanguage();
-  const isSpanish = language === 'es';
   const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
@@ -3714,18 +3716,21 @@ export function NoteForm({
 
   const { translatedText: trInitialTitle } = useTranslate(initial?.title);
   const { translatedText: trInitialBody } = useTranslateMarkdown(initial?.body);
+  const translateInitialTitle =
+    !!initial?.title && !shouldShowAsIs(initial.title, language);
+  const translateInitialBody = !!initial?.body && !shouldShowAsIs(initial.body, language);
 
   useEffect(() => {
-    if (isSpanish && initial?.title && trInitialTitle && (title === initial.title || !title)) {
+    if (translateInitialTitle && trInitialTitle && (title === initial.title || !title)) {
       setTitle(trInitialTitle);
     }
-  }, [isSpanish, initial?.title, trInitialTitle]);
+  }, [translateInitialTitle, initial?.title, trInitialTitle]);
 
   useEffect(() => {
-    if (isSpanish && initial?.body && trInitialBody && (body === initial.body || !body)) {
+    if (translateInitialBody && trInitialBody && (body === initial.body || !body)) {
       setBody(trInitialBody);
     }
-  }, [isSpanish, initial?.body, trInitialBody]);
+  }, [translateInitialBody, initial?.body, trInitialBody]);
 
   const toggleMode = () => {
     if (displayMode === 'text') {
@@ -3848,14 +3853,14 @@ export function SuggestedTaskCard({
 }) {
   const [title, setTitle] = useState(task.title);
   const { t, language } = useLanguage();
-  const isSpanish = language === 'es';
   const { translatedText: trTaskTitle } = useTranslate(task.title);
+  const translateTaskTitle = !!task.title && !shouldShowAsIs(task.title, language);
 
   useEffect(() => {
-    if (isSpanish && task.title && trTaskTitle && (title === task.title || !title)) {
+    if (translateTaskTitle && trTaskTitle && (title === task.title || !title)) {
       setTitle(trTaskTitle);
     }
-  }, [isSpanish, task.title, trTaskTitle]);
+  }, [translateTaskTitle, task.title, trTaskTitle]);
 
   const [dueDate, setDueDate] = useState(task.dueDate || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');

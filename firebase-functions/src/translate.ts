@@ -1,4 +1,7 @@
 import crypto from "crypto";
+import { detectLanguage, isAlreadySpanish, type LanguageSignal } from "./language";
+
+export { isAlreadySpanish };
 
 export type SupportedCollection =
   | "prayers"
@@ -6,6 +9,8 @@ export type SupportedCollection =
   | "contacts"
   | "todos"
   | "coordinationNotes";
+
+export type TargetLang = "en" | "es";
 
 export const COLLECTION_ORDER: SupportedCollection[] = [
   "prayers",
@@ -31,6 +36,12 @@ export interface FetchBatchResult {
   hasMore: boolean;
 }
 
+/** One string to translate, and the reader language it is being prepared for. */
+export interface TranslatableItem {
+  text: string;
+  targetLang: TargetLang;
+}
+
 export interface TranslationCronDeps {
   getCursor(): Promise<TranslationCursor>;
   saveCursor(cursor: TranslationCursor): Promise<void>;
@@ -40,12 +51,17 @@ export interface TranslationCronDeps {
     limit: number,
   ): Promise<FetchBatchResult>;
   getCachedHashes(hashes: string[]): Promise<Set<string>>;
-  /** Translates a batch. A `null` entry means that string failed and must be
-   *  left uncached so a later sweep retries it (never write the original as
-   *  its own translation). */
-  translateTexts(texts: string[]): Promise<Array<string | null>>;
+  /** Translates a batch of language-tagged strings in order. A `null` entry
+   *  means that string failed and must be left uncached so a later sweep
+   *  retries it (never write the original as its own translation). */
+  translateTexts(items: TranslatableItem[]): Promise<Array<string | null>>;
   saveTranslations(
-    items: Array<{ hash: string; originalText: string; translatedText: string }>,
+    items: Array<{
+      hash: string;
+      originalText: string;
+      translatedText: string;
+      targetLang: TargetLang;
+    }>,
   ): Promise<void>;
 }
 
@@ -64,54 +80,23 @@ export interface CronRunResult {
   failedCount: number;
 }
 
-const SPANISH_MARKERS = new Set([
-  "el", "la", "los", "las", "de", "que", "y", "en", "es", "un", "una",
-  "por", "para", "con", "no", "se", "su", "lo", "al", "del",
-  "más", "qué", "cómo", "está", "están", "pero", "como", "cuando", "donde", "también",
-  "mi", "mí", "esta", "este", "ora", "oración", "orar", "favor",
-  "dios", "iglesia", "estudio", "bíblico", "familia", "semana",
-  "hermano", "hermana", "bueno", "buena", "gracias", "señor", "amor", "vida",
-]);
-
-const ENGLISH_MARKERS = new Set([
-  "the", "and", "of", "to", "a", "in", "is", "that", "for", "it", "on", "with",
-  "this", "we", "you", "are", "have", "has", "was", "were", "will", "would",
-  "can", "could", "should", "please", "pray", "prayer", "thanks", "thank",
-  "god", "church", "family", "week", "brother", "sister", "good", "morning",
-  "study", "bible", "me", "and", "but", "so", "not",
-]);
-
-export function isAlreadySpanish(text: string): boolean {
-  const trimmed = text.trim();
-  if (!trimmed) return false;
-
-  const words = trimmed.toLowerCase().match(/[a-zñáéíóúü]+/g) ?? [];
-  let spanish = 0;
-  let english = 0;
-  for (const word of words) {
-    if (SPANISH_MARKERS.has(word)) spanish++;
-    if (ENGLISH_MARKERS.has(word)) english++;
-  }
-
-  const accentSignal = /[¿¡]|[áéíóúü]|ñ/.test(trimmed);
-
-  if (spanish === 0 && english === 0) {
-    return accentSignal && words.length >= 2;
-  }
-
-  return (spanish > english && spanish >= 2) || (accentSignal && spanish > 0);
-}
-
 export function translationHash(text: string, targetLang = "es"): string {
   const normalizedTargetLang = targetLang.trim().toLowerCase();
   const trimmed = text.trim();
   return crypto.createHash("sha256").update(`${normalizedTargetLang}:${trimmed}`).digest("hex");
 }
 
-export function extractTranslatableTexts(
+/**
+ * Extract the translatable strings a doc contributes, tagged with the reader
+ * language each is needed for (ADR 0037). An English string is queued for `es`
+ * only; a Spanish string for `en` only; mixed text for both. No-signal text
+ * (names, emoji, short neutral phrases) is queued for `es` only, matching the
+ * web/mobile asymmetry where an English reader sees it as written.
+ */
+export function extractTranslatableItems(
   collection: SupportedCollection,
   data: Record<string, any>,
-): string[] {
+): TranslatableItem[] {
   const candidates: string[] = [];
 
   switch (collection) {
@@ -139,13 +124,15 @@ export function extractTranslatableTexts(
       break;
   }
 
-  return candidates.filter((str) => {
-    const trimmed = str.trim();
-    if (!trimmed) return false;
-    // Skip if already Spanish per ADR 0027
-    if (isAlreadySpanish(trimmed)) return false;
-    return true;
-  });
+  const items: TranslatableItem[] = [];
+  for (const candidate of candidates) {
+    const text = candidate.trim();
+    if (!text) continue;
+    const signal: LanguageSignal = detectLanguage(text);
+    if (signal !== "es") items.push({ text, targetLang: "es" });
+    if (signal === "es" || signal === "mixed") items.push({ text, targetLang: "en" });
+  }
+  return items;
 }
 
 function getNextCollection(current: SupportedCollection): SupportedCollection {
@@ -162,7 +149,6 @@ export async function advanceTranslationCron(
 ): Promise<CronRunResult> {
   const maxItems = options.maxItemsPerRun ?? 200;
   const batchFetchLimit = options.batchFetchLimit ?? 50;
-  const targetLang = "es";
 
   const cursor = await deps.getCursor();
   let currentCollection = cursor.currentCollection;
@@ -174,23 +160,24 @@ export async function advanceTranslationCron(
     batchFetchLimit,
   );
 
-  const textToHash = new Map<string, string>();
+  // Deduplicate by cache hash so a string is never queued twice for the same
+  // direction, while text queued for both directions keeps its two entries.
+  const hashToItem = new Map<string, TranslatableItem>();
   for (const doc of docs) {
-    const texts = extractTranslatableTexts(currentCollection, doc.data);
-    for (const t of texts) {
-      const trimmed = t.trim();
-      const hash = translationHash(trimmed, targetLang);
-      textToHash.set(hash, trimmed);
+    const items = extractTranslatableItems(currentCollection, doc.data);
+    for (const item of items) {
+      const hash = translationHash(item.text, item.targetLang);
+      if (!hashToItem.has(hash)) hashToItem.set(hash, item);
     }
   }
 
-  const allHashes = Array.from(textToHash.keys());
+  const allHashes = Array.from(hashToItem.keys());
   const cachedHashes = await deps.getCachedHashes(allHashes);
 
-  const uncachedEntries: Array<{ hash: string; text: string }> = [];
-  for (const [hash, text] of textToHash.entries()) {
+  const uncachedEntries: Array<{ hash: string; text: string; targetLang: TargetLang }> = [];
+  for (const [hash, item] of hashToItem.entries()) {
     if (!cachedHashes.has(hash)) {
-      uncachedEntries.push({ hash, text });
+      uncachedEntries.push({ hash, text: item.text, targetLang: item.targetLang });
       if (uncachedEntries.length >= maxItems) break;
     }
   }
@@ -198,10 +185,16 @@ export async function advanceTranslationCron(
   let translatedCount = 0;
   let failedCount = 0;
   if (uncachedEntries.length > 0) {
-    const textsToTranslate = uncachedEntries.map((e) => e.text);
-    const translatedTexts = await deps.translateTexts(textsToTranslate);
+    const translatedTexts = await deps.translateTexts(
+      uncachedEntries.map((e) => ({ text: e.text, targetLang: e.targetLang })),
+    );
 
-    const itemsToSave: Array<{ hash: string; originalText: string; translatedText: string }> = [];
+    const itemsToSave: Array<{
+      hash: string;
+      originalText: string;
+      translatedText: string;
+      targetLang: TargetLang;
+    }> = [];
     for (let i = 0; i < uncachedEntries.length; i++) {
       const translated = translatedTexts[i];
       if (typeof translated === "string" && translated.length > 0) {
@@ -209,6 +202,7 @@ export async function advanceTranslationCron(
           hash: uncachedEntries[i].hash,
           originalText: uncachedEntries[i].text,
           translatedText: translated,
+          targetLang: uncachedEntries[i].targetLang,
         });
       } else {
         // A failed string is not written to the cache — writing the original

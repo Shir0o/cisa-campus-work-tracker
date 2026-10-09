@@ -10,6 +10,7 @@ import {
   translateBatch,
   subscribeTranslation,
   computeTranslationHash,
+  shouldShowAsIs,
   type AppLanguage,
 } from '../lib/translator';
 
@@ -27,14 +28,15 @@ export function useTranslate(
   const enabled = options?.enabled ?? true;
 
   const rawText = text ?? '';
-  const isEn = targetLang === 'en' || !enabled || !rawText.trim();
+  const canTranslate = enabled && rawText.trim().length > 0;
+  const asIs = !canTranslate || shouldShowAsIs(rawText, targetLang);
 
-  const cached = isEn ? rawText : getCachedTranslation(rawText, targetLang);
+  const cached = asIs ? rawText : getCachedTranslation(rawText, targetLang);
   const [translatedText, setTranslatedText] = useState<string>(cached ?? rawText);
-  const [isPending, setIsPending] = useState<boolean>(!isEn && cached === null);
+  const [isPending, setIsPending] = useState<boolean>(!asIs && cached === null);
 
   useEffect(() => {
-    if (isEn) {
+    if (asIs) {
       setTranslatedText(rawText);
       setIsPending(false);
       return;
@@ -86,7 +88,7 @@ export function useTranslate(
       isMounted = false;
       unsubscribe();
     };
-  }, [rawText, targetLang, isEn]);
+  }, [rawText, targetLang, asIs]);
 
   return {
     translatedText,
@@ -109,19 +111,20 @@ export function useTranslateMarkdown(
   const enabled = options?.enabled ?? true;
 
   const rawText = text ?? '';
-  const isEn = targetLang === 'en' || !enabled || !rawText.trim();
+  const canTranslate = enabled && rawText.trim().length > 0;
+  const asIs = !canTranslate || shouldShowAsIs(rawText, targetLang);
 
-  const split = () => (isEn ? [rawText] : splitMarkdownByH1(rawText));
-  const join = (parts: string[]) => (isEn ? rawText : joinMarkdownSections(parts));
+  const split = () => (asIs ? [rawText] : splitMarkdownByH1(rawText));
+  const join = (parts: string[]) => (asIs ? rawText : joinMarkdownSections(parts));
 
   const initial = split().map((s) => getCachedTranslation(s, targetLang) ?? s);
   const [translatedSections, setTranslatedSections] = useState<string[]>(initial);
   const [isPending, setIsPending] = useState<boolean>(
-    !isEn && split().some((s) => getCachedTranslation(s, targetLang) === null),
+    !asIs && split().some((s) => getCachedTranslation(s, targetLang) === null),
   );
 
   useEffect(() => {
-    if (isEn) {
+    if (asIs) {
       setTranslatedSections([rawText]);
       setIsPending(false);
       return;
@@ -183,7 +186,7 @@ export function useTranslateMarkdown(
       mounted = false;
       unsubscribes.forEach((u) => u());
     };
-  }, [rawText, targetLang, isEn]);
+  }, [rawText, targetLang, asIs]);
 
   return {
     translatedText: join(translatedSections),

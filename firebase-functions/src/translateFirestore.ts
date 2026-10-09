@@ -3,6 +3,8 @@ import {
   type TranslationCronDeps,
   type TranslationCursor,
   type SupportedCollection,
+  type TranslatableItem,
+  type TargetLang,
   COLLECTION_ORDER,
 } from "./translate";
 
@@ -24,7 +26,7 @@ export interface MinimalFirestore {
 
 export function firestoreTranslationDeps(
   db: MinimalFirestore,
-  translateTextsFn: (texts: string[]) => Promise<Array<string | null>>,
+  translateTextsFn: (items: TranslatableItem[]) => Promise<Array<string | null>>,
   serverTimestampFn: () => any = () => new Date().toISOString(),
 ): TranslationCronDeps {
   const cursorRef = db.collection("system").doc("translationCursor");
@@ -100,12 +102,17 @@ export function firestoreTranslationDeps(
       return cached;
     },
 
-    async translateTexts(texts: string[]): Promise<Array<string | null>> {
-      return translateTextsFn(texts);
+    async translateTexts(items: TranslatableItem[]): Promise<Array<string | null>> {
+      return translateTextsFn(items);
     },
 
     async saveTranslations(
-      items: Array<{ hash: string; originalText: string; translatedText: string }>,
+      items: Array<{
+        hash: string;
+        originalText: string;
+        translatedText: string;
+        targetLang: TargetLang;
+      }>,
     ): Promise<void> {
       if (items.length === 0) return;
 
@@ -120,7 +127,7 @@ export function firestoreTranslationDeps(
             {
               originalText: item.originalText,
               translatedText: item.translatedText,
-              targetLang: "es",
+              targetLang: item.targetLang,
               updatedAt: serverTimestampFn(),
             },
             { merge: true },
@@ -144,6 +151,8 @@ export interface GeminiTranslatorOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+const LANG_NAMES: Record<TargetLang, string> = { en: "English", es: "Spanish" };
+
 export function geminiTranslator(
   fetchImpl: typeof fetch,
   apiKey: string,
@@ -152,34 +161,51 @@ export function geminiTranslator(
   const maxAttempts = options.maxAttempts ?? 3;
   const baseDelayMs = options.baseDelayMs ?? 500;
   const sleep = options.sleep ?? defaultSleep;
-  const langName = "Spanish";
 
-  return async (texts: string[]): Promise<Array<string | null>> => {
-    if (texts.length === 0) return [];
+  return async (items: TranslatableItem[]): Promise<Array<string | null>> => {
+    if (items.length === 0) return [];
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
 
-    const results: Array<string | null> = [];
+    const results: Array<string | null> = new Array(items.length).fill(null);
 
-    for (let i = 0; i < texts.length; i += GEMINI_TRANSLATE_CHUNK_SIZE) {
-      const chunk = texts.slice(i, i + GEMINI_TRANSLATE_CHUNK_SIZE);
-      const chunkResults = await translateChunk(chunk);
+    // Group by target language so each Gemini batch names the right one.
+    const byLang = new Map<TargetLang, number[]>();
+    items.forEach((item, idx) => {
+      const list = byLang.get(item.targetLang) ?? [];
+      list.push(idx);
+      byLang.set(item.targetLang, list);
+    });
 
-      for (let j = 0; j < chunk.length; j++) {
-        // A missing id is a failure, never a pass-through of the original.
-        results.push(chunkResults.get(j) ?? null);
+    for (const [targetLang, indices] of byLang.entries()) {
+      const langName = LANG_NAMES[targetLang];
+      for (let i = 0; i < indices.length; i += GEMINI_TRANSLATE_CHUNK_SIZE) {
+        const chunkIndices = indices.slice(i, i + GEMINI_TRANSLATE_CHUNK_SIZE);
+        const chunk = chunkIndices.map((globalIdx, localId) => ({
+          id: localId,
+          text: items[globalIdx].text,
+        }));
+        const chunkResults = await translateChunk(chunk, langName);
+
+        chunkIndices.forEach((globalIdx, localId) => {
+          const translated = chunkResults.get(localId);
+          // A missing id is a failure, never a pass-through of the original.
+          if (typeof translated === "string") results[globalIdx] = translated;
+        });
       }
     }
 
     return results;
   };
 
-  async function translateChunk(chunk: string[]): Promise<Map<number, string>> {
-    const items = chunk.map((text, idx) => ({ id: idx, text }));
+  async function translateChunk(
+    chunk: Array<{ id: number; text: string }>,
+    langName: string,
+  ): Promise<Map<number, string>> {
     const prompt =
       `Translate the following ${chunk.length} text items into ${langName}:\n\n` +
-      JSON.stringify(items);
+      JSON.stringify(chunk);
 
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
@@ -193,7 +219,8 @@ CRITICAL RULES:
 1. Preserve all Markdown formatting intact (*, **, #, -, 1., [text](url), etc.).
 2. Preserve user mentions (@name or @User), emails, URLs, and phone numbers untouched.
 3. Preserve emojis and special characters.
-4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.`,
+4. If a text item is already entirely in ${langName}, return it unchanged.
+5. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.`,
           },
         ],
       },

@@ -283,3 +283,77 @@ describe("translator client", () => {
     expect(getCachedTranslation(text, "es")).toBe(text);
   });
 });
+
+describe("translator two-way reading (ADR 0037)", () => {
+  beforeEach(() => {
+    clearTranslationCache();
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("renders a Spanish prayer burden in English for an English reader", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "en",
+        translations: [
+          { original: "Oración por mi familia", translated: "Prayer for my family", hash: "h1", cached: false },
+        ],
+      }),
+    } as any);
+
+    const result = await translateText("Oración por mi familia", "en");
+
+    expect(result).toBe("Prayer for my family");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetLang: "en", texts: ["Oración por mi familia"] }),
+    });
+  });
+
+  it("shows confidently-English and no-signal text as-is with no network call", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await expect(translateText("Prayer for my family", "en")).resolves.toBe("Prayer for my family");
+    await expect(translateText("Juan", "en")).resolves.toBe("Juan");
+    await expect(translateText("ok 👍", "en")).resolves.toBe("ok 👍");
+    await expect(translateText("Exam stress", "en")).resolves.toBe("Exam stress");
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("sends mixed English/Spanish text for translation in English mode", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "en",
+        translations: [
+          { original: "Please pray for mi familia", translated: "Please pray for my family", hash: "h1", cached: false },
+        ],
+      }),
+    } as any);
+
+    await expect(translateText("Please pray for mi familia", "en")).resolves.toBe(
+      "Please pray for my family",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("still sends no-signal text for translation in Spanish mode", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "es",
+        translations: [{ original: "Juan", translated: "Juan", hash: "h1", cached: false }],
+      }),
+    } as any);
+
+    await expect(translateText("Juan", "es")).resolves.toBe("Juan");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
