@@ -1,6 +1,745 @@
 {
-  "latestReleaseId": "2026-09-29-v1.8.4",
+  "latestReleaseId": "2026-10-09-v1.9.0",
   "releases": [
+    {
+      "id": "2026-10-09-v1.9.0",
+      "version": "1.9.0",
+      "title": "Release 1.9.0",
+      "date": "2026-10-09",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Move large one-off popups into the popup frame.",
+        "Move create chat, chat details and attach data into the popup frame.",
+        "Admin tools in the popup frame.",
+        "Move add/edit event, rhythm and share doc into the popup frame."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Move large one-off popups into the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Move create chat, chat details and attach data into the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Admin tools in the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Move add/edit event, rhythm and share doc into the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Move the who-are-we-praying-for picker into the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Log interaction in the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Render Homes in the shared popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Phone bottom sheet for the popup frame",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Shared popup frame and Log/Edit a visit redesign",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Build your own tag combines",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Undo for tag combines",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Store and edit standard tags",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Combine tags page with guess tiers and server endpoint",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Show combined-from banner on the kept contact",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Combine any two contacts picked from the directory",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow staff to release contact from queue",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Remember Not the same person marks and Skip for now",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Insert starter filler templates for prompts, passage, key line, and bullet list",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow reopening closed or withdrawn follow-up asks",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Per-field picks and full field rules on combine",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Re-point every reference kind on combine, with What moves",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Undo combine with later changes and an undo preview",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Basic Undo combine and Recent combines tab",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Server-side combine on a new Combine contacts page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Automatic matching and grouped Who is this?",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Home card for waiting suggestions",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Flag suggestions that may already be logged",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Dismiss and Not a CISA person, with Undo",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Owner-only Personal Sync Token, intake, and suggestion queue",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Delete a mistaken home and combine one entered twice",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Show tag not-reached count as a bare number, hide zeros",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Don't rewrite the page when making a to-do",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Prevent contact header dropdown clipping",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep only roster members under We missed",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow expanding long contact note independently of conversation strip",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Apply the Yjs log in one transaction on load",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Hybrid tag clustering and rule-level confirmation for Combine tags",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Redesign Came / We missed with a shared member chip",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Link First-Run Checklist steps into Help",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add the /help route, renderer and role filter",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Compile the help corpus to a build-time manifest",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Unify the to-work-through count across surfaces",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "View and filter contacts by fellowship interests",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Stop treating a contact's creator as a sharing source",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Hide bulk Remove from Students",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Wrap desktop edit form in scroll container",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Hide Delete from Students on the contact page",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Deleting a contact needs being able to see them",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Removing on a person's page needs being able to see them",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Writing on a person's page needs being able to see them",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "A founder may share and delegate a contact, as the client offers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow Add to story on contacts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "A contact can only be edited by someone who can see it",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "A year given since 1 August is not to confirm; read Timestamp createdAt",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Save how-we-met and location edits",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Moving up a year each August",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Edit year and major; year tags move into year",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Retire the contact Group (role) field",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Bulk pickers open blank; selection row stays in reach",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "First-run checklist reads live records, not stubs",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Prevent blank note preview strip for whitespace-only text",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Full-timer weekly reminder counts Around's to work through",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "A stored reach stamp so Full-timers see old reaches",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Text-first story composer",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Open a message's Thread from its notification",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Conversation pane, and the tabs retired",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add pending state to Google sign-in button",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Anchor AnsweredList fixtures to a fixed now",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add to story from a Conversation message",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Tick checklist, drop dead CSS and keys, parity, Make a to-do",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Head kind chip, About sheet, Delegate and Share",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Prompt to log a reach after Text or Call",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Log an interaction on a teammate's behalf",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "The story holds changes and attendance",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Order answered-prayer story milestone by its timestamp",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Weekly reminders and their Settings",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Not reached yet card",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Not reached yet filter and tag counts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Kind segments and a chip on every row",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Remind the asker when an ask or question goes unanswered",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Reach model, and rows that say Not reached yet",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Edit your own Conversation message, web and phone",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Phone chat audience headers, hidden-message decision, left-aligned skeleton",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Phone composer — @mention picker and chat attachments",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Phone announcements read on view, with the poster's receipts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Google drive video companion with role-based IAM gating",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add no-cache headers for manifest to prompt icon updates",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Phone chat and announcements",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Insert multi-verse filler when selecting Verse",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Messages — DMs, groups and announcements",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Phone person screen — Conversation, Full-timers switch, Story Threads",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Full-timers, Interaction Threads and the Around strip",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Cancel deep-link timers on unmount",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Your notes — Follow-ups as rows",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Audience line above the box only; calendar-day ask age",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Ship the behaviour the rework promised",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "The Conversation drawer in the one stream grammar",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Match the Who filter on identity and page older moments",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "List the whole team in the Who filter, not just recent activity authors",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Run the Cloud Run image on Node 24 so firebase-admin's optional deps install",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Let a Full-timer re-set the kind, and stop the student label reading as Our own",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Allow optional and nullable email on contacts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add --no-wait to eas submit to prevent job timeout",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-09-29-v1.8.4",
       "version": "1.8.4",
