@@ -89,6 +89,24 @@ describe("useTranslate and Translate component", () => {
     expect(screen.getByTestId("translated").textContent).toBe("Welcome to Campus");
   });
 
+  it("translates a Spanish prayer burden toward English for an English reader", async () => {
+    const translateSpy = vi.spyOn(translator, "translateText").mockResolvedValueOnce(
+      "Prayer for my family",
+    );
+
+    render(
+      <LanguageProvider defaultLanguage="en">
+        <TestTranslateComponent text="Oración por mi familia" />
+      </LanguageProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("translated").textContent).toBe("Prayer for my family");
+      expect(screen.getByTestId("pending").textContent).toBe("done");
+    });
+    expect(translateSpy).toHaveBeenCalledWith("Oración por mi familia", "en");
+  });
+
   it("returns cached translation instantly without loading state", () => {
     translator.setCachedTranslation("Welcome to Campus", "Bienvenido al Campus", "es");
 

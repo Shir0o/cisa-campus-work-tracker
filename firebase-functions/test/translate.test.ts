@@ -2,11 +2,15 @@ import { describe, it, expect, vi } from "vitest";
 import {
   isAlreadySpanish,
   translationHash,
-  extractTranslatableTexts,
+  extractTranslatableItems,
   advanceTranslationCron,
-  type TranslationCursor,
+  type TranslatableItem,
   type TranslationCronDeps,
 } from "../src/translate";
+
+const textsOf = (items: TranslatableItem[]) => items.map((i) => i.text);
+const find = (items: TranslatableItem[], text: string) =>
+  items.filter((i) => i.text === text);
 
 describe("isAlreadySpanish", () => {
   it("detects clearly Spanish text", () => {
@@ -34,25 +38,30 @@ describe("translationHash", () => {
   it("generates expected sha256 hash matching format normalizedTargetLang:trimmedText", () => {
     const hash = translationHash("Hello world", "es");
     expect(hash).toMatch(/^[a-f0-9]{64}$/);
-    // Same text trimmed gives identical hash
     expect(translationHash("  Hello world  ", "es")).toBe(hash);
+    expect(translationHash("Hello world", "en")).not.toBe(hash);
   });
 });
 
-describe("extractTranslatableTexts", () => {
-  it("extracts the real stored prayer fields (burden, answer, archiveReason)", () => {
+describe("extractTranslatableItems", () => {
+  it("queues the real stored prayer fields for Spanish, and Spanish text for English", () => {
     const prayerDoc = {
       burden: "Health for brother",
       status: "answered",
-      answer: "Fully healed",
+      answer: "Dios es bueno",
       archiveReason: "Answered and closed",
-      spanishNote: "Dios es bueno",
     };
-    const texts = extractTranslatableTexts("prayers", prayerDoc);
-    expect(texts).toContain("Health for brother");
-    expect(texts).toContain("Fully healed");
-    expect(texts).toContain("Answered and closed");
-    expect(texts).not.toContain("Dios es bueno"); // Spanish skipped
+    const items = extractTranslatableItems("prayers", prayerDoc);
+    expect(find(items, "Health for brother")).toEqual([
+      { text: "Health for brother", targetLang: "es" },
+    ]);
+    expect(find(items, "Answered and closed")).toEqual([
+      { text: "Answered and closed", targetLang: "es" },
+    ]);
+    // Spanish-authored content is now queued for English readers (ADR 0037).
+    expect(find(items, "Dios es bueno")).toEqual([
+      { text: "Dios es bueno", targetLang: "en" },
+    ]);
   });
 
   it("ignores the retired prayer fields that are not stored", () => {
@@ -62,7 +71,7 @@ describe("extractTranslatableTexts", () => {
       updateNotes: "Feeling better",
       answeredNotes: "Fully healed",
     };
-    expect(extractTranslatableTexts("prayers", prayerDoc)).toEqual([]);
+    expect(extractTranslatableItems("prayers", prayerDoc)).toEqual([]);
   });
 
   it("extracts the real stored contact fields (notes, spiritualBackground, prayerRequest)", () => {
@@ -72,7 +81,7 @@ describe("extractTranslatableTexts", () => {
       spiritualBackground: "Grew up Catholic",
       prayerRequest: "Please pray for my family",
     };
-    const texts = extractTranslatableTexts("contacts", contactDoc);
+    const texts = textsOf(extractTranslatableItems("contacts", contactDoc));
     expect(texts).toContain("Met at outreach table");
     expect(texts).toContain("Grew up Catholic");
     expect(texts).toContain("Please pray for my family");
@@ -83,7 +92,7 @@ describe("extractTranslatableTexts", () => {
       nextSteps: "Follow up next Tuesday",
       spiritualCondition: "Curious",
     };
-    expect(extractTranslatableTexts("contacts", contactDoc)).toEqual([]);
+    expect(extractTranslatableItems("contacts", contactDoc)).toEqual([]);
   });
 
   it("extracts the real stored interaction field (content)", () => {
@@ -91,13 +100,13 @@ describe("extractTranslatableTexts", () => {
       content: "Shared the gospel at student union",
       location: "Student Union",
     };
-    const texts = extractTranslatableTexts("interactions", interactionDoc);
+    const texts = textsOf(extractTranslatableItems("interactions", interactionDoc));
     expect(texts).toContain("Shared the gospel at student union");
     expect(texts).not.toContain("Student Union");
   });
 
   it("ignores the retired interaction summary field", () => {
-    expect(extractTranslatableTexts("interactions", { summary: "Short recap" })).toEqual([]);
+    expect(extractTranslatableItems("interactions", { summary: "Short recap" })).toEqual([]);
   });
 
   it("extracts the real stored todo field (title)", () => {
@@ -105,7 +114,7 @@ describe("extractTranslatableTexts", () => {
       title: "Bring bibles to campus",
       description: "Box of 20 English New Testaments",
     };
-    const texts = extractTranslatableTexts("todos", todoDoc);
+    const texts = textsOf(extractTranslatableItems("todos", todoDoc));
     expect(texts).toContain("Bring bibles to campus");
     expect(texts).not.toContain("Box of 20 English New Testaments");
   });
@@ -115,9 +124,21 @@ describe("extractTranslatableTexts", () => {
       title: "Welcome Week Logistics",
       content: "Schedule for tabling and flyer distribution",
     };
-    const texts = extractTranslatableTexts("coordinationNotes", noteDoc);
+    const texts = textsOf(extractTranslatableItems("coordinationNotes", noteDoc));
     expect(texts).toContain("Welcome Week Logistics");
     expect(texts).toContain("Schedule for tabling and flyer distribution");
+  });
+
+  it("queues mixed text for both directions and no-signal text for Spanish only", () => {
+    const items = extractTranslatableItems("prayers", {
+      burden: "Please pray for mi familia",
+      answer: "Juan",
+    });
+    expect(find(items, "Please pray for mi familia")).toEqual([
+      { text: "Please pray for mi familia", targetLang: "es" },
+      { text: "Please pray for mi familia", targetLang: "en" },
+    ]);
+    expect(find(items, "Juan")).toEqual([{ text: "Juan", targetLang: "es" }]);
   });
 });
 
@@ -138,7 +159,9 @@ describe("advanceTranslationCron", () => {
         hasMore: false,
       })),
       getCachedHashes: vi.fn(async () => new Set<string>()),
-      translateTexts: vi.fn(async (texts: string[]) => texts.map((t) => `[es] ${t}`)),
+      translateTexts: vi.fn(async (items: TranslatableItem[]) =>
+        items.map((i) => `[${i.targetLang}] ${i.text}`),
+      ),
       saveTranslations: vi.fn(async () => {}),
       ...overrides,
     };
@@ -174,6 +197,57 @@ describe("advanceTranslationCron", () => {
     expect(result.cachedCount).toBe(4);
   });
 
+  it("writes es entries for English strings and en entries for Spanish strings", async () => {
+    const deps = makeDeps({
+      fetchBatch: vi.fn(async () => ({
+        docs: [
+          { id: "p1", data: { burden: "Pray for finals" } },
+          { id: "p2", data: { burden: "Oración por la familia" } },
+        ],
+        hasMore: false,
+      })),
+    });
+    await advanceTranslationCron(deps, { maxItemsPerRun: 10 });
+
+    expect(deps.translateTexts).toHaveBeenCalledWith([
+      { text: "Pray for finals", targetLang: "es" },
+      { text: "Oración por la familia", targetLang: "en" },
+    ]);
+
+    const saved = (deps.saveTranslations as any).mock.calls[0][0] as Array<{
+      originalText: string;
+      targetLang: string;
+      hash: string;
+    }>;
+    const english = saved.find((s) => s.originalText === "Pray for finals")!;
+    const spanish = saved.find((s) => s.originalText === "Oración por la familia")!;
+    expect(english.targetLang).toBe("es");
+    expect(english.hash).toBe(translationHash("Pray for finals", "es"));
+    expect(spanish.targetLang).toBe("en");
+    expect(spanish.hash).toBe(translationHash("Oración por la familia", "en"));
+  });
+
+  it("shares one nightly limit across both directions", async () => {
+    const deps = makeDeps({
+      fetchBatch: vi.fn(async () => ({
+        docs: [
+          { id: "p1", data: { burden: "Pray for finals" } },
+          { id: "p2", data: { burden: "Oración por la familia" } },
+          { id: "p3", data: { burden: "Pray for the campus" } },
+        ],
+        hasMore: false,
+      })),
+    });
+    await advanceTranslationCron(deps, { maxItemsPerRun: 2 });
+
+    const requests = (deps.translateTexts as any).mock.calls[0][0] as TranslatableItem[];
+    expect(requests).toHaveLength(2);
+    expect(requests).toEqual([
+      { text: "Pray for finals", targetLang: "es" },
+      { text: "Oración por la familia", targetLang: "en" },
+    ]);
+  });
+
   it("saves successful chunks, skips failed strings, and still advances the cursor", async () => {
     const deps = makeDeps({
       translateTexts: vi.fn(async () => ["[es] a", null, "[es] c", null]),
@@ -186,11 +260,13 @@ describe("advanceTranslationCron", () => {
         hash: expect.any(String),
         originalText: "Pray for finals",
         translatedText: "[es] a",
+        targetLang: "es",
       },
       {
         hash: expect.any(String),
         originalText: "Pray for fellowship",
         translatedText: "[es] c",
+        targetLang: "es",
       },
     ]);
     expect(result.translatedCount).toBe(2);

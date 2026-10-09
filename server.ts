@@ -4080,8 +4080,29 @@ ${JSON.stringify(contactsList)}`;
         }
       }
 
-      // If we have uncached items, call Gemini in chunks with timeout protection
-      if (uncachedItems.length > 0) {
+      // Daily Gemini spending limit (ADR 0037): 2,000 translated strings per
+      // day, counted across all users and both languages. Cached hits and the
+      // nightly cron don't count. Above the limit, uncached strings come back
+      // as written and are not cached, so they translate after the reset.
+      const dailyLimitRaw = parseInt(process.env.TRANSLATION_DAILY_LIMIT || "", 10);
+      const dailyLimit = Number.isFinite(dailyLimitRaw) && dailyLimitRaw > 0 ? dailyLimitRaw : 2000;
+      const today = new Date().toISOString().slice(0, 10);
+      const usageRef = db.collection("system").doc("translationUsage");
+      let usedToday = 0;
+      try {
+        const usageSnap = await usageRef.get();
+        const usageData = usageSnap.exists ? usageSnap.data() : null;
+        if (usageData && usageData.date === today && typeof usageData.count === "number") {
+          usedToday = usageData.count;
+        }
+      } catch (quotaErr) {
+        console.warn("[Translation Service] Failed to read daily usage counter:", quotaErr);
+      }
+      const remainingQuota = Math.max(0, dailyLimit - usedToday);
+      const allowedItems = uncachedItems.slice(0, remainingQuota);
+
+      // If we have allowed items, call Gemini in chunks with timeout protection
+      if (allowedItems.length > 0) {
         const KNOWN_LANGUAGES: Record<string, string> = {
           es: "Spanish",
           zh: "Chinese",
@@ -4103,8 +4124,8 @@ ${JSON.stringify(contactsList)}`;
 
         // Split uncachedItems into chunks
         const chunks: Array<Array<{ id: number; hash: string; text: string }>> = [];
-        for (let i = 0; i < uncachedItems.length; i += CHUNK_SIZE) {
-          chunks.push(uncachedItems.slice(i, i + CHUNK_SIZE));
+        for (let i = 0; i < allowedItems.length; i += CHUNK_SIZE) {
+          chunks.push(allowedItems.slice(i, i + CHUNK_SIZE));
         }
 
         for (const chunk of chunks) {
@@ -4121,7 +4142,8 @@ CRITICAL RULES:
 1. Preserve all Markdown formatting intact (*, **, #, -, 1., [text](url), etc.).
 2. Preserve user mentions (@name or @User), emails, URLs, and phone numbers untouched.
 3. Preserve emojis and special characters.
-4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.`,
+4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.
+5. If a text item is already entirely in the target language (${langName}), return it unchanged.`,
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: Type.OBJECT,
@@ -4196,6 +4218,13 @@ CRITICAL RULES:
           } catch (dbErr) {
             console.warn("[Translation Service] Failed to save translations to Firestore cache:", dbErr);
           }
+        }
+
+        // Count what we sent to Gemini toward the shared daily limit.
+        try {
+          await usageRef.set({ date: today, count: usedToday + allowedItems.length }, { merge: true });
+        } catch (quotaErr) {
+          console.warn("[Translation Service] Failed to record daily usage:", quotaErr);
         }
       }
 

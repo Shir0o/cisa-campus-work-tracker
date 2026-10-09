@@ -1,5 +1,6 @@
 // @cisa/core — platform-agnostic shared logic for web + React Native.
 export * from './types';
+export * from './translation';
 export * from './permissions';
 export * from './impersonate';
 export * from './walking';

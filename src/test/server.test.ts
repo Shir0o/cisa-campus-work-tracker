@@ -1906,6 +1906,111 @@ describe("POST /api/translate — batch translation & smart caching", () => {
   });
 });
 
+describe("POST /api/translate — daily Gemini spending limit (ADR 0037)", () => {
+  let app: Express;
+  const today = () => new Date().toISOString().slice(0, 10);
+  const yesterday = () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  beforeEach(async () => {
+    resetDb();
+    mockGenerateContent.mockReset();
+    app = await createApp();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("translates only up to the limit and leaves the rest unchanged and uncached", async () => {
+    vi.stubEnv("TRANSLATION_DAILY_LIMIT", "1");
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({ translations: [{ id: 0, translatedText: "Orad por los estudiantes" }] }),
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Pray for students", "Exam stress"],
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.translations[0]).toMatchObject({
+      translated: "Orad por los estudiantes",
+      cached: false,
+    });
+    // Over the limit: shown as written and not cached.
+    expect(res.body.translations[1]).toMatchObject({ translated: "Exam stress", cached: false });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+
+    expect(getCollection("system")["translationUsage"]).toMatchObject({ date: today(), count: 1 });
+    expect(Object.keys(getCollection("translations"))).toHaveLength(1);
+  });
+
+  it("still serves cached strings when the limit is exhausted, without calling Gemini", async () => {
+    vi.stubEnv("TRANSLATION_DAILY_LIMIT", "1");
+    seedDoc("system", "translationUsage", { date: today(), count: 1 });
+    const hash = crypto.createHash("sha256").update("es:Hello").digest("hex");
+    seedDoc("translations", hash, {
+      hash,
+      sourceText: "Hello",
+      translatedText: "Hola",
+      targetLang: "es",
+      createdAt: new Date().toISOString(),
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Hello", "World"],
+    });
+
+    expect(res.body.translations[0]).toMatchObject({ translated: "Hola", cached: true });
+    expect(res.body.translations[1]).toMatchObject({ translated: "World", cached: false });
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(Object.keys(getCollection("translations"))).toHaveLength(1);
+  });
+
+  it("shares one counter across both languages", async () => {
+    vi.stubEnv("TRANSLATION_DAILY_LIMIT", "1");
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({ translations: [{ id: 0, translatedText: "Oración" }] }),
+    });
+
+    const first = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Prayer"],
+    });
+    expect(first.body.translations[0].translated).toBe("Oración");
+
+    // The English request now finds the shared daily budget spent.
+    const second = await request(app).post("/api/translate").send({
+      targetLang: "en",
+      texts: ["Oración por la familia"],
+    });
+    expect(second.body.translations[0]).toMatchObject({
+      translated: "Oración por la familia",
+      cached: false,
+    });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    expect(getCollection("system")["translationUsage"]).toMatchObject({ date: today(), count: 1 });
+  });
+
+  it("resets the count on a new day", async () => {
+    vi.stubEnv("TRANSLATION_DAILY_LIMIT", "1");
+    seedDoc("system", "translationUsage", { date: yesterday(), count: 5 });
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({ translations: [{ id: 0, translatedText: "Oración" }] }),
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Prayer"],
+    });
+
+    expect(res.body.translations[0].translated).toBe("Oración");
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    expect(getCollection("system")["translationUsage"]).toMatchObject({ date: today(), count: 1 });
+  });
+});
+
 
 
 // ── Feedback Follow-ups and submitter-facing copy (ADR 0019) ────────────────

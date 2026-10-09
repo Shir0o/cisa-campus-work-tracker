@@ -1342,10 +1342,17 @@ describe('MyDay', () => {
       user: { displayName: 'Test User', uid: 'u-test' },
       role: 'manager',
     });
+    const sharedCreatedAt = new Date().toISOString();
     vi.mocked(onSnapshot).mockImplementation(
       byPath({
         contacts: Array.from({ length: 7 }, (_, i) =>
-          unreachedContact(`c-${i}`, { name: `Person ${i}`, createdBy: 'u-test' }),
+          unreachedContact(`c-${i}`, {
+            name: `Person ${i}`,
+            createdBy: 'u-test',
+            // A shared timestamp keeps the newest-first reach sort stable, so
+            // the five-row cap is deterministic instead of racing the clock.
+            createdAt: sharedCreatedAt,
+          }),
         ),
       }),
     );
