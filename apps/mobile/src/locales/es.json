@@ -1383,6 +1383,7 @@
       "back_to_current_term": "Volver al período actual",
       "when_on_campus": "Cuando estás en el campus",
       "the_days_youre_there": "Los días que estás allí",
+      "pick_at_least_one_day": "Elige al menos un día.",
       "from": "Desde",
       "until": "Hasta",
       "when_to_nudge": "Cuándo avisarte",
@@ -1419,6 +1420,10 @@
       "menu": "Menú",
       "foot": "La cola es la app. Todo lo demás vive aquí."
     },
+    "feedback": {
+      "leave_a_note": "Cuéntanos cómo va",
+      "all_welcome": "Una idea, un problema, un agradecimiento — llega directo al equipo."
+    },
     "ask": {
       "title": "Pregunta al equipo",
       "placeholder": "¿Qué quieres preguntar? Dilo como lo dirías en voz alta.",
@@ -1427,6 +1432,7 @@
       "empty": "Todavía no has preguntado nada. Las preguntas que no pertenecen a la página de nadie — cómo empezar una conversación en la mesa del club, qué decir cuando estás atascado — viven aquí.",
       "questions_for_team": "Preguntas para el equipo",
       "send": "Enviar",
+      "toast_asked": "Preguntado. El equipo puede verlo.",
       "scanned": "Visto",
       "delete_reply_aria": "Eliminar esta respuesta",
       "delete_reply": "Eliminar respuesta",
@@ -1543,6 +1549,7 @@
       "phone": "Teléfono",
       "email": "Correo",
       "instagram": "Instagram",
+      "how_we_met": "Cómo nos conocimos",
       "faith_so_far": "Fe, hasta ahora",
       "goes_by": "Se hace llamar",
       "known": "Conocido",
@@ -1556,6 +1563,7 @@
       "remove_access_confirm": "¿Quitar el acceso para {name}?",
       "looking_back": "Mirando atrás",
       "details_updated": "{name} actualizado",
+      "combined_from": "Combinado de {name} el {date} por {person}",
       "discard_title": "¿Descartar cambios?",
       "discard_message": "Tienes cambios sin guardar. ¿Seguro que deseas descartarlos?",
       "first_name": "Nombre",
