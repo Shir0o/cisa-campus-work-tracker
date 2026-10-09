@@ -36,8 +36,10 @@ export interface BellNotification {
 }
 
 /** "gone" means the push service says this device will never accept another
- *  push (uninstalled app, revoked subscription) — it is deleted. */
-export type SendOutcome = "ok" | "gone";
+ *  push (uninstalled app, revoked subscription) — it is deleted. An "ok" Expo
+ *  send carries the ticket id its real delivery outcome is later read from
+ *  (the receipt); a Web Push send has none. */
+export type SendOutcome = { status: "ok"; ticketId?: string } | { status: "gone" };
 
 export interface DispatchDeps {
   /** Full-timers (role `admin`) — the audience of an `ALL_ADMINS` broadcast. */
@@ -46,6 +48,8 @@ export interface DispatchDeps {
   /** True when `uid` may be pushed for `key` now (and records that it was). */
   claimCoalesce(uid: string, key: string, windowMs: number): Promise<boolean>;
   send(uid: string, device: PushDevice, payload: PushPayload): Promise<SendOutcome>;
+  /** Persist an Expo ticket id so its delivery receipt can be checked later. */
+  recordTicket(uid: string, deviceId: string, ticketId: string): Promise<void>;
   removeDevice(uid: string, deviceId: string): Promise<void>;
 }
 
@@ -138,10 +142,12 @@ export async function dispatchNotification(
     }
     for (const { id, device } of await deps.devicesOf(uid)) {
       try {
-        if ((await deps.send(uid, device, payload)) === "gone") {
+        const outcome = await deps.send(uid, device, payload);
+        if (outcome.status === "gone") {
           await deps.removeDevice(uid, id);
           result.removed++;
         } else {
+          if (outcome.ticketId) await deps.recordTicket(uid, id, outcome.ticketId);
           result.sent++;
         }
       } catch (e) {
