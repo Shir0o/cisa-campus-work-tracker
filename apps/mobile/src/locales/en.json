@@ -1383,6 +1383,7 @@
       "back_to_current_term": "Back to current term",
       "when_on_campus": "When you're on campus",
       "the_days_youre_there": "The days you're there",
+      "pick_at_least_one_day": "Pick at least one day.",
       "from": "From",
       "until": "Until",
       "when_to_nudge": "When to nudge you",
@@ -1419,6 +1420,10 @@
       "menu": "Menu",
       "foot": "The queue is the app. Everything else lives here."
     },
+    "feedback": {
+      "leave_a_note": "Tell us how it's going",
+      "all_welcome": "An idea, a snag, a thank-you — it goes straight to the team."
+    },
     "ask": {
       "title": "Ask the team",
       "placeholder": "What do you want to ask? Say it how you'd say it out loud.",
@@ -1427,6 +1432,7 @@
       "empty": "Nothing asked yet. The questions that don't belong on anyone's page — how to start a conversation at the club table, what to say when you're stuck — live here.",
       "questions_for_team": "Questions for the team",
       "send": "Send it",
+      "toast_asked": "Asked. The team can see it.",
       "scanned": "Scanned",
       "delete_reply_aria": "Delete this answer",
       "delete_reply": "Delete answer",
@@ -1543,6 +1549,7 @@
       "phone": "Phone",
       "email": "Email",
       "instagram": "Instagram",
+      "how_we_met": "How we met",
       "faith_so_far": "Faith, so far",
       "goes_by": "Goes by",
       "known": "Known",
@@ -1556,6 +1563,7 @@
       "remove_access_confirm": "Remove view access for {name}?",
       "looking_back": "Looking back",
       "details_updated": "{name} updated",
+      "combined_from": "Combined from {name} on {date} by {person}",
       "discard_title": "Discard changes?",
       "discard_message": "You have unsaved changes. Are you sure you want to discard them?",
       "first_name": "First Name",
