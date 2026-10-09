@@ -24,7 +24,7 @@ export interface MinimalFirestore {
 
 export function firestoreTranslationDeps(
   db: MinimalFirestore,
-  translateTextsFn: (texts: string[]) => Promise<string[]>,
+  translateTextsFn: (texts: string[]) => Promise<Array<string | null>>,
   serverTimestampFn: () => any = () => new Date().toISOString(),
 ): TranslationCronDeps {
   const cursorRef = db.collection("system").doc("translationCursor");
@@ -100,7 +100,7 @@ export function firestoreTranslationDeps(
       return cached;
     },
 
-    async translateTexts(texts: string[]): Promise<string[]> {
+    async translateTexts(texts: string[]): Promise<Array<string | null>> {
       return translateTextsFn(texts);
     },
 
@@ -132,67 +132,127 @@ export function firestoreTranslationDeps(
   };
 }
 
-export function geminiTranslator(fetchImpl: typeof fetch, apiKey: string) {
-  return async (texts: string[]): Promise<string[]> => {
+/** Transient failures worth retrying. Anything else (bad key, bad request) is
+ *  a configuration error and is surfaced instead of silently skipped. */
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+export interface GeminiTranslatorOptions {
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+export function geminiTranslator(
+  fetchImpl: typeof fetch,
+  apiKey: string,
+  options: GeminiTranslatorOptions = {},
+) {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 500;
+  const sleep = options.sleep ?? defaultSleep;
+  const langName = "Spanish";
+
+  return async (texts: string[]): Promise<Array<string | null>> => {
     if (texts.length === 0) return [];
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY is not configured.");
     }
 
-    const langName = "Spanish";
-    const results: string[] = [];
+    const results: Array<string | null> = [];
 
     for (let i = 0; i < texts.length; i += GEMINI_TRANSLATE_CHUNK_SIZE) {
       const chunk = texts.slice(i, i + GEMINI_TRANSLATE_CHUNK_SIZE);
-      const items = chunk.map((text, idx) => ({ id: idx, text }));
-      const prompt =
-        `Translate the following ${chunk.length} text items into ${langName}:\n\n` +
-        JSON.stringify(items);
+      const chunkResults = await translateChunk(chunk);
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      for (let j = 0; j < chunk.length; j++) {
+        // A missing id is a failure, never a pass-through of the original.
+        results.push(chunkResults.get(j) ?? null);
+      }
+    }
 
-      const res = await fetchImpl(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: {
-            parts: [
-              {
-                text: `You are an expert translator for a campus ministry community web and mobile app. Translate each text item accurately, idiomatically, and naturally into the target language (${langName}).
+    return results;
+  };
+
+  async function translateChunk(chunk: string[]): Promise<Map<number, string>> {
+    const items = chunk.map((text, idx) => ({ id: idx, text }));
+    const prompt =
+      `Translate the following ${chunk.length} text items into ${langName}:\n\n` +
+      JSON.stringify(items);
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      systemInstruction: {
+        parts: [
+          {
+            text: `You are an expert translator for a campus ministry community web and mobile app. Translate each text item accurately, idiomatically, and naturally into the target language (${langName}).
 CRITICAL RULES:
 1. Preserve all Markdown formatting intact (*, **, #, -, 1., [text](url), etc.).
 2. Preserve user mentions (@name or @User), emails, URLs, and phone numbers untouched.
 3. Preserve emojis and special characters.
 4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.`,
-              },
-            ],
           },
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                translations: {
-                  type: "ARRAY",
-                  items: {
-                    type: "OBJECT",
-                    properties: {
-                      id: { type: "INTEGER" },
-                      translatedText: { type: "STRING" },
-                    },
-                    required: ["id", "translatedText"],
-                  },
+        ],
+      },
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            translations: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  id: { type: "INTEGER" },
+                  translatedText: { type: "STRING" },
                 },
+                required: ["id", "translatedText"],
               },
-              required: ["translations"],
             },
           },
-        }),
-      });
+          required: ["translations"],
+        },
+      },
+    });
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const backoff = () => sleep(baseDelayMs * 2 ** (attempt - 1));
+
+      let res: Response;
+      try {
+        res = await fetchImpl(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
+      } catch (err) {
+        if (attempt < maxAttempts) {
+          await backoff();
+          continue;
+        }
+        console.warn(
+          `[GeminiTranslator] chunk skipped after ${maxAttempts} attempts (network error):`,
+          err,
+        );
+        return new Map();
+      }
 
       if (!res.ok) {
         const errorText = await res.text();
+        if (RETRYABLE_STATUSES.has(res.status)) {
+          if (attempt < maxAttempts) {
+            await backoff();
+            continue;
+          }
+          console.warn(
+            `[GeminiTranslator] chunk skipped after ${maxAttempts} attempts: HTTP ${res.status}: ${errorText}`,
+          );
+          return new Map();
+        }
         throw new Error(`Gemini translation failed: HTTP ${res.status}: ${errorText}`);
       }
 
@@ -221,11 +281,9 @@ CRITICAL RULES:
         }
       }
 
-      for (let j = 0; j < chunk.length; j++) {
-        results.push(chunkResults.get(j) ?? chunk[j]);
-      }
+      return chunkResults;
     }
 
-    return results;
-  };
+    return new Map();
+  }
 }

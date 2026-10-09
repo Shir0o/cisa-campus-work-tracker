@@ -216,4 +216,72 @@ describe("geminiTranslator", () => {
     const translate = geminiTranslator(mockFetch, "test-api-key");
     await expect(translate(["Hello"])).rejects.toThrow("Gemini translation failed: HTTP 403");
   });
+
+  const okResponse = (translations: Array<{ id: number; translatedText: string }>) => ({
+    ok: true,
+    json: async () => ({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ translations }) }] } }],
+    }),
+  });
+
+  it("retries a transient 503 and succeeds (retry works)", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => "high demand" })
+      .mockResolvedValueOnce(okResponse([{ id: 0, translatedText: "Oración" }])) as any;
+    const sleep = vi.fn(async () => {});
+
+    const translate = geminiTranslator(mockFetch, "test-api-key", { maxAttempts: 3, sleep });
+    const results = await translate(["Prayer"]);
+
+    expect(results).toEqual(["Oración"]);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a network error and succeeds", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("ECONNRESET"))
+      .mockResolvedValueOnce(okResponse([{ id: 0, translatedText: "Hermanos" }])) as any;
+
+    const translate = geminiTranslator(mockFetch, "test-api-key", {
+      maxAttempts: 3,
+      sleep: async () => {},
+    });
+    await expect(translate(["Brothers"])).resolves.toEqual(["Hermanos"]);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("skips a chunk that keeps failing and keeps translating later chunks", async () => {
+    const firstChunk = Array.from({ length: GEMINI_TRANSLATE_CHUNK_SIZE }, (_, i) => `text ${i}`);
+    const mockFetch = vi
+      .fn()
+      // First chunk fails every attempt.
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => "high demand" })
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => "high demand" })
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => "high demand" })
+      // Second chunk succeeds.
+      .mockResolvedValueOnce(okResponse([{ id: 0, translatedText: "Siguiente" }])) as any;
+
+    const translate = geminiTranslator(mockFetch, "test-api-key", {
+      maxAttempts: 3,
+      sleep: async () => {},
+    });
+    const results = await translate([...firstChunk, "later string"]);
+
+    expect(results.slice(0, GEMINI_TRANSLATE_CHUNK_SIZE)).toEqual(firstChunk.map(() => null));
+    expect(results[GEMINI_TRANSLATE_CHUNK_SIZE]).toBe("Siguiente");
+  });
+
+  it("counts ids missing from a parsed response as failed, not as the original text", async () => {
+    const mockFetch = vi.fn(async () =>
+      okResponse([{ id: 0, translatedText: "Oración" }]),
+    ) as any;
+
+    const translate = geminiTranslator(mockFetch, "test-api-key");
+    const results = await translate(["Prayer", "Missing"]);
+
+    expect(results).toEqual(["Oración", null]);
+  });
 });
