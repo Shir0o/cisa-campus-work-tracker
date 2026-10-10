@@ -107,9 +107,12 @@ export default function HomesModal({
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [combining, setCombining] = useState<{ source: Home; target: Home | null } | null>(null);
-  // A rejected Delete (editor footer) or Combine (Combine step footer), kept
-  // until the person retries or leaves that view.
-  const [actionError, setActionError] = useState<'delete' | 'combine' | null>(null);
+  // A rejected (or offline) Save or Delete in the editor footer, or Combine in
+  // the Combine step footer, kept until the person retries or leaves that view.
+  const [actionError, setActionError] = useState<{
+    kind: 'save' | 'delete' | 'combine';
+    offline: boolean;
+  } | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef<string | null>(null);
@@ -191,6 +194,23 @@ export default function HomesModal({
     setEditing(null);
     setBaseline(null);
   };
+  /** Firestore writes don't reject while offline — they wait — so say so up
+   *  front rather than sit on "Saving…". Nothing typed is lost; Try again re-checks. */
+  const offlineFor = (kind: 'save' | 'delete' | 'combine'): boolean => {
+    if (navigator.onLine !== false) return false;
+    setActionError({ kind, offline: true });
+    return true;
+  };
+  /** handleFirestoreError records and rethrows; the footer is where the person
+   *  hears about it, so keep the throw from escaping the handler. */
+  const failWith = (kind: 'save' | 'delete' | 'combine', e: unknown, op: OperationType, path: string) => {
+    setActionError({ kind, offline: false });
+    try {
+      handleFirestoreError(e, op, path);
+    } catch {
+      /* already surfaced above */
+    }
+  };
   const startCombine = (source: Home) => {
     setActionError(null);
     setCombining({ source, target: null });
@@ -213,7 +233,7 @@ export default function HomesModal({
   /** Delete a Home made by mistake (ADR 0040 §1) — immediate, with Undo. */
   const remove = async () => {
     const home = editingHome;
-    if (!home || busy) return;
+    if (!home || busy || offlineFor('delete')) return;
     setActionError(null);
     setBusy(true);
     try {
@@ -233,14 +253,7 @@ export default function HomesModal({
         );
       });
     } catch (e) {
-      setActionError('delete');
-      // handleFirestoreError records and rethrows; the footer is where the
-      // person hears about it, so keep the throw from escaping the handler.
-      try {
-        handleFirestoreError(e, OperationType.DELETE, `homes/${home.id}`);
-      } catch {
-        /* already surfaced above */
-      }
+      failWith('delete', e, OperationType.DELETE, `homes/${home.id}`);
     } finally {
       setBusy(false);
     }
@@ -248,7 +261,7 @@ export default function HomesModal({
 
   /** Combine the Home entered twice into the Home to keep (ADR 0040 §2). */
   const confirmCombine = async () => {
-    if (!combining?.target || busy) return;
+    if (!combining?.target || busy || offlineFor('combine')) return;
     const { source, target } = combining;
     setActionError(null);
     setBusy(true);
@@ -266,19 +279,15 @@ export default function HomesModal({
       leaveEditor();
       onHomeSaved(target);
     } catch (e) {
-      setActionError('combine');
-      try {
-        handleFirestoreError(e, OperationType.WRITE, `homes/${target.id}`);
-      } catch {
-        /* already surfaced above */
-      }
+      failWith('combine', e, OperationType.WRITE, `homes/${target.id}`);
     } finally {
       setBusy(false);
     }
   };
 
   const save = async () => {
-    if (!editing || saving) return;
+    if (!editing || saving || offlineFor('save')) return;
+    setActionError(null);
     setSaving(true);
     try {
       const input = {
@@ -297,7 +306,7 @@ export default function HomesModal({
       }
       leaveEditor();
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, 'homes');
+      failWith('save', e, OperationType.WRITE, 'homes');
     } finally {
       setSaving(false);
     }
@@ -625,9 +634,9 @@ export default function HomesModal({
           title: t('homes.combine_heading').replace('{source}', combining.source.label),
           subtitle: t('homes.combine_subtitle').replace('{visits}', visitCountLabel(visitCount(combining.source.id))),
           error:
-            actionError === 'combine'
+            actionError?.kind === 'combine'
               ? {
-                  message: t('homes.couldnt_combine'),
+                  message: actionError.offline ? t('modals.couldnt_save_offline') : t('homes.couldnt_combine'),
                   retryLabel: t('modals.try_again'),
                   onRetry: () => void confirmCombine(),
                 }
@@ -653,13 +662,19 @@ export default function HomesModal({
             destructive: canDelete ? { label: t('homes.delete_home'), onClick: () => void remove() } : null,
             footerHint: canDelete ? t('homes.never_visited_hint') : undefined,
             error:
-              actionError === 'delete'
+              actionError?.kind === 'delete'
                 ? {
-                    message: t('homes.couldnt_delete'),
+                    message: actionError.offline ? t('modals.couldnt_save_offline') : t('homes.couldnt_delete'),
                     retryLabel: t('modals.try_again'),
                     onRetry: () => void remove(),
                   }
-                : null,
+                : actionError?.kind === 'save'
+                  ? {
+                      message: t(actionError.offline ? 'modals.couldnt_save_offline' : 'modals.couldnt_save'),
+                      retryLabel: t('modals.try_again'),
+                      onRetry: () => void save(),
+                    }
+                  : null,
             cancelLabel: t('modals.cancel'),
             onCancel: leaveEditor,
             primary: {

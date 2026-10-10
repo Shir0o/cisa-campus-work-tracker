@@ -223,6 +223,7 @@ export function PopupFrame({
   // Where focus was when the discard question opened, to return it on Keep editing.
   const askedFromRef = useRef<HTMLElement | null>(null);
   const keepEditingRef = useRef<HTMLButtonElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
   // The last keydown that bubbled through this dialog's React tree — which
   // includes its portals (e.g. a date picker's calendar), so the focus trap
   // can leave those alone.
@@ -282,6 +283,13 @@ export function PopupFrame({
     if (dirty && cancelDiscards) ask('cancel');
     else onCancel?.();
   };
+
+  // When the footer swaps to a rejected save, the button that was clicked has
+  // gone; land on Try again rather than the page behind the dialog.
+  const hasError = !!error;
+  useEffect(() => {
+    if (hasError) retryRef.current?.focus();
+  }, [hasError]);
 
   // The discard question takes focus as it opens.
   useEffect(() => {
@@ -504,6 +512,7 @@ export function PopupFrame({
                       <span className="truncate">{error.message}</span>
                     </p>
                     <button
+                      ref={retryRef}
                       type="button"
                       onClick={error.onRetry}
                       className={cn(

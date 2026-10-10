@@ -435,6 +435,95 @@ describe('HomesModal', () => {
     });
   });
 
+  describe('save failures and offline', () => {
+    const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
+    const garcias = [
+      { id: 'h1', label: 'the Garcias', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Garcias (2)', members: ['c2', 'c3'], active: true },
+    ];
+    const OFFLINE = "Couldn't save — you're offline. Nothing was lost.";
+    let errSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      asMock(handleFirestoreError).mockImplementation(() => {
+        throw new Error('rethrown by handleFirestoreError');
+      });
+      errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      asMock(handleFirestoreError).mockReset();
+      errSpy.mockRestore();
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    });
+    const goOffline = () => Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+
+    it('shows a failed create in the footer, keeps the draft, and Try again writes again', async () => {
+      asMock(addHome).mockRejectedValueOnce(new Error('denied'));
+      render(<HomesModal {...baseProps} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Add a home' }));
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Chens' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Create home' }));
+
+      expect(await screen.findByText("Couldn't save. Nothing you typed was lost.")).toBeInTheDocument();
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'WRITE', 'homes');
+      expect(screen.getByLabelText('Name')).toHaveValue('the Chens');
+      expect(baseProps.onHomeSaved).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(addHome).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(baseProps.onHomeSaved).toHaveBeenCalled());
+      expect(screen.queryByText(/Couldn't save/)).not.toBeInTheDocument();
+    });
+
+    it('shows a failed edit in the footer and keeps the draft', async () => {
+      asMock(updateHome).mockRejectedValueOnce(new Error('denied'));
+      const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+      render(<HomesModal {...baseProps} homes={homes} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Peinados' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      expect(await screen.findByText("Couldn't save. Nothing you typed was lost.")).toBeInTheDocument();
+      expect(screen.getByLabelText('Name')).toHaveValue('the Peinados');
+    });
+
+    it('says offline up front for save, without writing', () => {
+      goOffline();
+      render(<HomesModal {...baseProps} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Add a home' }));
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Chens' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Create home' }));
+
+      expect(screen.getByText(OFFLINE)).toBeInTheDocument();
+      expect(addHome).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('Name')).toHaveValue('the Chens');
+    });
+
+    it('says offline up front for delete, without writing', () => {
+      goOffline();
+      const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+      render(<HomesModal {...baseProps} homes={homes} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete home' }));
+
+      expect(screen.getByText(OFFLINE)).toBeInTheDocument();
+      expect(deleteHome).not.toHaveBeenCalled();
+    });
+
+    it('says offline up front for combine, without writing', () => {
+      goOffline();
+      render(<HomesModal {...baseProps} homes={garcias} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Garcias (2)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Combine into…' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Keep the Garcias' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Combine homes' }));
+
+      expect(screen.getByText(OFFLINE)).toBeInTheDocument();
+      expect(combineHomes).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Back to the home' })).toBeInTheDocument();
+    });
+  });
+
   it('stays one dialog from the list to the editor and back, with focus inside it (#1448)', () => {
     const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
     render(<HomesModal {...baseProps} homes={homes} />);

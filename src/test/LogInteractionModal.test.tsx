@@ -365,6 +365,17 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
+    it('moves focus to Try again when the footer swaps to the error', async () => {
+      setupOnSnapshot(mockContacts);
+      const batchMock = firestore.writeBatch(null as any);
+      (batchMock.commit as any).mockRejectedValueOnce(new Error('commit exploded'));
+
+      render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+      await fill();
+
+      expect(await screen.findByRole('button', { name: 'Try again' })).toHaveFocus();
+    });
+
     it('writes again on Try again and closes once it lands', async () => {
       setupOnSnapshot(mockContacts);
       const batchMock = firestore.writeBatch(null as any);
