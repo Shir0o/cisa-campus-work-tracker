@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // 0. Global Safety Net
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
 
     // --- PRIMITIVES & HELPERS ---
