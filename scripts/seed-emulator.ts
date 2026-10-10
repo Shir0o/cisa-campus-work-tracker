@@ -9,9 +9,10 @@
  */
 
 import { initializeApp, getApps, getApp } from 'firebase-admin';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { DEFAULT_CREDENTIALS } from '../e2e/helpers/auth-defaults.js';
+import { LEGACY_CONTACT_FIXTURES, type LegacyCreatedAt } from '../src/test/fixtures/contacts';
 
 // Route firebase-admin to local emulators
 process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
@@ -180,7 +181,35 @@ export async function seedEmulator() {
     at: new Date().toISOString(),
   }, { merge: true });
 
+  // Legacy-shape contacts (#1472). The same fixtures the unit tests import, so
+  // the journeys meet the shapes the escapes came from: a sign-up's Firestore
+  // Timestamp `createdAt`, a quick-add's `email: null`, and an older document
+  // with the retired `owner` field (or none at all). Written as-is; the
+  // Full-timer and Student see everyone, so these reach the Directory.
+  for (const fixture of Object.values(LEGACY_CONTACT_FIXTURES)) {
+    const { id, ...data } = fixture;
+    await db.collection('contacts').doc(id).set(
+      {
+        ...data,
+        createdAt: materializeCreatedAt(data.createdAt as LegacyCreatedAt),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
+
   console.log('Emulator seeding complete.');
+}
+
+/** A stored `createdAt` is an ISO string or a Firestore Timestamp descriptor:
+ *  `{ seconds }` from the Admin SDK, `{ _seconds }` over REST. Write the real
+ *  Timestamp for the latter so the emulator holds what production does. */
+function materializeCreatedAt(createdAt?: LegacyCreatedAt): unknown {
+  if (createdAt && typeof createdAt === 'object') {
+    const seconds = createdAt.seconds ?? createdAt._seconds;
+    if (typeof seconds === 'number') return Timestamp.fromMillis(seconds * 1000);
+  }
+  return createdAt;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

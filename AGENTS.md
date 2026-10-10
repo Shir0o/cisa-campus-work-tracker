@@ -127,7 +127,7 @@ Before introducing new features, enforce these gates:
 | What broke | Test it with |
 | --- | --- |
 | A client query or write the rules deny; `visibleTo` scope | A rules test in `src/test/firestore.rules.test.ts` pinning the exact query shape the client sends |
-| Contact data shape (ISO vs Timestamp `createdAt`, `null` email, missing `owner`) | A unit test with legacy-shape fixtures |
+| Contact data shape (ISO vs Timestamp `createdAt`, `null` email, missing `owner`) | A unit test importing the legacy-shape fixtures in `src/test/fixtures/contacts.ts` |
 | An i18n key | `npm run check:i18n` |
 | A flow across features or roles | The role's Playwright journey |
 | Visual | Milestone playtest |

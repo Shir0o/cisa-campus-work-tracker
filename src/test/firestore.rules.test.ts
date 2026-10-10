@@ -24,6 +24,7 @@ import {
 } from 'firebase/firestore';
 import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as fs from 'fs';
+import { nullEmailContact, noOwnerContact } from './fixtures/contacts';
 
 let testEnv: RulesTestEnvironment;
 const PROJECT_ID = 'campus-hub-security-test';
@@ -270,6 +271,43 @@ describeRules('Firestore Security Rules', () => {
         updatedAt: new Date().toISOString(),
         updatedBy: 'admin1',
         updatedByName: 'Admin',
+      }));
+    });
+
+    // #1472, escape rows 17 and 20: a real sign-up or quick-add document has a
+    // null email and no owner key, and the rules must keep letting its holders
+    // edit it. The fixtures are the stored shapes the escapes came from.
+    it('updates a legacy contact seeded from the null-email fixture', async () => {
+      const db = getFirestore({ uid: 'admin1', email: 'admin1@example.com' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'admin1'), { role: 'admin', approved: true });
+        const { id, ...contactData } = nullEmailContact;
+        await setDoc(doc(adminDb, 'contacts', id), contactData);
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'legacy-null-email'), {
+        notes: 'Called them back.',
+        updatedAt: serverTimestamp(),
+        updatedBy: 'admin1',
+        updatedByName: 'Admin',
+      }));
+    });
+
+    it('updates a legacy contact seeded from the no-owner fixture', async () => {
+      const db = getFirestore({ uid: 'admin1', email: 'admin1@example.com' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'admin1'), { role: 'admin', approved: true });
+        const { id, ...contactData } = noOwnerContact;
+        await setDoc(doc(adminDb, 'contacts', id), contactData);
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'legacy-no-owner'), {
+        notes: 'Followed up.',
+        updatedAt: serverTimestamp(),
       }));
     });
 
