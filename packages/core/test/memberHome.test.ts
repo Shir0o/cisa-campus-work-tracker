@@ -409,6 +409,18 @@ describe('teamHolding', () => {
     expect(teamHolding([prayer({ status: 'unanswered' })], [contact()])).toEqual([]);
   });
 
+  it("keeps a contact-only prayer off the team's list (#1406)", () => {
+    const rows = teamHolding(
+      [
+        prayer({ id: 'flagless' }),
+        prayer({ id: 'team', teamPrayer: true }),
+        prayer({ id: 'mine', teamPrayer: false }),
+      ],
+      [contact()],
+    );
+    expect(rows.map((r) => r.prayerId).sort()).toEqual(['flagless', 'team']);
+  });
+
   it('drops a prayer with no name behind it — names, not cases', () => {
     expect(teamHolding([prayer({ contactId: 'gone' })], [contact()])).toEqual([]);
   });

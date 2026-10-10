@@ -20,6 +20,7 @@ import type { InboxItem } from "./inbox";
 import { DAY_MS, parseMs, toLocalDate, type Leader } from "./myday";
 import { dueInDays } from "./queue";
 import { firstName } from "./history";
+import { isTeamPrayer } from "./prayerThread";
 import { isTestAccount } from "./settings";
 import type { AppUser, Contact, Event, HospitalityOffer, PrayerRecord, PrayerRequest, Task } from "./types";
 
@@ -185,10 +186,12 @@ export function ftLastHeard(days: number): string {
  *  that something is still being carried, so it stands in for "weighs heavy". */
 export const ftWeighsHeavy = (p: PrayerRecord): boolean => p.status === "ongoing";
 
-/** Open prayers, heaviest first, then newest. Matches buildQueue's own filter. */
+/** Open prayers, heaviest first, then newest. Matches buildQueue's own filter,
+ *  minus any a writer kept to the contact (`teamPrayer: false`): this is "what
+ *  we're carrying", the phone's counterpart to the web's "On our hearts". */
 export function ftOpenPrayers(prayers: PrayerRecord[]): PrayerRecord[] {
   return prayers
-    .filter((p) => p.status === "pending" || p.status === "ongoing")
+    .filter((p) => (p.status === "pending" || p.status === "ongoing") && isTeamPrayer(p))
     .sort(
       (a, b) =>
         Number(ftWeighsHeavy(b)) - Number(ftWeighsHeavy(a)) ||
