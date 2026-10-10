@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { planContactOwnerRetirement } from '../lib/contactOwnerRetirement';
+import { legacyOwnerContact, noOwnerContact } from './fixtures/contacts';
 
 describe('planContactOwnerRetirement', () => {
   it('drops the retired caregiver field and recomputes the access list', () => {
@@ -69,5 +70,27 @@ describe('planContactOwnerRetirement', () => {
       { id: 'c1', createdBy: 'u1', coCreators: ['u3'], visibleTo: ['u3', 'u1'] },
     ]);
     expect(rows).toEqual([]);
+  });
+
+  // Escape 17 (#1472): the rules once required an `owner` field that older
+  // documents lack. The retirement writer is the one that has to read both
+  // shapes: a document with no owner key at all, and one still carrying it.
+
+  it('skips a legacy contact that never had an owner and whose list already matches', () => {
+    expect(planContactOwnerRetirement([noOwnerContact])).toEqual([]);
+  });
+
+  it('drops the retired owner field and the stale grant it left behind', () => {
+    expect(planContactOwnerRetirement([legacyOwnerContact])).toEqual([
+      {
+        id: 'legacy-owner',
+        ownerDropped: 'u-old-caregiver',
+        fieldPresent: true,
+        visibleToFrom: ['u-founder', 'u-old-caregiver'],
+        visibleToTo: ['u-founder'],
+        losesAccess: ['u-old-caregiver'],
+        gainsAccess: [],
+      },
+    ]);
   });
 });

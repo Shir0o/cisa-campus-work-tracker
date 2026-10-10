@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { planYearConfirmation, proposeYear, schoolYearOf, yearConfirmationStory, yearsToConfirm } from '../lib/movingUpAYear';
 import { contactKind } from '../lib/contactKind';
+import { legacyContact } from './fixtures/contacts';
 
 // Local dates: the school year turns over at the start of 1 August where the
 // team is, not in UTC.
@@ -46,7 +47,12 @@ describe('Years to confirm', () => {
   });
 
   it('reads when someone was added from a Firestore Timestamp too — sign-up stores one', () => {
-    const signedUp = { id: 's', isStudent: true, year: 'Freshman', createdAt: { seconds: Date.UTC(2026, 8, 10) / 1000, nanoseconds: 0 } };
+    const signedUp = legacyContact({
+      id: 's',
+      isStudent: true,
+      year: 'Freshman',
+      createdAt: { seconds: Date.UTC(2026, 8, 10) / 1000, nanoseconds: 0 },
+    });
     expect(yearsToConfirm([signedUp], new Date(2026, 9, 4))).toEqual([]);
   });
 

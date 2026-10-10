@@ -16,6 +16,14 @@ import {
   type ContactHistory,
 } from '../lib/combineContactsPlan';
 import type { Contact } from '../types';
+import {
+  isoCreatedContact,
+  timestampCreatedContact,
+  restTimestampCreatedContact,
+  nullEmailContact,
+  noOwnerContact,
+  legacyContact,
+} from './fixtures/contacts';
 
 const EMPTY_REFS: CombineReferences = {
   interactions: [],
@@ -892,5 +900,46 @@ describe('buildCombineUndoPlan', () => {
 
     expect(plan.keptUpdates.find((u) => u.field === 'combinedFrom')).toBeUndefined();
     expect(plan.notRestored).toEqual([]);
+  });
+});
+
+describe('legacy contact shapes (#1472, escape rows 10, 17 and 20)', () => {
+  const newerIso = legacyContact({
+    id: 'newer-iso',
+    name: 'Newer Iso',
+    createdAt: '2026-02-01T00:00:00.000Z',
+  });
+
+  it('keeps the older record when one side matches on a Firestore Timestamp createdAt', () => {
+    // Escape 10: Combine assumed an ISO string and crashed on a sign-up's
+    // Timestamp (#1130). timestampMillis reads it; revert that parse (a
+    // string-only Date.parse, as #1132 replaced) and the timestamp side reads
+    // as 0, so the newer ISO record is kept instead of the older Timestamp.
+    const { kept, combinedIn } = chooseKeptContact(newerIso, timestampCreatedContact);
+    expect(kept.id).toBe('legacy-timestamp');
+    expect(combinedIn.id).toBe('newer-iso');
+  });
+
+  it('reads the REST _seconds shape when choosing the earlier record', () => {
+    const { kept } = chooseKeptContact(newerIso, restTimestampCreatedContact);
+    expect(kept.id).toBe('legacy-rest-timestamp');
+  });
+
+  it('merges a timestamp-created contact and carries the earlier createdAt through', () => {
+    const merged = mergeContactProfiles(newerIso, timestampCreatedContact);
+    expect(merged.createdAt).toEqual({ seconds: 1767225600, nanoseconds: 0 });
+  });
+
+  it('backfills an email from the other side when one contact carries null', () => {
+    // Escape 20: a quick-add or sign-up leaves email null, not "". Treated as
+    // a blank it backfills rather than overwriting the real address.
+    const withEmail = legacyContact({ id: 'has-email', email: 'real@example.com' });
+    expect(mergeContactProfiles(nullEmailContact, withEmail).email).toBe('real@example.com');
+  });
+
+  it('merges a contact that never had an owner without throwing', () => {
+    // Escape 17: older documents have no owner key. The merge must not read it.
+    const merged = mergeContactProfiles(noOwnerContact, isoCreatedContact);
+    expect(merged.name).toBe('No Owner');
   });
 });
