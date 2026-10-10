@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { AnimatePresence } from "motion/react";
 import {
   db,
@@ -61,7 +61,6 @@ import { emptyComposer, type ComposerValue } from "../../lib/contactComposer";
 import { subscribeRhythms } from "../../lib/rhythms";
 
 import ContactHead from "../contact/ContactHead";
-import { PopupFrame } from "../ui/PopupFrame";
 import CombinedFromBanner from "../contact/CombinedFromBanner";
 import ContactEditForm from "../contact/ContactEditForm";
 import ContactStory from "../contact/ContactStory";
@@ -280,15 +279,21 @@ export default function ContactDetailsModal({
     onClose();
   };
 
-  // Close is layered: an Interaction's Thread closes back to the stream first,
-  // then the full-screen pane, then the page. The frame routes its Close,
-  // Escape and scrim through here so the order is unchanged.
-  const requestClose = () => {
-    if (openThread && !isMobile) setOpenThread(null);
-    else if (paneOpen) setPaneOpen(false);
-    else if (openThread) setOpenThread(null);
-    else handleClose();
-  };
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // An Interaction's Thread closes back to the stream first, then the
+      // full-screen pane, then the page.
+      if (openThread && !isMobile) setOpenThread(null);
+      else if (paneOpen) setPaneOpen(false);
+      else if (openThread) setOpenThread(null);
+      else handleClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleEsc);
+    }
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, handleClose, openThread, paneOpen, isMobile]);
 
   useEffect(() => {
     if (contact) {
@@ -1428,20 +1433,6 @@ export default function ContactDetailsModal({
     (p) => p.status !== "answered" && p.status !== "unanswered",
   );
 
-  // The edit baseline lets the shared frame ask before discarding a changed
-  // form; entering edit mode with no changes stays clean.
-  const editBaselineRef = useRef<string>("");
-  const beginEdit = () => {
-    editBaselineRef.current = JSON.stringify(formData);
-    setIsEditing(true);
-  };
-  const editDirty = isEditing && JSON.stringify(formData) !== editBaselineRef.current;
-  // The frame owns the pinned footer, so its Save submits the form by id.
-  const requestEditSubmit = () => {
-    const form = document.getElementById("edit-contact-form") as HTMLFormElement | null;
-    form?.requestSubmit?.();
-  };
-
   if (isOpen && !hasAccess) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -1614,26 +1605,6 @@ export default function ContactDetailsModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <PopupFrame
-          open
-          onClose={requestClose}
-          size="lg"
-          title={t('modals.contactDetails.title')}
-          dirty={editDirty}
-          discardQuestion={t('modals.contactDetails.discard_edit')}
-          cancelLabel={isEditing ? t('modals.contactDetails.cancel') : undefined}
-          onCancel={isEditing ? () => setIsEditing(false) : undefined}
-          primary={
-            isEditing
-              ? {
-                  label: t('modals.contactDetails.save_changes'),
-                  onClick: requestEditSubmit,
-                  saving: loading,
-                  savingLabel: t('modals.contactDetails.saving'),
-                }
-              : undefined
-          }
-        >
         <div className={isMobile ? "cdm-page" : "cd-page"}>
           <div className={isMobile ? "cdm-page-main" : "cd-page-main"}>
             <ContactHead
@@ -1656,7 +1627,7 @@ export default function ContactDetailsModal({
               openPrayerCount={openPrayers.length}
               canDelegate={canShare}
               onClose={handleClose}
-              onEdit={beginEdit}
+              onEdit={() => setIsEditing(true)}
               onCancelEdit={() => setIsEditing(false)}
               onCall={callContact}
               onText={textContact}
@@ -1732,9 +1703,36 @@ export default function ContactDetailsModal({
                 </div>
               )}
             </div>
+
+            {/* Footer: Save/Cancel only while editing. Read mode has no
+               persistent chrome — Delete lives in the head's ⋯ menu. */}
+            {isEditing && !isMobile && (
+              <div className="cd-page-foot">
+                <div className="flex gap-3 w-full sm:w-auto ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 sm:flex-none px-6 h-10 rounded-full font-semibold text-on-surface-variant hover:bg-surface-variant text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    form="edit-contact-form"
+                    type="submit"
+                    disabled={loading}
+                    className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                  >
+                    {loading ? (
+                      <span className="animate-pulse">{t('modals.contactDetails.saving')}</span>
+                    ) : (
+                      t('modals.contactDetails.save_changes')
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        </PopupFrame>
       )}
 
       {aboutOpen && (

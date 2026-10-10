@@ -80,11 +80,8 @@ test.describe('Mobile & PWA Contact Editing (#633)', () => {
     // Verify modal transitions back from edit mode
     await expect(page.getByText(/edit details/i)).not.toBeVisible({ timeout: 5_000 });
 
-    // Close the details modal. On mobile the contact page renders its own
-    // full-screen sheet inside the popup frame, covering the frame's Close
-    // button, so use the page's "People" back control.
-    const dialog = page.getByRole('dialog', { name: /contact details/i });
-    await dialog.getByRole('button', { name: /^people$/i }).first().click();
+    // Close the contact page with its "People" back control.
+    await page.getByRole('button', { name: /^people$/i }).first().click();
   });
 
   test('Viewer (Community) does not see Edit affordances on mobile viewport', async ({ page }) => {

@@ -321,7 +321,7 @@ design decision was needed beyond where the primary action lives.
 
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
-| 64 | Combine contacts and Combine tags are full-page routes reached from the Directory, so they have no single natural primary action of their own (the pair diff and the tag queue carry their own actions). | **Neither — the spec is silent** | Both render through the shared frame on their existing routes; the pinned footer carries Cancel plus one primary: **Combine {n} contacts** for Combine tags (the page's own sticky action, moved into the footer) and **Done** for Combine contacts, whose combining stays on each queue row. |
+| 64 | Combine contacts and Combine tags are full-page routes reached from the Directory, so they have no single natural primary action of their own (the pair diff and the tag queue carry their own actions). | **Neither — the spec is silent** | Both render through the shared frame on their existing routes; the pinned footer carries Cancel plus one primary: **Combine {n} contacts** for Combine tags (the page's own sticky action, moved into the footer) and **Done** for Combine contacts, whose combining stays on each queue row. **Reversed by #66:** route pages are not popups. |
 
 ### 2026-10-08 — Large one-off popups in the frame
 
@@ -336,4 +336,16 @@ Combine pages.
 
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
-| 65 | The contact page was a full-page surface with no dialog role, and `ContactDetailsModal.test.tsx` pinned that ("no popup chrome: no backdrop, no dialog role"). Its desktop header owns the name, stage and call/log/prayer actions, and Escape closes an open Thread or pane first. | **Spec #1444** | It renders through the shared frame at the L size on its existing route. The frame is labelled **Contact details** (the head keeps the name and actions, so the title does not duplicate it), the pinned footer carries Cancel + **Save changes** only while editing, and the frame's Close/Escape/scrim route through the page's layered close so Thread → pane → page is unchanged. The stale "no popup chrome" assertion is updated in the same PR. |
+| 65 | The contact page was a full-page surface with no dialog role, and `ContactDetailsModal.test.tsx` pinned that ("no popup chrome: no backdrop, no dialog role"). Its desktop header owns the name, stage and call/log/prayer actions, and Escape closes an open Thread or pane first. | **Spec #1444** | It renders through the shared frame at the L size on its existing route. The frame is labelled **Contact details** (the head keeps the name and actions, so the title does not duplicate it), the pinned footer carries Cancel + **Save changes** only while editing, and the frame's Close/Escape/scrim route through the page's layered close so Thread → pane → page is unchanged. The stale "no popup chrome" assertion is updated in the same PR. **Reversed by #66:** the contact page is a page (ADR 0034), not a popup. |
+
+### 2026-10-10 — Route pages are not popups
+
+Found reviewing #1519 and #1521: the contact page and the two
+Combine pages had become modal dialogs over the whole app shell — a fixed scrim
+over the nav rail, a 960px card at 90vh, and on phones a bottom sheet with a
+swipe-to-dismiss grabber. The frame is for popups; a route page belongs inside
+the shell. Entries #64 and #65 resolved the wrong way.
+
+| # | Drift | Which was right | Resolution |
+| --- | --- | --- | --- |
+| 66 | Spec #1444 story 55 lists Contact details among the large one-off popups, and #64/#65 wrapped the contact page (`/people/:id`), Combine contacts and Combine tags in `PopupFrame` on their routes. But the contact page is a page per ADR 0034, and Combine contacts and Combine tags became pages in the combine redesign (#1425/#1426). | **The code before #1519/#1521** — story 55 was wrong to list Contact details | All three are unwrapped back to pages in the app shell: Combine contacts and Combine tags get their page header back (and Combine tags its sticky **Combine {n} contacts** action); the contact page gets back its own layered Escape (Thread → pane → page) and its page footer for edit Save/Cancel. Their tests now assert no dialog role, no scrim and no sheet grabber at phone width. The other popups those PRs moved (Tag gender, Moving up a year, New contact, Attendance sync, Smart import) stay in the frame. |

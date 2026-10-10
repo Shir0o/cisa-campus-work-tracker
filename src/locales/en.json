@@ -1353,13 +1353,11 @@
       "failed_to_save": "Failed to save imported items to database."
     },
     "contactDetails": {
-      "title": "Contact details",
       "access_restricted": "Access Restricted",
       "no_permission": "You do not have permission to view this contact record.",
       "close": "Close",
       "cancel": "Cancel",
       "edit_details": "Edit details",
-      "discard_edit": "Discard these changes?",
       "save": "Save",
       "people": "People",
       "edit": "Edit",

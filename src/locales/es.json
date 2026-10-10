@@ -1353,13 +1353,11 @@
       "failed_to_save": "No se pudieron guardar los elementos importados en la base de datos."
     },
     "contactDetails": {
-      "title": "Detalles del contacto",
       "access_restricted": "Acceso restringido",
       "no_permission": "No tienes permiso para ver este registro de contacto.",
       "close": "Cerrar",
       "cancel": "Cancelar",
       "edit_details": "Editar detalles",
-      "discard_edit": "¿Descartar estos cambios?",
       "save": "Guardar",
       "people": "Personas",
       "edit": "Editar",
