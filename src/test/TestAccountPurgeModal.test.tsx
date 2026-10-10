@@ -41,6 +41,18 @@ describe('TestAccountPurgeModal', () => {
     });
   });
 
+  it('renders through the shared popup frame, labelled with its title (#1456)', async () => {
+    vi.spyOn(testAccountPurge, 'scanTestAccountTraces').mockResolvedValue(mockPlan);
+
+    render(<TestAccountPurgeModal isOpen={true} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('dialog', { name: 'Test Account Purge' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Purge Traces/i })).toBeInTheDocument();
+    });
+  });
+
   it('allows executing purge and displays completion screen', async () => {
     vi.spyOn(testAccountPurge, 'scanTestAccountTraces').mockResolvedValue(mockPlan);
     const purgeSpy = vi.spyOn(testAccountPurge, 'purgeTestAccountTraces').mockResolvedValue({ deletedCount: 4 });

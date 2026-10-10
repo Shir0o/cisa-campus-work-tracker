@@ -219,6 +219,13 @@ describe('ImpersonateBar Component', () => {
 });
 
 describe('ImpersonateModal Component', () => {
+  it('renders through the shared popup frame, labelled with its title (#1456)', () => {
+    render(<ImpersonateModal isOpen={true} currentKey={null} onPick={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: 'See as their view' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
+  });
+
   it('renders modal when open, handles picking target, scrim click, and ESC key', () => {
     const onClose = vi.fn();
     const onPick = vi.fn();

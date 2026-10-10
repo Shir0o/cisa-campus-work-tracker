@@ -155,9 +155,7 @@ describe('TodoComposer', () => {
     render(
       <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={onClose} />,
     );
-    fireEvent.keyDown(screen.getByPlaceholderText('What needs doing?').closest('div[class*="bg-surface"]')!, {
-      key: 'Escape',
-    });
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -167,8 +165,7 @@ describe('TodoComposer', () => {
     );
     fireEvent.change(screen.getByPlaceholderText('What needs doing?'), { target: { value: 'Keyboard task' } });
     fireEvent.click(screen.getByRole('button', { name: /Tony/ }));
-    const card = screen.getByPlaceholderText('What needs doing?').closest('div[class*="bg-surface"]')!;
-    fireEvent.keyDown(card, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(screen.getByPlaceholderText('What needs doing?'), { key: 'Enter', ctrlKey: true });
     await waitFor(() => expect(todos.addTodo).toHaveBeenCalled());
   });
 
@@ -286,7 +283,7 @@ describe('TodoComposer', () => {
     expect(screen.queryByPlaceholderText('Subtask 1')).not.toBeInTheDocument();
   });
 
-  it('renders unanchored modal with scroll container styling to prevent overflow cutoff', () => {
+  it('scrolls the unanchored composer inside the shared frame', () => {
     render(
       <TodoComposer
         mode="create"
@@ -296,11 +293,8 @@ describe('TodoComposer', () => {
         onClose={vi.fn()}
       />,
     );
-    const textarea = screen.getByPlaceholderText('What needs doing?');
-    const card = textarea.closest('.bg-surface');
-    expect(card).not.toBeNull();
-    expect(card?.className).toContain('max-h-[calc(100vh-2rem)]');
-    expect(card?.className).toContain('overflow-y-auto');
+    const dialog = screen.getByRole('dialog', { name: 'New to-do' });
+    expect(dialog.querySelector('[class*="overflow-y-auto"]')).not.toBeNull();
   });
 
   it('automatically sets due date when initial text contains natural language date', () => {
@@ -333,5 +327,31 @@ describe('TodoComposer', () => {
 
     const tomorrowBtn = screen.getByRole('button', { name: /Tomorrow/i });
     expect(tomorrowBtn.className).toContain('bg-primary');
+  });
+
+  it('renders through the shared popup frame when unanchored, labelled with its title (#1456)', () => {
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={vi.fn()} />,
+    );
+    expect(screen.getByRole('dialog', { name: 'New to-do' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add to-do/i })).toBeInTheDocument();
+  });
+
+  it('asks before discarding a typed to-do, and keeps it on cancel (#1456)', () => {
+    const onClose = vi.fn();
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={onClose} />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('What needs doing?'), {
+      target: { value: 'Call the venue' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this to-do?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Call the venue');
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

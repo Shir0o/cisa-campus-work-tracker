@@ -229,6 +229,13 @@ describe('WhatsNewModal', () => {
   });
 
 
+  it('renders through the shared popup frame, labelled with its title (#1456)', () => {
+    render(<WhatsNewModal manifest={sampleManifest} platform="web" isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: "What's New in v1.4.0" })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /got it/i })).toBeInTheDocument();
+  });
+
   it('renders categorized items in order (New Features, UI/UX Updates, Bug Fixes) with badges', () => {
     const categorizedManifest: WhatsNewManifest = {
       latestReleaseId: '2026-09-04-v1.4.1',

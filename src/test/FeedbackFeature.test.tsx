@@ -85,6 +85,17 @@ describe('User Feedback Feature', () => {
       expect(fabBtn).toBeInTheDocument();
     });
 
+    it('opens through the shared popup frame, labelled with its title (#1456)', async () => {
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+
+      expect(screen.getByRole('dialog', { name: 'Leave a note' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+    });
+
     it('positions the FAB above the message composer on the messages page', () => {
       const originalPathname = window.location.pathname;
       Object.defineProperty(window, 'location', {

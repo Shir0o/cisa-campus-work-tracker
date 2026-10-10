@@ -1,7 +1,9 @@
 import React from 'react';
-import { X, Sparkles, CheckCircle2, Zap, Palette, Bug, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Zap, Palette, Bug, ExternalLink } from 'lucide-react';
 import type { WhatsNewManifest, PlatformTarget, WhatsNewItem, WhatsNewCategory } from '../scripts/compile-whats-new';
 import { getWhatsNewForPlatform, markWhatsNewSeen } from '../lib/whatsNew';
+import { PopupFrame } from './ui/PopupFrame';
+import { useLanguage } from './LanguageProvider';
 
 interface WhatsNewModalProps {
   isOpen: boolean;
@@ -64,6 +66,7 @@ export default function WhatsNewModal({
   videoRolesOverride,
   currentRole,
 }: WhatsNewModalProps) {
+  const { t } = useLanguage();
   if (!isOpen || !manifest.latestReleaseId) return null;
 
   const latestRelease = manifest.releases.find((r) => r.id === manifest.latestReleaseId);
@@ -111,113 +114,86 @@ export default function WhatsNewModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/40 backdrop-blur-xs"
-      role="dialog"
-      aria-modal="true"
+    <PopupFrame
+      open
+      onClose={handleDismiss}
+      size="md"
+      eyebrow={t('whatsNewModal.eyebrow')}
+      title={t('whatsNewModal.title').replace('{version}', currentNotes.version)}
+      subtitle={currentNotes.title}
+      cancelLabel={t('actions.cancel')}
+      onCancel={handleDismiss}
+      primary={{
+        label: t('whatsNewModal.got_it'),
+        onClick: handleDismiss,
+        savingLabel: t('actions.saving'),
+      }}
     >
-      <div className="relative w-full max-w-lg bg-surface-container border border-outline-variant/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-outline-variant/30 bg-surface-container-high/40">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
-              <Sparkles className="w-5 h-5" />
+      <div className="space-y-4 px-7 py-5">
+        {embedUrl && (
+          <div className="space-y-1.5">
+            <div className="aspect-video w-full overflow-hidden rounded border border-outline-variant">
+              <iframe
+                title={t('whatsNewModal.video_title')}
+                src={embedUrl}
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
             </div>
-            <div>
-              <h2 className="font-serif text-base font-semibold text-on-surface leading-tight">
-                What's New in v{currentNotes.version}
-              </h2>
-              <p className="text-xs text-on-surface-variant mt-0.5">{currentNotes.title}</p>
+            <div className="flex justify-end">
+              <a
+                href={effectiveVideoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80 hover:underline"
+              >
+                <span>{t('whatsNewModal.open_video')}</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-high transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        )}
 
-        {/* Content */}
-        <div className="px-6 pt-3.5 pb-5 overflow-y-auto space-y-4">
-          {embedUrl && (
-            <div className="space-y-1.5">
-              <div className="aspect-video w-full rounded-xl overflow-hidden border border-outline-variant/30">
-                <iframe
-                  title="What's New Video"
-                  src={embedUrl}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              <div className="flex justify-end">
-                <a
-                  href={effectiveVideoUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
-                >
-                  <span>Open video in Google Drive</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+        {currentNotes.overview && (
+          <p className="border-b border-outline-variant pb-3 text-sm leading-relaxed text-on-surface-variant">
+            {currentNotes.overview}
+          </p>
+        )}
 
-              </div>
-            </div>
-          )}
+        <div className="space-y-4">
+          {categorizedGroups.map((group, gIdx) => {
+            const conf = group.category ? CATEGORY_CONFIG[group.category] : null;
+            const IconComponent = conf?.icon || CheckCircle2;
 
-          {currentNotes.overview && (
-            <p className="text-sm text-on-surface-variant leading-relaxed pb-3 border-b border-outline-variant/20">
-              {currentNotes.overview}
-            </p>
-          )}
-
-          <div className="space-y-4">
-            {categorizedGroups.map((group, gIdx) => {
-              const conf = group.category ? CATEGORY_CONFIG[group.category] : null;
-              const IconComponent = conf?.icon || CheckCircle2;
-
-              return (
-                <div key={gIdx} className="space-y-2">
-                  {conf && (
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${conf.badgeClass}`}
-                      >
-                        <IconComponent className="w-3.5 h-3.5" />
-                        {conf.label}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="space-y-2.5 pl-0.5">
-                    {group.items.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <CheckCircle2
-                          className={`w-4 h-4 shrink-0 mt-0.5 ${conf ? conf.bulletIconClass : 'text-on-surface-variant'}`}
-                        />
-                        <span className="text-sm text-on-surface leading-snug">{item.text}</span>
-                      </div>
-                    ))}
+            return (
+              <div key={gIdx} className="space-y-2">
+                {conf && (
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${conf.badgeClass}`}
+                    >
+                      <IconComponent className="h-3.5 w-3.5" />
+                      {conf.label}
+                    </span>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                )}
 
-        {/* Footer */}
-        <div className="p-4 border-t border-outline-variant/40 bg-surface-container-high/20 flex justify-end">
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="px-5 py-2 text-sm font-medium text-on-primary bg-primary hover:bg-primary/90 rounded-xl transition-colors shadow-xs"
-          >
-            Got it
-          </button>
+                <div className="space-y-2.5 pl-0.5">
+                  {group.items.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <CheckCircle2
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${conf ? conf.bulletIconClass : 'text-on-surface-variant'}`}
+                      />
+                      <span className="text-sm leading-snug text-on-surface">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-    </div>
+    </PopupFrame>
   );
 }

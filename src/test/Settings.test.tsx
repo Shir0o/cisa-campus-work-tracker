@@ -1338,7 +1338,10 @@ describe('Settings', () => {
       expect(purgeButton).toBeInTheDocument();
 
       fireEvent.click(purgeButton);
-      expect(screen.getByText(/Scanning database for test account traces/i)).toBeInTheDocument();
+      // The purge tool now opens in the shared popup frame (#1456). Its title
+      // label is asserted in TestAccountPurgeModal.test.tsx, which uses the
+      // real dictionary; Settings' LanguageProvider is a fallback-only stub.
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
     it('hides the danger zone section for non-admin users', async () => {

@@ -274,7 +274,15 @@
     "someone_else": "Otra persona",
     "back_to_my_view": "Volver a mi vista"
   },
+  "impersonateModal": {
+    "eyebrow": "Suplantación",
+    "title": "Ver como ellos",
+    "subtitle": "Adopta la vista de otra persona o simula un rol — mira el espacio de trabajo, las herramientas y las palabras exactas que leen.",
+    "role_preview": "Vista de rol:"
+  },
   "feedback": {
+    "eyebrow": "Comentarios",
+    "note_noun": "nota",
     "close": "Cerrar",
     "close_feedback_panel": "Cerrar panel de comentarios",
     "leave_note_for_team": "Deja una nota para el equipo",
@@ -2327,5 +2335,48 @@
     "home_review_need_name": "De BNPB · {n} necesitan un nombre",
     "home_review_cta": "Revisar",
     "loading": "Cargando…"
+  },
+  "whatsNewModal": {
+    "eyebrow": "Novedades",
+    "title": "Novedades en v{version}",
+    "got_it": "Entendido",
+    "video_title": "Video de novedades",
+    "open_video": "Abrir video en Google Drive"
+  },
+  "testAccountPurge": {
+    "eyebrow": "Ajustes",
+    "title": "Purga de cuentas de prueba",
+    "subtitle": "Herramienta de escaneo y limpieza en seco",
+    "purge": "Purgar registros",
+    "purging": "Purgando…",
+    "scanning": "Escaneando la base de datos en busca de rastros de cuentas de prueba…",
+    "test_accounts": "Cuentas de prueba:",
+    "pending_invitations": "Invitaciones pendientes:",
+    "personal_prayers": "Oraciones personales:",
+    "interaction_logs": "Registros de interacción:",
+    "contacts_created": "Contactos creados por cuentas de prueba:",
+    "also_delete_contacts": "Eliminar también los contactos creados exclusivamente por cuentas de prueba ({n})",
+    "contacts_note": "Los contactos y ediciones de compañeros reales siempre se conservan.",
+    "delete_warning": "Elimina permanentemente {n} elementos. Esta acción no se puede deshacer.",
+    "purging_records": "Purgando registros de cuentas de prueba…",
+    "complete": "Purga completada",
+    "removed": "Se eliminaron {n} rastros de cuentas de prueba."
+  },
+  "todoComposer": {
+    "eyebrow": "Tarea",
+    "new_title": "Nueva tarea",
+    "edit_title": "Editar tarea",
+    "multiple_title": "Nuevas tareas ({n})",
+    "add_todo": "Añadir tarea",
+    "add_todos": "Añadir tareas",
+    "what_needs_doing": "¿Qué hay que hacer?",
+    "subtasks": "Subtareas",
+    "remove_subtask": "Eliminar subtarea",
+    "assign_to": "Asignar a",
+    "you": "(tú)",
+    "due": "Vence",
+    "pick_a_date": "Elegir una fecha…",
+    "due_date": "Fecha de vencimiento",
+    "noun": "tarea"
   }
 }

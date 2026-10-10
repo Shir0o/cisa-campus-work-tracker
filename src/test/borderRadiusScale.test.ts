@@ -48,11 +48,11 @@ describe('Border radius scale — monotonic ladder (issue #688, ADR 0009)', () =
     expect(navRailSource).toMatch(/bg-rail\s+rounded-2xl\s+shadow-shell/);
   });
 
-  it('sets FeedbackFAB popup dialog to rounded-xl (24px) and textarea to rounded-sm (10px)', () => {
+  it('delegates the FeedbackFAB popup to the shared frame and keeps the textarea at rounded-sm (10px)', () => {
     const feedbackFabSource = read(join('src', 'components', 'FeedbackFAB.tsx'));
-    // The dialog should be rounded-xl (24px)
-    expect(feedbackFabSource).toMatch(/role="dialog"[\s\S]*?rounded-xl/);
-    // The textarea should be rounded-sm (10px) rather than rounded-xl (which clamped to lozenge)
+    // The shared popup frame owns the dialog shape and its rounded-xl (24px) surface (#1456).
+    expect(feedbackFabSource).toContain('<PopupFrame');
+    // The textarea stays at rounded-sm (10px) rather than rounded-xl (which clamped to lozenge).
     expect(feedbackFabSource).toMatch(/<textarea[\s\S]*?rounded-sm/);
   });
 
