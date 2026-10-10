@@ -83,7 +83,10 @@ describe('Sheet', () => {
     expect(__instances).toHaveLength(1);
     expect(__instances[0].props.keyboardBehavior).toBe('interactive');
     expect(__instances[0].props.keyboardBlurBehavior).toBe('restore');
-    expect(__instances[0].props.android_keyboardInputMode).toBe('adjustResize');
+    // `adjustResize` no longer resizes the window under Android edge-to-edge
+    // (Expo SDK 54 / API 36), so the sheet stopped moving for the keyboard.
+    // `adjustPan` keeps the library's own interactive keyboard logic in play.
+    expect(__instances[0].props.android_keyboardInputMode).toBe('adjustPan');
   });
 
   it('renders backdrop with pointerEvents none when visible is false', async () => {

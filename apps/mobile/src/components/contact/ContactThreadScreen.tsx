@@ -4,7 +4,7 @@
 // Full-timers message, or an Interaction quoted from the Story — then "N
 // replies", the replies, and a reply box pinned at the foot.
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -15,6 +15,7 @@ import { useContactDetailData } from '../../lib/useContactDetailData';
 import { conversationMessages, fullTimersMessages, interactionThread } from '../../lib/contactStreams';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { SafeAreaView } from '../ui/SafeArea';
+import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { Snackbar } from '../ui';
 import { Kicker } from '../queue/atoms';
 import { Room, V2Empty } from '../v2/Widget';

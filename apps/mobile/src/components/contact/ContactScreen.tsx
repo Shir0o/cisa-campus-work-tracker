@@ -15,11 +15,12 @@
 // and are desktop work now — see MIGRATION.md. Contact details survive as
 // Story's "Details, notes, how to reach them" disclosure, read-only.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
+import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import {
   canManageCollaborators,
   canRemoveContactMember,

@@ -176,7 +176,10 @@ export function Sheet({
       enableDynamicSizing={false}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
-      android_keyboardInputMode="adjustResize"
+      // `adjustResize` no longer resizes the window under Android edge-to-edge
+      // (Expo SDK 54 / API 36), so the sheet stopped reacting to the keyboard.
+      // `adjustPan` keeps the library's interactive keyboard logic in play.
+      android_keyboardInputMode="adjustPan"
       animationConfigs={animationConfigs}
       backgroundStyle={{
         backgroundColor: backgroundColor ?? colors.surface,
