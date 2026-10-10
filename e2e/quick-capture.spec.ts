@@ -97,13 +97,13 @@ test.describe('Quick Capture: NewContactModal (#628)', () => {
     // Open the optional disclosure.
     await page.getByRole('button', { name: /\+ add the rest/i }).click();
 
-    // Last name, role, and email are revealed.
+    // Last name and email are revealed. The free-text role field was replaced
+    // by the two contact-kind questions (#1152), which live behind the kind
+    // control rather than a "e.g. Student, Faculty" placeholder.
     await expect(page.getByPlaceholder(/e\.g\. Johnson/i)).toBeVisible();
-    await expect(page.getByPlaceholder(/e\.g\. Student, Faculty/i)).toBeVisible();
     await expect(page.getByPlaceholder(/alex@campus\.edu/i)).toBeVisible();
 
     await page.getByPlaceholder(/e\.g\. Johnson/i).fill('Sample');
-    await page.getByPlaceholder(/e\.g\. Student, Faculty/i).fill('Student');
     await page.getByPlaceholder(/alex@campus\.edu/i).fill('tagged@example.com');
 
     // Stage dropdown — pick "First Contact" if available.

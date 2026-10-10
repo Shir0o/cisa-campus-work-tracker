@@ -151,9 +151,10 @@ test.describe('Push notifications reach every device (bell → function → devi
       .last();
     await expect(card).toBeVisible({ timeout: 15_000 });
     await card.getByRole('button', { name: 'Comment' }).click();
-    // One strip opens at a time, so its composer is the page's only one.
+    // One strip opens at a time, so its composer is the page's only one. The
+    // box now carries a "Write a message" label, so target its placeholder.
     await page.getByRole('button', { name: 'Question', exact: true }).click();
-    const box = page.getByRole('textbox', { name: /What do you want to know/ });
+    const box = page.getByPlaceholder(/What do you want to know/);
     await box.fill('Is Omar coming Thursday?');
     await page.getByRole('button', { name: 'Post' }).click();
 
@@ -164,7 +165,7 @@ test.describe('Push notifications reach every device (bell → function → devi
   test('a chat message buzzes the other member', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/messages/e2e-dm-check-in');
-    const box = page.getByPlaceholder('Write a message… (@ to mention)');
+    const box = page.getByPlaceholder(/Write a message/);
     await expect(box).toBeVisible({ timeout: 15_000 });
     await box.fill('See you at the table at noon');
     await box.press('Meta+Enter');

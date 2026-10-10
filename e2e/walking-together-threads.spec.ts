@@ -17,8 +17,11 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(contactCard).toBeVisible({ timeout: 10_000 });
     await contactCard.click();
 
-    // 4. Contact Details Modal opens
-    await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible();
+    // 4. Contact Details Modal opens (titled "Contact details" since #1521,
+    //    with the contact name as an "About …" button).
+    const dialog = page.getByRole('dialog', { name: /contact details/i });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Lila Chen').first()).toBeVisible();
 
     // 5. Open the "Conversation" (thread) tab
     const threadTab = page.getByRole('button', { name: /conversation/i }).first();
@@ -35,8 +38,9 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await threadInput.fill(newThreadMessage);
     await threadInput.press('Meta+Enter');
 
-    // Message appears without Firestore permission errors
-    await expect(page.getByText(newThreadMessage)).toBeVisible({ timeout: 5_000 });
+    // Message appears without Firestore permission errors. Scope to the first
+    // match: the composer holds the same text until its draft clears.
+    await expect(page.getByText(newThreadMessage).first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
 
     // 6. Open "Full-timers" tab (Team confidential discussion for Full-timers)
@@ -48,13 +52,13 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(page.getByText(/Confidential Staff Note: Lila mentioned some family challenges/i)).toBeVisible();
 
     // Post a confidential discussion note
-    const discussionInput = page.getByPlaceholder('Add to the Full-timers thread…').first();
+    const discussionInput = page.getByPlaceholder(/Write something only Full-timers will see/i).first();
     await expect(discussionInput).toBeVisible();
     const confidentialNote = `Staff confidential coordination note ${Date.now()}`;
     await discussionInput.fill(confidentialNote);
     await discussionInput.press('Meta+Enter');
 
-    await expect(page.getByText(confidentialNote)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(confidentialNote).first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 
@@ -72,17 +76,15 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await contactCard.click();
 
     // 4. Verify Contact Details modal opens
-    await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /contact details/i })).toBeVisible();
 
     // 5. Check the Full-timers tab is NOT visible / not accessible
     await expect(page.getByRole('button', { name: /^full-timers/i })).not.toBeVisible();
     await expect(page.locator('body')).not.toContainText('Confidential Staff Note');
 
-    // 6. Open Conversation tab and verify shared walking-together thread is readable
-    const threadTab = page.getByRole('button', { name: /conversation/i }).first();
-    await expect(threadTab).toBeVisible();
-    await threadTab.click();
-
+    // 6. Verify the shared walking-together thread is readable. A trainee has no
+    // "Full-timers" tab, so the contact pane shows the Conversation directly
+    // (no tab switcher button to click).
     await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible();
 
     // Trainee posts a reply / comment in walking-together thread
@@ -92,7 +94,7 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await threadInput.fill(traineeComment);
     await threadInput.press('Meta+Enter');
 
-    await expect(page.getByText(traineeComment)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(traineeComment).first()).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 
@@ -113,12 +115,8 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(page.getByRole('button', { name: /^full-timers/i })).not.toBeVisible();
     await expect(page.locator('body')).not.toContainText('Confidential Staff Note');
 
-    // 5. Open Conversation tab
-    const threadTab = page.getByRole('button', { name: /conversation/i }).first();
-    await expect(threadTab).toBeVisible();
-    await threadTab.click();
-
-    // Student sees general thread messages cleanly without permission denied errors
+    // 5. The contact pane shows the Conversation directly for a Student too
+    // (no Full-timers tab, so no tab switcher).
     await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible();
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });

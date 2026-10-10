@@ -13,12 +13,15 @@ test.describe('Notification Bell Deep-Linking & Routing User Stories (#682)', ()
     await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
 
     // 3. Contact Details modal opens immediately with Lila Chen's information
-    await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible({ timeout: 10_000 });
+    //    (titled "Contact details" since #1521; the name is an "About …" button).
+    const dialog = page.getByRole('dialog', { name: /contact details/i });
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog.getByText('Lila Chen').first()).toBeVisible();
     await expect(page.getByText('First Contact').first()).toBeVisible();
 
     // 4. Test query parameter deep-link with ?tab=thread (/people/e2e-contact-lila?tab=thread)
     await page.goto('/people/e2e-contact-lila?tab=thread');
-    await expect(page.getByRole('heading', { name: 'Lila Chen' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('dialog', { name: /contact details/i })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible({ timeout: 10_000 });
   });
 
@@ -40,7 +43,9 @@ test.describe('Notification Bell Deep-Linking & Routing User Stories (#682)', ()
       // Reload or navigate directly to the room URL to verify direct linking works
       await page.goto(currentUrl);
       await expect(page.locator('.msgs-thread')).toBeVisible({ timeout: 10_000 });
-      await expect(page.locator('.msgs-composer textarea')).toBeVisible({ timeout: 10_000 });
+      // The room composer is the shared stream composer now (the old
+      // `.msgs-composer` wrapper is gone); target it by its placeholder.
+      await expect(page.getByPlaceholder(/Write a message/)).toBeVisible({ timeout: 10_000 });
     } else {
       // Create a direct chat to exercise room selection and routing
       const newChatBtn = page.getByRole('button', { name: /new chat/i }).first();
