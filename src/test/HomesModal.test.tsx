@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import HomesModal from '../components/modals/HomesModal';
 import { useAuth } from '../components/AuthProvider';
 import { addHome, updateHome, deleteHome, restoreHome, combineHomes } from '../lib/homes';
@@ -377,5 +377,108 @@ describe('HomesModal', () => {
     expect(kept.id).toBe('h1');
     expect(combinedIn.id).toBe('h2');
     expect(by).toMatchObject({ uid: 'u1', name: 'Mei Tanaka' });
+  });
+
+  describe('when delete or combine is rejected', () => {
+    const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
+    const garcias = [
+      { id: 'h1', label: 'the Garcias', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Garcias (2)', members: ['c2', 'c3'], active: true },
+    ];
+
+    beforeEach(() => {
+      // handleFirestoreError records and then rethrows; the modal must catch that.
+      asMock(handleFirestoreError).mockImplementation(() => {
+        throw new Error('rethrown by handleFirestoreError');
+      });
+    });
+    afterEach(() => asMock(handleFirestoreError).mockReset());
+
+    it('shows a failed delete in the editor footer and keeps the editor open', async () => {
+      asMock(deleteHome).mockRejectedValueOnce(new Error('denied'));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+      render(<HomesModal {...baseProps} homes={homes} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete home' }));
+
+      expect(await screen.findByText("Couldn't delete this home. Nothing was changed.")).toBeInTheDocument();
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'DELETE', 'homes/h1');
+      expect(screen.getByLabelText('Name')).toHaveValue('the Oseis');
+      expect(screen.queryByText('Home deleted')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(deleteHome).toHaveBeenCalledTimes(2));
+      expect(await screen.findByText('Home deleted')).toBeInTheDocument();
+      expect(screen.queryByText(/Couldn't delete/)).not.toBeInTheDocument();
+      errSpy.mockRestore();
+    });
+
+    it('shows a failed combine on the Combine step and retries from there', async () => {
+      asMock(combineHomes).mockRejectedValueOnce(new Error('denied'));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      render(<HomesModal {...baseProps} homes={garcias} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Garcias (2)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Combine into…' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Keep the Garcias' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Combine homes' }));
+
+      expect(await screen.findByText("Couldn't combine these homes. Nothing was changed.")).toBeInTheDocument();
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'WRITE', 'homes/h1');
+      expect(screen.getByRole('button', { name: 'Back to the home' })).toBeInTheDocument();
+      expect(baseProps.onHomeSaved).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(combineHomes).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(baseProps.onHomeSaved).toHaveBeenCalled());
+      errSpy.mockRestore();
+    });
+  });
+
+  it('stays one dialog from the list to the editor and back, with focus inside it (#1448)', () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    const dialog = screen.getByRole('dialog', { name: 'Homes' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('dialog', { name: 'the Oseis' })).toBe(dialog);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to all homes' }));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('dialog', { name: 'Homes' })).toBe(dialog);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it('keeps the same dialog through the Combine step too', () => {
+    const homes = [
+      { id: 'h1', label: 'the Garcias', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Garcias (2)', members: ['c2'], active: true },
+    ];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Garcias (2)' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Combine into…' }));
+
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it('will not Combine with unsaved edits, and says to save first', () => {
+    const homes = [
+      { id: 'h1', label: 'the Garcias', members: ['c1'], active: true },
+      { id: 'h2', label: 'the Garcias (2)', members: ['c2'], active: true },
+    ];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Garcias (2)' }));
+    expect(screen.getByRole('button', { name: 'Combine into…' })).toBeEnabled();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Garcias (renamed)' } });
+
+    expect(screen.getByRole('button', { name: 'Combine into…' })).toBeDisabled();
+    expect(screen.getByText('Save your changes before combining.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('the Garcias (renamed)');
   });
 });

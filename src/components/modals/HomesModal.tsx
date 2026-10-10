@@ -4,9 +4,11 @@
 // suggested, never derived — every proposal is confirmed and editable before
 // it saves, so a wrong home is harder to notice than a missing one.
 //
-// The list, the editor and the Combine step all render inside the shared popup
-// frame (spec #1444, #1448). Delete and Combine are #1408 / ADR 0040; this
-// restyles them in the frame rather than inventing them.
+// The list, the editor and the Combine step are three views of ONE shared popup
+// frame (spec #1444, #1448), so switching between them keeps the dialog mounted:
+// no open animation replaying, focus not sent back to the opener. Delete and
+// Combine are #1408 / ADR 0040; this restyles them in the frame rather than
+// inventing them.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRightLeft, ChevronRight, House, MapPin, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import {
@@ -29,7 +31,7 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { pickableContacts } from '../../lib/permissions';
-import { PopupField, PopupFrame, PopupSection, avatarTint } from '../ui/PopupFrame';
+import { PopupField, PopupFrame, PopupSection, avatarTint, type PopupFrameProps } from '../ui/PopupFrame';
 import { Switch } from '../ui/Switch';
 import type { Contact, Home, Visit } from '../../types';
 
@@ -105,9 +107,13 @@ export default function HomesModal({
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [combining, setCombining] = useState<{ source: Home; target: Home | null } | null>(null);
+  // A rejected Delete (editor footer) or Combine (Combine step footer), kept
+  // until the person retries or leaves that view.
+  const [actionError, setActionError] = useState<'delete' | 'combine' | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const seededRef = useRef<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   const realContacts = useMemo(() => pickableContacts(contacts), [contacts]);
@@ -129,6 +135,7 @@ export default function HomesModal({
     n === 1 ? t('homes.visit_one') : t('homes.visit_many').replace('{count}', String(n));
 
   const beginEdit = (draft: Draft) => {
+    setActionError(null);
     setEditing(draft);
     setBaseline(draft);
   };
@@ -152,6 +159,7 @@ export default function HomesModal({
       setEditing(null);
       setBaseline(null);
       setCombining(null);
+      setActionError(null);
       setShowInactive(false);
       seededRef.current = null;
       return;
@@ -179,8 +187,17 @@ export default function HomesModal({
       editing.active !== baseline.active);
 
   const leaveEditor = () => {
+    setActionError(null);
     setEditing(null);
     setBaseline(null);
+  };
+  const startCombine = (source: Home) => {
+    setActionError(null);
+    setCombining({ source, target: null });
+  };
+  const leaveCombine = () => {
+    setActionError(null);
+    setCombining(null);
   };
 
   const toggleMember = (id: string) => {
@@ -197,6 +214,7 @@ export default function HomesModal({
   const remove = async () => {
     const home = editingHome;
     if (!home || busy) return;
+    setActionError(null);
     setBusy(true);
     try {
       await deleteHome(home.id);
@@ -215,7 +233,14 @@ export default function HomesModal({
         );
       });
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, `homes/${home.id}`);
+      setActionError('delete');
+      // handleFirestoreError records and rethrows; the footer is where the
+      // person hears about it, so keep the throw from escaping the handler.
+      try {
+        handleFirestoreError(e, OperationType.DELETE, `homes/${home.id}`);
+      } catch {
+        /* already surfaced above */
+      }
     } finally {
       setBusy(false);
     }
@@ -225,6 +250,7 @@ export default function HomesModal({
   const confirmCombine = async () => {
     if (!combining?.target || busy) return;
     const { source, target } = combining;
+    setActionError(null);
     setBusy(true);
     try {
       await combineHomes(target, source, visits, { uid: me, name: myName });
@@ -236,11 +262,16 @@ export default function HomesModal({
         type: 'edit',
         description: `Combined "${source.label}" (${source.id}) into "${target.label}" (${target.id}).`,
       });
-      setCombining(null);
+      leaveCombine();
       leaveEditor();
       onHomeSaved(target);
     } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `homes/${target.id}`);
+      setActionError('combine');
+      try {
+        handleFirestoreError(e, OperationType.WRITE, `homes/${target.id}`);
+      } catch {
+        /* already surfaced above */
+      }
     } finally {
       setBusy(false);
     }
@@ -501,13 +532,17 @@ export default function HomesModal({
 
       {!isNew && canCombine && (
         <div className="border-t border-outline-variant px-7 py-4">
+          {/* Combine leaves the editor, so unsaved edits would be dropped
+              unasked. Saving first is simpler than a second discard question. */}
           <button
             type="button"
-            onClick={() => editingHome && setCombining({ source: editingHome, target: null })}
-            className="inline-flex h-11 items-center gap-2 text-sm font-medium text-on-surface transition-colors hover:text-accent"
+            disabled={dirty}
+            onClick={() => editingHome && startCombine(editingHome)}
+            className="inline-flex h-11 items-center gap-2 text-sm font-medium text-on-surface transition-colors hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-on-surface"
           >
             <ArrowRightLeft className="h-4 w-4" /> {t('homes.combine_into')}
           </button>
+          {dirty && <p className="text-xs text-[var(--text-mute)]">{t('homes.combine_save_first')}</p>}
         </div>
       )}
     </>
@@ -567,72 +602,85 @@ export default function HomesModal({
     </>
   );
 
-  return (
-    <>
-      {combining ? (
-        <PopupFrame
-          open={isOpen}
-          onClose={onClose}
-          size="md"
-          onBack={() => setCombining(null)}
-          backLabel={t('homes.combine_back_home')}
-          title={t('homes.combine_heading').replace('{source}', combining.source.label)}
-          subtitle={t('homes.combine_subtitle').replace(
-            '{visits}',
-            visitCountLabel(visitCount(combining.source.id)),
-          )}
-          cancelLabel={t('modals.cancel')}
-          onCancel={() => setCombining(null)}
-          primary={{
+  // One frame for all three views; only its props change, so it never remounts.
+  const view = combining ? 'combine' : editing ? 'editor' : 'list';
+
+  // The button that opened a view is gone once the view changes, which would
+  // drop focus to the page behind the dialog. Keep it inside.
+  const firstViewRef = useRef(true);
+  useEffect(() => {
+    if (firstViewRef.current) {
+      firstViewRef.current = false;
+      return;
+    }
+    const dialog = bodyRef.current?.closest<HTMLElement>('[role="dialog"]');
+    if (dialog && !dialog.contains(document.activeElement)) dialog.focus();
+  }, [view]);
+
+  const frameProps: Omit<PopupFrameProps, 'open' | 'onClose' | 'children'> =
+    combining
+      ? {
+          onBack: leaveCombine,
+          backLabel: t('homes.combine_back_home'),
+          title: t('homes.combine_heading').replace('{source}', combining.source.label),
+          subtitle: t('homes.combine_subtitle').replace('{visits}', visitCountLabel(visitCount(combining.source.id))),
+          error:
+            actionError === 'combine'
+              ? {
+                  message: t('homes.couldnt_combine'),
+                  retryLabel: t('modals.try_again'),
+                  onRetry: () => void confirmCombine(),
+                }
+              : null,
+          cancelLabel: t('modals.cancel'),
+          onCancel: leaveCombine,
+          primary: {
             label: t('homes.combine_confirm'),
             onClick: () => void confirmCombine(),
             disabled: !combining.target,
             saving: busy,
             savingLabel: t('homes.combine_working'),
-          }}
-        >
-          {combineBody}
-        </PopupFrame>
-      ) : editing ? (
-        <PopupFrame
-          open={isOpen}
-          onClose={() => {
-            leaveEditor();
-            onClose();
-          }}
-          size="md"
-          onBack={leaveEditor}
-          backLabel={t('homes.back_to_list')}
-          title={isNew ? t('homes.new_home') : editing.label.trim() || t('homes.unnamed_home')}
-          subtitle={isNew ? undefined : visitCountLabel(visitCount(editing.id as string))}
-          dirty={dirty}
-          discardQuestion={t('homes.discard_question')}
-          destructive={canDelete ? { label: t('homes.delete_home'), onClick: () => void remove() } : null}
-          footerHint={canDelete ? t('homes.never_visited_hint') : undefined}
-          cancelLabel={t('modals.cancel')}
-          onCancel={leaveEditor}
-          primary={{
-            label: isNew ? t('homes.create_home') : t('homes.save_changes'),
-            onClick: () => void save(),
-            disabled: !editing.label.trim(),
-            saving,
-            savingLabel: t('homes.saving'),
-          }}
-        >
-          {editorBody}
-        </PopupFrame>
-      ) : (
-        <PopupFrame
-          open={isOpen}
-          onClose={onClose}
-          size="md"
-          eyebrow={t('homes.eyebrow')}
-          title={t('homes.title')}
-          subtitle={t('homes.list_subtitle')}
-        >
-          {listBody}
-        </PopupFrame>
-      )}
+          },
+        }
+      : editing
+        ? {
+            onBack: leaveEditor,
+            backLabel: t('homes.back_to_list'),
+            title: isNew ? t('homes.new_home') : editing.label.trim() || t('homes.unnamed_home'),
+            subtitle: isNew ? undefined : visitCountLabel(visitCount(editing.id as string)),
+            dirty,
+            discardQuestion: t('homes.discard_question'),
+            destructive: canDelete ? { label: t('homes.delete_home'), onClick: () => void remove() } : null,
+            footerHint: canDelete ? t('homes.never_visited_hint') : undefined,
+            error:
+              actionError === 'delete'
+                ? {
+                    message: t('homes.couldnt_delete'),
+                    retryLabel: t('modals.try_again'),
+                    onRetry: () => void remove(),
+                  }
+                : null,
+            cancelLabel: t('modals.cancel'),
+            onCancel: leaveEditor,
+            primary: {
+              label: isNew ? t('homes.create_home') : t('homes.save_changes'),
+              onClick: () => void save(),
+              disabled: !editing.label.trim(),
+              saving,
+              savingLabel: t('homes.saving'),
+            },
+          }
+        : {
+            eyebrow: t('homes.eyebrow'),
+            title: t('homes.title'),
+            subtitle: t('homes.list_subtitle'),
+          };
+
+  return (
+    <>
+      <PopupFrame open={isOpen} onClose={onClose} size="md" {...frameProps}>
+        <div ref={bodyRef}>{combining ? combineBody : editing ? editorBody : listBody}</div>
+      </PopupFrame>
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </>
   );

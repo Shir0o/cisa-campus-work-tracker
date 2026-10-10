@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import LogInteractionModal from '../components/modals/LogInteractionModal';
 import * as firestore from 'firebase/firestore';
 import { useAuth } from '../components/AuthProvider';
@@ -104,15 +104,36 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     expect(screen.getByText('Bob Jones')).toBeInTheDocument();
   });
 
-  it('offers Message, Call and Meeting as one-tap kinds in sentence case', () => {
+  it('offers Message, Email, Call and Meeting as one-tap kinds, in that order', () => {
     setupOnSnapshot(mockContacts);
     render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
 
-    for (const kind of ['Message', 'Call', 'Meeting']) {
+    const kinds = ['Message', 'Email', 'Call', 'Meeting'];
+    for (const kind of kinds) {
       expect(screen.getByRole('button', { name: kind })).toBeInTheDocument();
     }
-    // The frame's rows drop the old Email tile (design A · Log interaction).
-    expect(screen.queryByRole('button', { name: 'Email' })).not.toBeInTheDocument();
+    const order = kinds.map((k) => screen.getByRole('button', { name: k }));
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it('saves type "email" when Email is picked', async () => {
+    setupOnSnapshot(mockContacts);
+    render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+
+    fireEvent.click(await screen.findByText('Alice Smith'));
+    fireEvent.click(screen.getByRole('button', { name: 'Email' }));
+    fireEvent.change(screen.getByLabelText('What was said'), { target: { value: 'Sent her the schedule.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log for 1 person' }));
+
+    const batchMock = firestore.writeBatch(null as any);
+    await waitFor(() => expect(batchMock.commit).toHaveBeenCalled());
+    expect(batchMock.set).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'email', content: 'Sent her the schedule.' }),
+    );
+    expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ type: 'email' }));
   });
 
   it('filters people on typing in the search query', async () => {
@@ -308,22 +329,68 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     });
   });
 
-  it('reports commit failures through handleFirestoreError', async () => {
-    setupOnSnapshot(mockContacts);
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const batchMock = firestore.writeBatch(null as any);
-    (batchMock.commit as any).mockRejectedValueOnce(new Error('commit exploded'));
-
-    render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
-    fireEvent.click(await screen.findByText('Alice Smith'));
-    fireEvent.change(screen.getByLabelText('What was said'), { target: { value: 'Notes' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Log for 1 person' }));
-
-    await waitFor(() => {
-      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'WRITE', 'batch/interactions');
+  describe('when the save is rejected', () => {
+    // handleFirestoreError records and then rethrows; the modal must catch that.
+    let errSpy: ReturnType<typeof vi.spyOn>;
+    beforeEach(() => {
+      (handleFirestoreError as any).mockImplementation(() => {
+        throw new Error('rethrown by handleFirestoreError');
+      });
+      errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     });
-    expect(mockOnClose).not.toHaveBeenCalled();
-    errSpy.mockRestore();
+    afterEach(() => {
+      (handleFirestoreError as any).mockReset();
+      errSpy.mockRestore();
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+    });
+
+    const fill = async () => {
+      fireEvent.click(await screen.findByText('Alice Smith'));
+      fireEvent.change(screen.getByLabelText('What was said'), { target: { value: 'Notes' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Log for 1 person' }));
+    };
+
+    it('reports the failure, shows it in the footer, and keeps the form filled', async () => {
+      setupOnSnapshot(mockContacts);
+      const batchMock = firestore.writeBatch(null as any);
+      (batchMock.commit as any).mockRejectedValueOnce(new Error('commit exploded'));
+
+      render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+      await fill();
+
+      expect(await screen.findByText("Couldn't save. Nothing you typed was lost.")).toBeInTheDocument();
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'WRITE', 'batch/interactions');
+      expect(screen.getByLabelText('What was said')).toHaveValue('Notes');
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
+    it('writes again on Try again and closes once it lands', async () => {
+      setupOnSnapshot(mockContacts);
+      const batchMock = firestore.writeBatch(null as any);
+      (batchMock.commit as any).mockRejectedValueOnce(new Error('commit exploded'));
+
+      render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+      await fill();
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => expect(mockOnClose).toHaveBeenCalled());
+      expect(batchMock.commit).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText(/Couldn't save/)).not.toBeInTheDocument();
+    });
+
+    it('says so up front when offline, without starting a write', async () => {
+      setupOnSnapshot(mockContacts);
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
+      const batchMock = firestore.writeBatch(null as any);
+
+      render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
+      await fill();
+
+      expect(await screen.findByText("Couldn't save — you're offline. Nothing was lost.")).toBeInTheDocument();
+      expect(batchMock.commit).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('What was said')).toHaveValue('Notes');
+    });
   });
 
   it('pre-selects the contact when initialContactId is provided', async () => {

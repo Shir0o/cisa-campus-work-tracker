@@ -2256,6 +2256,9 @@
     "combine_what_happens": "Qué ocurre",
     "combine_working": "Combinando…",
     "combine_back_home": "Volver al hogar",
+    "couldnt_delete": "No se pudo eliminar este hogar. No se cambió nada.",
+    "couldnt_combine": "No se pudieron combinar estos hogares. No se cambió nada.",
+    "combine_save_first": "Guarda tus cambios antes de combinar.",
     "close": "Cerrar"
   },
   "reminders": {

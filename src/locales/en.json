@@ -2256,6 +2256,9 @@
     "combine_what_happens": "What happens",
     "combine_working": "Combining…",
     "combine_back_home": "Back to the home",
+    "couldnt_delete": "Couldn't delete this home. Nothing was changed.",
+    "couldnt_combine": "Couldn't combine these homes. Nothing was changed.",
+    "combine_save_first": "Save your changes before combining.",
     "close": "Close"
   },
   "reminders": {

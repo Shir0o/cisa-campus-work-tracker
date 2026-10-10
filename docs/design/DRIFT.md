@@ -295,7 +295,7 @@ needed on the kinds.
 
 | # | Drift | Which was right | Resolution |
 | --- | --- | --- | --- |
-| 62 | The pre-frame build offered **four** interaction kinds — Message, Email, Call, Meeting — while design A and spec #1444 story 43 name three: Message, Call, Meeting. | **Design / spec** | The frame renders the three kinds and drops the Email tile. Interactions already stored with `type: "email"` still render through `ActivityItem` — only the manual Email button is gone. |
+| 62 | The pre-frame build offered **four** interaction kinds — Message, Email, Call, Meeting — while design A and spec #1444 story 43 name three: Message, Call, Meeting. | **Design / spec** | The frame renders the three kinds and drops the Email tile. Interactions already stored with `type: "email"` still render through `ActivityItem` — only the manual Email button is gone. **Follow-up 2026-10-10: Email was restored at the user's request** — Log interaction offers four one-tap kinds again (Message, Email, Call, Meeting) and saves `type: "email"`, as before the frame. |
 
 ### 2026-10-08 — Who are we praying for? in the popup frame
 
