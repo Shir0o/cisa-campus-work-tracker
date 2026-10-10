@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.10.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.9.0...v1.10.0) (2026-10-10)
+
+
+### Features
+
+* **contacts:** warn when adding a person who may already exist ([#1510](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1510)) ([#1545](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1545)) ([69a251c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/69a251c82a3f6966e4dd3b9bfc3535d52e521127))
+* **i18n:** two-way English &lt;-&gt; Spanish reading translation ([#1407](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1407)) ([#1538](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1538)) ([f9554fb](https://github.com/Shir0o/cisa-campus-work-tracker/commit/f9554fb745cb93e62c6a345ce561af1c8bbecea8))
+
+
+### Bug Fixes
+
+* **mobile:** add missing i18n keys so contact and settings labels render ([#1537](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1537)) ([643af67](https://github.com/Shir0o/cisa-campus-work-tracker/commit/643af67dfbdc0855f65825578d5f22c18187a2bc)), closes [#1415](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1415)
+* **mobile:** disable Android IME autocorrect on multiline inputs ([#1514](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1514)) ([#1541](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1541)) ([05ed25e](https://github.com/Shir0o/cisa-campus-work-tracker/commit/05ed25ead100a17dd442f21515463ed440f6822e))
+* **mobile:** keep bottom-pinned inputs above the Android keyboard ([#1414](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1414)) ([#1542](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1542)) ([3011c57](https://github.com/Shir0o/cisa-campus-work-tracker/commit/3011c57162c7a593ac7bac1c9cb2ba929ccde73c))
+* **mobile:** scope the People touches feed to the reader ([#1411](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1411)) ([#1535](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1535)) ([1ecbf09](https://github.com/Shir0o/cisa-campus-work-tracker/commit/1ecbf09b887a4548996f6a4e7e56735ac38e0a18))
+* **prayers:** keep off-page prayers off "On our hearts" ([#1406](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1406)) ([#1527](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1527)) ([9eefbde](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9eefbde136b04f3b35fcab66ae9f96e68ac6463f))
+
+
+### Refactoring
+
+* **prayers:** make every prayer write choose its team flag ([#1556](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1556)) ([9bb1b9c](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9bb1b9cccd2839b5edf7d244a67d68f8eb0d8942))
+
 ## [1.9.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.8.4...v1.9.0) (2026-10-08)
 
 
