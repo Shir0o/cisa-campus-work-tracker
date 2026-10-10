@@ -382,6 +382,15 @@ service cloud.firestore {
                exSeen.difference(incSeen).hasOnly(coDropped);
       }
 
+      // #1526: a tie list may only lose the caller's own uid and never gain
+      // anyone. Used by the release branch for carers/coCreators/founders.
+      function dropsOnlySelf(field) {
+        let inc = incoming().get(field, []).toSet();
+        let ex = existing().get(field, []).toSet();
+        return inc.difference(ex).size() == 0 &&
+               ex.difference(inc).hasOnly([request.auth.uid]);
+      }
+
       function canUpdateContact() {
         let ex = existing();
         let uid = request.auth.uid;
@@ -395,7 +404,34 @@ service cloud.firestore {
         let mayShare = admin ||
                        uid in ex.get('coCreators', []) ||
                        uid in ex.get('founders', []);
+        let exUn = ex.get('unfollowedBy', []).toSet();
+        let incUn = incoming().get('unfollowedBy', []).toSet();
+        let exSeen = ex.get('visibleTo', []).toSet();
+        let incSeen = incoming().get('visibleTo', []).toSet();
         return
+          // #1526: Release from my queue. The caller appends only their own uid
+          // to `unfollowedBy`, drops only their own tie from
+          // carers/coCreators/founders, and rewrites `visibleTo` to match — the
+          // self-scoped sibling of the sheep branch below. First so a release
+          // write short-circuits true instead of walking every other branch to
+          // the 1000-expression ceiling; every other write bails on the
+          // `unfollowedBy` presence test before paying the rest.
+          (keys.hasAny(['unfollowedBy']) &&
+           keys.hasOnly([
+             'unfollowedBy', 'visibleTo', 'carers', 'coCreators', 'founders',
+             'updatedAt', 'updatedBy', 'updatedByName'
+           ]) &&
+           uid in ex.get('visibleTo', []) &&
+           !(uid in ex.get('unfollowedBy', [])) &&
+           uid in incoming().get('unfollowedBy', []) &&
+           incUn.difference(exUn).hasOnly([uid]) &&
+           exUn.difference(incUn).size() == 0 &&
+           incSeen.difference(exSeen).size() == 0 &&
+           exSeen.difference(incSeen).hasOnly([uid]) &&
+           (!keys.hasAny(['carers']) || dropsOnlySelf('carers')) &&
+           (!keys.hasAny(['coCreators']) || dropsOnlySelf('coCreators')) &&
+           (!keys.hasAny(['founders']) || dropsOnlySelf('founders'))) ||
+
           // Operators edit the typed profile fields; unknown keys are rejected
           // (ghost-field injection). affectedKeys() only inspects the changed
           // keys, so a contact carrying legacy/extra fields stays editable as

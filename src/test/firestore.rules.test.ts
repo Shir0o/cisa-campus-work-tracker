@@ -540,6 +540,124 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  // #1526: Release from my queue. handleReleaseContact appends the caller's
+  // own uid to `unfollowedBy`, drops only their own tie from
+  // carers/coCreators/founders, and rewrites `visibleTo` to match. These pin
+  // the exact write shape the client sends, positive and negative.
+  describe('Release from my queue (#1526)', () => {
+    const seed = async (contactId: string, contact: Record<string, unknown>) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const fs = context.firestore();
+        await setDoc(doc(fs, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager2'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'users', 'manager3'), { role: 'manager', approved: true });
+        await setDoc(doc(fs, 'contacts', contactId), {
+          name: 'Test', email: 'test@example.com', ...contact,
+        });
+      });
+    };
+
+    it('lets a tied carer release themselves from their own queue', async () => {
+      await seed('c_release', {
+        createdBy: 'manager2',
+        carers: ['manager1'],
+        visibleTo: ['manager2', 'manager1'],
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_release'), {
+        unfollowedBy: arrayUnion('manager1'),
+        carers: arrayRemove('manager1'),
+        visibleTo: ['manager2'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Manager One',
+      }));
+    });
+
+    it('lets a founder release themselves while keeping creation history', async () => {
+      await seed('c_release_founder', {
+        createdBy: 'manager1',
+        founders: ['manager1'],
+        visibleTo: ['manager1'],
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'c_release_founder'), {
+        unfollowedBy: arrayUnion('manager1'),
+        founders: arrayRemove('manager1'),
+        visibleTo: ['manager1'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Manager One',
+      }));
+    });
+
+    it('refuses adding a uid other than the caller to unfollowedBy', async () => {
+      await seed('c_release_other', {
+        createdBy: 'manager2',
+        carers: ['manager1'],
+        visibleTo: ['manager2', 'manager1'],
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_release_other'), {
+        unfollowedBy: arrayUnion('manager2'),
+        carers: arrayRemove('manager1'),
+        visibleTo: ['manager2'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Manager One',
+      }));
+    });
+
+    it('refuses a release that widens visibleTo to another user', async () => {
+      await seed('c_release_widen', {
+        createdBy: 'manager2',
+        carers: ['manager1'],
+        visibleTo: ['manager2', 'manager1'],
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_release_widen'), {
+        unfollowedBy: arrayUnion('manager1'),
+        carers: arrayRemove('manager1'),
+        visibleTo: ['manager2', 'manager1', 'manager3'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Manager One',
+      }));
+    });
+
+    it('refuses a release that adds another user to a tie list', async () => {
+      await seed('c_release_grant', {
+        createdBy: 'manager2',
+        carers: ['manager1'],
+        visibleTo: ['manager2', 'manager1'],
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_release_grant'), {
+        unfollowedBy: arrayUnion('manager1'),
+        coCreators: arrayUnion('manager3'),
+        visibleTo: ['manager2', 'manager1'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Manager One',
+      }));
+    });
+
+    it('refuses a release from an untied user', async () => {
+      await seed('c_release_untied', {
+        createdBy: 'manager2',
+        visibleTo: ['manager2'],
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(updateDoc(doc(db, 'contacts', 'c_release_untied'), {
+        unfollowedBy: arrayUnion('manager1'),
+        updatedAt: serverTimestamp(),
+        updatedBy: 'manager1',
+        updatedByName: 'Manager One',
+      }));
+    });
+
+  });
+
   describe('Sheep carers end with the tie that granted them (#1052)', () => {
     const seed = async (contactId: string, contact: Record<string, unknown>) => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
