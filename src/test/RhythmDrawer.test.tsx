@@ -24,12 +24,29 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { CREATE: 'create', UPDATE: 'update' },
 }));
 
-vi.mock('motion/react', () => ({
-  motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  },
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}));
+vi.mock('motion/react', () => {
+  // Memoise one component per tag so the shared frame's media-query/dirty
+  // re-renders don't remount the subtree a test is about to click.
+  const cache = new Map<PropertyKey, any>();
+  const motion = new Proxy(
+    {},
+    {
+      get: (_target, prop) => {
+        if (!cache.has(prop)) {
+          cache.set(prop, ({ children, ...props }: any) => {
+            const Tag = prop as any;
+            return <Tag {...props}>{children}</Tag>;
+          });
+        }
+        return cache.get(prop);
+      },
+    },
+  );
+  return {
+    motion,
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+  };
+});
 
 vi.mock('../components/UndoSnackbar', () => ({
   UndoSnackbar: ({ undoSnack, onClose }: any) => (undoSnack ? (
@@ -209,6 +226,27 @@ describe('RhythmDrawer (issue #957)', () => {
     render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // #1455: the drawer adopts the shared popup frame's header and pinned footer
+  // while staying a side panel.
+  it('renders through the shared popup frame with its header and footer (#1455)', () => {
+    render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
+    const dialog = screen.getByRole('dialog', { name: 'Rhythm settings' });
+    // The frame's round Close lives in the header.
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    // The frame's pinned footer carries the destructive action and the primary.
+    expect(within(dialog).getByRole('button', { name: 'Remove this Rhythm' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+  });
+
+  // #1455: closing a Rhythm with unsaved edits asks before discarding.
+  it('asks before discarding an edited Rhythm (#1455)', () => {
+    render(<RhythmDrawer isOpen={true} onClose={onClose} rhythm={rhythm} gatherings={gatherings} contacts={contacts} />);
+    fireEvent.change(screen.getByDisplayValue('Wednesday Bible Study'), { target: { value: 'Wednesday Gathering' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText('Discard this Rhythm?')).toBeInTheDocument();
   });
 });
 

@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
+import { PopupFrame, PopupSection } from "../ui/PopupFrame";
 import type { ContactTeamMember } from "./types";
 
+// Bringing a teammate onto a contact and asking them to act (ADR 0034). It
+// stays a side panel (never a bottom sheet) but takes the shared popup frame's
+// header, sections and pinned footer, and asks before it discards typed edits
+// (spec #1444).
 export default function DelegateSheet({
   open,
   name,
@@ -27,39 +31,37 @@ export default function DelegateSheet({
     }
   }, [open]);
 
-  if (!open) return null;
-
   const title = t('modals.contactDetails.delegate_person').replace('{name}', name);
+  const dirty = !!staffId || !!note.trim();
+  const fieldCls =
+    "w-full rounded-sm bg-surface-container-low border border-transparent px-3.5 py-2.5 text-sm text-on-surface placeholder:text-[var(--text-mute)] focus:outline-none focus:border-outline transition-colors";
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-label={title}
-        className="w-full max-w-md bg-surface rounded-[24px] border border-outline-variant shadow-2xl p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-serif text-lg font-semibold text-on-surface">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('modals.contactDetails.close')}
-            title={t('modals.contactDetails.close')}
-            className="w-9 h-9 rounded-full hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
-          {t('modals.contactDetails.delegate_choose')}
-        </label>
+    <PopupFrame
+      open={open}
+      onClose={onClose}
+      placement="side"
+      size="sm"
+      eyebrow={t('modals.contactDetails.delegate_eyebrow', 'Delegate')}
+      title={title}
+      subtitle={t('modals.contactDetails.delegate_subtitle', 'Bring a teammate in and ask them to act.')}
+      dirty={dirty}
+      discardQuestion={t('modals.contactDetails.delegate_discard', 'Discard this delegation?')}
+      cancelLabel={t('modals.cancel')}
+      onCancel={onClose}
+      primary={{
+        label: t('modals.contactDetails.delegate'),
+        onClick: () => onDelegate(staffId, note.trim()),
+        disabled: !staffId,
+        savingLabel: t('modals.saving'),
+      }}
+    >
+      <PopupSection label={t('modals.contactDetails.delegate_choose')}>
         <select
           aria-label={t('modals.contactDetails.delegate_choose')}
           value={staffId}
           onChange={(e) => setStaffId(e.target.value)}
-          className="w-full h-11 px-3 mb-4 bg-surface-container-low border border-outline rounded-xl text-sm text-on-surface"
+          className={fieldCls}
         >
           <option value="" disabled>
             {t('modals.contactDetails.delegate_choose')}
@@ -70,37 +72,18 @@ export default function DelegateSheet({
             </option>
           ))}
         </select>
+      </PopupSection>
 
-        <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
-          {t('modals.contactDetails.delegate_note')}
-        </label>
+      <PopupSection label={t('modals.contactDetails.delegate_note')}>
         <textarea
           aria-label={t('modals.contactDetails.delegate_note')}
           placeholder={t('modals.contactDetails.delegate_note_placeholder')}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          className="w-full px-3 py-2 mb-4 bg-surface-container-low border border-outline rounded-xl text-sm text-on-surface resize-none"
+          className={`${fieldCls} resize-none`}
         />
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 h-10 rounded-full text-sm font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
-          >
-            {t('modals.contactDetails.cancel')}
-          </button>
-          <button
-            type="button"
-            disabled={!staffId}
-            onClick={() => onDelegate(staffId, note.trim())}
-            className="px-5 h-10 rounded-full bg-primary text-on-primary text-sm font-semibold disabled:opacity-50"
-          >
-            {t('modals.contactDetails.delegate')}
-          </button>
-        </div>
-      </div>
-    </div>
+      </PopupSection>
+    </PopupFrame>
   );
 }

@@ -3839,6 +3839,8 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
     expect(within(sheet).getByText(/How to reach John/i)).toBeInTheDocument();
     expect(within(sheet).getByText(/^Tags$/i)).toBeInTheDocument();
     expect(within(sheet).getByText(/Who else can see them/i)).toBeInTheDocument();
+    // #1455: the side panel uses the shared popup frame's header.
+    expect(within(sheet).getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
   it('shares and removes a teammate from inside the About sheet', async () => {
@@ -3917,6 +3919,9 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delegate' }));
     const sheet = await screen.findByRole('dialog', { name: /Delegate John Doe/i });
+    // #1455: the side panel uses the shared popup frame's header and pinned footer.
+    expect(within(sheet).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
 
     fireEvent.change(within(sheet).getByLabelText('Choose a teammate'), {
       target: { value: 'ft2' },
