@@ -62,41 +62,9 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 
-  test('Trainee can view permitted walking-together threads and post replies without seeing confidential team discussion', async ({ page }) => {
-    // 1. Sign in as Trainee
-    await signInAs(page, 'trainee');
-
-    // 2. Navigate to People directory
-    await page.goto('/directory');
-    await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
-
-    // 3. Open Lila Chen's contact
-    const contactCard = page.getByText('Lila Chen').first();
-    await expect(contactCard).toBeVisible({ timeout: 10_000 });
-    await contactCard.click();
-
-    // 4. Verify Contact Details modal opens
-    await expect(page.getByRole('dialog', { name: /contact details/i })).toBeVisible();
-
-    // 5. Check the Full-timers tab is NOT visible / not accessible
-    await expect(page.getByRole('button', { name: /^full-timers/i })).not.toBeVisible();
-    await expect(page.locator('body')).not.toContainText('Confidential Staff Note');
-
-    // 6. Verify the shared walking-together thread is readable. A trainee has no
-    // "Full-timers" tab, so the contact pane shows the Conversation directly
-    // (no tab switcher button to click).
-    await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible();
-
-    // Trainee posts a reply / comment in walking-together thread
-    const threadInput = page.getByPlaceholder('Write something…').first();
-    await expect(threadInput).toBeVisible();
-    const traineeComment = `Trainee walking-together check-in ${Date.now()}`;
-    await threadInput.fill(traineeComment);
-    await threadInput.press('Meta+Enter');
-
-    await expect(page.getByText(traineeComment).first()).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
-  });
+  // The trainee half of this spec (the Full-timers stream staying hidden) now
+  // lives in e2e/journeys/trainee.spec.ts (#1475). The Full-timer half remains
+  // for the full-timer journey (#1477); the Student half for #1480.
 
   test('Student role can view contact details and permitted interaction threads without permission errors', async ({ page }) => {
     // 1. Sign in as Student
