@@ -1,10 +1,11 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { addDoc, getDocs } from 'firebase/firestore';
+import { addDoc, getDocs, onSnapshot } from 'firebase/firestore';
 import NewContactModal from '../components/modals/NewContactModal';
 import { useAuth } from '../components/AuthProvider';
 import { applyPartners, partnersTermKey } from '../lib/partners';
+import { useNavigate } from 'react-router-dom';
 import React from 'react';
 
 // Mock dependencies
@@ -19,11 +20,17 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(),
   orderBy: vi.fn(),
   limit: vi.fn(),
+  where: vi.fn(),
+  onSnapshot: vi.fn(),
   getDocs: vi.fn().mockResolvedValue({
     docs: [
       { id: 'stage-1', data: () => ({ label: 'Contacted', order: 1 }) }
     ]
   }),
+}));
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: vi.fn(),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -553,7 +560,102 @@ describe('NewContactModal', () => {
   });
 });
 
+// #1510: warn (non-blocking) when the person being added may already exist.
+describe('NewContactModal — duplicate warning', () => {
+  const alice = { id: 'c1', name: 'Alice Smith', email: 'alice@campus.edu', phone: '(555) 111-2222' };
 
+  beforeAll(() => {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-id', displayName: 'Test User' },
+      role: 'admin',
+      isAdmin: true,
+    });
+  });
+
+  const seedRoster = (people: any[]) => {
+    (onSnapshot as any).mockImplementation((_q: any, success: any) => {
+      success({
+        docs: people.map((p) => ({
+          id: p.id,
+          data: () => {
+            const { id, ...rest } = p;
+            return rest;
+          },
+        })),
+      });
+      return vi.fn();
+    });
+  };
+
+  it('warns, naming the matching contact, before the create is submitted', async () => {
+    seedRoster([alice]);
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText('New Contact')).toBeInTheDocument());
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await userEvent.type(firstName, 'Alice Smith');
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('Alice Smith may already be here');
+    });
+    expect(screen.getByRole('button', { name: 'Open Alice Smith' })).toBeInTheDocument();
+  });
+
+  it('never blocks the add: Add Contact still creates the new person', async () => {
+    seedRoster([alice]);
+    const onClose = vi.fn();
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    await waitFor(() => expect(screen.getByText('New Contact')).toBeInTheDocument());
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await userEvent.type(firstName, 'Alice Smith');
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: /Add Contact/i }));
+    await waitFor(() => {
+      expect(vi.mocked(addDoc)).toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('opening the existing person closes the form and navigates to them', async () => {
+    seedRoster([alice]);
+    const navigate = vi.fn();
+    vi.mocked(useNavigate).mockReturnValue(navigate);
+    const onClose = vi.fn();
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    await waitFor(() => expect(screen.getByText('New Contact')).toBeInTheDocument());
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await userEvent.type(firstName, 'Alice Smith');
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Open Alice Smith' }));
+    expect(onClose).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith('/people/c1');
+    expect(vi.mocked(addDoc)).not.toHaveBeenCalled();
+  });
+
+  it('does not warn when the entered person matches nobody', async () => {
+    seedRoster([alice]);
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText('New Contact')).toBeInTheDocument());
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await userEvent.type(firstName, 'Carol Diaz');
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});
 // #1152 review follow-up: the kind is a Full-timer's decision. A Trainee adding
 // someone must write no kind and no stamp, so the person lands in Not sorted
 // yet rather than the app guessing on their behalf.

@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Briefcase, Mail, Phone, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
+import { User, Briefcase, Mail, Phone, Calendar, Tag, MessageSquare, Sparkles, AlertCircle } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
 import { stampFounders, stampPartners } from '../../lib/partners';
 import { visibleToOf } from '../../lib/permissions';
-import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { contactVisibilityConstraints } from '../../lib/contactQueries';
+import { findDuplicateContact } from '../../lib/duplicateContact';
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
@@ -52,7 +55,33 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
   const genderManuallySet = useRef(false);
   const [stages, setStages] = useState<Stage[]>([]);
   const [showMore, setShowMore] = useState(false);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const season = useSeason();
+  const navigate = useNavigate();
+
+  // The in-scope roster the duplicate warning compares against, so a trainee is
+  // never warned about — or shown — a person outside their `visibleTo` scope.
+  useEffect(() => {
+    if (!isOpen) return;
+    const rosterQuery = query(
+      collection(db, 'contacts'),
+      ...contactVisibilityConstraints(role, user?.uid),
+    );
+    const unsubscribe = onSnapshot(rosterQuery, (snapshot) => {
+      setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
+    });
+    return unsubscribe;
+  }, [isOpen, role, user?.uid]);
+
+  // Non-blocking: surfaced before the create is submitted, never blocking it.
+  const duplicate = findDuplicateContact(
+    {
+      name: `${formData.firstName} ${formData.lastName}`.trim(),
+      email: formData.email,
+      phone: formData.phone,
+    },
+    contacts,
+  );
 
   const dirty = Boolean(
     formData.firstName ||
@@ -309,6 +338,32 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       {/* Form */}
       <div className="overflow-y-auto p-6">
         <form id="new-contact-form" onSubmit={handleSubmit} className="space-y-6">
+                {duplicate && (
+                  <div
+                    role="status"
+                    className="flex items-start gap-3 rounded-lg border border-outline-variant bg-surface-container-low p-4"
+                  >
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-on-surface">
+                        {t('modals.duplicate_warning_title').replace('{name}', duplicate.contact.name)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-on-surface-variant">
+                        {t('modals.duplicate_warning_body')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          navigate(`/people/${duplicate.contact.id}`);
+                        }}
+                        className="mt-2 inline-flex h-9 items-center rounded-full border border-outline-variant px-4 text-sm font-medium text-accent hover:underline"
+                      >
+                        {t('modals.duplicate_open').replace('{name}', duplicate.contact.name)}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* First Name */}
                   <div className="space-y-1.5">
