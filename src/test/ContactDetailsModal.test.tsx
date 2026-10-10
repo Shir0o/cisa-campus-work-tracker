@@ -1984,7 +1984,7 @@ describe('ContactDetailsModal Component', () => {
     });
     fireEvent.click(within(screen.getByRole('group', { name: 'Type' })).getByRole('button', { name: 'Call' }));
     fireEvent.click(screen.getByRole('button', { name: 'Now' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '15 minutes ago' }));
+    fireEvent.click(screen.getByRole('button', { name: '15 minutes ago' }));
     fireEvent.click(screen.getByRole('button', { name: 'Log' }));
 
     await waitFor(() => expect(firestore.addDoc).toHaveBeenCalled());

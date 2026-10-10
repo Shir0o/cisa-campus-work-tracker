@@ -1530,6 +1530,8 @@
       "composer_time_h1": "Hace 1 hora",
       "composer_time_yesterday": "Ayer, {time}",
       "composer_time_d2": "Hace 2 días",
+      "composer_time_pick": "Elige fecha y hora",
+      "composer_time_value": "Fecha y hora",
       "composer_by_label": "Por: {name}",
       "composer_hint": "⌘↵",
       "composer_log": "Registrar",

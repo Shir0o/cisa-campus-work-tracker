@@ -1530,6 +1530,8 @@
       "composer_time_h1": "1 hour ago",
       "composer_time_yesterday": "Yesterday, {time}",
       "composer_time_d2": "2 days ago",
+      "composer_time_pick": "Choose date and time",
+      "composer_time_value": "Date and time",
       "composer_by_label": "By: {name}",
       "composer_hint": "⌘↵",
       "composer_log": "Log",
