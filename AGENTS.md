@@ -138,6 +138,7 @@ Before introducing new features, enforce these gates:
 - **Stale spec**: when your UI change breaks a spec, update the spec in the same PR.
 - **Prove it goes red**: a test written for an escape or a bug fails with the fix reverted. Say how in the PR body.
 - **Run what you touched**: if you added or edited a spec, run `npm run test:e2e:emulator` (Node 24, JDK 21) before pushing and confirm your specs pass. CI covers the rest.
+- **Rules tests are required on web PRs**: the `emulator` job in `ci.yml` runs `src/test/firestore.rules.test.ts` and `src/test/database.rules.test.ts` under the Firestore + Database emulators on PRs touching web paths, and fails if the emulator falls back to open rules. It is a **required** check: a human must add the context `Rules tests (Firestore + Database emulator)` to the `main` ruleset (`.github/rulesets/main-branch-protection.json`) — agents cannot edit the ruleset.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
 ---
