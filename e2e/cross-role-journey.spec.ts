@@ -127,6 +127,47 @@ test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () =>
     await expect(page.getByText(testContactName).first()).toBeVisible({ timeout: 5_000 });
   });
 
+  test('Full-timer picks who reached out from the story composer without the menu clipping (#1494)', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+
+    // 1. Open the contact created above
+    await page.goto('/board');
+    await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
+    const contactCard = page.getByText(testContactName).first();
+    await expect(contactCard).toBeVisible({ timeout: 10_000 });
+    await contactCard.click();
+    await expect(page.getByRole('heading', { name: testContactName })).toBeVisible({ timeout: 5_000 });
+
+    // 2. Open the story's composer
+    const story = page.getByRole('region', { name: /the story so far/i }).first();
+    const composer = story.getByRole('textbox', { name: /what happened with/i }).first();
+    await expect(composer).toBeVisible({ timeout: 5_000 });
+    await composer.click();
+
+    // 3. The "By:" chip is Full-timer-only; open its reach menu. It used to
+    //    open upward and clip behind the contact head (#1494).
+    const byChip = story.getByRole('button', { name: /^by:/i }).first();
+    await expect(byChip).toBeVisible({ timeout: 5_000 });
+    await byChip.click();
+
+    // 4. Every option is on screen and actionable: "Me" plus the teammates.
+    const meOption = page.getByRole('menuitem', { name: 'Me', exact: true });
+    const teammateOption = page.getByRole('menuitem', { name: /Zion Adeyemi/ });
+    await expect(meOption).toBeVisible();
+    await expect(teammateOption).toBeVisible();
+
+    // 5. Choosing a teammate updates the attribution chip.
+    await teammateOption.click();
+    await expect(story.getByRole('button', { name: /^by: zion adeyemi/i })).toBeVisible();
+
+    // 6. The topmost option — the first to clip when the menu opened upward —
+    //    is still reachable, and picking it restores "By: Me" (#1494).
+    await byChip.click();
+    await expect(meOption).toBeVisible();
+    await meOption.click();
+    await expect(story.getByRole('button', { name: /^by: me$/i })).toBeVisible();
+  });
+
   test('Trainee can view the Journey board and observe the updated contact in Second Contact', async ({ page }) => {
     await signInAs(page, 'trainee');
 

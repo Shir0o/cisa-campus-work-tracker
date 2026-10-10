@@ -4190,7 +4190,11 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cd-composer-chip.ghost { border-color: transparent; background: var(--surface-container-high); }
 .cd-composer-chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
 .cd-composer-menu {
-  position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 5;
+  /* Drops below its chip. The composer sits at the top of the story's scroll
+     region (ADR 0034), so an upward menu is clipped by that region's top edge
+     and overdrawn by the contact head's z-index; downward there is room to
+     spare (#1494). */
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 5;
   display: flex; flex-direction: column; gap: 2px; min-width: 180px; padding: 6px;
   border: 1px solid var(--outline-variant); border-radius: var(--radius);
   background: var(--surface); box-shadow: var(--shadow-pop);
