@@ -57,8 +57,11 @@ export default function ContactComposer({
   const canSubmit = value.text.trim().length > 0;
 
   const pickType = (type: InteractionType) => onChange((p) => ({ ...p, type }));
+  // The native picker fires on every sub-field edit, so it writes the value
+  // without dismissing the popover mid-selection (#1495).
+  const setDateTime = (dateTime: string) => onChange((p) => ({ ...p, dateTime }));
   const pickTime = (at: string) => {
-    onChange((p) => ({ ...p, dateTime: at }));
+    setDateTime(at);
     setMenu(null);
   };
   const pickBy = (reachedById: string) => {
@@ -143,7 +146,7 @@ export default function ContactComposer({
                 <button
                   type="button"
                   className="cd-composer-chip ghost"
-                  aria-haspopup="menu"
+                  aria-haspopup="dialog"
                   aria-expanded={menu === "time"}
                   onClick={() => setMenu((m) => (m === "time" ? null : "time"))}
                 >
@@ -151,12 +154,22 @@ export default function ContactComposer({
                   <ChevronDown className="w-3 h-3" />
                 </button>
                 {menu === "time" && (
-                  <div className="cd-composer-menu" role="menu">
+                  <div
+                    className="cd-composer-menu"
+                    role="dialog"
+                    aria-label={t("modals.contactDetails.composer_time_pick")}
+                  >
+                    <input
+                      type="datetime-local"
+                      value={value.dateTime}
+                      onChange={(e) => setDateTime(e.target.value)}
+                      aria-label={t("modals.contactDetails.composer_time_value")}
+                      className="cd-composer-datetime"
+                    />
                     {presets.map((p) => (
                       <button
                         key={p.key}
                         type="button"
-                        role="menuitem"
                         className={cn("cd-composer-item", value.dateTime === p.at && "on")}
                         onClick={() => pickTime(p.at)}
                       >
