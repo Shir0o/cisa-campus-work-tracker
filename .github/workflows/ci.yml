@@ -80,3 +80,74 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # The rules suites normally run only after a rules deploy (deploy-*-rules.yml,
+  # push to main), so a rules change can merge with failing rules tests. This
+  # gate runs them on the web paths that can change rules behaviour. It has to
+  # live in an always-triggered workflow: a workflow-level `paths` filter would
+  # leave a required check unreported on docs-only / mobile-only PRs, blocking
+  # them, so the web-path decision is made per-job here instead.
+  changes:
+    name: Detect web changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'src/**'
+              - 'packages/core/**'
+              - 'server.ts'
+              - 'firestore.rules'
+              - 'database.rules.json'
+              - 'firebase.json'
+              - '.firebaserc'
+              - 'e2e/**'
+              - 'scripts/seed-emulator.ts'
+              - 'package*.json'
+              - '.github/workflows/ci.yml'
+
+  emulator:
+    name: Rules tests (Firestore + Database emulator)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      - name: Run rules tests against the Firestore + Database emulators
+        run: |
+          set -o pipefail
+          firebase emulators:exec \
+            --only firestore,database \
+            --project demo-campus-hub \
+            "npx vitest run src/test/firestore.rules.test.ts src/test/database.rules.test.ts" \
+            2>&1 | tee emulator.log
+      # The Firestore emulator silently falls back to open rules when it cannot
+      # load firestore.rules, and the suites would then pass against no security.
+      # Fail on that warning even though the tests themselves went green.
+      - name: Assert the emulator loaded the security rules
+        if: always()
+        run: |
+          if grep -q "default to allowing all reads and writes" emulator.log; then
+            echo "::error::The emulator did not load firestore.rules and defaulted to open reads/writes."
+            exit 1
+          fi
