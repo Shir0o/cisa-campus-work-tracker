@@ -367,6 +367,15 @@ describe('ftOpenPrayers', () => {
     expect(open.map((p) => p.id)).toEqual(['c']);
   });
 
+  it("leaves out a prayer its writer kept to the contact (#1406)", () => {
+    const open = ftOpenPrayers([
+      prayer({ id: 'flagless' }),
+      prayer({ id: 'team', teamPrayer: true }),
+      prayer({ id: 'mine', teamPrayer: false }),
+    ]);
+    expect(open.map((p) => p.id).sort()).toEqual(['flagless', 'team']);
+  });
+
   it('carries the heavy ones first', () => {
     const open = ftOpenPrayers([
       prayer({ id: 'pending', status: 'pending', date: iso(-1) }),
