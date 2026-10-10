@@ -22,7 +22,6 @@ import { ftLastHeard } from "./ftHome";
 import { firstName } from "./history";
 import { DAY_MS, daysSince, parseMs, toLocalDate, type PersonalPrayer } from "./myday";
 import { pickLandingForRole, type AppRole } from "./permissions";
-import { isTeamPrayer } from "./prayerThread";
 import { upcomingEventsForRsvp } from "./rsvp";
 import type { ChatMessage, ChatRoom, Contact, Event, PrayerRecord, PrayerRequest } from "./types";
 
@@ -235,15 +234,16 @@ export interface MemberHolding {
 
 /** What the team is carrying, for a Community member to carry too. Read-only,
  * newest first, and capped — this is a window, not a caseload. Prayers with no
- * contact behind them drop out: "names, not cases" needs a name. A prayer its
- * writer kept to the contact (`teamPrayer: false`) is not the team's to show. */
+ * contact behind them drop out: "names, not cases" needs a name. Every prayer
+ * counts here, wherever it was written — only "On our hearts" keeps to the ones
+ * added on that page (#1406). */
 export function teamHolding(
   prayers: PrayerRecord[],
   contacts: Contact[],
   limit: number = MEMBER_TEAM_HOLDING,
 ): MemberHolding[] {
   return prayers
-    .filter((p) => (p.status === "pending" || p.status === "ongoing") && isTeamPrayer(p))
+    .filter((p) => p.status === "pending" || p.status === "ongoing")
     .sort((a, b) => (parseMs(b.date) ?? 0) - (parseMs(a.date) ?? 0))
     .map((p) => {
       const c = contacts.find((x) => x.id === p.contactId);

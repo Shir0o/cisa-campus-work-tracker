@@ -50,7 +50,7 @@ export function prayerCarryLine(p: PrayerRecord, { me, now = Date.now() }: Praye
     : author
       ? `${author} added this one.`
       : "This one was added.";
-  const carry = isTeamPrayer(p) ? "The team is carrying this one too." : "This one is just yours to carry.";
+  const carry = isTeamPrayer(p) ? "The team is carrying this one too." : "This one stays off On our hearts.";
   return `${added} ${carry}`;
 }
 
