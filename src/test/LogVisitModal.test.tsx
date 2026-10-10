@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { format, subDays } from 'date-fns';
 import LogVisitModal from '../components/modals/LogVisitModal';
 import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -90,6 +91,15 @@ const pick = (name: string) => {
   fireEvent.change(input, { target: { value: name } });
   const buttons = screen.getAllByRole('button', { name: new RegExp(name) });
   fireEvent.click(buttons[0]);
+};
+
+// A swipe on the phone sheet, as pointer events on where it started: down,
+// one move, up. Real gestures don't run in jsdom; this drives the same
+// drag-end path a finger does.
+const swipe = (el: Element, dy: number) => {
+  fireEvent.pointerDown(el, { pointerId: 1, clientY: 100 });
+  fireEvent.pointerMove(el, { pointerId: 1, clientY: 100 + dy });
+  fireEvent.pointerUp(el, { pointerId: 1, clientY: 100 + dy });
 };
 
 describe('LogVisitModal', () => {
@@ -448,6 +458,74 @@ describe('LogVisitModal', () => {
     expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
   });
 
+  it('asks before discarding on Cancel when something has been typed (#1444)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(baseProps.onClose).toHaveBeenCalled();
+  });
+
+  it('moves focus to Keep editing when it asks, and back when the question is dismissed (#1444)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+    const close = screen.getByRole('button', { name: 'Close' });
+
+    close.focus();
+    fireEvent.click(close);
+    const keep = screen.getByRole('button', { name: 'Keep editing' });
+    expect(keep).toHaveFocus();
+
+    // Tab stays inside the question while it is open.
+    const discard = screen.getByRole('button', { name: 'Discard' });
+    fireEvent.keyDown(keep, { key: 'Tab', shiftKey: true });
+    expect(discard).toHaveFocus();
+    fireEvent.keyDown(discard, { key: 'Tab' });
+    expect(keep).toHaveFocus();
+
+    fireEvent.click(keep);
+    expect(close).toHaveFocus();
+
+    fireEvent.click(close);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(close).toHaveFocus();
+  });
+
+  it('keeps Tab and Shift+Tab inside the open popup (#1444)', () => {
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    render(<LogVisitModal {...baseProps} />);
+    const close = screen.getByRole('button', { name: 'Close' });
+    const save = screen.getByRole('button', { name: /Log the visit/ });
+
+    save.focus();
+    fireEvent.keyDown(save, { key: 'Tab' });
+    expect(close).toHaveFocus();
+
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(save).toHaveFocus();
+
+    // Mid-order, Tab is left to the browser.
+    close.focus();
+    expect(fireEvent.keyDown(close, { key: 'Tab' })).toBe(true);
+
+    // Focus that has slipped out to the page behind is pulled back in.
+    outside.focus();
+    fireEvent.keyDown(outside, { key: 'Tab' });
+    expect(close).toHaveFocus();
+    outside.remove();
+  });
+
   it('keeps everything typed after a failed save and retries on Try again (#1446)', async () => {
     (addVisit as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('offline'));
 
@@ -456,7 +534,7 @@ describe('LogVisitModal', () => {
     fireEvent.change(screen.getByLabelText('How it went'), { target: { value: 'Talked on the porch.' } });
     fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
 
-    expect(await screen.findByText("Couldn't save — you're offline. Nothing was lost.")).toBeInTheDocument();
+    expect(await screen.findByText("Couldn't save. Nothing you typed was lost.")).toBeInTheDocument();
     expect(screen.getByLabelText('How it went')).toHaveValue('Talked on the porch.');
     expect(baseProps.onClose).not.toHaveBeenCalled();
 
@@ -485,14 +563,172 @@ describe('LogVisitModal', () => {
   });
 
   it('shows the home and when it was last visited under the people seen (#1446)', async () => {
-    const dated = [
-      { id: 'c1', name: 'Ama Osei', location: 'Whitman Hall', lastContactedDate: '2026-08-04' },
-    ] as Contact[];
-    render(<LogVisitModal {...baseProps} contacts={dated} />);
+    const visits = [
+      { id: 'v1', date: format(subDays(new Date(), 400), 'yyyy-MM-dd'), contactIds: ['c1'], homeId: 'h1' },
+    ] as Visit[];
+    render(<LogVisitModal {...baseProps} visits={visits} />);
     pick('Ama');
 
-    expect(await screen.findByText(/last visited/)).toBeInTheDocument();
-    expect(screen.getAllByText(/the Oseis/).length).toBeGreaterThan(0);
+    expect(await screen.findByText('the Oseis · last visited 1 year ago')).toBeInTheDocument();
+  });
+
+  it('reads last visited from visits, not from the last contact of any kind', async () => {
+    const dated = [
+      { id: 'c1', name: 'Ama Osei', location: 'Whitman Hall', lastContactedDate: format(new Date(), 'yyyy-MM-dd') },
+    ] as Contact[];
+    const visits = [
+      { id: 'v1', date: format(subDays(new Date(), 400), 'yyyy-MM-dd'), contactIds: ['c1'], homeId: 'h1' },
+    ] as Visit[];
+    render(<LogVisitModal {...baseProps} contacts={dated} visits={visits} />);
+    pick('Ama');
+
+    expect(await screen.findByText('the Oseis · last visited 1 year ago')).toBeInTheDocument();
+  });
+
+  it('counts a visit to the same home even when it was to someone else there', async () => {
+    const visits = [
+      { id: 'v1', date: format(subDays(new Date(), 400), 'yyyy-MM-dd'), contactIds: ['c9'], homeId: 'h1' },
+    ] as Visit[];
+    render(<LogVisitModal {...baseProps} visits={visits} />);
+    pick('Ama');
+
+    expect(await screen.findByText(/last visited 1 year ago/)).toBeInTheDocument();
+  });
+
+  it('shows just the home when there is no earlier visit, even if the person was contacted', async () => {
+    const dated = [
+      { id: 'c1', name: 'Ama Osei', location: 'Whitman Hall', lastContactedDate: format(new Date(), 'yyyy-MM-dd') },
+    ] as Contact[];
+    render(<LogVisitModal {...baseProps} contacts={dated} visits={[]} />);
+    pick('Ama');
+
+    expect(await screen.findByText('the Oseis')).toBeInTheDocument();
+    expect(screen.queryByText(/last visited/)).not.toBeInTheDocument();
+  });
+
+  it('ignores the visit being edited when reading last visited', () => {
+    const editedVisit = {
+      id: 'v-edit', date: format(subDays(new Date(), 2), 'yyyy-MM-dd'), contactIds: ['c1'], contactNames: ['Ama Osei'],
+      went: ['u1'], wentNames: ['Mei Tanaka'], where: 'Whitman Hall', homeId: 'h1', purpose: '', how: '',
+      followUp: '', photos: [],
+    } as unknown as Visit;
+    const earlier = {
+      id: 'v-old', date: format(subDays(new Date(), 400), 'yyyy-MM-dd'), contactIds: ['c1'], homeId: 'h1',
+    } as Visit;
+    render(<LogVisitModal {...baseProps} visit={editedVisit} visits={[editedVisit, earlier]} />);
+
+    expect(screen.getByText('the Oseis · last visited 1 year ago')).toBeInTheDocument();
+  });
+
+  describe('when a save does not go through', () => {
+    const rejectOnce = (fn: unknown) =>
+      (fn as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('permission-denied'));
+
+    it('does not write twice on Try again: the to-do and prayer are made once, the visit is retried', async () => {
+      rejectOnce(addVisit);
+      render(<LogVisitModal {...baseProps} />);
+      pick('Ama');
+      fireEvent.click(screen.getByRole('button', { name: 'Nothing to chase' }));
+      fireEvent.change(screen.getByLabelText('What to follow up'), { target: { value: 'Ask after her mum' } });
+      fireEvent.change(screen.getByLabelText(/A prayer that came out of it/), { target: { value: 'Peace' } });
+      fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+
+      expect(addTodo).toHaveBeenCalledTimes(1);
+      expect(addPrayerBurden).toHaveBeenCalledTimes(1);
+      expect(addVisit).toHaveBeenCalledTimes(2);
+      // The retry carries the ids already made into the visit.
+      const retried = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[1][0];
+      expect(retried).toMatchObject({ followUpTaskId: 'task-1', prayerId: 'prayer-1', prayerBurden: 'Peace' });
+      expect(updateTodo).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not log a second visit when only the photo upload failed', async () => {
+      rejectOnce(uploadVisitPhotos);
+      render(<LogVisitModal {...baseProps} />);
+      pick('Ama');
+      const file = new File(['x'], 'room.jpg', { type: 'image/jpeg' });
+      fireEvent.change(screen.getByTestId('visit-photo-input'), { target: { files: [file] } });
+      fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+
+      expect(addVisit).toHaveBeenCalledTimes(1);
+      expect(uploadVisitPhotos).toHaveBeenCalledTimes(2);
+      expect(uploadVisitPhotos).toHaveBeenLastCalledWith('new-visit-id', [file]);
+      expect(attachVisitPhotos).toHaveBeenCalledWith('new-visit-id', expect.any(Array));
+    });
+
+    it('does not upload the photos twice when only attaching them failed', async () => {
+      rejectOnce(attachVisitPhotos);
+      render(<LogVisitModal {...baseProps} />);
+      pick('Ama');
+      const file = new File(['x'], 'room.jpg', { type: 'image/jpeg' });
+      fireEvent.change(screen.getByTestId('visit-photo-input'), { target: { files: [file] } });
+      fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+
+      expect(addVisit).toHaveBeenCalledTimes(1);
+      expect(uploadVisitPhotos).toHaveBeenCalledTimes(1);
+      expect(attachVisitPhotos).toHaveBeenCalledTimes(2);
+      const calls = (attachVisitPhotos as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[1]).toEqual(calls[0]);
+    });
+
+    it('does not link the follow-up to-do twice when the link was the step that worked', async () => {
+      rejectOnce(uploadVisitPhotos);
+      render(<LogVisitModal {...baseProps} />);
+      pick('Ama');
+      fireEvent.click(screen.getByRole('button', { name: 'Nothing to chase' }));
+      fireEvent.change(screen.getByLabelText('What to follow up'), { target: { value: 'Ask after her mum' } });
+      const file = new File(['x'], 'room.jpg', { type: 'image/jpeg' });
+      fireEvent.change(screen.getByTestId('visit-photo-input'), { target: { files: [file] } });
+      fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+      await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+
+      expect(addTodo).toHaveBeenCalledTimes(1);
+      expect(updateTodo).toHaveBeenCalledTimes(1);
+    });
+
+    it('says a real rejection was not an offline problem', async () => {
+      rejectOnce(addVisit);
+      render(<LogVisitModal {...baseProps} />);
+      pick('Ama');
+      fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+      expect(await screen.findByText("Couldn't save. Nothing you typed was lost.")).toBeInTheDocument();
+      expect(screen.queryByText(/you're offline/)).not.toBeInTheDocument();
+    });
+
+    it('starts no write while offline, keeps what was typed, and re-checks on Try again', async () => {
+      const onLine = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        pick('Ama');
+        fireEvent.change(screen.getByLabelText('How it went'), { target: { value: 'Talked on the porch.' } });
+        fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
+
+        expect(await screen.findByText("Couldn't save — you're offline. Nothing was lost.")).toBeInTheDocument();
+        expect(addVisit).not.toHaveBeenCalled();
+        expect(addTodo).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('How it went')).toHaveValue('Talked on the porch.');
+        expect(baseProps.onClose).not.toHaveBeenCalled();
+
+        onLine.mockReturnValue(true);
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        await waitFor(() => expect(addVisit).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(baseProps.onClose).toHaveBeenCalled());
+      } finally {
+        onLine.mockRestore();
+      }
+    });
   });
 
   describe('on a phone, as a bottom sheet (#1447)', () => {
@@ -527,9 +763,7 @@ describe('LogVisitModal', () => {
 
     it('dismisses at once by swipe when nothing has been typed', () => {
       render(<LogVisitModal {...baseProps} />);
-      // The swipe is simulated by invoking the sheet's dismiss path (the
-      // grabber), the same path drag-end routes through.
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      swipe(screen.getByTestId('popup-sheet-grabber'), 200);
 
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(baseProps.onClose).toHaveBeenCalled();
@@ -539,13 +773,90 @@ describe('LogVisitModal', () => {
       render(<LogVisitModal {...baseProps} />);
       pick('Ama');
 
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      swipe(screen.getByTestId('popup-sheet-grabber'), 200);
       expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+      // The sheet springs back up under the question.
+      expect(screen.getByRole('dialog', { name: 'Log a visit' }).style.translate).toBe('');
 
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
       expect(baseProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('follows a slow drag that starts on the header, and snaps back when let go short (#1444)', () => {
+      vi.useFakeTimers({ toFake: ['performance'] });
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        const sheet = screen.getByRole('dialog', { name: 'Log a visit' });
+        const title = screen.getByRole('heading', { name: 'Log a visit' });
+
+        fireEvent.pointerDown(title, { pointerId: 1, clientY: 100 });
+        vi.advanceTimersByTime(300);
+        fireEvent.pointerMove(title, { pointerId: 1, clientY: 160 });
+        expect(sheet.style.translate).toBe('0 60px');
+
+        vi.advanceTimersByTime(300);
+        fireEvent.pointerUp(title, { pointerId: 1, clientY: 160 });
+        expect(sheet.style.translate).toBe('');
+        expect(baseProps.onClose).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('dismisses on a quick flick even when it is short (#1444)', () => {
+      vi.useFakeTimers({ toFake: ['performance'] });
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        const grabber = screen.getByTestId('popup-sheet-grabber');
+
+        fireEvent.pointerDown(grabber, { pointerId: 1, clientY: 100 });
+        vi.advanceTimersByTime(20);
+        fireEvent.pointerMove(grabber, { pointerId: 1, clientY: 140 });
+        fireEvent.pointerUp(grabber, { pointerId: 1, clientY: 140 });
+        expect(baseProps.onClose).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does nothing on a plain tap of the handle (#1444)', () => {
+      render(<LogVisitModal {...baseProps} />);
+      const grabber = screen.getByTestId('popup-sheet-grabber');
+
+      fireEvent.pointerDown(grabber, { pointerId: 1, clientY: 100 });
+      fireEvent.pointerUp(grabber, { pointerId: 1, clientY: 100 });
+      fireEvent.click(grabber);
+
+      expect(screen.getByRole('dialog', { name: 'Log a visit' })).toBeInTheDocument();
+      expect(baseProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('keeps the footer above the on-screen keyboard (#1444)', () => {
+      const vv = Object.assign(new EventTarget(), { height: window.innerHeight, offsetTop: 0 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        const sheet = screen.getByRole('dialog', { name: 'Log a visit' });
+        expect(sheet.style.height).toBe('');
+
+        act(() => {
+          vv.height = 400;
+          vv.dispatchEvent(new Event('resize'));
+        });
+        expect(sheet.style.height).toBe('368px');
+        expect(sheet.style.marginBottom).toBe(`${window.innerHeight - 400}px`);
+
+        act(() => {
+          vv.height = window.innerHeight;
+          vv.dispatchEvent(new Event('resize'));
+        });
+        expect(sheet.style.height).toBe('');
+        expect(sheet.style.marginBottom).toBe('');
+      } finally {
+        delete (window as { visualViewport?: unknown }).visualViewport;
+      }
     });
   });
 });

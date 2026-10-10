@@ -6,7 +6,7 @@
 // kind, when, what was said and any follow-ups — sits on the right. Each picked
 // person gets their own entry and their Last seen moves to today.
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertCircle, Check, Coffee, Loader2, MessageSquare, Phone, Plus, Search, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, Coffee, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
@@ -27,7 +27,7 @@ interface LogInteractionModalProps {
   initialContactId?: string;
 }
 
-type InteractionKind = 'chat' | 'call' | 'meeting';
+type InteractionKind = 'chat' | 'email' | 'call' | 'meeting';
 
 /** The form as it opened, so "dirty" means the person changed something rather
  *  than the popup merely being pre-selected from its entry point (#1449). */
@@ -43,6 +43,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
   const { user, role } = useAuth();
   const { t } = useLanguage();
   const isPhone = useMediaQuery('(max-width: 768px)');
+  const [saveError, setSaveError] = useState<'offline' | 'failed' | null>(null);
   if (role === 'viewer') return null;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -69,6 +70,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
       setSelectedContactIds(new Set());
       setSearchQuery('');
       setNotesError(false);
+      setSaveError(null);
       setBaseline(null);
       return;
     }
@@ -81,6 +83,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
     setTasks([]);
     setSearchQuery('');
     setNotesError(false);
+    setSaveError(null);
     setBaseline({ ids: startIds, type: 'chat', date: startDate, notes: '', tasks: 0 });
 
     const q = query(
@@ -138,7 +141,14 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
       setNotesError(true);
       return;
     }
+    // Firestore writes don't reject while offline — they wait — so say so up
+    // front rather than sit on "Saving…". Nothing typed is lost; Try again re-checks.
+    if (navigator.onLine === false) {
+      setSaveError('offline');
+      return;
+    }
 
+    setSaveError(null);
     setIsSubmitting(true);
     try {
       const batch = writeBatch(db);
@@ -248,15 +258,23 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
       onClose();
     } catch (error) {
       console.error('Error logging batch interaction:', error);
-      handleFirestoreError(error, OperationType.WRITE, 'batch/interactions');
+      setSaveError('failed');
+      // handleFirestoreError records and rethrows; the footer is where the
+      // person hears about it, so keep the throw from escaping the handler.
+      try {
+        handleFirestoreError(error, OperationType.WRITE, 'batch/interactions');
+      } catch {
+        /* already surfaced above */
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Design A · Log interaction: Message, Call, Meeting, one tap each.
+  // Design A · Log interaction: Message, Email, Call, Meeting, one tap each.
   const interactionTypes = [
     { id: 'chat' as const, label: t('modals.message'), icon: MessageSquare },
+    { id: 'email' as const, label: t('directory.email'), icon: Mail },
     { id: 'call' as const, label: t('modals.call'), icon: Phone },
     { id: 'meeting' as const, label: t('modals.meeting'), icon: Coffee },
   ];
@@ -504,6 +522,15 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
           : selectedContactIds.size === 1
             ? t('modals.logged_one_person')
             : t('modals.logged_each_person').replace('{n}', String(selectedContactIds.size))
+      }
+      error={
+        saveError
+          ? {
+              message: t(saveError === 'offline' ? 'modals.couldnt_save_offline' : 'modals.couldnt_save'),
+              retryLabel: t('modals.try_again'),
+              onRetry: () => void handleLogInteraction(),
+            }
+          : null
       }
       cancelLabel={t('modals.cancel')}
       onCancel={onClose}

@@ -282,7 +282,7 @@
   },
   "feedback": {
     "eyebrow": "Comentarios",
-    "note_noun": "nota",
+    "note_noun": "esta nota",
     "close": "Cerrar",
     "close_feedback_panel": "Cerrar panel de comentarios",
     "leave_note_for_team": "Deja una nota para el equipo",
@@ -904,7 +904,8 @@
     "export": "Exportar",
     "remove_rhythm_confirm": "¿Eliminar este Rhythm? Las reuniones pasadas quedan registradas como puntuales, conservando quién vino. Las semanas próximas se eliminan con él.",
     "last_with_us_at": "La última vez con nosotros en {event} · {date} — hace {n} reuniones",
-    "reach_out": "Contactar"
+    "reach_out": "Contactar",
+    "rhythm_noun": "este ritmo"
   },
   "outreach": {
     "stages": "Etapas",
@@ -1287,7 +1288,7 @@
   "modals": {
     "smartImport": {
       "modal_title": "Importación inteligente de texto",
-      "import_noun": "importación",
+      "import_noun": "esta importación",
       "subtitle": "Pega notas, correos o chats: Gemini AI extrae contactos, 1 a 1 y discusiones con una revisión previa.",
       "close_modal": "Cerrar modal",
       "paste_unstructured": "Pega texto sin estructura abajo",
@@ -1353,13 +1354,11 @@
       "failed_to_save": "No se pudieron guardar los elementos importados en la base de datos."
     },
     "contactDetails": {
-      "title": "Detalles del contacto",
       "access_restricted": "Acceso restringido",
       "no_permission": "No tienes permiso para ver este registro de contacto.",
       "close": "Cerrar",
       "cancel": "Cancelar",
       "edit_details": "Editar detalles",
-      "discard_edit": "¿Descartar estos cambios?",
       "save": "Guardar",
       "people": "Personas",
       "edit": "Editar",
@@ -1699,8 +1698,8 @@
     "created_by": "Creado por",
     "members_list": "Lista de miembros",
     "member": "Miembro",
-    "chat_noun": "chat",
-    "contact_noun": "contacto",
+    "chat_noun": "este chat",
+    "contact_noun": "este contacto",
     "leave_group": "Salir del grupo",
     "hide_from_my_list": "Ocultar de mi lista",
     "delete_for_everyone": "Eliminar para todos",
@@ -1807,7 +1806,7 @@
     "log_for_people": "Registrar para {n} personas",
     "logged_one_person": "Se registra una vez para esta persona, y su Última vez visto pasa a hoy.",
     "logged_each_person": "Se registra una vez para cada una de las {n} personas, y la Última vez visto de cada una pasa a hoy.",
-    "interaction_noun": "interacción",
+    "interaction_noun": "esta interacción",
     "write_what_was_said": "Escribe qué se dijo.",
     "remove_person": "Quitar a {name}",
     "visit_fix_record": "Corrige el registro: nada aquí notifica a nadie.",
@@ -1834,7 +1833,7 @@
     "add_someone_new": "Añadir a {name} — alguien nuevo",
     "saving": "Guardando…",
     "visits_eyebrow": "Visitas",
-    "visit_noun": "visita",
+    "visit_noun": "esta visita",
     "section_who_you_saw": "A quiénes viste",
     "section_who_hint": "Todos los que estaban",
     "section_when_where": "Cuándo y dónde",
@@ -1844,17 +1843,17 @@
     "home_last_visited": "{home} · última visita hace {ago}",
     "where_from_home": "De {home}",
     "couldnt_save_offline": "No se pudo guardar: estás sin conexión. No se perdió nada.",
+    "couldnt_save": "No se pudo guardar. No se perdió nada de lo que escribiste.",
     "try_again": "Intentar de nuevo",
     "no_home_yet": "{name} aún no tiene hogar",
     "add_one": "Añadir uno",
-    "gathering_noun": "reunión",
-    "rhythm_noun": "Ritmo"
+    "gathering_noun": "esta reunión",
+    "rhythm_noun": "este ritmo"
   },
   "popup": {
-    "discard_question": "¿Descartar esta {noun}?",
+    "discard_question": "¿Descartar {noun}?",
     "keep_editing": "Seguir editando",
     "discard": "Descartar",
-    "dismiss_sheet": "Cerrar",
     "back": "Atrás"
   },
   "visitCard": {
@@ -2257,6 +2256,9 @@
     "combine_what_happens": "Qué ocurre",
     "combine_working": "Combinando…",
     "combine_back_home": "Volver al hogar",
+    "couldnt_delete": "No se pudo eliminar este hogar. No se cambió nada.",
+    "couldnt_combine": "No se pudieron combinar estos hogares. No se cambió nada.",
+    "combine_save_first": "Guarda tus cambios antes de combinar.",
     "close": "Cerrar"
   },
   "reminders": {
@@ -2377,6 +2379,6 @@
     "due": "Vence",
     "pick_a_date": "Elegir una fecha…",
     "due_date": "Fecha de vencimiento",
-    "noun": "tarea"
+    "noun": "esta tarea"
   }
 }

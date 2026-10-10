@@ -904,7 +904,8 @@
     "export": "Export",
     "remove_rhythm_confirm": "Remove this Rhythm? Past gatherings stay on record as one-offs, keeping who came. Upcoming weeks are removed with it.",
     "last_with_us_at": "Last with us at {event} · {date} — {n} gatherings ago",
-    "reach_out": "Reach out"
+    "reach_out": "Reach out",
+    "rhythm_noun": "Rhythm"
   },
   "outreach": {
     "stages": "Stages",
@@ -1353,13 +1354,11 @@
       "failed_to_save": "Failed to save imported items to database."
     },
     "contactDetails": {
-      "title": "Contact details",
       "access_restricted": "Access Restricted",
       "no_permission": "You do not have permission to view this contact record.",
       "close": "Close",
       "cancel": "Cancel",
       "edit_details": "Edit details",
-      "discard_edit": "Discard these changes?",
       "save": "Save",
       "people": "People",
       "edit": "Edit",
@@ -1844,6 +1843,7 @@
     "home_last_visited": "{home} · last visited {ago} ago",
     "where_from_home": "From {home}",
     "couldnt_save_offline": "Couldn't save — you're offline. Nothing was lost.",
+    "couldnt_save": "Couldn't save. Nothing you typed was lost.",
     "try_again": "Try again",
     "no_home_yet": "{name} has no home yet",
     "add_one": "Add one",
@@ -1854,7 +1854,6 @@
     "discard_question": "Discard this {noun}?",
     "keep_editing": "Keep editing",
     "discard": "Discard",
-    "dismiss_sheet": "Dismiss",
     "back": "Back"
   },
   "visitCard": {
@@ -2257,6 +2256,9 @@
     "combine_what_happens": "What happens",
     "combine_working": "Combining…",
     "combine_back_home": "Back to the home",
+    "couldnt_delete": "Couldn't delete this home. Nothing was changed.",
+    "couldnt_combine": "Couldn't combine these homes. Nothing was changed.",
+    "combine_save_first": "Save your changes before combining.",
     "close": "Close"
   },
   "reminders": {

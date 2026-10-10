@@ -60,12 +60,9 @@ test.describe('The Journey Board (#628)', () => {
     await expect(page.getByText('Lila Chen').first()).toBeVisible({ timeout: 10_000 });
     await page.getByText('Lila Chen').first().click();
 
-    // The contact details modal mounts. Since #1521 its chrome lives in a popup
-    // frame dialog titled "Contact details", with the name as an "About …"
-    // button rather than an H1.
-    const dialog = page.getByRole('dialog', { name: /contact details/i });
-    await expect(dialog).toBeVisible({ timeout: 5_000 });
-    await expect(dialog.getByText('Lila Chen').first()).toBeVisible();
+    // The contact page mounts, with the name as an "About …" button rather
+    // than an H1.
+    await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({ timeout: 5_000 });
     // Switch into the editor — "Edit details" is admin/fulltimer-only and is in
     // the "More actions" overflow menu in the contact details header.
     const moreActionsBtn = page.getByRole('button', { name: /more actions/i }).first();
@@ -135,7 +132,7 @@ test.describe('The Journey Board (#628)', () => {
     // profile fields" — so the only reliable view check is that the modal
     // mounts with the contact.)
     await page.getByText('Lila Chen').first().click();
-    await expect(page.getByRole('dialog', { name: /contact details/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({
       timeout: 5_000,
     });
   });
@@ -181,7 +178,7 @@ test.describe('Stage move from the contact page (#677)', () => {
 
     await expect(page.getByText('Lila Chen').first()).toBeVisible({ timeout: 10_000 });
     await page.getByText('Lila Chen').first().click();
-    await expect(page.getByRole('dialog', { name: /contact details/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({
       timeout: 5_000,
     });
 
