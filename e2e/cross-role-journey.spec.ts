@@ -168,20 +168,6 @@ test.describe('Cross-Role Journey Progression & Action Vocabulary (#631)', () =>
     await expect(story.getByRole('button', { name: /^by: me$/i })).toBeVisible();
   });
 
-  test('Trainee can view the Journey board and observe the updated contact in Second Contact', async ({ page }) => {
-    await signInAs(page, 'trainee');
-
-    // 1. Navigate to The Journey board
-    await page.goto('/board');
-    await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
-    expect(new URL(page.url()).pathname).toBe('/board');
-
-    // 2. Verify contact stage columns render
-    const board = page.locator('body');
-    await expect(board).toContainText('First Contact');
-    await expect(board).toContainText('Second Contact');
-  });
-
   test('Student has access to People directory with row action vocabulary but is denied from The Journey board', async ({ page }) => {
     await signInAs(page, 'student');
 

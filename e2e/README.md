@@ -11,9 +11,9 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `permissions.spec.ts` | Role matrix: landing route, sidebar nav, route guards |
 | `settings-and-partners.spec.ts` | Admin settings, gospel partner assignments, role gating (#629) |
 | `walking-together-threads.spec.ts` | Contact threads, team confidentiality (#630) |
-| `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline across roles (#631) |
+| `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline (Full-timer/Student/Community; #631) |
 | `quick-capture.spec.ts` | NewContactModal: minimum payload, full disclosure, role gating, persistence (#628) |
-| `the-journey-board.spec.ts` | Journey board columns, stage advance via the contact editor, role gating, Coordination Notes (#628) |
+| `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
 | `feedback-submission.spec.ts` | Feedback form, kind selector, Send gating, admin triage access, role redirects, FAB presence (#628) |
 | `impersonation-personas.spec.ts` | Owner-only "See as their view" modal, four role-preview chips, nav-scoping on simulate, back-to-my-view reset (#628) |
 | `asks-questions-for-team.spec.ts` | Questions-for-the-team page, staff-only (#603, #645) |

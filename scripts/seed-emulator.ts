@@ -181,6 +181,48 @@ export async function seedEmulator() {
     at: new Date().toISOString(),
   }, { merge: true });
 
+  // Two contacts that pin the Trainee's scope (#1475). `Casey Untied` is tied
+  // to the Full-timer only, so a Trainee cannot read them at all. `Jordan
+  // Visible` carries the Trainee in `visibleTo`, so the rules let the Trainee
+  // read them — but they were created by the Full-timer (no co-creator tie), so
+  // the client tie filter must still keep them off People, the board and the
+  // home, and the nudge about them must not reach the Trainee's home (row 6).
+  const untiedContactRef = db.collection('contacts').doc('e2e-contact-untied');
+  await untiedContactRef.set({
+    name: 'Casey Untied',
+    initials: 'CU',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: 'Full-timer Test User',
+    visibleTo: [fulltimerUid].filter(Boolean),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  const notCaredContactRef = db.collection('contacts').doc('e2e-contact-visible-not-cared');
+  await notCaredContactRef.set({
+    name: 'Jordan Visible',
+    initials: 'JV',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: 'Full-timer Test User',
+    visibleTo: [traineeUid].filter(Boolean),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+  await notCaredContactRef.collection('threads').doc('e2e-thread-visible-not-cared').set({
+    interactionId: null,
+    parentId: null,
+    scope: null,
+    from: fulltimerUid || 'fulltimer-uid',
+    fromName: 'Full-timer Test User',
+    kind: 'nudge',
+    body: 'A nudge about someone outside your care.',
+    at: new Date().toISOString(),
+  }, { merge: true });
+
   // Legacy-shape contacts (#1472). The same fixtures the unit tests import, so
   // the journeys meet the shapes the escapes came from: a sign-up's Firestore
   // Timestamp `createdAt`, a quick-add's `email: null`, and an older document
