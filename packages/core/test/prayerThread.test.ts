@@ -96,7 +96,7 @@ describe('prayerCarryLine', () => {
       teamPrayer: false,
     });
     expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
-      "Added yesterday. This one is just yours to carry.",
+      "Added yesterday. This one stays off On our hearts.",
     );
   });
 
@@ -107,9 +107,9 @@ describe('prayerCarryLine', () => {
     );
   });
 
-  it('reads private prayers as just yours — the absent-flag-means-team rule only flips the other way', () => {
+  it('reads private prayers as off On our hearts — the absent-flag-means-team rule only flips the other way', () => {
     const p = prayer({ date: new Date(NOW).toISOString(), updatedByName: 'Ana', updatedBy: 'u-ana', teamPrayer: false });
-    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe('Added today by Ana. This one is just yours to carry.');
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe('Added today by Ana. This one stays off On our hearts.');
   });
 
   it('handles a missing or invalid date without throwing', () => {
