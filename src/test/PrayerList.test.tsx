@@ -427,6 +427,12 @@ describe('PrayerList', () => {
       expect(addDoc).toHaveBeenCalled();
       expect(logActivity).toHaveBeenCalled();
     });
+    // The prayer page is the one place a burden is the team's — said out loud,
+    // not left to the "absent means team" default (#1406).
+    expect(vi.mocked(addDoc).mock.calls[0][1]).toMatchObject({
+      prayerPage: true,
+      teamPrayer: true,
+    });
   });
 
   it('submits the week composer with ⌘+Enter (#1402)', async () => {

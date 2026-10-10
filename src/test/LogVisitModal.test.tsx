@@ -195,7 +195,8 @@ describe('LogVisitModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
 
     await waitFor(() => {
-      expect(addPrayerBurden).toHaveBeenCalledWith('c1', 'Peace for her dad', expect.anything());
+      // The fourth argument is the team flag: a visit prayer is the contact's own.
+      expect(addPrayerBurden).toHaveBeenCalledWith('c1', 'Peace for her dad', expect.anything(), false);
     });
     // A visit prayer is the contact's own; it must not surface the person on
     // "On our hearts" (#1406).
