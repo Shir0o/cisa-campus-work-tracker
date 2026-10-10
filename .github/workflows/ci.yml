@@ -112,6 +112,7 @@ jobs:
               - 'e2e/**'
               - 'scripts/seed-emulator.ts'
               - 'package*.json'
+              - 'firebase.rules-tests.json'
               - '.github/workflows/ci.yml'
 
   emulator:
@@ -136,7 +137,12 @@ jobs:
       - name: Run rules tests against the Firestore + Database emulators
         run: |
           set -o pipefail
+          # firebase.json describes two Firestore databases (prod, qa-db) for
+          # deploys, which the emulator cannot load rules from — it warns and
+          # falls back to open rules. This single-database config points it at
+          # firestore.rules instead.
           firebase emulators:exec \
+            --config firebase.rules-tests.json \
             --only firestore,database \
             --project demo-campus-hub \
             "npx vitest run src/test/firestore.rules.test.ts src/test/database.rules.test.ts" \
