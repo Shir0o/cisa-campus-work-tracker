@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "test:e2e:emulator": "npm run functions:emulator-prep && npx firebase-tools emulators:exec --project sac-campus-hub --only auth,firestore,functions \"npx tsx scripts/seed-emulator.ts && npx playwright test\"",
+    "test:e2e:emulator": "npm run functions:emulator-prep && bash scripts/run-e2e-emulator.sh",
     "seed:emulator": "npx tsx scripts/seed-emulator.ts",
     "seed:e2e-users": "tsx scripts/seed-test-user-docs.ts",
     "seed:qa": "npx tsx scripts/seed-qa.ts",

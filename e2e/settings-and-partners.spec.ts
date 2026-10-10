@@ -52,7 +52,10 @@ test.describe('Administrative Settings & Gospel Partner Assignments', () => {
       const goalHeading = page.getByRole('heading', { level: 2, name: "The day's goal" });
       await expect(goalHeading).toBeVisible();
 
-      const goalToggle = page.getByRole('switch');
+      // Scope to the day's-goal switch: Settings now carries more than one
+      // switch ("Weekly reminders", "Give the day a goal"), so a bare
+      // getByRole('switch') is ambiguous and throws a strict-mode violation.
+      const goalToggle = page.getByRole('switch', { name: /give the day.?s goal/i });
       if (await goalToggle.isVisible()) {
         const isChecked = await goalToggle.getAttribute('aria-checked');
         await goalToggle.click();
@@ -74,7 +77,7 @@ test.describe('Administrative Settings & Gospel Partner Assignments', () => {
       await expect(page.getByText('Add someone by email')).toBeVisible();
 
       // Check role options in invitation modal (Full-timer should see Full-timer option)
-      const roleSelect = page.locator('form select');
+      const roleSelect = page.getByLabel('Role');
       await expect(roleSelect).toBeVisible();
       const options = await roleSelect.locator('option').allInnerTexts();
       expect(options).toContain('Full-timer');

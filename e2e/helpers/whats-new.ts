@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { WHATS_NEW_STORAGE_KEY } from '../../src/lib/whatsNew';
+// `WHATS_NEW_STORAGE_KEY` in src/lib/whatsNew.ts — inlined so loading the
+// Playwright config never pulls app source (src/lib/whatsNew imports
+// src/lib/firebase, whose `firebase-applet-config.json` import needs an import
+// attribute under Node 24 ESM). Update both together if the key ever changes.
+const WHATS_NEW_STORAGE_KEY = 'cisa.whats_new.last_seen_id';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

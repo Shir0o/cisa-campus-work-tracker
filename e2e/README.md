@@ -43,6 +43,14 @@ This single command:
 3. Runs the whole Playwright suite (`npx playwright test`) and tears the
    emulators down afterwards.
 
+The emulator boots from `firebase.e2e.json`, a single-database view of
+`firebase.json` that points it at `firestore.rules`. `firebase.json` itself
+lists two named databases (`prod`, `qa-db`) for deploys, which the emulator
+cannot load rules from — it would silently fall back to allowing every read and
+write (the slip that let permission bugs through from #294 until #1459). The
+runner (`scripts/run-e2e-emulator.sh`) fails the run if the emulator log
+contains "default to allowing all reads and writes".
+
 Prerequisites:
 
 - Node 24 (what CI uses)

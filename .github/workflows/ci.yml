@@ -113,6 +113,7 @@ jobs:
               - 'scripts/seed-emulator.ts'
               - 'package*.json'
               - 'firebase.rules-tests.json'
+              - 'firebase.e2e.json'
               - '.github/workflows/ci.yml'
 
   emulator:

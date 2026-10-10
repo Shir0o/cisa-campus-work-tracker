@@ -188,10 +188,13 @@ export async function seedEmulator() {
   // Full-timer and Student see everyone, so these reach the Directory.
   for (const fixture of Object.values(LEGACY_CONTACT_FIXTURES)) {
     const { id, ...data } = fixture;
+    // Fixtures without a `createdAt` must not write one: Firestore rejects an
+    // explicit `undefined` value (the seed crashed here on 10-01 onward).
+    const createdAt = materializeCreatedAt(data.createdAt as LegacyCreatedAt);
     await db.collection('contacts').doc(id).set(
       {
         ...data,
-        createdAt: materializeCreatedAt(data.createdAt as LegacyCreatedAt),
+        ...(createdAt !== undefined ? { createdAt } : {}),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
