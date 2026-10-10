@@ -274,7 +274,15 @@
     "someone_else": "Someone else",
     "back_to_my_view": "Back to my view"
   },
+  "impersonateModal": {
+    "eyebrow": "Impersonation",
+    "title": "See as their view",
+    "subtitle": "Step into someone's view or simulate a role — see the exact workspace, tools, and words they read.",
+    "role_preview": "Role preview:"
+  },
   "feedback": {
+    "eyebrow": "Feedback",
+    "note_noun": "note",
     "close": "Close",
     "close_feedback_panel": "Close feedback panel",
     "leave_note_for_team": "Leave a note for the team",
@@ -2327,5 +2335,48 @@
     "home_review_need_name": "From BNPB · {n} need a name",
     "home_review_cta": "Review",
     "loading": "Loading…"
+  },
+  "whatsNewModal": {
+    "eyebrow": "What's new",
+    "title": "What's New in v{version}",
+    "got_it": "Got it",
+    "video_title": "What's New Video",
+    "open_video": "Open video in Google Drive"
+  },
+  "testAccountPurge": {
+    "eyebrow": "Settings",
+    "title": "Test Account Purge",
+    "subtitle": "Dry run scan & cleanup tool",
+    "purge": "Purge Traces",
+    "purging": "Purging…",
+    "scanning": "Scanning database for test account traces…",
+    "test_accounts": "Test accounts:",
+    "pending_invitations": "Pending invitations:",
+    "personal_prayers": "Personal prayers:",
+    "interaction_logs": "Interaction logs:",
+    "contacts_created": "Contacts created by test accounts:",
+    "also_delete_contacts": "Also delete contacts created exclusively by test accounts ({n})",
+    "contacts_note": "Real teammate contacts and edits are always preserved.",
+    "delete_warning": "Permanently deletes {n} items. This action cannot be undone.",
+    "purging_records": "Purging test account records…",
+    "complete": "Purge Complete",
+    "removed": "Successfully removed {n} test account traces."
+  },
+  "todoComposer": {
+    "eyebrow": "To-do",
+    "new_title": "New to-do",
+    "edit_title": "Edit to-do",
+    "multiple_title": "New to-dos ({n})",
+    "add_todo": "Add to-do",
+    "add_todos": "Add to-dos",
+    "what_needs_doing": "What needs doing?",
+    "subtasks": "Subtasks",
+    "remove_subtask": "Remove subtask",
+    "assign_to": "Assign to",
+    "you": "(you)",
+    "due": "Due",
+    "pick_a_date": "Pick a date…",
+    "due_date": "Due date",
+    "noun": "to-do"
   }
 }

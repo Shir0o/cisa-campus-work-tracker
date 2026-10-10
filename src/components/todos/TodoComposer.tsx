@@ -17,6 +17,8 @@ import {
 } from "../../lib/todos";
 import { PersonAvatar } from "./TodoRow";
 import { useCommand } from "../../lib/commands";
+import { PopupFrame } from "../ui/PopupFrame";
+import { useLanguage } from "../LanguageProvider";
 
 import { parseSmartDate } from "../../lib/dateParser";
 
@@ -60,6 +62,7 @@ export default function TodoComposer({
   onSaved?: (message: string) => void;
   onCreated?: (tasks: { id: string; title: string; assigneeId: string | null; assigneeName: string | null }[]) => void;
 }) {
+  const { t } = useLanguage();
   const [texts, setTexts] = useState<string[]>(() =>
     initialTexts && initialTexts.length > 0 ? initialTexts : [initial?.text ?? ""],
   );
@@ -245,193 +248,244 @@ export default function TodoComposer({
     setCustomDate(dateStr);
   };
 
-  return (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4",
-        !anchorRect && "bg-black/30",
+  const headerTitle =
+    mode === "edit"
+      ? t("todoComposer.edit_title")
+      : texts.length > 1
+        ? t("todoComposer.multiple_title").replace("{n}", String(texts.length))
+        : t("todoComposer.new_title");
+
+  const primaryLabel =
+    mode === "edit"
+      ? t("actions.save")
+      : texts.length > 1
+        ? t("todoComposer.add_todos")
+        : t("todoComposer.add_todo");
+
+  const sourceTitle = source ? source.docTitle ?? source.interactionTitle : null;
+
+  const fields = (
+    <>
+      {texts.length > 1 ? (
+        <div className="max-h-[140px] space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+          {texts.map((text, idx) => (
+            <input
+              key={idx}
+              type="text"
+              value={text}
+              autoFocus={idx === 0}
+              onChange={(e) => handleTextChange(idx, e.target.value)}
+              placeholder={`Task ${idx + 1}`}
+              className="h-9 w-full rounded border border-outline-variant bg-surface-container-low px-3 py-2 text-sm text-on-surface outline-none transition-colors focus:border-primary"
+            />
+          ))}
+        </div>
+      ) : (
+        <textarea
+          ref={taRef}
+          value={texts[0] || ""}
+          rows={2}
+          onChange={(e) => handleTextChange(0, e.target.value)}
+          placeholder={t("todoComposer.what_needs_doing")}
+          spellCheck={false}
+          className="w-full resize-none rounded border border-outline-variant bg-surface-container-low px-3 py-2 text-sm text-on-surface outline-none transition-colors focus:border-primary"
+        />
       )}
-      onClick={(e) => {
-        if (cardRef.current && !cardRef.current.contains(e.target as Node)) onClose();
-      }}
-    >
-      <motion.div
-        ref={cardRef}
-        style={cardStyle}
-        onKeyDown={onKey}
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        className={cn(
-          "bg-surface rounded-3xl border border-outline-variant shadow-xl p-4 text-on-surface relative z-10 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar",
-          !anchorRect && "w-full max-w-[min(92vw,360px)]",
-        )}
-      >
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold   text-on-surface-variant">
-            <CheckSquare className="w-3.5 h-3.5" /> {mode === "edit" ? "Edit to-do" : (texts.length > 1 ? `New to-dos (${texts.length})` : "New to-do")}
+
+      {/* Subtasks Section */}
+      <div className="mt-3">
+        <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-on-surface-variant">
+          <span>
+            {t("todoComposer.subtasks")} ({subtasks.length})
           </span>
           <button
-            onClick={onClose}
-            title="Close"
-            aria-label="Close"
-            className="text-on-surface-variant/60 hover:text-on-surface transition-colors"
+            type="button"
+            onClick={handleAddSubtask}
+            className="inline-flex items-center gap-1 text-xs font-normal lowercase text-accent hover:underline"
           >
-            <X className="w-3.5 h-3.5" />
+            <Plus className="h-3 w-3" /> Add subtask
           </button>
         </div>
-
-        {texts.length > 1 ? (
-          <div className="max-h-[140px] overflow-y-auto space-y-2 custom-scrollbar pr-1">
-            {texts.map((t, idx) => (
-              <input
-                key={idx}
-                type="text"
-                value={t}
-                autoFocus={idx === 0}
-                onChange={(e) => handleTextChange(idx, e.target.value)}
-                placeholder={`Task ${idx + 1}`}
-                className="w-full h-9 rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
-              />
+        {subtasks.length > 0 && (
+          <div className="max-h-[130px] space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+            {subtasks.map((st, idx) => (
+              <div key={st.id || idx} className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={st.title}
+                  onChange={(e) => handleSubtaskChange(idx, e.target.value)}
+                  placeholder={`Subtask ${idx + 1}`}
+                  className="h-8 flex-1 rounded border border-outline-variant bg-surface-container-low px-2.5 text-xs text-on-surface outline-none transition-colors focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSubtask(idx)}
+                  className="p-1 text-on-surface-variant/50 transition-colors hover:text-error"
+                  title={t("todoComposer.remove_subtask")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ))}
           </div>
-        ) : (
-          <textarea
-            ref={taRef}
-            value={texts[0] || ""}
-            rows={2}
-            onChange={(e) => handleTextChange(0, e.target.value)}
-            placeholder="What needs doing?"
-            spellCheck={false}
-            className="w-full resize-none rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
-          />
         )}
+      </div>
 
-        {/* Subtasks Section */}
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] font-semibold   text-on-surface-variant/70 mb-1.5">
-            <span>Subtasks ({subtasks.length})</span>
+      <div className="mb-1.5 mt-3 text-[11px] font-semibold text-on-surface-variant">
+        {t("todoComposer.assign_to")}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {team.map((m) => {
+          const on = assigneeId === m.uid;
+          return (
             <button
-              type="button"
-              onClick={handleAddSubtask}
-              className="inline-flex items-center gap-1 text-xs text-accent hover:underline lowercase font-normal"
-            >
-              <Plus className="w-3 h-3" /> Add subtask
-            </button>
-          </div>
-          {subtasks.length > 0 && (
-            <div className="space-y-1.5 max-h-[130px] overflow-y-auto pr-1 custom-scrollbar">
-              {subtasks.map((st, idx) => (
-                <div key={st.id || idx} className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={st.title}
-                    onChange={(e) => handleSubtaskChange(idx, e.target.value)}
-                    placeholder={`Subtask ${idx + 1}`}
-                    className="flex-1 h-8 rounded-lg bg-surface-container-low border border-outline-variant/60 px-2.5 text-xs text-on-surface outline-none focus:border-primary transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSubtask(idx)}
-                    className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
-                    title="Remove subtask"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="text-[11px] font-semibold   text-on-surface-variant/70 mt-3 mb-1.5">
-          Assign to
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {team.map((m) => {
-            const on = assigneeId === m.uid;
-            return (
-              <button
-                key={m.uid}
-                onClick={() => setAssigneeId(m.uid)}
-                title={m.name}
-                className={cn(
-                  "inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border text-xs font-medium transition-colors",
-                  on
-                    ? "bg-primary-container border-primary text-on-primary-container"
-                    : "bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline",
-                )}
-              >
-                <PersonAvatar person={m} size="xs" />
-                {m.name.split(" ")[0]}
-                {m.uid === meUid ? " (you)" : ""}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="text-[11px] font-semibold   text-on-surface-variant/70 mt-3 mb-1.5">
-          Due
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {DUE_PRESETS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => handleDuePresetClick(p.key)}
+              key={m.uid}
+              onClick={() => setAssigneeId(m.uid)}
+              title={m.name}
               className={cn(
-                "px-3 h-8 rounded-full border text-xs font-medium transition-colors",
-                dueKey === p.key
-                  ? "bg-primary text-on-primary border-primary"
-                  : "bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline",
+                "inline-flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-xs font-medium transition-colors",
+                on
+                  ? "border-primary bg-primary-container text-on-primary-container"
+                  : "border-outline-variant bg-surface text-on-surface-variant hover:border-outline",
               )}
             >
-              {p.label}
+              <PersonAvatar person={m} size="xs" />
+              {m.name.split(" ")[0]}
+              {m.uid === meUid ? ` ${t("todoComposer.you")}` : ""}
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      <div className="mb-1.5 mt-3 text-[11px] font-semibold text-on-surface-variant">
+        {t("todoComposer.due")}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {DUE_PRESETS.map((p) => (
           <button
-            onClick={() => handleDuePresetClick("custom")}
+            key={p.key}
+            onClick={() => handleDuePresetClick(p.key)}
             className={cn(
-              "px-3 h-8 rounded-full border text-xs font-medium transition-colors",
-              dueKey === "custom"
-                ? "bg-primary text-on-primary border-primary"
-                : "bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline",
+              "h-8 rounded-full border px-3 text-xs font-medium transition-colors",
+              dueKey === p.key
+                ? "border-primary bg-primary text-on-primary"
+                : "border-outline-variant bg-surface text-on-surface-variant hover:border-outline",
             )}
           >
-            Pick a date…
+            {p.label}
           </button>
-        </div>
-        {dueKey === "custom" && (
-          <div className="mt-2">
-            <DatePicker label="Due date" value={customDate} onChange={handleCustomDateChange} />
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-2 mt-4">
-          {source ? (
-            <span className="inline-flex items-center gap-1 text-[11px] text-on-surface-variant/70 min-w-0">
-              <CheckSquare className="w-3 h-3 shrink-0" />
-              <span className="truncate">{source.docTitle ?? source.interactionTitle}</span>
-            </span>
-          ) : (
-            <span />
+        ))}
+        <button
+          onClick={() => handleDuePresetClick("custom")}
+          className={cn(
+            "h-8 rounded-full border px-3 text-xs font-medium transition-colors",
+            dueKey === "custom"
+              ? "border-primary bg-primary text-on-primary"
+              : "border-outline-variant bg-surface text-on-surface-variant hover:border-outline",
           )}
-          <div className="flex items-center gap-2 shrink-0">
+        >
+          {t("todoComposer.pick_a_date")}
+        </button>
+      </div>
+      {dueKey === "custom" && (
+        <div className="mt-2">
+          <DatePicker label={t("todoComposer.due_date")} value={customDate} onChange={handleCustomDateChange} />
+        </div>
+      )}
+    </>
+  );
+
+  if (anchorRect) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        onClick={(e) => {
+          if (cardRef.current && !cardRef.current.contains(e.target as Node)) onClose();
+        }}
+      >
+        <motion.div
+          ref={cardRef}
+          style={cardStyle}
+          onKeyDown={onKey}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.96 }}
+          className="relative z-10 my-auto max-h-[calc(100vh-2rem)] w-full max-w-[min(92vw,360px)] overflow-y-auto rounded border border-outline-variant bg-surface p-4 text-on-surface shadow-xl custom-scrollbar"
+        >
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant">
+              <CheckSquare className="h-3.5 w-3.5" /> {headerTitle}
+            </span>
             <button
               onClick={onClose}
-              className="px-3 h-9 rounded-full text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+              title={t("actions.close")}
+              aria-label={t("actions.close")}
+              className="text-on-surface-variant/60 transition-colors hover:text-on-surface"
             >
-              Cancel
-            </button>
-            <button
-              onClick={commit}
-              disabled={!canSave}
-              className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-            >
-              <Check className="w-3.5 h-3.5" /> {mode === "edit" ? "Save" : (texts.length > 1 ? "Add to-dos" : "Add to-do")}
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
-        </div>
-      </motion.div>
-    </div>
+
+          {fields}
+
+          <div className="mt-4 flex items-center justify-between gap-2">
+            {sourceTitle ? (
+              <span className="inline-flex min-w-0 items-center gap-1 text-[11px] text-on-surface-variant/70">
+                <CheckSquare className="h-3 w-3 shrink-0" />
+                <span className="truncate">{sourceTitle}</span>
+              </span>
+            ) : (
+              <span />
+            )}
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                onClick={onClose}
+                className="h-9 rounded-full px-3 text-xs font-medium text-on-surface-variant transition-colors hover:bg-surface-container"
+              >
+                {t("actions.cancel")}
+              </button>
+              <button
+                onClick={commit}
+                disabled={!canSave}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-3.5 text-xs font-medium text-on-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Check className="h-3.5 w-3.5" /> {primaryLabel}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <PopupFrame
+      open
+      onClose={onClose}
+      size="sm"
+      eyebrow={t("todoComposer.eyebrow")}
+      title={headerTitle}
+      dirty={texts.some((x) => x.trim().length > 0) || subtasks.some((s) => s.title.trim().length > 0)}
+      noun={t("todoComposer.noun")}
+      footerHint={
+        sourceTitle ? (
+          <>
+            <CheckSquare className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{sourceTitle}</span>
+          </>
+        ) : undefined
+      }
+      cancelLabel={t("actions.cancel")}
+      onCancel={onClose}
+      primary={{
+        label: primaryLabel,
+        onClick: commit,
+        disabled: !canSave,
+        saving,
+        savingLabel: t("actions.saving"),
+      }}
+    >
+      <div className="px-7 py-5">{fields}</div>
+    </PopupFrame>
   );
 }

@@ -216,8 +216,13 @@ export function PopupFrame({
     OPEN_DIALOGS.push(token);
     openerRef.current = (document.activeElement as HTMLElement | null) ?? null;
     const raf = window.requestAnimationFrame(() => {
-      const target = dialogRef.current?.querySelector<HTMLElement>('input, textarea, select, button');
-      (target ?? dialogRef.current)?.focus();
+      const dialog = dialogRef.current;
+      // Don't steal focus if the user (or a test) has already moved it inside
+      // the dialog — the deferred focus is only there to pull focus in from
+      // the opener on open.
+      if (!dialog || dialog.contains(document.activeElement)) return;
+      const target = dialog.querySelector<HTMLElement>('input, textarea, select, button');
+      (target ?? dialog).focus();
     });
     return () => {
       window.cancelAnimationFrame(raf);

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
-import { Pencil, X, Loader2 } from 'lucide-react';
+import { Pencil, X } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useCommand } from '../lib/commands';
 import { useAuth } from './AuthProvider';
@@ -11,6 +10,7 @@ import { useTranslate } from '../hooks/useTranslate';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { capturePageScreenshot } from '../lib/feedbackScreenshot';
+import { PopupFrame } from './ui/PopupFrame';
 import { FeedbackKind } from '../types';
 
 
@@ -199,136 +199,103 @@ export default function FeedbackFAB() {
         {isOpen ? <X className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Scrim (closes on outside click) */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={close}
-              className="fixed inset-0 z-[110]"
-              aria-hidden="true"
-            />
-
-            {/* Panel — anchored above the FAB */}
-            <motion.div
-              initial={{ opacity: 0, y: 12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.97 }}
-              transition={{ type: 'spring', damping: 26, stiffness: 360 }}
-              role="dialog"
-              aria-modal="true"
-              aria-label={t('feedback.leave_note_for_team')}
-              className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-xl shadow-2xl p-5 focus:outline-none ${
-                isMessagesPage ? 'bottom-44 lg:bottom-44 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
-              }`}
+      <PopupFrame
+        open={isOpen}
+        onClose={close}
+        size="sm"
+        eyebrow={t('feedback.eyebrow')}
+        title={t('feedback.leave_a_note')}
+        subtitle={t('feedback.all_welcome')}
+        dirty={phase === 'idle' && message.trim().length > 0}
+        noun={t('feedback.note_noun')}
+        footerHint={
+          phase !== 'done' ? (
+            <span className="min-w-0 truncate text-[12px] text-[var(--text-mute)]">
+              {user.displayName || t('common.you')} · <Translate text={roleLabel(role)} />
+            </span>
+          ) : undefined
+        }
+        cancelLabel={t('actions.cancel')}
+        onCancel={close}
+        primary={
+          phase === 'done'
+            ? {
+                label: t('feedback.see_your_notes'),
+                onClick: () => {
+                  close();
+                  navigate('/feedback');
+                },
+                savingLabel: t('feedback.sending'),
+              }
+            : {
+                label: t('feedback.send'),
+                onClick: submit,
+                disabled: !canSend,
+                saving: phase === 'busy',
+                savingLabel: t('feedback.sending'),
+              }
+        }
+      >
+        {phase === 'done' ? (
+          /* Success */
+          <div className="flex flex-col items-center gap-2 px-7 py-8 text-center">
+            <div className="mb-1 grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-xl text-accent">
+              ✦
+            </div>
+            <p className="font-serif text-lg text-on-surface">{t('feedback.we_got_your_note')}</p>
+            <p className="text-sm text-on-surface-variant">
+              {t('feedback.thanks_for_time')} {firstName}.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                clearAutoClose();
+                resetForm();
+                areaRef.current?.focus();
+              }}
+              className="mt-3 cursor-pointer rounded-full border border-outline bg-transparent px-5 py-2 text-xs font-semibold text-on-surface transition-colors hover:bg-surface-variant"
             >
-              {phase === 'done' ? (
-                /* Success */
-                <div className="flex flex-col items-center text-center gap-2 py-6">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 text-accent grid place-items-center text-xl mb-1">
-                    ✦
-                  </div>
-                  <p className="font-serif text-lg text-on-surface">{t('feedback.we_got_your_note')}</p>
-                  <p className="text-sm text-on-surface-variant">{t('feedback.thanks_for_time')} {firstName}.</p>
-                  <div className="flex flex-col sm:flex-row items-center gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        clearAutoClose();
-                        resetForm();
-                        areaRef.current?.focus();
-                      }}
-                      className="py-2 px-5 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors cursor-pointer"
-                    >
-                      Send another
-                    </button>
-                    {/* Your notes also lives in the nav (Today group), and the
-                        outcome notification links here too; this is the shortcut from
-                        the note you just left. */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        close();
-                        navigate('/feedback');
-                      }}
-                      className="py-2 px-5 bg-primary text-on-primary font-semibold rounded-full text-xs hover:opacity-95 transition-opacity cursor-pointer"
-                    >
-                      {t('feedback.see_your_notes')}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Form */
-                <div className="flex flex-col gap-3.5">
-                  <div className="flex flex-col gap-0.5">
-                    <h3 className="font-serif text-lg font-medium text-on-surface leading-snug">{t('feedback.leave_a_note')}</h3>
-                    <p className="text-[13px] text-on-surface-variant leading-snug">
-                      {t('feedback.all_welcome')}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('feedback.kind_of_note')}>
-                    {FEEDBACK_KINDS.map((k) => {
-                      const on = kind === k.id;
-                      return (
-                        <button
-                          key={k.id}
-                          type="button"
-                          disabled={phase === 'busy'}
-                          onClick={() => setKind(k.id)}
-                          className={`text-[12.5px] rounded-full px-3 py-1 border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default ${
-                            on
-                              ? `${TONE_CLASSES[k.tone].chip} border-transparent font-medium`
-                              : 'text-on-surface-variant bg-surface border-outline-variant hover:bg-surface-container-high'
-                          }`}
-                        >
-                          <Translate text={k.label} />
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <textarea
-                    ref={areaRef}
-                    value={message}
+              {t('feedback.send_another')}
+            </button>
+          </div>
+        ) : (
+          /* Form */
+          <div className="flex flex-col gap-3.5 px-7 py-5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('feedback.kind_of_note')}>
+              {FEEDBACK_KINDS.map((k) => {
+                const on = kind === k.id;
+                return (
+                  <button
+                    key={k.id}
+                    type="button"
                     disabled={phase === 'busy'}
-                    onChange={(e) => setMessage(e.target.value)}
-                    rows={4}
-                    maxLength={600}
-                    placeholder={activePlaceholder}
-                    aria-label={t('feedback.your_note')}
-                    className="w-full resize-none bg-surface border border-outline-variant rounded-sm p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
-                  />
+                    onClick={() => setKind(k.id)}
+                    className={`cursor-pointer rounded-full border px-3 py-1 text-[12.5px] transition-colors disabled:cursor-default disabled:opacity-50 ${
+                      on
+                        ? `${TONE_CLASSES[k.tone].chip} border-transparent font-medium`
+                        : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-high'
+                    }`}
+                  >
+                    <Translate text={k.label} />
+                  </button>
+                );
+              })}
+            </div>
 
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs text-on-surface-variant truncate min-w-0">
-                      {user.displayName || t('common.you')} · <Translate text={roleLabel(role)} />
-                    </span>
-                    <button
-                      type="button"
-                      onClick={submit}
-                      disabled={!canSend}
-                      className="shrink-0 py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-default border-none cursor-pointer flex items-center gap-1.5"
-                    >
-                      {phase === 'busy' ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>{t('feedback.sending')}</span>
-                        </>
-                      ) : (
-                        t('feedback.send')
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </>
+            <textarea
+              ref={areaRef}
+              value={message}
+              disabled={phase === 'busy'}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={4}
+              maxLength={600}
+              placeholder={activePlaceholder}
+              aria-label={t('feedback.your_note')}
+              className="w-full resize-none rounded-sm border border-outline-variant bg-surface p-3 text-sm text-on-surface transition-shadow placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+            />
+          </div>
         )}
-      </AnimatePresence>
+      </PopupFrame>
     </>
   );
 }

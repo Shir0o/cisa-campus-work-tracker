@@ -2074,7 +2074,7 @@ describe('CoordinationNotes', () => {
       fireEvent.mouseUp(editor);
       fireEvent.click(await screen.findByText('Todo'));
 
-      const composer = screen.getByText('New to-do').closest('.rounded-3xl') as HTMLElement;
+      const composer = screen.getByText('New to-do').closest('.bg-surface') as HTMLElement;
       fireEvent.click(within(composer).getByRole('button', { name: /Tony/ }));
       fireEvent.click(within(composer).getByRole('button', { name: /add to-do/i }));
 
