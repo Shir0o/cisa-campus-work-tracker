@@ -134,6 +134,13 @@ export interface PopupFrameProps {
   /** Called to actually close — the frame has already asked about dirty state. */
   onClose: () => void;
   size?: keyof typeof SIZES;
+  /**
+   * `center` (default) is the white dialog on a scrim — a bottom sheet on a
+   * phone. `side` keeps the same header, sections and footer but slides in
+   * from the right as a full-height panel, and never becomes a bottom sheet
+   * (spec #1444: side panels stay side panels).
+   */
+  placement?: 'center' | 'side';
   eyebrow?: string;
   title: string;
   subtitle?: string;
@@ -169,6 +176,7 @@ export function PopupFrame({
   open,
   onClose,
   size = 'md',
+  placement = 'center',
   eyebrow,
   title,
   subtitle,
@@ -188,7 +196,10 @@ export function PopupFrame({
   const { t } = useLanguage();
   // Under 768 px the frame becomes a bottom sheet: the same content, ~92dvh
   // tall, with a grabber and the footer pinned above the keyboard (spec #1447).
+  // A side panel is the exception — it stays a side panel on every width.
   const isPhone = useMediaQuery('(max-width: 768px)');
+  const isSide = placement === 'side';
+  const sheet = isPhone && !isSide;
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -254,8 +265,10 @@ export function PopupFrame({
       {open && (
         <div
           className={cn(
-            'fixed inset-0 z-[100] flex justify-center',
-            isPhone ? 'items-end p-0' : 'items-center p-4',
+            'fixed inset-0 z-[100] flex',
+            isSide
+              ? 'justify-end'
+              : cn('justify-center', sheet ? 'items-end p-0' : 'items-center p-4'),
           )}
         >
           <motion.div
@@ -268,22 +281,25 @@ export function PopupFrame({
           />
           <motion.div
             ref={dialogRef}
-            initial={isPhone ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.96, y: 16 }}
-            animate={isPhone ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, scale: 1, y: 0 }}
-            exit={isPhone ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.96, y: 16 }}
-            transition={isPhone ? { type: 'spring', damping: 32, stiffness: 320 } : undefined}
+            initial={isSide ? { x: '100%' } : sheet ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.96, y: 16 }}
+            animate={isSide ? { x: 0 } : sheet ? { opacity: 1, y: 0, scale: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={isSide ? { x: '100%' } : sheet ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.96, y: 16 }}
+            transition={isSide ? { type: 'spring', damping: 28, stiffness: 260 } : sheet ? { type: 'spring', damping: 32, stiffness: 320 } : undefined}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
             tabIndex={-1}
             className={cn(
-              'relative flex w-full flex-col overflow-hidden border border-outline-variant bg-[var(--bg-elev)] shadow-[var(--shadow-pop)] outline-none',
-              isPhone
-                ? 'h-[92dvh] max-h-[92dvh] rounded-t-xl rounded-b-none'
-                : cn('max-h-[90vh] rounded-xl', SIZES[size]),
+              'relative flex w-full flex-col overflow-hidden bg-[var(--bg-elev)] shadow-[var(--shadow-pop)] outline-none',
+              isSide
+                ? cn('h-full border-l border-outline-variant', SIZES[size])
+                : cn(
+                    'border border-outline-variant',
+                    sheet ? 'h-[92dvh] max-h-[92dvh] rounded-t-xl rounded-b-none' : cn('max-h-[90vh] rounded-xl', SIZES[size]),
+                  ),
             )}
           >
-            {isPhone && (
+            {sheet && (
               <motion.button
                 type="button"
                 onClick={requestClose}
@@ -298,7 +314,7 @@ export function PopupFrame({
                 <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-outline-variant transition-colors group-hover:bg-outline" />
               </motion.button>
             )}
-            <header className={cn('flex items-start gap-3 px-7', isPhone ? 'pb-4 pt-1' : 'pb-5 pt-6')}>
+            <header className={cn('flex items-start gap-3 px-7', sheet ? 'pb-4 pt-1' : 'pb-5 pt-6')}>
               {onBack && (
                 <button
                   type="button"
@@ -306,7 +322,7 @@ export function PopupFrame({
                   aria-label={backLabel ?? t('popup.back')}
                   className={cn(
                     'grid shrink-0 place-items-center rounded-full text-on-surface transition-colors hover:bg-surface-container-low',
-                    isPhone ? 'h-11 w-11' : 'h-10 w-10',
+                    sheet ? 'h-11 w-11' : 'h-10 w-10',
                   )}
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -329,7 +345,7 @@ export function PopupFrame({
                 aria-label={t('modals.close')}
                 className={cn(
                   'grid shrink-0 place-items-center rounded-full bg-surface-container-low text-on-surface-variant transition-colors hover:text-on-surface',
-                  isPhone ? 'h-11 w-11' : 'h-10 w-10',
+                  sheet ? 'h-11 w-11' : 'h-10 w-10',
                 )}
               >
                 <X className="h-5 w-5" />
@@ -341,7 +357,7 @@ export function PopupFrame({
             {(error || primary) && (
               <footer
                 className="shrink-0 border-t border-outline-variant bg-surface-container-low"
-                style={isPhone ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
+                style={sheet ? { paddingBottom: 'env(safe-area-inset-bottom)' } : undefined}
               >
                 {error ? (
                   <div className="flex items-center gap-3 px-7 py-4">
@@ -354,7 +370,7 @@ export function PopupFrame({
                       onClick={error.onRetry}
                       className={cn(
                         'inline-flex shrink-0 items-center rounded-full bg-primary px-5 text-sm font-medium text-on-primary',
-                        isPhone ? 'h-11' : 'h-9',
+                        sheet ? 'h-11' : 'h-9',
                       )}
                     >
                       {error.retryLabel}
@@ -418,7 +434,7 @@ export function PopupFrame({
                       onClick={() => setPending(null)}
                       className={cn(
                         'rounded-full px-4 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface',
-                        isPhone ? 'h-11' : 'py-2',
+                        sheet ? 'h-11' : 'py-2',
                       )}
                     >
                       {t('popup.keep_editing')}
@@ -433,7 +449,7 @@ export function PopupFrame({
                       }}
                       className={cn(
                         'rounded-full bg-primary px-4 text-sm font-medium text-on-primary',
-                        isPhone ? 'h-11' : 'py-2',
+                        sheet ? 'h-11' : 'py-2',
                       )}
                     >
                       {t('popup.discard')}
