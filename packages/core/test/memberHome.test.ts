@@ -409,7 +409,9 @@ describe('teamHolding', () => {
     expect(teamHolding([prayer({ status: 'unanswered' })], [contact()])).toEqual([]);
   });
 
-  it("keeps a contact-only prayer off the team's list (#1406)", () => {
+  // Only "On our hearts" is limited to prayers added there; every other
+  // surface shows a contact's prayers wherever they were written.
+  it("keeps a prayer written off the prayer page (#1406)", () => {
     const rows = teamHolding(
       [
         prayer({ id: 'flagless' }),
@@ -418,7 +420,7 @@ describe('teamHolding', () => {
       ],
       [contact()],
     );
-    expect(rows.map((r) => r.prayerId).sort()).toEqual(['flagless', 'team']);
+    expect(rows.map((r) => r.prayerId).sort()).toEqual(['flagless', 'mine', 'team']);
   });
 
   it('drops a prayer with no name behind it — names, not cases', () => {
