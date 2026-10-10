@@ -159,6 +159,22 @@ describe('V2Input / V2TextArea', () => {
     await fireEvent.changeText(getByPlaceholderText("What's on your heart?"), 'words');
     expect(onChangeText).toHaveBeenCalledWith('words');
   });
+
+  // #1514: on Android an IME composing region on a controlled multiline field
+  // desyncs the native EditText from React's value, so backspace in the middle
+  // deletes the wrong character and the caret jumps. Suppress autocorrect on
+  // multiline the same way the single-line field already does.
+  it('disables Android IME autocorrect on multiline, like the single-line input', async () => {
+    const { getByPlaceholderText } = await renderV2(
+      <>
+        <V2Input value="" onChangeText={jest.fn()} placeholder="single" />
+        <V2TextArea value="" onChangeText={jest.fn()} placeholder="multi" />
+      </>,
+    );
+
+    expect(getByPlaceholderText('single').props.autoCorrect).toBe(false);
+    expect(getByPlaceholderText('multi').props.autoCorrect).toBe(false);
+  });
 });
 
 describe('V2Seg', () => {
