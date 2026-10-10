@@ -127,11 +127,13 @@ Before introducing new features, enforce these gates:
 
 | What broke | Test it with |
 | --- | --- |
-| A client query or write the rules deny; `visibleTo` scope | A rules test in `src/test/firestore.rules.test.ts` pinning the exact query shape the client sends |
+| A client query or write the rules deny; `visibleTo` scope | A **query contract test** in `src/test/queryContract.test.ts` that runs the app's real builder against the emulator for each role, plus a rules test in `src/test/firestore.rules.test.ts` for a hand-pinned write shape |
 | Contact data shape (ISO vs Timestamp `createdAt`, `null` email, missing `owner`) | A unit test importing the legacy-shape fixtures in `src/test/fixtures/contacts.ts` |
 | An i18n key | `npm run check:i18n` |
 | A flow across features or roles | The role's Playwright journey |
 | Visual | Milestone playtest |
+
+- **Query contracts**: a new or changed Firestore query — a `packages/core/src/data/*` or `src/lib` builder, or a scope/constraint helper like `contactVisibilityConstraints` — ships with its contract in `src/test/queryContract.test.ts`. The contract runs the real builder against the rules emulator, seeded per role, and asserts the query/write is allowed for the roles that run it and denied or empty for the roles that must not.
 
 - **`E2E:` line**: triage gives every `ready-for-agent` feature issue an `E2E:` line naming the journey and the new assertion, or `E2E: none, covered by <layer>`. Implement against it, and tag the test title `(#NNN)`.
 - **Negative check**: a role journey also asserts that one seeded record outside that role's scope is absent.
@@ -139,7 +141,7 @@ Before introducing new features, enforce these gates:
 - **Stale spec**: when your UI change breaks a spec, update the spec in the same PR.
 - **Prove it goes red**: a test written for an escape or a bug fails with the fix reverted. Say how in the PR body.
 - **Run what you touched**: if you added or edited a spec, run it alone under the emulator — `npm run test:e2e:emulator -- e2e/<spec>.spec.ts` (Node 24, JDK 21) — before pushing and confirm it passes. CI runs the full suite in 2 shards.
-- **Rules tests are required on web PRs**: the `emulator` job in `ci.yml` runs `src/test/firestore.rules.test.ts` and `src/test/database.rules.test.ts` under the Firestore + Database emulators on PRs touching web paths, and fails if the emulator falls back to open rules. It is a **required** check: a human must add the context `Rules tests (Firestore + Database emulator)` to the `main` ruleset (`.github/rulesets/main-branch-protection.json`) — agents cannot edit the ruleset.
+- **Rules tests are required on web PRs**: the `emulator` job in `ci.yml` runs `src/test/firestore.rules.test.ts`, `src/test/database.rules.test.ts` and `src/test/queryContract.test.ts` under the Firestore + Database emulators on PRs touching web paths, and fails if the emulator falls back to open rules. It is a **required** check: a human must add the context `Rules tests (Firestore + Database emulator)` to the `main` ruleset (`.github/rulesets/main-branch-protection.json`) — agents cannot edit the ruleset.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
 ---
