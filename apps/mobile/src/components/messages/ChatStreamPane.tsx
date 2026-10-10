@@ -10,7 +10,7 @@
 // a taken-back message's label, centred system notices, and in an announcement
 // Got it / Reply in thread on every post (S4, S8).
 import React, { useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -35,6 +35,7 @@ import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { FtTodoSheet } from '../ft/FtTodoSheet';
 import { PersonMark } from '../queue/atoms';
 import { Snackbar, Sheet } from '../ui';
+import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { useTranslate } from '../Translate';
 import { StreamList, Divider } from '../stream/StreamList';
 import { StreamRowView, ThreadChip, type StreamRowProps } from '../stream/StreamRow';

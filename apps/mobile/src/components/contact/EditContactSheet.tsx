@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import {
   type ContactEditFields,
 } from '@cisa/core';
 import { Sheet } from '../ui';
+import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useStandardTags } from '../../lib/useStandardTags';
