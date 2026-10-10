@@ -1090,21 +1090,26 @@ export async function createApp() {
 
           const data = docSnap.data();
           const ownerSubmitted = await isOwnerSubmitter(db, data.userId);
-          const laundered = await launderIssueComment(raw);
 
-          // The owner reads the tracker as it is; everyone else reads a
-          // restatement, and a comment with nothing safe to say is dropped.
-          // On the owner's own Notes both are stored so that "see it as they
-          // do" has something to show — safe there because the owner is the
-          // only non-admin who can read their own Note.
+          // The drop rule and the model both decide before anyone is told
+          // anything: a dropped comment never becomes a Follow-up and never
+          // notifies, for the owner as much as for any other submitter.
+          const laundered = await launderIssueComment(raw);
+          if (!laundered) continue;
+
+          // The owner reads the tracker as it is; everyone else reads the
+          // restatement. On the owner's own Notes both are stored so that
+          // "see it as they do" has something to show — safe there because the
+          // owner is the only non-admin who can read their own Note. The
+          // notification, however, is always the restatement: a raw comment
+          // must never be what reaches anyone's bell.
           const body = ownerSubmitted ? raw : laundered;
-          if (!body) continue;
 
           await writeFollowUp(db, docSnap.id, {
             authorRole: "team",
             body,
             relayed: true,
-            ...(ownerSubmitted && laundered ? { launderedBody: laundered } : {}),
+            ...(ownerSubmitted ? { launderedBody: laundered } : {}),
             ...(commentId !== null ? { githubCommentId: commentId } : {}),
           });
           relayedCount += 1;
@@ -1114,7 +1119,7 @@ export async function createApp() {
               await db.collection("notifications").add({
                 userId: data.userId,
                 title: "A reply on your note",
-                message: body,
+                message: laundered,
                 type: "info",
                 tone: "accent",
                 read: false,
