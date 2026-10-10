@@ -1,9 +1,18 @@
 name: Web E2E (Playwright)
 
 on:
-  schedule:
-    # Run every day at midnight (00:00 UTC)
-    - cron: '0 0 * * *'
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - 'src/**'
+      - 'packages/core/**'
+      - 'server.ts'
+      - 'firestore.rules'
+      - 'e2e/**'
+      - 'scripts/seed-emulator.ts'
+      - 'package*.json'
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -12,9 +21,15 @@ concurrency:
 
 jobs:
   e2e-emulator:
-    name: E2E Playwright Tests (Emulator)
+    name: E2E Playwright (shard ${{ matrix.shard }}/2, emulator)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      # Advisory check: a red shard must not cancel the other, so the report
+      # shows every failure instead of only the first.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -29,11 +44,13 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Run E2E tests against Firebase Emulator
-        run: npm run test:e2e:emulator
+        # "npm run ... -- <args>" appends the args to the script's last command,
+        # so run-e2e-emulator.sh receives them and forwards them to playwright.
+        run: npm run test:e2e:emulator -- --shard=${{ matrix.shard }}/2
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7

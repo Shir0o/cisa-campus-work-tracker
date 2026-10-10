@@ -121,6 +121,7 @@ Before introducing new features, enforce these gates:
   git fetch origin main && git rebase origin/main
   npm run typecheck && npm run lint && npm run test:coverage && npm run build
   This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
+  A PR that adds or edits an e2e spec also runs that spec under the emulator: `npm run test:e2e:emulator -- e2e/<spec>.spec.ts`.
 ## 8. Regression Testing (E2E)
 **Each check lives at the cheapest layer that would have gone red on the escape.** The reasoning is in the e2e map (#1457); setup is in `e2e/README.md`.
 
@@ -137,7 +138,7 @@ Before introducing new features, enforce these gates:
 - **Selectors**: use `getByRole`/`getByLabel`, use `data-testid` for non-semantic elements, and scope any `getByText` inside a container.
 - **Stale spec**: when your UI change breaks a spec, update the spec in the same PR.
 - **Prove it goes red**: a test written for an escape or a bug fails with the fix reverted. Say how in the PR body.
-- **Run what you touched**: if you added or edited a spec, run `npm run test:e2e:emulator` (Node 24, JDK 21) before pushing and confirm your specs pass. CI covers the rest.
+- **Run what you touched**: if you added or edited a spec, run it alone under the emulator — `npm run test:e2e:emulator -- e2e/<spec>.spec.ts` (Node 24, JDK 21) — before pushing and confirm it passes. CI runs the full suite in 2 shards.
 - **Rules tests are required on web PRs**: the `emulator` job in `ci.yml` runs `src/test/firestore.rules.test.ts` and `src/test/database.rules.test.ts` under the Firestore + Database emulators on PRs touching web paths, and fails if the emulator falls back to open rules. It is a **required** check: a human must add the context `Rules tests (Firestore + Database emulator)` to the `main` ruleset (`.github/rulesets/main-branch-protection.json`) — agents cannot edit the ruleset.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.

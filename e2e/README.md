@@ -43,6 +43,14 @@ This single command:
 3. Runs the whole Playwright suite (`npx playwright test`) and tears the
    emulators down afterwards.
 
+Extra arguments after `--` reach `playwright test`, so you can run a single
+spec (or a shard) against a fresh seeded emulator:
+
+```bash
+npm run test:e2e:emulator -- e2e/permissions.spec.ts
+npm run test:e2e:emulator -- --shard=1/2
+```
+
 The emulator boots from `firebase.e2e.json`, a single-database view of
 `firebase.json` that points it at `firestore.rules`. `firebase.json` itself
 lists two named databases (`prod`, `qa-db`) for deploys, which the emulator
@@ -109,6 +117,14 @@ against the local Auth emulator.
 
 ## CI
 
-`.github/workflows/e2e.yml` runs the emulator suite nightly (cron) and on
-manual dispatch, with zero repository secrets: it installs JDK 21, runs
-`npm run test:e2e:emulator`, and uploads the Playwright report on failure.
+`.github/workflows/e2e.yml` runs the emulator suite in **2 Playwright shards**
+(`--shard=1/2`, `--shard=2/2`), each with its own emulator, on:
+
+- every `pull_request` that touches `src/`, `packages/core/`, `server.ts`,
+  `firestore.rules`, `e2e/`, `scripts/seed-emulator.ts`, or `package*.json`;
+- every `push` to `main`;
+- manual dispatch.
+
+It is an **advisory** check (not required to merge), installs JDK 21, and
+uploads each shard's Playwright report on failure. There are zero repository
+secrets.
