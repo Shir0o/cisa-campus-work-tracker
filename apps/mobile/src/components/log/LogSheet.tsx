@@ -315,10 +315,9 @@ function LogSheetBody({
     }
   };
 
-  /** "Something to pray for". `teamPrayer` only reaches Firestore when the
-   * burden is being kept off the team prayer page — leaving the field off the
-   * doc is what every prayer written before this toggle existed looks like, and
-   * that reads as the team's. */
+  /** "Something to pray for". `teamPrayer` is the "Bring it to team prayer"
+   * toggle and is always written, true or false: an absent flag reads as the
+   * team's, so the choice is never left to that default. */
   const savePrayer = async () => {
     if (!saved || !burden.trim() || saving) return;
     setSaving(true);

@@ -45,32 +45,38 @@ describe('addPrayerBurden', () => {
 
   it('saves a visit prayer as the contact’s own, hands back its id, and leaves the hidden set alone (#1406)', async () => {
     localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1', 'c2']));
-    const id = await addPrayerBurden('c1', '  Peace for her dad  ', by);
+    const id = await addPrayerBurden('c1', '  Peace for her dad  ', by, false);
     expect(id).toBe('p-new');
     expect(collection).toHaveBeenCalledWith({}, 'prayers');
     expect(mock(addDoc).mock.calls[0][1]).toMatchObject({
       contactId: 'c1',
       burden: 'Peace for her dad',
       status: 'pending',
-      prayerPage: true,
       // An off-page prayer belongs to the contact, not the team (#1406).
       teamPrayer: false,
       updatedBy: 'u1',
       updatedByName: 'Mei Tanaka',
     });
+    // `prayerPage` means "written on the prayer page"; a visit isn't that page.
+    expect(mock(addDoc).mock.calls[0][1]).not.toHaveProperty('prayerPage');
     // Logging a visit must not put the person back on "On our hearts" (#1406).
     expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1', 'c2']);
   });
 
+  it('writes whichever team flag the caller chose', async () => {
+    await addPrayerBurden('c1', 'Peace', by, true);
+    expect(mock(addDoc).mock.calls[0][1]).toMatchObject({ teamPrayer: true });
+  });
+
   it('writes nothing for an empty burden or a missing person', async () => {
-    expect(await addPrayerBurden('c1', '   ', by)).toBeNull();
-    expect(await addPrayerBurden('', 'Something', by)).toBeNull();
+    expect(await addPrayerBurden('c1', '   ', by, false)).toBeNull();
+    expect(await addPrayerBurden('', 'Something', by, false)).toBeNull();
     expect(addDoc).not.toHaveBeenCalled();
   });
 
   it('reports a failed write instead of pretending it worked', async () => {
     mock(addDoc).mockRejectedValueOnce(new Error('permission-denied'));
-    expect(await addPrayerBurden('c1', 'Peace', by)).toBeNull();
+    expect(await addPrayerBurden('c1', 'Peace', by, false)).toBeNull();
     expect(handleFirestoreError).toHaveBeenCalled();
   });
 });

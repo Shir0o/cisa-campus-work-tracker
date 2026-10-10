@@ -283,6 +283,9 @@ export default function PrayerList() {
         burden: text,
         status: 'pending',
         prayerPage: true,
+        // The prayer page is the one place a burden is the team's. Written out
+        // rather than left to the "absent means team" default (#1406).
+        teamPrayer: true,
         ...stamp(),
       } as Omit<PrayerRecord, 'id'>);
       logActivity({

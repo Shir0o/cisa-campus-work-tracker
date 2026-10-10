@@ -323,7 +323,13 @@ export default function LogVisitModal({
           );
         }
         if (prayer.trim() && chosen[0]) {
-          input.prayerId = await addPrayerBurden(chosen[0].id, prayer.trim(), { uid: me, name: myName });
+          input.prayerId = await addPrayerBurden(
+            chosen[0].id,
+            prayer.trim(),
+            { uid: me, name: myName },
+            // A visit prayer belongs to the contact, not the team page (#1406).
+            false,
+          );
           // Kept on the visit too, so the card reads the prayer back in its own
           // words rather than only knowing there was one.
           input.prayerBurden = prayer.trim();

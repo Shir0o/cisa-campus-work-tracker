@@ -57,16 +57,16 @@ export function subscribeContactPrayers(
   );
 }
 
-/** Create a new burden for a contact (from the Prayer page's "hold someone"
- *  flow, and from the log sheet's saved step).
+/** Create a new burden for a contact (from the log sheet's saved step and the
+ *  contact's Pray sheet). Neither is the prayer page, so no `prayerPage` stamp.
  *
- *  `teamPrayer` only gets written when a caller asks to keep the burden off the
- *  team prayer page. Leaving it off the doc is what every prayer written before
- *  the toggle existed looks like, and `isTeamPrayer` reads that as the team's —
- *  so the default stays exactly where it was. */
+ *  `teamPrayer` is required and always written. An absent flag reads as the
+ *  team's (`isTeamPrayer`, for the prayers that predate the toggle), so a caller
+ *  that forgot to choose would silently put the burden on the team page
+ *  (#1042, #1406) — the compiler makes each caller say which. */
 export async function addPrayer(
   db: Firestore,
-  input: { contactId: string; burden: string; teamPrayer?: boolean },
+  input: { contactId: string; burden: string; teamPrayer: boolean },
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   const now = new Date().toISOString();
@@ -75,8 +75,7 @@ export async function addPrayer(
     date: now,
     burden: input.burden.trim(),
     status: "pending",
-    prayerPage: true,
-    ...(input.teamPrayer === false ? { teamPrayer: false } : {}),
+    teamPrayer: input.teamPrayer,
     updatedAt: now,
     updatedBy: by.uid || null,
     updatedByName: by.name || null,

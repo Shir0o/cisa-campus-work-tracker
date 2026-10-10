@@ -3,14 +3,19 @@ import { db, handleFirestoreError, logActivity, OperationType } from "./firebase
 import { carerNamesOf } from "./carers";
 import { PrayerRecord } from "../types";
 
-// Start carrying something for a contact. Mirrors PrayerList.tsx's
-// `handleAddBurden` write, minus the activity entry — callers that already log
-// their own action (a visit, say) shouldn't produce two entries for one thing.
-// Returns the new prayer's id so the caller can link back to it.
+// Start carrying something for a contact from somewhere other than the prayer
+// page (Log a visit, say) — callers that already log their own action
+// shouldn't produce two activity entries for one thing. Returns the new
+// prayer's id so the caller can link back to it.
+//
+// `teamPrayer` is required so every caller chooses: an absent flag reads as the
+// team's (`isTeamPrayer`), which is how #1042 and #1406 happened. No
+// `prayerPage` stamp — that marks a write from the prayer page itself.
 export async function addPrayerBurden(
   contactId: string,
   burden: string,
   by: { uid?: string | null; name?: string | null },
+  teamPrayer: boolean,
 ): Promise<string | null> {
   const text = burden.trim();
   if (!contactId || !text) return null;
@@ -21,10 +26,7 @@ export async function addPrayerBurden(
       date: now,
       burden: text,
       status: "pending",
-      prayerPage: true,
-      // A prayer written here (a visit, say) belongs to the contact, not the
-      // team page — only an explicit add on /prayer makes it the team's (#1406).
-      teamPrayer: false,
+      teamPrayer,
       updatedAt: now,
       updatedBy: by.uid || null,
       updatedByName: by.name || null,
