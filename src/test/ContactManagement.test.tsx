@@ -148,7 +148,7 @@ describe('Contact Management', () => {
   });
 
   it('Adding a Contact: calls addDoc with correct data', async () => {
-    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />, { wrapper: BrowserRouter });
 
     // Fill primary 2 fields
     fireEvent.change(screen.getByPlaceholderText(/First name is plenty/i), { target: { value: 'Bob' } });

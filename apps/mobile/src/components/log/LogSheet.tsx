@@ -22,6 +22,7 @@ import {
   firstMetDate,
   firstName,
   followUpDefaultText,
+  findDuplicateContact,
   logSavedBeat,
   logSheetFootLine,
   newContactFromLog,
@@ -193,6 +194,17 @@ function LogSheetBody({
   // narrowed by name once you start typing.
   const mine = quickCaptureRecents(contacts, touches, uid, 6).map((r) => r.contact);
   const matches = query.trim() ? quickCaptureSearchMatches(contacts, query, 6) : mine;
+
+  // #1510: the person being added may already exist. Compare against the
+  // in-scope roster the sheet already subscribes to; never block the add.
+  const duplicate =
+    mode === 'new'
+      ? findDuplicateContact({ name: name.trim(), email: draft.email, phone: draft.phone }, contacts)
+      : null;
+  const duplicateWarning = duplicate ? `${duplicate.contact.name} may already be here.` : '';
+  const duplicateOpenLabel = duplicate
+    ? `Open ${firstName(duplicate.contact.name)}'s page  →`
+    : '';
 
   /** Back to a blank sheet — reopening, and "Log another", are the same reset. */
   function resetAll() {
@@ -421,6 +433,40 @@ function LogSheetBody({
                   placeholder="First and last, if you got it"
                 />
               </View>
+
+              {duplicate && (
+                <View
+                  accessibilityRole="alert"
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    gap: 6,
+                    borderRadius: radius.chip,
+                    borderWidth: 1,
+                    borderColor: c.card.border,
+                    backgroundColor: c.card.bg2,
+                  }}
+                >
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink }}>
+                    {duplicateWarning}
+                  </Text>
+                  {onOpenContact && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        onOpenContact(duplicate.contact.id);
+                        onClose();
+                      }}
+                      style={{ minHeight: 40, justifyContent: 'center' }}
+                    >
+                      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>
+                        {duplicateOpenLabel}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               <View style={{ marginTop: 14, gap: 9 }}>
                 <Kicker>Where you met</Kicker>
                 <V2Input
