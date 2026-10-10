@@ -111,3 +111,10 @@ describe('StreamComposer — every tap target at least 44px', () => {
     expect(StyleSheet.flatten(getByRole('button', { name: 'Send' }).props.style).height).toBeGreaterThanOrEqual(44);
   });
 });
+
+describe('StreamComposer — Android multiline editing (#1514)', () => {
+  it('disables IME autocorrect on the composer field', async () => {
+    const { getByLabelText } = await wrap(<StreamComposer label="Write" onSend={jest.fn()} />);
+    expect(getByLabelText('Write').props.autoCorrect).toBe(false);
+  });
+});

@@ -245,6 +245,10 @@ export function StreamComposer({
             placeholderTextColor={c.card.ink3}
             accessibilityLabel={label}
             multiline
+            // Same Android composing-region hazard as V2TextArea (#1514):
+            // autocorrect on a controlled multiline field makes backspace in
+            // the middle delete the wrong character.
+            autoCorrect={false}
             style={{
               flex: 1,
               minHeight: 44,

@@ -390,6 +390,11 @@ export function V2TextArea({
       placeholderTextColor={c.card.ink3}
       multiline
       autoFocus={autoFocus}
+      // Android IME autocorrect opens a composing region that desyncs the
+      // native EditText from the controlled value, so backspace in the middle
+      // of the text deletes the wrong character and the caret jumps (#1514).
+      // V2Input already suppresses this on single-line; multiline must too.
+      autoCorrect={false}
       textAlignVertical="top"
       style={{
         minHeight,
