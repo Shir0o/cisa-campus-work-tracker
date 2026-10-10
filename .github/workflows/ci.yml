@@ -146,7 +146,7 @@ jobs:
             --config firebase.rules-tests.json \
             --only firestore,database \
             --project demo-campus-hub \
-            "npx vitest run src/test/firestore.rules.test.ts src/test/database.rules.test.ts" \
+            "npx vitest run src/test/firestore.rules.test.ts src/test/database.rules.test.ts src/test/queryContract.test.ts" \
             2>&1 | tee emulator.log
       # The Firestore emulator silently falls back to open rules when it cannot
       # load firestore.rules, and the suites would then pass against no security.
