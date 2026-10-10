@@ -1842,6 +1842,7 @@
     "home_last_visited": "{home} · última visita hace {ago}",
     "where_from_home": "De {home}",
     "couldnt_save_offline": "No se pudo guardar: estás sin conexión. No se perdió nada.",
+    "couldnt_save": "No se pudo guardar. No se perdió nada de lo que escribiste.",
     "try_again": "Intentar de nuevo",
     "no_home_yet": "{name} aún no tiene hogar",
     "add_one": "Añadir uno",

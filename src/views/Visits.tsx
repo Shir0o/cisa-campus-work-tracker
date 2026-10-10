@@ -173,6 +173,7 @@ export default function Visits() {
         contacts={contacts}
         staff={staff}
         homes={homes}
+        visits={visits}
         initialContactId={seedContactId}
         initialHomeId={seedHomeId}
         onAddHome={openHomeForMembers}
@@ -183,6 +184,7 @@ export default function Visits() {
         contacts={contacts}
         staff={staff}
         homes={homes}
+        visits={visits}
         visit={editing}
       />
       <HomesModal
