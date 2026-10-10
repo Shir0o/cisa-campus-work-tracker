@@ -335,6 +335,14 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
   });
 
   describe('on a phone, as a bottom sheet (#1447)', () => {
+    // A swipe as pointer events on the handle: down, one move, up — the same
+    // drag-end path a finger takes (real gestures don't run in jsdom).
+    const swipe = (el: Element, dy: number) => {
+      fireEvent.pointerDown(el, { pointerId: 1, clientY: 100 });
+      fireEvent.pointerMove(el, { pointerId: 1, clientY: 100 + dy });
+      fireEvent.pointerUp(el, { pointerId: 1, clientY: 100 + dy });
+    };
+
     beforeEach(() => (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true));
 
     it('opens with a grabber', () => {
@@ -355,7 +363,7 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
     it('dismisses at once by swipe when nothing has been typed', () => {
       setupOnSnapshot(mockContacts);
       render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      swipe(screen.getByTestId('popup-sheet-grabber'), 200);
 
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(mockOnClose).toHaveBeenCalled();
@@ -366,7 +374,7 @@ describe('LogInteractionModal in the popup frame (#1449)', () => {
       render(<LogInteractionModal isOpen={true} onClose={mockOnClose} />);
 
       fireEvent.click(await screen.findByText('Alice Smith'));
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      swipe(screen.getByTestId('popup-sheet-grabber'), 200);
 
       expect(screen.getByRole('alertdialog', { name: 'Discard this interaction?' })).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));

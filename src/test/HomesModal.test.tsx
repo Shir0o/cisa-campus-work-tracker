@@ -290,6 +290,20 @@ describe('HomesModal', () => {
     expect(baseProps.onClose).not.toHaveBeenCalled();
   });
 
+  it('asks before discarding edits on Cancel, and returns to the list on Discard (#1444)', () => {
+    const homes = [{ id: 'h1', label: 'the Oseis', members: ['c1'], active: true }];
+    render(<HomesModal {...baseProps} homes={homes} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit home: the Oseis' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'the Peinados' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('alertdialog', { name: 'Discard changes to this home?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(screen.getByRole('button', { name: 'Add a home' })).toBeInTheDocument();
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+  });
+
   it('opens the editor prefilled with people handed in (#1448)', async () => {
     render(<HomesModal {...baseProps} initialMembers={['c1']} />);
     expect(screen.getByLabelText('Name')).toBeInTheDocument();

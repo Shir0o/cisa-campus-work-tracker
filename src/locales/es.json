@@ -282,7 +282,7 @@
   },
   "feedback": {
     "eyebrow": "Comentarios",
-    "note_noun": "nota",
+    "note_noun": "esta nota",
     "close": "Cerrar",
     "close_feedback_panel": "Cerrar panel de comentarios",
     "leave_note_for_team": "Deja una nota para el equipo",
@@ -904,7 +904,8 @@
     "export": "Exportar",
     "remove_rhythm_confirm": "¿Eliminar este Rhythm? Las reuniones pasadas quedan registradas como puntuales, conservando quién vino. Las semanas próximas se eliminan con él.",
     "last_with_us_at": "La última vez con nosotros en {event} · {date} — hace {n} reuniones",
-    "reach_out": "Contactar"
+    "reach_out": "Contactar",
+    "rhythm_noun": "este ritmo"
   },
   "outreach": {
     "stages": "Etapas",
@@ -1287,7 +1288,7 @@
   "modals": {
     "smartImport": {
       "modal_title": "Importación inteligente de texto",
-      "import_noun": "importación",
+      "import_noun": "esta importación",
       "subtitle": "Pega notas, correos o chats: Gemini AI extrae contactos, 1 a 1 y discusiones con una revisión previa.",
       "close_modal": "Cerrar modal",
       "paste_unstructured": "Pega texto sin estructura abajo",
@@ -1697,8 +1698,8 @@
     "created_by": "Creado por",
     "members_list": "Lista de miembros",
     "member": "Miembro",
-    "chat_noun": "chat",
-    "contact_noun": "contacto",
+    "chat_noun": "este chat",
+    "contact_noun": "este contacto",
     "leave_group": "Salir del grupo",
     "hide_from_my_list": "Ocultar de mi lista",
     "delete_for_everyone": "Eliminar para todos",
@@ -1805,7 +1806,7 @@
     "log_for_people": "Registrar para {n} personas",
     "logged_one_person": "Se registra una vez para esta persona, y su Última vez visto pasa a hoy.",
     "logged_each_person": "Se registra una vez para cada una de las {n} personas, y la Última vez visto de cada una pasa a hoy.",
-    "interaction_noun": "interacción",
+    "interaction_noun": "esta interacción",
     "write_what_was_said": "Escribe qué se dijo.",
     "remove_person": "Quitar a {name}",
     "visit_fix_record": "Corrige el registro: nada aquí notifica a nadie.",
@@ -1832,7 +1833,7 @@
     "add_someone_new": "Añadir a {name} — alguien nuevo",
     "saving": "Guardando…",
     "visits_eyebrow": "Visitas",
-    "visit_noun": "visita",
+    "visit_noun": "esta visita",
     "section_who_you_saw": "A quiénes viste",
     "section_who_hint": "Todos los que estaban",
     "section_when_where": "Cuándo y dónde",
@@ -1846,14 +1847,13 @@
     "try_again": "Intentar de nuevo",
     "no_home_yet": "{name} aún no tiene hogar",
     "add_one": "Añadir uno",
-    "gathering_noun": "reunión",
-    "rhythm_noun": "Ritmo"
+    "gathering_noun": "esta reunión",
+    "rhythm_noun": "este ritmo"
   },
   "popup": {
-    "discard_question": "¿Descartar esta {noun}?",
+    "discard_question": "¿Descartar {noun}?",
     "keep_editing": "Seguir editando",
     "discard": "Descartar",
-    "dismiss_sheet": "Cerrar",
     "back": "Atrás"
   },
   "visitCard": {
@@ -2376,6 +2376,6 @@
     "due": "Vence",
     "pick_a_date": "Elegir una fecha…",
     "due_date": "Fecha de vencimiento",
-    "noun": "tarea"
+    "noun": "esta tarea"
   }
 }

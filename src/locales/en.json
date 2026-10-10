@@ -904,7 +904,8 @@
     "export": "Export",
     "remove_rhythm_confirm": "Remove this Rhythm? Past gatherings stay on record as one-offs, keeping who came. Upcoming weeks are removed with it.",
     "last_with_us_at": "Last with us at {event} · {date} — {n} gatherings ago",
-    "reach_out": "Reach out"
+    "reach_out": "Reach out",
+    "rhythm_noun": "Rhythm"
   },
   "outreach": {
     "stages": "Stages",
@@ -1853,7 +1854,6 @@
     "discard_question": "Discard this {noun}?",
     "keep_editing": "Keep editing",
     "discard": "Discard",
-    "dismiss_sheet": "Dismiss",
     "back": "Back"
   },
   "visitCard": {

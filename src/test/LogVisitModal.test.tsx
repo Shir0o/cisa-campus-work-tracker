@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { format, subDays } from 'date-fns';
 import LogVisitModal from '../components/modals/LogVisitModal';
@@ -91,6 +91,15 @@ const pick = (name: string) => {
   fireEvent.change(input, { target: { value: name } });
   const buttons = screen.getAllByRole('button', { name: new RegExp(name) });
   fireEvent.click(buttons[0]);
+};
+
+// A swipe on the phone sheet, as pointer events on where it started: down,
+// one move, up. Real gestures don't run in jsdom; this drives the same
+// drag-end path a finger does.
+const swipe = (el: Element, dy: number) => {
+  fireEvent.pointerDown(el, { pointerId: 1, clientY: 100 });
+  fireEvent.pointerMove(el, { pointerId: 1, clientY: 100 + dy });
+  fireEvent.pointerUp(el, { pointerId: 1, clientY: 100 + dy });
 };
 
 describe('LogVisitModal', () => {
@@ -449,6 +458,74 @@ describe('LogVisitModal', () => {
     expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
   });
 
+  it('asks before discarding on Cancel when something has been typed (#1444)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(baseProps.onClose).toHaveBeenCalled();
+  });
+
+  it('moves focus to Keep editing when it asks, and back when the question is dismissed (#1444)', () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+    const close = screen.getByRole('button', { name: 'Close' });
+
+    close.focus();
+    fireEvent.click(close);
+    const keep = screen.getByRole('button', { name: 'Keep editing' });
+    expect(keep).toHaveFocus();
+
+    // Tab stays inside the question while it is open.
+    const discard = screen.getByRole('button', { name: 'Discard' });
+    fireEvent.keyDown(keep, { key: 'Tab', shiftKey: true });
+    expect(discard).toHaveFocus();
+    fireEvent.keyDown(discard, { key: 'Tab' });
+    expect(keep).toHaveFocus();
+
+    fireEvent.click(keep);
+    expect(close).toHaveFocus();
+
+    fireEvent.click(close);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(close).toHaveFocus();
+  });
+
+  it('keeps Tab and Shift+Tab inside the open popup (#1444)', () => {
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    render(<LogVisitModal {...baseProps} />);
+    const close = screen.getByRole('button', { name: 'Close' });
+    const save = screen.getByRole('button', { name: /Log the visit/ });
+
+    save.focus();
+    fireEvent.keyDown(save, { key: 'Tab' });
+    expect(close).toHaveFocus();
+
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(save).toHaveFocus();
+
+    // Mid-order, Tab is left to the browser.
+    close.focus();
+    expect(fireEvent.keyDown(close, { key: 'Tab' })).toBe(true);
+
+    // Focus that has slipped out to the page behind is pulled back in.
+    outside.focus();
+    fireEvent.keyDown(outside, { key: 'Tab' });
+    expect(close).toHaveFocus();
+    outside.remove();
+  });
+
   it('keeps everything typed after a failed save and retries on Try again (#1446)', async () => {
     (addVisit as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('offline'));
 
@@ -686,9 +763,7 @@ describe('LogVisitModal', () => {
 
     it('dismisses at once by swipe when nothing has been typed', () => {
       render(<LogVisitModal {...baseProps} />);
-      // The swipe is simulated by invoking the sheet's dismiss path (the
-      // grabber), the same path drag-end routes through.
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      swipe(screen.getByTestId('popup-sheet-grabber'), 200);
 
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(baseProps.onClose).toHaveBeenCalled();
@@ -698,13 +773,90 @@ describe('LogVisitModal', () => {
       render(<LogVisitModal {...baseProps} />);
       pick('Ama');
 
-      fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+      swipe(screen.getByTestId('popup-sheet-grabber'), 200);
       expect(screen.getByRole('alertdialog', { name: 'Discard this visit?' })).toBeInTheDocument();
+      // The sheet springs back up under the question.
+      expect(screen.getByRole('dialog', { name: 'Log a visit' }).style.translate).toBe('');
 
       fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
       expect(baseProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('follows a slow drag that starts on the header, and snaps back when let go short (#1444)', () => {
+      vi.useFakeTimers({ toFake: ['performance'] });
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        const sheet = screen.getByRole('dialog', { name: 'Log a visit' });
+        const title = screen.getByRole('heading', { name: 'Log a visit' });
+
+        fireEvent.pointerDown(title, { pointerId: 1, clientY: 100 });
+        vi.advanceTimersByTime(300);
+        fireEvent.pointerMove(title, { pointerId: 1, clientY: 160 });
+        expect(sheet.style.translate).toBe('0 60px');
+
+        vi.advanceTimersByTime(300);
+        fireEvent.pointerUp(title, { pointerId: 1, clientY: 160 });
+        expect(sheet.style.translate).toBe('');
+        expect(baseProps.onClose).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('dismisses on a quick flick even when it is short (#1444)', () => {
+      vi.useFakeTimers({ toFake: ['performance'] });
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        const grabber = screen.getByTestId('popup-sheet-grabber');
+
+        fireEvent.pointerDown(grabber, { pointerId: 1, clientY: 100 });
+        vi.advanceTimersByTime(20);
+        fireEvent.pointerMove(grabber, { pointerId: 1, clientY: 140 });
+        fireEvent.pointerUp(grabber, { pointerId: 1, clientY: 140 });
+        expect(baseProps.onClose).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does nothing on a plain tap of the handle (#1444)', () => {
+      render(<LogVisitModal {...baseProps} />);
+      const grabber = screen.getByTestId('popup-sheet-grabber');
+
+      fireEvent.pointerDown(grabber, { pointerId: 1, clientY: 100 });
+      fireEvent.pointerUp(grabber, { pointerId: 1, clientY: 100 });
+      fireEvent.click(grabber);
+
+      expect(screen.getByRole('dialog', { name: 'Log a visit' })).toBeInTheDocument();
+      expect(baseProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('keeps the footer above the on-screen keyboard (#1444)', () => {
+      const vv = Object.assign(new EventTarget(), { height: window.innerHeight, offsetTop: 0 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+      try {
+        render(<LogVisitModal {...baseProps} />);
+        const sheet = screen.getByRole('dialog', { name: 'Log a visit' });
+        expect(sheet.style.height).toBe('');
+
+        act(() => {
+          vv.height = 400;
+          vv.dispatchEvent(new Event('resize'));
+        });
+        expect(sheet.style.height).toBe('368px');
+        expect(sheet.style.marginBottom).toBe(`${window.innerHeight - 400}px`);
+
+        act(() => {
+          vv.height = window.innerHeight;
+          vv.dispatchEvent(new Event('resize'));
+        });
+        expect(sheet.style.height).toBe('');
+        expect(sheet.style.marginBottom).toBe('');
+      } finally {
+        delete (window as { visualViewport?: unknown }).visualViewport;
+      }
     });
   });
 });
