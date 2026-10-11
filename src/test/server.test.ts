@@ -24,6 +24,23 @@ const {
   const store: Record<string, Record<string, Doc>> = {};
   let seq = 0;
 
+  const DELETE_SENTINEL = Symbol("DELETE");
+
+  // `update` reads a dotted key as a path into nested maps, as Firestore
+  // does, and returns a copy so earlier snapshots keep their values.
+  const applyUpdate = (current: Doc | undefined, u: Doc): Doc => {
+    const target: Doc = { ...(current ?? {}) };
+    for (const [key, v] of Object.entries(u)) {
+      const path = key.split(".");
+      let node = target;
+      for (const segment of path.slice(0, -1)) node = node[segment] = { ...(node[segment] ?? {}) };
+      const leaf = path[path.length - 1];
+      if (v === DELETE_SENTINEL || (v && (v as any).__mockDelete)) delete node[leaf];
+      else node[leaf] = v;
+    }
+    return target;
+  };
+
   const snapshot = (docs: Array<{ id: string; data: () => Doc }>) => ({
     empty: docs.length === 0,
     size: docs.length,
@@ -41,18 +58,15 @@ const {
         id: docId,
         _col: name,
         _id: docId,
-        get: async () => ({ exists: docId in col, data: () => col[docId], id: docId, ref: handle }),
+        // A snapshot holds the data as it was read, as a real one does.
+        get: async () => {
+          const data = col[docId];
+          return { exists: docId in col, data: () => data, id: docId, ref: handle };
+        },
         set: async (d: Doc) => { col[docId] = { ...d }; },
         delete: async () => { delete col[docId]; },
-        // Copy rather than mutate: a snapshot taken before this update must
-        // keep the values it was read with, as a real one does.
         update: async (u: Doc) => {
-          const target = { ...(col[docId] ?? {}) };
-          for (const [k, v] of Object.entries(u)) {
-            if (v && (v as any).__mockDelete) delete target[k];
-            else target[k] = v;
-          }
-          col[docId] = target;
+          col[docId] = applyUpdate(col[docId], u);
         },
         collection: (sub: string) => collection(`${name}/${docId}/${sub}`),
       };
@@ -60,7 +74,8 @@ const {
       return handle;
     };
 
-    const list = () => Object.keys(col).map((id) => ({ id, ref: docHandle(id), data: () => col[id] }));
+    const list = () =>
+      Object.entries(col).map(([id, data]) => ({ id, ref: docHandle(id), data: () => data }));
 
     const filtered = (pred: (d: any) => boolean) => ({
       get: async () => snapshot(list().filter(pred)),
@@ -78,6 +93,7 @@ const {
         filtered((d) => {
           const v = d.data()[field];
           if (op === "array-contains") return Array.isArray(v) && v.includes(value);
+          if (op === "in") return Array.isArray(value) && value.includes(v);
           return v === value;
         }),
       orderBy: () => ({
@@ -88,8 +104,6 @@ const {
     };
   };
 
-  const DELETE_SENTINEL = Symbol("DELETE");
-
   // Transactions run one at a time, as Firestore's optimistic retries make
   // them behave: each sees the writes of the one before it.
   let txQueue: Promise<unknown> = Promise.resolve();
@@ -98,17 +112,25 @@ const {
     collection,
     runTransaction: <T>(fn: (tx: any) => Promise<T>): Promise<T> => {
       const run = async () => {
-        const writes: Array<{ ref: any; data: Doc; merge: boolean }> = [];
+        const writes: Array<{ ref: any; data: Doc; kind: "set" | "merge" | "update" | "delete" }> = [];
         const tx = {
           get: (ref: any) => ref.get(),
           set: (ref: any, data: Doc, opts?: { merge?: boolean }) => {
-            writes.push({ ref, data, merge: !!opts?.merge });
+            writes.push({ ref, data, kind: opts?.merge ? "merge" : "set" });
+          },
+          update: (ref: any, data: Doc) => {
+            writes.push({ ref, data, kind: "update" });
+          },
+          delete: (ref: any) => {
+            writes.push({ ref, data: {}, kind: "delete" });
           },
         };
         const result = await fn(tx);
         for (const w of writes) {
           const col = (store[w.ref._col] ??= {});
-          col[w.ref._id] = w.merge ? { ...(col[w.ref._id] ?? {}), ...w.data } : { ...w.data };
+          if (w.kind === "delete") delete col[w.ref._id];
+          else if (w.kind === "update") col[w.ref._id] = applyUpdate(col[w.ref._id], w.data);
+          else col[w.ref._id] = w.kind === "merge" ? { ...(col[w.ref._id] ?? {}), ...w.data } : { ...w.data };
         }
         return result;
       };
@@ -146,15 +168,7 @@ const {
               (store[p._col] ??= {})[p._id] = { ...p.data };
               continue;
             }
-            const target = (store[p._col] ??= {})[p._id] ?? {};
-            for (const [k, v] of Object.entries(p.data)) {
-              if (v === DELETE_SENTINEL || (v && (v as any).__mockDelete)) {
-                delete target[k];
-              } else {
-                target[k] = v;
-              }
-            }
-            store[p._col][p._id] = target;
+            (store[p._col] ??= {})[p._id] = applyUpdate(store[p._col][p._id], p.data);
           }
         },
       };
@@ -3294,6 +3308,44 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
 // The contacts seedCombine writes have no updatedAt.
 const NO_STAMPS = { keptUpdatedAt: null, combinedInUpdatedAt: null };
 
+// Runs `write` once, straight after the server first reads from `name`: a
+// user (or another request) changing something between the server's read
+// and its write.
+const writeAfterFirstRead = (name: string, write: () => unknown) => {
+  const original = mockDb.collection;
+  let fired = false;
+  const fire = async () => {
+    if (fired) return;
+    fired = true;
+    await write();
+  };
+  return vi.spyOn(mockDb, "collection").mockImplementation(((col: string) => {
+    const c = original(col);
+    if (col !== name) return c;
+    return {
+      ...c,
+      get: async () => {
+        const snap = await c.get();
+        await fire();
+        return snap;
+      },
+      doc: (id?: string) => {
+        const d = c.doc(id);
+        return {
+          ...d,
+          get: async () => {
+            const snap = await d.get();
+            await fire();
+            return snap;
+          },
+        };
+      },
+    };
+  }) as typeof original);
+};
+
+const LONG_AGO = "2000-01-01T00:00:00.000Z";
+
 describe("POST /api/combine-contacts", () => {
   const seedCombine = () => {
     seedDoc("contacts", "s1", {
@@ -3662,6 +3714,48 @@ describe("POST /api/combine-contacts", () => {
   });
 });
 
+describe("POST /api/combine-contacts — concurrency", () => {
+  const seedPair = () => {
+    seedDoc("contacts", "s1", { name: "Kept Name", email: "same@x.com", phone: "", stage: "Lead", location: "" });
+    seedDoc("contacts", "d1", { name: "In Name", email: "same@x.com", phone: "", stage: "Contact", location: "" });
+    seedDoc("prayers", "p1", { contactId: "d1" });
+  };
+
+  it.each([
+    { side: "kept", busy: { status: "pending", keptId: "s1", combinedInId: "x9" } },
+    { side: "combined-in", busy: { status: "undoing", keptId: "x9", combinedInId: "d1" } },
+  ])("refuses while the $side contact is part of an in-flight combine record", async ({ busy }) => {
+    seedPair();
+    seedDoc("combineRecords", "busy", { kind: "contacts", claimedAt: new Date().toISOString(), ...busy });
+
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain("busy");
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+    expect(getCollection("prayers")["p1"].contactId).toBe("d1");
+    expect(Object.keys(getCollection("combineRecords"))).toEqual(["busy"]);
+  });
+
+  it("refuses with a conflict when a contact changes while the combine is being built", async () => {
+    seedPair();
+    writeAfterFirstRead("contacts", () =>
+      seedDoc("contacts", "s1", { ...getCollection("contacts")["s1"], updatedAt: "2026-10-10T12:00:00.000Z" }),
+    );
+
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+
+    expect(res.status).toBe(409);
+    expect(res.body.conflict).toBe(true);
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+    expect(getCollection("prayers")["p1"].contactId).toBe("d1");
+  });
+});
+
 describe("POST /api/combine-contacts/undo", () => {
   const seedCombine = () => {
     seedDoc("contacts", "s1", {
@@ -3733,12 +3827,15 @@ describe("POST /api/combine-contacts/undo", () => {
     });
   };
 
-  const combineOnce = async (): Promise<string> => {
+  // `extraPrayers` pushes the write set past one transaction's limit.
+  const combineOnce = async (extraPrayers = 0): Promise<string> => {
     seedCombine();
+    for (let i = 0; i < extraPrayers; i++) seedDoc("prayers", `px${i}`, { contactId: "d1" });
     const res = await request(app)
       .post("/api/combine-contacts")
       .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
+    expect(getCollection("combineRecords")[res.body.combineRecordId].status).toBe("done");
     return res.body.combineRecordId as string;
   };
 
@@ -4084,6 +4181,101 @@ describe("POST /api/combine-contacts/undo", () => {
     // The first combine is still undoable once the later one is undone.
     expect(getCollection("combineRecords")[firstRecord].status).toBe("done");
   });
+
+  it.each([
+    { path: "one transaction", extraPrayers: 0 },
+    { path: "claim then batches", extraPrayers: 600 },
+  ])("lets exactly one of two concurrent undos through ($path)", async ({ extraPrayers }) => {
+    const recordId = await combineOnce(extraPrayers);
+    // The second undo runs to completion after the first has read the record.
+    let second: request.Response | undefined;
+    writeAfterFirstRead("combineRecords", async () => {
+      second = await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+    });
+
+    const first = await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect([first.status, second?.status].sort()).toEqual([200, 409]);
+    const undoEntries = Object.values(getCollection("activities")).filter(
+      (activity: any) => activity.action === "undid combine of",
+    );
+    expect(undoEntries).toHaveLength(1);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
+  });
+
+  it("retries an undo left in undoing once its claim has expired", async () => {
+    const recordId = await combineOnce(600);
+    // The undo fails after its first batch of writes has landed.
+    const realBatch = mockDb.batch;
+    let commits = 0;
+    const batchSpy = vi.spyOn(mockDb, "batch").mockImplementation(() => {
+      const batch = realBatch();
+      return {
+        ...batch,
+        commit: async () => {
+          if (++commits === 2) throw new Error("network");
+          return batch.commit();
+        },
+      };
+    });
+    const interrupted = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+    batchSpy.mockRestore();
+    expect(interrupted.status).toBe(500);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undoing");
+
+    // While the claim is fresh another undo may still be running: refuse.
+    const tooSoon = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+    expect(tooSoon.status).toBe(409);
+
+    seedDoc("combineRecords", recordId, {
+      ...getCollection("combineRecords")[recordId],
+      claimedAt: LONG_AGO,
+    });
+    const retried = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(retried.status).toBe(200);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
+    expect(getCollection("contacts")["d1"]).toMatchObject({ name: "In Name" });
+    expect(getCollection("contacts/d1/interactions")["i1"]).toMatchObject({ content: "hi" });
+    const prayers = Object.values(getCollection("prayers")) as any[];
+    expect(prayers.every((prayer) => prayer.contactId === "d1")).toBe(true);
+  });
+
+  it("keeps read-state a user marks while the combine and the undo are running", async () => {
+    seedCombine();
+    const markSeen = (key: string, stamp: string) => () => {
+      const state = getCollection("inboxState")["u2"];
+      seedDoc("inboxState", "u2", { ...state, seen: { ...state.seen, [key]: stamp } });
+    };
+
+    const combineSpy = writeAfterFirstRead("inboxState", markSeen("att:contact:zz", "t5"));
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    combineSpy.mockRestore();
+    expect(combineRes.status).toBe(200);
+    expect(getCollection("inboxState")["u2"].seen).toEqual({
+      "att:contact:s1": "t1",
+      "att:contact:zz": "t5",
+    });
+
+    writeAfterFirstRead("inboxState", markSeen("att:contact:yy", "t6"));
+    const undoRes = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(undoRes.status).toBe(200);
+    expect(getCollection("inboxState")["u2"]).toEqual({
+      seen: { "att:contact:d1": "t1", "att:contact:zz": "t5", "att:contact:yy": "t6" },
+      completed: { "att:contact:d1": "t2" },
+    });
+  });
 });
 
 describe("POST /api/combine-tags", () => {
@@ -4239,6 +4431,39 @@ describe("POST /api/combine-tags/undo", () => {
       .post("/api/combine-tags/undo")
       .send({ combineRecordId: recordId });
     expect(second.status).toBe(409);
+  });
+
+  it("lets exactly one of two concurrent undos through", async () => {
+    const recordId = await combineOnce();
+    // The second undo runs to completion after the first has read the record.
+    let second: request.Response | undefined;
+    writeAfterFirstRead("combineRecords", async () => {
+      second = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+    });
+
+    const first = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+
+    expect([first.status, second?.status].sort()).toEqual([200, 409]);
+    const undoEntries = Object.values(getCollection("activities")).filter(
+      (activity: any) => activity.action === "undid tag combine",
+    );
+    expect(undoEntries).toHaveLength(2);
+  });
+
+  it("refuses an undo whose claim is fresh and retries one whose claim has expired", async () => {
+    const recordId = await combineOnce();
+    const record = getCollection("combineRecords")[recordId];
+    seedDoc("combineRecords", recordId, { ...record, status: "undoing", claimedAt: new Date().toISOString() });
+
+    const tooSoon = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+    expect(tooSoon.status).toBe(409);
+
+    seedDoc("combineRecords", recordId, { ...record, status: "undoing", claimedAt: LONG_AGO });
+    const retried = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+
+    expect(retried.status).toBe(200);
+    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
   });
 
   it("returns 404 for a missing combine record", async () => {

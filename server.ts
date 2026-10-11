@@ -30,6 +30,128 @@ dotenv.config();
 
 const GITHUB_TITLE_MAX = 512;
 
+// ── Combine records: claims and transactions (ADR 0038) ─────────────────────
+// Firestore caps one transaction at 500 writes; the combine record takes one.
+const MAX_TRANSACTION_WRITES = 500;
+// A combine too large for one transaction claims its record as pending, and
+// an undo too large claims it as undoing, while the batches run. A claim older
+// than this is treated as interrupted: an undo may claim the record again and
+// replay it against the current state, which skips what already landed.
+const COMBINE_CLAIM_TTL_MS = 10 * 60 * 1000;
+
+type CombineWriteOp =
+  | { op: "set"; ref: any; data: Record<string, unknown> }
+  | { op: "update"; ref: any; data: Record<string, unknown> }
+  | { op: "delete"; ref: any };
+
+/** A refusal raised inside a combine or undo transaction, sent as-is. */
+class CombineRefusal extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+    readonly extra: Record<string, unknown> = {},
+  ) {
+    super(message);
+  }
+}
+
+function applyCombineWrite(writer: any, op: CombineWriteOp) {
+  if (op.op === "set") writer.set(op.ref, op.data);
+  else if (op.op === "update") writer.update(op.ref, op.data);
+  else writer.delete(op.ref);
+}
+
+async function commitInBatches(db: any, ops: CombineWriteOp[]) {
+  const BATCH_LIMIT = 400;
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    for (const op of ops.slice(i, i + BATCH_LIMIT)) applyCombineWrite(batch, op);
+    await batch.commit();
+  }
+}
+
+/**
+ * Inbox read-state is one map per axis per person. Write only the keys that
+ * differ, as field paths, so a key the person marks meanwhile is not lost to a
+ * stale copy of the whole map.
+ */
+function mapKeyUpdates(field: string, from: unknown, to: unknown): Record<string, unknown> {
+  const fromMap = (from ?? {}) as Record<string, unknown>;
+  const toMap = (to ?? {}) as Record<string, unknown>;
+  const updates: Record<string, unknown> = {};
+  for (const key of new Set([...Object.keys(fromMap), ...Object.keys(toMap)])) {
+    if (!(key in toMap)) updates[`${field}.${key}`] = FieldValue.delete();
+    else if (!(key in fromMap) || fromMap[key] !== toMap[key]) updates[`${field}.${key}`] = toMap[key];
+  }
+  return updates;
+}
+
+/** Refuses while either contact is part of another pending or undoing combine record. */
+async function refuseInFlightCombine(tx: any, db: any, contactIds: string[], ownRecordId?: string) {
+  const snap = await tx.get(
+    db.collection("combineRecords").where("status", "in", ["pending", "undoing"]),
+  );
+  const busy = snap.docs.find((d: any) => {
+    const data = d.data();
+    return d.id !== ownRecordId && (contactIds.includes(data.keptId) || contactIds.includes(data.combinedInId));
+  });
+  if (busy) {
+    throw new CombineRefusal(
+      409,
+      `One of these contacts is in another combine or undo that has not finished (${busy.id}). Wait for it to finish, or undo it if it was interrupted.`,
+      { inFlightCombineId: busy.id },
+    );
+  }
+}
+
+/** Whether an undo may claim this record: done, or a pending or undoing claim that has expired. */
+function undoClaimable(record: any): boolean {
+  if (record.status === "done") return true;
+  if (record.status !== "pending" && record.status !== "undoing") return false;
+  const claimedAt = Date.parse(record.claimedAt ?? record.combinedAt ?? "");
+  return Number.isNaN(claimedAt) || Date.now() - claimedAt >= COMBINE_CLAIM_TTL_MS;
+}
+
+/**
+ * Runs an undo's writes under a claim on its combine record, so two undos can
+ * never both apply. When the writes fit, one transaction claims the record,
+ * writes, and marks it undone. Otherwise a transaction moves it to undoing and
+ * the writes follow in batches; if they fail partway the record stays undoing
+ * until its claim expires, then any undo can claim it again and replay.
+ */
+async function undoUnderClaim(
+  db: any,
+  recordRef: any,
+  ops: CombineWriteOp[],
+  undone: Record<string, unknown>,
+  check?: (tx: any) => Promise<void>,
+) {
+  const claim = async (tx: any) => {
+    const snap = await tx.get(recordRef);
+    if (!snap.exists || !undoClaimable(snap.data())) {
+      throw new CombineRefusal(
+        409,
+        "This combine has already been undone, or another undo of it is still running",
+      );
+    }
+    if (check) await check(tx);
+  };
+  if (ops.length < MAX_TRANSACTION_WRITES) {
+    await db.runTransaction(async (tx: any) => {
+      await claim(tx);
+      for (const op of ops) applyCombineWrite(tx, op);
+      tx.update(recordRef, undone);
+    });
+    return;
+  }
+  await db.runTransaction(async (tx: any) => {
+    await claim(tx);
+    tx.update(recordRef, { status: "undoing", claimedAt: new Date().toISOString() });
+  });
+  await commitInBatches(db, ops);
+  await recordRef.update(undone);
+}
+
 export async function createApp() {
   const app = express();
 
@@ -2663,7 +2785,8 @@ ${JSON.stringify(contactsList)}`;
   // reference, rebuilds the same pure plan (src/lib/combineContactsPlan.ts),
   // moves the subcollection documents, re-points the references, refreshes
   // cached names, deletes the combined-in contact, and writes a permanent
-  // combine record that starts pending and ends done.
+  // combine record: all in one transaction when it fits, otherwise the record
+  // is claimed as pending while batches run, then marked done.
   app.post("/api/combine-contacts", standardRateLimiter, async (req, res) => {
     let actorId: string;
     let actorName: string;
@@ -2852,8 +2975,6 @@ ${JSON.stringify(contactsList)}`;
         return res.status(200).json({ success: true, dryRun: true, moves: plan.moves });
       }
 
-      // The record is written first, as pending, so a failure partway through
-      // leaves something that can be inspected.
       const reason = typeof req.body?.reason === "string" ? req.body.reason : "";
       const recordRef = db.collection("combineRecords").doc();
       // Stamp the banner every reader of the kept contact will see, and keep it
@@ -2864,7 +2985,7 @@ ${JSON.stringify(contactsList)}`;
         byName: actorName,
         combineRecordId: recordRef.id,
       };
-      await recordRef.set({
+      const record = {
         kind: "contacts",
         keptId,
         combinedInId,
@@ -2880,14 +3001,9 @@ ${JSON.stringify(contactsList)}`;
         combinedBy: actorId,
         combinedByName: actorName,
         combinedAt: now,
-      });
+      };
 
-      type WriteOp =
-        | { op: "set"; ref: any; data: Record<string, unknown> }
-        | { op: "update"; ref: any; data: Record<string, unknown> }
-        | { op: "delete"; ref: any };
-
-      const ops: WriteOp[] = [];
+      const ops: CombineWriteOp[] = [];
       ops.push({
         op: "update",
         ref: db.collection("contacts").doc(keptId),
@@ -2920,13 +3036,17 @@ ${JSON.stringify(contactsList)}`;
       >();
       for (const ref of plan.rewrittenReferences) {
         const key = `${ref.collection}/${ref.document}`;
+        const fields =
+          ref.collection === "inboxState"
+            ? mapKeyUpdates(ref.field, ref.before, ref.after)
+            : { [ref.field]: ref.after };
         const entry = byDocument.get(key);
-        if (entry) entry.data[ref.field] = ref.after;
+        if (entry) Object.assign(entry.data, fields);
         else
           byDocument.set(key, {
             collection: ref.collection,
             document: ref.document,
-            data: { [ref.field]: ref.after },
+            data: { ...fields },
           });
       }
       for (const entry of byDocument.values()) {
@@ -2938,21 +3058,48 @@ ${JSON.stringify(contactsList)}`;
       }
       ops.push({ op: "delete", ref: db.collection("contacts").doc(combinedInId) });
 
-      const BATCH_LIMIT = 400;
-      for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
-        const batch = db.batch();
-        for (const op of ops.slice(i, i + BATCH_LIMIT)) {
-          if (op.op === "set") batch.set(op.ref, op.data);
-          else if (op.op === "update") batch.update(op.ref, op.data);
-          else batch.delete(op.ref);
+      // Inside the transaction, re-check that both contacts are as the plan
+      // saw them and in no other unfinished combine or undo. Reading them there
+      // also makes a concurrent combine or undo that writes them conflict.
+      const guard = async (tx: any) => {
+        const [keptNow, combinedInNow] = await Promise.all([
+          tx.get(db.collection("contacts").doc(keptId)),
+          tx.get(db.collection("contacts").doc(combinedInId)),
+        ]);
+        if (
+          !keptNow.exists ||
+          !combinedInNow.exists ||
+          timestampMillis(keptNow.data()?.updatedAt) !== timestampMillis(keptSnap.data()?.updatedAt) ||
+          timestampMillis(combinedInNow.data()?.updatedAt) !==
+            timestampMillis(combinedInSnap.data()?.updatedAt)
+        ) {
+          throw new CombineRefusal(
+            409,
+            "One or both contacts changed since this preview was built. Rebuild the preview and try again.",
+            { conflict: true },
+          );
         }
-        await batch.commit();
-      }
+        await refuseInFlightCombine(tx, db, [keptId, combinedInId]);
+      };
 
-      await db.collection("combineRecords").doc(recordRef.id).update({
-        status: "done",
-        completedAt: new Date().toISOString(),
-      });
+      if (ops.length < MAX_TRANSACTION_WRITES) {
+        // The whole combine fits in one transaction: all of it lands or none.
+        await db.runTransaction(async (tx: any) => {
+          await guard(tx);
+          for (const op of ops) applyCombineWrite(tx, op);
+          tx.set(recordRef, { ...record, status: "done", completedAt: new Date().toISOString() });
+        });
+      } else {
+        // Too large for one transaction: claim the record as pending, then
+        // write in batches. A combine interrupted partway stays pending, which
+        // keeps both contacts out of other combines until it is undone.
+        await db.runTransaction(async (tx: any) => {
+          await guard(tx);
+          tx.set(recordRef, { ...record, status: "pending", claimedAt: now });
+        });
+        await commitInBatches(db, ops);
+        await recordRef.update({ status: "done", completedAt: new Date().toISOString() });
+      }
 
       await db.collection("activities").add({
         userId: actorId,
@@ -2969,6 +3116,9 @@ ${JSON.stringify(contactsList)}`;
 
       return res.status(200).json({ success: true, combineRecordId: recordRef.id });
     } catch (error: any) {
+      if (error instanceof CombineRefusal) {
+        return res.status(error.status).json({ success: false, error: error.message, ...error.extra });
+      }
       console.error("Combine Contacts Error:", error);
       return res
         .status(500)
@@ -3143,12 +3293,7 @@ ${JSON.stringify(contactsList)}`;
 
       const now = new Date().toISOString();
 
-      type WriteOp =
-        | { op: "set"; ref: any; data: Record<string, unknown> }
-        | { op: "update"; ref: any; data: Record<string, unknown> }
-        | { op: "delete"; ref: any };
-
-      const ops: WriteOp[] = [];
+      const ops: CombineWriteOp[] = [];
 
       // The kept contact is restored field by field, so later edits and later
       // additions survive.
@@ -3204,13 +3349,17 @@ ${JSON.stringify(contactsList)}`;
       >();
       for (const ref of plan.referenceReverts) {
         const key = `${ref.collection}/${ref.document}`;
+        const fields =
+          ref.collection === "inboxState"
+            ? mapKeyUpdates(ref.field, refDocs.get(key)?.[ref.field], ref.value)
+            : { [ref.field]: ref.value };
         const entry = byDocument.get(key);
-        if (entry) entry.data[ref.field] = ref.value;
+        if (entry) Object.assign(entry.data, fields);
         else
           byDocument.set(key, {
             collection: ref.collection,
             document: ref.document,
-            data: { [ref.field]: ref.value },
+            data: { ...fields },
           });
       }
       for (const entry of byDocument.values()) {
@@ -3221,23 +3370,13 @@ ${JSON.stringify(contactsList)}`;
         });
       }
 
-      const BATCH_LIMIT = 400;
-      for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
-        const batch = db.batch();
-        for (const op of ops.slice(i, i + BATCH_LIMIT)) {
-          if (op.op === "set") batch.set(op.ref, op.data);
-          else if (op.op === "update") batch.update(op.ref, op.data);
-          else batch.delete(op.ref);
-        }
-        await batch.commit();
-      }
-
-      await recordRef.update({
-        status: "undone",
-        undoneBy: actorId,
-        undoneByName: actorName,
-        undoneAt: now,
-      });
+      await undoUnderClaim(
+        db,
+        recordRef,
+        ops,
+        { status: "undone", undoneBy: actorId, undoneByName: actorName, undoneAt: now },
+        (tx) => refuseInFlightCombine(tx, db, [keptId, combinedInId], combineRecordId),
+      );
 
       await db.collection("activities").add({
         userId: actorId,
@@ -3254,6 +3393,9 @@ ${JSON.stringify(contactsList)}`;
 
       return res.status(200).json({ success: true, preview });
     } catch (error: any) {
+      if (error instanceof CombineRefusal) {
+        return res.status(error.status).json({ success: false, error: error.message, ...error.extra });
+      }
       console.error("Undo Combine Error:", error);
       return res
         .status(500)
@@ -3466,26 +3608,16 @@ ${JSON.stringify(contactsList)}`;
 
       const now = new Date().toISOString();
 
-      const BATCH_LIMIT = 400;
-      for (let i = 0; i < plan.restore.length; i += BATCH_LIMIT) {
-        const batch = db.batch();
-        for (const row of plan.restore.slice(i, i + BATCH_LIMIT)) {
-          batch.update(db.collection("contacts").doc(row.contactId), {
-            tags: row.before,
-            updatedAt: now,
-            updatedBy: actorId,
-            updatedByName: actorName,
-          });
-        }
-        await batch.commit();
-      }
-
-      await recordRef.update({
-        status: "undone",
-        undoneBy: actorId,
-        undoneByName: actorName,
-        undoneAt: now,
-      });
+      await undoUnderClaim(
+        db,
+        recordRef,
+        plan.restore.map((row) => ({
+          op: "update" as const,
+          ref: db.collection("contacts").doc(row.contactId),
+          data: { tags: row.before, updatedAt: now, updatedBy: actorId, updatedByName: actorName },
+        })),
+        { status: "undone", undoneBy: actorId, undoneByName: actorName, undoneAt: now },
+      );
 
       for (const row of plan.restore) {
         await db.collection("activities").add({
@@ -3509,6 +3641,9 @@ ${JSON.stringify(contactsList)}`;
         skippedCount: plan.skipped.length,
       });
     } catch (error: any) {
+      if (error instanceof CombineRefusal) {
+        return res.status(error.status).json({ success: false, error: error.message, ...error.extra });
+      }
       console.error("Undo Tag Combine Error:", error);
       return res
         .status(500)

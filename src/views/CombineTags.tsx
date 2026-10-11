@@ -33,7 +33,7 @@ const reasonLabel = (t: (key: string, fallback?: string) => string, guess: TagGu
 interface TagCombineRecord {
   id: string;
   kind?: string;
-  status: 'pending' | 'done' | 'undone';
+  status: 'pending' | 'done' | 'undoing' | 'undone';
   combinedByName?: string;
   combinedAt?: string;
   undoneByName?: string;

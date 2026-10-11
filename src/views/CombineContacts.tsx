@@ -41,7 +41,7 @@ interface CombineRecord {
   keptId: string;
   combinedInId: string;
   reason?: string;
-  status: 'pending' | 'done' | 'undone';
+  status: 'pending' | 'done' | 'undoing' | 'undone';
   combinedByName?: string;
   combinedAt?: string;
   undoneByName?: string;
