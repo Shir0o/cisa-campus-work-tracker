@@ -9,20 +9,15 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | Spec | Area |
 | --- | --- |
 | `permissions.spec.ts` | Role matrix: landing route, sidebar nav, route guards |
-| `settings-and-partners.spec.ts` | Admin settings, gospel partner assignments, role gating (#629) |
-| `walking-together-threads.spec.ts` | Contact threads, team confidentiality (#630) |
-| `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline (Full-timer/Student/Community; #631) |
-| `quick-capture.spec.ts` | NewContactModal: minimum payload, full disclosure, role gating, persistence (#628) |
+| `walking-together-threads.spec.ts` | Student contact threads, team confidentiality (#630; the Full-timer half lives in the Full-timer journey, #1477) |
+| `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline (Student/Community; the Full-timer half lives in the Full-timer journey, #1477; #631) |
+| `quick-capture.spec.ts` | NewContactModal role gating (Student/Community; the Full-timer half lives in the Full-timer journey, #1477; #628) |
 | `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
 | `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day/Questions), contact open without a crash, back-to-my-view (#1476) |
-| `feedback-submission.spec.ts` | Feedback form, kind selector, Send gating, admin triage access, role redirects, FAB presence (#628) |
-| `asks-questions-for-team.spec.ts` | Questions-for-the-team page, staff-only (#603, #645) |
+| `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; plus the retired Settings & partners, Directory roles, On our hearts roles, Announcements, Questions, Notes/admin triage, and Quick Capture/Journey-board specs (#1477) |
 | `notification-bell-deep-linking.spec.ts` | Notification bell deep-linking, contact modal routing, and chat room URL synchronization (#682) |
 | `outreach-signup.spec.ts` | Outreach view + public sign-up intake form |
-| `people-directory.spec.ts` | Directory access per role |
-| `prayer-carrying.spec.ts` | Prayer wall per role |
 | `gatherings-attendance.spec.ts` | Gatherings + attendance |
-| `announcements-flow.spec.ts` | Announcements UI/UX rework, broadcast wizard, thread replies, read receipts (#743) |
 
 ## Running
 
