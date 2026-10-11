@@ -1160,6 +1160,146 @@ function valuesEqual(a: unknown, b: unknown): boolean {
 /** Fields the combine stamps as bookkeeping, not person data. */
 const UNDO_META_FIELDS = new Set(['updatedAt', 'updatedByName', 'updatedBy', 'combinedFrom']);
 
+/** Rewritten references that hold a plain list of contact ids (`collection/field`). */
+const ID_LIST_REFERENCES = new Set([
+  'events/roster',
+  'events/rosterOverride',
+  'events/rosterOverrideBase',
+  'rhythms/roster',
+  'homes/members',
+  'visits/contactIds',
+  'userPreferences/personalContactIds',
+]);
+
+function dictValue(value: unknown): Dict {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Dict) : {};
+}
+
+/** Where the combined-in id goes back into a list: in the kept id's slot, or beside it. */
+interface ListRevert {
+  at: number;
+  insert: boolean;
+}
+
+/**
+ * Plans putting the combined-in id back into a list the combine rewrote. The
+ * entry is still as the combine left it only while the kept id is present and
+ * the combined-in id absent; otherwise null. A replaced entry turns back into
+ * the combined-in id. A de-duplicated one is re-inserted beside the kept
+ * contact, which keeps its own entry.
+ */
+function planListRevert(before: string[], current: string[], keptId: string, combinedInId: string): ListRevert | null {
+  const keptAt = current.indexOf(keptId);
+  if (keptAt === -1 || current.includes(combinedInId)) return null;
+  if (!before.includes(keptId)) return { at: keptAt, insert: false };
+  const combinedInFirst = before.indexOf(combinedInId) < before.indexOf(keptId);
+  return { at: combinedInFirst ? keptAt : keptAt + 1, insert: true };
+}
+
+function applyListRevert<T>(list: T[], op: ListRevert, value: T): T[] {
+  const next = [...list];
+  next.splice(op.at, op.insert ? 0 : 1, value);
+  return next;
+}
+
+/**
+ * Reverts the entries the combine rewrote in one list-shaped reference that
+ * has changed since, leaving every other entry alone. Returns the value to
+ * write (undefined when nothing reverts) and the labels of entries that could
+ * not be restored.
+ */
+function revertReferenceEntries(
+  ref: RewrittenReference,
+  currentValue: unknown,
+  keptId: string,
+  combinedInId: string,
+  visitReverts: Map<string, { op: ListRevert; before: string[] }>,
+): { value?: unknown; failed: string[] } {
+  const label = `${ref.collection}.${ref.field}`;
+  const kind = `${ref.collection}/${ref.field}`;
+
+  if (ID_LIST_REFERENCES.has(kind)) {
+    const op = planListRevert(listValue(ref.before), listValue(currentValue), keptId, combinedInId);
+    if (!op) return { failed: [label] };
+    return { value: applyListRevert(listValue(currentValue), op, combinedInId), failed: [] };
+  }
+
+  if (kind === 'visits/contactNames') {
+    // Names ride alongside the ids, so they follow the ids' revert.
+    const idsRevert = visitReverts.get(ref.document);
+    const names = Array.isArray(currentValue) ? (currentValue as unknown[]) : null;
+    if (!idsRevert || !names) return { failed: [label] };
+    const name = listValue(ref.before)[idsRevert.before.indexOf(combinedInId)] ?? '';
+    return { value: applyListRevert(names, idsRevert.op, name), failed: [] };
+  }
+
+  if (kind === 'events/attendance') {
+    const before = dictValue(ref.before);
+    const next: Dict = { ...dictValue(currentValue) };
+    const failed: string[] = [];
+    let reverted = false;
+    for (const key of ['present', 'absent']) {
+      const beforeList = listValue(before[key]);
+      if (!beforeList.includes(combinedInId)) continue;
+      const currentList = listValue(next[key]);
+      const op = planListRevert(beforeList, currentList, keptId, combinedInId);
+      if (!op) {
+        failed.push(`${label}.${key}`);
+        continue;
+      }
+      next[key] = applyListRevert(currentList, op, combinedInId);
+      reverted = true;
+    }
+    return reverted ? { value: next, failed } : { failed };
+  }
+
+  if (ref.collection === 'inboxState') {
+    const before = dictValue(ref.before);
+    const keptKey = inboxContactKey(keptId);
+    const combinedInKey = inboxContactKey(combinedInId);
+    const currentMap = dictValue(currentValue);
+    if (!(keptKey in currentMap) || combinedInKey in currentMap) return { failed: [label] };
+    const next: Dict = { ...currentMap, [combinedInKey]: before[combinedInKey] };
+    if (!(keptKey in before)) delete next[keptKey];
+    return { value: next, failed: [] };
+  }
+
+  if (kind === 'outreach/names') {
+    const before = Array.isArray(ref.before) ? (ref.before as Dict[]) : [];
+    const after = Array.isArray(ref.after) ? (ref.after as Dict[]) : [];
+    const next = Array.isArray(currentValue) ? [...(currentValue as Dict[])] : [];
+    const claimed = new Set<number>();
+    const failed: string[] = [];
+    let reverted = false;
+    before.forEach((original, i) => {
+      if (original?.contactId !== combinedInId) return;
+      const written = after[i] ?? {};
+      // The entry the combine wrote: still the kept contact under the written
+      // name, and the same outreach entry when entries carry an id.
+      const at = next.findIndex(
+        (entry, j) =>
+          !claimed.has(j) &&
+          entry?.contactId === written.contactId &&
+          entry?.name === written.name &&
+          (written.id === undefined || entry?.id === written.id),
+      );
+      if (at === -1) {
+        failed.push(label);
+        return;
+      }
+      claimed.add(at);
+      const restored: Dict = { ...next[at], contactId: original.contactId };
+      if ('name' in original) restored.name = original.name;
+      else delete restored.name;
+      next[at] = restored;
+      reverted = true;
+    });
+    return reverted ? { value: next, failed } : { failed };
+  }
+
+  return { failed: [label] };
+}
+
 /**
  * Plans the undo of a combine from the record and the current database.
  * Moved documents return with their current data, references and kept-contact
@@ -1213,9 +1353,29 @@ export function buildCombineUndoPlan(
 
   // Kept-contact fields revert only while they still equal what the combine
   // wrote. Merged lists lose only the members the combine added.
-  const setFields = new Set<string>(COMBINE_SET_FIELDS);
+  const setFields = new Set<string>([...COMBINE_SET_FIELDS, ...COMBINE_MERGED_FIELDS]);
   for (const [field, afterValue] of Object.entries(record.keptAfter)) {
     const beforeValue = record.keptBefore[field];
+
+    if (field === 'attendance') {
+      // The legacy per-event map loses only the events the combine added, and
+      // only while each still holds the value the combine wrote.
+      const beforeMap = dictValue(beforeValue);
+      const currentMap = dictValue(current.kept[field]);
+      const next: Dict = { ...currentMap };
+      for (const [event, written] of Object.entries(dictValue(afterValue))) {
+        if (event in beforeMap || !(event in currentMap)) continue;
+        if (valuesEqual(currentMap[event], written)) {
+          delete next[event];
+          goesBack.push({ kind: 'field', id: field, label: `${field}: ${event}` });
+        } else {
+          notRestored.push({ kind: 'field', label: `${field}.${event}` });
+        }
+      }
+      if (beforeValue === undefined && Object.keys(next).length === 0) keptUpdates.push({ field, remove: true });
+      else if (!valuesEqual(next, currentMap)) keptUpdates.push({ field, value: next });
+      continue;
+    }
 
     if (setFields.has(field)) {
       const beforeList = listValue(beforeValue);
@@ -1252,19 +1412,39 @@ export function buildCombineUndoPlan(
   }
 
   // A rewritten reference reverts only while it still holds the combine value.
+  // A list-shaped one that changed since reverts entry by entry: only entries
+  // still as the combine left them go back, and everything else stays.
+  const visitReverts = new Map<string, { op: ListRevert; before: string[] }>();
   for (const ref of record.rewrittenReferences) {
     const currentValue = current.referenceValues[referenceKey(ref.collection, ref.document, ref.field)];
+    if (ref.collection === 'visits' && ref.field === 'contactIds') {
+      const before = listValue(ref.before);
+      const op = planListRevert(before, listValue(currentValue), record.keptId, record.combinedInId);
+      if (op) visitReverts.set(ref.document, { op, before });
+    }
+    let value: unknown;
+    let failed: string[] = [];
     if (valuesEqual(currentValue, ref.after)) {
+      value = ref.before;
+    } else {
+      ({ value, failed } = revertReferenceEntries(
+        ref,
+        currentValue,
+        record.keptId,
+        record.combinedInId,
+        visitReverts,
+      ));
+    }
+    if (value !== undefined) {
       referenceReverts.push({
         collection: ref.collection,
         document: ref.document,
         field: ref.field,
-        value: ref.before,
+        value,
       });
       goesBack.push({ kind: 'reference', id: `${ref.collection}/${ref.document}`, label: ref.field });
-    } else {
-      notRestored.push({ kind: 'reference', label: `${ref.collection}.${ref.field}` });
     }
+    for (const label of failed) notRestored.push({ kind: 'reference', label });
   }
 
   return { goesBack, stays, notRestored, keptUpdates, movedBack, recreated, referenceReverts };

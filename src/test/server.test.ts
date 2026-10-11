@@ -3989,6 +3989,72 @@ describe("POST /api/combine-contacts/undo", () => {
     expect(getCollection("contacts")["s1"].tags).toEqual(["A", "C"]);
   });
 
+  it("restores the combined-in contact on a roster that gained a member since, keeping the new member", async () => {
+    const recordId = await combineOnce();
+    const event = getCollection("events")["e1"];
+    seedDoc("events", "e1", { ...event, roster: [...event.roster, "new"] });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("events")["e1"].roster).toEqual(["d1", "s1", "new"]);
+  });
+
+  it("restores the combined-in contact's inbox keys after another key was marked seen", async () => {
+    const recordId = await combineOnce();
+    const state = getCollection("inboxState")["u2"];
+    seedDoc("inboxState", "u2", { ...state, seen: { ...state.seen, "att:contact:zz": "t5" } });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("inboxState")["u2"]).toEqual({
+      seen: { "att:contact:d1": "t1", "att:contact:zz": "t5" },
+      completed: { "att:contact:d1": "t2" },
+    });
+  });
+
+  it("puts both contacts back on a visit the combine de-duplicated", async () => {
+    const recordId = await combineOnce();
+    expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
+    seedDoc("visits", "v1", { contactIds: ["s1", "v9"], contactNames: ["Kept Name", "Nine"] });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("visits")["v1"]).toEqual({
+      contactIds: ["d1", "s1", "v9"],
+      contactNames: ["In Name", "Kept Name", "Nine"],
+    });
+  });
+
+  it("re-adds no one to a home the kept contact was removed from, and reports it as not restored", async () => {
+    const recordId = await combineOnce();
+    seedDoc("homes", "h1", { ...getCollection("homes")["h1"], members: ["other"] });
+
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(getCollection("homes")["h1"].members).toEqual(["other"]);
+    expect(res.body.preview.notRestored).toContainEqual({ kind: "reference", label: "homes.members" });
+  });
+
+  it("keeps an interest added after the combine and removes the one the combine added", async () => {
+    seedCombine();
+    seedDoc("contacts", "s1", { ...getCollection("contacts")["s1"], interests: ["music"] });
+    seedDoc("contacts", "d1", { ...getCollection("contacts")["d1"], interests: ["art"] });
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    const kept = getCollection("contacts")["s1"];
+    expect(kept.interests).toEqual(["music", "art"]);
+    seedDoc("contacts", "s1", { ...kept, interests: ["music", "art", "chess"] });
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: res.body.combineRecordId });
+
+    expect(getCollection("contacts")["s1"].interests).toEqual(["music", "chess"]);
+  });
+
   it("refuses undo when the kept contact was later combined into someone else", async () => {
     const firstRecord = await combineOnce();
     seedDoc("contacts", "c1", {

@@ -902,6 +902,214 @@ describe('buildCombineUndoPlan', () => {
     expect(plan.keptUpdates.find((u) => u.field === 'combinedFrom')).toBeUndefined();
     expect(plan.notRestored).toEqual([]);
   });
+
+  describe('list-shaped references revert entry by entry', () => {
+    const planFor = (
+      refs: CombineUndoRecord['rewrittenReferences'],
+      values: Record<string, unknown>,
+    ) =>
+      buildCombineUndoPlan(
+        { ...record, rewrittenReferences: refs },
+        { ...baseCurrent(), referenceValues: values },
+      );
+
+    it('puts the combined-in contact back on a roster that gained a member since', () => {
+      const plan = planFor(
+        [{ collection: 'events', document: 'e1', field: 'roster', before: ['d1', 'x'], after: ['s1', 'x'] }],
+        { [referenceKey('events', 'e1', 'roster')]: ['s1', 'x', 'later'] },
+      );
+
+      expect(plan.referenceReverts).toEqual([
+        { collection: 'events', document: 'e1', field: 'roster', value: ['d1', 'x', 'later'] },
+      ]);
+      expect(plan.notRestored).toEqual([]);
+    });
+
+    it('restores a de-duplicated entry beside the kept contact, which keeps its own', () => {
+      const plan = planFor(
+        [{ collection: 'rhythms', document: 'r1', field: 'roster', before: ['d1', 's1'], after: ['s1'] }],
+        { [referenceKey('rhythms', 'r1', 'roster')]: ['s1', 'later'] },
+      );
+
+      expect(plan.referenceReverts[0]?.value).toEqual(['d1', 's1', 'later']);
+    });
+
+    it('restores the combined-in inbox key when another key was marked since', () => {
+      const plan = planFor(
+        [
+          {
+            collection: 'inboxState',
+            document: 'u2',
+            field: 'seen',
+            before: { 'att:contact:d1': 't1', 'att:task:q': 't0' },
+            after: { 'att:contact:s1': 't1', 'att:task:q': 't0' },
+          },
+        ],
+        {
+          [referenceKey('inboxState', 'u2', 'seen')]: {
+            'att:contact:s1': 't1',
+            'att:task:q': 't0',
+            'att:contact:z': 't9',
+          },
+        },
+      );
+
+      expect(plan.referenceReverts[0]?.value).toEqual({
+        'att:contact:d1': 't1',
+        'att:task:q': 't0',
+        'att:contact:z': 't9',
+      });
+      expect(plan.notRestored).toEqual([]);
+    });
+
+    it('keeps the kept contact\'s own inbox key when the combine de-duplicated it', () => {
+      const plan = planFor(
+        [
+          {
+            collection: 'inboxState',
+            document: 'u2',
+            field: 'completed',
+            before: { 'att:contact:d1': 't1', 'att:contact:s1': 't2' },
+            after: { 'att:contact:s1': 't2' },
+          },
+        ],
+        { [referenceKey('inboxState', 'u2', 'completed')]: { 'att:contact:s1': 't2', other: 't3' } },
+      );
+
+      expect(plan.referenceReverts[0]?.value).toEqual({
+        'att:contact:d1': 't1',
+        'att:contact:s1': 't2',
+        other: 't3',
+      });
+    });
+
+    it('puts both contacts back on a de-duplicated visit, names alongside', () => {
+      const plan = planFor(
+        [
+          { collection: 'visits', document: 'v1', field: 'contactIds', before: ['d1', 's1'], after: ['s1'] },
+          {
+            collection: 'visits',
+            document: 'v1',
+            field: 'contactNames',
+            before: ['In', 'Kept'],
+            after: ['Kept'],
+          },
+        ],
+        {
+          [referenceKey('visits', 'v1', 'contactIds')]: ['s1', 'n9'],
+          [referenceKey('visits', 'v1', 'contactNames')]: ['Kept', 'Nine'],
+        },
+      );
+
+      expect(plan.referenceReverts).toEqual([
+        { collection: 'visits', document: 'v1', field: 'contactIds', value: ['d1', 's1', 'n9'] },
+        { collection: 'visits', document: 'v1', field: 'contactNames', value: ['In', 'Kept', 'Nine'] },
+      ]);
+    });
+
+    it('re-adds no one to a home the kept contact was removed from, and reports it', () => {
+      const plan = planFor(
+        [{ collection: 'homes', document: 'h1', field: 'members', before: ['d1'], after: ['s1'] }],
+        { [referenceKey('homes', 'h1', 'members')]: ['other'] },
+      );
+
+      expect(plan.referenceReverts).toEqual([]);
+      expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'homes.members' });
+    });
+
+    it('reverts each attendance key on its own', () => {
+      const plan = planFor(
+        [
+          {
+            collection: 'events',
+            document: 'e1',
+            field: 'attendance',
+            before: { present: ['d1', 'x'], absent: ['d1'] },
+            after: { present: ['s1', 'x'], absent: ['s1'] },
+          },
+        ],
+        { [referenceKey('events', 'e1', 'attendance')]: { present: ['s1', 'x', 'y'], absent: [] } },
+      );
+
+      expect(plan.referenceReverts[0]?.value).toEqual({ present: ['d1', 'x', 'y'], absent: [] });
+      expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'events.attendance.absent' });
+    });
+
+    it('reverts the rewritten outreach entry and leaves entries added since', () => {
+      const plan = planFor(
+        [
+          {
+            collection: 'outreach',
+            document: 'o1',
+            field: 'names',
+            before: [{ id: 'ON-1', name: 'In', contactId: 'd1' }],
+            after: [{ id: 'ON-1', name: 'Kept', contactId: 's1' }],
+          },
+        ],
+        {
+          [referenceKey('outreach', 'o1', 'names')]: [
+            { id: 'ON-2', name: 'New', contactId: 'n2' },
+            { id: 'ON-1', name: 'Kept', contactId: 's1', note: 'later' },
+          ],
+        },
+      );
+
+      expect(plan.referenceReverts[0]?.value).toEqual([
+        { id: 'ON-2', name: 'New', contactId: 'n2' },
+        { id: 'ON-1', name: 'In', contactId: 'd1', note: 'later' },
+      ]);
+    });
+  });
+
+  describe('merged profile lists lose only the items the combine added', () => {
+    it('keeps an interest added after the combine and removes the one the combine added', () => {
+      const plan = buildCombineUndoPlan(
+        {
+          ...record,
+          keptBefore: { ...record.keptBefore, interests: ['music'], storyMessageIds: ['m1'] },
+          keptAfter: { ...record.keptAfter, interests: ['music', 'art'], storyMessageIds: ['m1', 'm2'] },
+        },
+        {
+          ...baseCurrent(),
+          kept: {
+            ...baseCurrent().kept,
+            interests: ['music', 'art', 'chess'],
+            storyMessageIds: ['m1', 'm2', 'm3'],
+          },
+        },
+      );
+
+      expect(plan.keptUpdates).toContainEqual({ field: 'interests', value: ['music', 'chess'] });
+      expect(plan.keptUpdates).toContainEqual({ field: 'storyMessageIds', value: ['m1', 'm3'] });
+      expect(plan.notRestored).toEqual([]);
+    });
+
+    it('removes only the unchanged attendance events the combine added', () => {
+      const plan = buildCombineUndoPlan(
+        {
+          ...record,
+          keptBefore: { ...record.keptBefore, attendance: { e1: 'present' } },
+          keptAfter: {
+            ...record.keptAfter,
+            attendance: { e1: 'present', e2: 'present', e3: 'absent' },
+          },
+        },
+        {
+          ...baseCurrent(),
+          kept: {
+            ...baseCurrent().kept,
+            attendance: { e1: 'present', e2: 'present', e3: 'present', e4: 'absent' },
+          },
+        },
+      );
+
+      expect(plan.keptUpdates).toContainEqual({
+        field: 'attendance',
+        value: { e1: 'present', e3: 'present', e4: 'absent' },
+      });
+      expect(plan.notRestored).toContainEqual({ kind: 'field', label: 'attendance.e3' });
+    });
+  });
 });
 
 describe('legacy contact shapes (#1472, escape rows 10, 17 and 20)', () => {
