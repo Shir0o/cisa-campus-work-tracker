@@ -5294,9 +5294,16 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(context.firestore(), 'contacts', 'c1'), {
           name: 'Alex Chen', email: 'alex@example.com', lastContactedDate: '2026-09-01T10:00',
         });
+        await setDoc(doc(context.firestore(), 'users', OWNER_UID, 'suggestionLinks', 'b1abcde'), {
+          bnpbContactId: 'p-1', contactId: 'c-old', updatedAt: '2026-09-01T00:00:00.000Z',
+        });
       });
       const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const staleLinks = await assertSucceeds(getDocs(query(
+        collection(owner, 'users', OWNER_UID, 'suggestionLinks'), where('bnpbContactId', '==', 'p-1'),
+      )));
       const batch = writeBatch(owner);
+      for (const entry of staleLinks.docs) batch.delete(entry.ref);
       batch.set(doc(collection(owner, 'contacts', 'c1', 'interactions')), {
         userId: OWNER_UID, userName: 'Owner', userPhoto: '', content: 'Coffee and a walk',
         dateTime: '2026-09-10T08:00', type: 'meeting', duration: '45 min', createdAt: serverTimestamp(),
@@ -5310,6 +5317,21 @@ describeRules('Firestore Security Rules', () => {
       batch.set(doc(owner, 'users', OWNER_UID, 'suggestionLinks', 'link-new'), {
         bnpbContactId: 'p-1', contactId: 'c1', updatedAt: serverTimestamp(),
       });
+      await assertSucceeds(batch.commit());
+    });
+
+    it('lets the owner find and delete every Not a CISA person choice for a BNPB contact', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', OWNER_UID, 'notACisaPeople', 'b1abcde'), {
+          bnpbContactId: 'p-1', createdAt: '2026-09-01T00:00:00.000Z',
+        });
+      });
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const choices = await assertSucceeds(getDocs(query(
+        collection(owner, 'users', OWNER_UID, 'notACisaPeople'), where('bnpbContactId', '==', 'p-1'),
+      )));
+      const batch = writeBatch(owner);
+      for (const entry of choices.docs) batch.delete(entry.ref);
       await assertSucceeds(batch.commit());
     });
 

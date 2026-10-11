@@ -25,6 +25,7 @@ const hoisted = vi.hoisted(() => {
   return {
     batch,
     nextId: () => `generated-${++seq}`,
+    mockGetDocs: vi.fn(async (_query?: unknown) => ({ docs: [] as Array<{ id: string }> })),
     mockOnSnapshot: vi.fn((_query?: unknown, callback?: unknown) => {
       if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs: [] });
       return vi.fn();
@@ -42,6 +43,8 @@ vi.mock('firebase/firestore', () => ({
   }),
   writeBatch: vi.fn(() => hoisted.batch),
   onSnapshot: hoisted.mockOnSnapshot,
+  getDocs: hoisted.mockGetDocs,
+  where: vi.fn((...args: unknown[]) => ({ where: args })),
   query: vi.fn((...args: unknown[]) => ({ args })),
   orderBy: vi.fn((...args: unknown[]) => ({ args })),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
@@ -72,10 +75,12 @@ import {
   monthKey,
   nameSimilarity,
   normalizeName,
+  notACisaPersonId,
   orderPendingSuggestions,
   subscribeContactInteractions,
   subscribePendingSuggestions,
   subscribeSuggestionLinks,
+  suggestionLinkId,
   undoSuggestionDismiss,
   undoNotACisaPerson,
 } from '../lib/bnpb';
@@ -307,6 +312,25 @@ describe('confirmSuggestion', () => {
     expect(contactUpdate()).toBeUndefined();
   });
 
+  it('replaces any other link doc for the same BNPB contact so the new one wins', async () => {
+    const linkId = await suggestionLinkId('p-1');
+    hoisted.batch.delete.mockClear();
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [{ id: 'b1abcde' }, { id: linkId }] });
+
+    await confirmOnto({});
+
+    const [queried] = hoisted.mockGetDocs.mock.calls[hoisted.mockGetDocs.mock.calls.length - 1];
+    expect(JSON.stringify(queried)).toContain(SUGGESTION_LINKS_SUBCOLLECTION);
+    expect(JSON.stringify(queried)).toContain('"bnpbContactId","==","p-1"');
+    expect(hoisted.batch.delete.mock.calls.map(([ref]) => ref.path)).toEqual([
+      `users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/b1abcde`,
+    ]);
+    const link = hoisted.batch.set.mock.calls.find(([ref]) =>
+      ref.path.startsWith(`users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/`),
+    );
+    expect(link![0].path).toBe(`users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/${linkId}`);
+  });
+
   it('refuses to confirm onto a contact the person cannot see', async () => {
     await expect(
       confirmSuggestion({
@@ -410,6 +434,41 @@ describe('undoNotACisaPerson', () => {
     ]);
     expect(updates[0][1].status).toBe('pending');
     expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('undoNotACisaPerson with choices under older ids', () => {
+  beforeEach(() => {
+    hoisted.batch.delete.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('deletes every choice recorded for the BNPB contact, whatever its id', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [{ id: 'b1abcde' }] });
+
+    await undoNotACisaPerson({ uid: 'u1', bnpbContactId: 'p-1', suggestionIds: [] });
+
+    const [queried] = hoisted.mockGetDocs.mock.calls[hoisted.mockGetDocs.mock.calls.length - 1];
+    expect(JSON.stringify(queried)).toContain(NOT_A_CISA_PERSON_SUBCOLLECTION);
+    expect(JSON.stringify(queried)).toContain('"bnpbContactId","==","p-1"');
+    const deleted = hoisted.batch.delete.mock.calls.map(([ref]) => ref.path).sort();
+    expect(deleted).toEqual(
+      [
+        `users/u1/${NOT_A_CISA_PERSON_SUBCOLLECTION}/b1abcde`,
+        `users/u1/${NOT_A_CISA_PERSON_SUBCOLLECTION}/${await notACisaPersonId('p-1')}`,
+      ].sort(),
+    );
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('suggestionLinkId and notACisaPersonId', () => {
+  it('are deterministic, Firestore-safe and do not collide like a 32-bit hash', async () => {
+    // "Aa" and "BB" share a 32-bit Java-style string hash.
+    expect(await suggestionLinkId('Aa')).not.toBe(await suggestionLinkId('BB'));
+    expect(await notACisaPersonId('Aa')).not.toBe(await notACisaPersonId('BB'));
+    expect(await suggestionLinkId('p/1 é')).toBe(await suggestionLinkId('p/1 é'));
+    expect(await suggestionLinkId('p/1 é')).toMatch(/^[a-zA-Z0-9_-]{1,128}$/);
   });
 });
 

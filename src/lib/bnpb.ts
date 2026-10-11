@@ -10,10 +10,12 @@ import {
   collection,
   deleteField,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -515,14 +517,23 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
     batch.update(doc(db, 'contacts', contact.id), activityPatch as Record<string, unknown>);
   }
 
-  batch.set(
-    doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, suggestionLinkId(suggestion.bnpbContactId)),
-    {
-      bnpbContactId: suggestion.bnpbContactId,
-      contactId: contact.id,
-      updatedAt: serverTimestamp(),
-    },
+  // One link per BNPB contact: any other doc for it (an older id scheme, say)
+  // goes in the same batch, so subscribeSuggestionLinks can only read this one.
+  const linkId = await suggestionLinkId(suggestion.bnpbContactId);
+  const existingLinks = await getDocs(
+    query(
+      collection(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION),
+      where('bnpbContactId', '==', suggestion.bnpbContactId),
+    ),
   );
+  for (const entry of existingLinks.docs) {
+    if (entry.id !== linkId) batch.delete(doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, entry.id));
+  }
+  batch.set(doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, linkId), {
+    bnpbContactId: suggestion.bnpbContactId,
+    contactId: contact.id,
+    updatedAt: serverTimestamp(),
+  });
 
   try {
     await batch.commit();
@@ -562,21 +573,25 @@ export async function assignContactToSuggestions(input: AssignContactInput): Pro
 }
 
 /** Firestore-safe, deterministic link id for a BNPB contact. */
-export function suggestionLinkId(bnpbContactId: string): string {
+export function suggestionLinkId(bnpbContactId: string): Promise<string> {
   return hashId(bnpbContactId);
 }
 
 /** Firestore-safe, deterministic choice id for a BNPB contact. */
-export function notACisaPersonId(bnpbContactId: string): string {
+export function notACisaPersonId(bnpbContactId: string): Promise<string> {
   return hashId(bnpbContactId);
 }
 
-function hashId(bnpbContactId: string): string {
-  let hash = 0;
-  for (let i = 0; i < bnpbContactId.length; i += 1) {
-    hash = (hash * 31 + bnpbContactId.charCodeAt(i)) | 0;
-  }
-  return `b${(hash >>> 0).toString(36)}`;
+/**
+ * SHA-256 hex prefix of the BNPB contact id, like the server's suggestion ids:
+ * collision-safe, where the earlier 32-bit hash let two people share a doc.
+ * Docs written under that older id are found by `bnpbContactId` instead.
+ */
+async function hashId(bnpbContactId: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bnpbContactId));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 40);
 }
 
 export interface DismissSuggestionInput {
@@ -635,8 +650,9 @@ export async function markNotACisaPerson(input: MarkNotACisaPersonInput): Promis
   const affected = suggestions.filter(
     (s) => s.bnpbContactId === bnpbContactId && s.status === 'pending',
   );
+  const choiceId = await notACisaPersonId(bnpbContactId);
   const batch = writeBatch(db);
-  batch.set(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, notACisaPersonId(bnpbContactId)), {
+  batch.set(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, choiceId), {
     bnpbContactId,
     createdAt: serverTimestamp(),
   });
@@ -660,8 +676,19 @@ export interface UndoNotACisaPersonInput {
 /** Removes a "Not a CISA person" choice and restores only what it dismissed. */
 export async function undoNotACisaPerson(input: UndoNotACisaPersonInput): Promise<void> {
   const { uid, bnpbContactId, suggestionIds } = input;
+  // Every choice for this BNPB contact, including any under an older id.
+  const choiceIds = new Set([await notACisaPersonId(bnpbContactId)]);
+  const recorded = await getDocs(
+    query(
+      collection(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION),
+      where('bnpbContactId', '==', bnpbContactId),
+    ),
+  );
+  for (const entry of recorded.docs) choiceIds.add(entry.id);
   const batch = writeBatch(db);
-  batch.delete(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, notACisaPersonId(bnpbContactId)));
+  for (const choiceId of choiceIds) {
+    batch.delete(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, choiceId));
+  }
   for (const suggestionId of suggestionIds) {
     batch.update(doc(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION, suggestionId), {
       status: 'pending',
