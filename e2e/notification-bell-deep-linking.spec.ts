@@ -13,15 +13,13 @@ test.describe('Notification Bell Deep-Linking & Routing User Stories (#682)', ()
     await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
 
     // 3. Contact Details modal opens immediately with Lila Chen's information
-    //    (titled "Contact details" since #1521; the name is an "About …" button).
-    const dialog = page.getByRole('dialog', { name: /contact details/i });
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
-    await expect(dialog.getByText('Lila Chen').first()).toBeVisible();
+    //    (the name is an "About …" button).
+    await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('First Contact').first()).toBeVisible();
 
     // 4. Test query parameter deep-link with ?tab=thread (/people/e2e-contact-lila?tab=thread)
     await page.goto('/people/e2e-contact-lila?tab=thread');
-    await expect(page.getByRole('dialog', { name: /contact details/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible({ timeout: 10_000 });
   });
 

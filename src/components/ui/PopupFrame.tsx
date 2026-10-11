@@ -8,7 +8,7 @@
 // existing Ink tokens so dark mode follows automatically; radii follow the
 // ADR 0009 ladder (dialog 24, nested panels 14, controls 10, pills full).
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, motion, type PanInfo } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, ArrowLeft, Check, Loader2, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../LanguageProvider';
@@ -27,6 +27,15 @@ const AVATAR_HUES = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum',
  *  popup opened on top of another (e.g. the Home editor from Log a visit) owns
  *  the keyboard without the one underneath also handling the same key. */
 const OPEN_DIALOGS: symbol[] = [];
+
+/** What Tab can reach inside a popup, for the focus trap. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** A drag on the phone sheet's handle or header dismisses it past this far
+ *  (px) or this fast (px/s); short of that it springs back. */
+const SWIPE_DISTANCE = 96;
+const SWIPE_VELOCITY = 480;
 
 /** A person keeps the same avatar tint every time, derived from their id. */
 export function avatarTint(seed: string): React.CSSProperties {
@@ -161,7 +170,12 @@ export interface PopupFrameProps {
   error?: { message: string; retryLabel: string; onRetry: () => void } | null;
   /** The footer is optional: a read-only popup (e.g. the Homes list) has none. */
   cancelLabel?: string;
+  /** Cancel discards the popup's work, so when dirty it asks first, then calls
+   *  this (not `onClose` — in the Homes editor Cancel means "back to the list"). */
   onCancel?: () => void;
+  /** Set false when Cancel is a step back that keeps the work (Smart import's
+   *  "Back to text"), so it never asks. */
+  cancelDiscards?: boolean;
   primary?: {
     label: string;
     onClick: () => void;
@@ -190,6 +204,7 @@ export function PopupFrame({
   error,
   cancelLabel,
   onCancel,
+  cancelDiscards = true,
   primary,
   children,
 }: PopupFrameProps) {
@@ -204,7 +219,20 @@ export function PopupFrame({
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const tokenRef = useRef<symbol>(Symbol('popup'));
-  const [pending, setPending] = useState<null | 'close' | 'back'>(null);
+  const [pending, setPending] = useState<null | 'close' | 'back' | 'cancel'>(null);
+  // Where focus was when the discard question opened, to return it on Keep editing.
+  const askedFromRef = useRef<HTMLElement | null>(null);
+  const keepEditingRef = useRef<HTMLButtonElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  // The last keydown that bubbled through this dialog's React tree — which
+  // includes its portals (e.g. a date picker's calendar), so the focus trap
+  // can leave those alone.
+  const ownKeyRef = useRef<Event | null>(null);
+  // An in-progress drag of the phone sheet: where it started, the last
+  // sample, and the speed at that sample.
+  const dragRef = useRef<{ startY: number; y: number; t: number; v: number } | null>(null);
+  // The on-screen keyboard's overlap, from visualViewport (null when none).
+  const [keyboardFit, setKeyboardFit] = useState<null | { height: number; bottom: number }>(null);
 
   const question = discardQuestion ?? t('popup.discard_question').replace('{noun}', noun ?? '');
 
@@ -233,30 +261,139 @@ export function PopupFrame({
     };
   }, [open]);
 
+  const ask = (action: 'close' | 'back' | 'cancel') => {
+    askedFromRef.current = document.activeElement as HTMLElement | null;
+    setPending(action);
+  };
+  const keepEditing = () => {
+    setPending(null);
+    // A scrim tap leaves focus on the page; come back to the dialog instead.
+    const from = askedFromRef.current;
+    (from && dialogRef.current?.contains(from) ? from : dialogRef.current)?.focus();
+  };
   const requestClose = () => {
-    if (dirty) setPending('close');
+    if (dirty) ask('close');
     else onClose();
   };
   const requestBack = () => {
-    if (dirty) setPending('back');
+    if (dirty) ask('back');
     else onBack?.();
   };
+  const requestCancel = () => {
+    if (dirty && cancelDiscards) ask('cancel');
+    else onCancel?.();
+  };
 
-  // A swipe down far enough (or fast enough) dismisses the phone sheet, through
-  // the same dirty-confirm path as Close and the scrim.
-  const onSheetDragEnd = (_e: unknown, info: PanInfo) => {
-    if (info.offset.y > 96 || info.velocity.y > 480) requestClose();
+  // When the footer swaps to a rejected save, the button that was clicked has
+  // gone; land on Try again rather than the page behind the dialog.
+  const hasError = !!error;
+  useEffect(() => {
+    if (hasError) retryRef.current?.focus();
+  }, [hasError]);
+
+  // The discard question takes focus as it opens.
+  useEffect(() => {
+    if (pending) keepEditingRef.current?.focus();
+  }, [pending]);
+
+  // The phone sheet follows a downward drag that starts on its handle or
+  // header (not on a button there). Far or fast enough dismisses it through
+  // the same dirty-confirm path as Close and the scrim; short of that it
+  // springs back. The offset is the CSS `translate` property, which composes
+  // with the transform motion animates, so the exit slides on from where the
+  // finger let go.
+  const setSheetOffset = (y: number, animate: boolean) => {
+    const el = dialogRef.current;
+    if (!el) return;
+    el.style.transition = animate ? 'translate 200ms ease-out' : 'none';
+    el.style.translate = y > 0 ? `0 ${y}px` : '';
+  };
+  const onDragStart = (e: React.PointerEvent<HTMLElement>) => {
+    if (!sheet || e.button !== 0 || (e.target as Element).closest('button, a, input, textarea, select')) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    dragRef.current = { startY: e.clientY, y: e.clientY, t: performance.now(), v: 0 };
+  };
+  const onDragMove = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const now = performance.now();
+    if (now > drag.t) drag.v = ((e.clientY - drag.y) / (now - drag.t)) * 1000;
+    drag.y = e.clientY;
+    drag.t = now;
+    setSheetOffset(Math.max(0, e.clientY - drag.startY), false);
+  };
+  const onDragEnd = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    dragRef.current = null;
+    const offset = Math.max(0, e.clientY - drag.startY);
+    // A finger that paused before lifting isn't flicking.
+    const velocity = performance.now() - drag.t < 100 ? drag.v : 0;
+    const dismiss = e.type === 'pointerup' && (offset > SWIPE_DISTANCE || velocity > SWIPE_VELOCITY);
+    if (dismiss) requestClose();
+    if (!dismiss || dirty) setSheetOffset(0, true);
+  };
+  const dragHandlers = sheet
+    ? { onPointerDown: onDragStart, onPointerMove: onDragMove, onPointerUp: onDragEnd, onPointerCancel: onDragEnd }
+    : {};
+
+  // On a phone, the on-screen keyboard shrinks the visual viewport but not
+  // dvh, so the pinned footer would sit under it. While the sheet is open,
+  // fit it to the visible area instead.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!open || !sheet || !vv) return;
+    const fit = () => {
+      const bottom = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      setKeyboardFit(bottom > 0 ? { height: Math.round(vv.height * 0.92), bottom } : null);
+    };
+    fit();
+    vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);
+    return () => {
+      vv.removeEventListener('resize', fit);
+      vv.removeEventListener('scroll', fit);
+      setKeyboardFit(null);
+    };
+  }, [open, sheet]);
+
+  // Tab and Shift+Tab cycle within the dialog (within the discard question
+  // while it's open), and pull focus back in if it has slipped out.
+  const trapTab = (e: KeyboardEvent) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const active = document.activeElement;
+    // Focus in one of this popup's own portals keeps its own Tab order.
+    if (ownKeyRef.current === e && !dialog.contains(active)) return;
+    const root = (pending && dialog.querySelector<HTMLElement>('[role="alertdialog"]')) || dialog;
+    const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (el) => el.checkVisibility?.() ?? true,
+    );
+    const first = items[0];
+    const last = items[items.length - 1];
+    const inside = active !== root && root.contains(active);
+    if (!first) {
+      e.preventDefault();
+      root.focus();
+    } else if (e.shiftKey ? !inside || active === first : !inside || active === last) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    }
   };
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      // Only the topmost open popup owns Escape, so a popup opened on top of
-      // another doesn't make both ask about discarding at once.
+      if (e.key !== 'Escape' && e.key !== 'Tab') return;
+      // Only the topmost open popup owns the keyboard, so a popup opened on
+      // top of another doesn't make both ask about discarding at once.
       if (OPEN_DIALOGS[OPEN_DIALOGS.length - 1] !== tokenRef.current) return;
+      if (e.key === 'Tab') {
+        trapTab(e);
+        return;
+      }
       if (pending) {
-        setPending(null);
+        keepEditing();
         return;
       }
       requestClose();
@@ -294,6 +431,10 @@ export function PopupFrame({
             aria-modal="true"
             aria-labelledby={titleId}
             tabIndex={-1}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              ownKeyRef.current = e.nativeEvent;
+            }}
+            style={keyboardFit ? { height: keyboardFit.height, maxHeight: keyboardFit.height, marginBottom: keyboardFit.bottom } : undefined}
             className={cn(
               'relative flex w-full flex-col overflow-hidden bg-[var(--bg-elev)] shadow-[var(--shadow-pop)] outline-none',
               isSide
@@ -304,22 +445,22 @@ export function PopupFrame({
                   ),
             )}
           >
+            {/* The handle is decoration for the drag, not a control: a tap on
+                it does nothing, and the Close button is the accessible way out. */}
             {sheet && (
-              <motion.button
-                type="button"
-                onClick={requestClose}
-                aria-label={t('popup.dismiss_sheet')}
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={{ top: 0, bottom: 0.5 }}
-                onDragEnd={onSheetDragEnd}
+              <div
+                aria-hidden="true"
+                {...dragHandlers}
                 data-testid="popup-sheet-grabber"
-                className="group flex h-11 w-full shrink-0 cursor-grab items-center justify-center active:cursor-grabbing"
+                className="group flex h-11 w-full shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
               >
-                <span aria-hidden="true" className="h-1.5 w-10 rounded-full bg-outline-variant transition-colors group-hover:bg-outline" />
-              </motion.button>
+                <span className="h-1.5 w-10 rounded-full bg-outline-variant transition-colors group-hover:bg-outline" />
+              </div>
             )}
-            <header className={cn('flex items-start gap-3 px-7', sheet ? 'pb-4 pt-1' : 'pb-5 pt-6')}>
+            <header
+              {...dragHandlers}
+              className={cn('flex items-start gap-3 px-7', sheet ? 'touch-none pb-4 pt-1' : 'pb-5 pt-6')}
+            >
               {onBack && (
                 <button
                   type="button"
@@ -371,6 +512,7 @@ export function PopupFrame({
                       <span className="truncate">{error.message}</span>
                     </p>
                     <button
+                      ref={retryRef}
                       type="button"
                       onClick={error.onRetry}
                       className={cn(
@@ -399,7 +541,7 @@ export function PopupFrame({
                     {cancelLabel && (
                       <button
                         type="button"
-                        onClick={onCancel}
+                        onClick={requestCancel}
                         className="h-11 rounded-full px-4 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
                       >
                         {cancelLabel}
@@ -435,8 +577,9 @@ export function PopupFrame({
                   <p className="text-sm font-medium text-on-surface">{question}</p>
                   <div className="mt-4 flex justify-end gap-2">
                     <button
+                      ref={keepEditingRef}
                       type="button"
-                      onClick={() => setPending(null)}
+                      onClick={keepEditing}
                       className={cn(
                         'rounded-full px-4 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface',
                         sheet ? 'h-11' : 'py-2',
@@ -449,8 +592,15 @@ export function PopupFrame({
                       onClick={() => {
                         const action = pending;
                         setPending(null);
+                        if (action === 'close') {
+                          onClose();
+                          return;
+                        }
+                        // Back and Cancel may leave the popup open on another
+                        // view (the Homes list); keep focus inside it.
+                        dialogRef.current?.focus();
                         if (action === 'back') onBack?.();
-                        else onClose();
+                        else onCancel?.();
                       }}
                       className={cn(
                         'rounded-full bg-primary px-4 text-sm font-medium text-on-primary',

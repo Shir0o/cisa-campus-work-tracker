@@ -261,6 +261,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
       noun={t('modals.smartImport.import_noun')}
       cancelLabel={showCancel ? cancelLabel : undefined}
       onCancel={step === 'preview' ? () => setStep('input') : handleClose}
+      cancelDiscards={step !== 'preview'}
       primary={primary}
     >
         {/* Modal Body */}

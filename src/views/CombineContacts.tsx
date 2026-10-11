@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   collection,
   getCountFromServer,
@@ -8,12 +8,12 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-import { Check, Loader2, Repeat, Undo2 } from 'lucide-react';
+import { Check, Loader2, Repeat, Undo2, Users } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useLanguage } from '../components/LanguageProvider';
 import { useAuth } from '../components/AuthProvider';
+import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
-import { PopupFrame } from '../components/ui/PopupFrame';
 import {
   findCombineCandidates,
   mergeContactProfiles,
@@ -160,7 +160,6 @@ const renderValue = (value: string | string[]): string => {
 export default function CombineContacts() {
   const { t } = useLanguage();
   const { effectiveUserId, effectiveUserName } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // A pair the Full-timer picked in the directory (issue #1433) arrives as two
   // query params. It goes through the same review, without a match reason.
@@ -484,27 +483,20 @@ export default function CombineContacts() {
     }
   };
 
-  const dirty =
-    Object.keys(picksByPair).length > 0 || swappedKeys.size > 0 || skipped.size > 0;
-
   return (
-    <PopupFrame
-      open
-      onClose={() => navigate('/directory')}
-      size="lg"
-      title={t('combine_contacts.title', 'Combine contacts')}
-      subtitle={t('combine_contacts.subtitle', 'Review detected duplicate contacts before combining.')}
-      dirty={dirty}
-      discardQuestion={t('combine_contacts.discard', 'Discard the combines you have reviewed?')}
-      cancelLabel={t('actions.cancel', 'Cancel')}
-      onCancel={() => navigate('/directory')}
-      primary={{
-        label: t('actions.done', 'Done'),
-        onClick: () => navigate('/directory'),
-        savingLabel: t('actions.done', 'Done'),
-      }}
-    >
-      <div className="px-7 py-5">
+    <PageContainer>
+      <header className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-serif text-3xl text-on-surface flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary" />
+            {t('combine_contacts.title', 'Combine contacts')}
+          </h1>
+          <p className="text-sm text-on-surface-variant mt-1">
+            {t('combine_contacts.subtitle', 'Review detected duplicate contacts before combining.')}
+          </p>
+        </div>
+      </header>
+
       <div
         role="tablist"
         aria-label={t('combine_contacts.tabs', 'Combine contacts sections')}
@@ -931,7 +923,6 @@ export default function CombineContacts() {
           })}
         </div>
       )}
-      </div>
-    </PopupFrame>
+    </PageContainer>
   );
 }

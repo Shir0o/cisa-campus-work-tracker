@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
 import { addThreadMessage, closeFollowUpAsk, reopenFollowUpAsk } from '../lib/threads';
@@ -116,12 +116,6 @@ const mockContact = {
   notes: 'Some notes about John Doe.',
   initials: 'JD',
 };
-
-// The shared popup frame focuses its first field on open via
-// requestAnimationFrame. jsdom schedules that ~16ms out, which races the
-// userEvent typing in these tests. Run the callback synchronously so focus
-// lands before the test types.
-beforeAll(() => {});
 
 describe('ContactDetailsModal Component', () => {
   const mockOnClose = vi.fn();
@@ -314,20 +308,34 @@ describe('ContactDetailsModal Component', () => {
     expect(container.querySelector('.cd-page-main')).toBeTruthy();
     // The aside is gone — its sections live in Overview now.
     expect(container.querySelector('.cd-page-aside')).toBeNull();
-    // It renders through the shared popup frame (#1454): a labelled dialog
-    // rather than a bare page.
-    expect(screen.getByRole('dialog', { name: 'Contact details' })).toBeInTheDocument();
+    // No popup chrome: no backdrop, no dialog role, no max-w-2xl card.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container.querySelector('.bg-black\\/40')).toBeNull();
   });
 
-  it('renders through the shared popup frame with its pinned footer (#1454)', () => {
-    render(
+  it('is a page, not a popup: editing uses the page footer, not a frame (ADR 0034)', () => {
+    const { container } = render(
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
     );
-    expect(screen.getByRole('dialog', { name: 'Contact details' })).toBeInTheDocument();
-    // Editing surfaces the frame's pinned footer: Cancel + one primary.
     fireEvent.click(openEditMenu());
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Save changes/i })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const foot = container.querySelector('.cd-page-foot') as HTMLElement;
+    expect(foot).toBeTruthy();
+    expect(within(foot).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(within(foot).getByRole('button', { name: /Save changes/i })).toHaveAttribute(
+      'form',
+      'edit-contact-form',
+    );
+  });
+
+  it('is a page on a phone too: no bottom sheet, grabber or scrim (ADR 0034)', () => {
+    const { container } = renderOnPhone(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+    expect(container.querySelector('.cdm-page')).toBeTruthy();
+    expect(screen.queryByTestId('popup-sheet-grabber')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container.querySelector('.bg-black\\/40')).toBeNull();
   });
   it('About sheet holds the profile fields, prayer count and delete entry point', () => {
     render(

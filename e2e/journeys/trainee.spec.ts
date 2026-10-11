@@ -91,8 +91,9 @@ test.describe('Trainee journey (#1475)', () => {
       .filter({ has: page.getByRole('heading', { name: 'Your people' }) });
     await yourPeople.getByText(CARE_CONTACT).first().click();
 
-    const dialog = page.getByRole('dialog', { name: /contact details/i });
-    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    // The contact page is a route page in the shell's <main>, not a popup (#1560).
+    const dialog = page.getByRole('main');
+    await expect(dialog.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({ timeout: 5_000 });
 
     // Row 5 web analogue: a trainee has no Full-timers switch and never sees the
     // team-confidential post — only the shared Conversation.
@@ -185,8 +186,9 @@ test.describe('Trainee journey on a mobile viewport (#1475)', () => {
     await waitForShell(page);
     await page.getByText(CARE_CONTACT).first().click();
 
-    const dialog = page.getByRole('dialog', { name: /contact details/i });
-    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    // The contact page is a route page in the shell's <main>, not a popup (#1560).
+    const dialog = page.getByRole('main');
+    await expect(dialog.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({ timeout: 5_000 });
 
     // The mobile header offers Edit for a write role.
     await dialog.getByRole('button', { name: /^edit$/i }).first().click();

@@ -52,6 +52,22 @@ const setContacts = (list: Contact[]) => {
   h.contacts = list.map((contact) => ({ id: contact.id, data: () => contact }));
 };
 
+
+/** Render as a phone (< 768px), where the shared popup frame would become a
+ * bottom sheet. */
+const asPhone = (run: () => void) => {
+  const original = window.matchMedia;
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({ ...original(query), matches: query === '(max-width: 768px)' }),
+  });
+  try {
+    run();
+  } finally {
+    Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+  }
+};
+
 describe('CombineTags', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,9 +84,19 @@ describe('CombineTags', () => {
       </MemoryRouter>,
     );
 
-  it('renders in the shared popup frame (#1452)', () => {
-    renderPage();
-    expect(screen.getByRole('dialog', { name: 'Combine tags' })).toBeInTheDocument();
+  it('is a page, not a popup: no dialog, scrim or frame (#1425/#1426)', () => {
+    const { container } = renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Combine tags' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container.querySelector('.bg-black\\/40')).toBeNull();
+  });
+
+  it('is a page on a phone too: no bottom sheet grabber (#1425/#1426)', () => {
+    asPhone(() => {
+      renderPage();
+      expect(screen.queryByTestId('popup-sheet-grabber')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 
   it('starts strong guesses checked and weak guesses unchecked', () => {

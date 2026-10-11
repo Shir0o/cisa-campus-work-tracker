@@ -17,11 +17,10 @@ test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', 
     await expect(contactCard).toBeVisible({ timeout: 10_000 });
     await contactCard.click();
 
-    // 4. Contact Details Modal opens (titled "Contact details" since #1521,
-    //    with the contact name as an "About …" button).
-    const dialog = page.getByRole('dialog', { name: /contact details/i });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Lila Chen').first()).toBeVisible();
+    // 4. The contact page opens in the shell's <main> (a route page, not a
+    //    popup — #1560), with the contact name as an "About …" button.
+    const dialog = page.getByRole('main');
+    await expect(dialog.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible();
 
     // 5. Open the "Conversation" (thread) tab
     const threadTab = page.getByRole('button', { name: /conversation/i }).first();

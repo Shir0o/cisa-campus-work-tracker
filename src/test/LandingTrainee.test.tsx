@@ -206,9 +206,9 @@ describe('LandingTrainee component', () => {
     const openBtns = screen.getAllByRole('button', { name: /Open/i });
     fireEvent.click(openBtns[0]);
 
-    // The person detail opens in the shared popup frame, which carries its own
-    // Close alongside the head's; either backs out to the dashboard.
-    const closePageBtn = screen.getAllByRole('button', { name: /^Close$/i }).at(-1)!;
+    // The person detail is now a full page (not a popup) — go back to the
+    // dashboard before continuing with the row's other actions.
+    const closePageBtn = screen.getByRole('button', { name: /^Close$/i });
     fireEvent.click(closePageBtn);
 
     // Click Mark handled
@@ -231,7 +231,7 @@ describe('LandingTrainee component', () => {
     fireEvent.click(linkedBtn);
 
     // That opens the person page again — go back to the dashboard.
-    const closePageBtn2 = screen.getAllByRole('button', { name: /^Close$/i }).at(-1)!;
+    const closePageBtn2 = screen.getByRole('button', { name: /^Close$/i });
     fireEvent.click(closePageBtn2);
 
     // Click status pill on team prayer
@@ -399,7 +399,7 @@ describe('LandingTrainee component', () => {
       </MemoryRouter>
     );
     fireEvent.click(await screen.findByText('Alex Student'));
-    expect(screen.getAllByRole('button', { name: /^Close$/i })[0]).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Close$/i })).toBeInTheDocument();
 
     mockAuthValue = {
       user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },

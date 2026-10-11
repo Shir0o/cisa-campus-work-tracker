@@ -29,6 +29,9 @@ interface LogVisitModalProps {
   contacts: Contact[];
   staff: AppUser[];
   homes?: Home[];
+  /** Every visit logged, so "last visited" reads from visits rather than from
+   *  the last contact of any kind. */
+  visits?: Visit[];
   /** Editing an existing visit, rather than logging a new one. */
   visit?: Visit | null;
   /** Person pre-picked from the "haven't been round in a while" strip. */
@@ -47,6 +50,17 @@ const FOLLOW_UP_DAYS = 7;
 /** Stable default so the reset effect's `homes` dep isn't a new array each
  *  render (which would re-run the effect — and the state it resets — forever). */
 const NO_HOMES: Home[] = [];
+const NO_VISITS: Visit[] = [];
+
+/** What a save has already written during this open of the popup, so Try again
+ *  carries on from the step that failed instead of writing everything twice. */
+interface SaveProgress {
+  todoId?: string;
+  prayerId?: string;
+  visitId?: string;
+  linked?: boolean;
+  uploaded?: VisitPhoto[];
+}
 
 /** The starting shape of the form, captured on open, so "dirty" means the
  *  person changed something rather than the popup merely being pre-filled. */
@@ -70,6 +84,7 @@ export default function LogVisitModal({
   contacts,
   staff,
   homes = NO_HOMES,
+  visits = NO_VISITS,
   visit = null,
   initialContactId = null,
   initialHomeId = null,
@@ -94,13 +109,14 @@ export default function LogVisitModal({
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [q, setQ] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState<'offline' | 'failed' | null>(null);
   const [showPeopleError, setShowPeopleError] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
   const [localCreatedContacts, setLocalCreatedContacts] = useState<Contact[]>([]);
   const [baseline, setBaseline] = useState<VisitSnapshot | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const peopleRef = useRef<HTMLDivElement>(null);
+  const savedRef = useRef<SaveProgress>({});
 
   const me = effectiveUserId || user?.uid || '';
   const myName = user?.displayName || 'A full-timer';
@@ -163,7 +179,8 @@ export default function LogVisitModal({
     setExistingPhotos(startPhotos);
     setNewPhotos([]);
     setQ('');
-    setSaveError(false);
+    setSaveError(null);
+    savedRef.current = {};
     setShowPeopleError(false);
     setBaseline({
       date: startDate,
@@ -283,7 +300,13 @@ export default function LogVisitModal({
       return;
     }
     setShowPeopleError(false);
-    setSaveError(false);
+    // Firestore writes don't reject while offline — they wait — so say so up
+    // front rather than sit on "Saving…". Nothing typed is lost; Try again re-checks.
+    if (navigator.onLine === false) {
+      setSaveError('offline');
+      return;
+    }
+    setSaveError(null);
     setSaving(true);
     try {
       const input: VisitInput = {
@@ -306,30 +329,38 @@ export default function LogVisitModal({
 
       // A prayer and a to-do belong to the visit that produced them, so they're
       // only created the first time round — an edit fixes the record, it doesn't
-      // ask the team to carry the same thing twice.
+      // ask the team to carry the same thing twice. What a failed attempt already
+      // made is remembered, so Try again doesn't make it again.
+      const saved = savedRef.current;
       if (!editing) {
         if (followUpOn && followUp.trim()) {
-          const due = new Date();
-          due.setDate(due.getDate() + FOLLOW_UP_DAYS);
-          input.followUpTaskId = await addTodo(
-            {
-              title: followUp.trim(),
-              assigneeId: went[0] || me,
-              dueDate: format(due, 'yyyy-MM-dd'),
-              contactId: ids[0],
-              contactName: chosen[0]?.name ?? null,
-            },
-            { uid: me, name: myName },
-          );
+          if (!saved.todoId) {
+            const due = new Date();
+            due.setDate(due.getDate() + FOLLOW_UP_DAYS);
+            saved.todoId = await addTodo(
+              {
+                title: followUp.trim(),
+                assigneeId: went[0] || me,
+                dueDate: format(due, 'yyyy-MM-dd'),
+                contactId: ids[0],
+                contactName: chosen[0]?.name ?? null,
+              },
+              { uid: me, name: myName },
+            );
+          }
+          input.followUpTaskId = saved.todoId;
         }
         if (prayer.trim() && chosen[0]) {
-          input.prayerId = await addPrayerBurden(
-            chosen[0].id,
-            prayer.trim(),
-            { uid: me, name: myName },
-            // A visit prayer belongs to the contact, not the team page (#1406).
-            false,
-          );
+          if (!saved.prayerId) {
+            saved.prayerId = await addPrayerBurden(
+              chosen[0].id,
+              prayer.trim(),
+              { uid: me, name: myName },
+              // A visit prayer belongs to the contact, not the team page (#1406).
+              false,
+            );
+          }
+          input.prayerId = saved.prayerId;
           // Kept on the visit too, so the card reads the prayer back in its own
           // words rather than only knowing there was one.
           input.prayerBurden = prayer.trim();
@@ -341,20 +372,22 @@ export default function LogVisitModal({
         await updateVisit(visit!.id, visit!.contactIds, input, by);
         visitId = visit!.id;
       } else {
-        visitId = await addVisit(input, by);
+        if (!saved.visitId) saved.visitId = await addVisit(input, by);
+        visitId = saved.visitId;
         // Link the follow-up to-do back to the visit it came from, now that the
         // visit has an id to point at — "make the follow-up part of writing the
         // visit up" (issue #336).
-        if (input.followUpTaskId) {
+        if (input.followUpTaskId && !saved.linked) {
           await updateTodo(input.followUpTaskId, {
             source: { interactionId: visitId, interactionTitle: `Visit to ${chosen[0]?.name ?? 'someone'}` },
           });
+          saved.linked = true;
         }
       }
 
       if (newPhotos.length) {
-        const uploaded = await uploadVisitPhotos(visitId, newPhotos);
-        await attachVisitPhotos(visitId, [...existingPhotos, ...uploaded]);
+        saved.uploaded ??= await uploadVisitPhotos(visitId, newPhotos);
+        await attachVisitPhotos(visitId, [...existingPhotos, ...saved.uploaded]);
       }
 
       void logActivity({
@@ -371,7 +404,7 @@ export default function LogVisitModal({
       onClose();
     } catch (e) {
       console.error('Error saving visit:', e);
-      setSaveError(true);
+      setSaveError('failed');
       // handleFirestoreError records and rethrows; the footer is where the
       // person hears about it, so keep the throw from escaping the handler.
       try {
@@ -402,8 +435,13 @@ export default function LogVisitModal({
   const nobodyHasHome =
     chosen.length > 0 && chosen.every((c) => !homes.some((h) => h.members.includes(c.id)));
   const firstName = chosen[0]?.name.split(' ')[0] ?? '';
-  const lastVisitMs = chosen.reduce((max, c) => {
-    const ms = Date.parse(c.lastContactedDate || c.lastSeen || '');
+  // "Last visited" is the last visit — to this Home or to any of the people
+  // seen — not the last contact of any kind (calls, gatherings). The visit being
+  // edited doesn't count as earlier than itself.
+  const lastVisitMs = visits.reduce((max, v) => {
+    if (v.id === visit?.id) return max;
+    if (!(chosenHome && v.homeId === chosenHome.id) && !v.contactIds.some((id) => ids.includes(id))) return max;
+    const ms = new Date(`${v.date}T00:00:00`).getTime();
     return Number.isFinite(ms) ? Math.max(max, ms) : max;
   }, 0);
   const homeLine = chosenHome
@@ -455,7 +493,7 @@ export default function LogVisitModal({
       error={
         saveError
           ? {
-              message: t('modals.couldnt_save_offline'),
+              message: t(saveError === 'offline' ? 'modals.couldnt_save_offline' : 'modals.couldnt_save'),
               retryLabel: t('modals.try_again'),
               onRetry: () => void submit(),
             }
