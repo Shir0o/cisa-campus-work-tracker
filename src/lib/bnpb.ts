@@ -16,7 +16,9 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { db, handleFirestoreError, OperationType } from './firebase';
+import { formatDateTime } from './contactComposer';
 import { canSeeContact, type AppRole } from './permissions';
 import type { Contact, Interaction } from '../types';
 
@@ -239,10 +241,22 @@ export function matchSuggestion(input: MatchSuggestionInput): SuggestionMatch {
   return { basis: 'unmatched', contact: null };
 }
 
-/** The `YYYY-MM` a timestamp belongs to, or `unknown` when it has none. */
+/**
+ * A stored time as a Date in local time, or null when unusable. BNPB sends UTC
+ * (`…Z`), which parses to its true moment; a tracker `dateTime` without an
+ * offset already is local wall-clock time, and a bare date means that local day
+ * rather than UTC midnight.
+ */
+function parseLocalTime(value: string | null | undefined): Date | null {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00` : value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** The local `YYYY-MM` a timestamp belongs to, or `unknown` when it has none. */
 export function monthKey(value: string): string {
-  const match = /^(\d{4})-(\d{2})/.exec(value);
-  return match ? `${match[1]}-${match[2]}` : 'unknown';
+  const date = parseLocalTime(value);
+  return date ? format(date, 'yyyy-MM') : 'unknown';
 }
 
 /**
@@ -314,14 +328,20 @@ export function buildSuggestionQueue(input: BuildSuggestionQueueInput): Suggesti
 }
 
 /**
- * The calendar day a timestamp belongs to, as `YYYY-MM-DD` (#1422). A logged
- * Interaction stores a bare date, while a BNPB `occurredAt` is a full
- * timestamp; both lead with the day the person means, so the prefix is the
- * comparison key and no timezone enters the answer.
+ * The local calendar day a timestamp belongs to, as `YYYY-MM-DD` (#1422). A
+ * logged Interaction stores local wall-clock time (or a bare date), while a
+ * BNPB `occurredAt` is UTC, so both are read in local time: 7 pm Pacific on
+ * Oct 6 is `…-10-07T02:00Z` from BNPB but still Oct 6 here.
  */
 export function calendarDay(value: string): string | null {
-  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
-  return match ? match[1] : null;
+  const date = parseLocalTime(value);
+  return date ? format(date, 'yyyy-MM-dd') : null;
+}
+
+/** BNPB's UTC `occurredAt` as the tracker's local `yyyy-MM-dd'T'HH:mm`. */
+function toInteractionDateTime(occurredAt: string): string {
+  const date = parseLocalTime(occurredAt);
+  return date ? formatDateTime(date) : occurredAt;
 }
 
 /**
@@ -453,6 +473,7 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
   const trimmed = text.trim();
   const duration = formatDurationMinutes(suggestion.durationMinutes);
   const loggerName = user.displayName || user.email?.split('@')[0] || '';
+  const dateTime = toInteractionDateTime(suggestion.occurredAt);
   const batch = writeBatch(db);
 
   const interactionRef = doc(collection(db, 'contacts', contact.id, 'interactions'));
@@ -461,7 +482,7 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
     userName: loggerName,
     userPhoto: user.photoURL || '',
     content: trimmed,
-    dateTime: suggestion.occurredAt,
+    dateTime,
     type: mediumToType(suggestion.medium),
     ...(duration ? { duration } : {}),
     createdAt: serverTimestamp(),

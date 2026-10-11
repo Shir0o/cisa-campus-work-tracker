@@ -1,6 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Contact, Interaction } from '../types';
 import type { InteractionSuggestion } from '../lib/bnpb';
+
+// BNPB sends UTC timestamps; the tracker reads days and times in local time.
+// Pin the zone so "7 pm Pacific on Oct 6" (02:00Z on Oct 7) means the same on
+// every machine.
+const ORIGINAL_TZ = process.env.TZ;
+beforeAll(() => {
+  process.env.TZ = 'America/Los_Angeles';
+});
+afterAll(() => {
+  if (ORIGINAL_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = ORIGINAL_TZ;
+});
 
 const hoisted = vi.hoisted(() => {
   let seq = 0;
@@ -137,6 +149,12 @@ describe('calendarDay', () => {
     expect(calendarDay('2026-09-10T15:00:00.000Z')).toBe('2026-09-10');
     expect(calendarDay('nonsense')).toBeNull();
   });
+
+  it('reads a UTC timestamp as the local day it happened on', () => {
+    // 7 pm Pacific on Oct 6 is 02:00Z on Oct 7.
+    expect(calendarDay('2026-10-07T02:00:00.000Z')).toBe('2026-10-06');
+    expect(calendarDay('2026-10-06T19:00')).toBe('2026-10-06');
+  });
 });
 
 describe('findSameDayInteraction', () => {
@@ -171,6 +189,12 @@ describe('findSameDayInteraction', () => {
       interaction({ id: 'late', dateTime: '2026-09-10T18:00:00.000Z' }),
     ];
     expect(findSameDayInteraction(list, 'u1', '2026-09-10')?.id).toBe('late');
+  });
+
+  it('flags an evening entry logged locally against its UTC suggestion', () => {
+    const list = [interaction({ dateTime: '2026-10-06T19:30' })];
+    expect(findSameDayInteraction(list, 'u1', '2026-10-07T02:00:00.000Z')?.id).toBe('i1');
+    expect(findSameDayInteraction([interaction({ dateTime: '2026-10-07' })], 'u1', '2026-10-07T02:00:00.000Z')).toBeNull();
   });
 
   it('returns null when the suggestion has no usable day', () => {
@@ -213,7 +237,8 @@ describe('confirmSuggestion', () => {
     expect(interaction!.data).toMatchObject({
       userId: 'u1',
       content: 'Coffee and a walk',
-      dateTime: '2026-09-10T15:00:00.000Z',
+      // 15:00Z is 08:00 Pacific, written in the tracker's local format.
+      dateTime: '2026-09-10T08:00',
       type: 'meeting',
       duration: '45 min',
     });
@@ -405,6 +430,11 @@ describe('monthKey', () => {
   it('reads the year and month from a timestamp', () => {
     expect(monthKey('2026-09-10T15:00:00.000Z')).toBe('2026-09');
     expect(monthKey('nonsense')).toBe('unknown');
+  });
+
+  it('puts a UTC timestamp in the local month it happened in', () => {
+    // 7 pm Pacific on Sep 30 is 02:00Z on Oct 1.
+    expect(monthKey('2026-10-01T02:00:00.000Z')).toBe('2026-09');
   });
 });
 
