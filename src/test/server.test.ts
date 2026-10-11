@@ -3201,6 +3201,34 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       expect(stillPending.summary).toBe("Coffee uptown");
     });
 
+    it("keeps the owner's chosen Contact and edited text on a re-push of a pending suggestion", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", payload());
+      const colStore = getCollection(`users/${OWNER_UID}/interactionSuggestions`);
+      for (const [key, value] of Object.entries(colStore)) {
+        const data = value as any;
+        colStore[key] =
+          data.bnpbContactId === "p-1"
+            ? { ...data, contactId: "c1", text: "Edited by owner" }
+            : { ...data, contactId: "c2" };
+      }
+
+      const edited = payload();
+      (edited.interactions[0] as any).summary = "Coffee uptown";
+      expect((await sync("live-secret", edited)).status).toBe(200);
+
+      const after = ownedSuggestions();
+      const ownerEdited = after.find((s) => s.bnpbContactId === "p-1")!;
+      expect(ownerEdited.status).toBe("pending");
+      expect(ownerEdited.contactId).toBe("c1");
+      expect(ownerEdited.text).toBe("Edited by owner");
+      expect(ownerEdited.summary).toBe("Coffee uptown");
+      const untouched = after.find((s) => s.bnpbContactId === "p-2")!;
+      expect(untouched.contactId).toBe("c2");
+      expect(untouched.text).toBe("Coffee uptown");
+    });
+
     it("withdraws pending suggestions for a tombstone and for a removed participant", async () => {
       seedOwner();
       seedToken("live-secret");

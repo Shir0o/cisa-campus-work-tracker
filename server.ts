@@ -4167,6 +4167,14 @@ ${JSON.stringify(contactsList)}`;
           // A "Not a CISA person" choice arrives already settled, so the owner
           // is never asked again and an Undo of the choice can restore it.
           const notCisa = notACisa.has(participant.bnpbContactId);
+          // A re-push keeps what the owner already did on a waiting suggestion:
+          // the Contact they chose, and text they tidied away from the summary.
+          const ownerText =
+            existing && typeof existing.data.text === 'string' && existing.data.text !== existing.data.summary
+              ? existing.data.text
+              : null;
+          const chosenContactId =
+            existing && typeof existing.data.contactId === 'string' ? existing.data.contactId : null;
           const suggestion = {
             syncId: interaction.syncId,
             bnpbContactId: participant.bnpbContactId,
@@ -4178,7 +4186,8 @@ ${JSON.stringify(contactsList)}`;
             sourceUpdatedAt: interaction.updatedAt ?? null,
             status: notCisa ? 'dismissed' : 'pending',
             ...(notCisa ? { dismissedBy: 'notACisaPerson', dismissedAt: now } : {}),
-            text: interaction.summary,
+            text: ownerText ?? interaction.summary,
+            ...(chosenContactId ? { contactId: chosenContactId } : {}),
             createdAt: existing ? existing.data.createdAt ?? now : now,
             updatedAt: now,
           };
