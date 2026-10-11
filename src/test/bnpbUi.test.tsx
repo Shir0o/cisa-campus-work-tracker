@@ -1,5 +1,5 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 
 vi.mock('react-router-dom', () => ({
@@ -33,6 +33,7 @@ vi.mock('firebase/firestore', () => ({
     callback({ docs: [] });
     return vi.fn();
   }),
+  getDocs: vi.fn(async () => ({ docs: [] })),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
   deleteField: vi.fn(() => ({ __delete: true })),
   writeBatch: vi.fn(() => hoisted.batch),
@@ -295,6 +296,135 @@ describe('SuggestionsQueue duplicate flag', () => {
 
     await waitFor(() => expect(screen.queryByText('bnpb.queue_maybe_logged')).not.toBeInTheDocument());
     expect(screen.getByText('bnpb.queue_confirm')).toBeInTheDocument();
+  });
+});
+
+describe('SuggestionsQueue feedback', () => {
+  const suggestionDoc = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    data: () => ({
+      syncId: `s-${id}`,
+      bnpbContactId: 'p-1',
+      bnpbName: 'Alex Chen',
+      occurredAt: '2026-09-10T15:00:00.000Z',
+      durationMinutes: 45,
+      summary: 'Coffee downtown',
+      medium: 'coffee',
+      text: 'Coffee downtown',
+      status: 'pending',
+      ...over,
+    }),
+  });
+
+  const serve = (suggestions: unknown[], contacts: unknown[] = []) => {
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, callback: unknown) => {
+      const path = (ref as { path?: string })?.path ?? '';
+      let docs: unknown[] = [];
+      if (path === 'users/u1/interactionSuggestions') docs = suggestions;
+      else if (path === 'contacts') docs = contacts;
+      if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs });
+      return vi.fn();
+    });
+  };
+
+  beforeEach(() => {
+    mockedUseAuth.mockReturnValue(asUser('yilongwang05@gmail.com') as never);
+    hoisted.batch.commit.mockReset();
+    hoisted.batch.commit.mockResolvedValue(undefined);
+    vi.mocked(onSnapshot).mockClear();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.mocked(console.error).mockRestore();
+  });
+
+  it('tells the owner when a dismiss fails, and offers no Undo', async () => {
+    serve([suggestionDoc('sug-1')]);
+    hoisted.batch.commit.mockRejectedValueOnce(new Error('offline'));
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByText('bnpb.queue_dismiss'));
+
+    expect(await screen.findByText('bnpb.queue_error_dismiss')).toBeInTheDocument();
+    expect(screen.queryByText('actions.undo')).not.toBeInTheDocument();
+  });
+
+  it('tells the owner when Not a CISA person fails', async () => {
+    serve([suggestionDoc('sug-1')]);
+    hoisted.batch.commit.mockRejectedValueOnce(new Error('offline'));
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByText('bnpb.queue_not_cisa'));
+
+    expect(await screen.findByText('bnpb.queue_error_not_cisa')).toBeInTheDocument();
+  });
+
+  it('tells the owner when assigning a Contact fails', async () => {
+    serve([suggestionDoc('sug-1', { bnpbName: 'Zoe Quinn', bnpbContactId: 'p-9' })], [
+      { id: 'c1', data: () => ({ name: 'Alex Chen' }) },
+    ]);
+    hoisted.batch.commit.mockRejectedValueOnce(new Error('offline'));
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Alex Chen' }));
+
+    expect(await screen.findByText('bnpb.queue_error_assign')).toBeInTheDocument();
+  });
+
+  it('tells the owner when an Undo fails', async () => {
+    serve([suggestionDoc('sug-1')]);
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByText('bnpb.queue_dismiss'));
+    const undo = await screen.findByText('actions.undo');
+    hoisted.batch.commit.mockRejectedValueOnce(new Error('offline'));
+    fireEvent.click(undo);
+
+    expect(await screen.findByText('bnpb.queue_error_undo')).toBeInTheDocument();
+  });
+
+  it('shows a confirmation without an Undo once a suggestion is confirmed', async () => {
+    serve([suggestionDoc('sug-1')], [{ id: 'c1', data: () => ({ name: 'Alex Chen' }) }]);
+    render(<SuggestionsQueue />);
+    fireEvent.click(await screen.findByText('bnpb.queue_confirm'));
+
+    expect(await screen.findByText('bnpb.queue_logged_to')).toBeInTheDocument();
+    expect(screen.queryByText('actions.undo')).not.toBeInTheDocument();
+  });
+
+  it('shows the type in the owner language, not the raw value', async () => {
+    serve([suggestionDoc('sug-1')], [{ id: 'c1', data: () => ({ name: 'Alex Chen' }) }]);
+    render(<SuggestionsQueue />);
+
+    expect(await screen.findByText('modals.contactDetails.composer_type_meeting')).toBeInTheDocument();
+    expect(screen.queryByText('meeting')).not.toBeInTheDocument();
+  });
+
+  it('listens once per Contact however many ready suggestions name them', async () => {
+    serve(
+      [
+        suggestionDoc('a'),
+        suggestionDoc('b', { occurredAt: '2026-09-11T15:00:00.000Z' }),
+        suggestionDoc('c', { occurredAt: '2026-09-12T15:00:00.000Z' }),
+      ],
+      [{ id: 'c1', data: () => ({ name: 'Alex Chen' }) }],
+    );
+    render(<SuggestionsQueue />);
+
+    expect(await screen.findAllByText('bnpb.queue_confirm')).toHaveLength(3);
+    const interactionListeners = vi
+      .mocked(onSnapshot)
+      .mock.calls.filter(([ref]) => (ref as { path?: string }).path === 'contacts/c1/interactions');
+    expect(interactionListeners).toHaveLength(1);
+  });
+
+  it('keeps the small buttons at the 44 px touch target', async () => {
+    serve([
+      suggestionDoc('ready'),
+      suggestionDoc('who', { bnpbName: 'Zoe Quinn', bnpbContactId: 'p-9' }),
+    ], [{ id: 'c1', data: () => ({ name: 'Alex Chen' }) }]);
+    render(<SuggestionsQueue />);
+
+    expect((await screen.findByText('bnpb.queue_change')).closest('button')).toHaveClass('min-h-[44px]');
+    const dismissButtons = screen.getAllByText('bnpb.queue_dismiss').map((el) => el.closest('button'));
+    for (const button of dismissButtons) expect(button).toHaveClass('min-h-[44px]');
   });
 });
 
