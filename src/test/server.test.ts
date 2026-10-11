@@ -90,8 +90,32 @@ const {
 
   const DELETE_SENTINEL = Symbol("DELETE");
 
+  // Transactions run one at a time, as Firestore's optimistic retries make
+  // them behave: each sees the writes of the one before it.
+  let txQueue: Promise<unknown> = Promise.resolve();
+
   const db = {
     collection,
+    runTransaction: <T>(fn: (tx: any) => Promise<T>): Promise<T> => {
+      const run = async () => {
+        const writes: Array<{ ref: any; data: Doc; merge: boolean }> = [];
+        const tx = {
+          get: (ref: any) => ref.get(),
+          set: (ref: any, data: Doc, opts?: { merge?: boolean }) => {
+            writes.push({ ref, data, merge: !!opts?.merge });
+          },
+        };
+        const result = await fn(tx);
+        for (const w of writes) {
+          const col = (store[w.ref._col] ??= {});
+          col[w.ref._id] = w.merge ? { ...(col[w.ref._id] ?? {}), ...w.data } : { ...w.data };
+        }
+        return result;
+      };
+      const next = txQueue.then(run, run);
+      txQueue = next.catch(() => {});
+      return next;
+    },
     batch: () => {
       const pending: Array<{ _col: string; _id: string; data: Doc; _delete?: boolean; _replace?: boolean }> = [];
       return {
@@ -2008,6 +2032,63 @@ describe("POST /api/translate — daily Gemini spending limit (ADR 0037)", () =>
     expect(res.body.translations[0].translated).toBe("Oración");
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     expect(getCollection("system")["translationUsage"]).toMatchObject({ date: today(), count: 1 });
+  });
+
+  it("reserves the quota atomically so concurrent requests cannot exceed the limit", async () => {
+    vi.stubEnv("TRANSLATION_DAILY_LIMIT", "3");
+    mockGenerateContent.mockImplementation(async ({ contents }: { contents: string }) => {
+      // Keep both requests in flight so neither finishes before the other reads.
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const items = JSON.parse(contents.slice(contents.indexOf("[")));
+      return {
+        text: JSON.stringify({
+          translations: items.map((i: { id: number; text: string }) => ({ id: i.id, translatedText: `ES ${i.text}` })),
+        }),
+      };
+    });
+
+    const [a, b] = await Promise.all([
+      request(app).post("/api/translate").send({ targetLang: "es", texts: ["a1", "a2"] }),
+      request(app).post("/api/translate").send({ targetLang: "es", texts: ["b1", "b2"] }),
+    ]);
+
+    const sentToGemini = mockGenerateContent.mock.calls.reduce(
+      (n, [arg]) => n + JSON.parse(arg.contents.slice(arg.contents.indexOf("["))).length,
+      0,
+    );
+    const translated = [...a.body.translations, ...b.body.translations].filter((t: any) =>
+      t.translated.startsWith("ES "),
+    );
+    expect(sentToGemini).toBe(3);
+    expect(translated).toHaveLength(3);
+    expect(getCollection("system")["translationUsage"]).toMatchObject({ date: today(), count: 3 });
+  });
+
+  it("fails closed when the counter transaction throws: no Gemini call, cached hits still served", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const txSpy = vi.spyOn(mockDb, "runTransaction").mockRejectedValueOnce(new Error("contention"));
+    const hash = crypto.createHash("sha256").update("es:Hello").digest("hex");
+    seedDoc("translations", hash, {
+      hash,
+      sourceText: "Hello",
+      translatedText: "Hola",
+      targetLang: "es",
+      createdAt: new Date().toISOString(),
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Hello", "World"],
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.translations[0]).toMatchObject({ translated: "Hola", cached: true });
+    expect(res.body.translations[1]).toMatchObject({ translated: "World", cached: false });
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(Object.keys(getCollection("translations"))).toHaveLength(1);
+    expect(warnSpy).toHaveBeenCalled();
+    txSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 });
 

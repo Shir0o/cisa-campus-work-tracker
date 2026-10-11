@@ -43,7 +43,10 @@ export function detectLanguage(text: string): LanguageSignal {
     return accentSignal && words.length >= 2 ? "es" : "none";
   }
   if (confidentSpanish) return "es";
-  if (spanish > 0 && english > 0) return "mixed";
+  // Mixed needs real Spanish evidence: two markers (one marker plus an accent
+  // is already confident Spanish above). A lone marker ("no", "de", "los") in English
+  // text is a false positive and would cost a Gemini call for nothing.
+  if (english > 0 && spanish >= 2) return "mixed";
   if (english > 0) return english >= 2 ? "en" : "none";
   return "none";
 }

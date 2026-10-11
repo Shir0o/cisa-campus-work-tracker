@@ -9,6 +9,8 @@ import {
   computeTranslationHash,
   subscribeTranslation,
   isAlreadySpanish,
+  detectLanguage,
+  shouldShowAsIs,
 } from "../lib/translator";
 
 describe("translator client", () => {
@@ -250,6 +252,26 @@ describe("translator client", () => {
     expect(isAlreadySpanish("Jordan")).toBe(false);
     expect(isAlreadySpanish("El and the are common words in both")).toBe(false);
     expect(isAlreadySpanish("")).toBe(false);
+  });
+
+  it("does not call English text mixed on a lone Spanish-looking marker", async () => {
+    const texts = [
+      "No worries, please pray for my family this week",
+      "Pray for Sarah's finals at De Anza",
+      "Met him at the BFA table, he is from Los Angeles",
+      "He said no to the invite but wants to come next week",
+    ];
+    for (const text of texts) {
+      expect(detectLanguage(text), text).toBe("en");
+      expect(shouldShowAsIs(text, "en"), text).toBe(true);
+    }
+    expect(detectLanguage("Pray for mi abuela, she is sick")).not.toBe("mixed");
+    expect(shouldShowAsIs("Pray for mi abuela, she is sick", "en")).toBe(true);
+    expect(detectLanguage("Please pray for mi familia")).toBe("mixed");
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    await expect(translateText(texts[0], "en")).resolves.toBe(texts[0]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("returns already-Spanish content as-is without calling the API", async () => {

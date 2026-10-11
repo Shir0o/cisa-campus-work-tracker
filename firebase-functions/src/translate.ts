@@ -162,23 +162,43 @@ export async function advanceTranslationCron(
 
   // Deduplicate by cache hash so a string is never queued twice for the same
   // direction, while text queued for both directions keeps its two entries.
+  // `docHashes` records, in fetch order, which doc first contributed each hash.
   const hashToItem = new Map<string, TranslatableItem>();
+  const docHashes: string[][] = [];
   for (const doc of docs) {
-    const items = extractTranslatableItems(currentCollection, doc.data);
-    for (const item of items) {
+    const hashes: string[] = [];
+    for (const item of extractTranslatableItems(currentCollection, doc.data)) {
       const hash = translationHash(item.text, item.targetLang);
-      if (!hashToItem.has(hash)) hashToItem.set(hash, item);
+      if (!hashToItem.has(hash)) {
+        hashToItem.set(hash, item);
+        hashes.push(hash);
+      }
     }
+    docHashes.push(hashes);
   }
 
   const allHashes = Array.from(hashToItem.keys());
   const cachedHashes = await deps.getCachedHashes(allHashes);
 
+  // Queue uncached strings doc by doc until the run limit. `completedDocs` counts
+  // the leading docs whose uncached strings were all queued; the cursor may only
+  // advance past those, so a cut-off doc is re-fetched next run.
   const uncachedEntries: Array<{ hash: string; text: string; targetLang: TargetLang }> = [];
-  for (const [hash, item] of hashToItem.entries()) {
-    if (!cachedHashes.has(hash)) {
+  let completedDocs = docs.length;
+  let cutOff = false;
+  for (let i = 0; i < docs.length && !cutOff; i++) {
+    const queuedBefore = uncachedEntries.length;
+    for (const hash of docHashes[i]) {
+      if (cachedHashes.has(hash)) continue;
+      if (uncachedEntries.length >= maxItems) {
+        cutOff = true;
+        // If nothing else was queued ahead of this doc, it alone exceeds the
+        // limit; move past it anyway so the cron can never get stuck on it.
+        completedDocs = queuedBefore === 0 ? i + 1 : i;
+        break;
+      }
+      const item = hashToItem.get(hash)!;
       uncachedEntries.push({ hash, text: item.text, targetLang: item.targetLang });
-      if (uncachedEntries.length >= maxItems) break;
     }
   }
 
@@ -216,7 +236,14 @@ export async function advanceTranslationCron(
   }
 
   let nextCursor: TranslationCursor;
-  if (!hasMore || docs.length === 0) {
+  if (cutOff) {
+    // Unfinished work in this collection: resume after the last completed doc.
+    nextCursor = {
+      currentCollection,
+      lastDocId: docs[completedDocs - 1].id,
+      updatedAt: new Date().toISOString(),
+    };
+  } else if (!hasMore || docs.length === 0) {
     // Reached the end of this collection, cycle to next collection
     nextCursor = {
       currentCollection: getNextCollection(currentCollection),
