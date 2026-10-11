@@ -9,15 +9,23 @@
 import { describe, it, expect } from 'vitest';
 import {
   guessTagCombines as webGuess,
+  isSeasonTag as webIsSeasonTag,
+  normalizeTag as webNormalizeTag,
   planTagApplies as webPlan,
   planTagUndo as webUndo,
+  resolveStandardTags as webResolveStandardTags,
+  standardTagsForGuessing as webStandardTagsForGuessing,
   type TagCombine,
 } from '../lib/tags';
 // Direct relative import into the workspace package -- resolved for tests only.
 import {
   guessTagCombines as coreGuess,
+  isSeasonTag as coreIsSeasonTag,
+  normalizeTag as coreNormalizeTag,
   planTagApplies as corePlan,
   planTagUndo as coreUndo,
+  resolveStandardTags as coreResolveStandardTags,
+  standardTagsForGuessing as coreStandardTagsForGuessing,
 } from '../../packages/core/src/tags';
 
 const CORPUS: Array<Array<string> | null> = [
@@ -53,6 +61,27 @@ const CONTACTS = CORPUS.map((tags, index) => ({ id: `c${index}`, name: `C${index
 const STANDARD_SETS: string[][] = [
   ['Saved', 'Baptized', 'Interested', 'Open', 'Club Rush', 'BFA'],
   ['Welcome', 'BFA'],
+];
+
+// Every season spelling the app has seen, plus near misses that must not count
+// as a season (a season word on its own, a stray suffix, a 3- or 5-digit year).
+const SEASON_FORMS: string[] = [
+  'Fall 2025',
+  'Fall2025',
+  'fall2025',
+  'FALL 2025',
+  'Spring26',
+  "Spring '26",
+  "Spring'26",
+  'Spring ’26',
+  'Winter 27',
+  'summer 2024',
+  'Summer99',
+  'Fall',
+  'Fall 202',
+  'Fall 20255',
+  'Fallout 2025',
+  'Fall 2025 table',
 ];
 
 const COMBINES: TagCombine[] = [
@@ -96,5 +125,39 @@ describe('tag guesser mirror parity (web vs core)', () => {
     ];
     const current = { c0: ['Club Rush'], c1: ['BFA', 'Fall 2025'], c2: ['Bible study'] };
     expect(webUndo(entries, current)).toEqual(coreUndo(entries, current));
+  });
+
+  it('normalizeTag agrees for every season spelling', () => {
+    for (const form of SEASON_FORMS) {
+      expect(webNormalizeTag(form), form).toBe(coreNormalizeTag(form));
+    }
+    // The shared answer is the web one: compact and four-digit forms are spaced.
+    expect(coreNormalizeTag('Fall2025')).toBe('Fall 2025');
+    expect(coreNormalizeTag('spring 2026')).toBe('Spring 2026');
+  });
+
+  it('isSeasonTag agrees for every season spelling', () => {
+    for (const form of SEASON_FORMS) {
+      expect(webIsSeasonTag(form), form).toBe(coreIsSeasonTag(form));
+    }
+    expect(coreIsSeasonTag('Fall2025')).toBe(true);
+  });
+
+  it('resolveStandardTags agrees for stored lists with season spellings', () => {
+    const stored = ['Fall2025', 'Fall 2025', 'BFA', 'bfa', "Spring '26"];
+    for (const list of [stored, [], null, undefined]) {
+      expect(webResolveStandardTags(list)).toEqual(coreResolveStandardTags(list));
+    }
+    expect(coreResolveStandardTags(stored)).toEqual(['Fall 2025', 'BFA', 'Spring 2026']);
+  });
+
+  it('standardTagsForGuessing agrees when contacts carry season spellings', () => {
+    const contacts = SEASON_FORMS.map((tag, index) => ({ tags: [tag, `extra${index}`] }));
+    for (const stored of [undefined, null, ['Saved', 'Fall2025'], []]) {
+      expect(webStandardTagsForGuessing(stored, contacts)).toEqual(
+        coreStandardTagsForGuessing(stored, contacts),
+      );
+    }
+    expect(coreStandardTagsForGuessing([], contacts)).toContain('Fall 2025');
   });
 });

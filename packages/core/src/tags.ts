@@ -8,16 +8,18 @@
 export function normalizeTag(tag: string): string {
   let value = (tag ?? '').trim().replace(/^#/, '').replace(/\s+/g, ' ');
 
-  // "Fall '26", "Fall'26", "Fall ’26", "Fall 26" → "Fall 2026"
-  const seasonMatch = value.match(/^(Spring|Summer|Fall|Winter)(.*)$/i);
-  if (seasonMatch) {
-    const rest = seasonMatch[2].trim().replace(/^['’]/, '').trim();
-    if (/^\d{2}$/.test(rest)) {
-      const season = seasonMatch[1].charAt(0).toUpperCase() + seasonMatch[1].slice(1).toLowerCase();
-      const yy = Number(rest);
-      const year = yy >= 50 ? 1900 + yy : 2000 + yy;
-      return `${season} ${year}`;
-    }
+  // "Fall '26", "Fall'26", "Fall ’26", "Fall 26", "Fall26", "Fall2025"
+  // → "Fall 2026" / "Fall 2025"
+  const seasonShort = value.match(/^(Spring|Summer|Fall|Winter)\s*['’]?\s*(\d{2}|\d{4})$/i);
+  if (seasonShort) {
+    const season = seasonShort[1].charAt(0).toUpperCase() + seasonShort[1].slice(1).toLowerCase();
+    const rawYear = seasonShort[2];
+    const year = rawYear.length === 4
+      ? Number(rawYear)
+      : Number(rawYear) >= 50
+        ? 1900 + Number(rawYear)
+        : 2000 + Number(rawYear);
+    return `${season} ${year}`;
   }
 
   // "club rush", "club-rush", "clubrush" → "Club Rush"
