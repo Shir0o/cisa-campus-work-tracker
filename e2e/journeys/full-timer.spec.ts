@@ -169,8 +169,14 @@ test.describe('Full-timer journey (#1477)', () => {
     const convo = contactPage.getByPlaceholder(/Write something…/).first();
     await expect(convo).toBeVisible({ timeout: 5_000 });
     await convo.fill(general);
+    // The composer's one shared "Post" control enables off the draft state;
+    // wait for it before ⌘↵ so the command registry (whose handler refreshes in
+    // a passive effect) is dispatching the closure that owns this text (#1568).
+    await expect(contactPage.getByRole('button', { name: 'Post', exact: true })).toBeEnabled();
     await convo.press('Meta+Enter');
-    await expect(contactPage.getByText(general).first()).toBeVisible({ timeout: 10_000 });
+    // The composer clears only once the write resolves; the clear confirms the
+    // post landed before the next one goes into the same shared box.
+    await expect(convo).toHaveValue('', { timeout: 10_000 });
 
     // Post a team (Full-timers-only) discussion note.
     await contactPage.getByRole('button', { name: /^full-timers/i }).click();
@@ -179,6 +185,7 @@ test.describe('Full-timer journey (#1477)', () => {
     const composer = contactPage.getByPlaceholder(/Write something only Full-timers will see/i).first();
     await expect(composer).toBeVisible({ timeout: 5_000 });
     await composer.fill(note);
+    await expect(contactPage.getByRole('button', { name: 'Post', exact: true })).toBeEnabled();
     await composer.press('Meta+Enter');
     await expect(contactPage.getByText(note).first()).toBeVisible({ timeout: 10_000 });
     await expect(contactPage.getByText(/missing or insufficient permissions/i)).toHaveCount(0);
