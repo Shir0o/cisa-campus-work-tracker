@@ -196,6 +196,16 @@ describe('findSameDayInteraction', () => {
     expect(findSameDayInteraction(list, 'u1', '2026-09-10')?.id).toBe('late');
   });
 
+  it('compares moments, not strings, when local and UTC formats mix', () => {
+    // 6 pm Pacific written as UTC sorts after 7:30 pm Pacific written locally.
+    const list = [
+      interaction({ id: 'utc-6pm', dateTime: '2026-10-07T01:00:00.000Z' }),
+      interaction({ id: 'local-730pm', dateTime: '2026-10-06T19:30' }),
+    ];
+    expect(findSameDayInteraction(list, 'u1', '2026-10-07T03:00:00.000Z')?.id).toBe('local-730pm');
+    expect(findSameDayInteraction(list.slice().reverse(), 'u1', '2026-10-07T03:00:00.000Z')?.id).toBe('local-730pm');
+  });
+
   it('flags an evening entry logged locally against its UTC suggestion', () => {
     const list = [interaction({ dateTime: '2026-10-06T19:30' })];
     expect(findSameDayInteraction(list, 'u1', '2026-10-07T02:00:00.000Z')?.id).toBe('i1');

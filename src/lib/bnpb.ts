@@ -379,7 +379,7 @@ export function findSameDayInteraction(
   for (const interaction of interactions) {
     if (interaction.userId !== uid) continue;
     if (calendarDay(interaction.dateTime) !== day) continue;
-    if (!found || interaction.dateTime > found.dateTime) found = interaction;
+    if (!found || isNewerThan(interaction.dateTime, found.dateTime)) found = interaction;
   }
   return found;
 }
