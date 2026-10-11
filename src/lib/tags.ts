@@ -10,7 +10,7 @@ export function normalizeTag(tag: string): string {
 
   // "Fall '26", "Fall'26", "Fall ’26", "Fall 26", "Fall26", "Fall2025"
   // → "Fall 2026" / "Fall 2025"
-  const seasonShort = value.match(/^(Spring|Summer|Fall|Winter)\s*['’]?\s*(\d{2}|\d{4})$/i);
+  const seasonShort = value.match(/^(Spring|Summer|Fall|Winter) ?['’]? ?(\d{2}|\d{4})$/i);
   if (seasonShort) {
     const season = seasonShort[1].charAt(0).toUpperCase() + seasonShort[1].slice(1).toLowerCase();
     const rawYear = seasonShort[2];

@@ -33,6 +33,15 @@ describe('normalizeTag', () => {
     expect(normalizeTag('fall 2027')).toBe('Fall 2027');
   });
 
+  it('reads tab- and quote-spaced season labels without slow backtracking', () => {
+    expect(normalizeTag("Fall\t'\t26")).toBe('Fall 2026');
+    expect(normalizeTag("Fall'26")).toBe('Fall 2026');
+    const hostile = `fall${'\t'.repeat(50_000)}x`;
+    const started = Date.now();
+    expect(normalizeTag(hostile)).toBe('fall x');
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
   it('normalizes club rush variants', () => {
     expect(normalizeTag('club-rush')).toBe('Club Rush');
   });
