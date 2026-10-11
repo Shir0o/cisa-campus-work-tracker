@@ -4093,18 +4093,28 @@ ${JSON.stringify(contactsList)}`;
       const dailyLimit = Number.isFinite(dailyLimitRaw) && dailyLimitRaw > 0 ? dailyLimitRaw : 2000;
       const today = new Date().toISOString().slice(0, 10);
       const usageRef = db.collection("system").doc("translationUsage");
-      let usedToday = 0;
-      try {
-        const usageSnap = await usageRef.get();
-        const usageData = usageSnap.exists ? usageSnap.data() : null;
-        if (usageData && usageData.date === today && typeof usageData.count === "number") {
-          usedToday = usageData.count;
+      // Reserve the quota before calling Gemini, in one transaction, so
+      // concurrent requests can't both read the same count and overshoot. Fail
+      // closed: if the reservation can't be made, nothing goes to Gemini.
+      // Reservations are not refunded if Gemini then fails; a slight
+      // over-count is the safe direction.
+      let allowedCount = 0;
+      if (uncachedItems.length > 0) {
+        try {
+          allowedCount = await db.runTransaction(async (tx) => {
+            const usageSnap = await tx.get(usageRef);
+            const usageData = usageSnap.exists ? usageSnap.data() : null;
+            const used =
+              usageData && usageData.date === today && typeof usageData.count === "number" ? usageData.count : 0;
+            const allowed = Math.max(0, Math.min(uncachedItems.length, dailyLimit - used));
+            tx.set(usageRef, { date: today, count: used + allowed }, { merge: true });
+            return allowed;
+          });
+        } catch (quotaErr) {
+          console.warn("[Translation Service] Failed to reserve daily usage, skipping Gemini:", quotaErr);
         }
-      } catch (quotaErr) {
-        console.warn("[Translation Service] Failed to read daily usage counter:", quotaErr);
       }
-      const remainingQuota = Math.max(0, dailyLimit - usedToday);
-      const allowedItems = uncachedItems.slice(0, remainingQuota);
+      const allowedItems = uncachedItems.slice(0, allowedCount);
 
       // If we have allowed items, call Gemini in chunks with timeout protection
       if (allowedItems.length > 0) {
@@ -4223,13 +4233,6 @@ CRITICAL RULES:
           } catch (dbErr) {
             console.warn("[Translation Service] Failed to save translations to Firestore cache:", dbErr);
           }
-        }
-
-        // Count what we sent to Gemini toward the shared daily limit.
-        try {
-          await usageRef.set({ date: today, count: usedToday + allowedItems.length }, { merge: true });
-        } catch (quotaErr) {
-          console.warn("[Translation Service] Failed to record daily usage:", quotaErr);
         }
       }
 
