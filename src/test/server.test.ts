@@ -3020,7 +3020,7 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
   const sha = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
   const signInOwner = () =>
-    mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, name: "Owner" });
+    mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, email_verified: true, name: "Owner" });
 
   const seedOwner = () =>
     seedDoc("users", OWNER_UID, { email: OWNER_EMAIL, role: "admin", approved: true });
@@ -3081,6 +3081,24 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
         .set("Authorization", "Bearer other");
       expect(res.status).toBe(403);
       expect(getCollection("bnpb_sync_tokens")).toEqual({});
+    });
+
+    it("refuses the owner's address when the email is not verified, on every token route", async () => {
+      mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, email_verified: false });
+      seedToken("live-secret");
+      for (const [method, path] of [
+        ["post", "/api/bnpb/token"],
+        ["post", "/api/bnpb/token/revoke"],
+        ["get", "/api/bnpb/token"],
+      ] as const) {
+        const res = await request(app)[method](path).set("Authorization", "Bearer owner-token");
+        expect(res.status).toBe(403);
+      }
+      expect((getCollection("bnpb_sync_tokens")[OWNER_UID] as Record<string, any>).tokenHash).toBe(sha("live-secret"));
+
+      mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const missing = await request(app).post("/api/bnpb/token").set("Authorization", "Bearer owner-token");
+      expect(missing.status).toBe(403);
     });
 
     it("rejects an unauthenticated token request with 401", async () => {
@@ -3174,6 +3192,8 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       expect(new Set(created.map((s) => s.bnpbContactId))).toEqual(new Set(["p-1", "p-2"]));
       expect(created.find((s) => s.bnpbContactId === "p-2")!.bnpbName).toBe("Beth Doe");
       expect(created.find((s) => s.bnpbContactId === "p-1")!.text).toBe("Coffee downtown");
+      expect(created.find((s) => s.bnpbContactId === "p-1")!.bnpbNickname).toBe("Al");
+      expect(created.find((s) => s.bnpbContactId === "p-2")!.bnpbNickname).toBeNull();
 
       const second = await sync("live-secret", payload());
       expect(second.status).toBe(200);
@@ -3199,6 +3219,34 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       const stillPending = after.find((s) => s.bnpbContactId === "p-2")!;
       expect(stillPending.status).toBe("pending");
       expect(stillPending.summary).toBe("Coffee uptown");
+    });
+
+    it("keeps the owner's chosen Contact and edited text on a re-push of a pending suggestion", async () => {
+      seedOwner();
+      seedToken("live-secret");
+      await sync("live-secret", payload());
+      const colStore = getCollection(`users/${OWNER_UID}/interactionSuggestions`);
+      for (const [key, value] of Object.entries(colStore)) {
+        const data = value as any;
+        colStore[key] =
+          data.bnpbContactId === "p-1"
+            ? { ...data, contactId: "c1", text: "Edited by owner" }
+            : { ...data, contactId: "c2" };
+      }
+
+      const edited = payload();
+      (edited.interactions[0] as any).summary = "Coffee uptown";
+      expect((await sync("live-secret", edited)).status).toBe(200);
+
+      const after = ownedSuggestions();
+      const ownerEdited = after.find((s) => s.bnpbContactId === "p-1")!;
+      expect(ownerEdited.status).toBe("pending");
+      expect(ownerEdited.contactId).toBe("c1");
+      expect(ownerEdited.text).toBe("Edited by owner");
+      expect(ownerEdited.summary).toBe("Coffee uptown");
+      const untouched = after.find((s) => s.bnpbContactId === "p-2")!;
+      expect(untouched.contactId).toBe("c2");
+      expect(untouched.text).toBe("Coffee uptown");
     });
 
     it("withdraws pending suggestions for a tombstone and for a removed participant", async () => {
@@ -3301,6 +3349,88 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
 
       await sync("live-secret", payload());
       expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!.status).toBe("dismissed");
+    });
+
+    describe("a full page", () => {
+      const interaction = (i: number, participants: string[], extra: Record<string, unknown> = {}) => ({
+        syncId: `s-${i}`,
+        occurredAt: "2026-09-10T15:00:00.000Z",
+        summary: `Entry ${i}`,
+        medium: "coffee",
+        participants: participants.map((id) => ({ bnpbContactId: id, firstName: id })),
+        ...extra,
+      });
+
+      it("counts created, updated and withdrawn across a 200-Interaction page", async () => {
+        seedOwner();
+        seedToken("live-secret");
+        const page = (build: (i: number) => ReturnType<typeof interaction>) => ({
+          interactions: Array.from({ length: 200 }, (_, i) => build(i)),
+        });
+
+        const first = await sync("live-secret", page((i) => interaction(i, ["p-1", "p-2"])));
+        expect(first.body).toMatchObject({ created: 400, updated: 0, withdrawn: 0 });
+        expect(ownedSuggestions()).toHaveLength(400);
+
+        const second = await sync(
+          "live-secret",
+          page((i) => {
+            if (i < 50) return interaction(i, ["p-1", "p-2"], { deleted: true });
+            if (i < 100) return interaction(i, ["p-1"]);
+            return interaction(i, ["p-1", "p-2"]);
+          }),
+        );
+        expect(second.body).toMatchObject({ created: 0, updated: 250, withdrawn: 150 });
+        expect(ownedSuggestions().filter((s) => s.status === "withdrawn")).toHaveLength(150);
+        expect(ownedSuggestions().filter((s) => s.status === "pending")).toHaveLength(250);
+      });
+
+      it("writes in batches of at most 500 operations", async () => {
+        seedOwner();
+        seedToken("live-secret");
+        const realBatch = mockDb.batch;
+        const sizes: number[] = [];
+        const batchSpy = vi.spyOn(mockDb, "batch").mockImplementation(() => {
+          const batch = realBatch();
+          let ops = 0;
+          const count =
+            <A extends unknown[]>(fn: (...args: A) => unknown) =>
+            (...args: A) => {
+              ops += 1;
+              return fn(...args);
+            };
+          return {
+            set: count(batch.set),
+            update: count(batch.update),
+            delete: count(batch.delete),
+            commit: async () => {
+              sizes.push(ops);
+              return batch.commit();
+            },
+          };
+        });
+
+        const res = await sync("live-secret", {
+          interactions: Array.from({ length: 200 }, (_, i) => interaction(i, ["p-1", "p-2", "p-3"])),
+        });
+
+        expect(res.body).toMatchObject({ created: 600, updated: 0, withdrawn: 0 });
+        expect(ownedSuggestions()).toHaveLength(600);
+        expect(sizes.length).toBeGreaterThan(1);
+        expect(Math.max(...sizes)).toBeLessThanOrEqual(500);
+        expect(sizes.reduce((a, b) => a + b, 0)).toBe(600);
+        batchSpy.mockRestore();
+      });
+
+      it("treats a syncId repeated in one request as an update of what the first copy wrote", async () => {
+        seedOwner();
+        seedToken("live-secret");
+        const res = await sync("live-secret", {
+          interactions: [interaction(1, ["p-1", "p-2"]), interaction(1, ["p-1", "p-2"])],
+        });
+        expect(res.body).toMatchObject({ created: 2, updated: 2, withdrawn: 0 });
+        expect(ownedSuggestions()).toHaveLength(2);
+      });
     });
   });
 });

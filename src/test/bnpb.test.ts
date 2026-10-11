@@ -1,6 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { where } from 'firebase/firestore';
 import type { Contact, Interaction } from '../types';
 import type { InteractionSuggestion } from '../lib/bnpb';
+
+// BNPB sends UTC timestamps; the tracker reads days and times in local time.
+// Pin the zone so "7 pm Pacific on Oct 6" (02:00Z on Oct 7) means the same on
+// every machine.
+const ORIGINAL_TZ = process.env.TZ;
+beforeAll(() => {
+  process.env.TZ = 'America/Los_Angeles';
+});
+afterAll(() => {
+  if (ORIGINAL_TZ === undefined) delete process.env.TZ;
+  else process.env.TZ = ORIGINAL_TZ;
+});
 
 const hoisted = vi.hoisted(() => {
   let seq = 0;
@@ -13,6 +26,7 @@ const hoisted = vi.hoisted(() => {
   return {
     batch,
     nextId: () => `generated-${++seq}`,
+    mockGetDocs: vi.fn(async (_query?: unknown) => ({ docs: [] as Array<{ id: string }> })),
     mockOnSnapshot: vi.fn((_query?: unknown, callback?: unknown) => {
       if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs: [] });
       return vi.fn();
@@ -30,6 +44,8 @@ vi.mock('firebase/firestore', () => ({
   }),
   writeBatch: vi.fn(() => hoisted.batch),
   onSnapshot: hoisted.mockOnSnapshot,
+  getDocs: hoisted.mockGetDocs,
+  where: vi.fn((...args: unknown[]) => ({ where: args })),
   query: vi.fn((...args: unknown[]) => ({ args })),
   orderBy: vi.fn((...args: unknown[]) => ({ args })),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
@@ -60,10 +76,12 @@ import {
   monthKey,
   nameSimilarity,
   normalizeName,
+  notACisaPersonId,
   orderPendingSuggestions,
   subscribeContactInteractions,
   subscribePendingSuggestions,
   subscribeSuggestionLinks,
+  suggestionLinkId,
   undoSuggestionDismiss,
   undoNotACisaPerson,
 } from '../lib/bnpb';
@@ -137,6 +155,12 @@ describe('calendarDay', () => {
     expect(calendarDay('2026-09-10T15:00:00.000Z')).toBe('2026-09-10');
     expect(calendarDay('nonsense')).toBeNull();
   });
+
+  it('reads a UTC timestamp as the local day it happened on', () => {
+    // 7 pm Pacific on Oct 6 is 02:00Z on Oct 7.
+    expect(calendarDay('2026-10-07T02:00:00.000Z')).toBe('2026-10-06');
+    expect(calendarDay('2026-10-06T19:00')).toBe('2026-10-06');
+  });
 });
 
 describe('findSameDayInteraction', () => {
@@ -171,6 +195,22 @@ describe('findSameDayInteraction', () => {
       interaction({ id: 'late', dateTime: '2026-09-10T18:00:00.000Z' }),
     ];
     expect(findSameDayInteraction(list, 'u1', '2026-09-10')?.id).toBe('late');
+  });
+
+  it('compares moments, not strings, when local and UTC formats mix', () => {
+    // 6 pm Pacific written as UTC sorts after 7:30 pm Pacific written locally.
+    const list = [
+      interaction({ id: 'utc-6pm', dateTime: '2026-10-07T01:00:00.000Z' }),
+      interaction({ id: 'local-730pm', dateTime: '2026-10-06T19:30' }),
+    ];
+    expect(findSameDayInteraction(list, 'u1', '2026-10-07T03:00:00.000Z')?.id).toBe('local-730pm');
+    expect(findSameDayInteraction(list.slice().reverse(), 'u1', '2026-10-07T03:00:00.000Z')?.id).toBe('local-730pm');
+  });
+
+  it('flags an evening entry logged locally against its UTC suggestion', () => {
+    const list = [interaction({ dateTime: '2026-10-06T19:30' })];
+    expect(findSameDayInteraction(list, 'u1', '2026-10-07T02:00:00.000Z')?.id).toBe('i1');
+    expect(findSameDayInteraction([interaction({ dateTime: '2026-10-07' })], 'u1', '2026-10-07T02:00:00.000Z')).toBeNull();
   });
 
   it('returns null when the suggestion has no usable day', () => {
@@ -213,7 +253,8 @@ describe('confirmSuggestion', () => {
     expect(interaction!.data).toMatchObject({
       userId: 'u1',
       content: 'Coffee and a walk',
-      dateTime: '2026-09-10T15:00:00.000Z',
+      // 15:00Z is 08:00 Pacific, written in the tracker's local format.
+      dateTime: '2026-09-10T08:00',
       type: 'meeting',
       duration: '45 min',
     });
@@ -224,6 +265,81 @@ describe('confirmSuggestion', () => {
     const [updateRef, updateData] = hoisted.batch.update.mock.calls[0];
     expect(updateRef.path).toBe(`users/u1/${INTERACTION_SUGGESTIONS_SUBCOLLECTION}/sug-1`);
     expect(updateData).toMatchObject({ status: 'confirmed', contactId: 'c1', text: 'Coffee and a walk' });
+  });
+
+  const confirmOnto = (over: Partial<Contact>) =>
+    confirmSuggestion({
+      uid: 'u1',
+      user: { uid: 'u1', displayName: 'Owner', photoURL: '', email: 'owner@example.com' },
+      role: 'admin',
+      suggestion: suggestion(),
+      contact: contact({ id: 'c1', ...over }),
+      text: 'Coffee',
+    });
+  const contactUpdate = () =>
+    hoisted.batch.update.mock.calls.find(([ref]) => ref.path === 'contacts/c1')?.[1];
+
+  it('counts the confirmed Interaction as reaching the person', async () => {
+    await confirmOnto({ lastContactedDate: '2026-09-01T10:00' });
+
+    expect(contactUpdate()).toMatchObject({
+      lastSeen: '2026-09-10T08:00',
+      lastContactedDate: '2026-09-10T08:00',
+      lastContactedBy: 'Owner',
+      lastContactedById: 'u1',
+      reachedAt: '2026-09-10T08:00',
+      hasNewActivity: true,
+      updatedBy: 'u1',
+      updatedByName: 'Owner',
+    });
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('stamps a contact that has no usable last-contacted time', async () => {
+    await confirmOnto({ lastContactedDate: undefined });
+    expect(contactUpdate()).toMatchObject({ lastContactedDate: '2026-09-10T08:00' });
+
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: 'not a date' });
+    expect(contactUpdate()).toMatchObject({ lastContactedDate: '2026-09-10T08:00' });
+
+    // A bare date is that whole local day's start, so a time later that day is newer.
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: '2026-09-10' });
+    expect(contactUpdate()).toMatchObject({ lastContactedDate: '2026-09-10T08:00' });
+  });
+
+  it('leaves a newer last-contacted time alone when backfilling an old entry', async () => {
+    await confirmOnto({ lastContactedDate: '2026-09-20T09:00' });
+    expect(contactUpdate()).toBeUndefined();
+
+    // 16:00Z is 09:00 Pacific, an hour after the confirmed 08:00.
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: '2026-09-10T16:00:00.000Z' });
+    expect(contactUpdate()).toBeUndefined();
+
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: '2026-09-10T08:00' });
+    expect(contactUpdate()).toBeUndefined();
+  });
+
+  it('replaces any other link doc for the same BNPB contact so the new one wins', async () => {
+    const linkId = await suggestionLinkId('p-1');
+    hoisted.batch.delete.mockClear();
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [{ id: 'b1abcde' }, { id: linkId }] });
+
+    await confirmOnto({});
+
+    const [queried] = hoisted.mockGetDocs.mock.calls[hoisted.mockGetDocs.mock.calls.length - 1];
+    expect(JSON.stringify(queried)).toContain(SUGGESTION_LINKS_SUBCOLLECTION);
+    expect(JSON.stringify(queried)).toContain('"bnpbContactId","==","p-1"');
+    expect(hoisted.batch.delete.mock.calls.map(([ref]) => ref.path)).toEqual([
+      `users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/b1abcde`,
+    ]);
+    const link = hoisted.batch.set.mock.calls.find(([ref]) =>
+      ref.path.startsWith(`users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/`),
+    );
+    expect(link![0].path).toBe(`users/u1/${SUGGESTION_LINKS_SUBCOLLECTION}/${linkId}`);
   });
 
   it('refuses to confirm onto a contact the person cannot see', async () => {
@@ -332,6 +448,41 @@ describe('undoNotACisaPerson', () => {
   });
 });
 
+describe('undoNotACisaPerson with choices under older ids', () => {
+  beforeEach(() => {
+    hoisted.batch.delete.mockClear();
+    hoisted.batch.commit.mockClear();
+  });
+
+  it('deletes every choice recorded for the BNPB contact, whatever its id', async () => {
+    hoisted.mockGetDocs.mockResolvedValueOnce({ docs: [{ id: 'b1abcde' }] });
+
+    await undoNotACisaPerson({ uid: 'u1', bnpbContactId: 'p-1', suggestionIds: [] });
+
+    const [queried] = hoisted.mockGetDocs.mock.calls[hoisted.mockGetDocs.mock.calls.length - 1];
+    expect(JSON.stringify(queried)).toContain(NOT_A_CISA_PERSON_SUBCOLLECTION);
+    expect(JSON.stringify(queried)).toContain('"bnpbContactId","==","p-1"');
+    const deleted = hoisted.batch.delete.mock.calls.map(([ref]) => ref.path).sort();
+    expect(deleted).toEqual(
+      [
+        `users/u1/${NOT_A_CISA_PERSON_SUBCOLLECTION}/b1abcde`,
+        `users/u1/${NOT_A_CISA_PERSON_SUBCOLLECTION}/${await notACisaPersonId('p-1')}`,
+      ].sort(),
+    );
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('suggestionLinkId and notACisaPersonId', () => {
+  it('are deterministic, Firestore-safe and do not collide like a 32-bit hash', async () => {
+    // "Aa" and "BB" share a 32-bit Java-style string hash.
+    expect(await suggestionLinkId('Aa')).not.toBe(await suggestionLinkId('BB'));
+    expect(await notACisaPersonId('Aa')).not.toBe(await notACisaPersonId('BB'));
+    expect(await suggestionLinkId('p/1 é')).toBe(await suggestionLinkId('p/1 é'));
+    expect(await suggestionLinkId('p/1 é')).toMatch(/^[a-zA-Z0-9_-]{1,128}$/);
+  });
+});
+
 describe('subscribePendingSuggestions', () => {
   beforeEach(() => hoisted.mockOnSnapshot.mockClear());
 
@@ -356,6 +507,28 @@ describe('subscribePendingSuggestions', () => {
     expect(hoisted.mockOnSnapshot).toHaveBeenCalledTimes(1);
     expect(seen.map((s) => s.id)).toEqual(['new', 'old']);
     expect(typeof unsub).toBe('function');
+  });
+
+  it('asks Firestore for pending suggestions only, so settled history is never re-read', () => {
+    vi.mocked(where).mockClear();
+    subscribePendingSuggestions('u1', () => {}, () => {});
+    expect(where).toHaveBeenCalledWith('status', '==', 'pending');
+  });
+
+  it('carries the BNPB nickname, null when there is none', () => {
+    hoisted.mockOnSnapshot.mockImplementationOnce((_query: unknown, callback: unknown) => {
+      (callback as (snap: unknown) => void)({
+        docs: [
+          { id: 'nick', data: () => ({ ...suggestion({ id: 'nick' }), bnpbNickname: 'Al' }) },
+          { id: 'none', data: () => ({ ...suggestion({ id: 'none', occurredAt: '2026-09-01T10:00:00.000Z' }) }) },
+        ],
+      });
+      return vi.fn();
+    });
+
+    const seen: InteractionSuggestion[] = [];
+    subscribePendingSuggestions('u1', (list) => seen.push(...list), () => {});
+    expect(seen.map((s) => s.bnpbNickname)).toEqual(['Al', null]);
   });
 });
 
@@ -406,6 +579,11 @@ describe('monthKey', () => {
     expect(monthKey('2026-09-10T15:00:00.000Z')).toBe('2026-09');
     expect(monthKey('nonsense')).toBe('unknown');
   });
+
+  it('puts a UTC timestamp in the local month it happened in', () => {
+    // 7 pm Pacific on Sep 30 is 02:00Z on Oct 1.
+    expect(monthKey('2026-10-01T02:00:00.000Z')).toBe('2026-09');
+  });
 });
 
 describe('matchSuggestion', () => {
@@ -447,6 +625,25 @@ describe('matchSuggestion', () => {
   it('matches an exact name case- and accent-insensitively', () => {
     const match = matchSuggestion({ ...base, suggestion: suggestion({ bnpbName: 'alex chen' }) });
     expect(match.basis).toBe('exact');
+    expect(match.contact?.id).toBe('c1');
+  });
+
+  it('counts an exact match on the BNPB nickname as a name match, ahead of a fuzzy guess', () => {
+    const match = matchSuggestion({
+      ...base,
+      contacts: [contact({ id: 'c1', name: 'Roberta Lee' }), contact({ id: 'c4', name: 'Bobby' })],
+      suggestion: suggestion({ bnpbName: 'Robert Lee', bnpbNickname: 'bobby' }),
+    });
+    expect(match.basis).toBe('exact');
+    expect(match.contact?.id).toBe('c4');
+  });
+
+  it('prefers a full-name match over a nickname match', () => {
+    const match = matchSuggestion({
+      ...base,
+      contacts: [contact({ id: 'c1', name: 'Alex Chen' }), contact({ id: 'c4', name: 'Al' })],
+      suggestion: suggestion({ bnpbName: 'Alex Chen', bnpbNickname: 'Al' }),
+    });
     expect(match.contact?.id).toBe('c1');
   });
 

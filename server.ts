@@ -4033,7 +4033,8 @@ ${JSON.stringify(contactsList)}`;
     try {
       const decoded = await authenticateFirebaseUser(req);
       const email = String(decoded.email ?? '').trim().toLowerCase();
-      if (email !== OWNER_EMAIL_SERVER) {
+      // Like the rules' isSuperAdmin(): an unverified address is not the owner.
+      if (email !== OWNER_EMAIL_SERVER || decoded.email_verified !== true) {
         res.status(403).json({ success: false, error: 'Only the app owner can manage a Personal Sync Token.' });
         return null;
       }
@@ -4139,13 +4140,34 @@ ${JSON.stringify(contactsList)}`;
       let updated = 0;
       let withdrawn = 0;
 
-      for (const interaction of parsedBody.interactions) {
-        const existingSnap = await suggestions.where('syncId', '==', interaction.syncId).get();
-        const existingByContact = new Map<string, { id: string; data: Record<string, unknown> }>();
-        for (const entry of existingSnap.docs) {
+      // What each syncId already has, read up front in `in` chunks (30 values
+      // is Firestore's limit). The map is kept current as the loop queues
+      // writes, so a syncId repeated in one request still sees what its first
+      // copy wrote.
+      type ExistingSuggestion = { id: string; data: Record<string, unknown> };
+      const syncIds = [...new Set(parsedBody.interactions.map((i) => i.syncId))];
+      const syncIdChunks: string[][] = [];
+      for (let i = 0; i < syncIds.length; i += 30) syncIdChunks.push(syncIds.slice(i, i + 30));
+      const existingSnaps = await Promise.all(
+        syncIdChunks.map((chunk) => suggestions.where('syncId', 'in', chunk).get()),
+      );
+      const existingBySync = new Map<string, Map<string, ExistingSuggestion>>();
+      for (const snap of existingSnaps) {
+        for (const entry of snap.docs) {
           const data = entry.data() as Record<string, unknown>;
-          existingByContact.set(String(data.bnpbContactId), { id: entry.id, data });
+          const syncId = String(data.syncId);
+          let byContact = existingBySync.get(syncId);
+          if (!byContact) existingBySync.set(syncId, (byContact = new Map()));
+          byContact.set(String(data.bnpbContactId), { id: entry.id, data });
         }
+      }
+
+      // Writes are queued, then committed in batches of at most 500 operations.
+      const writes: Array<(batch: FirebaseFirestore.WriteBatch) => void> = [];
+
+      for (const interaction of parsedBody.interactions) {
+        let existingByContact = existingBySync.get(interaction.syncId);
+        if (!existingByContact) existingBySync.set(interaction.syncId, (existingByContact = new Map()));
         const currentContactIds = new Set(interaction.participants.map((p) => p.bnpbContactId));
 
         // A tombstoned Interaction, or one that lost a participant, withdraws
@@ -4153,7 +4175,9 @@ ${JSON.stringify(contactsList)}`;
         for (const [contactId, entry] of existingByContact) {
           if (entry.data.status !== 'pending') continue;
           if (interaction.deleted === true || !currentContactIds.has(contactId)) {
-            await suggestions.doc(entry.id).update({ status: 'withdrawn', updatedAt: now });
+            const ref = suggestions.doc(entry.id);
+            writes.push((batch) => batch.update(ref, { status: 'withdrawn', updatedAt: now }));
+            entry.data = { ...entry.data, status: 'withdrawn', updatedAt: now };
             withdrawn += 1;
           }
         }
@@ -4167,10 +4191,19 @@ ${JSON.stringify(contactsList)}`;
           // A "Not a CISA person" choice arrives already settled, so the owner
           // is never asked again and an Undo of the choice can restore it.
           const notCisa = notACisa.has(participant.bnpbContactId);
+          // A re-push keeps what the owner already did on a waiting suggestion:
+          // the Contact they chose, and text they tidied away from the summary.
+          const ownerText =
+            existing && typeof existing.data.text === 'string' && existing.data.text !== existing.data.summary
+              ? existing.data.text
+              : null;
+          const chosenContactId =
+            existing && typeof existing.data.contactId === 'string' ? existing.data.contactId : null;
           const suggestion = {
             syncId: interaction.syncId,
             bnpbContactId: participant.bnpbContactId,
             bnpbName: bnpbParticipantName(participant),
+            bnpbNickname: (participant.nickname ?? '').trim() || null,
             occurredAt: interaction.occurredAt,
             durationMinutes: interaction.durationMinutes ?? null,
             summary: interaction.summary,
@@ -4178,18 +4211,24 @@ ${JSON.stringify(contactsList)}`;
             sourceUpdatedAt: interaction.updatedAt ?? null,
             status: notCisa ? 'dismissed' : 'pending',
             ...(notCisa ? { dismissedBy: 'notACisaPerson', dismissedAt: now } : {}),
-            text: interaction.summary,
+            text: ownerText ?? interaction.summary,
+            ...(chosenContactId ? { contactId: chosenContactId } : {}),
             createdAt: existing ? existing.data.createdAt ?? now : now,
             updatedAt: now,
           };
-          if (existing) {
-            await suggestions.doc(existing.id).set(suggestion);
-            updated += 1;
-          } else {
-            await suggestions.doc(bnpbSuggestionId(interaction.syncId, participant.bnpbContactId)).set(suggestion);
-            created += 1;
-          }
+          const id = existing ? existing.id : bnpbSuggestionId(interaction.syncId, participant.bnpbContactId);
+          const ref = suggestions.doc(id);
+          writes.push((batch) => batch.set(ref, suggestion));
+          existingByContact.set(participant.bnpbContactId, { id, data: suggestion });
+          if (existing) updated += 1;
+          else created += 1;
         }
+      }
+
+      for (let i = 0; i < writes.length; i += 500) {
+        const batch = db.batch();
+        for (const write of writes.slice(i, i + 500)) write(batch);
+        await batch.commit();
       }
 
       await db.collection(BNPB_SYNC_TOKEN_COLLECTION).doc(uid).update({ lastPushAt: now });

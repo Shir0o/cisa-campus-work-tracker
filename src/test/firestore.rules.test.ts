@@ -21,10 +21,12 @@ import {
   where,
   orderBy,
   limit,
+  writeBatch,
 } from 'firebase/firestore';
 import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as fs from 'fs';
 import { nullEmailContact, noOwnerContact } from './fixtures/contacts';
+import { buildContactActivityPatch } from '../lib/contactActivity';
 
 let testEnv: RulesTestEnvironment;
 const PROJECT_ID = 'campus-hub-security-test';
@@ -5282,6 +5284,55 @@ describeRules('Firestore Security Rules', () => {
       const other = getFirestore({ uid: 'op1', email: 'op1@example.com' });
       await assertFails(getDoc(doc(other, 'users', OWNER_UID, 'suggestionLinks', 'link1')));
       await assertFails(setDoc(doc(other, 'users', OWNER_UID, 'suggestionLinks', 'link2'), link));
+    });
+
+    it('lets the owner confirm in one batch: the Interaction, the reach stamp, the settle and the link', async () => {
+      // Mirrors confirmSuggestion in src/lib/bnpb.ts (#1420, review fix).
+      await seedUser(OWNER_UID, 'admin');
+      await seedSuggestion(OWNER_UID);
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'contacts', 'c1'), {
+          name: 'Alex Chen', email: 'alex@example.com', lastContactedDate: '2026-09-01T10:00',
+        });
+        await setDoc(doc(context.firestore(), 'users', OWNER_UID, 'suggestionLinks', 'b1abcde'), {
+          bnpbContactId: 'p-1', contactId: 'c-old', updatedAt: '2026-09-01T00:00:00.000Z',
+        });
+      });
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const staleLinks = await assertSucceeds(getDocs(query(
+        collection(owner, 'users', OWNER_UID, 'suggestionLinks'), where('bnpbContactId', '==', 'p-1'),
+      )));
+      const batch = writeBatch(owner);
+      for (const entry of staleLinks.docs) batch.delete(entry.ref);
+      batch.set(doc(collection(owner, 'contacts', 'c1', 'interactions')), {
+        userId: OWNER_UID, userName: 'Owner', userPhoto: '', content: 'Coffee and a walk',
+        dateTime: '2026-09-10T08:00', type: 'meeting', duration: '45 min', createdAt: serverTimestamp(),
+      });
+      batch.update(doc(owner, 'users', OWNER_UID, 'interactionSuggestions', 'sug-1'), {
+        status: 'confirmed', contactId: 'c1', text: 'Coffee and a walk', confirmedAt: serverTimestamp(),
+      });
+      batch.update(doc(owner, 'contacts', 'c1'), buildContactActivityPatch({
+        date: '2026-09-10T08:00', by: { uid: OWNER_UID, name: 'Owner' }, type: 'interaction',
+      }) as Record<string, unknown>);
+      batch.set(doc(owner, 'users', OWNER_UID, 'suggestionLinks', 'link-new'), {
+        bnpbContactId: 'p-1', contactId: 'c1', updatedAt: serverTimestamp(),
+      });
+      await assertSucceeds(batch.commit());
+    });
+
+    it('lets the owner find and delete every Not a CISA person choice for a BNPB contact', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', OWNER_UID, 'notACisaPeople', 'b1abcde'), {
+          bnpbContactId: 'p-1', createdAt: '2026-09-01T00:00:00.000Z',
+        });
+      });
+      const owner = getFirestore({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const choices = await assertSucceeds(getDocs(query(
+        collection(owner, 'users', OWNER_UID, 'notACisaPeople'), where('bnpbContactId', '==', 'p-1'),
+      )));
+      const batch = writeBatch(owner);
+      for (const entry of choices.docs) batch.delete(entry.ref);
+      await assertSucceeds(batch.commit());
     });
 
     it('makes Personal Sync Token records unreadable and unwritable by clients', async () => {

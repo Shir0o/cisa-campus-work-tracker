@@ -10,19 +10,27 @@ import {
   collection,
   deleteField,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  where,
   writeBatch,
 } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { db, handleFirestoreError, OperationType } from './firebase';
+import { buildContactActivityPatch } from './contactActivity';
+import { formatDateTime } from './contactComposer';
 import { canSeeContact, type AppRole } from './permissions';
 import type { Contact, Interaction } from '../types';
 
 export const INTERACTION_SUGGESTIONS_SUBCOLLECTION = 'interactionSuggestions';
 export const SUGGESTION_LINKS_SUBCOLLECTION = 'suggestionLinks';
 export const NOT_A_CISA_PERSON_SUBCOLLECTION = 'notACisaPeople';
+
+/** The longest Interaction `content` the rules accept. */
+export const INTERACTION_CONTENT_MAX = 5000;
 
 export type InteractionSuggestionStatus = 'pending' | 'confirmed' | 'dismissed' | 'withdrawn';
 
@@ -32,6 +40,8 @@ export interface InteractionSuggestion {
   bnpbContactId: string;
   /** The name as written in BNPB. */
   bnpbName: string;
+  /** BNPB's nickname for the person, when it has one. */
+  bnpbNickname?: string | null;
   occurredAt: string;
   durationMinutes: number | null;
   summary: string;
@@ -205,7 +215,8 @@ export interface MatchSuggestionInput {
 
 /**
  * The matching cascade (#1424): a Contact the owner chose → a remembered
- * Suggestion link → an exact normalised name → a fuzzy best guess → unmatched.
+ * Suggestion link → an exact normalised name (full name, then nickname) → a
+ * fuzzy best guess → unmatched.
  * Only Contacts the owner can see are ever matched or offered, so a link to a
  * now-invisible Contact falls through.
  */
@@ -225,8 +236,10 @@ export function matchSuggestion(input: MatchSuggestionInput): SuggestionMatch {
     if (linked) return { basis: 'remembered', contact: linked };
   }
 
-  const normalized = normalizeName(suggestion.bnpbName);
-  if (normalized) {
+  // An exact normalised match on the full name, then on BNPB's nickname.
+  for (const name of [suggestion.bnpbName, suggestion.bnpbNickname]) {
+    const normalized = normalizeName(name ?? '');
+    if (!normalized) continue;
     const exact = visible
       .slice()
       .sort(byNameThenId)
@@ -239,10 +252,22 @@ export function matchSuggestion(input: MatchSuggestionInput): SuggestionMatch {
   return { basis: 'unmatched', contact: null };
 }
 
-/** The `YYYY-MM` a timestamp belongs to, or `unknown` when it has none. */
+/**
+ * A stored time as a Date in local time, or null when unusable. BNPB sends UTC
+ * (`…Z`), which parses to its true moment; a tracker `dateTime` without an
+ * offset already is local wall-clock time, and a bare date means that local day
+ * rather than UTC midnight.
+ */
+function parseLocalTime(value: string | null | undefined): Date | null {
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00` : value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** The local `YYYY-MM` a timestamp belongs to, or `unknown` when it has none. */
 export function monthKey(value: string): string {
-  const match = /^(\d{4})-(\d{2})/.exec(value);
-  return match ? `${match[1]}-${match[2]}` : 'unknown';
+  const date = parseLocalTime(value);
+  return date ? format(date, 'yyyy-MM') : 'unknown';
 }
 
 /**
@@ -314,14 +339,28 @@ export function buildSuggestionQueue(input: BuildSuggestionQueueInput): Suggesti
 }
 
 /**
- * The calendar day a timestamp belongs to, as `YYYY-MM-DD` (#1422). A logged
- * Interaction stores a bare date, while a BNPB `occurredAt` is a full
- * timestamp; both lead with the day the person means, so the prefix is the
- * comparison key and no timezone enters the answer.
+ * The local calendar day a timestamp belongs to, as `YYYY-MM-DD` (#1422). A
+ * logged Interaction stores local wall-clock time (or a bare date), while a
+ * BNPB `occurredAt` is UTC, so both are read in local time: 7 pm Pacific on
+ * Oct 6 is `…-10-07T02:00Z` from BNPB but still Oct 6 here.
  */
 export function calendarDay(value: string): string | null {
-  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
-  return match ? match[1] : null;
+  const date = parseLocalTime(value);
+  return date ? format(date, 'yyyy-MM-dd') : null;
+}
+
+/** BNPB's UTC `occurredAt` as the tracker's local `yyyy-MM-dd'T'HH:mm`. */
+function toInteractionDateTime(occurredAt: string): string {
+  const date = parseLocalTime(occurredAt);
+  return date ? formatDateTime(date) : occurredAt;
+}
+
+/** Whether `value` is a later moment than `current`; an unusable `current` is older. */
+function isNewerThan(value: string, current: string | null | undefined): boolean {
+  const next = parseLocalTime(value);
+  if (!next) return false;
+  const previous = parseLocalTime(current);
+  return !previous || next.getTime() > previous.getTime();
 }
 
 /**
@@ -340,7 +379,7 @@ export function findSameDayInteraction(
   for (const interaction of interactions) {
     if (interaction.userId !== uid) continue;
     if (calendarDay(interaction.dateTime) !== day) continue;
-    if (!found || interaction.dateTime > found.dateTime) found = interaction;
+    if (!found || isNewerThan(interaction.dateTime, found.dateTime)) found = interaction;
   }
   return found;
 }
@@ -381,6 +420,7 @@ export function subscribePendingSuggestions(
 ): () => void {
   const q = query(
     collection(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION),
+    where('status', '==', 'pending'),
     orderBy('occurredAt', 'desc'),
   );
   return onSnapshot(
@@ -393,6 +433,7 @@ export function subscribePendingSuggestions(
           syncId: data.syncId ?? '',
           bnpbContactId: data.bnpbContactId ?? '',
           bnpbName: data.bnpbName ?? '',
+          bnpbNickname: data.bnpbNickname ?? null,
           occurredAt: data.occurredAt ?? '',
           durationMinutes: data.durationMinutes ?? null,
           summary: data.summary ?? '',
@@ -453,6 +494,7 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
   const trimmed = text.trim();
   const duration = formatDurationMinutes(suggestion.durationMinutes);
   const loggerName = user.displayName || user.email?.split('@')[0] || '';
+  const dateTime = toInteractionDateTime(suggestion.occurredAt);
   const batch = writeBatch(db);
 
   const interactionRef = doc(collection(db, 'contacts', contact.id, 'interactions'));
@@ -461,7 +503,7 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
     userName: loggerName,
     userPhoto: user.photoURL || '',
     content: trimmed,
-    dateTime: suggestion.occurredAt,
+    dateTime,
     type: mediumToType(suggestion.medium),
     ...(duration ? { duration } : {}),
     createdAt: serverTimestamp(),
@@ -474,14 +516,34 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
     confirmedAt: serverTimestamp(),
   });
 
-  batch.set(
-    doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, suggestionLinkId(suggestion.bnpbContactId)),
-    {
-      bnpbContactId: suggestion.bnpbContactId,
-      contactId: contact.id,
-      updatedAt: serverTimestamp(),
-    },
+  // Confirming reaches the person, as hand-logging does — but a backfilled
+  // older entry must not move the Contact's last-contacted time backwards.
+  if (isNewerThan(dateTime, contact.lastContactedDate)) {
+    const activityPatch = buildContactActivityPatch({
+      date: dateTime,
+      by: { uid, name: loggerName },
+      type: 'interaction',
+    });
+    batch.update(doc(db, 'contacts', contact.id), activityPatch as Record<string, unknown>);
+  }
+
+  // One link per BNPB contact: any other doc for it (an older id scheme, say)
+  // goes in the same batch, so subscribeSuggestionLinks can only read this one.
+  const linkId = await suggestionLinkId(suggestion.bnpbContactId);
+  const existingLinks = await getDocs(
+    query(
+      collection(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION),
+      where('bnpbContactId', '==', suggestion.bnpbContactId),
+    ),
   );
+  for (const entry of existingLinks.docs) {
+    if (entry.id !== linkId) batch.delete(doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, entry.id));
+  }
+  batch.set(doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, linkId), {
+    bnpbContactId: suggestion.bnpbContactId,
+    contactId: contact.id,
+    updatedAt: serverTimestamp(),
+  });
 
   try {
     await batch.commit();
@@ -521,21 +583,25 @@ export async function assignContactToSuggestions(input: AssignContactInput): Pro
 }
 
 /** Firestore-safe, deterministic link id for a BNPB contact. */
-export function suggestionLinkId(bnpbContactId: string): string {
+export function suggestionLinkId(bnpbContactId: string): Promise<string> {
   return hashId(bnpbContactId);
 }
 
 /** Firestore-safe, deterministic choice id for a BNPB contact. */
-export function notACisaPersonId(bnpbContactId: string): string {
+export function notACisaPersonId(bnpbContactId: string): Promise<string> {
   return hashId(bnpbContactId);
 }
 
-function hashId(bnpbContactId: string): string {
-  let hash = 0;
-  for (let i = 0; i < bnpbContactId.length; i += 1) {
-    hash = (hash * 31 + bnpbContactId.charCodeAt(i)) | 0;
-  }
-  return `b${(hash >>> 0).toString(36)}`;
+/**
+ * SHA-256 hex prefix of the BNPB contact id, like the server's suggestion ids:
+ * collision-safe, where the earlier 32-bit hash let two people share a doc.
+ * Docs written under that older id are found by `bnpbContactId` instead.
+ */
+async function hashId(bnpbContactId: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bnpbContactId));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 40);
 }
 
 export interface DismissSuggestionInput {
@@ -594,8 +660,9 @@ export async function markNotACisaPerson(input: MarkNotACisaPersonInput): Promis
   const affected = suggestions.filter(
     (s) => s.bnpbContactId === bnpbContactId && s.status === 'pending',
   );
+  const choiceId = await notACisaPersonId(bnpbContactId);
   const batch = writeBatch(db);
-  batch.set(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, notACisaPersonId(bnpbContactId)), {
+  batch.set(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, choiceId), {
     bnpbContactId,
     createdAt: serverTimestamp(),
   });
@@ -619,8 +686,19 @@ export interface UndoNotACisaPersonInput {
 /** Removes a "Not a CISA person" choice and restores only what it dismissed. */
 export async function undoNotACisaPerson(input: UndoNotACisaPersonInput): Promise<void> {
   const { uid, bnpbContactId, suggestionIds } = input;
+  // Every choice for this BNPB contact, including any under an older id.
+  const choiceIds = new Set([await notACisaPersonId(bnpbContactId)]);
+  const recorded = await getDocs(
+    query(
+      collection(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION),
+      where('bnpbContactId', '==', bnpbContactId),
+    ),
+  );
+  for (const entry of recorded.docs) choiceIds.add(entry.id);
   const batch = writeBatch(db);
-  batch.delete(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, notACisaPersonId(bnpbContactId)));
+  for (const choiceId of choiceIds) {
+    batch.delete(doc(db, 'users', uid, NOT_A_CISA_PERSON_SUBCOLLECTION, choiceId));
+  }
   for (const suggestionId of suggestionIds) {
     batch.update(doc(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION, suggestionId), {
       status: 'pending',

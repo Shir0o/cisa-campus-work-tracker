@@ -5,11 +5,13 @@ import { CalendarClock, Check, Loader2, Search, Timer, TriangleAlert, UserX, X }
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import { UndoSnackbar } from '../components/UndoSnackbar';
+import { useContactInteractions } from '../hooks/useContactInteractions';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { isAppOwner } from '../lib/permissions';
 import { contactVisibilityConstraints } from '../lib/contactQueries';
 import { db } from '../lib/firebase';
 import {
+  INTERACTION_CONTENT_MAX,
   assignContactToSuggestions,
   buildSuggestionQueue,
   confirmSuggestion,
@@ -18,7 +20,6 @@ import {
   formatDurationMinutes,
   markNotACisaPerson,
   mediumToType,
-  subscribeContactInteractions,
   subscribePendingSuggestions,
   subscribeSuggestionLinks,
   undoSuggestionDismiss,
@@ -28,7 +29,7 @@ import {
   type SuggestionMatchBasis,
   type WhoIsThisGroup,
 } from '../lib/bnpb';
-import type { Contact, Interaction } from '../types';
+import type { Contact } from '../types';
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -45,6 +46,20 @@ function monthLabel(month: string, isSpanish: boolean): string {
     isSpanish ? 'es' : 'en-US',
     { month: 'long', year: 'numeric' },
   );
+}
+
+// The tracker's interaction types in the owner's language, as the composer names them.
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  chat: 'modals.contactDetails.composer_type_chat',
+  call: 'modals.contactDetails.composer_type_call',
+  meeting: 'modals.contactDetails.composer_type_meeting',
+  email: 'modals.contactDetails.composer_type_email',
+  interaction: 'modals.contactDetails.composer_type_other',
+};
+
+function typeLabel(type: string, t: (key: string) => string): string {
+  const key = TYPE_LABEL_KEYS[type];
+  return key ? t(key) : type;
 }
 
 function Badge({ basis }: { basis: SuggestionMatchBasis }) {
@@ -139,38 +154,33 @@ function SuggestionRow({
   onDismiss,
   onNotACisaPerson,
   onChoose,
+  onConfirmed,
 }: {
   item: QueuedSuggestion;
   contacts: Contact[];
   onDismiss: (suggestion: InteractionSuggestion) => void;
   onNotACisaPerson: (bnpbContactId: string) => void;
   onChoose: (suggestionIds: string[], contactId: string) => void;
+  onConfirmed: (contact: Contact) => void;
 }) {
   const { user, role } = useAuth();
   const { t } = useLanguage();
   const { suggestion, basis } = item;
   const [picked, setPicked] = useState<Contact | null>(null);
   const [picking, setPicking] = useState(false);
-  const [sameDay, setSameDay] = useState<Interaction | null>(null);
   const [text, setText] = useState(suggestion.text);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const contact = picked ?? item.contact;
 
-  useEffect(() => {
-    if (!contact || !user) {
-      setSameDay(null);
-      return;
-    }
-    return subscribeContactInteractions(
-      contact.id,
-      (list) => setSameDay(findSameDayInteraction(list, user.uid, suggestion.occurredAt)),
-      (e) => console.error('suggestion same-day subscription error', e),
-    );
-  }, [contact, user, suggestion.occurredAt]);
+  const interactions = useContactInteractions(contact?.id);
+  const sameDay = useMemo(
+    () => (user && contact ? findSameDayInteraction(interactions, user.uid, suggestion.occurredAt) : null),
+    [interactions, user, contact, suggestion.occurredAt],
+  );
 
-  const mappedType = mediumToType(suggestion.medium);
+  const mappedType = typeLabel(mediumToType(suggestion.medium), t);
   const duration = formatDurationMinutes(suggestion.durationMinutes);
 
   const choose = (c: Contact) => {
@@ -181,6 +191,10 @@ function SuggestionRow({
 
   const confirm = async () => {
     if (!user || !contact) return;
+    if (text.trim().length > INTERACTION_CONTENT_MAX) {
+      setError(t('bnpb.queue_text_too_long').replace('{max}', String(INTERACTION_CONTENT_MAX)));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -192,6 +206,7 @@ function SuggestionRow({
         contact,
         text,
       });
+      onConfirmed(contact);
     } catch (e) {
       setError(e instanceof Error && /visible/i.test(e.message) ? t('bnpb.queue_not_visible') : t('bnpb.error_generic'));
     } finally {
@@ -222,7 +237,7 @@ function SuggestionRow({
         <button
           type="button"
           onClick={() => setPicking((v) => !v)}
-          className="px-2.5 py-1 rounded-full text-[12px] border border-outline-variant/50 text-on-surface-variant hover:bg-surface"
+          className="min-h-[44px] px-3 py-1 rounded-full text-[12px] border border-outline-variant/50 text-on-surface-variant hover:bg-surface"
         >
           {t('bnpb.queue_change')}
         </button>
@@ -234,6 +249,7 @@ function SuggestionRow({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          maxLength={INTERACTION_CONTENT_MAX}
           rows={2}
           className="mt-1 w-full rounded-2xl border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface outline-none focus:border-primary resize-none"
         />
@@ -248,7 +264,7 @@ function SuggestionRow({
           </p>
           <p className="mt-1 text-[13px]">
             {t('bnpb.queue_maybe_logged_body')
-              .replace('{type}', sameDay.type || 'interaction')
+              .replace('{type}', typeLabel(sameDay.type || 'interaction', t))
               .replace('{text}', sameDay.content)}
           </p>
         </div>
@@ -321,7 +337,7 @@ function WhoIsThisCard({
             <button
               type="button"
               onClick={() => onDismiss(suggestion)}
-              className="shrink-0 px-2 py-1 rounded-full text-[12px] border border-outline-variant/50 text-on-surface-variant hover:bg-surface"
+              className="shrink-0 min-h-[44px] px-3 py-1 rounded-full text-[12px] border border-outline-variant/50 text-on-surface-variant hover:bg-surface"
             >
               {t('bnpb.queue_dismiss')}
             </button>
@@ -399,15 +415,22 @@ export default function SuggestionsQueue() {
     [suggestions, contacts, links, role, user?.uid],
   );
 
+  // A failed Undo is told to the owner too; the Undo toast has already closed.
+  const undoFailed = (e: unknown) => {
+    console.error('suggestion undo error', e);
+    showUndoSnack(t('bnpb.queue_error_undo'));
+  };
+
   const dismiss = async (suggestion: InteractionSuggestion) => {
     if (!user) return;
     try {
       await dismissSuggestion({ uid: user.uid, suggestion });
       showUndoSnack(t('bnpb.queue_dismissed'), () => {
-        void undoSuggestionDismiss({ uid: user.uid, suggestionId: suggestion.id });
+        undoSuggestionDismiss({ uid: user.uid, suggestionId: suggestion.id }).catch(undoFailed);
       });
     } catch (e) {
       console.error('suggestion dismiss error', e);
+      showUndoSnack(t('bnpb.queue_error_dismiss'));
     }
   };
 
@@ -417,6 +440,7 @@ export default function SuggestionsQueue() {
       await assignContactToSuggestions({ uid: user.uid, contactId, suggestionIds });
     } catch (e) {
       console.error('suggestion assign error', e);
+      showUndoSnack(t('bnpb.queue_error_assign'));
     }
   };
 
@@ -425,10 +449,11 @@ export default function SuggestionsQueue() {
     try {
       const dismissedIds = await markNotACisaPerson({ uid: user.uid, bnpbContactId, suggestions });
       showUndoSnack(t('bnpb.queue_not_cisa_done').replace('{count}', String(dismissedIds.length)), () => {
-        void undoNotACisaPerson({ uid: user.uid, bnpbContactId, suggestionIds: dismissedIds });
+        undoNotACisaPerson({ uid: user.uid, bnpbContactId, suggestionIds: dismissedIds }).catch(undoFailed);
       });
     } catch (e) {
       console.error('suggestion not-a-CISA-person error', e);
+      showUndoSnack(t('bnpb.queue_error_not_cisa'));
     }
   };
 
@@ -464,6 +489,9 @@ export default function SuggestionsQueue() {
                         onDismiss={dismiss}
                         onNotACisaPerson={notACisaPerson}
                         onChoose={choose}
+                        onConfirmed={(contact) =>
+                          showUndoSnack(t('bnpb.queue_logged_to').replace('{name}', contact.name))
+                        }
                       />
                     ))}
                   </div>
