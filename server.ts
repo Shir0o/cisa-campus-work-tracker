@@ -4033,7 +4033,8 @@ ${JSON.stringify(contactsList)}`;
     try {
       const decoded = await authenticateFirebaseUser(req);
       const email = String(decoded.email ?? '').trim().toLowerCase();
-      if (email !== OWNER_EMAIL_SERVER) {
+      // Like the rules' isSuperAdmin(): an unverified address is not the owner.
+      if (email !== OWNER_EMAIL_SERVER || decoded.email_verified !== true) {
         res.status(403).json({ success: false, error: 'Only the app owner can manage a Personal Sync Token.' });
         return null;
       }

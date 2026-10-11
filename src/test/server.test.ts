@@ -3020,7 +3020,7 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
   const sha = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
   const signInOwner = () =>
-    mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, name: "Owner" });
+    mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, email_verified: true, name: "Owner" });
 
   const seedOwner = () =>
     seedDoc("users", OWNER_UID, { email: OWNER_EMAIL, role: "admin", approved: true });
@@ -3081,6 +3081,24 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
         .set("Authorization", "Bearer other");
       expect(res.status).toBe(403);
       expect(getCollection("bnpb_sync_tokens")).toEqual({});
+    });
+
+    it("refuses the owner's address when the email is not verified, on every token route", async () => {
+      mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL, email_verified: false });
+      seedToken("live-secret");
+      for (const [method, path] of [
+        ["post", "/api/bnpb/token"],
+        ["post", "/api/bnpb/token/revoke"],
+        ["get", "/api/bnpb/token"],
+      ] as const) {
+        const res = await request(app)[method](path).set("Authorization", "Bearer owner-token");
+        expect(res.status).toBe(403);
+      }
+      expect((getCollection("bnpb_sync_tokens")[OWNER_UID] as Record<string, any>).tokenHash).toBe(sha("live-secret"));
+
+      mockVerifyIdToken.mockResolvedValue({ uid: OWNER_UID, email: OWNER_EMAIL });
+      const missing = await request(app).post("/api/bnpb/token").set("Authorization", "Bearer owner-token");
+      expect(missing.status).toBe(403);
     });
 
     it("rejects an unauthenticated token request with 401", async () => {
