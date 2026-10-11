@@ -24,6 +24,23 @@ const {
   const store: Record<string, Record<string, Doc>> = {};
   let seq = 0;
 
+  const DELETE_SENTINEL = Symbol("DELETE");
+
+  // `update` reads a dotted key as a path into nested maps, as Firestore
+  // does, and returns a copy so earlier snapshots keep their values.
+  const applyUpdate = (current: Doc | undefined, u: Doc): Doc => {
+    const target: Doc = { ...(current ?? {}) };
+    for (const [key, v] of Object.entries(u)) {
+      const path = key.split(".");
+      let node = target;
+      for (const segment of path.slice(0, -1)) node = node[segment] = { ...(node[segment] ?? {}) };
+      const leaf = path[path.length - 1];
+      if (v === DELETE_SENTINEL || (v && (v as any).__mockDelete)) delete node[leaf];
+      else node[leaf] = v;
+    }
+    return target;
+  };
+
   const snapshot = (docs: Array<{ id: string; data: () => Doc }>) => ({
     empty: docs.length === 0,
     size: docs.length,
@@ -41,18 +58,15 @@ const {
         id: docId,
         _col: name,
         _id: docId,
-        get: async () => ({ exists: docId in col, data: () => col[docId], id: docId, ref: handle }),
+        // A snapshot holds the data as it was read, as a real one does.
+        get: async () => {
+          const data = col[docId];
+          return { exists: docId in col, data: () => data, id: docId, ref: handle };
+        },
         set: async (d: Doc) => { col[docId] = { ...d }; },
         delete: async () => { delete col[docId]; },
-        // Copy rather than mutate: a snapshot taken before this update must
-        // keep the values it was read with, as a real one does.
         update: async (u: Doc) => {
-          const target = { ...(col[docId] ?? {}) };
-          for (const [k, v] of Object.entries(u)) {
-            if (v && (v as any).__mockDelete) delete target[k];
-            else target[k] = v;
-          }
-          col[docId] = target;
+          col[docId] = applyUpdate(col[docId], u);
         },
         collection: (sub: string) => collection(`${name}/${docId}/${sub}`),
       };
@@ -60,7 +74,8 @@ const {
       return handle;
     };
 
-    const list = () => Object.keys(col).map((id) => ({ id, ref: docHandle(id), data: () => col[id] }));
+    const list = () =>
+      Object.entries(col).map(([id, data]) => ({ id, ref: docHandle(id), data: () => data }));
 
     const filtered = (pred: (d: any) => boolean) => ({
       get: async () => snapshot(list().filter(pred)),
@@ -78,6 +93,7 @@ const {
         filtered((d) => {
           const v = d.data()[field];
           if (op === "array-contains") return Array.isArray(v) && v.includes(value);
+          if (op === "in") return Array.isArray(value) && value.includes(v);
           return v === value;
         }),
       orderBy: () => ({
@@ -88,8 +104,6 @@ const {
     };
   };
 
-  const DELETE_SENTINEL = Symbol("DELETE");
-
   // Transactions run one at a time, as Firestore's optimistic retries make
   // them behave: each sees the writes of the one before it.
   let txQueue: Promise<unknown> = Promise.resolve();
@@ -98,17 +112,25 @@ const {
     collection,
     runTransaction: <T>(fn: (tx: any) => Promise<T>): Promise<T> => {
       const run = async () => {
-        const writes: Array<{ ref: any; data: Doc; merge: boolean }> = [];
+        const writes: Array<{ ref: any; data: Doc; kind: "set" | "merge" | "update" | "delete" }> = [];
         const tx = {
           get: (ref: any) => ref.get(),
           set: (ref: any, data: Doc, opts?: { merge?: boolean }) => {
-            writes.push({ ref, data, merge: !!opts?.merge });
+            writes.push({ ref, data, kind: opts?.merge ? "merge" : "set" });
+          },
+          update: (ref: any, data: Doc) => {
+            writes.push({ ref, data, kind: "update" });
+          },
+          delete: (ref: any) => {
+            writes.push({ ref, data: {}, kind: "delete" });
           },
         };
         const result = await fn(tx);
         for (const w of writes) {
           const col = (store[w.ref._col] ??= {});
-          col[w.ref._id] = w.merge ? { ...(col[w.ref._id] ?? {}), ...w.data } : { ...w.data };
+          if (w.kind === "delete") delete col[w.ref._id];
+          else if (w.kind === "update") col[w.ref._id] = applyUpdate(col[w.ref._id], w.data);
+          else col[w.ref._id] = w.kind === "merge" ? { ...(col[w.ref._id] ?? {}), ...w.data } : { ...w.data };
         }
         return result;
       };
@@ -146,15 +168,7 @@ const {
               (store[p._col] ??= {})[p._id] = { ...p.data };
               continue;
             }
-            const target = (store[p._col] ??= {})[p._id] ?? {};
-            for (const [k, v] of Object.entries(p.data)) {
-              if (v === DELETE_SENTINEL || (v && (v as any).__mockDelete)) {
-                delete target[k];
-              } else {
-                target[k] = v;
-              }
-            }
-            store[p._col][p._id] = target;
+            (store[p._col] ??= {})[p._id] = applyUpdate(store[p._col][p._id], p.data);
           }
         },
       };
@@ -3291,6 +3305,47 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
   });
 });
 
+// The contacts seedCombine writes have no updatedAt.
+const NO_STAMPS = { keptUpdatedAt: null, combinedInUpdatedAt: null };
+
+// Runs `write` once, straight after the server first reads from `name`: a
+// user (or another request) changing something between the server's read
+// and its write.
+const writeAfterFirstRead = (name: string, write: () => unknown) => {
+  const original = mockDb.collection;
+  let fired = false;
+  const fire = async () => {
+    if (fired) return;
+    fired = true;
+    await write();
+  };
+  return vi.spyOn(mockDb, "collection").mockImplementation(((col: string) => {
+    const c = original(col);
+    if (col !== name) return c;
+    return {
+      ...c,
+      get: async () => {
+        const snap = await c.get();
+        await fire();
+        return snap;
+      },
+      doc: (id?: string) => {
+        const d = c.doc(id);
+        return {
+          ...d,
+          get: async () => {
+            const snap = await d.get();
+            await fire();
+            return snap;
+          },
+        };
+      },
+    };
+  }) as typeof original);
+};
+
+const LONG_AGO = "2000-01-01T00:00:00.000Z";
+
 describe("POST /api/combine-contacts", () => {
   const seedCombine = () => {
     seedDoc("contacts", "s1", {
@@ -3366,7 +3421,7 @@ describe("POST /api/combine-contacts", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.combineRecordId).toBeTruthy();
@@ -3392,7 +3447,7 @@ describe("POST /api/combine-contacts", () => {
     expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
     expect(getCollection("visits")["v1"].contactNames).toEqual(["Kept Name"]);
 
-    // Gathering roster, overrides and attendance all drop the duplicate.
+    // Gathering roster, overrides and attendance all drop the repeat.
     const event = getCollection("events")["e1"];
     expect(event.roster).toEqual(["s1"]);
     expect(event.rosterOverride).toEqual(["s1"]);
@@ -3475,7 +3530,7 @@ describe("POST /api/combine-contacts", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1" });
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
     expect(res.status).toBe(200);
     const record = getCollection("combineRecords")[res.body.combineRecordId];
     expect(record.status).toBe("done");
@@ -3485,7 +3540,7 @@ describe("POST /api/combine-contacts", () => {
 
   it("records an Activity Log entry for the combine", async () => {
     seedCombine();
-    await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "d1" });
+    await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
     const activities = Object.values(getCollection("activities"));
     const entry = activities.find((a: any) => a.action === "combined contact into");
     expect(entry).toBeDefined();
@@ -3497,7 +3552,7 @@ describe("POST /api/combine-contacts", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
 
     const banner = getCollection("contacts")["s1"].combinedFrom;
@@ -3522,6 +3577,7 @@ describe("POST /api/combine-contacts", () => {
     const res = await request(app).post("/api/combine-contacts").send({
       keptId: "s1",
       combinedInId: "d1",
+      ...NO_STAMPS,
       picks: { fields: { name: "combined-in" }, notes: "combined-in" },
     });
     expect(res.status).toBe(200);
@@ -3575,6 +3631,56 @@ describe("POST /api/combine-contacts", () => {
     expect(getCollection("contacts")["d1"]).toBeUndefined();
   });
 
+  // A sign-up writes updatedAt as a server timestamp, so the Admin read keeps
+  // its milliseconds while the browser's JSON form carries seconds/nanoseconds.
+  const stampedKept = () =>
+    seedDoc("contacts", "s1", {
+      name: "Kept Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Lead",
+      tags: ["A"],
+      location: "",
+      updatedAt: { seconds: 1767225600, nanoseconds: 123000000, toDate: () => new Date(1767225600123) },
+    });
+
+  it("combines a contact whose updatedAt has milliseconds when the browser sends its JSON form", async () => {
+    seedCombine();
+    stampedKept();
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      keptUpdatedAt: { seconds: 1767225600, nanoseconds: 123000000 },
+      combinedInUpdatedAt: null,
+    });
+    expect(res.status).toBe(200);
+    expect(getCollection("contacts")["d1"]).toBeUndefined();
+  });
+
+  it("still refuses with a conflict when the contact changed by a few milliseconds", async () => {
+    seedCombine();
+    stampedKept();
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      keptUpdatedAt: { seconds: 1767225600, nanoseconds: 124000000 },
+      combinedInUpdatedAt: null,
+    });
+    expect(res.status).toBe(409);
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+  });
+
+  it("returns 400 when the last-updated stamps are missing", async () => {
+    seedCombine();
+    for (const stamps of [{}, { keptUpdatedAt: null }, { combinedInUpdatedAt: null }]) {
+      const res = await request(app)
+        .post("/api/combine-contacts")
+        .send({ keptId: "s1", combinedInId: "d1", ...stamps });
+      expect(res.status).toBe(400);
+    }
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+  });
+
   it("returns 400 when an id is missing", async () => {
     const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1" });
     expect(res.status).toBe(400);
@@ -3587,7 +3693,7 @@ describe("POST /api/combine-contacts", () => {
 
   it("returns 404 when a contact is missing", async () => {
     seedDoc("contacts", "s1", { name: "Kept", email: "", phone: "", stage: "Lead", location: "" });
-    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "nope" });
+    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "nope", ...NO_STAMPS });
     expect(res.status).toBe(404);
   });
 
@@ -3605,6 +3711,48 @@ describe("POST /api/combine-contacts", () => {
     } finally {
       process.env.NODE_ENV = originalEnv;
     }
+  });
+});
+
+describe("POST /api/combine-contacts — concurrency", () => {
+  const seedPair = () => {
+    seedDoc("contacts", "s1", { name: "Kept Name", email: "same@x.com", phone: "", stage: "Lead", location: "" });
+    seedDoc("contacts", "d1", { name: "In Name", email: "same@x.com", phone: "", stage: "Contact", location: "" });
+    seedDoc("prayers", "p1", { contactId: "d1" });
+  };
+
+  it.each([
+    { side: "kept", busy: { status: "pending", keptId: "s1", combinedInId: "x9" } },
+    { side: "combined-in", busy: { status: "undoing", keptId: "x9", combinedInId: "d1" } },
+  ])("refuses while the $side contact is part of an in-flight combine record", async ({ busy }) => {
+    seedPair();
+    seedDoc("combineRecords", "busy", { kind: "contacts", claimedAt: new Date().toISOString(), ...busy });
+
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain("busy");
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+    expect(getCollection("prayers")["p1"].contactId).toBe("d1");
+    expect(Object.keys(getCollection("combineRecords"))).toEqual(["busy"]);
+  });
+
+  it("refuses with a conflict when a contact changes while the combine is being built", async () => {
+    seedPair();
+    writeAfterFirstRead("contacts", () =>
+      seedDoc("contacts", "s1", { ...getCollection("contacts")["s1"], updatedAt: "2026-10-10T12:00:00.000Z" }),
+    );
+
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+
+    expect(res.status).toBe(409);
+    expect(res.body.conflict).toBe(true);
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+    expect(getCollection("prayers")["p1"].contactId).toBe("d1");
   });
 });
 
@@ -3679,14 +3827,40 @@ describe("POST /api/combine-contacts/undo", () => {
     });
   };
 
-  const combineOnce = async (): Promise<string> => {
+  // `extraPrayers` pushes the write set past one transaction's limit.
+  const combineOnce = async (extraPrayers = 0): Promise<string> => {
     seedCombine();
+    for (let i = 0; i < extraPrayers; i++) seedDoc("prayers", `px${i}`, { contactId: "d1" });
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
+    expect(getCollection("combineRecords")[res.body.combineRecordId].status).toBe("done");
     return res.body.combineRecordId as string;
   };
+
+  it("refuses a tag combine record, for the preview and the undo, and writes nothing", async () => {
+    seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
+    seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
+    const tagRes = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+    expect(tagRes.status).toBe(200);
+    const recordId = tagRes.body.combineRecordId as string;
+    expect(getCollection("combineRecords")[recordId].kind).toBe("tags");
+    const snapshot = () =>
+      structuredClone({ contacts: getCollection("contacts"), records: getCollection("combineRecords") });
+    const before = snapshot();
+
+    for (const dryRun of [true, false]) {
+      const res = await request(app)
+        .post("/api/combine-contacts/undo")
+        .send({ combineRecordId: recordId, dryRun });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/not a contact combine record/i);
+    }
+    expect(snapshot()).toEqual(before);
+  });
 
   it("reverses a combine so the database matches its pre-combine state", async () => {
     seedCombine();
@@ -3714,7 +3888,7 @@ describe("POST /api/combine-contacts/undo", () => {
 
     const combineRes = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     const undoRes = await request(app)
       .post("/api/combine-contacts/undo")
       .send({ combineRecordId: combineRes.body.combineRecordId });
@@ -3748,6 +3922,53 @@ describe("POST /api/combine-contacts/undo", () => {
       targetId: "d1",
       targetName: "In Name",
     });
+  });
+
+  it("keeps the kept contact's visit mirror when both were on the visit, and undo restores both", async () => {
+    seedCombine();
+    seedDoc("contacts/s1/interactions", "visit_v1", { visitId: "v1", content: "kept mirror" });
+    seedDoc("contacts/d1/interactions", "visit_v1", { visitId: "v1", content: "combined-in mirror" });
+    const keptBefore = structuredClone(getCollection("contacts/s1/interactions"));
+    const combinedInBefore = structuredClone(getCollection("contacts/d1/interactions"));
+
+    const preview = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", dryRun: true });
+    const interactionMoves = preview.body.moves.find((m: any) => m.kind === "interactions");
+    expect(interactionMoves.items.map((i: any) => i.id)).toEqual(["i1", "i2"]);
+
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    expect(combineRes.status).toBe(200);
+    expect(getCollection("contacts/s1/interactions")["visit_v1"]).toEqual(keptBefore["visit_v1"]);
+    expect(getCollection("contacts/d1/interactions")["visit_v1"]).toBeUndefined();
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(getCollection("contacts/s1/interactions")).toEqual(keptBefore);
+    expect(getCollection("contacts/d1/interactions")).toEqual(combinedInBefore);
+  });
+
+  it("round-trips a non-visit document whose id exists under both contacts with no data loss", async () => {
+    seedCombine();
+    seedDoc("contacts/s1/comments", "c1", { text: "kept's own comment", userId: "me" });
+    const keptBefore = structuredClone(getCollection("contacts/s1/comments"));
+    const combinedInBefore = structuredClone(getCollection("contacts/d1/comments"));
+
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    expect(getCollection("contacts/s1/comments")).toEqual(keptBefore);
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(getCollection("contacts/s1/comments")).toEqual(keptBefore);
+    expect(getCollection("contacts/d1/comments")).toEqual(combinedInBefore);
   });
 
   it("recreates the combined-in contact under its original id", async () => {
@@ -3888,6 +4109,72 @@ describe("POST /api/combine-contacts/undo", () => {
     expect(getCollection("contacts")["s1"].tags).toEqual(["A", "C"]);
   });
 
+  it("restores the combined-in contact on a roster that gained a member since, keeping the new member", async () => {
+    const recordId = await combineOnce();
+    const event = getCollection("events")["e1"];
+    seedDoc("events", "e1", { ...event, roster: [...event.roster, "new"] });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("events")["e1"].roster).toEqual(["d1", "s1", "new"]);
+  });
+
+  it("restores the combined-in contact's inbox keys after another key was marked seen", async () => {
+    const recordId = await combineOnce();
+    const state = getCollection("inboxState")["u2"];
+    seedDoc("inboxState", "u2", { ...state, seen: { ...state.seen, "att:contact:zz": "t5" } });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("inboxState")["u2"]).toEqual({
+      seen: { "att:contact:d1": "t1", "att:contact:zz": "t5" },
+      completed: { "att:contact:d1": "t2" },
+    });
+  });
+
+  it("puts both contacts back on a visit the combine collapsed", async () => {
+    const recordId = await combineOnce();
+    expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
+    seedDoc("visits", "v1", { contactIds: ["s1", "v9"], contactNames: ["Kept Name", "Nine"] });
+
+    await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect(getCollection("visits")["v1"]).toEqual({
+      contactIds: ["d1", "s1", "v9"],
+      contactNames: ["In Name", "Kept Name", "Nine"],
+    });
+  });
+
+  it("re-adds no one to a home the kept contact was removed from, and reports it as not restored", async () => {
+    const recordId = await combineOnce();
+    seedDoc("homes", "h1", { ...getCollection("homes")["h1"], members: ["other"] });
+
+    const res = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(getCollection("homes")["h1"].members).toEqual(["other"]);
+    expect(res.body.preview.notRestored).toContainEqual({ kind: "reference", label: "homes.members" });
+  });
+
+  it("keeps an interest added after the combine and removes the one the combine added", async () => {
+    seedCombine();
+    seedDoc("contacts", "s1", { ...getCollection("contacts")["s1"], interests: ["music"] });
+    seedDoc("contacts", "d1", { ...getCollection("contacts")["d1"], interests: ["art"] });
+    const res = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    const kept = getCollection("contacts")["s1"];
+    expect(kept.interests).toEqual(["music", "art"]);
+    seedDoc("contacts", "s1", { ...kept, interests: ["music", "art", "chess"] });
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: res.body.combineRecordId });
+
+    expect(getCollection("contacts")["s1"].interests).toEqual(["music", "chess"]);
+  });
+
   it("refuses undo when the kept contact was later combined into someone else", async () => {
     const firstRecord = await combineOnce();
     seedDoc("contacts", "c1", {
@@ -3899,7 +4186,13 @@ describe("POST /api/combine-contacts/undo", () => {
     });
     const second = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "c1", combinedInId: "s1" });
+      .send({
+        keptId: "c1",
+        combinedInId: "s1",
+        keptUpdatedAt: null,
+        // s1 was the first combine's kept contact, so it now carries a stamp.
+        combinedInUpdatedAt: getCollection("contacts")["s1"].updatedAt,
+      });
     expect(second.status).toBe(200);
 
     const res = await request(app)
@@ -3911,6 +4204,101 @@ describe("POST /api/combine-contacts/undo", () => {
     // The first combine is still undoable once the later one is undone.
     expect(getCollection("combineRecords")[firstRecord].status).toBe("done");
   });
+
+  it.each([
+    { path: "one transaction", extraPrayers: 0 },
+    { path: "claim then batches", extraPrayers: 600 },
+  ])("lets exactly one of two concurrent undos through ($path)", async ({ extraPrayers }) => {
+    const recordId = await combineOnce(extraPrayers);
+    // The second undo runs to completion after the first has read the record.
+    let second: request.Response | undefined;
+    writeAfterFirstRead("combineRecords", async () => {
+      second = await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+    });
+
+    const first = await request(app).post("/api/combine-contacts/undo").send({ combineRecordId: recordId });
+
+    expect([first.status, second?.status].sort()).toEqual([200, 409]);
+    const undoEntries = Object.values(getCollection("activities")).filter(
+      (activity: any) => activity.action === "undid combine of",
+    );
+    expect(undoEntries).toHaveLength(1);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
+  });
+
+  it("retries an undo left in undoing once its claim has expired", async () => {
+    const recordId = await combineOnce(600);
+    // The undo fails after its first batch of writes has landed.
+    const realBatch = mockDb.batch;
+    let commits = 0;
+    const batchSpy = vi.spyOn(mockDb, "batch").mockImplementation(() => {
+      const batch = realBatch();
+      return {
+        ...batch,
+        commit: async () => {
+          if (++commits === 2) throw new Error("network");
+          return batch.commit();
+        },
+      };
+    });
+    const interrupted = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+    batchSpy.mockRestore();
+    expect(interrupted.status).toBe(500);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undoing");
+
+    // While the claim is fresh another undo may still be running: refuse.
+    const tooSoon = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+    expect(tooSoon.status).toBe(409);
+
+    seedDoc("combineRecords", recordId, {
+      ...getCollection("combineRecords")[recordId],
+      claimedAt: LONG_AGO,
+    });
+    const retried = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: recordId });
+
+    expect(retried.status).toBe(200);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
+    expect(getCollection("contacts")["d1"]).toMatchObject({ name: "In Name" });
+    expect(getCollection("contacts/d1/interactions")["i1"]).toMatchObject({ content: "hi" });
+    const prayers = Object.values(getCollection("prayers")) as any[];
+    expect(prayers.every((prayer) => prayer.contactId === "d1")).toBe(true);
+  });
+
+  it("keeps read-state a user marks while the combine and the undo are running", async () => {
+    seedCombine();
+    const markSeen = (key: string, stamp: string) => () => {
+      const state = getCollection("inboxState")["u2"];
+      seedDoc("inboxState", "u2", { ...state, seen: { ...state.seen, [key]: stamp } });
+    };
+
+    const combineSpy = writeAfterFirstRead("inboxState", markSeen("att:contact:zz", "t5"));
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    combineSpy.mockRestore();
+    expect(combineRes.status).toBe(200);
+    expect(getCollection("inboxState")["u2"].seen).toEqual({
+      "att:contact:s1": "t1",
+      "att:contact:zz": "t5",
+    });
+
+    writeAfterFirstRead("inboxState", markSeen("att:contact:yy", "t6"));
+    const undoRes = await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(undoRes.status).toBe(200);
+    expect(getCollection("inboxState")["u2"]).toEqual({
+      seen: { "att:contact:d1": "t1", "att:contact:zz": "t5", "att:contact:yy": "t6" },
+      completed: { "att:contact:d1": "t2" },
+    });
+  });
 });
 
 describe("POST /api/combine-tags", () => {
@@ -3920,7 +4308,7 @@ describe("POST /api/combine-tags", () => {
     seedDoc("contacts", "c", { name: "Cara", tags: ["Saved"] });
   };
 
-  it("rewrites affected tags, drops duplicates, and writes a done tags record", async () => {
+  it("rewrites affected tags, drops repeats, and writes a done tags record", async () => {
     seedTags();
     const res = await request(app)
       .post("/api/combine-tags")
@@ -3974,6 +4362,60 @@ describe("POST /api/combine-tags", () => {
     ]);
     expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
     expect(Object.values(getCollection("combineRecords"))).toHaveLength(0);
+  });
+
+  it("adds a requested standard tag to the standard tags document and records it", async () => {
+    seedTags();
+    seedDoc("settings", "standard_tags", { tags: ["Saved", "BFA"] });
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach", "Saved", "Unrelated"],
+      });
+
+    expect(res.status).toBe(200);
+    // Added once, after the existing ones; already-standard and non-target names are ignored.
+    expect(getCollection("settings")["standard_tags"].tags).toEqual(["Saved", "BFA", "Outreach"]);
+    const record = getCollection("combineRecords")[res.body.combineRecordId];
+    expect(record.standardTagsAdded).toEqual(["Outreach"]);
+  });
+
+  it("starts from the seed list when no standard tags document exists yet", async () => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach"],
+      });
+
+    expect(res.status).toBe(200);
+    expect(getCollection("settings")["standard_tags"].tags).toEqual([
+      "Saved", "Baptized", "Interested", "Open", "Club Rush", "BFA", "Outreach",
+    ]);
+  });
+
+  it("records no standard tags and leaves the document alone when none are requested", async () => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+
+    expect(getCollection("combineRecords")[res.body.combineRecordId].standardTagsAdded).toEqual([]);
+    expect(getCollection("settings")["standard_tags"]).toBeUndefined();
+  });
+
+  it("does not add a standard tag on a dry run", async () => {
+    seedTags();
+    await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach"],
+        dryRun: true,
+      });
+    expect(getCollection("settings")["standard_tags"]).toBeUndefined();
   });
 
   it("returns 400 when no combines are given", async () => {
@@ -4031,6 +4473,40 @@ describe("POST /api/combine-tags/undo", () => {
     expect(getCollection("combineRecords")[recordId].status).toBe("undone");
   });
 
+  it("previews the undo without writing: restored, skipped and standard tags that remain", async () => {
+    seedTags();
+    const applied = await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach"],
+      });
+    const recordId = applied.body.combineRecordId as string;
+    seedDoc("contacts", "b", { name: "Bob", tags: ["Outreach", "Fall 2026"] });
+    const contactsBefore = structuredClone(getCollection("contacts"));
+    const activitiesBefore = Object.keys(getCollection("activities")).length;
+
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: recordId, dryRun: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    expect(res.body.preview.restored).toEqual([
+      { contactId: "a", name: "Alice", current: ["Outreach", "BFA"], before: ["BFA table", "BFA"] },
+    ]);
+    expect(res.body.preview.skipped).toEqual([
+      { contactId: "b", name: "Bob", current: ["Outreach", "Fall 2026"], after: ["Outreach"] },
+    ]);
+    expect(res.body.preview.standardTagsRemaining).toEqual(["Outreach"]);
+
+    // Nothing was written.
+    expect(getCollection("contacts")).toEqual(contactsBefore);
+    expect(getCollection("combineRecords")[recordId].status).toBe("done");
+    expect(Object.keys(getCollection("activities"))).toHaveLength(activitiesBefore);
+    expect(getCollection("settings")["standard_tags"].tags).toContain("Outreach");
+  });
+
   it("skips a contact re-tagged after the combine and reports it", async () => {
     const recordId = await combineOnce();
     seedDoc("contacts", "b", { name: "Bob", tags: ["BFA", "Fall 2026"] });
@@ -4066,6 +4542,39 @@ describe("POST /api/combine-tags/undo", () => {
       .post("/api/combine-tags/undo")
       .send({ combineRecordId: recordId });
     expect(second.status).toBe(409);
+  });
+
+  it("lets exactly one of two concurrent undos through", async () => {
+    const recordId = await combineOnce();
+    // The second undo runs to completion after the first has read the record.
+    let second: request.Response | undefined;
+    writeAfterFirstRead("combineRecords", async () => {
+      second = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+    });
+
+    const first = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+
+    expect([first.status, second?.status].sort()).toEqual([200, 409]);
+    const undoEntries = Object.values(getCollection("activities")).filter(
+      (activity: any) => activity.action === "undid tag combine",
+    );
+    expect(undoEntries).toHaveLength(2);
+  });
+
+  it("refuses an undo whose claim is fresh and retries one whose claim has expired", async () => {
+    const recordId = await combineOnce();
+    const record = getCollection("combineRecords")[recordId];
+    seedDoc("combineRecords", recordId, { ...record, status: "undoing", claimedAt: new Date().toISOString() });
+
+    const tooSoon = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+    expect(tooSoon.status).toBe(409);
+
+    seedDoc("combineRecords", recordId, { ...record, status: "undoing", claimedAt: LONG_AGO });
+    const retried = await request(app).post("/api/combine-tags/undo").send({ combineRecordId: recordId });
+
+    expect(retried.status).toBe(200);
+    expect(getCollection("contacts")["a"].tags).toEqual(["BFA table", "BFA"]);
+    expect(getCollection("combineRecords")[recordId].status).toBe("undone");
   });
 
   it("returns 404 for a missing combine record", async () => {

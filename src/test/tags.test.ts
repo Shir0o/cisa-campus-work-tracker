@@ -2,13 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeTag,
   normalizeTagList,
-  planTagCombining,
   TAG_SUGGESTIONS,
   tagToneKey,
   tagStyle,
   getEffectiveContactTags,
-  clusterTags,
-  planTagCombiningWithRules,
   guessTagCombines,
   planTagApplies,
   planTagUndo,
@@ -36,123 +33,25 @@ describe('normalizeTag', () => {
     expect(normalizeTag('fall 2027')).toBe('Fall 2027');
   });
 
+  it('reads tab- and quote-spaced season labels without slow backtracking', () => {
+    expect(normalizeTag("Fall\t'\t26")).toBe('Fall 2026');
+    expect(normalizeTag("Fall'26")).toBe('Fall 2026');
+    const hostile = `fall${'\t'.repeat(50_000)}x`;
+    const started = Date.now();
+    expect(normalizeTag(hostile)).toBe('fall x');
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
   it('normalizes club rush variants', () => {
     expect(normalizeTag('club-rush')).toBe('Club Rush');
   });
 });
 
 describe('normalizeTagList', () => {
-  it('dedupes case-insensitively and canonicalizes season tags', () => {
+  it('drops case-insensitive repeats and canonicalizes season tags', () => {
     expect(normalizeTagList(["Fall '26", 'Fall 2026', '2026-27'])).toEqual([
       'Fall 2026',
       '2026-27',
-    ]);
-  });
-});
-
-describe('planTagCombining', () => {
-  it('only plans rows that would actually change', () => {
-    const contacts = [
-      { id: 'a', name: 'A', tags: ["Fall '26", 'Fall 2026'] },
-      { id: 'b', name: 'B', tags: ['Fall 2026'] },
-    ];
-
-    expect(planTagCombining(contacts)).toEqual([
-      {
-        contactId: 'a',
-        name: 'A',
-        from: ["Fall '26", 'Fall 2026'],
-        to: ['Fall 2026'],
-      },
-    ]);
-  });
-
-  it('plans compact season spellings as canonical spaced tags', () => {
-    const contacts = [
-      { id: 'a', name: 'A', tags: ['Fall2025'] },
-    ];
-
-    expect(planTagCombining(contacts)).toEqual([
-      {
-        contactId: 'a',
-        name: 'A',
-        from: ['Fall2025'],
-        to: ['Fall 2025'],
-      },
-    ]);
-  });
-
-  it('clusters context-suffixed tags like BFA table and Club rush table into anchors', () => {
-    const contacts = [
-      { id: '1', name: 'Student 1', tags: ['BFA table'] },
-      { id: '2', name: 'Student 2', tags: ['bfa-table'] },
-      { id: '3', name: 'Student 3', tags: ['Club rush table'] },
-    ];
-
-    expect(planTagCombining(contacts)).toEqual([
-      { contactId: '1', name: 'Student 1', from: ['BFA table'], to: ['BFA'] },
-      { contactId: '2', name: 'Student 2', from: ['bfa-table'], to: ['BFA'] },
-      { contactId: '3', name: 'Student 3', from: ['Club rush table'], to: ['Club Rush'] },
-    ]);
-  });
-});
-
-describe('clusterTags', () => {
-  it('detects BFA table variants and maps them to anchor BFA', () => {
-    const contacts = [
-      { id: '1', name: 'S1', tags: ['BFA table', 'Freshman'] },
-      { id: '2', name: 'S2', tags: ['bfa-table'] },
-      { id: '3', name: 'S3', tags: ['BFA'] },
-    ];
-
-    const rules = clusterTags(contacts);
-    const bfaRule = rules.find((r) => r.to === 'BFA');
-    expect(bfaRule).toBeDefined();
-    expect(bfaRule?.from.sort()).toEqual(['BFA table', 'bfa-table'].sort());
-    expect(bfaRule?.contactCount).toBe(2);
-  });
-
-  it('resolves near-duplicate non-anchor clusters by directory frequency', () => {
-    const contacts = [
-      { id: '1', name: 'S1', tags: ['Bible Study'] },
-      { id: '2', name: 'S2', tags: ['Bible Study'] },
-      { id: '3', name: 'S3', tags: ['bible study'] },
-      { id: '4', name: 'S4', tags: ['bible-study'] },
-    ];
-
-    const rules = clusterTags(contacts);
-    const rule = rules.find((r) => r.to === 'Bible Study');
-    expect(rule).toBeDefined();
-    expect(rule?.from.sort()).toEqual(['bible study', 'bible-study'].sort());
-    expect(rule?.contactCount).toBe(2);
-  });
-
-  it('detects small typos against suggestion anchors (<= 1 edit distance)', () => {
-    const contacts = [
-      { id: '1', name: 'S1', tags: ['intersted'] },
-      { id: '2', name: 'S2', tags: ['baptise'] },
-    ];
-
-    const rules = clusterTags(contacts);
-    expect(rules.find((r) => r.to === 'Interested')?.from).toContain('intersted');
-    expect(rules.find((r) => r.to === 'Baptized')?.from).toContain('baptise');
-  });
-});
-
-describe('planTagCombiningWithRules', () => {
-  it('honors enabled rule IDs and skips disabled rules', () => {
-    const contacts = [
-      { id: '1', name: 'S1', tags: ['BFA table'] },
-      { id: '2', name: 'S2', tags: ['intersted'] },
-    ];
-
-    const rules = clusterTags(contacts);
-    const bfaRule = rules.find((r) => r.to === 'BFA')!;
-    const enabledIds = new Set([bfaRule.id]);
-
-    const plan = planTagCombiningWithRules(contacts, rules, enabledIds);
-    expect(plan).toEqual([
-      { contactId: '1', name: 'S1', from: ['BFA table'], to: ['BFA'] },
     ]);
   });
 });
@@ -263,7 +162,7 @@ describe('guessTagCombines — tiers', () => {
     expect(guessFor(guesses, 'Bible Study', 'strong')).toBeDefined();
   });
 
-  it('uses the standard tags passed in as the anchor source', () => {
+  it('uses the standard tags passed in as the source of combine targets', () => {
     const guesses = guessTagCombines([{ tags: ['Welcome table'] }], ['Welcome']);
     const guess = guessFor(guesses, 'Welcome', 'strong')!;
     expect(guess).toBeDefined();
@@ -317,6 +216,42 @@ describe('planTagApplies', () => {
   it('only plans rows that would actually change', () => {
     const contacts = [{ id: '1', name: 'S1', tags: ['Saved'] }];
     expect(planTagApplies(contacts, [{ variants: ['Saved'], target: 'Saved' }])).toEqual([]);
+  });
+
+  it('leaves a removed variant exactly as stored', () => {
+    // "club-rush" was removed from the guess; only "club rush" is still combined.
+    const contacts = [
+      { id: '1', name: 'S1', tags: ['club-rush'] },
+      { id: '2', name: 'S2', tags: ['club-rush', 'club rush'] },
+    ];
+    expect(planTagApplies(contacts, [{ variants: ['club rush'], target: 'Club Rush' }])).toEqual([
+      { contactId: '2', name: 'S2', from: ['club-rush', 'club rush'], to: ['club-rush', 'Club Rush'] },
+    ]);
+  });
+
+  it('keeps an unrelated non-normalised tag on an affected contact as stored', () => {
+    const contacts = [{ id: '1', name: 'S1', tags: ['club-rush', "Fall '26", 'BFA table'] }];
+    expect(planTagApplies(contacts, [{ variants: ['BFA table'], target: 'BFA' }])).toEqual([
+      { contactId: '1', name: 'S1', from: ['club-rush', "Fall '26", 'BFA table'], to: ['club-rush', "Fall '26", 'BFA'] },
+    ]);
+  });
+
+  it('does not touch a contact no enabled combine reaches', () => {
+    const contacts = [{ id: '1', name: 'S1', tags: ['club-rush', 'club rush'] }];
+    expect(planTagApplies(contacts, [{ variants: ['BFA table'], target: 'BFA' }])).toEqual([]);
+  });
+
+  it('still removes a duplicate the rewrite itself creates, case-insensitively', () => {
+    const contacts = [
+      { id: '1', name: 'S1', tags: ['bfa', 'BFA table', 'club-rush'] },
+      { id: '2', name: 'S2', tags: ['BFA table', 'bfa-table'] },
+    ];
+    expect(
+      planTagApplies(contacts, [{ variants: ['BFA table', 'bfa-table'], target: 'BFA' }]),
+    ).toEqual([
+      { contactId: '1', name: 'S1', from: ['bfa', 'BFA table', 'club-rush'], to: ['BFA', 'club-rush'] },
+      { contactId: '2', name: 'S2', from: ['BFA table', 'bfa-table'], to: ['BFA'] },
+    ]);
   });
 });
 

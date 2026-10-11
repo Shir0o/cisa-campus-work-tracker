@@ -9,17 +9,19 @@ import {
   where,
 } from 'firebase/firestore';
 import { Check, Loader2, Repeat, Undo2, Users } from 'lucide-react';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useLanguage } from '../components/LanguageProvider';
 import { useAuth } from '../components/AuthProvider';
 import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   findCombineCandidates,
-  mergeContactProfiles,
+  combineContactProfiles,
   diffCombineFields,
   chooseKeptContact,
+  combineRecordKind,
   contactPairKey,
+  type CombineRecordKind,
   type CombineFieldRow,
   type CombineMoveGroup,
   type CombinePair,
@@ -27,6 +29,13 @@ import {
   type CombinePicks,
   type ContactHistory,
 } from '../lib/combineContactsPlan';
+import {
+  fill,
+  formatWhen,
+  postCombineApi,
+  requestContactUndo,
+  type UndoPreview,
+} from '../lib/combineClient';
 import {
   markNotSamePerson,
   unmarkNotSamePerson,
@@ -38,10 +47,12 @@ import type { Contact } from '../types';
 /** A permanent combine record (ADR 0038), as stored by the server. */
 interface CombineRecord {
   id: string;
+  /** Absent on records written before tag combines; those are contacts. */
+  kind?: CombineRecordKind;
   keptId: string;
   combinedInId: string;
   reason?: string;
-  status: 'pending' | 'done' | 'undone';
+  status: 'pending' | 'done' | 'undoing' | 'undone';
   combinedByName?: string;
   combinedAt?: string;
   undoneByName?: string;
@@ -49,29 +60,6 @@ interface CombineRecord {
   keptBefore?: { name?: string };
   combinedInBefore?: { name?: string };
 }
-
-/** The three lists the undo preview returns (issue #1429). */
-interface UndoPreviewItem {
-  kind: string;
-  id: string;
-  label: string;
-}
-
-interface UndoPreview {
-  goesBack: UndoPreviewItem[];
-  stays: UndoPreviewItem[];
-  notRestored: { kind: string; label: string }[];
-}
-
-const formatWhen = (iso?: string): string => {
-  if (!iso) return '';
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
-};
-
-/** Fills {placeholders} in a translated string. */
-const fill = (template: string, values: Record<string, string>): string =>
-  template.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] ?? '');
 
 /** Display label per reviewed field, used as the i18n fallback. */
 const FIELD_LABELS: Record<string, string> = {
@@ -113,7 +101,7 @@ const KIND_LABELS: Record<CombineFieldRow['kind'], string> = {
   kept: 'Kept',
   'filled-in': 'Filled in',
   pick: 'You pick',
-  merged: 'Merged',
+  combined: 'Combined',
   'earlier-wins': 'Earlier wins',
   'latest-wins': 'Latest wins',
 };
@@ -154,7 +142,7 @@ const renderValue = (value: string | string[]): string => {
  * Combine contacts (issue #1427, ADR 0038). A Full-timer review page reached
  * from the directory: the Queue of detected pairs (same email, phone or name),
  * each shown as a read-only kept | combined-in | result diff. Combine calls
- * the Full-timer-only server endpoint, which performs the merge and writes the
+ * the Full-timer-only server endpoint, which performs the combine and writes the
  * combine record. There is no Combine all.
  */
 export default function CombineContacts() {
@@ -208,7 +196,11 @@ export default function CombineContacts() {
     return onSnapshot(
       q,
       (snapshot) => {
-        setRecords(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CombineRecord[]);
+        setRecords(
+          (snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CombineRecord[]).filter(
+            (r) => combineRecordKind(r) === 'contacts',
+          ),
+        );
         setRecordsLoading(false);
       },
       (e) => {
@@ -379,26 +371,18 @@ export default function CombineContacts() {
     setCombiningId(key);
     setCombineError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-contacts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
+      await postCombineApi(
+        '/api/combine-contacts',
+        {
           keptId: pair.kept.id,
           combinedInId: pair.combinedIn.id,
           reason: pair.reason,
           picks: picksFor(key),
           keptUpdatedAt: pair.kept.updatedAt ?? null,
           combinedInUpdatedAt: pair.combinedIn.updatedAt ?? null,
-        }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || 'Combine failed');
-      }
+        },
+        'Combine failed',
+      );
     } catch (e) {
       setCombineError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -412,21 +396,11 @@ export default function CombineContacts() {
     setMovesLoading(key);
     setCombineError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-contacts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          keptId: pair.kept.id,
-          combinedInId: pair.combinedIn.id,
-          dryRun: true,
-        }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not load what moves');
+      const body = await postCombineApi(
+        '/api/combine-contacts',
+        { keptId: pair.kept.id, combinedInId: pair.combinedIn.id, dryRun: true },
+        'Could not load what moves',
+      );
       setMovesByPair((prev) => ({ ...prev, [key]: (body.moves ?? []) as CombineMoveGroup[] }));
     } catch (e) {
       setCombineError(e instanceof Error ? e.message : String(e));
@@ -435,30 +409,13 @@ export default function CombineContacts() {
     }
   };
 
-  const undo = async (recordId: string, dryRun: boolean) => {
-    const token = await auth.currentUser?.getIdToken();
-    const response = await fetch('/api/combine-contacts/undo', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ combineRecordId: recordId, dryRun }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(body.error || 'Undo failed');
-    }
-    return body as { success: boolean; preview?: UndoPreview };
-  };
-
   const loadPreview = async (recordId: string) => {
     if (previewingId || undoingId) return;
     setPreviewingId(recordId);
     setCombineError(null);
     setPreview(null);
     try {
-      const body = await undo(recordId, true);
+      const body = await requestContactUndo(recordId, true);
       setPreview(body.preview ?? { goesBack: [], stays: [], notRestored: [] });
       setPreviewRecordId(recordId);
     } catch (e) {
@@ -473,7 +430,7 @@ export default function CombineContacts() {
     setUndoingId(recordId);
     setCombineError(null);
     try {
-      await undo(recordId, false);
+      await requestContactUndo(recordId, false);
       setPreviewRecordId(null);
       setPreview(null);
     } catch (e) {
@@ -492,7 +449,7 @@ export default function CombineContacts() {
             {t('combine_contacts.title', 'Combine contacts')}
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            {t('combine_contacts.subtitle', 'Review detected duplicate contacts before combining.')}
+            {t('combine_contacts.subtitle', 'Review detected pairs of the same person before combining.')}
           </p>
         </div>
       </header>
@@ -751,7 +708,7 @@ export default function CombineContacts() {
         <div className="py-16 text-center">
           <Check className="w-10 h-10 text-primary mx-auto mb-3" />
           <p className="font-medium text-on-surface">
-            {t('combine_contacts.none', 'No duplicate contacts found')}
+            {t('combine_contacts.none', 'No pairs of the same person found')}
           </p>
           <p className="text-sm text-on-surface-variant mt-1">
             {t(
@@ -765,8 +722,8 @@ export default function CombineContacts() {
           {pairs.map((pair) => {
             const key = pairKey(pair);
             const picks = picksFor(key);
-            const merged = mergeContactProfiles(pair.kept, pair.combinedIn, picks);
-            const rows = diffCombineFields(pair.kept, pair.combinedIn, merged);
+            const combined = combineContactProfiles(pair.kept, pair.combinedIn, picks);
+            const rows = diffCombineFields(pair.kept, pair.combinedIn, combined);
             const isCombining = combiningId === key;
             const moves = movesByPair[key];
             const isLoadingMoves = movesLoading === key;
@@ -844,7 +801,7 @@ export default function CombineContacts() {
                                   {t('combine_contacts.pick_combined_in', 'Combined-in')}
                                 </option>
                               </select>
-                            ) : row.field === 'notes' && row.kind === 'merged' ? (
+                            ) : row.field === 'notes' && row.kind === 'combined' ? (
                               <select
                                 data-testid="pick-notes"
                                 value={picks.notes ?? 'both'}

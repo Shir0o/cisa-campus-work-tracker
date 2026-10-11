@@ -14,14 +14,14 @@ export function subscribeStandardTags(
   return onSnapshot(
     doc(db, "settings", "standard_tags"),
     (snap) => {
-      const data = typeof snap?.data === "function" ? snap.data() : undefined;
+      const data = snap.data();
       cb(resolveStandardTags((data as { tags?: string[] } | undefined)?.tags));
     },
     (e) => (onError ? onError(e) : console.error("standard tags subscription error", e)),
   );
 }
 
-/** Merge-write the standard tags list. Rules gate it to Full-timers. */
+/** Replace the standard tags list (a plain setDoc, no merge). Rules gate it to Full-timers. */
 export async function saveStandardTags(db: Firestore, tags: string[]): Promise<void> {
   await setDoc(doc(db, "settings", "standard_tags"), { tags });
 }

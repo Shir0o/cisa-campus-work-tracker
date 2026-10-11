@@ -9,7 +9,7 @@ vi.mock('../lib/firebase', () => ({
 }));
 
 const combinedFrom: CombinedFrom = {
-  name: 'Jane Duplicate',
+  name: 'Jane Other',
   at: '2026-10-01T10:00:00.000Z',
   byName: 'Admin Tony',
   combineRecordId: 'rec-1',
@@ -40,7 +40,7 @@ describe('CombinedFromBanner (#1434)', () => {
     render(<CombinedFromBanner combinedFrom={combinedFrom} isFullTimer={false} />);
 
     expect(
-      screen.getByText('Combined from Jane Duplicate on 10/1/2026 by Admin Tony'),
+      screen.getByText('Combined from Jane Other on 10/1/2026 by Admin Tony'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /See what moved/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Undo combine/i })).not.toBeInTheDocument();

@@ -10,7 +10,14 @@ import type { Contact } from '../types';
 // exact list of documents to move and references to rewrite. Nothing here
 // writes; the server applies the plan.
 
-/** A detected duplicate pair. `kept` survives; `combinedIn` is absorbed. */
+/** Which tool wrote a combine record: Combine contacts or Combine tags. */
+export type CombineRecordKind = 'contacts' | 'tags';
+
+/** The kind of a combine record. Records written before tag combines have none and are contacts. */
+export const combineRecordKind = (record: { kind?: CombineRecordKind }): CombineRecordKind =>
+  record.kind ?? 'contacts';
+
+/** A detected pair of records for one person. `kept` stays; `combinedIn` is folded into it. */
 export interface CombinePair {
   kept: Contact;
   combinedIn: Contact;
@@ -45,6 +52,8 @@ export interface CombineReferences {
   inboxStates: { id: string; data: Record<string, unknown> }[];
   notifications: { id: string; data: Record<string, unknown> }[];
   activities: { id: string; data: Record<string, unknown> }[];
+  /** Ids of the kept contact's own subcollection documents, so a same-id document is never overwritten. */
+  keptSubDocIds?: Partial<Record<'interactions' | 'threads' | 'teamThreads' | 'comments', string[]>>;
 }
 
 /** How one field's result was decided. */
@@ -53,7 +62,7 @@ export type CombineFieldKind =
   | 'kept'
   | 'filled-in'
   | 'pick'
-  | 'merged'
+  | 'combined'
   | 'earlier-wins'
   | 'latest-wins';
 
@@ -75,7 +84,7 @@ export interface CombineFieldRow {
   kept: string | string[];
   combinedIn: string | string[];
   result: string | string[];
-  /** For `merged` rows, the members the combined-in contact adds. */
+  /** For `combined` rows, the members the combined-in contact adds. */
   added?: string[];
 }
 
@@ -133,10 +142,16 @@ export interface CombinePlan {
   keptId: string;
   combinedInId: string;
   fieldRows: CombineFieldRow[];
-  /** The merged profile written onto the kept contact. */
+  /** The combined profile written onto the kept contact. */
   keptData: Record<string, unknown>;
   moves: CombineMoveGroup[];
   movedDocuments: MovedDocument[];
+  /**
+   * Combined-in documents whose id already exists under the kept contact (a
+   * shared visit's mirror, say). The kept contact's copy stays; this one is
+   * removed from the combined-in contact and recreated from here on undo.
+   */
+  collidedDocuments: MovedDocument[];
   rewrittenReferences: RewrittenReference[];
 }
 
@@ -220,7 +235,7 @@ export function chooseKeptContact(
 }
 
 /**
- * Scans contacts for candidate duplicate pairs. Each contact is paired at most
+ * Scans contacts for candidate pairs of the same person. Each contact is paired at most
  * once per pass. The record with more history is kept by default; when the
  * histories tie (or none is supplied) the older record (by createdAt) is kept.
  * Pairs in `excludedPairKeys` (Not the same person marks) are never suggested.
@@ -257,7 +272,7 @@ export function findCombineCandidates(
   return pairs;
 }
 
-// ── Field merge (unchanged merge rules, ADR 0026/0038) ─────────────────────
+// ── Field combining (unchanged rules, ADR 0026/0038) ─────────────────────
 
 /** Scalar profile fields where the kept value wins and a gap is backfilled. */
 export const COMBINE_SCALAR_FIELDS = [
@@ -286,11 +301,11 @@ export const COMBINE_PICK_FIELDS = [
   ...COMBINE_FLAG_FIELDS,
 ] as const;
 
-/** Relationship sets merged as a union. */
+/** Relationship sets combined as a union. */
 export const COMBINE_SET_FIELDS = ['tags', 'founders', 'carers', 'coCreators', 'visibleTo'] as const;
 
-/** Lists always merged as a union, beyond the relationship sets. */
-export const COMBINE_MERGED_FIELDS = ['interests', 'storyMessageIds'] as const;
+/** Lists always combined as a union, beyond the relationship sets. */
+export const COMBINE_UNION_FIELDS = ['interests', 'storyMessageIds'] as const;
 
 /** Every profile field surfaced in the review, in display order. */
 export const COMBINE_FIELD_ORDER = [
@@ -299,7 +314,7 @@ export const COMBINE_FIELD_ORDER = [
   ...COMBINE_FLAG_FIELDS,
   'notes',
   ...COMBINE_SET_FIELDS,
-  ...COMBINE_MERGED_FIELDS,
+  ...COMBINE_UNION_FIELDS,
   'attendance',
   'createdAt',
   'addedBy',
@@ -317,10 +332,18 @@ export function timestampMillis(value: unknown): number {
     return Number.isNaN(parsed) ? 0 : parsed;
   }
   if (typeof value === 'object') {
-    const v = value as { toDate?: () => Date; seconds?: number; _seconds?: number };
+    const v = value as {
+      toDate?: () => Date;
+      seconds?: number;
+      nanoseconds?: number;
+      _seconds?: number;
+      _nanoseconds?: number;
+    };
     if (typeof v.toDate === 'function') return v.toDate().getTime();
-    if (typeof v.seconds === 'number') return v.seconds * 1000;
-    if (typeof v._seconds === 'number') return v._seconds * 1000;
+    // Keep the sub-second part so the browser's JSON form of a Timestamp
+    // reduces to the same milliseconds as the server's Admin Timestamp.
+    if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds ?? 0) / 1e6);
+    if (typeof v._seconds === 'number') return v._seconds * 1000 + Math.floor((v._nanoseconds ?? 0) / 1e6);
   }
   return 0;
 }
@@ -349,7 +372,7 @@ function attendanceOf(contact: Contact): LegacyAttendance {
  * contact: sets union, single values per the Full-timer's picks with gaps
  * backfilled, notes one side or both, and the fixed earlier/later rules.
  */
-export function mergeContactProfiles(
+export function combineContactProfiles(
   kept: Contact,
   combinedIn: Contact,
   picks: CombinePicks = {},
@@ -390,7 +413,7 @@ export function mergeContactProfiles(
     return k || c;
   };
 
-  const merged: Contact = {
+  const combined: Contact = {
     ...kept,
     name: pickString(kept.name ?? '', combinedIn.name ?? '', picks.fields?.name),
     notes: combinedNotes,
@@ -430,22 +453,22 @@ export function mergeContactProfiles(
     reachedAt: kept.reachedAt || combinedIn.reachedAt,
   };
 
-  merged.isStudent = pickRaw(kept.isStudent, combinedIn.isStudent, picks.fields?.isStudent);
-  merged.inChurchLife = pickRaw(kept.inChurchLife, combinedIn.inChurchLife, picks.fields?.inChurchLife);
-  merged.yearConfirmedFor = pickRaw(
+  combined.isStudent = pickRaw(kept.isStudent, combinedIn.isStudent, picks.fields?.isStudent);
+  combined.inChurchLife = pickRaw(kept.inChurchLife, combinedIn.inChurchLife, picks.fields?.inChurchLife);
+  combined.yearConfirmedFor = pickRaw(
     kept.yearConfirmedFor,
     combinedIn.yearConfirmedFor,
     picks.fields?.yearConfirmedFor,
   );
 
-  // The legacy per-event attendance map merges with the kept contact winning
+  // The legacy per-event attendance map is joined with the kept contact winning
   // any event both carry.
   const attendance = { ...attendanceOf(combinedIn), ...attendanceOf(kept) };
   if (Object.keys(attendance).length > 0) {
-    (merged as { attendance?: LegacyAttendance }).attendance = attendance;
+    (combined as { attendance?: LegacyAttendance }).attendance = attendance;
   }
 
-  return merged;
+  return combined;
 }
 
 function scalarValue(value: unknown): string {
@@ -503,15 +526,15 @@ function stampLabel(value: unknown): string {
   return ms === 0 ? '' : new Date(ms).toISOString();
 }
 
-function mergedListRow(field: string, keptValue: unknown, combinedInValue: unknown, mergedValue: unknown): CombineFieldRow {
+function unionListRow(field: string, keptValue: unknown, combinedInValue: unknown, combinedValue: unknown): CombineFieldRow {
   const keptList = listValue(keptValue);
   const combinedInList = listValue(combinedInValue);
-  const resultList = listValue(mergedValue);
+  const resultList = listValue(combinedValue);
   const keptSet = new Set(keptList);
   const added = resultList.filter((item) => !keptSet.has(item));
   return {
     field,
-    kind: added.length > 0 ? 'merged' : 'same',
+    kind: added.length > 0 ? 'combined' : 'same',
     kept: keptList,
     combinedIn: combinedInList,
     result: resultList,
@@ -522,22 +545,22 @@ function mergedListRow(field: string, keptValue: unknown, combinedInValue: unkno
 /**
  * Lists one row per profile field: what the kept contact has, what the
  * combined-in contact has, and the result the Full-timer is about to commit.
- * The result is taken from `merged`, so a pick made before calling this is
+ * The result is taken from `combined`, so a pick made before calling this is
  * reflected in the result column.
  */
-export function diffCombineFields(kept: Contact, combinedIn: Contact, merged: Contact): CombineFieldRow[] {
+export function diffCombineFields(kept: Contact, combinedIn: Contact, combined: Contact): CombineFieldRow[] {
   const rows: CombineFieldRow[] = [];
 
   for (const field of COMBINE_PICK_FIELDS) {
     const keptValue = (kept as unknown as Record<string, unknown>)[field];
     const combinedInValue = (combinedIn as unknown as Record<string, unknown>)[field];
-    const mergedValue = (merged as unknown as Record<string, unknown>)[field];
+    const combinedValue = (combined as unknown as Record<string, unknown>)[field];
     rows.push({
       field,
       kind: pickKind(keptValue, combinedInValue),
       kept: cellValue(keptValue),
       combinedIn: cellValue(combinedInValue),
-      result: cellValue(mergedValue),
+      result: cellValue(combinedValue),
     });
   }
 
@@ -546,57 +569,57 @@ export function diffCombineFields(kept: Contact, combinedIn: Contact, merged: Co
   let notesKind: CombineFieldKind;
   if (keptNotes === combinedInNotes) notesKind = 'same';
   else if (!keptNotes && combinedInNotes) notesKind = 'filled-in';
-  else if (keptNotes && combinedInNotes) notesKind = 'merged';
+  else if (keptNotes && combinedInNotes) notesKind = 'combined';
   else notesKind = 'kept';
   rows.push({
     field: 'notes',
     kind: notesKind,
     kept: keptNotes,
     combinedIn: combinedInNotes,
-    result: scalarValue(merged.notes),
-    ...(notesKind === 'merged' ? { added: [combinedInNotes] } : {}),
+    result: scalarValue(combined.notes),
+    ...(notesKind === 'combined' ? { added: [combinedInNotes] } : {}),
   });
 
   for (const field of COMBINE_SET_FIELDS) {
-    rows.push(mergedListRow(field, kept[field], combinedIn[field], merged[field]));
+    rows.push(unionListRow(field, kept[field], combinedIn[field], combined[field]));
   }
 
-  for (const field of COMBINE_MERGED_FIELDS) {
-    rows.push(mergedListRow(field, kept[field], combinedIn[field], merged[field]));
+  for (const field of COMBINE_UNION_FIELDS) {
+    rows.push(unionListRow(field, kept[field], combinedIn[field], combined[field]));
   }
 
   const keptAttendance = Object.keys(attendanceOf(kept));
   const combinedInAttendance = Object.keys(attendanceOf(combinedIn));
-  const mergedAttendance = Object.keys(attendanceOf(merged));
-  rows.push(mergedListRow('attendance', keptAttendance, combinedInAttendance, mergedAttendance));
+  const combinedAttendance = Object.keys(attendanceOf(combined));
+  rows.push(unionListRow('attendance', keptAttendance, combinedInAttendance, combinedAttendance));
 
   rows.push({
     field: 'createdAt',
     kind: 'earlier-wins',
     kept: stampLabel(kept.createdAt),
     combinedIn: stampLabel(combinedIn.createdAt),
-    result: stampLabel(merged.createdAt),
+    result: stampLabel(combined.createdAt),
   });
   rows.push({
     field: 'addedBy',
     kind: 'earlier-wins',
     kept: scalarValue(kept.addedBy),
     combinedIn: scalarValue(combinedIn.addedBy),
-    result: scalarValue(merged.addedBy),
+    result: scalarValue(combined.addedBy),
   });
   rows.push({
     field: 'lastContactedDate',
     kind: 'latest-wins',
     kept: scalarValue(kept.lastContactedDate),
     combinedIn: scalarValue(combinedIn.lastContactedDate),
-    result: scalarValue(merged.lastContactedDate),
+    result: scalarValue(combined.lastContactedDate),
   });
   rows.push({
     field: 'lastSeen',
     kind: 'latest-wins',
     kept: scalarValue(kept.lastSeen),
     combinedIn: scalarValue(combinedIn.lastSeen),
-    result: scalarValue(merged.lastSeen),
+    result: scalarValue(combined.lastSeen),
   });
 
   return rows;
@@ -617,7 +640,7 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((item, i) => item === b[i]);
 }
 
-/** Replaces one id with another, dropping any duplicate the rewrite creates. */
+/** Replaces one id with another, dropping any repeat the rewrite creates. */
 function replaceInArray(arr: string[], from: string, to: string): string[] {
   return [...new Set(arr.map((id) => (id === from ? to : id)))];
 }
@@ -646,61 +669,63 @@ export function buildCombinePlan(
   meta: { now: string; updatedById?: string; updatedByName: string },
   picks: CombinePicks = {},
 ): CombinePlan {
-  const merged = mergeContactProfiles(kept, combinedIn, picks);
+  const combined = combineContactProfiles(kept, combinedIn, picks);
 
   const keptData: Record<string, unknown> = {
-    name: merged.name,
-    location: merged.location,
-    email: merged.email,
-    phone: merged.phone,
-    stage: merged.stage,
-    notes: merged.notes,
-    spiritualBackground: merged.spiritualBackground,
-    pronouns: merged.pronouns,
-    gender: merged.gender,
-    year: merged.year,
-    major: merged.major,
-    instagram: merged.instagram,
-    howHeard: merged.howHeard,
-    metVia: merged.metVia,
-    prayerRequest: merged.prayerRequest,
-    tags: merged.tags,
-    founders: merged.founders,
-    carers: merged.carers,
-    coCreators: merged.coCreators,
-    visibleTo: merged.visibleTo,
-    interests: merged.interests,
-    storyMessageIds: merged.storyMessageIds,
-    lastSeen: merged.lastSeen,
+    name: combined.name,
+    location: combined.location,
+    email: combined.email,
+    phone: combined.phone,
+    stage: combined.stage,
+    notes: combined.notes,
+    spiritualBackground: combined.spiritualBackground,
+    pronouns: combined.pronouns,
+    gender: combined.gender,
+    year: combined.year,
+    major: combined.major,
+    instagram: combined.instagram,
+    howHeard: combined.howHeard,
+    metVia: combined.metVia,
+    prayerRequest: combined.prayerRequest,
+    tags: combined.tags,
+    founders: combined.founders,
+    carers: combined.carers,
+    coCreators: combined.coCreators,
+    visibleTo: combined.visibleTo,
+    interests: combined.interests,
+    storyMessageIds: combined.storyMessageIds,
+    lastSeen: combined.lastSeen,
     updatedAt: meta.now,
     updatedByName: meta.updatedByName,
   };
   if (meta.updatedById) keptData.updatedBy = meta.updatedById;
-  if (merged.createdAt !== undefined) keptData.createdAt = merged.createdAt;
-  if (merged.addedBy) keptData.addedBy = merged.addedBy;
-  if (merged.lastContactedDate) keptData.lastContactedDate = merged.lastContactedDate;
-  if (merged.isStudent !== undefined) keptData.isStudent = merged.isStudent;
-  if (merged.inChurchLife !== undefined) keptData.inChurchLife = merged.inChurchLife;
-  if (merged.yearConfirmedFor) keptData.yearConfirmedFor = merged.yearConfirmedFor;
-  const mergedAttendance = attendanceOf(merged);
-  if (Object.keys(mergedAttendance).length > 0) keptData.attendance = mergedAttendance;
-  if (merged.reachedAt) keptData.reachedAt = merged.reachedAt;
+  if (combined.createdAt !== undefined) keptData.createdAt = combined.createdAt;
+  if (combined.addedBy) keptData.addedBy = combined.addedBy;
+  if (combined.lastContactedDate) keptData.lastContactedDate = combined.lastContactedDate;
+  if (combined.isStudent !== undefined) keptData.isStudent = combined.isStudent;
+  if (combined.inChurchLife !== undefined) keptData.inChurchLife = combined.inChurchLife;
+  if (combined.yearConfirmedFor) keptData.yearConfirmedFor = combined.yearConfirmedFor;
+  const combinedAttendance = attendanceOf(combined);
+  if (Object.keys(combinedAttendance).length > 0) keptData.attendance = combinedAttendance;
+  if (combined.reachedAt) keptData.reachedAt = combined.reachedAt;
 
   const movedDocuments: MovedDocument[] = [];
+  const collidedDocuments: MovedDocument[] = [];
   const moves: CombineMoveGroup[] = [];
   const rewrittenReferences: RewrittenReference[] = [];
   const id = combinedIn.id;
   const keptId = kept.id;
 
   for (const sub of SUBCOLLECTIONS) {
-    const docs = refs[sub];
-    movedDocuments.push(
-      ...docs.map((d) => ({
-        originalPath: `contacts/${id}/${sub}/${d.id}`,
-        newPath: `contacts/${keptId}/${sub}/${d.id}`,
-        originalData: d.data,
-      })),
-    );
+    const keptIds = new Set(refs.keptSubDocIds?.[sub] ?? []);
+    const docs = refs[sub].filter((d) => !keptIds.has(d.id));
+    const toDocument = (d: SubcollectionDoc): MovedDocument => ({
+      originalPath: `contacts/${id}/${sub}/${d.id}`,
+      newPath: `contacts/${keptId}/${sub}/${d.id}`,
+      originalData: d.data,
+    });
+    movedDocuments.push(...docs.map(toDocument));
+    collidedDocuments.push(...refs[sub].filter((d) => keptIds.has(d.id)).map(toDocument));
     moves.push(
       moveGroup(
         sub,
@@ -735,13 +760,13 @@ export function buildCombinePlan(
     });
     // The cached contact name on a to-do is refreshed so it never shows the
     // retired spelling (ADR 0038).
-    if (typeof task.data.contactName === 'string' && task.data.contactName !== kept.name) {
+    if (typeof task.data.contactName === 'string' && task.data.contactName !== combined.name) {
       rewrittenReferences.push({
         collection: 'tasks',
         document: task.id,
         field: 'contactName',
         before: task.data.contactName,
-        after: kept.name,
+        after: combined.name,
       });
     }
   }
@@ -764,7 +789,7 @@ export function buildCombinePlan(
       });
     }
     // The cached names ride alongside the ids; refresh the one for the
-    // combined-in contact and drop the duplicate a merge would create.
+    // combined-in contact and drop the repeat the combine would create.
     const names = Array.isArray(visit.data?.contactNames)
       ? (visit.data!.contactNames as unknown[]).filter((n): n is string => typeof n === 'string')
       : null;
@@ -775,7 +800,7 @@ export function buildCombinePlan(
         const nextId = visit.contactIds[i] === id ? keptId : visit.contactIds[i];
         if (seen.has(nextId)) continue;
         seen.add(nextId);
-        mapped.push(visit.contactIds[i] === id ? kept.name : (names[i] ?? ''));
+        mapped.push(visit.contactIds[i] === id ? combined.name : (names[i] ?? ''));
       }
       if (!arraysEqual(names, mapped)) {
         rewrittenReferences.push({
@@ -877,7 +902,7 @@ export function buildCombinePlan(
       field: 'names',
       before: names,
       after: names.map((entry) =>
-        entry?.contactId === id ? { ...entry, contactId: keptId, name: kept.name } : entry,
+        entry?.contactId === id ? { ...entry, contactId: keptId, name: combined.name } : entry,
       ),
     });
     outreachItems.push({ id: record.id, label: itemLabel(record.data, record.id) });
@@ -1019,13 +1044,13 @@ export function buildCombinePlan(
       before: activity.data.targetId,
       after: keptId,
     });
-    if (typeof activity.data.targetName === 'string' && activity.data.targetName !== kept.name) {
+    if (typeof activity.data.targetName === 'string' && activity.data.targetName !== combined.name) {
       rewrittenReferences.push({
         collection: 'activities',
         document: activity.id,
         field: 'targetName',
         before: activity.data.targetName,
-        after: kept.name,
+        after: combined.name,
       });
     }
     activityItems.push({ id: activity.id, label: itemLabel(activity.data, activity.id) });
@@ -1035,10 +1060,11 @@ export function buildCombinePlan(
   return {
     keptId: kept.id,
     combinedInId: combinedIn.id,
-    fieldRows: diffCombineFields(kept, combinedIn, merged),
+    fieldRows: diffCombineFields(kept, combinedIn, combined),
     keptData,
     moves,
     movedDocuments,
+    collidedDocuments,
     rewrittenReferences,
   };
 }
@@ -1058,6 +1084,8 @@ export interface CombineUndoRecord {
   combinedInBefore: Record<string, unknown>;
   keptAfter: Record<string, unknown>;
   movedDocuments: MovedDocument[];
+  /** Absent on records written before collisions were kept apart. */
+  collidedDocuments?: MovedDocument[];
   rewrittenReferences: RewrittenReference[];
 }
 
@@ -1100,7 +1128,9 @@ export interface CombineUndoPlan {
   notRestored: CombineUndoNotRestored[];
   keptUpdates: CombineUndoKeptUpdate[];
   movedBack: { originalPath: string; newPath: string; data: Record<string, unknown> }[];
-  referenceReverts: {
+  /** Collided combined-in documents recreated at their original path; the kept contact's copy is untouched. */
+  recreated: { originalPath: string; data: Record<string, unknown> }[];
+  referenceRestores: {
     collection: string;
     document: string;
     field: string;
@@ -1137,10 +1167,150 @@ function valuesEqual(a: unknown, b: unknown): boolean {
 /** Fields the combine stamps as bookkeeping, not person data. */
 const UNDO_META_FIELDS = new Set(['updatedAt', 'updatedByName', 'updatedBy', 'combinedFrom']);
 
+/** Rewritten references that hold a plain list of contact ids (`collection/field`). */
+const ID_LIST_REFERENCES = new Set([
+  'events/roster',
+  'events/rosterOverride',
+  'events/rosterOverrideBase',
+  'rhythms/roster',
+  'homes/members',
+  'visits/contactIds',
+  'userPreferences/personalContactIds',
+]);
+
+function dictValue(value: unknown): Dict {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Dict) : {};
+}
+
+/** Where the combined-in id goes back into a list: in the kept id's slot, or beside it. */
+interface ListRestore {
+  at: number;
+  insert: boolean;
+}
+
+/**
+ * Plans putting the combined-in id back into a list the combine rewrote. The
+ * entry is still as the combine left it only while the kept id is present and
+ * the combined-in id absent; otherwise null. A replaced entry turns back into
+ * the combined-in id. A collapsed one is re-inserted beside the kept
+ * contact, which keeps its own entry.
+ */
+function planListRestore(before: string[], current: string[], keptId: string, combinedInId: string): ListRestore | null {
+  const keptAt = current.indexOf(keptId);
+  if (keptAt === -1 || current.includes(combinedInId)) return null;
+  if (!before.includes(keptId)) return { at: keptAt, insert: false };
+  const combinedInFirst = before.indexOf(combinedInId) < before.indexOf(keptId);
+  return { at: combinedInFirst ? keptAt : keptAt + 1, insert: true };
+}
+
+function applyListRestore<T>(list: T[], op: ListRestore, value: T): T[] {
+  const next = [...list];
+  next.splice(op.at, op.insert ? 0 : 1, value);
+  return next;
+}
+
+/**
+ * Restores the entries the combine rewrote in one list-shaped reference that
+ * has changed since, leaving every other entry alone. Returns the value to
+ * write (undefined when nothing restores) and the labels of entries that could
+ * not be restored.
+ */
+function restoreReferenceEntries(
+  ref: RewrittenReference,
+  currentValue: unknown,
+  keptId: string,
+  combinedInId: string,
+  visitRestores: Map<string, { op: ListRestore; before: string[] }>,
+): { value?: unknown; failed: string[] } {
+  const label = `${ref.collection}.${ref.field}`;
+  const kind = `${ref.collection}/${ref.field}`;
+
+  if (ID_LIST_REFERENCES.has(kind)) {
+    const op = planListRestore(listValue(ref.before), listValue(currentValue), keptId, combinedInId);
+    if (!op) return { failed: [label] };
+    return { value: applyListRestore(listValue(currentValue), op, combinedInId), failed: [] };
+  }
+
+  if (kind === 'visits/contactNames') {
+    // Names ride alongside the ids, so they follow the ids' restore.
+    const idsRestore = visitRestores.get(ref.document);
+    const names = Array.isArray(currentValue) ? (currentValue as unknown[]) : null;
+    if (!idsRestore || !names) return { failed: [label] };
+    const name = listValue(ref.before)[idsRestore.before.indexOf(combinedInId)] ?? '';
+    return { value: applyListRestore(names, idsRestore.op, name), failed: [] };
+  }
+
+  if (kind === 'events/attendance') {
+    const before = dictValue(ref.before);
+    const next: Dict = { ...dictValue(currentValue) };
+    const failed: string[] = [];
+    let anyRestored = false;
+    for (const key of ['present', 'absent']) {
+      const beforeList = listValue(before[key]);
+      if (!beforeList.includes(combinedInId)) continue;
+      const currentList = listValue(next[key]);
+      const op = planListRestore(beforeList, currentList, keptId, combinedInId);
+      if (!op) {
+        failed.push(`${label}.${key}`);
+        continue;
+      }
+      next[key] = applyListRestore(currentList, op, combinedInId);
+      anyRestored = true;
+    }
+    return anyRestored ? { value: next, failed } : { failed };
+  }
+
+  if (ref.collection === 'inboxState') {
+    const before = dictValue(ref.before);
+    const keptKey = inboxContactKey(keptId);
+    const combinedInKey = inboxContactKey(combinedInId);
+    const currentMap = dictValue(currentValue);
+    if (!(keptKey in currentMap) || combinedInKey in currentMap) return { failed: [label] };
+    const next: Dict = { ...currentMap, [combinedInKey]: before[combinedInKey] };
+    if (!(keptKey in before)) delete next[keptKey];
+    return { value: next, failed: [] };
+  }
+
+  if (kind === 'outreach/names') {
+    const before = Array.isArray(ref.before) ? (ref.before as Dict[]) : [];
+    const after = Array.isArray(ref.after) ? (ref.after as Dict[]) : [];
+    const next = Array.isArray(currentValue) ? [...(currentValue as Dict[])] : [];
+    const claimed = new Set<number>();
+    const failed: string[] = [];
+    let anyRestored = false;
+    before.forEach((original, i) => {
+      if (original?.contactId !== combinedInId) return;
+      const written = after[i] ?? {};
+      // The entry the combine wrote: still the kept contact under the written
+      // name, and the same outreach entry when entries carry an id.
+      const at = next.findIndex(
+        (entry, j) =>
+          !claimed.has(j) &&
+          entry?.contactId === written.contactId &&
+          entry?.name === written.name &&
+          (written.id === undefined || entry?.id === written.id),
+      );
+      if (at === -1) {
+        failed.push(label);
+        return;
+      }
+      claimed.add(at);
+      const restored: Dict = { ...next[at], contactId: original.contactId };
+      if ('name' in original) restored.name = original.name;
+      else delete restored.name;
+      next[at] = restored;
+      anyRestored = true;
+    });
+    return anyRestored ? { value: next, failed } : { failed };
+  }
+
+  return { failed: [label] };
+}
+
 /**
  * Plans the undo of a combine from the record and the current database.
  * Moved documents return with their current data, references and kept-contact
- * fields revert only while they still hold what the combine wrote, and
+ * fields are restored only while they still hold what the combine wrote, and
  * documents or list items added since stay.
  */
 export function buildCombineUndoPlan(
@@ -1152,7 +1322,8 @@ export function buildCombineUndoPlan(
   const notRestored: CombineUndoNotRestored[] = [];
   const keptUpdates: CombineUndoKeptUpdate[] = [];
   const movedBack: CombineUndoPlan['movedBack'] = [];
-  const referenceReverts: CombineUndoPlan['referenceReverts'] = [];
+  const recreated: CombineUndoPlan['recreated'] = [];
+  const referenceRestores: CombineUndoPlan['referenceRestores'] = [];
 
   // Moved documents return to their original path with their current data, so
   // later edits come along. A moved document deleted since is left deleted.
@@ -1164,6 +1335,13 @@ export function buildCombineUndoPlan(
     if (data == null) continue;
     goesBack.push({ kind, id, label: itemLabel(data, id) });
     movedBack.push({ originalPath: moved.originalPath, newPath: moved.newPath, data });
+  }
+
+  // Collided documents never left the record, so they return exactly as they were.
+  for (const collided of record.collidedDocuments ?? []) {
+    const parts = collided.originalPath.split('/');
+    goesBack.push({ kind: parts[2], id: parts[3], label: itemLabel(collided.originalData, parts[3]) });
+    recreated.push({ originalPath: collided.originalPath, data: collided.originalData });
   }
 
   // Documents created on the kept contact after the combine stay; they are the
@@ -1180,11 +1358,31 @@ export function buildCombineUndoPlan(
     }
   }
 
-  // Kept-contact fields revert only while they still equal what the combine
-  // wrote. Merged lists lose only the members the combine added.
-  const setFields = new Set<string>(COMBINE_SET_FIELDS);
+  // Kept-contact fields are restored only while they still equal what the combine
+  // wrote. Union lists lose only the members the combine added.
+  const setFields = new Set<string>([...COMBINE_SET_FIELDS, ...COMBINE_UNION_FIELDS]);
   for (const [field, afterValue] of Object.entries(record.keptAfter)) {
     const beforeValue = record.keptBefore[field];
+
+    if (field === 'attendance') {
+      // The legacy per-event map loses only the events the combine added, and
+      // only while each still holds the value the combine wrote.
+      const beforeMap = dictValue(beforeValue);
+      const currentMap = dictValue(current.kept[field]);
+      const next: Dict = { ...currentMap };
+      for (const [event, written] of Object.entries(dictValue(afterValue))) {
+        if (event in beforeMap || !(event in currentMap)) continue;
+        if (valuesEqual(currentMap[event], written)) {
+          delete next[event];
+          goesBack.push({ kind: 'field', id: field, label: `${field}: ${event}` });
+        } else {
+          notRestored.push({ kind: 'field', label: `${field}.${event}` });
+        }
+      }
+      if (beforeValue === undefined && Object.keys(next).length === 0) keptUpdates.push({ field, remove: true });
+      else if (!valuesEqual(next, currentMap)) keptUpdates.push({ field, value: next });
+      continue;
+    }
 
     if (setFields.has(field)) {
       const beforeList = listValue(beforeValue);
@@ -1208,33 +1406,56 @@ export function buildCombineUndoPlan(
       continue;
     }
 
+    // A field the combine left as it was has nothing to restore or report.
+    if (valuesEqual(beforeValue, afterValue)) continue;
+
     if (!valuesEqual(current.kept[field], afterValue)) {
       if (!UNDO_META_FIELDS.has(field)) notRestored.push({ kind: 'field', label: field });
       continue;
     }
     if (beforeValue === undefined) {
       keptUpdates.push({ field, remove: true });
-    } else if (!valuesEqual(beforeValue, afterValue)) {
+    } else {
       keptUpdates.push({ field, value: beforeValue });
       if (!UNDO_META_FIELDS.has(field)) goesBack.push({ kind: 'field', id: field, label: field });
     }
   }
 
-  // A rewritten reference reverts only while it still holds the combine value.
+  // A rewritten reference is restored only while it still holds the combine value.
+  // A list-shaped one that changed since is restored entry by entry: only entries
+  // still as the combine left them go back, and everything else stays.
+  const visitRestores = new Map<string, { op: ListRestore; before: string[] }>();
   for (const ref of record.rewrittenReferences) {
     const currentValue = current.referenceValues[referenceKey(ref.collection, ref.document, ref.field)];
+    if (ref.collection === 'visits' && ref.field === 'contactIds') {
+      const before = listValue(ref.before);
+      const op = planListRestore(before, listValue(currentValue), record.keptId, record.combinedInId);
+      if (op) visitRestores.set(ref.document, { op, before });
+    }
+    let value: unknown;
+    let failed: string[] = [];
     if (valuesEqual(currentValue, ref.after)) {
-      referenceReverts.push({
+      value = ref.before;
+    } else {
+      ({ value, failed } = restoreReferenceEntries(
+        ref,
+        currentValue,
+        record.keptId,
+        record.combinedInId,
+        visitRestores,
+      ));
+    }
+    if (value !== undefined) {
+      referenceRestores.push({
         collection: ref.collection,
         document: ref.document,
         field: ref.field,
-        value: ref.before,
+        value,
       });
       goesBack.push({ kind: 'reference', id: `${ref.collection}/${ref.document}`, label: ref.field });
-    } else {
-      notRestored.push({ kind: 'reference', label: `${ref.collection}.${ref.field}` });
     }
+    for (const label of failed) notRestored.push({ kind: 'reference', label });
   }
 
-  return { goesBack, stays, notRestored, keptUpdates, movedBack, referenceReverts };
+  return { goesBack, stays, notRestored, keptUpdates, movedBack, recreated, referenceRestores };
 }

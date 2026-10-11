@@ -3,14 +3,14 @@
 // These mirror the @cisa/core helpers (the web app deliberately has no
 // @cisa/core dependency). They are used by the directory's "Combine tags"
 // dry-run tool and by sign-up writes so new contacts don't accumulate
-// duplicate season-tag variants.
+// repeated season-tag variants.
 
 export function normalizeTag(tag: string): string {
   let value = (tag ?? '').trim().replace(/^#/, '').replace(/\s+/g, ' ');
 
   // "Fall '26", "Fall'26", "Fall ’26", "Fall 26", "Fall26", "Fall2025"
   // → "Fall 2026" / "Fall 2025"
-  const seasonShort = value.match(/^(Spring|Summer|Fall|Winter)\s*['’]?\s*(\d{2}|\d{4})$/i);
+  const seasonShort = value.match(/^(Spring|Summer|Fall|Winter) ?['’]? ?(\d{2}|\d{4})$/i);
   if (seasonShort) {
     const season = seasonShort[1].charAt(0).toUpperCase() + seasonShort[1].slice(1).toLowerCase();
     const rawYear = seasonShort[2];
@@ -28,7 +28,7 @@ export function normalizeTag(tag: string): string {
   return value;
 }
 
-/** Normalize, trim, and de-duplicate tags case-insensitively. */
+/** Normalize, trim, and drop case-insensitive repeats of tags. */
 export function normalizeTagList(tags: string[] | null | undefined): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -50,13 +50,6 @@ export interface TagPlanRow {
   name: string;
   from: string[];
   to: string[];
-}
-
-export interface TagCombineRule {
-  id: string;
-  from: string[];
-  to: string;
-  contactCount: number;
 }
 
 /** Calculate Levenshtein distance between two strings. */
@@ -90,202 +83,6 @@ function toAlphaTokens(tag: string): string[] {
 
 const CONTEXT_WORDS = new Set(['table', 'booth', 'tent', 'info', 'rush', 'tabling']);
 
-/**
- * Identify clusters of tag variants across a collection of contacts.
- * Anchors from TAG_SUGGESTIONS and detected season tags take priority.
- */
-export function clusterTags(
-  contacts: Array<{ tags?: string[] | null }>,
-): TagCombineRule[] {
-  // 1. Gather all unique raw tags and their contact counts
-  const rawTagCounts = new Map<string, number>();
-  for (const c of contacts) {
-    const seenOnContact = new Set<string>();
-    for (const raw of c.tags ?? []) {
-      const trimmed = (raw ?? '').trim();
-      if (!trimmed || seenOnContact.has(trimmed)) continue;
-      seenOnContact.add(trimmed);
-      rawTagCounts.set(trimmed, (rawTagCounts.get(trimmed) ?? 0) + 1);
-    }
-  }
-
-  // 2. Discover anchor targets (TAG_SUGGESTIONS + existing canonical season tags)
-  const anchorSet = new Set<string>(TAG_SUGGESTIONS);
-  for (const raw of rawTagCounts.keys()) {
-    const norm = normalizeTag(raw);
-    if (/^(Spring|Summer|Fall|Winter)\s+\d{4}$/.test(norm)) {
-      anchorSet.add(norm);
-    }
-  }
-
-  // Mapping from rawTag -> targetTag
-  const rawToTarget = new Map<string, string>();
-
-  // Pass A: Match against anchor targets
-  for (const raw of rawTagCounts.keys()) {
-    const norm = normalizeTag(raw);
-    const tokens = toAlphaTokens(raw);
-    const compactTokenStr = tokens.join('');
-
-    let matchedAnchor: string | null = null;
-
-    for (const anchor of anchorSet) {
-      const anchorTokens = toAlphaTokens(anchor);
-      const anchorCompact = anchorTokens.join('');
-
-      // Exact match after basic normalization
-      if (norm.toLowerCase() === anchor.toLowerCase()) {
-        matchedAnchor = anchor;
-        break;
-      }
-
-      // Compact match (e.g. "bfatable" vs "bfa")
-      if (compactTokenStr.startsWith(anchorCompact)) {
-        const remainder = compactTokenStr.slice(anchorCompact.length);
-        if (!remainder || CONTEXT_WORDS.has(remainder)) {
-          matchedAnchor = anchor;
-          break;
-        }
-      }
-
-      // Tokens match with context word suffixes/affixes (e.g. "BFA table", "Club rush table")
-      if (tokens.length > anchorTokens.length) {
-        const containsAnchorTokens = anchorTokens.every((at) => tokens.includes(at));
-        const extraTokens = tokens.filter((t) => !anchorTokens.includes(t));
-        const allExtraAreContext = extraTokens.every((et) => CONTEXT_WORDS.has(et) || /^\d+$/.test(et));
-        if (containsAnchorTokens && allExtraAreContext) {
-          matchedAnchor = anchor;
-          break;
-        }
-      }
-
-      // Typo tolerance (Levenshtein distance <= 1 for > 4 chars, <= 2 for >= 7 chars)
-      if (anchorTokens.length === 1 && tokens.length === 1) {
-        const aWord = anchorTokens[0];
-        const tWord = tokens[0];
-        const dist = levenshteinDistance(aWord, tWord);
-        if (
-          (aWord.length >= 7 && tWord.length >= 6 && dist <= 2) ||
-          (aWord.length > 4 && tWord.length > 4 && dist <= 1)
-        ) {
-          matchedAnchor = anchor;
-          break;
-        }
-      }
-    }
-
-    if (matchedAnchor) {
-      rawToTarget.set(raw, matchedAnchor);
-    }
-  }
-
-  // Pass B: Group remaining tags by simplified alphanumeric tokens
-  const unmapped = Array.from(rawTagCounts.keys()).filter((t) => !rawToTarget.has(t));
-  const groups = new Map<string, string[]>();
-
-  for (const raw of unmapped) {
-    const key = toAlphaTokens(raw).join(' ');
-    if (!key) continue;
-    const list = groups.get(key) ?? [];
-    list.push(raw);
-    groups.set(key, list);
-  }
-
-  for (const list of groups.values()) {
-    if (list.length <= 1) continue;
-    // Find target by frequency, tie-break by Title Case / Capitalized
-    const sorted = [...list].sort((a, b) => {
-      const countDiff = (rawTagCounts.get(b) ?? 0) - (rawTagCounts.get(a) ?? 0);
-      if (countDiff !== 0) return countDiff;
-      const isTitleA = /^[A-Z]/.test(a);
-      const isTitleB = /^[A-Z]/.test(b);
-      if (isTitleA !== isTitleB) return isTitleA ? -1 : 1;
-      return a.localeCompare(b);
-    });
-    const target = sorted[0];
-    for (const item of list) {
-      rawToTarget.set(item, target);
-    }
-  }
-
-  // 3. Assemble rules
-  const targetToFroms = new Map<string, Set<string>>();
-  for (const [raw, target] of rawToTarget.entries()) {
-    if (raw === target) continue;
-    const froms = targetToFroms.get(target) ?? new Set<string>();
-    froms.add(raw);
-    targetToFroms.set(target, froms);
-  }
-
-  const rules: TagCombineRule[] = [];
-  for (const [target, fromSet] of targetToFroms.entries()) {
-    const from = Array.from(fromSet);
-    // Count affected contacts
-    let contactCount = 0;
-    for (const c of contacts) {
-      if ((c.tags ?? []).some((t) => fromSet.has(t?.trim()))) {
-        contactCount++;
-      }
-    }
-    rules.push({
-      id: `rule-${target.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-      from,
-      to: target,
-      contactCount,
-    });
-  }
-
-  return rules.sort((a, b) => b.contactCount - a.contactCount || a.to.localeCompare(b.to));
-}
-
-/** Build plan of contact tag changes given a set of active/enabled rule IDs. */
-export function planTagCombiningWithRules(
-  contacts: Array<{ id: string; name: string; tags?: string[] | null }>,
-  rules: TagCombineRule[],
-  enabledRuleIds: Set<string>,
-): TagPlanRow[] {
-  // Construct map of rawTag -> targetTag for active rules
-  const mapping = new Map<string, string>();
-  for (const rule of rules) {
-    if (enabledRuleIds.has(rule.id)) {
-      for (const f of rule.from) {
-        mapping.set(f, rule.to);
-      }
-    }
-  }
-
-  const rows: TagPlanRow[] = [];
-
-  for (const contact of contacts) {
-    const from = (contact.tags ?? []).map((t) => t.trim()).filter(Boolean);
-    const toRaw = from.map((t) => mapping.get(t) ?? normalizeTag(t));
-    const to = normalizeTagList(toRaw);
-
-    const unchanged =
-      from.length === to.length && from.every((tag, index) => tag === to[index]);
-
-    if (!unchanged) {
-      rows.push({
-        contactId: contact.id,
-        name: contact.name,
-        from,
-        to,
-      });
-    }
-  }
-
-  return rows;
-}
-
-/** Build a dry-run plan of contacts whose tags would change after combining. */
-export function planTagCombining(
-  contacts: Array<{ id: string; name: string; tags?: string[] | null }>,
-): TagPlanRow[] {
-  const rules = clusterTags(contacts);
-  const allRuleIds = new Set(rules.map((r) => r.id));
-  return planTagCombiningWithRules(contacts, rules, allRuleIds);
-}
-
 export const TAG_SUGGESTIONS = [
   'Saved',
   'Baptized',
@@ -312,7 +109,7 @@ export function isSeasonTag(tag: string): boolean {
  * Resolve the standard tags from the stored document's `tags` field (#1437).
  * `undefined`/`null` means the document has not loaded, so fall back to the
  * seed; a loaded-but-empty list stays empty. Order is preserved, values are
- * normalized and de-duplicated.
+ * normalized, with case-insensitive repeats dropped.
  */
 export function resolveStandardTags(stored?: string[] | null): string[] {
   if (stored == null) return [...STANDARD_TAG_SEED];
@@ -395,8 +192,8 @@ interface RawTagInfo {
  * Guess tag combines (issue #1435, spec #1426). Pure: given the contacts' tags
  * and the standard tags, it returns the strong guesses (case/punctuation/spacing
  * and standard+context) and the weak guesses (extra words, one-letter typos,
- * standard+non-context). Different seasons are never guessed together. Until
- * #1437 the anchors default to the six TAG_SUGGESTIONS.
+ * standard+non-context). Different seasons are never guessed together. Without
+ * stored standard tags it falls back to the six TAG_SUGGESTIONS.
  */
 export function guessTagCombines(
   contacts: Array<{ tags?: string[] | null }>,
@@ -457,36 +254,36 @@ export function guessTagCombines(
     }
   };
 
-  // 1. Standard anchor plus context words (strong) or other words (weak).
+  // 1. Standard tag plus context words (strong) or other words (weak).
   //    Runs before the generic fold pass so `BFA table`, `BFA Table` and
   //    `bfa-table` all fold into the standard `BFA`, not into each other.
   for (const info of infos.values()) {
     if (assigned.has(info.raw) || info.season) continue;
     const compact = info.tokens.join('');
-    for (const anchor of standardTags) {
-      const anchorNorm = normalizeTag(anchor);
-      const anchorTokens = toAlphaTokens(anchorNorm);
-      const anchorCompact = anchorTokens.join('');
+    for (const standardTag of standardTags) {
+      const standardNorm = normalizeTag(standardTag);
+      const standardTokens = toAlphaTokens(standardNorm);
+      const standardCompact = standardTokens.join('');
       const isSuperset =
-        info.tokens.length > anchorTokens.length &&
-        anchorTokens.every((token) => info.tokens.includes(token));
+        info.tokens.length > standardTokens.length &&
+        standardTokens.every((token) => info.tokens.includes(token));
       if (isSuperset) {
-        const extras = info.tokens.filter((token) => !anchorTokens.includes(token));
+        const extras = info.tokens.filter((token) => !standardTokens.includes(token));
         const allContext = extras.every(
           (token) => CONTEXT_WORDS.has(token) || /^\d+$/.test(token),
         );
         add(
-          anchorNorm,
+          standardNorm,
           allContext ? 'strong' : 'weak',
           allContext ? 'standard-context' : 'standard-extra',
           [info.raw],
         );
         break;
       }
-      if (compact.startsWith(anchorCompact) && compact.length > anchorCompact.length) {
-        const remainder = compact.slice(anchorCompact.length);
+      if (compact.startsWith(standardCompact) && compact.length > standardCompact.length) {
+        const remainder = compact.slice(standardCompact.length);
         if (CONTEXT_WORDS.has(remainder) || /^\d+$/.test(remainder)) {
-          add(anchorNorm, 'strong', 'standard-context', [info.raw]);
+          add(standardNorm, 'strong', 'standard-context', [info.raw]);
           break;
         }
       }
@@ -544,7 +341,7 @@ export function guessTagCombines(
     if (best) add(best.norm, 'weak', 'extra-words', [longer.raw]);
   }
 
-  // 4. One-letter typos: weak. Standard anchors (whether present or not) win.
+  // 4. One-letter typos: weak. Standard tags (whether present or not) win.
   type Candidate = {
     raw: string;
     norm: string;
@@ -562,8 +359,8 @@ export function guessTagCombines(
       standard: standardNorms.has(info.norm),
     });
   }
-  for (const anchor of standardTags) {
-    const norm = normalizeTag(anchor);
+  for (const standardTag of standardTags) {
+    const norm = normalizeTag(standardTag);
     if (!candidates.some((candidate) => candidate.norm === norm)) {
       candidates.push({ raw: norm, norm, tokens: toAlphaTokens(norm), count: 0, standard: true });
     }
@@ -621,6 +418,30 @@ export function guessTagCombines(
 }
 
 /**
+ * Rewrite only the tags that are variants of an enabled combine; every other
+ * tag stays exactly as stored. A repeat is dropped only when the rewrite
+ * itself created it (a rewritten tag equals another tag, case-insensitively).
+ */
+function rewriteCombinedTags(tags: string[], mapping: Map<string, string>): string[] {
+  const result: Array<{ tag: string; rewritten: boolean }> = [];
+  for (const tag of tags) {
+    const target = mapping.get(tag);
+    const rewritten = target !== undefined && target !== tag;
+    const next = { tag: rewritten ? target : tag, rewritten };
+    const key = next.tag.toLowerCase();
+    const index = result.findIndex((entry) => entry.tag.toLowerCase() === key);
+    if (index === -1) {
+      result.push(next);
+    } else if (next.rewritten || result[index].rewritten) {
+      result[index] = { tag: next.rewritten ? next.tag : result[index].tag, rewritten: true };
+    } else {
+      result.push(next);
+    }
+  }
+  return result.map((entry) => entry.tag);
+}
+
+/**
  * Build the contact tag changes for the enabled, edited combines (issue #1435).
  * Pure: the browser preview and the server share it so they agree.
  */
@@ -640,7 +461,7 @@ export function planTagApplies(
   const rows: TagPlanRow[] = [];
   for (const contact of contacts) {
     const from = (contact.tags ?? []).map((tag) => tag.trim()).filter(Boolean);
-    const to = normalizeTagList(from.map((tag) => mapping.get(tag) ?? normalizeTag(tag)));
+    const to = rewriteCombinedTags(from, mapping);
     const unchanged = from.length === to.length && from.every((tag, index) => tag === to[index]);
     if (!unchanged) {
       rows.push({ contactId: contact.id, name: contact.name, from, to });

@@ -1,30 +1,8 @@
 import React, { useState } from "react";
 import { Loader2, Undo2 } from "lucide-react";
-import { auth } from "../../lib/firebase";
+import { fill, formatWhen, requestContactUndo, type UndoPreview } from "../../lib/combineClient";
 import { useLanguage } from "../LanguageProvider";
 import type { CombinedFrom } from "../../types";
-
-interface UndoPreviewItem {
-  kind: string;
-  id: string;
-  label: string;
-}
-
-interface UndoPreview {
-  goesBack: UndoPreviewItem[];
-  stays: UndoPreviewItem[];
-  notRestored: { kind: string; label: string }[];
-}
-
-const formatWhen = (iso?: string): string => {
-  if (!iso) return "";
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
-};
-
-/** Fills {placeholders} in a translated string. */
-const fill = (template: string, values: Record<string, string>): string =>
-  template.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] ?? "");
 
 /**
  * The "Combined from X on date by person" banner a combine leaves on the kept
@@ -48,27 +26,12 @@ export default function CombinedFromBanner({
 
   if (hidden) return null;
 
-  const requestUndo = async (dryRun: boolean) => {
-    const token = await auth.currentUser?.getIdToken();
-    const response = await fetch("/api/combine-contacts/undo", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ combineRecordId: combinedFrom.combineRecordId, dryRun }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || "Undo failed");
-    return body as { success: boolean; preview?: UndoPreview };
-  };
-
   const open = async (nextIntent: "moves" | "undo") => {
     if (busy || !combinedFrom.combineRecordId) return;
     setBusy(true);
     setError(null);
     try {
-      const body = await requestUndo(true);
+      const body = await requestContactUndo(combinedFrom.combineRecordId, true);
       setPreview(body.preview ?? { goesBack: [], stays: [], notRestored: [] });
       setIntent(nextIntent);
     } catch (e) {
@@ -83,7 +46,7 @@ export default function CombinedFromBanner({
     setBusy(true);
     setError(null);
     try {
-      await requestUndo(false);
+      await requestContactUndo(combinedFrom.combineRecordId, false);
       setHidden(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

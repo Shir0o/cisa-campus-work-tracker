@@ -156,6 +156,7 @@ describe('CombineTags', () => {
     expect(options.headers.Authorization).toBe('Bearer token');
     expect(JSON.parse(options.body)).toEqual({
       combines: [{ variants: ['BFA table', 'bfa-table'], target: 'BFA' }],
+      makeStandard: [],
     });
   });
 
@@ -323,7 +324,7 @@ describe('CombineTags', () => {
       expect(screen.getByRole('button', { name: /Combine 0 contacts/i })).toBeDisabled();
     });
 
-    it('offers Also make standard only for a new name and adds it to standard tags when checked', async () => {
+    it('offers Also make standard only for a new name and asks the server to add it when checked', async () => {
       setContacts(plainContacts);
       renderPage();
 
@@ -345,9 +346,10 @@ describe('CombineTags', () => {
       fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
 
       await waitFor(() => expect(screen.getByTestId('tag-combine-applied')).toBeInTheDocument());
-      expect(h.setDoc).toHaveBeenCalledWith(expect.anything(), {
-        tags: ['Saved', 'Baptized', 'Interested', 'Open', 'Club Rush', 'BFA', 'Outreach'],
-      });
+      // The server adds the standard tag; the browser writes no standard tags document.
+      const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(body.makeStandard).toEqual(['Outreach']);
+      expect(h.setDoc).not.toHaveBeenCalled();
     });
   });
 
@@ -373,29 +375,75 @@ describe('CombineTags', () => {
       expect(section.getByText(/2 contacts/i)).toBeInTheDocument();
     });
 
-    it('undoes a tag combine and lists the skipped contacts', async () => {
+    const previewResponse = {
+      success: true,
+      dryRun: true,
+      preview: {
+        restored: [
+          { contactId: 'c1', name: 'Alice', current: ['BFA'], before: ['BFA table', 'BFA'] },
+        ],
+        skipped: [{ contactId: 'c2', name: 'Bob', current: ['BFA', 'Fall 2026'], after: ['BFA'] }],
+        standardTagsRemaining: ['Outreach'],
+      },
+    };
+
+    it('previews the undo before confirmation: restored, skipped, and standard tags that stay', async () => {
       h.records = [{ id: record.id, data: () => record }];
-      global.fetch = vi.fn().mockResolvedValue(
-        jsonResponse({
-          success: true,
-          restoredCount: 1,
-          preview: {
-            skipped: [
-              { contactId: 'c2', name: 'Bob', current: ['BFA', 'Fall 2026'], after: ['BFA'] },
-            ],
-          },
-        }),
-      );
+      global.fetch = vi.fn().mockResolvedValue(jsonResponse(previewResponse));
       renderPage();
 
       fireEvent.click(screen.getByRole('button', { name: /Undo combine/i }));
 
+      const preview = await screen.findByTestId('tag-undo-preview');
+      expect(within(preview).getByText('Alice')).toBeInTheDocument();
+      expect(within(preview).getByText('Bob')).toBeInTheDocument();
+      expect(preview.textContent).toContain('Outreach');
+      // Only the dry run has gone out; nothing is undone until confirmed.
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/combine-tags/undo');
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+        combineRecordId: 'r1',
+        dryRun: true,
+      });
+      expect(screen.queryByTestId('tag-undo-result')).not.toBeInTheDocument();
+    });
+
+    it('cancelling the preview undoes nothing', async () => {
+      h.records = [{ id: record.id, data: () => record }];
+      global.fetch = vi.fn().mockResolvedValue(jsonResponse(previewResponse));
+      renderPage();
+
+      fireEvent.click(screen.getByRole('button', { name: /Undo combine/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /cancel/i }));
+
+      expect(screen.queryByTestId('tag-undo-preview')).not.toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('undoes a tag combine after confirmation and lists the skipped contacts', async () => {
+      h.records = [{ id: record.id, data: () => record }];
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse(previewResponse))
+        .mockResolvedValueOnce(
+          jsonResponse({ success: true, restoredCount: 1, preview: previewResponse.preview }),
+        );
+      renderPage();
+
+      fireEvent.click(screen.getByRole('button', { name: /Undo combine/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /confirm undo/i }));
+
       await waitFor(() => expect(screen.getByTestId('tag-undo-result')).toBeInTheDocument());
       const result = screen.getByTestId('tag-undo-result');
       expect(result.textContent).toContain('Bob');
-      expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(
-        '/api/combine-tags/undo',
-      );
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      expect(fetchMock.mock.calls[1][0]).toBe('/api/combine-tags/undo');
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+        combineRecordId: 'r1',
+        dryRun: false,
+      });
+      expect(screen.queryByTestId('tag-undo-preview')).not.toBeInTheDocument();
     });
 
     it('hides undo for an already-undone combine and shows who undid it', () => {

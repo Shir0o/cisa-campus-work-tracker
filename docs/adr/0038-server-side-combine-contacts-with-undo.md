@@ -13,13 +13,18 @@ ADR 0026 combined contacts from the browser in chunked batches and deleted the c
 ## Decision
 
 - The browser builds the preview: a side-by-side diff of both contacts and the result, a per-field choice wherever single values conflict, and the full list of what moves. Lists of people and tags are always unioned.
-- A Full-timer-only endpoint in `server.ts` (Admin SDK) performs the combine. It re-points every place that stores the combined-in contact's ID and refreshes cached names. In the same write it stores a **combine record** holding full before-images of both contacts and the ID of every document it moved or rewrote.
+- A Full-timer-only endpoint in `server.ts` (Admin SDK) performs the combine. It re-points every place that stores the combined-in contact's ID and refreshes cached names, and stores a **combine record** holding full before-images of both contacts and the ID of every document it moved or rewrote.
+  - When the writes fit under Firestore's 500-write transaction limit, the record is written in the same transaction as everything else, so all of it lands or none.
+  - Otherwise the record is first claimed as `pending` in a transaction, the writes follow in batches, and the record is then marked `done`. A `pending` record keeps both contacts out of other combines until it is undone.
+  - Either transaction first re-checks that both contacts still match the preview and are in no other unfinished combine or undo.
+  - If a document ID exists under both contacts, the kept contact's document stays untouched and the combined-in copy is stored in the record, to be recreated on undo.
 - The combined-in contact is still deleted, so search, rosters and pickers stay clean. The combine record is what makes the delete reversible, and it is kept indefinitely.
 - **Undo combine** replays the combine record in reverse and leaves later work alone:
   - New documents created on the kept contact after the combine stay where they are.
   - Moved documents go back, carrying any edits made since.
   - Profile fields edited since the combine keep their newer value and are reported as not restored.
-  - Only roster or list entries the combine itself rewrote are reverted.
+  - Only roster or list entries the combine itself rewrote are put back, one entry at a time. Entries added since stay, and an entry the combine collapsed into the kept contact's own is re-inserted beside it.
+  - Undo claims the record as `undoing` in a transaction (in the same transaction as the writes when they fit), so two undos can never both apply. A claim older than 10 minutes counts as interrupted, and an undo may claim the record again and replay it against the current state, which skips what already landed.
   - If the kept contact was later combined into another contact, undo is blocked until that later combine is undone.
 - The default kept contact is the record with more history (interactions, comments and roster entries), not the older one, because its ID is already the one linked most widely. The Full-timer can swap it.
 - Fields that ADR 0026 dropped are carried over:

@@ -31,7 +31,7 @@ export function StandardTagsProvider({ children }: { children: React.ReactNode }
       onSnapshot(
         doc(db, 'settings', 'standard_tags'),
         (snap) => {
-          const data = typeof snap?.data === 'function' ? snap.data() : undefined;
+          const data = snap.data();
           setTags(resolveStandardTags((data as { tags?: string[] } | undefined)?.tags));
         },
         (e) => console.error('standard tags subscription error', e),
@@ -49,7 +49,7 @@ export function useStandardTags(): string[] {
   return useContext(StandardTagsContext).tags;
 }
 
-/** Merge-write the standard tags list. Rules gate it to Full-timers. */
+/** Replace the standard tags list (a plain setDoc, no merge). Rules gate it to Full-timers. */
 export async function saveStandardTags(tags: string[]): Promise<void> {
   try {
     await setDoc(doc(db, 'settings', 'standard_tags'), { tags });
