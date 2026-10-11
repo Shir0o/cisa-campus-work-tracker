@@ -753,13 +753,13 @@ export function buildCombinePlan(
     });
     // The cached contact name on a to-do is refreshed so it never shows the
     // retired spelling (ADR 0038).
-    if (typeof task.data.contactName === 'string' && task.data.contactName !== kept.name) {
+    if (typeof task.data.contactName === 'string' && task.data.contactName !== merged.name) {
       rewrittenReferences.push({
         collection: 'tasks',
         document: task.id,
         field: 'contactName',
         before: task.data.contactName,
-        after: kept.name,
+        after: merged.name,
       });
     }
   }
@@ -793,7 +793,7 @@ export function buildCombinePlan(
         const nextId = visit.contactIds[i] === id ? keptId : visit.contactIds[i];
         if (seen.has(nextId)) continue;
         seen.add(nextId);
-        mapped.push(visit.contactIds[i] === id ? kept.name : (names[i] ?? ''));
+        mapped.push(visit.contactIds[i] === id ? merged.name : (names[i] ?? ''));
       }
       if (!arraysEqual(names, mapped)) {
         rewrittenReferences.push({
@@ -895,7 +895,7 @@ export function buildCombinePlan(
       field: 'names',
       before: names,
       after: names.map((entry) =>
-        entry?.contactId === id ? { ...entry, contactId: keptId, name: kept.name } : entry,
+        entry?.contactId === id ? { ...entry, contactId: keptId, name: merged.name } : entry,
       ),
     });
     outreachItems.push({ id: record.id, label: itemLabel(record.data, record.id) });
@@ -1037,13 +1037,13 @@ export function buildCombinePlan(
       before: activity.data.targetId,
       after: keptId,
     });
-    if (typeof activity.data.targetName === 'string' && activity.data.targetName !== kept.name) {
+    if (typeof activity.data.targetName === 'string' && activity.data.targetName !== merged.name) {
       rewrittenReferences.push({
         collection: 'activities',
         document: activity.id,
         field: 'targetName',
         before: activity.data.targetName,
-        after: kept.name,
+        after: merged.name,
       });
     }
     activityItems.push({ id: activity.id, label: itemLabel(activity.data, activity.id) });
@@ -1399,13 +1399,16 @@ export function buildCombineUndoPlan(
       continue;
     }
 
+    // A field the combine left as it was has nothing to restore or report.
+    if (valuesEqual(beforeValue, afterValue)) continue;
+
     if (!valuesEqual(current.kept[field], afterValue)) {
       if (!UNDO_META_FIELDS.has(field)) notRestored.push({ kind: 'field', label: field });
       continue;
     }
     if (beforeValue === undefined) {
       keptUpdates.push({ field, remove: true });
-    } else if (!valuesEqual(beforeValue, afterValue)) {
+    } else {
       keptUpdates.push({ field, value: beforeValue });
       if (!UNDO_META_FIELDS.has(field)) goesBack.push({ kind: 'field', id: field, label: field });
     }

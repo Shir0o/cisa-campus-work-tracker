@@ -55,7 +55,7 @@ const contacts: Contact[] = [
   },
 ];
 
-const combineRecords = [
+const combineRecords: Record<string, unknown>[] = [
   {
     id: 'r1',
     keptId: 'c1',
@@ -388,6 +388,26 @@ describe('CombineContacts page', () => {
     expect(screen.getByText('Picked from the directory')).toBeInTheDocument();
     expect(screen.getAllByTestId('combine-record')).toHaveLength(2);
     expect(screen.getAllByText(/Faith/).length).toBeGreaterThan(0);
+  });
+
+  it('does not list a tag combine record in Recent combines', async () => {
+    combineRecords.push({
+      id: 'rt',
+      kind: 'tags',
+      status: 'done',
+      combinedByName: 'Faith',
+      combinedAt: '2026-03-05T00:00:00.000Z',
+      combines: [{ variants: ['BFA table', 'bfa-table'], target: 'BFA' }],
+    });
+    try {
+      renderPage();
+      fireEvent.click(screen.getByRole('tab', { name: /recent combines/i }));
+
+      expect(await screen.findByText('Matching email')).toBeInTheDocument();
+      expect(screen.getAllByTestId('combine-record')).toHaveLength(2);
+    } finally {
+      combineRecords.pop();
+    }
   });
 
   it('marks undone records as undone with who undid them', async () => {

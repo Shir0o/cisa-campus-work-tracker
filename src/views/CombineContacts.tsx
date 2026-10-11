@@ -38,6 +38,8 @@ import type { Contact } from '../types';
 /** A permanent combine record (ADR 0038), as stored by the server. */
 interface CombineRecord {
   id: string;
+  /** Absent on records written before tag combines; those are contacts. */
+  kind?: 'contacts' | 'tags';
   keptId: string;
   combinedInId: string;
   reason?: string;
@@ -208,7 +210,11 @@ export default function CombineContacts() {
     return onSnapshot(
       q,
       (snapshot) => {
-        setRecords(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CombineRecord[]);
+        setRecords(
+          (snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CombineRecord[]).filter(
+            (r) => r.kind === undefined || r.kind === 'contacts',
+          ),
+        );
         setRecordsLoading(false);
       },
       (e) => {

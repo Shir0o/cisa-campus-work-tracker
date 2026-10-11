@@ -263,6 +263,45 @@ describe('buildCombinePlan', () => {
     expect(plan.keptData).not.toHaveProperty('role');
   });
 
+  it('refreshes cached names to the result name when the combined-in name is picked (#1430)', () => {
+    const plan = buildCombinePlan(
+      kept,
+      combinedIn,
+      {
+        ...EMPTY_REFS,
+        tasks: [{ id: 'k1', data: { contactId: 'd1', contactName: 'Old Spelling', text: 'Call' } }],
+        visits: [
+          {
+            id: 'v1',
+            contactIds: ['d1', 'x9'],
+            data: { contactNames: ['Old Spelling', 'Other'] },
+          },
+        ],
+        outreach: [
+          { id: 'o1', data: { names: [{ id: 'ON-1', name: 'Combined In', contactId: 'd1' }] } },
+        ],
+        activities: [
+          {
+            id: 'ac1',
+            data: { targetId: 'd1', targetName: 'Old Spelling', targetType: 'contact' },
+          },
+        ],
+      },
+      META,
+      { fields: { name: 'combined-in' } },
+    );
+
+    expect(plan.keptData.name).toBe('Combined In');
+    const after = (collection: string, field: string) =>
+      plan.rewrittenReferences.find((r) => r.collection === collection && r.field === field)?.after;
+    expect(after('tasks', 'contactName')).toBe('Combined In');
+    expect(after('visits', 'contactNames')).toEqual(['Combined In', 'Other']);
+    expect(after('outreach', 'names')).toEqual([
+      { id: 'ON-1', name: 'Combined In', contactId: 's1' },
+    ]);
+    expect(after('activities', 'targetName')).toBe('Combined In');
+  });
+
   it('carries the combined-in reach onto a kept contact nobody had reached (#1335)', () => {
     const reached = { ...combinedIn, reachedAt: '2025-01-10' } as Contact;
     const plan = buildCombinePlan(kept, reached, EMPTY_REFS, META);
@@ -799,13 +838,27 @@ describe('buildCombineUndoPlan', () => {
   });
 
   it('keeps a kept-contact field edited after the combine and lists it as not restored', () => {
+    const changed: CombineUndoRecord = {
+      ...record,
+      keptAfter: { ...record.keptAfter, email: 'd@x.com' },
+    };
+    const current = baseCurrent();
+    current.kept.email = 'newer@x.com';
+
+    const plan = buildCombineUndoPlan(changed, current);
+
+    expect(plan.keptUpdates.find((u) => u.field === 'email')).toBeUndefined();
+    expect(plan.notRestored).toContainEqual({ kind: 'field', label: 'email' });
+  });
+
+  it('does not list a field the combine left unchanged, edited since, as not restored', () => {
     const current = baseCurrent();
     current.kept.email = 'newer@x.com';
 
     const plan = buildCombineUndoPlan(record, current);
 
+    expect(plan.notRestored).toEqual([]);
     expect(plan.keptUpdates.find((u) => u.field === 'email')).toBeUndefined();
-    expect(plan.notRestored).toContainEqual({ kind: 'field', label: 'email' });
   });
 
   it('removes only the merged-list items the combine added, keeping later additions', () => {

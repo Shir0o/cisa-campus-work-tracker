@@ -3165,6 +3165,10 @@ ${JSON.stringify(contactsList)}`;
         return res.status(404).json({ success: false, error: "Combine record not found" });
       }
       const record = recordSnap.data() as any;
+      // Records written before tag combines carry no kind; those are contacts.
+      if (record.kind !== undefined && record.kind !== "contacts") {
+        return res.status(400).json({ success: false, error: "Not a contact combine record" });
+      }
       if (record.status === "undone") {
         return res
           .status(409)

@@ -3839,6 +3839,29 @@ describe("POST /api/combine-contacts/undo", () => {
     return res.body.combineRecordId as string;
   };
 
+  it("refuses a tag combine record, for the preview and the undo, and writes nothing", async () => {
+    seedDoc("contacts", "a", { name: "Alice", tags: ["BFA table", "BFA"] });
+    seedDoc("contacts", "b", { name: "Bob", tags: ["bfa-table"] });
+    const tagRes = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+    expect(tagRes.status).toBe(200);
+    const recordId = tagRes.body.combineRecordId as string;
+    expect(getCollection("combineRecords")[recordId].kind).toBe("tags");
+    const snapshot = () =>
+      structuredClone({ contacts: getCollection("contacts"), records: getCollection("combineRecords") });
+    const before = snapshot();
+
+    for (const dryRun of [true, false]) {
+      const res = await request(app)
+        .post("/api/combine-contacts/undo")
+        .send({ combineRecordId: recordId, dryRun });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/not a contact combine record/i);
+    }
+    expect(snapshot()).toEqual(before);
+  });
+
   it("reverses a combine so the database matches its pre-combine state", async () => {
     seedCombine();
     const before = {
