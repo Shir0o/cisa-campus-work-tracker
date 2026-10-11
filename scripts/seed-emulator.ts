@@ -35,6 +35,14 @@ export async function seedEmulator() {
 
   const uids: Partial<Record<(typeof KEYS)[number], string>> = {};
 
+  // The two Trainees are on teams so Around the team's roster is non-empty
+  // (#1477); the Full-timer, Student and Community are left off any team, so
+  // the roster's teammate select can be asserted to exclude them (row 12).
+  const TEAM_BY_KEY: Partial<Record<(typeof KEYS)[number], string>> = {
+    trainee: 'campus',
+    trainee2: 'yp',
+  };
+
   for (const key of KEYS) {
     const { email, password, role, label } = DEFAULT_CREDENTIALS[key];
 
@@ -59,6 +67,7 @@ export async function seedEmulator() {
         photoURL: '',
         role,
         approved: true,
+        team: TEAM_BY_KEY[key] ?? null,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       },
@@ -221,6 +230,116 @@ export async function seedEmulator() {
     kind: 'nudge',
     body: 'A nudge about someone outside your care.',
     at: new Date().toISOString(),
+  }, { merge: true });
+
+  // One person the Trainee has been working but the Full-timer is not carrying:
+  // their interaction lands on the Full-timer's Around the team page (rows
+  // 22/23) and raises the to-work-through count the My Day pointer card mirrors
+  // (row 24).
+  const trainee2Uid =
+    (await auth.getUserByEmail(DEFAULT_CREDENTIALS.trainee2.email).catch(() => null))?.uid || '';
+  const aroundRef = db.collection('contacts').doc('e2e-contact-around');
+  await aroundRef.set({
+    name: 'Around Touch',
+    initials: 'AT',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: traineeUid || 'trainee-uid',
+    createdByName: DEFAULT_CREDENTIALS.trainee.label,
+    visibleTo: [traineeUid, fulltimerUid].filter(Boolean),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+  await aroundRef.collection('interactions').doc('e2e-int-around').set({
+    userId: traineeUid || 'trainee-uid',
+    userName: DEFAULT_CREDENTIALS.trainee.label,
+    content: 'Checked in after the welcome lunch.',
+    dateTime: new Date().toISOString(),
+    type: 'coffee',
+    createdAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // A person added recently who HAS been reached (row 25): the reach stamp says
+  // so even though no interaction of theirs is among the newest the screen
+  // reads. On the breaking read they reappear under Not reached yet.
+  const reachedRef = db.collection('contacts').doc('e2e-contact-reached');
+  await reachedRef.set({
+    name: 'Recently Reached',
+    initials: 'RR',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
+    visibleTo: [fulltimerUid].filter(Boolean),
+    createdAt: new Date().toISOString(),
+    reachedAt: new Date(Date.now() - 200 * 86_400_000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // A recent person tied to another teammate and NOT to the signed-in
+  // Full-timer: absent under the Not-reached card's "Yours" scope, present
+  // under "Team" (the negative check for row 25's scope).
+  const untiedRecentRef = db.collection('contacts').doc('e2e-contact-untied-recent');
+  await untiedRecentRef.set({
+    name: 'Untied Recent',
+    initials: 'UR',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: trainee2Uid || 'trainee2-uid',
+    createdByName: DEFAULT_CREDENTIALS.trainee2.label,
+    visibleTo: [trainee2Uid].filter(Boolean),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // A sign-up pair for Combine contacts (row 10 / row 20): the same person
+  // added twice, one copy carrying a Firestore Timestamp `createdAt` and a null
+  // email (the sign-up shape), the other an ISO string and a real email. The
+  // detector pairs them on name and phone; rendering the preview reads both
+  // `createdAt` shapes.
+  const signupRef = db.collection('contacts').doc('e2e-contact-signup');
+  await signupRef.set({
+    name: 'Signup Sam',
+    initials: 'SS',
+    stage: 'First Contact',
+    tags: [],
+    email: null,
+    phone: '555-0142',
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
+    visibleTo: [fulltimerUid].filter(Boolean),
+    createdAt: Timestamp.fromMillis(Date.now() - 2 * 86_400_000),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+  const signupDupRef = db.collection('contacts').doc('e2e-contact-signup-dup');
+  await signupDupRef.set({
+    name: 'Signup Sam',
+    initials: 'SS',
+    stage: 'First Contact',
+    tags: [],
+    email: 'sam.dup@example.com',
+    phone: '555-0142',
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
+    visibleTo: [fulltimerUid].filter(Boolean),
+    createdAt: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // An older contact with no `owner` field (#1053 retired it): the shape whose
+  // creator transfer the rules once denied (row 17). Its creator is a known
+  // teammate so the reassign control renders.
+  const transferRef = db.collection('contacts').doc('e2e-contact-transfer');
+  await transferRef.set({
+    name: 'Transfer Target',
+    initials: 'TT',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
+    visibleTo: [fulltimerUid].filter(Boolean),
+    createdAt: new Date(Date.now() - 400 * 86_400_000).toISOString(),
+    updatedAt: new Date().toISOString(),
   }, { merge: true });
 
   // Legacy-shape contacts (#1472). The same fixtures the unit tests import, so

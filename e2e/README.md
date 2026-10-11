@@ -10,11 +10,12 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | --- | --- |
 | `permissions.spec.ts` | Role matrix: landing route, sidebar nav, route guards |
 | `settings-and-partners.spec.ts` | Admin settings, gospel partner assignments, role gating (#629) |
-| `walking-together-threads.spec.ts` | Contact threads, team confidentiality (#630) |
+| `walking-together-threads.spec.ts` | Student contact threads, team confidentiality (#630; the Full-timer half lives in the Full-timer journey, #1477) |
 | `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline (Full-timer/Student/Community; #631) |
 | `quick-capture.spec.ts` | NewContactModal: minimum payload, full disclosure, role gating, persistence (#628) |
 | `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
 | `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day/Questions), contact open without a crash, back-to-my-view (#1476) |
+| `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag (#1477) |
 | `feedback-submission.spec.ts` | Feedback form, kind selector, Send gating, admin triage access, role redirects, FAB presence (#628) |
 | `asks-questions-for-team.spec.ts` | Questions-for-the-team page, staff-only (#603, #645) |
 | `notification-bell-deep-linking.spec.ts` | Notification bell deep-linking, contact modal routing, and chat room URL synchronization (#682) |

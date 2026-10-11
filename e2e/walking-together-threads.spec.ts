@@ -1,69 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { signInAs } from './helpers/auth';
 
+// The Full-timer half of this spec (contact threads, the general Conversation
+// post, and the team-confidential "Full-timers" discussion) now lives in
+// e2e/journeys/full-timer.spec.ts (#1477), where it is re-homed alongside the
+// rest of the Full-timer journey. The Student half remains for #1480.
 test.describe('Walking-Together Contact Threads & Team Confidentiality (#630)', () => {
   test.describe.configure({ mode: 'serial' });
-
-  test('Full-timer can view contact threads, post a walking-together note, and post confidential team discussion', async ({ page }) => {
-    // 1. Sign in as Full-timer
-    await signInAs(page, 'fulltimer');
-
-    // 2. Navigate to People directory
-    await page.goto('/directory');
-    await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
-
-    // 3. Open Lila Chen's contact card/details
-    const contactCard = page.getByText('Lila Chen').first();
-    await expect(contactCard).toBeVisible({ timeout: 10_000 });
-    await contactCard.click();
-
-    // 4. The contact page opens in the shell's <main> (a route page, not a
-    //    popup — #1560), with the contact name as an "About …" button.
-    const dialog = page.getByRole('main');
-    await expect(dialog.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible();
-
-    // 5. Open the "Conversation" (thread) tab
-    const threadTab = page.getByRole('button', { name: /conversation/i }).first();
-    await expect(threadTab).toBeVisible();
-    await threadTab.click();
-
-    // Verify initial seeded thread message is rendered
-    await expect(page.getByText('Great first connection with Lila. Let us follow up this week.')).toBeVisible();
-
-    // Post a new message in the Conversation thread
-    const threadInput = page.getByPlaceholder('Write something…').first();
-    await expect(threadInput).toBeVisible();
-    const newThreadMessage = `Full-timer encouragement message ${Date.now()}`;
-    await threadInput.fill(newThreadMessage);
-    await threadInput.press('Meta+Enter');
-
-    // Message appears without Firestore permission errors. Scope to the first
-    // match: the composer holds the same text until its draft clears.
-    await expect(page.getByText(newThreadMessage).first()).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
-
-    // 6. Open "Full-timers" tab (Team confidential discussion for Full-timers)
-    const discussionTab = page.getByRole('button', { name: /full-timers/i }).first();
-    await expect(discussionTab).toBeVisible();
-    await discussionTab.click();
-
-    // Verify confidential seed note is rendered
-    await expect(page.getByText(/Confidential Staff Note: Lila mentioned some family challenges/i)).toBeVisible();
-
-    // Post a confidential discussion note
-    const discussionInput = page.getByPlaceholder(/Write something only Full-timers will see/i).first();
-    await expect(discussionInput).toBeVisible();
-    const confidentialNote = `Staff confidential coordination note ${Date.now()}`;
-    await discussionInput.fill(confidentialNote);
-    await discussionInput.press('Meta+Enter');
-
-    await expect(page.getByText(confidentialNote).first()).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
-  });
-
-  // The trainee half of this spec (the Full-timers stream staying hidden) now
-  // lives in e2e/journeys/trainee.spec.ts (#1475). The Full-timer half remains
-  // for the full-timer journey (#1477); the Student half for #1480.
 
   test('Student role can view contact details and permitted interaction threads without permission errors', async ({ page }) => {
     // 1. Sign in as Student
