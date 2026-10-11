@@ -20,6 +20,6 @@ OS push was opt-in per call site: a writer put a doc in `notifications` (the bel
 ## Consequences
 
 - A new notification writer gets push for free; it only has to write the bell doc.
-- The e2e suite runs the Functions emulator, where pushes are recorded in `pushSink` instead of sent (`e2e/push-notifications.spec.ts`).
+- The e2e suite runs the Functions emulator, where pushes are recorded in `pushSink` instead of sent (`e2e/journeys/notification.spec.ts`).
 - Deploys need the `EXPO_ACCESS_TOKEN` and `VAPID_PRIVATE_KEY` secrets in Secret Manager; the VAPID public key is committed in `firebase-functions/src/index.ts` and `src/lib/webPush.ts` and must change together.
 - iOS delivers Web Push only to a Home Screen app (iOS 16.4+); Safari in a tab cannot subscribe.
