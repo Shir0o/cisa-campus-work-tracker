@@ -1,24 +1,58 @@
 name: CI Failure Issue
 
+# One open issue per watched workflow, filed when it goes red on `main` and
+# commented on for repeat failures. The issue body lists the failing
+# specs/flows and the PR that triggered the run; the E2E issues are labelled
+# `bug` + `ready-for-agent` so the stop-the-line policy has something to find.
+# Logic lives in scripts/file-failure-issue.ts (unit-tested, dry-runnable).
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Web E2E (Playwright), Mobile E2E (Maestro)]
     types: [completed]
     branches: [main]
 
 permissions:
+  actions: read
+  contents: read
   issues: write
+  pull-requests: read
 
 jobs:
   report-failure:
-    name: Report CI Failure
+    name: Report workflow failure
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
-      - name: Create or update failure issue
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Collect failed-run context
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          # Failed job names are the fallback when the log parses to no spec.
+          gh run view "$RUN_ID" --json jobs \
+            --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join("\n")' \
+            > failed-jobs.txt || true
+          # Failed-step logs: where Playwright specs / Maestro flows are named.
+          gh run view "$RUN_ID" --log-failed > failed.log 2>&1 || true
+          # The PR(s) whose merge commit this run tested (empty on a direct
+          # push or a scheduled run).
+          gh api "repos/$GH_REPO/commits/$HEAD_SHA/pulls" \
+            --jq '[.[].number] | join(",")' > pr-numbers.txt || true
+
+      - name: File or update the failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
@@ -26,50 +60,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
           COMMIT_AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
         run: |
-          ISSUE_TITLE="🚨 CI failure on main branch"
-
-          EXISTING_ISSUE=$(gh issue list \
-            --repo "$GH_REPO" \
-            --state open \
-            --search "$ISSUE_TITLE in:title" \
-            --json number \
-            --jq '.[0].number')
-
-          if [ -n "$EXISTING_ISSUE" ]; then
-            echo "Found existing open issue #$EXISTING_ISSUE. Posting comment..."
-            COMMENT_BODY=$(cat <<EOM
-          ### Additional CI failure on \`main\`
-          - **Run**: [#${RUN_NUMBER} (Attempt ${RUN_ATTEMPT})](${RUN_URL})
-          - **Commit**: \`${COMMIT_SHA}\`
-          - **Author**: ${COMMIT_AUTHOR}
-          - **Message**:
-          > ${COMMIT_MESSAGE}
-          EOM
-          )
-            gh issue comment "$EXISTING_ISSUE" --repo "$GH_REPO" --body "$COMMENT_BODY"
-          else
-            echo "No existing open issue found. Creating a new one..."
-            ISSUE_BODY=$(cat <<EOM
-          ## 🚨 Continuous Integration failed on \`main\`
-
-          A commit pushed to the \`main\` branch failed the CI workflow.
-
-          ### Details
-          - **Workflow Run**: [#${RUN_NUMBER}](${RUN_URL})
-          - **Commit**: [\`${COMMIT_SHA:0:7}\`](https://github.com/${GH_REPO}/commit/${COMMIT_SHA})
-          - **Author**: ${COMMIT_AUTHOR}
-          - **Commit Message**:
-          > ${COMMIT_MESSAGE}
-
-          ### Next Steps
-          1. Inspect the [failed run logs](${RUN_URL}) to identify the failing job and step.
-          2. Open a fix branch or revert the breaking commit.
-          3. Close this issue once CI passes on \`main\`.
-          EOM
-          )
-            gh issue create \
-              --repo "$GH_REPO" \
-              --title "$ISSUE_TITLE" \
-              --body "$ISSUE_BODY" \
-              --label "needs-triage,bug,github_actions"
-          fi
+          FAILED_JOBS="$(cat failed-jobs.txt 2>/dev/null || true)" \
+          FAILED_LOG_FILE=failed.log \
+          PR_NUMBERS="$(cat pr-numbers.txt 2>/dev/null || true)" \
+          npx tsx scripts/file-failure-issue.ts

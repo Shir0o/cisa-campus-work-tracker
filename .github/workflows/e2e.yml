@@ -46,7 +46,15 @@ jobs:
       - name: Run E2E tests against Firebase Emulator
         # "npm run ... -- <args>" appends the args to the script's last command,
         # so run-e2e-emulator.sh receives them and forwards them to playwright.
-        run: npm run test:e2e:emulator -- --shard=${{ matrix.shard }}/2
+        # @quarantine tests are skipped here: a flaky test must not hold the
+        # run red while it is fixed or deleted within 7 days (AGENTS.md §8).
+        run: npm run test:e2e:emulator -- --shard=${{ matrix.shard }}/2 --grep-invert @quarantine
+      - name: Run quarantined E2E tests (advisory)
+        # Still run the quarantined specs so a quarantine does not become a
+        # graveyard. Advisory: a red quarantined spec never blocks the job.
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: npm run test:e2e:emulator -- --shard=${{ matrix.shard }}/2 --grep @quarantine --pass-with-no-tests
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
