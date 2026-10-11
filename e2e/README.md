@@ -15,8 +15,8 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
 | `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day/Questions), contact open without a crash, back-to-my-view (#1476) |
 | `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; plus the retired Settings & partners, Directory roles, On our hearts roles, Announcements, Questions, Notes/admin triage, and Quick Capture/Journey-board specs (#1477) |
+| `journeys/signup.spec.ts` | Public sign-up journey: a signed-out visitor submits the intake form, the lead appears for a Full-timer in Around the team and My Day, the sidebar carries the Sign-up form link; plus the Outreach view and the #1493 phone-preservation pair (#1478) |
 | `notification-bell-deep-linking.spec.ts` | Notification bell deep-linking, contact modal routing, and chat room URL synchronization (#682) |
-| `outreach-signup.spec.ts` | Outreach view + public sign-up intake form |
 | `gatherings-attendance.spec.ts` | Gatherings + attendance |
 
 ## Running
