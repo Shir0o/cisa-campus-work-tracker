@@ -3425,7 +3425,7 @@ ${JSON.stringify(contactsList)}`;
   // their tags (dropping repeats), adds any requested new targets to the
   // standard tags (settings/standard_tags, ADR 0039), and writes a combine
   // record of kind tags holding each contact's tags before and after and the
-  // standard tags it added. Undo is #1436.
+  // standard tags it added.
   app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
     const actor = await requireFullTimerActor(req, res);
     if (!actor) return;
