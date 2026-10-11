@@ -45,6 +45,8 @@ export interface CombineReferences {
   inboxStates: { id: string; data: Record<string, unknown> }[];
   notifications: { id: string; data: Record<string, unknown> }[];
   activities: { id: string; data: Record<string, unknown> }[];
+  /** Ids of the kept contact's own subcollection documents, so a same-id document is never overwritten. */
+  keptSubDocIds?: Partial<Record<'interactions' | 'threads' | 'teamThreads' | 'comments', string[]>>;
 }
 
 /** How one field's result was decided. */
@@ -137,6 +139,12 @@ export interface CombinePlan {
   keptData: Record<string, unknown>;
   moves: CombineMoveGroup[];
   movedDocuments: MovedDocument[];
+  /**
+   * Combined-in documents whose id already exists under the kept contact (a
+   * shared visit's mirror, say). The kept contact's copy stays; this one is
+   * removed from the combined-in contact and recreated from here on undo.
+   */
+  collidedDocuments: MovedDocument[];
   rewrittenReferences: RewrittenReference[];
 }
 
@@ -695,20 +703,22 @@ export function buildCombinePlan(
   if (merged.reachedAt) keptData.reachedAt = merged.reachedAt;
 
   const movedDocuments: MovedDocument[] = [];
+  const collidedDocuments: MovedDocument[] = [];
   const moves: CombineMoveGroup[] = [];
   const rewrittenReferences: RewrittenReference[] = [];
   const id = combinedIn.id;
   const keptId = kept.id;
 
   for (const sub of SUBCOLLECTIONS) {
-    const docs = refs[sub];
-    movedDocuments.push(
-      ...docs.map((d) => ({
-        originalPath: `contacts/${id}/${sub}/${d.id}`,
-        newPath: `contacts/${keptId}/${sub}/${d.id}`,
-        originalData: d.data,
-      })),
-    );
+    const keptIds = new Set(refs.keptSubDocIds?.[sub] ?? []);
+    const docs = refs[sub].filter((d) => !keptIds.has(d.id));
+    const toDocument = (d: SubcollectionDoc): MovedDocument => ({
+      originalPath: `contacts/${id}/${sub}/${d.id}`,
+      newPath: `contacts/${keptId}/${sub}/${d.id}`,
+      originalData: d.data,
+    });
+    movedDocuments.push(...docs.map(toDocument));
+    collidedDocuments.push(...refs[sub].filter((d) => keptIds.has(d.id)).map(toDocument));
     moves.push(
       moveGroup(
         sub,
@@ -1047,6 +1057,7 @@ export function buildCombinePlan(
     keptData,
     moves,
     movedDocuments,
+    collidedDocuments,
     rewrittenReferences,
   };
 }
@@ -1066,6 +1077,8 @@ export interface CombineUndoRecord {
   combinedInBefore: Record<string, unknown>;
   keptAfter: Record<string, unknown>;
   movedDocuments: MovedDocument[];
+  /** Absent on records written before collisions were kept apart. */
+  collidedDocuments?: MovedDocument[];
   rewrittenReferences: RewrittenReference[];
 }
 
@@ -1108,6 +1121,8 @@ export interface CombineUndoPlan {
   notRestored: CombineUndoNotRestored[];
   keptUpdates: CombineUndoKeptUpdate[];
   movedBack: { originalPath: string; newPath: string; data: Record<string, unknown> }[];
+  /** Collided combined-in documents recreated at their original path; the kept contact's copy is untouched. */
+  recreated: { originalPath: string; data: Record<string, unknown> }[];
   referenceReverts: {
     collection: string;
     document: string;
@@ -1160,6 +1175,7 @@ export function buildCombineUndoPlan(
   const notRestored: CombineUndoNotRestored[] = [];
   const keptUpdates: CombineUndoKeptUpdate[] = [];
   const movedBack: CombineUndoPlan['movedBack'] = [];
+  const recreated: CombineUndoPlan['recreated'] = [];
   const referenceReverts: CombineUndoPlan['referenceReverts'] = [];
 
   // Moved documents return to their original path with their current data, so
@@ -1172,6 +1188,13 @@ export function buildCombineUndoPlan(
     if (data == null) continue;
     goesBack.push({ kind, id, label: itemLabel(data, id) });
     movedBack.push({ originalPath: moved.originalPath, newPath: moved.newPath, data });
+  }
+
+  // Collided documents never left the record, so they return exactly as they were.
+  for (const collided of record.collidedDocuments ?? []) {
+    const parts = collided.originalPath.split('/');
+    goesBack.push({ kind: parts[2], id: parts[3], label: itemLabel(collided.originalData, parts[3]) });
+    recreated.push({ originalPath: collided.originalPath, data: collided.originalData });
   }
 
   // Documents created on the kept contact after the combine stay; they are the
@@ -1244,5 +1267,5 @@ export function buildCombineUndoPlan(
     }
   }
 
-  return { goesBack, stays, notRestored, keptUpdates, movedBack, referenceReverts };
+  return { goesBack, stays, notRestored, keptUpdates, movedBack, recreated, referenceReverts };
 }

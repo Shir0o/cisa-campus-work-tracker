@@ -3804,6 +3804,53 @@ describe("POST /api/combine-contacts/undo", () => {
     });
   });
 
+  it("keeps the kept contact's visit mirror when both were on the visit, and undo restores both", async () => {
+    seedCombine();
+    seedDoc("contacts/s1/interactions", "visit_v1", { visitId: "v1", content: "kept mirror" });
+    seedDoc("contacts/d1/interactions", "visit_v1", { visitId: "v1", content: "combined-in mirror" });
+    const keptBefore = structuredClone(getCollection("contacts/s1/interactions"));
+    const combinedInBefore = structuredClone(getCollection("contacts/d1/interactions"));
+
+    const preview = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", dryRun: true });
+    const interactionMoves = preview.body.moves.find((m: any) => m.kind === "interactions");
+    expect(interactionMoves.items.map((i: any) => i.id)).toEqual(["i1", "i2"]);
+
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    expect(combineRes.status).toBe(200);
+    expect(getCollection("contacts/s1/interactions")["visit_v1"]).toEqual(keptBefore["visit_v1"]);
+    expect(getCollection("contacts/d1/interactions")["visit_v1"]).toBeUndefined();
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(getCollection("contacts/s1/interactions")).toEqual(keptBefore);
+    expect(getCollection("contacts/d1/interactions")).toEqual(combinedInBefore);
+  });
+
+  it("round-trips a non-visit document whose id exists under both contacts with no data loss", async () => {
+    seedCombine();
+    seedDoc("contacts/s1/comments", "c1", { text: "kept's own comment", userId: "me" });
+    const keptBefore = structuredClone(getCollection("contacts/s1/comments"));
+    const combinedInBefore = structuredClone(getCollection("contacts/d1/comments"));
+
+    const combineRes = await request(app)
+      .post("/api/combine-contacts")
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
+    expect(getCollection("contacts/s1/comments")).toEqual(keptBefore);
+
+    await request(app)
+      .post("/api/combine-contacts/undo")
+      .send({ combineRecordId: combineRes.body.combineRecordId });
+
+    expect(getCollection("contacts/s1/comments")).toEqual(keptBefore);
+    expect(getCollection("contacts/d1/comments")).toEqual(combinedInBefore);
+  });
+
   it("recreates the combined-in contact under its original id", async () => {
     const recordId = await combineOnce();
     expect(getCollection("contacts")["d1"]).toBeUndefined();

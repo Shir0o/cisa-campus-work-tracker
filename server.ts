@@ -2757,6 +2757,10 @@ ${JSON.stringify(contactsList)}`;
         notificationsSnap,
         activitiesSnap,
         usersSnap,
+        keptInteractionsSnap,
+        keptThreadsSnap,
+        keptTeamThreadsSnap,
+        keptCommentsSnap,
       ] = await Promise.all([
         db.collection("contacts").doc(combinedInId).collection("interactions").get(),
         db.collection("contacts").doc(combinedInId).collection("threads").get(),
@@ -2776,6 +2780,10 @@ ${JSON.stringify(contactsList)}`;
         db.collection("notifications").where("targetId", "==", combinedInId).get(),
         db.collection("activities").where("targetId", "==", combinedInId).get(),
         db.collection("users").get(),
+        db.collection("contacts").doc(keptId).collection("interactions").get(),
+        db.collection("contacts").doc(keptId).collection("threads").get(),
+        db.collection("contacts").doc(keptId).collection("teamThreads").get(),
+        db.collection("contacts").doc(keptId).collection("comments").get(),
       ]);
 
       const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
@@ -2824,6 +2832,12 @@ ${JSON.stringify(contactsList)}`;
         inboxStates: allDocs(inboxSnap),
         notifications: allDocs(notificationsSnap),
         activities: allDocs(activitiesSnap),
+        keptSubDocIds: {
+          interactions: keptInteractionsSnap.docs.map((d: any) => d.id),
+          threads: keptThreadsSnap.docs.map((d: any) => d.id),
+          teamThreads: keptTeamThreadsSnap.docs.map((d: any) => d.id),
+          comments: keptCommentsSnap.docs.map((d: any) => d.id),
+        },
       };
 
       const now = new Date().toISOString();
@@ -2861,6 +2875,7 @@ ${JSON.stringify(contactsList)}`;
         combinedInBefore: { ...combinedInSnap.data() },
         keptAfter: plan.keptData,
         movedDocuments: plan.movedDocuments,
+        collidedDocuments: plan.collidedDocuments,
         rewrittenReferences: plan.rewrittenReferences,
         combinedBy: actorId,
         combinedByName: actorName,
@@ -2887,6 +2902,14 @@ ${JSON.stringify(contactsList)}`;
         ops.push({
           op: "delete",
           ref: db.collection("contacts").doc(combinedInId).collection(moved.originalPath.split("/")[2]).doc(moved.originalPath.split("/")[3]),
+        });
+      }
+      // A collided document is not copied: the kept contact's own copy stays.
+      for (const collided of plan.collidedDocuments) {
+        const parts = collided.originalPath.split("/");
+        ops.push({
+          op: "delete",
+          ref: db.collection("contacts").doc(combinedInId).collection(parts[2]).doc(parts[3]),
         });
       }
       // Every re-pointed reference is written generically: group by document so
@@ -3007,6 +3030,9 @@ ${JSON.stringify(contactsList)}`;
         newPath: string;
         originalData: Record<string, unknown>;
       }> = Array.isArray(record.movedDocuments) ? record.movedDocuments : [];
+      const collidedDocuments: typeof movedDocuments = Array.isArray(record.collidedDocuments)
+        ? record.collidedDocuments
+        : [];
       const rewrittenReferences: Array<{
         collection: string;
         document: string;
@@ -3089,6 +3115,7 @@ ${JSON.stringify(contactsList)}`;
           combinedInBefore,
           keptAfter: (record.keptAfter ?? {}) as Record<string, unknown>,
           movedDocuments,
+          collidedDocuments,
           rewrittenReferences,
         },
         {
@@ -3156,6 +3183,16 @@ ${JSON.stringify(contactsList)}`;
         ops.push({
           op: "delete",
           ref: db.collection("contacts").doc(keptId).collection(newParts[2]).doc(newParts[3]),
+        });
+      }
+
+      // Collided documents are recreated; the kept contact's own copy is never touched.
+      for (const collided of plan.recreated) {
+        const parts = collided.originalPath.split("/");
+        ops.push({
+          op: "set",
+          ref: db.collection("contacts").doc(combinedInId).collection(parts[2]).doc(parts[3]),
+          data: collided.data,
         });
       }
 
