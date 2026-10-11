@@ -497,6 +497,22 @@ describe('subscribePendingSuggestions', () => {
     expect(seen.map((s) => s.id)).toEqual(['new', 'old']);
     expect(typeof unsub).toBe('function');
   });
+
+  it('carries the BNPB nickname, null when there is none', () => {
+    hoisted.mockOnSnapshot.mockImplementationOnce((_query: unknown, callback: unknown) => {
+      (callback as (snap: unknown) => void)({
+        docs: [
+          { id: 'nick', data: () => ({ ...suggestion({ id: 'nick' }), bnpbNickname: 'Al' }) },
+          { id: 'none', data: () => ({ ...suggestion({ id: 'none', occurredAt: '2026-09-01T10:00:00.000Z' }) }) },
+        ],
+      });
+      return vi.fn();
+    });
+
+    const seen: InteractionSuggestion[] = [];
+    subscribePendingSuggestions('u1', (list) => seen.push(...list), () => {});
+    expect(seen.map((s) => s.bnpbNickname)).toEqual(['Al', null]);
+  });
 });
 
 describe('subscribeContactInteractions', () => {
@@ -592,6 +608,25 @@ describe('matchSuggestion', () => {
   it('matches an exact name case- and accent-insensitively', () => {
     const match = matchSuggestion({ ...base, suggestion: suggestion({ bnpbName: 'alex chen' }) });
     expect(match.basis).toBe('exact');
+    expect(match.contact?.id).toBe('c1');
+  });
+
+  it('counts an exact match on the BNPB nickname as a name match, ahead of a fuzzy guess', () => {
+    const match = matchSuggestion({
+      ...base,
+      contacts: [contact({ id: 'c1', name: 'Roberta Lee' }), contact({ id: 'c4', name: 'Bobby' })],
+      suggestion: suggestion({ bnpbName: 'Robert Lee', bnpbNickname: 'bobby' }),
+    });
+    expect(match.basis).toBe('exact');
+    expect(match.contact?.id).toBe('c4');
+  });
+
+  it('prefers a full-name match over a nickname match', () => {
+    const match = matchSuggestion({
+      ...base,
+      contacts: [contact({ id: 'c1', name: 'Alex Chen' }), contact({ id: 'c4', name: 'Al' })],
+      suggestion: suggestion({ bnpbName: 'Alex Chen', bnpbNickname: 'Al' }),
+    });
     expect(match.contact?.id).toBe('c1');
   });
 

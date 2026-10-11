@@ -3174,6 +3174,8 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       expect(new Set(created.map((s) => s.bnpbContactId))).toEqual(new Set(["p-1", "p-2"]));
       expect(created.find((s) => s.bnpbContactId === "p-2")!.bnpbName).toBe("Beth Doe");
       expect(created.find((s) => s.bnpbContactId === "p-1")!.text).toBe("Coffee downtown");
+      expect(created.find((s) => s.bnpbContactId === "p-1")!.bnpbNickname).toBe("Al");
+      expect(created.find((s) => s.bnpbContactId === "p-2")!.bnpbNickname).toBeNull();
 
       const second = await sync("live-secret", payload());
       expect(second.status).toBe(200);

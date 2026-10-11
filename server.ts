@@ -4179,6 +4179,7 @@ ${JSON.stringify(contactsList)}`;
             syncId: interaction.syncId,
             bnpbContactId: participant.bnpbContactId,
             bnpbName: bnpbParticipantName(participant),
+            bnpbNickname: (participant.nickname ?? '').trim() || null,
             occurredAt: interaction.occurredAt,
             durationMinutes: interaction.durationMinutes ?? null,
             summary: interaction.summary,

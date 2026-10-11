@@ -37,6 +37,8 @@ export interface InteractionSuggestion {
   bnpbContactId: string;
   /** The name as written in BNPB. */
   bnpbName: string;
+  /** BNPB's nickname for the person, when it has one. */
+  bnpbNickname?: string | null;
   occurredAt: string;
   durationMinutes: number | null;
   summary: string;
@@ -210,7 +212,8 @@ export interface MatchSuggestionInput {
 
 /**
  * The matching cascade (#1424): a Contact the owner chose → a remembered
- * Suggestion link → an exact normalised name → a fuzzy best guess → unmatched.
+ * Suggestion link → an exact normalised name (full name, then nickname) → a
+ * fuzzy best guess → unmatched.
  * Only Contacts the owner can see are ever matched or offered, so a link to a
  * now-invisible Contact falls through.
  */
@@ -230,8 +233,10 @@ export function matchSuggestion(input: MatchSuggestionInput): SuggestionMatch {
     if (linked) return { basis: 'remembered', contact: linked };
   }
 
-  const normalized = normalizeName(suggestion.bnpbName);
-  if (normalized) {
+  // An exact normalised match on the full name, then on BNPB's nickname.
+  for (const name of [suggestion.bnpbName, suggestion.bnpbNickname]) {
+    const normalized = normalizeName(name ?? '');
+    if (!normalized) continue;
     const exact = visible
       .slice()
       .sort(byNameThenId)
@@ -424,6 +429,7 @@ export function subscribePendingSuggestions(
           syncId: data.syncId ?? '',
           bnpbContactId: data.bnpbContactId ?? '',
           bnpbName: data.bnpbName ?? '',
+          bnpbNickname: data.bnpbNickname ?? null,
           occurredAt: data.occurredAt ?? '',
           durationMinutes: data.durationMinutes ?? null,
           summary: data.summary ?? '',
