@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { ArrowDown, ArrowUp, Check, Combine, Loader2, Plus, Undo2, X } from 'lucide-react';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import {
   guessTagCombines,
   isSeasonTag,
@@ -11,6 +11,7 @@ import {
   type TagGuess,
   type TagGuessReason,
 } from '../lib/tags';
+import { fill, formatWhen, postCombineApi } from '../lib/combineClient';
 import { useStandardTags, saveStandardTags } from '../lib/standardTags';
 import { useLanguage } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
@@ -71,16 +72,6 @@ interface CustomCombine {
   target: string;
   makeStandard: boolean;
 }
-
-const formatWhen = (iso?: string): string => {
-  if (!iso) return '';
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
-};
-
-/** Fills {placeholders} in a translated string. */
-const fill = (template: string, values: Record<string, string>): string =>
-  template.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] ?? '');
 
 /**
  * Combine tags (issue #1435, spec #1426). A Full-timer page reached from the
@@ -306,14 +297,9 @@ export default function CombineTags() {
     setApplying(true);
     setApplyError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-tags', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
+      const body = await postCombineApi(
+        '/api/combine-tags',
+        {
           combines: activeCombines,
           // A user-built combine can make its new name a standard tag in the
           // same step; the server adds it (#1438, ADR 0039).
@@ -321,13 +307,9 @@ export default function CombineTags() {
             .filter((combine) => combine.makeStandard)
             .map((combine) => combine.target.trim())
             .filter(Boolean),
-        }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || t('combine_tags.apply_failed', 'Could not combine tags'));
-      }
-      const body = await response.json();
+        },
+        t('combine_tags.apply_failed', 'Could not combine tags'),
+      );
       setApplied(body.changedCount ?? rows.length);
       // The server may have added standard tags; show the stored list again.
       setStandardDraft(null);
@@ -343,22 +325,12 @@ export default function CombineTags() {
 
   const tagRecords = records.filter((record) => record.kind === 'tags');
 
-  const postUndo = async (record: TagCombineRecord, dryRun: boolean) => {
-    const token = await auth.currentUser?.getIdToken();
-    const response = await fetch('/api/combine-tags/undo', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ combineRecordId: record.id, dryRun }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(body.error || t('combine_tags.undo_failed', 'Could not undo combine'));
-    }
-    return body;
-  };
+  const postUndo = (record: TagCombineRecord, dryRun: boolean) =>
+    postCombineApi(
+      '/api/combine-tags/undo',
+      { combineRecordId: record.id, dryRun },
+      t('combine_tags.undo_failed', 'Could not undo combine'),
+    );
 
   // Undo is previewed first (a dry run writes nothing), then confirmed.
   const previewUndo = async (record: TagCombineRecord) => {

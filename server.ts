@@ -104,6 +104,39 @@ async function refuseInFlightCombine(tx: any, db: any, contactIds: string[], own
   }
 }
 
+/**
+ * Loads a combine record for an undo and answers the refusals every undo
+ * shares: 404 when missing, 400 when it is the other kind (a record with no
+ * kind is a contacts record), 409 when already undone. Returns null once it
+ * has answered.
+ */
+async function loadCombineRecord(
+  db: any,
+  res: express.Response,
+  combineRecordId: string,
+  kind: "contacts" | "tags",
+) {
+  const recordRef = db.collection("combineRecords").doc(combineRecordId);
+  const recordSnap = await recordRef.get();
+  if (!recordSnap.exists) {
+    res.status(404).json({ success: false, error: "Combine record not found" });
+    return null;
+  }
+  const record = recordSnap.data() as any;
+  if ((record.kind ?? "contacts") !== kind) {
+    res.status(400).json({
+      success: false,
+      error: kind === "tags" ? "Not a tag combine record" : "Not a contact combine record",
+    });
+    return null;
+  }
+  if (record.status === "undone") {
+    res.status(409).json({ success: false, error: "This combine has already been undone" });
+    return null;
+  }
+  return { recordRef, record };
+}
+
 /** Whether an undo may claim this record: done, or a pending or undoing claim that has expired. */
 function undoClaimable(record: any): boolean {
   if (record.status === "done") return true;
@@ -300,6 +333,23 @@ export async function createApp() {
     }
 
     return { uid, email, role };
+  }
+
+  // The Full-timer gate every combine endpoint shares. A refusal is answered
+  // here (403) and returns null. In tests the actor is fixed.
+  async function requireFullTimerActor(req: express.Request, res: express.Response) {
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        const authorized = await authorizeAdmin(req);
+        return { actorId: authorized.uid, actorName: authorized.email || authorized.uid };
+      }
+      return { actorId: "test-user", actorName: "Test User" };
+    } catch (authErr: any) {
+      res
+        .status(403)
+        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
+      return null;
+    }
   }
 
   // Helper function to update GitHub issue state bidirectionally
@@ -2788,22 +2838,9 @@ ${JSON.stringify(contactsList)}`;
   // combine record: all in one transaction when it fits, otherwise the record
   // is claimed as pending while batches run, then marked done.
   app.post("/api/combine-contacts", standardRateLimiter, async (req, res) => {
-    let actorId: string;
-    let actorName: string;
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        const authorized = await authorizeAdmin(req);
-        actorId = authorized.uid;
-        actorName = authorized.email || authorized.uid;
-      } else {
-        actorId = "test-user";
-        actorName = "Test User";
-      }
-    } catch (authErr: any) {
-      return res
-        .status(403)
-        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
-    }
+    const actor = await requireFullTimerActor(req, res);
+    if (!actor) return;
+    const { actorId, actorName } = actor;
 
     const keptId = typeof req.body?.keptId === "string" ? req.body.keptId : "";
     const combinedInId = typeof req.body?.combinedInId === "string" ? req.body.combinedInId : "";
@@ -3133,22 +3170,9 @@ ${JSON.stringify(contactsList)}`;
   // This ticket covers undoing a combine nothing has changed since; leaving
   // later work alone is #1429. A combine can only be undone once.
   app.post("/api/combine-contacts/undo", standardRateLimiter, async (req, res) => {
-    let actorId: string;
-    let actorName: string;
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        const authorized = await authorizeAdmin(req);
-        actorId = authorized.uid;
-        actorName = authorized.email || authorized.uid;
-      } else {
-        actorId = "test-user";
-        actorName = "Test User";
-      }
-    } catch (authErr: any) {
-      return res
-        .status(403)
-        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
-    }
+    const actor = await requireFullTimerActor(req, res);
+    if (!actor) return;
+    const { actorId, actorName } = actor;
 
     const combineRecordId =
       typeof req.body?.combineRecordId === "string" ? req.body.combineRecordId : "";
@@ -3159,21 +3183,9 @@ ${JSON.stringify(contactsList)}`;
 
     try {
       const db = getAdminDb();
-      const recordRef = db.collection("combineRecords").doc(combineRecordId);
-      const recordSnap = await recordRef.get();
-      if (!recordSnap.exists) {
-        return res.status(404).json({ success: false, error: "Combine record not found" });
-      }
-      const record = recordSnap.data() as any;
-      // Records written before tag combines carry no kind; those are contacts.
-      if (record.kind !== undefined && record.kind !== "contacts") {
-        return res.status(400).json({ success: false, error: "Not a contact combine record" });
-      }
-      if (record.status === "undone") {
-        return res
-          .status(409)
-          .json({ success: false, error: "This combine has already been undone" });
-      }
+      const loaded = await loadCombineRecord(db, res, combineRecordId, "contacts");
+      if (!loaded) return;
+      const { recordRef, record } = loaded;
 
       const keptId: string = record.keptId;
       const combinedInId: string = record.combinedInId;
@@ -3415,22 +3427,9 @@ ${JSON.stringify(contactsList)}`;
   // record of kind tags holding each contact's tags before and after and the
   // standard tags it added. Undo is #1436.
   app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
-    let actorId: string;
-    let actorName: string;
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        const authorized = await authorizeAdmin(req);
-        actorId = authorized.uid;
-        actorName = authorized.email || authorized.uid;
-      } else {
-        actorId = "test-user";
-        actorName = "Test User";
-      }
-    } catch (authErr: any) {
-      return res
-        .status(403)
-        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
-    }
+    const actor = await requireFullTimerActor(req, res);
+    if (!actor) return;
+    const { actorId, actorName } = actor;
 
     const rawCombines = req.body?.combines;
     if (!Array.isArray(rawCombines) || rawCombines.length === 0) {
@@ -3563,22 +3562,9 @@ ${JSON.stringify(contactsList)}`;
   // deleted) since are skipped and reported. Standard tags added by the combine
   // stay. A combine can only be undone once.
   app.post("/api/combine-tags/undo", standardRateLimiter, async (req, res) => {
-    let actorId: string;
-    let actorName: string;
-    try {
-      if (process.env.NODE_ENV !== "test") {
-        const authorized = await authorizeAdmin(req);
-        actorId = authorized.uid;
-        actorName = authorized.email || authorized.uid;
-      } else {
-        actorId = "test-user";
-        actorName = "Test User";
-      }
-    } catch (authErr: any) {
-      return res
-        .status(403)
-        .json({ success: false, error: `Forbidden: ${authErr.message || String(authErr)}` });
-    }
+    const actor = await requireFullTimerActor(req, res);
+    if (!actor) return;
+    const { actorId, actorName } = actor;
 
     const combineRecordId =
       typeof req.body?.combineRecordId === "string" ? req.body.combineRecordId : "";
@@ -3589,20 +3575,9 @@ ${JSON.stringify(contactsList)}`;
 
     try {
       const db = getAdminDb();
-      const recordRef = db.collection("combineRecords").doc(combineRecordId);
-      const recordSnap = await recordRef.get();
-      if (!recordSnap.exists) {
-        return res.status(404).json({ success: false, error: "Combine record not found" });
-      }
-      const record = recordSnap.data() as any;
-      if (record.kind !== "tags") {
-        return res.status(400).json({ success: false, error: "Not a tag combine record" });
-      }
-      if (record.status === "undone") {
-        return res
-          .status(409)
-          .json({ success: false, error: "This combine has already been undone" });
-      }
+      const loaded = await loadCombineRecord(db, res, combineRecordId, "tags");
+      if (!loaded) return;
+      const { recordRef, record } = loaded;
 
       const entries: TagUndoEntry[] = (Array.isArray(record.contacts) ? record.contacts : [])
         .map((c: any) => ({

@@ -9,7 +9,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { Check, Loader2, Repeat, Undo2, Users } from 'lucide-react';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useLanguage } from '../components/LanguageProvider';
 import { useAuth } from '../components/AuthProvider';
 import PageContainer from '../components/layout/PageContainer';
@@ -27,6 +27,13 @@ import {
   type CombinePicks,
   type ContactHistory,
 } from '../lib/combineContactsPlan';
+import {
+  fill,
+  formatWhen,
+  postCombineApi,
+  requestContactUndo,
+  type UndoPreview,
+} from '../lib/combineClient';
 import {
   markNotSamePerson,
   unmarkNotSamePerson,
@@ -51,29 +58,6 @@ interface CombineRecord {
   keptBefore?: { name?: string };
   combinedInBefore?: { name?: string };
 }
-
-/** The three lists the undo preview returns (issue #1429). */
-interface UndoPreviewItem {
-  kind: string;
-  id: string;
-  label: string;
-}
-
-interface UndoPreview {
-  goesBack: UndoPreviewItem[];
-  stays: UndoPreviewItem[];
-  notRestored: { kind: string; label: string }[];
-}
-
-const formatWhen = (iso?: string): string => {
-  if (!iso) return '';
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
-};
-
-/** Fills {placeholders} in a translated string. */
-const fill = (template: string, values: Record<string, string>): string =>
-  template.replace(/\{(\w+)\}/g, (_match, key: string) => values[key] ?? '');
 
 /** Display label per reviewed field, used as the i18n fallback. */
 const FIELD_LABELS: Record<string, string> = {
@@ -385,26 +369,18 @@ export default function CombineContacts() {
     setCombiningId(key);
     setCombineError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-contacts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
+      await postCombineApi(
+        '/api/combine-contacts',
+        {
           keptId: pair.kept.id,
           combinedInId: pair.combinedIn.id,
           reason: pair.reason,
           picks: picksFor(key),
           keptUpdatedAt: pair.kept.updatedAt ?? null,
           combinedInUpdatedAt: pair.combinedIn.updatedAt ?? null,
-        }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || 'Combine failed');
-      }
+        },
+        'Combine failed',
+      );
     } catch (e) {
       setCombineError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -418,21 +394,11 @@ export default function CombineContacts() {
     setMovesLoading(key);
     setCombineError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-contacts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          keptId: pair.kept.id,
-          combinedInId: pair.combinedIn.id,
-          dryRun: true,
-        }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not load what moves');
+      const body = await postCombineApi(
+        '/api/combine-contacts',
+        { keptId: pair.kept.id, combinedInId: pair.combinedIn.id, dryRun: true },
+        'Could not load what moves',
+      );
       setMovesByPair((prev) => ({ ...prev, [key]: (body.moves ?? []) as CombineMoveGroup[] }));
     } catch (e) {
       setCombineError(e instanceof Error ? e.message : String(e));
@@ -441,30 +407,13 @@ export default function CombineContacts() {
     }
   };
 
-  const undo = async (recordId: string, dryRun: boolean) => {
-    const token = await auth.currentUser?.getIdToken();
-    const response = await fetch('/api/combine-contacts/undo', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ combineRecordId: recordId, dryRun }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(body.error || 'Undo failed');
-    }
-    return body as { success: boolean; preview?: UndoPreview };
-  };
-
   const loadPreview = async (recordId: string) => {
     if (previewingId || undoingId) return;
     setPreviewingId(recordId);
     setCombineError(null);
     setPreview(null);
     try {
-      const body = await undo(recordId, true);
+      const body = await requestContactUndo(recordId, true);
       setPreview(body.preview ?? { goesBack: [], stays: [], notRestored: [] });
       setPreviewRecordId(recordId);
     } catch (e) {
@@ -479,7 +428,7 @@ export default function CombineContacts() {
     setUndoingId(recordId);
     setCombineError(null);
     try {
-      await undo(recordId, false);
+      await requestContactUndo(recordId, false);
       setPreviewRecordId(null);
       setPreview(null);
     } catch (e) {
