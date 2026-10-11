@@ -3291,6 +3291,9 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
   });
 });
 
+// The contacts seedCombine writes have no updatedAt.
+const NO_STAMPS = { keptUpdatedAt: null, combinedInUpdatedAt: null };
+
 describe("POST /api/combine-contacts", () => {
   const seedCombine = () => {
     seedDoc("contacts", "s1", {
@@ -3366,7 +3369,7 @@ describe("POST /api/combine-contacts", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.combineRecordId).toBeTruthy();
@@ -3475,7 +3478,7 @@ describe("POST /api/combine-contacts", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1" });
+      .send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
     expect(res.status).toBe(200);
     const record = getCollection("combineRecords")[res.body.combineRecordId];
     expect(record.status).toBe("done");
@@ -3485,7 +3488,7 @@ describe("POST /api/combine-contacts", () => {
 
   it("records an Activity Log entry for the combine", async () => {
     seedCombine();
-    await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "d1" });
+    await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "d1", ...NO_STAMPS });
     const activities = Object.values(getCollection("activities"));
     const entry = activities.find((a: any) => a.action === "combined contact into");
     expect(entry).toBeDefined();
@@ -3497,7 +3500,7 @@ describe("POST /api/combine-contacts", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
 
     const banner = getCollection("contacts")["s1"].combinedFrom;
@@ -3522,6 +3525,7 @@ describe("POST /api/combine-contacts", () => {
     const res = await request(app).post("/api/combine-contacts").send({
       keptId: "s1",
       combinedInId: "d1",
+      ...NO_STAMPS,
       picks: { fields: { name: "combined-in" }, notes: "combined-in" },
     });
     expect(res.status).toBe(200);
@@ -3575,6 +3579,56 @@ describe("POST /api/combine-contacts", () => {
     expect(getCollection("contacts")["d1"]).toBeUndefined();
   });
 
+  // A sign-up writes updatedAt as a server timestamp, so the Admin read keeps
+  // its milliseconds while the browser's JSON form carries seconds/nanoseconds.
+  const stampedKept = () =>
+    seedDoc("contacts", "s1", {
+      name: "Kept Name",
+      email: "same@x.com",
+      phone: "",
+      stage: "Lead",
+      tags: ["A"],
+      location: "",
+      updatedAt: { seconds: 1767225600, nanoseconds: 123000000, toDate: () => new Date(1767225600123) },
+    });
+
+  it("combines a contact whose updatedAt has milliseconds when the browser sends its JSON form", async () => {
+    seedCombine();
+    stampedKept();
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      keptUpdatedAt: { seconds: 1767225600, nanoseconds: 123000000 },
+      combinedInUpdatedAt: null,
+    });
+    expect(res.status).toBe(200);
+    expect(getCollection("contacts")["d1"]).toBeUndefined();
+  });
+
+  it("still refuses with a conflict when the contact changed by a few milliseconds", async () => {
+    seedCombine();
+    stampedKept();
+    const res = await request(app).post("/api/combine-contacts").send({
+      keptId: "s1",
+      combinedInId: "d1",
+      keptUpdatedAt: { seconds: 1767225600, nanoseconds: 124000000 },
+      combinedInUpdatedAt: null,
+    });
+    expect(res.status).toBe(409);
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+  });
+
+  it("returns 400 when the last-updated stamps are missing", async () => {
+    seedCombine();
+    for (const stamps of [{}, { keptUpdatedAt: null }, { combinedInUpdatedAt: null }]) {
+      const res = await request(app)
+        .post("/api/combine-contacts")
+        .send({ keptId: "s1", combinedInId: "d1", ...stamps });
+      expect(res.status).toBe(400);
+    }
+    expect(getCollection("contacts")["d1"]).toBeDefined();
+  });
+
   it("returns 400 when an id is missing", async () => {
     const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1" });
     expect(res.status).toBe(400);
@@ -3587,7 +3641,7 @@ describe("POST /api/combine-contacts", () => {
 
   it("returns 404 when a contact is missing", async () => {
     seedDoc("contacts", "s1", { name: "Kept", email: "", phone: "", stage: "Lead", location: "" });
-    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "nope" });
+    const res = await request(app).post("/api/combine-contacts").send({ keptId: "s1", combinedInId: "nope", ...NO_STAMPS });
     expect(res.status).toBe(404);
   });
 
@@ -3683,7 +3737,7 @@ describe("POST /api/combine-contacts/undo", () => {
     seedCombine();
     const res = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     expect(res.status).toBe(200);
     return res.body.combineRecordId as string;
   };
@@ -3714,7 +3768,7 @@ describe("POST /api/combine-contacts/undo", () => {
 
     const combineRes = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email" });
+      .send({ keptId: "s1", combinedInId: "d1", reason: "Matching email", ...NO_STAMPS });
     const undoRes = await request(app)
       .post("/api/combine-contacts/undo")
       .send({ combineRecordId: combineRes.body.combineRecordId });
@@ -3899,7 +3953,13 @@ describe("POST /api/combine-contacts/undo", () => {
     });
     const second = await request(app)
       .post("/api/combine-contacts")
-      .send({ keptId: "c1", combinedInId: "s1" });
+      .send({
+        keptId: "c1",
+        combinedInId: "s1",
+        keptUpdatedAt: null,
+        // s1 was the first combine's kept contact, so it now carries a stamp.
+        combinedInUpdatedAt: getCollection("contacts")["s1"].updatedAt,
+      });
     expect(second.status).toBe(200);
 
     const res = await request(app)

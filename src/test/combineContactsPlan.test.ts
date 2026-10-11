@@ -10,6 +10,7 @@ import {
   historyScore,
   contactPairKey,
   chooseKeptContact,
+  timestampMillis,
   type CombineReferences,
   type CombineUndoRecord,
   type CombineUndoCurrent,
@@ -941,5 +942,23 @@ describe('legacy contact shapes (#1472, escape rows 10, 17 and 20)', () => {
     // Escape 17: older documents have no owner key. The merge must not read it.
     const merged = mergeContactProfiles(noOwnerContact, isoCreatedContact);
     expect(merged.name).toBe('No Owner');
+  });
+});
+
+describe('timestampMillis', () => {
+  it('reduces every stored form of one instant to the same milliseconds', () => {
+    const ms = 1767225600123;
+    const forms = [
+      '2026-01-01T00:00:00.123Z',
+      { toDate: () => new Date(ms) },
+      { seconds: 1767225600, nanoseconds: 123000000 },
+      { _seconds: 1767225600, _nanoseconds: 123000000 },
+    ];
+    for (const form of forms) expect(timestampMillis(form)).toBe(ms);
+  });
+
+  it('treats a missing nanoseconds part as zero and a missing value as 0', () => {
+    expect(timestampMillis({ seconds: 5 })).toBe(5000);
+    expect(timestampMillis(null)).toBe(0);
   });
 });

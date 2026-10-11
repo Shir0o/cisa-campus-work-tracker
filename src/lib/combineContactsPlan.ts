@@ -317,10 +317,18 @@ export function timestampMillis(value: unknown): number {
     return Number.isNaN(parsed) ? 0 : parsed;
   }
   if (typeof value === 'object') {
-    const v = value as { toDate?: () => Date; seconds?: number; _seconds?: number };
+    const v = value as {
+      toDate?: () => Date;
+      seconds?: number;
+      nanoseconds?: number;
+      _seconds?: number;
+      _nanoseconds?: number;
+    };
     if (typeof v.toDate === 'function') return v.toDate().getTime();
-    if (typeof v.seconds === 'number') return v.seconds * 1000;
-    if (typeof v._seconds === 'number') return v._seconds * 1000;
+    // Keep the sub-second part so the browser's JSON form of a Timestamp
+    // reduces to the same milliseconds as the server's Admin Timestamp.
+    if (typeof v.seconds === 'number') return v.seconds * 1000 + Math.floor((v.nanoseconds ?? 0) / 1e6);
+    if (typeof v._seconds === 'number') return v._seconds * 1000 + Math.floor((v._nanoseconds ?? 0) / 1e6);
   }
   return 0;
 }

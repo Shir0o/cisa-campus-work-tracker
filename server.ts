@@ -2690,6 +2690,16 @@ ${JSON.stringify(contactsList)}`;
     if (keptId === combinedInId) {
       return res.status(400).json({ success: false, error: "keptId and combinedInId must differ" });
     }
+    // A preview (dryRun) writes nothing, so only a real combine must say what
+    // the browser saw. null means "the contact had no updatedAt".
+    if (
+      req.body?.dryRun !== true &&
+      (req.body?.keptUpdatedAt === undefined || req.body?.combinedInUpdatedAt === undefined)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, error: "keptUpdatedAt and combinedInUpdatedAt are required" });
+    }
 
     try {
       const db = getAdminDb();
@@ -2705,9 +2715,10 @@ ${JSON.stringify(contactsList)}`;
       const keptContact = { id: keptSnap.id, ...keptSnap.data() } as unknown as Contact;
       const combinedInContact = { id: combinedInSnap.id, ...combinedInSnap.data() } as unknown as Contact;
 
-      // The browser sends the last-updated stamp of each contact as it saw it.
-      // If either has changed since, refuse with a conflict so the page can
-      // rebuild the preview rather than commit a result built on stale data.
+      // The browser sends the last-updated stamp of each contact as it saw it
+      // (null when the contact had none). If either has changed since, refuse
+      // with a conflict so the page can rebuild the preview rather than commit
+      // a result built on stale data.
       const body = req.body ?? {};
       if (body.keptUpdatedAt !== undefined || body.combinedInUpdatedAt !== undefined) {
         const currentKeptStamp = timestampMillis(keptSnap.data()?.updatedAt);
