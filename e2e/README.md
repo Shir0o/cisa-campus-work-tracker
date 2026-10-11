@@ -8,16 +8,12 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 
 | Spec | Area |
 | --- | --- |
-| `permissions.spec.ts` | Role matrix: landing route, sidebar nav, route guards |
-| `walking-together-threads.spec.ts` | Student contact threads, team confidentiality (#630; the Full-timer half lives in the Full-timer journey, #1477) |
-| `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline (Student/Community; the Full-timer half lives in the Full-timer journey, #1477; #631) |
-| `quick-capture.spec.ts` | NewContactModal role gating (Student/Community; the Full-timer half lives in the Full-timer journey, #1477; #628) |
 | `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
 | `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day/Questions), contact open without a crash, back-to-my-view (#1476) |
 | `journeys/full-timer.spec.ts` | Full-timer journey: Around the team (roster + to-work-through count), stage move, team discussion, Add to story, Combine a sign-up's Timestamp/`null` email, creator transfer on a no-`owner` contact, "Not reached yet" scope, a dialog across 1024px, the BFA intake flag, a private burden off On our hearts; plus the retired Settings & partners, Directory roles, On our hearts roles, Announcements, Questions, Notes/admin triage, and Quick Capture/Journey-board specs (#1477) |
 | `journeys/signup.spec.ts` | Public sign-up journey: a signed-out visitor submits the intake form, the lead appears for a Full-timer in Around the team and My Day, the sidebar carries the Sign-up form link; plus the Outreach view and the #1493 phone-preservation pair (#1478) |
 | `journeys/notification.spec.ts` | Notification journey: a reply raises a bell entry that opens its Thread (row 15, #1303), a contact notification opens the contact, plus the retired bell deep-linking (#682) and push-transport checks (#1479) |
-| `gatherings-attendance.spec.ts` | Gatherings + attendance |
+| `journeys/student-community.spec.ts` | Student and Community journey: the landing + sidebar nav + route-guard matrix for every role, the Student's People/Gatherings/contact-thread/Quick-Capture flows, and the Community member's missing door to the contact directory — People or sideways through Gatherings (#950; #1480; folds in the retired `permissions`, `gatherings-attendance`, `cross-role-journey`, `quick-capture` and `walking-together-threads` specs) |
 
 ## Running
 
@@ -89,12 +85,12 @@ emulator.
 
 ## Roles & expectations
 
-| Display name | Internal role | Sidebar nav (in addition to lower roles)                |
-| ------------ | ------------- | ------------------------------------------------------- |
-| Community    | `viewer`      | Home, Gatherings, Prayer, Messages, Settings            |
-| Student      | `operator`    | + People                                                |
-| Trainee      | `manager`     | + The Journey, Looking back                             |
-| Full-timer   | `admin`       | + Coordination Notes (and the home item reads "My Day") |
+| Display name | Internal role | Sidebar nav destinations (Settings lives in the avatar menu) |
+| ------------ | ------------- | ----------------------------------------------------------- |
+| Community    | `viewer`      | Home, Gospel, On our hearts, Answered, Messages, Your notes, Bible study |
+| Student      | `operator`    | Home, People, Gatherings, Coordination Notes, On our hearts, Answered, Messages, Your notes, Bible study |
+| Trainee      | `manager`     | Home, The Journey, People, Looking back, Gatherings, Coordination Notes, Questions, Messages, Your notes, Bible study |
+| Full-timer   | `admin`       | All of the above, plus My Day (the home item), Visits, Around the team, and the Bible-study index |
 
 Every approved role lands on `/`; a guarded route (`/board`, `/directory`,
 `/history`, `/coordination`, `/admin/feedback`) redirects a denied role back to
