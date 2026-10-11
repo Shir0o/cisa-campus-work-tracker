@@ -3447,7 +3447,7 @@ describe("POST /api/combine-contacts", () => {
     expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
     expect(getCollection("visits")["v1"].contactNames).toEqual(["Kept Name"]);
 
-    // Gathering roster, overrides and attendance all drop the duplicate.
+    // Gathering roster, overrides and attendance all drop the repeat.
     const event = getCollection("events")["e1"];
     expect(event.roster).toEqual(["s1"]);
     expect(event.rosterOverride).toEqual(["s1"]);
@@ -4132,7 +4132,7 @@ describe("POST /api/combine-contacts/undo", () => {
     });
   });
 
-  it("puts both contacts back on a visit the combine de-duplicated", async () => {
+  it("puts both contacts back on a visit the combine collapsed", async () => {
     const recordId = await combineOnce();
     expect(getCollection("visits")["v1"].contactIds).toEqual(["s1"]);
     seedDoc("visits", "v1", { contactIds: ["s1", "v9"], contactNames: ["Kept Name", "Nine"] });
@@ -4308,7 +4308,7 @@ describe("POST /api/combine-tags", () => {
     seedDoc("contacts", "c", { name: "Cara", tags: ["Saved"] });
   };
 
-  it("rewrites affected tags, drops duplicates, and writes a done tags record", async () => {
+  it("rewrites affected tags, drops repeats, and writes a done tags record", async () => {
     seedTags();
     const res = await request(app)
       .post("/api/combine-tags")

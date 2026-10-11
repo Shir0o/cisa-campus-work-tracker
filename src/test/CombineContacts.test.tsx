@@ -292,13 +292,13 @@ describe('CombineContacts page', () => {
   it('removes a pair when it is skipped', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-    expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    expect(screen.getByText(/No pairs of the same person found/i)).toBeInTheDocument();
   });
 
   it('Skip for now keeps the pair hidden only until the page is reopened', () => {
     const { unmount } = renderPage();
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-    expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    expect(screen.getByText(/No pairs of the same person found/i)).toBeInTheDocument();
     unmount();
 
     renderPage();
@@ -318,7 +318,7 @@ describe('CombineContacts page', () => {
       markedBy: 'admin1',
       markedByName: 'Faith',
     });
-    expect(await screen.findByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No pairs of the same person found/i)).toBeInTheDocument();
   });
 
   it('lists Not the same person marks with who and when, and removing one brings the pair back', async () => {
@@ -333,7 +333,7 @@ describe('CombineContacts page', () => {
     ];
     renderPage();
     // The marked pair is no longer suggested.
-    expect(screen.getByText(/No duplicate contacts found/i)).toBeInTheDocument();
+    expect(screen.getByText(/No pairs of the same person found/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /not the same person/i }));
     const markRow = await screen.findByTestId('not-same-mark');

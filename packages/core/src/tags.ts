@@ -26,7 +26,7 @@ export function normalizeTag(tag: string): string {
   return value;
 }
 
-/** Normalize, trim, and de-duplicate tags case-insensitively. */
+/** Normalize, trim, and drop case-insensitive repeats of tags. */
 export function normalizeTagList(tags: string[] | null | undefined): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -310,7 +310,7 @@ export function isSeasonTag(tag: string): boolean {
  * Resolve the standard tags from the stored document's `tags` field (#1437).
  * `undefined`/`null` means the document has not loaded, so fall back to the
  * seed; a loaded-but-empty list stays empty. Order is preserved, values are
- * normalized and de-duplicated.
+ * normalized, with case-insensitive repeats dropped.
  */
 export function resolveStandardTags(stored?: string[] | null): string[] {
   if (stored == null) return [...STANDARD_TAG_SEED];
@@ -393,8 +393,8 @@ interface RawTagInfo {
  * Guess tag combines (issue #1435, spec #1426). Pure: given the contacts' tags
  * and the standard tags, it returns the strong guesses (case/punctuation/spacing
  * and standard+context) and the weak guesses (extra words, one-letter typos,
- * standard+non-context). Different seasons are never guessed together. Until
- * #1437 the anchors default to the six TAG_SUGGESTIONS.
+ * standard+non-context). Different seasons are never guessed together. Without
+ * stored standard tags it falls back to the six TAG_SUGGESTIONS.
  */
 export function guessTagCombines(
   contacts: Array<{ tags?: string[] | null }>,
@@ -455,36 +455,36 @@ export function guessTagCombines(
     }
   };
 
-  // 1. Standard anchor plus context words (strong) or other words (weak).
+  // 1. Standard tag plus context words (strong) or other words (weak).
   //    Runs before the generic fold pass so `BFA table`, `BFA Table` and
   //    `bfa-table` all fold into the standard `BFA`, not into each other.
   for (const info of infos.values()) {
     if (assigned.has(info.raw) || info.season) continue;
     const compact = info.tokens.join('');
-    for (const anchor of standardTags) {
-      const anchorNorm = normalizeTag(anchor);
-      const anchorTokens = toAlphaTokens(anchorNorm);
-      const anchorCompact = anchorTokens.join('');
+    for (const standardTag of standardTags) {
+      const standardNorm = normalizeTag(standardTag);
+      const standardTokens = toAlphaTokens(standardNorm);
+      const standardCompact = standardTokens.join('');
       const isSuperset =
-        info.tokens.length > anchorTokens.length &&
-        anchorTokens.every((token) => info.tokens.includes(token));
+        info.tokens.length > standardTokens.length &&
+        standardTokens.every((token) => info.tokens.includes(token));
       if (isSuperset) {
-        const extras = info.tokens.filter((token) => !anchorTokens.includes(token));
+        const extras = info.tokens.filter((token) => !standardTokens.includes(token));
         const allContext = extras.every(
           (token) => CONTEXT_WORDS.has(token) || /^\d+$/.test(token),
         );
         add(
-          anchorNorm,
+          standardNorm,
           allContext ? 'strong' : 'weak',
           allContext ? 'standard-context' : 'standard-extra',
           [info.raw],
         );
         break;
       }
-      if (compact.startsWith(anchorCompact) && compact.length > anchorCompact.length) {
-        const remainder = compact.slice(anchorCompact.length);
+      if (compact.startsWith(standardCompact) && compact.length > standardCompact.length) {
+        const remainder = compact.slice(standardCompact.length);
         if (CONTEXT_WORDS.has(remainder) || /^\d+$/.test(remainder)) {
-          add(anchorNorm, 'strong', 'standard-context', [info.raw]);
+          add(standardNorm, 'strong', 'standard-context', [info.raw]);
           break;
         }
       }
@@ -542,7 +542,7 @@ export function guessTagCombines(
     if (best) add(best.norm, 'weak', 'extra-words', [longer.raw]);
   }
 
-  // 4. One-letter typos: weak. Standard anchors (whether present or not) win.
+  // 4. One-letter typos: weak. Standard tags (whether present or not) win.
   type Candidate = {
     raw: string;
     norm: string;
@@ -560,8 +560,8 @@ export function guessTagCombines(
       standard: standardNorms.has(info.norm),
     });
   }
-  for (const anchor of standardTags) {
-    const norm = normalizeTag(anchor);
+  for (const standardTag of standardTags) {
+    const norm = normalizeTag(standardTag);
     if (!candidates.some((candidate) => candidate.norm === norm)) {
       candidates.push({ raw: norm, norm, tokens: toAlphaTokens(norm), count: 0, standard: true });
     }
@@ -620,7 +620,7 @@ export function guessTagCombines(
 
 /**
  * Rewrite only the tags that are variants of an enabled combine; every other
- * tag stays exactly as stored. A duplicate is dropped only when the rewrite
+ * tag stays exactly as stored. A repeat is dropped only when the rewrite
  * itself created it (a rewritten tag equals another tag, case-insensitively).
  */
 function rewriteCombinedTags(tags: string[], mapping: Map<string, string>): string[] {

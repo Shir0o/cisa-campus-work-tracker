@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   findCombineCandidates,
-  mergeContactProfiles,
+  combineContactProfiles,
   diffCombineFields,
   buildCombinePlan,
   buildCombineUndoPlan,
@@ -50,7 +50,7 @@ const EMPTY_REFS: CombineReferences = {
 const META = { now: '2026-03-01T00:00:00.000Z', updatedById: 'u1', updatedByName: 'Admin' };
 
 describe('findCombineCandidates', () => {
-  it('detects duplicates by normalized email', () => {
+  it('detects pairs by normalized email', () => {
     const contacts: Partial<Contact>[] = [
       { id: '1', name: 'John Doe', email: 'john@example.com', createdAt: '2026-01-01' },
       { id: '2', name: 'Johnny D', email: '  JOHN@EXAMPLE.COM ', createdAt: '2026-01-02' },
@@ -64,7 +64,7 @@ describe('findCombineCandidates', () => {
     expect(pairs[0].reason).toContain('email');
   });
 
-  it('detects duplicates by normalized phone', () => {
+  it('detects pairs by normalized phone', () => {
     const contacts: Partial<Contact>[] = [
       { id: '1', name: 'Mary', phone: '(555) 123-4567', createdAt: '2026-01-01' },
       { id: '2', name: 'Mary M', phone: '5551234567', createdAt: '2026-01-02' },
@@ -77,7 +77,7 @@ describe('findCombineCandidates', () => {
     expect(pairs[0].reason).toContain('phone');
   });
 
-  it('detects duplicates by normalized name', () => {
+  it('detects pairs by normalized name', () => {
     const contacts: Partial<Contact>[] = [
       { id: '1', name: 'David Lee', email: '', phone: '', createdAt: '2026-01-01' },
       { id: '2', name: 'david lee', email: '', phone: '', createdAt: '2026-01-02' },
@@ -109,7 +109,7 @@ describe('findCombineCandidates', () => {
   });
 });
 
-describe('mergeContactProfiles', () => {
+describe('combineContactProfiles', () => {
   it('unions relationship sets and preserves kept scalars while backfilling gaps', () => {
     const kept: Partial<Contact> = {
       id: 'c1',
@@ -139,32 +139,32 @@ describe('mergeContactProfiles', () => {
       spiritualBackground: 'Christian',
     };
 
-    const merged = mergeContactProfiles(kept as Contact, combinedIn as Contact);
+    const combined = combineContactProfiles(kept as Contact, combinedIn as Contact);
 
-    expect(merged.name).toBe('Bob Original');
-    expect(merged.major).toBe('Computer Science');
-    expect(merged.year).toBe('Junior');
-    expect(merged.spiritualBackground).toBe('Christian');
-    expect(merged.notes).toContain('First note');
-    expect(merged.notes).toContain('Second note from signup');
-    expect(merged.tags).toEqual(['Fall 2026', 'Saved']);
-    expect(merged.founders).toEqual(['u1', 'u3']);
-    expect(merged.carers).toEqual(['u1', 'u4']);
-    expect(merged.coCreators).toEqual(['u2', 'u3']);
-    expect(merged.visibleTo).toEqual(['u1', 'u2', 'u3', 'u4']);
+    expect(combined.name).toBe('Bob Original');
+    expect(combined.major).toBe('Computer Science');
+    expect(combined.year).toBe('Junior');
+    expect(combined.spiritualBackground).toBe('Christian');
+    expect(combined.notes).toContain('First note');
+    expect(combined.notes).toContain('Second note from signup');
+    expect(combined.tags).toEqual(['Fall 2026', 'Saved']);
+    expect(combined.founders).toEqual(['u1', 'u3']);
+    expect(combined.carers).toEqual(['u1', 'u4']);
+    expect(combined.coCreators).toEqual(['u2', 'u3']);
+    expect(combined.visibleTo).toEqual(['u1', 'u2', 'u3', 'u4']);
   });
 
   it('does not stamp a role on the combined profile (#1345)', () => {
-    const kept = { id: 's', name: 'Survivor', stage: 'Lead', location: '', email: '', phone: '', lastSeen: '', initials: 'S' } as Contact;
-    const combinedIn = { ...kept, id: 'd', name: 'Duplicate', role: 'Student' } as unknown as Contact;
-    expect(mergeContactProfiles(kept, combinedIn)).not.toHaveProperty('role');
+    const kept = { id: 's', name: 'Kept Person', stage: 'Lead', location: '', email: '', phone: '', lastSeen: '', initials: 'S' } as Contact;
+    const combinedIn = { ...kept, id: 'd', name: 'Other Person', role: 'Student' } as unknown as Contact;
+    expect(combineContactProfiles(kept, combinedIn)).not.toHaveProperty('role');
   });
 });
 
 describe('diffCombineFields', () => {
   const kept: Partial<Contact> = {
     id: 's',
-    name: 'Survivor',
+    name: 'Kept Person',
     stage: 'Lead',
     location: 'Dorm A',
     email: '',
@@ -177,7 +177,7 @@ describe('diffCombineFields', () => {
   };
   const combinedIn: Partial<Contact> = {
     id: 'd',
-    name: 'Duplicate',
+    name: 'Other Person',
     stage: 'Lead',
     location: '',
     email: '',
@@ -189,7 +189,7 @@ describe('diffCombineFields', () => {
     createdAt: '2026-02-01',
   };
 
-  const rowsFor = () => diffCombineFields(kept as Contact, combinedIn as Contact, mergeContactProfiles(kept as Contact, combinedIn as Contact));
+  const rowsFor = () => diffCombineFields(kept as Contact, combinedIn as Contact, combineContactProfiles(kept as Contact, combinedIn as Contact));
 
   it('returns a row for every reviewed field', () => {
     const fields = rowsFor().map((r) => r.field);
@@ -200,19 +200,19 @@ describe('diffCombineFields', () => {
     expect(fields.length).toBeGreaterThanOrEqual(20);
   });
 
-  it('labels backfilled, kept, merged and combined-notes rows', () => {
+  it('labels backfilled, kept, combined and combined-notes rows', () => {
     const rows = rowsFor();
     expect(rows.find((r) => r.field === 'phone')).toMatchObject({ kind: 'filled-in', result: '5551234' });
     expect(rows.find((r) => r.field === 'location')).toMatchObject({ kind: 'kept', result: 'Dorm A' });
-    expect(rows.find((r) => r.field === 'tags')).toMatchObject({ kind: 'merged', added: ['B'] });
-    expect(rows.find((r) => r.field === 'notes')).toMatchObject({ kind: 'merged' });
+    expect(rows.find((r) => r.field === 'tags')).toMatchObject({ kind: 'combined', added: ['B'] });
+    expect(rows.find((r) => r.field === 'notes')).toMatchObject({ kind: 'combined' });
   });
 
   it('labels identical fields as same', () => {
     const rows = diffCombineFields(
       { ...kept, email: 'a@x.com' } as Contact,
       { ...combinedIn, email: 'a@x.com' } as Contact,
-      mergeContactProfiles({ ...kept, email: 'a@x.com' } as Contact, { ...combinedIn, email: 'a@x.com' } as Contact),
+      combineContactProfiles({ ...kept, email: 'a@x.com' } as Contact, { ...combinedIn, email: 'a@x.com' } as Contact),
     );
     expect(rows.find((r) => r.field === 'email')).toMatchObject({ kind: 'same' });
   });
@@ -221,9 +221,9 @@ describe('diffCombineFields', () => {
     const rows = rowsFor();
     expect(rows.find((r) => r.field === 'name')).toMatchObject({
       kind: 'pick',
-      kept: 'Survivor',
-      combinedIn: 'Duplicate',
-      result: 'Survivor',
+      kept: 'Kept Person',
+      combinedIn: 'Other Person',
+      result: 'Kept Person',
     });
   });
 });
@@ -252,7 +252,7 @@ describe('buildCombinePlan', () => {
     createdAt: '2026-02-01T00:00:00.000Z',
   };
 
-  it('writes the merged profile and stamps the update', () => {
+  it('writes the combined profile and stamps the update', () => {
     const plan = buildCombinePlan(kept, combinedIn, EMPTY_REFS, META);
     expect(plan.keptId).toBe('s1');
     expect(plan.combinedInId).toBe('d1');
@@ -371,7 +371,7 @@ describe('buildCombinePlan', () => {
     expect(plan.moves.find((m) => m.kind === 'visits')).toMatchObject({ count: 1 });
   });
 
-  it('drops the duplicate kept id a visit rewrite would create', () => {
+  it('drops the repeated kept id a visit rewrite would create', () => {
     const plan = buildCombinePlan(kept, combinedIn, {
       ...EMPTY_REFS,
       visits: [{ id: 'v1', contactIds: ['d1', 's1'] }],
@@ -591,26 +591,26 @@ describe('combine picks and fixed field rules (#1431)', () => {
   } as unknown as Contact;
 
   it('uses the Full-timer pick when a single value conflicts', () => {
-    const keptPick = mergeContactProfiles(kept, combinedIn);
+    const keptPick = combineContactProfiles(kept, combinedIn);
     expect(keptPick.name).toBe('Kept Name');
 
-    const combinedInPick = mergeContactProfiles(kept, combinedIn, {
+    const combinedInPick = combineContactProfiles(kept, combinedIn, {
       fields: { name: 'combined-in' as const },
     });
     expect(combinedInPick.name).toBe('In Name');
   });
 
   it('keeps one side of the notes or both', () => {
-    expect(mergeContactProfiles(kept, combinedIn).notes).toContain('kept notes');
-    expect(mergeContactProfiles(kept, combinedIn).notes).toContain('in notes');
-    expect(mergeContactProfiles(kept, combinedIn, { notes: 'kept' }).notes).toBe('kept notes');
-    expect(mergeContactProfiles(kept, combinedIn, { notes: 'combined-in' }).notes).toBe('in notes');
+    expect(combineContactProfiles(kept, combinedIn).notes).toContain('kept notes');
+    expect(combineContactProfiles(kept, combinedIn).notes).toContain('in notes');
+    expect(combineContactProfiles(kept, combinedIn, { notes: 'kept' }).notes).toBe('kept notes');
+    expect(combineContactProfiles(kept, combinedIn, { notes: 'combined-in' }).notes).toBe('in notes');
   });
 
   it('takes first added and added by from the earlier record', () => {
-    const merged = mergeContactProfiles(kept, combinedIn);
-    expect(merged.createdAt).toBe('2026-01-01T00:00:00.000Z');
-    expect(merged.addedBy).toBe('u-earlier');
+    const combined = combineContactProfiles(kept, combinedIn);
+    expect(combined.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(combined.addedBy).toBe('u-earlier');
   });
 
   it('compares ISO strings and Firestore timestamps when deciding the earlier record', () => {
@@ -624,58 +624,58 @@ describe('combine picks and fixed field rules (#1431)', () => {
       addedBy: 'u-older',
     } as unknown as Contact;
 
-    const merged = mergeContactProfiles(keptTs, combinedInTs);
-    expect(merged.addedBy).toBe('u-older');
-    expect(merged.createdAt).toEqual({ _seconds: 1735689600, nanoseconds: 0 });
+    const combined = combineContactProfiles(keptTs, combinedInTs);
+    expect(combined.addedBy).toBe('u-older');
+    expect(combined.createdAt).toEqual({ _seconds: 1735689600, nanoseconds: 0 });
   });
 
   it('takes last contacted and last seen from the later record', () => {
-    const merged = mergeContactProfiles(kept, combinedIn);
-    expect(merged.lastSeen).toBe('2026-04-01');
-    expect(merged.lastContactedDate).toBe('2026-05-01');
+    const combined = combineContactProfiles(kept, combinedIn);
+    expect(combined.lastSeen).toBe('2026-04-01');
+    expect(combined.lastContactedDate).toBe('2026-05-01');
   });
 
-  it('merges interests, story links and the legacy attendance map', () => {
-    const merged = mergeContactProfiles(kept, combinedIn) as Contact & {
+  it('combines interests, story links and the legacy attendance map', () => {
+    const combined = combineContactProfiles(kept, combinedIn) as Contact & {
       attendance?: Record<string, unknown>;
     };
-    expect(merged.interests).toEqual(['music', 'sports']);
-    expect(merged.storyMessageIds).toEqual(['m1', 'm2']);
-    expect(merged.attendance).toEqual({ e1: true, e2: true });
+    expect(combined.interests).toEqual(['music', 'sports']);
+    expect(combined.storyMessageIds).toEqual(['m1', 'm2']);
+    expect(combined.attendance).toEqual({ e1: true, e2: true });
   });
 
   it('lets the kept contact win per event in the legacy attendance map', () => {
     const shared = { ...combinedIn, attendance: { e1: 'absent', e3: true } } as unknown as Contact;
-    const merged = mergeContactProfiles(kept, shared) as Contact & {
+    const combined = combineContactProfiles(kept, shared) as Contact & {
       attendance?: Record<string, unknown>;
     };
-    expect(merged.attendance).toEqual({ e1: true, e3: true });
+    expect(combined.attendance).toEqual({ e1: true, e3: true });
   });
 
   it('labels every row kind, including picks, earlier wins and latest wins', () => {
-    const merged = mergeContactProfiles(kept, combinedIn);
-    const rows = diffCombineFields(kept, combinedIn, merged);
+    const combined = combineContactProfiles(kept, combinedIn);
+    const rows = diffCombineFields(kept, combinedIn, combined);
     const byField = (f: string) => rows.find((r) => r.field === f);
 
     expect(byField('name')).toMatchObject({ kind: 'pick', result: 'Kept Name' });
     expect(byField('location')).toMatchObject({ kind: 'kept' });
     expect(byField('stage')).toMatchObject({ kind: 'pick' });
     expect(byField('phone')).toMatchObject({ kind: 'same' });
-    expect(byField('notes')).toMatchObject({ kind: 'merged' });
-    expect(byField('tags')).toMatchObject({ kind: 'merged', added: ['B'] });
-    expect(byField('interests')).toMatchObject({ kind: 'merged', added: ['sports'] });
-    expect(byField('storyMessageIds')).toMatchObject({ kind: 'merged', added: ['m2'] });
+    expect(byField('notes')).toMatchObject({ kind: 'combined' });
+    expect(byField('tags')).toMatchObject({ kind: 'combined', added: ['B'] });
+    expect(byField('interests')).toMatchObject({ kind: 'combined', added: ['sports'] });
+    expect(byField('storyMessageIds')).toMatchObject({ kind: 'combined', added: ['m2'] });
     expect(byField('createdAt')).toMatchObject({ kind: 'earlier-wins' });
     expect(byField('addedBy')).toMatchObject({ kind: 'earlier-wins', result: 'u-earlier' });
     expect(byField('lastSeen')).toMatchObject({ kind: 'latest-wins', result: '2026-04-01' });
     expect(byField('lastContactedDate')).toMatchObject({ kind: 'latest-wins' });
-    expect(byField('attendance')).toMatchObject({ kind: 'merged', added: ['e2'] });
+    expect(byField('attendance')).toMatchObject({ kind: 'combined', added: ['e2'] });
   });
 
   it('reflects the pick in the result column and the written profile', () => {
     const picks = { fields: { name: 'combined-in' as const } };
-    const merged = mergeContactProfiles(kept, combinedIn, picks);
-    const rows = diffCombineFields(kept, combinedIn, merged);
+    const combined = combineContactProfiles(kept, combinedIn, picks);
+    const rows = diffCombineFields(kept, combinedIn, combined);
     expect(rows.find((r) => r.field === 'name')?.result).toBe('In Name');
 
     const plan = buildCombinePlan(kept, combinedIn, EMPTY_REFS, META, picks);
@@ -805,7 +805,7 @@ describe('buildCombineUndoPlan', () => {
       'contacts/d1/interactions/i1',
       'contacts/d1/threads/t1',
     ]);
-    expect(plan.referenceReverts).toHaveLength(3);
+    expect(plan.referenceRestores).toHaveLength(3);
     expect(plan.notRestored).toEqual([]);
     expect(plan.stays).toEqual([]);
     // Metadata the combine stamped is removed; unchanged fields are not touched.
@@ -861,7 +861,7 @@ describe('buildCombineUndoPlan', () => {
     expect(plan.keptUpdates.find((u) => u.field === 'email')).toBeUndefined();
   });
 
-  it('removes only the merged-list items the combine added, keeping later additions', () => {
+  it('removes only the combined-list items the combine added, keeping later additions', () => {
     const current = baseCurrent();
     current.kept.tags = ['A', 'B', 'C'];
 
@@ -870,18 +870,18 @@ describe('buildCombineUndoPlan', () => {
     expect(plan.keptUpdates).toContainEqual({ field: 'tags', value: ['A', 'C'] });
   });
 
-  it('reverts a rewritten reference only while it still holds the combine value', () => {
+  it('restores a rewritten reference only while it still holds the combine value', () => {
     const current = baseCurrent();
     current.referenceValues[referenceKey('prayers', 'p1', 'contactId')] = 'other';
 
     const plan = buildCombineUndoPlan(record, current);
 
-    expect(plan.referenceReverts.find((r) => r.collection === 'prayers')).toBeUndefined();
+    expect(plan.referenceRestores.find((r) => r.collection === 'prayers')).toBeUndefined();
     expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'prayers.contactId' });
-    expect(plan.referenceReverts.find((r) => r.collection === 'tasks')).toBeDefined();
+    expect(plan.referenceRestores.find((r) => r.collection === 'tasks')).toBeDefined();
   });
 
-  it('reverts an object-valued reference by deep equality', () => {
+  it('restores an object-valued reference by deep equality', () => {
     const objectRecord: CombineUndoRecord = {
       ...record,
       rewrittenReferences: [
@@ -903,7 +903,7 @@ describe('buildCombineUndoPlan', () => {
 
     const plan = buildCombineUndoPlan(objectRecord, current);
 
-    expect(plan.referenceReverts).toContainEqual({
+    expect(plan.referenceRestores).toContainEqual({
       collection: 'events',
       document: 'e1',
       field: 'attendance',
@@ -956,7 +956,7 @@ describe('buildCombineUndoPlan', () => {
     expect(plan.notRestored).toEqual([]);
   });
 
-  describe('list-shaped references revert entry by entry', () => {
+  describe('list-shaped references restore entry by entry', () => {
     const planFor = (
       refs: CombineUndoRecord['rewrittenReferences'],
       values: Record<string, unknown>,
@@ -972,19 +972,19 @@ describe('buildCombineUndoPlan', () => {
         { [referenceKey('events', 'e1', 'roster')]: ['s1', 'x', 'later'] },
       );
 
-      expect(plan.referenceReverts).toEqual([
+      expect(plan.referenceRestores).toEqual([
         { collection: 'events', document: 'e1', field: 'roster', value: ['d1', 'x', 'later'] },
       ]);
       expect(plan.notRestored).toEqual([]);
     });
 
-    it('restores a de-duplicated entry beside the kept contact, which keeps its own', () => {
+    it('restores a collapsed entry beside the kept contact, which keeps its own', () => {
       const plan = planFor(
         [{ collection: 'rhythms', document: 'r1', field: 'roster', before: ['d1', 's1'], after: ['s1'] }],
         { [referenceKey('rhythms', 'r1', 'roster')]: ['s1', 'later'] },
       );
 
-      expect(plan.referenceReverts[0]?.value).toEqual(['d1', 's1', 'later']);
+      expect(plan.referenceRestores[0]?.value).toEqual(['d1', 's1', 'later']);
     });
 
     it('restores the combined-in inbox key when another key was marked since', () => {
@@ -1007,7 +1007,7 @@ describe('buildCombineUndoPlan', () => {
         },
       );
 
-      expect(plan.referenceReverts[0]?.value).toEqual({
+      expect(plan.referenceRestores[0]?.value).toEqual({
         'att:contact:d1': 't1',
         'att:task:q': 't0',
         'att:contact:z': 't9',
@@ -1015,7 +1015,7 @@ describe('buildCombineUndoPlan', () => {
       expect(plan.notRestored).toEqual([]);
     });
 
-    it('keeps the kept contact\'s own inbox key when the combine de-duplicated it', () => {
+    it('keeps the kept contact\'s own inbox key when the combine collapsed it', () => {
       const plan = planFor(
         [
           {
@@ -1029,14 +1029,14 @@ describe('buildCombineUndoPlan', () => {
         { [referenceKey('inboxState', 'u2', 'completed')]: { 'att:contact:s1': 't2', other: 't3' } },
       );
 
-      expect(plan.referenceReverts[0]?.value).toEqual({
+      expect(plan.referenceRestores[0]?.value).toEqual({
         'att:contact:d1': 't1',
         'att:contact:s1': 't2',
         other: 't3',
       });
     });
 
-    it('puts both contacts back on a de-duplicated visit, names alongside', () => {
+    it('puts both contacts back on a collapsed visit, names alongside', () => {
       const plan = planFor(
         [
           { collection: 'visits', document: 'v1', field: 'contactIds', before: ['d1', 's1'], after: ['s1'] },
@@ -1054,7 +1054,7 @@ describe('buildCombineUndoPlan', () => {
         },
       );
 
-      expect(plan.referenceReverts).toEqual([
+      expect(plan.referenceRestores).toEqual([
         { collection: 'visits', document: 'v1', field: 'contactIds', value: ['d1', 's1', 'n9'] },
         { collection: 'visits', document: 'v1', field: 'contactNames', value: ['In', 'Kept', 'Nine'] },
       ]);
@@ -1066,11 +1066,11 @@ describe('buildCombineUndoPlan', () => {
         { [referenceKey('homes', 'h1', 'members')]: ['other'] },
       );
 
-      expect(plan.referenceReverts).toEqual([]);
+      expect(plan.referenceRestores).toEqual([]);
       expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'homes.members' });
     });
 
-    it('reverts each attendance key on its own', () => {
+    it('restores each attendance key on its own', () => {
       const plan = planFor(
         [
           {
@@ -1084,11 +1084,11 @@ describe('buildCombineUndoPlan', () => {
         { [referenceKey('events', 'e1', 'attendance')]: { present: ['s1', 'x', 'y'], absent: [] } },
       );
 
-      expect(plan.referenceReverts[0]?.value).toEqual({ present: ['d1', 'x', 'y'], absent: [] });
+      expect(plan.referenceRestores[0]?.value).toEqual({ present: ['d1', 'x', 'y'], absent: [] });
       expect(plan.notRestored).toContainEqual({ kind: 'reference', label: 'events.attendance.absent' });
     });
 
-    it('reverts the rewritten outreach entry and leaves entries added since', () => {
+    it('restores the rewritten outreach entry and leaves entries added since', () => {
       const plan = planFor(
         [
           {
@@ -1107,14 +1107,14 @@ describe('buildCombineUndoPlan', () => {
         },
       );
 
-      expect(plan.referenceReverts[0]?.value).toEqual([
+      expect(plan.referenceRestores[0]?.value).toEqual([
         { id: 'ON-2', name: 'New', contactId: 'n2' },
         { id: 'ON-1', name: 'In', contactId: 'd1', note: 'later' },
       ]);
     });
   });
 
-  describe('merged profile lists lose only the items the combine added', () => {
+  describe('combined profile lists lose only the items the combine added', () => {
     it('keeps an interest added after the combine and removes the one the combine added', () => {
       const plan = buildCombineUndoPlan(
         {
@@ -1174,7 +1174,7 @@ describe('legacy contact shapes (#1472, escape rows 10, 17 and 20)', () => {
 
   it('keeps the older record when one side matches on a Firestore Timestamp createdAt', () => {
     // Escape 10: Combine assumed an ISO string and crashed on a sign-up's
-    // Timestamp (#1130). timestampMillis reads it; revert that parse (a
+    // Timestamp (#1130). timestampMillis reads it; undo that parse (a
     // string-only Date.parse, as #1132 replaced) and the timestamp side reads
     // as 0, so the newer ISO record is kept instead of the older Timestamp.
     const { kept, combinedIn } = chooseKeptContact(newerIso, timestampCreatedContact);
@@ -1187,22 +1187,22 @@ describe('legacy contact shapes (#1472, escape rows 10, 17 and 20)', () => {
     expect(kept.id).toBe('legacy-rest-timestamp');
   });
 
-  it('merges a timestamp-created contact and carries the earlier createdAt through', () => {
-    const merged = mergeContactProfiles(newerIso, timestampCreatedContact);
-    expect(merged.createdAt).toEqual({ seconds: 1767225600, nanoseconds: 0 });
+  it('combines a timestamp-created contact and carries the earlier createdAt through', () => {
+    const combined = combineContactProfiles(newerIso, timestampCreatedContact);
+    expect(combined.createdAt).toEqual({ seconds: 1767225600, nanoseconds: 0 });
   });
 
   it('backfills an email from the other side when one contact carries null', () => {
     // Escape 20: a quick-add or sign-up leaves email null, not "". Treated as
     // a blank it backfills rather than overwriting the real address.
     const withEmail = legacyContact({ id: 'has-email', email: 'real@example.com' });
-    expect(mergeContactProfiles(nullEmailContact, withEmail).email).toBe('real@example.com');
+    expect(combineContactProfiles(nullEmailContact, withEmail).email).toBe('real@example.com');
   });
 
-  it('merges a contact that never had an owner without throwing', () => {
-    // Escape 17: older documents have no owner key. The merge must not read it.
-    const merged = mergeContactProfiles(noOwnerContact, isoCreatedContact);
-    expect(merged.name).toBe('No Owner');
+  it('combines a contact that never had an owner without throwing', () => {
+    // Escape 17: older documents have no owner key. The combine must not read it.
+    const combined = combineContactProfiles(noOwnerContact, isoCreatedContact);
+    expect(combined.name).toBe('No Owner');
   });
 });
 

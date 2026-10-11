@@ -3129,7 +3129,7 @@ ${JSON.stringify(contactsList)}`;
   // Undo a combine (issue #1428, ADR 0038). Full-timers only. Replays the
   // combine record in reverse: the kept contact returns to its before-image,
   // the combined-in contact is recreated under its original id, moved
-  // documents return to their original path, and rewritten references revert.
+  // documents return to their original path, and rewritten references are put back.
   // This ticket covers undoing a combine nothing has changed since; leaving
   // later work alone is #1429. A combine can only be undone once.
   app.post("/api/combine-contacts/undo", standardRateLimiter, async (req, res) => {
@@ -3195,7 +3195,7 @@ ${JSON.stringify(contactsList)}`;
         after: unknown;
       }> = Array.isArray(record.rewrittenReferences) ? record.rewrittenReferences : [];
 
-      // Refuse while a later combine still has this kept contact absorbed: the
+      // Refuse while a later combine still has this kept contact combined in: the
       // kept contact no longer exists on its own. Name the later combine so the
       // Full-timer can undo it first.
       const laterCombinesSnap = await db
@@ -3300,7 +3300,7 @@ ${JSON.stringify(contactsList)}`;
       const ops: CombineWriteOp[] = [];
 
       // The kept contact is restored field by field, so later edits and later
-      // additions survive.
+      // additions stay.
       if (plan.keptUpdates.length > 0) {
         const keptUpdate: Record<string, unknown> = {};
         for (const update of plan.keptUpdates) {
@@ -3345,13 +3345,13 @@ ${JSON.stringify(contactsList)}`;
         });
       }
 
-      // Rewritten references revert only where they still hold the combine value.
+      // Rewritten references are restored only where they still hold the combine value.
       // Grouped by document so a document with several rewritten fields is written once.
       const byDocument = new Map<
         string,
         { collection: string; document: string; data: Record<string, unknown> }
       >();
-      for (const ref of plan.referenceReverts) {
+      for (const ref of plan.referenceRestores) {
         const key = `${ref.collection}/${ref.document}`;
         const fields =
           ref.collection === "inboxState"
@@ -3410,7 +3410,7 @@ ${JSON.stringify(contactsList)}`;
   // Combine tags (issue #1435, spec #1426). Full-timers only. The browser
   // guesses and edits combines; this endpoint recomputes the affected contacts
   // with the shared pure module (src/lib/tags.ts planTagApplies), rewrites
-  // their tags (dropping duplicates), adds any requested new targets to the
+  // their tags (dropping repeats), adds any requested new targets to the
   // standard tags (settings/standard_tags, ADR 0039), and writes a combine
   // record of kind tags holding each contact's tags before and after and the
   // standard tags it added. Undo is #1436.

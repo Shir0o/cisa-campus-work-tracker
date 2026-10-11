@@ -16,7 +16,7 @@ import PageContainer from '../components/layout/PageContainer';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   findCombineCandidates,
-  mergeContactProfiles,
+  combineContactProfiles,
   diffCombineFields,
   chooseKeptContact,
   contactPairKey,
@@ -115,7 +115,7 @@ const KIND_LABELS: Record<CombineFieldRow['kind'], string> = {
   kept: 'Kept',
   'filled-in': 'Filled in',
   pick: 'You pick',
-  merged: 'Merged',
+  combined: 'Combined',
   'earlier-wins': 'Earlier wins',
   'latest-wins': 'Latest wins',
 };
@@ -156,7 +156,7 @@ const renderValue = (value: string | string[]): string => {
  * Combine contacts (issue #1427, ADR 0038). A Full-timer review page reached
  * from the directory: the Queue of detected pairs (same email, phone or name),
  * each shown as a read-only kept | combined-in | result diff. Combine calls
- * the Full-timer-only server endpoint, which performs the merge and writes the
+ * the Full-timer-only server endpoint, which performs the combine and writes the
  * combine record. There is no Combine all.
  */
 export default function CombineContacts() {
@@ -498,7 +498,7 @@ export default function CombineContacts() {
             {t('combine_contacts.title', 'Combine contacts')}
           </h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            {t('combine_contacts.subtitle', 'Review detected duplicate contacts before combining.')}
+            {t('combine_contacts.subtitle', 'Review detected pairs of the same person before combining.')}
           </p>
         </div>
       </header>
@@ -757,7 +757,7 @@ export default function CombineContacts() {
         <div className="py-16 text-center">
           <Check className="w-10 h-10 text-primary mx-auto mb-3" />
           <p className="font-medium text-on-surface">
-            {t('combine_contacts.none', 'No duplicate contacts found')}
+            {t('combine_contacts.none', 'No pairs of the same person found')}
           </p>
           <p className="text-sm text-on-surface-variant mt-1">
             {t(
@@ -771,8 +771,8 @@ export default function CombineContacts() {
           {pairs.map((pair) => {
             const key = pairKey(pair);
             const picks = picksFor(key);
-            const merged = mergeContactProfiles(pair.kept, pair.combinedIn, picks);
-            const rows = diffCombineFields(pair.kept, pair.combinedIn, merged);
+            const combined = combineContactProfiles(pair.kept, pair.combinedIn, picks);
+            const rows = diffCombineFields(pair.kept, pair.combinedIn, combined);
             const isCombining = combiningId === key;
             const moves = movesByPair[key];
             const isLoadingMoves = movesLoading === key;
@@ -850,7 +850,7 @@ export default function CombineContacts() {
                                   {t('combine_contacts.pick_combined_in', 'Combined-in')}
                                 </option>
                               </select>
-                            ) : row.field === 'notes' && row.kind === 'merged' ? (
+                            ) : row.field === 'notes' && row.kind === 'combined' ? (
                               <select
                                 data-testid="pick-notes"
                                 value={picks.notes ?? 'both'}
