@@ -14,8 +14,8 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `cross-role-journey.spec.ts` | Quick Capture → Journey pipeline (Full-timer/Student/Community; #631) |
 | `quick-capture.spec.ts` | NewContactModal: minimum payload, full disclosure, role gating, persistence (#628) |
 | `journeys/trainee.spec.ts` | Trainee journey: My Day → their contact → log an interaction → the Journey board, scope negatives, mobile viewport (#1475) |
+| `journeys/impersonation.spec.ts` | Impersonation journey: owner-only "See as their view", role-preview chips, stepping into the trainee's exact visible set (People/My Day/Questions), contact open without a crash, back-to-my-view (#1476) |
 | `feedback-submission.spec.ts` | Feedback form, kind selector, Send gating, admin triage access, role redirects, FAB presence (#628) |
-| `impersonation-personas.spec.ts` | Owner-only "See as their view" modal, four role-preview chips, nav-scoping on simulate, back-to-my-view reset (#628) |
 | `asks-questions-for-team.spec.ts` | Questions-for-the-team page, staff-only (#603, #645) |
 | `notification-bell-deep-linking.spec.ts` | Notification bell deep-linking, contact modal routing, and chat room URL synchronization (#682) |
 | `outreach-signup.spec.ts` | Outreach view + public sign-up intake form |
