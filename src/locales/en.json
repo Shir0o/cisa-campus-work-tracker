@@ -2320,6 +2320,7 @@
     "queue_maybe_logged_body": "You already logged a {type} with this contact that day: “{text}”",
     "queue_log_anyway": "Log anyway",
     "queue_not_visible": "You cannot attach this to that contact.",
+    "queue_text_too_long": "This is too long to log. Shorten it to {max} characters or fewer.",
     "queue_dismiss": "Dismiss",
     "queue_dismissed": "Dismissed.",
     "queue_not_cisa": "Not a CISA person",

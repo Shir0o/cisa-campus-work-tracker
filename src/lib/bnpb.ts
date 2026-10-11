@@ -29,6 +29,9 @@ export const INTERACTION_SUGGESTIONS_SUBCOLLECTION = 'interactionSuggestions';
 export const SUGGESTION_LINKS_SUBCOLLECTION = 'suggestionLinks';
 export const NOT_A_CISA_PERSON_SUBCOLLECTION = 'notACisaPeople';
 
+/** The longest Interaction `content` the rules accept. */
+export const INTERACTION_CONTENT_MAX = 5000;
+
 export type InteractionSuggestionStatus = 'pending' | 'confirmed' | 'dismissed' | 'withdrawn';
 
 export interface InteractionSuggestion {

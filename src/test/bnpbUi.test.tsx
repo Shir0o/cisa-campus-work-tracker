@@ -297,3 +297,46 @@ describe('SuggestionsQueue duplicate flag', () => {
     expect(screen.getByText('bnpb.queue_confirm')).toBeInTheDocument();
   });
 });
+
+describe('SuggestionsQueue long text', () => {
+  const long = 'x'.repeat(5001);
+  const pending = {
+    id: 'sug-1',
+    syncId: 's1',
+    bnpbContactId: 'p-1',
+    bnpbName: 'Alex Chen',
+    occurredAt: '2026-09-10T15:00:00.000Z',
+    durationMinutes: 45,
+    summary: long,
+    medium: 'coffee',
+    text: long,
+    status: 'pending',
+  };
+
+  beforeEach(() => {
+    mockedUseAuth.mockReturnValue(asUser('yilongwang05@gmail.com') as never);
+    hoisted.batch.commit.mockClear();
+    vi.mocked(onSnapshot).mockImplementation((ref: unknown, callback: unknown) => {
+      const path = (ref as { path?: string })?.path ?? '';
+      let docs: unknown[] = [];
+      if (path === 'users/u1/interactionSuggestions') {
+        docs = [{ id: pending.id, data: () => ({ ...pending }) }];
+      } else if (path === 'contacts') {
+        docs = [{ id: 'c1', data: () => ({ name: 'Alex Chen' }) }];
+      }
+      if (typeof callback === 'function') (callback as (snap: unknown) => void)({ docs });
+      return vi.fn();
+    });
+  });
+
+  it('caps the text at the Interaction limit and refuses a longer one with a clear message', async () => {
+    render(<SuggestionsQueue />);
+    const textarea = await screen.findByLabelText('bnpb.queue_text_label');
+    expect(textarea).toHaveAttribute('maxLength', '5000');
+
+    fireEvent.click(screen.getByText('bnpb.queue_confirm'));
+
+    expect(await screen.findByText('bnpb.queue_text_too_long')).toBeInTheDocument();
+    expect(hoisted.batch.commit).not.toHaveBeenCalled();
+  });
+});

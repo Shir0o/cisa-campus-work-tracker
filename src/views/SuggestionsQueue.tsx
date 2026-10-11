@@ -10,6 +10,7 @@ import { isAppOwner } from '../lib/permissions';
 import { contactVisibilityConstraints } from '../lib/contactQueries';
 import { db } from '../lib/firebase';
 import {
+  INTERACTION_CONTENT_MAX,
   assignContactToSuggestions,
   buildSuggestionQueue,
   confirmSuggestion,
@@ -181,6 +182,10 @@ function SuggestionRow({
 
   const confirm = async () => {
     if (!user || !contact) return;
+    if (text.trim().length > INTERACTION_CONTENT_MAX) {
+      setError(t('bnpb.queue_text_too_long').replace('{max}', String(INTERACTION_CONTENT_MAX)));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -234,6 +239,7 @@ function SuggestionRow({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          maxLength={INTERACTION_CONTENT_MAX}
           rows={2}
           className="mt-1 w-full rounded-2xl border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface outline-none focus:border-primary resize-none"
         />
