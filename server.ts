@@ -21,7 +21,7 @@ import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } fro
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { buildCombinePlan, buildCombineUndoPlan, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks } from "./src/lib/combineContactsPlan";
-import { planTagApplies, planTagUndo, type TagCombine, type TagUndoEntry } from "./src/lib/tags";
+import { normalizeTag, planTagApplies, planTagUndo, resolveStandardTags, type TagCombine, type TagUndoEntry } from "./src/lib/tags";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -3410,8 +3410,10 @@ ${JSON.stringify(contactsList)}`;
   // Combine tags (issue #1435, spec #1426). Full-timers only. The browser
   // guesses and edits combines; this endpoint recomputes the affected contacts
   // with the shared pure module (src/lib/tags.ts planTagApplies), rewrites
-  // their tags (dropping duplicates), and writes a combine record of kind tags
-  // holding each contact's tags before and after. Undo is #1436.
+  // their tags (dropping duplicates), adds any requested new targets to the
+  // standard tags (settings/standard_tags, ADR 0039), and writes a combine
+  // record of kind tags holding each contact's tags before and after and the
+  // standard tags it added. Undo is #1436.
   app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
     let actorId: string;
     let actorName: string;
@@ -3462,6 +3464,30 @@ ${JSON.stringify(contactsList)}`;
         return res.status(200).json({ success: true, dryRun: true, rows });
       }
 
+      // New targets the Full-timer asked to make standard: only names this
+      // combine actually targets, and only those not already standard.
+      const requested: string[] = Array.isArray(req.body?.makeStandard)
+        ? req.body.makeStandard.filter((v: any) => typeof v === "string")
+        : [];
+      const targetNames = new Map<string, string>();
+      for (const combine of combines) {
+        const target = normalizeTag(combine.target);
+        if (target) targetNames.set(target.toLowerCase(), target);
+      }
+      const standardRef = db.collection("settings").doc("standard_tags");
+      const standardSnap = await standardRef.get();
+      const standardTags = resolveStandardTags(
+        standardSnap.exists ? ((standardSnap.data()?.tags ?? []) as string[]) : undefined,
+      );
+      const known = new Set(standardTags.map((tag) => tag.toLowerCase()));
+      const standardTagsAdded: string[] = [];
+      for (const name of requested) {
+        const target = targetNames.get(normalizeTag(name).toLowerCase());
+        if (!target || known.has(target.toLowerCase())) continue;
+        known.add(target.toLowerCase());
+        standardTagsAdded.push(target);
+      }
+
       const now = new Date().toISOString();
       const recordRef = db.collection("combineRecords").doc();
       await recordRef.set({
@@ -3473,6 +3499,7 @@ ${JSON.stringify(contactsList)}`;
           before: row.from,
           after: row.to,
         })),
+        standardTagsAdded,
         status: "pending",
         combinedBy: actorId,
         combinedByName: actorName,
@@ -3491,6 +3518,10 @@ ${JSON.stringify(contactsList)}`;
           });
         }
         await batch.commit();
+      }
+
+      if (standardTagsAdded.length > 0) {
+        await standardRef.set({ tags: [...standardTags, ...standardTagsAdded] });
       }
 
       let logged = 0;
@@ -3604,6 +3635,10 @@ ${JSON.stringify(contactsList)}`;
           current: row.current,
           after: row.after,
         })),
+        // Standard tags the combine added stay after an undo (ADR 0039).
+        standardTagsRemaining: Array.isArray(record.standardTagsAdded)
+          ? record.standardTagsAdded.filter((tag: any) => typeof tag === "string")
+          : [],
       };
 
       if (dryRun) {

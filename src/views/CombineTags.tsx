@@ -49,6 +49,21 @@ interface TagUndoSkipped {
   after: string[];
 }
 
+/** A contact the undo would put back, with the tags it holds now. */
+interface TagUndoRestored {
+  contactId: string;
+  name: string;
+  current: string[];
+  before: string[];
+}
+
+/** The dry-run preview of a tag undo: what goes back, what is skipped, what stays. */
+interface TagUndoPreview {
+  restored: TagUndoRestored[];
+  skipped: TagUndoSkipped[];
+  standardTagsRemaining: string[];
+}
+
 /** A combine the Full-timer built from the All tags list (issue #1438). */
 interface CustomCombine {
   id: string;
@@ -101,6 +116,11 @@ export default function CombineTags() {
   const [records, setRecords] = useState<TagCombineRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [undoPreview, setUndoPreview] = useState<{
+    recordId: string;
+    preview: TagUndoPreview;
+  } | null>(null);
   const [undoError, setUndoError] = useState<string | null>(null);
   const [undoResult, setUndoResult] = useState<{
     recordId: string;
@@ -293,7 +313,15 @@ export default function CombineTags() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ combines: activeCombines }),
+        body: JSON.stringify({
+          combines: activeCombines,
+          // A user-built combine can make its new name a standard tag in the
+          // same step; the server adds it (#1438, ADR 0039).
+          makeStandard: customCombines
+            .filter((combine) => combine.makeStandard)
+            .map((combine) => combine.target.trim())
+            .filter(Boolean),
+        }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -301,19 +329,8 @@ export default function CombineTags() {
       }
       const body = await response.json();
       setApplied(body.changedCount ?? rows.length);
-      // A user-built combine can make its new name a standard tag in the same
-      // step (#1438, ADR 0039). This only edits the standard tags list.
-      const additions = customCombines
-        .filter((combine) => combine.makeStandard)
-        .map((combine) => combine.target.trim())
-        .filter(Boolean);
-      if (additions.length > 0) {
-        const next = [...standardTags];
-        for (const addition of additions) {
-          if (!next.some((tag) => tag.toLowerCase() === addition.toLowerCase())) next.push(addition);
-        }
-        updateStandardTags(next);
-      }
+      // The server may have added standard tags; show the stored list again.
+      setStandardDraft(null);
       setEdited({});
       setToggled({});
       setCustomCombines([]);
@@ -326,25 +343,55 @@ export default function CombineTags() {
 
   const tagRecords = records.filter((record) => record.kind === 'tags');
 
+  const postUndo = async (record: TagCombineRecord, dryRun: boolean) => {
+    const token = await auth.currentUser?.getIdToken();
+    const response = await fetch('/api/combine-tags/undo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ combineRecordId: record.id, dryRun }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body.error || t('combine_tags.undo_failed', 'Could not undo combine'));
+    }
+    return body;
+  };
+
+  // Undo is previewed first (a dry run writes nothing), then confirmed.
+  const previewUndo = async (record: TagCombineRecord) => {
+    if (undoingId || previewingId) return;
+    setPreviewingId(record.id);
+    setUndoError(null);
+    setUndoResult(null);
+    setUndoPreview(null);
+    try {
+      const body = await postUndo(record, true);
+      setUndoPreview({
+        recordId: record.id,
+        preview: {
+          restored: (body.preview?.restored ?? []) as TagUndoRestored[],
+          skipped: (body.preview?.skipped ?? []) as TagUndoSkipped[],
+          standardTagsRemaining: (body.preview?.standardTagsRemaining ?? []) as string[],
+        },
+      });
+    } catch (e) {
+      setUndoError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPreviewingId(null);
+    }
+  };
+
   const undoRecord = async (record: TagCombineRecord) => {
     if (undoingId) return;
     setUndoingId(record.id);
     setUndoError(null);
     setUndoResult(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/combine-tags/undo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ combineRecordId: record.id }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(body.error || t('combine_tags.undo_failed', 'Could not undo combine'));
-      }
+      const body = await postUndo(record, false);
+      setUndoPreview(null);
       setUndoResult({
         recordId: record.id,
         restored: body.restoredCount ?? 0,
@@ -726,11 +773,11 @@ export default function CombineTags() {
                         {record.status !== 'undone' && (
                           <button
                             type="button"
-                            disabled={undoingId !== null}
-                            onClick={() => undoRecord(record)}
+                            disabled={undoingId !== null || previewingId !== null}
+                            onClick={() => previewUndo(record)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           >
-                            {undoingId === record.id ? (
+                            {previewingId === record.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <Undo2 className="w-4 h-4" />
@@ -739,6 +786,72 @@ export default function CombineTags() {
                           </button>
                         )}
                       </div>
+                      {undoPreview?.recordId === record.id && (
+                        <div
+                          data-testid="tag-undo-preview"
+                          className="mt-3 border-t border-outline-variant/40 pt-3 text-sm"
+                        >
+                          <p className="font-medium text-on-surface">
+                            {fill(t('combine_tags.undo_will_restore', 'Will be restored ({n})'), {
+                              n: String(undoPreview.preview.restored.length),
+                            })}
+                          </p>
+                          <ul className="mt-1 ml-4 list-disc text-on-surface-variant">
+                            {undoPreview.preview.restored.map((item) => (
+                              <li key={item.contactId}>{item.name || item.contactId}</li>
+                            ))}
+                          </ul>
+                          {undoPreview.preview.skipped.length > 0 && (
+                            <>
+                              <p className="mt-2 font-medium text-on-surface">
+                                {t(
+                                  'combine_tags.undo_skipped',
+                                  'Skipped contacts changed since:',
+                                )}
+                              </p>
+                              <ul className="mt-1 ml-4 list-disc text-on-surface-variant">
+                                {undoPreview.preview.skipped.map((item) => (
+                                  <li key={item.contactId}>{item.name || item.contactId}</li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                          {undoPreview.preview.standardTagsRemaining.length > 0 && (
+                            <p className="mt-2 text-on-surface-variant">
+                              {fill(
+                                t(
+                                  'combine_tags.undo_standard_remain',
+                                  'Standard tags added by this combine stay: {tags}',
+                                ),
+                                { tags: undoPreview.preview.standardTagsRemaining.join(', ') },
+                              )}
+                            </p>
+                          )}
+                          <div className="flex justify-end gap-2 mt-3">
+                            <button
+                              type="button"
+                              disabled={undoingId !== null}
+                              onClick={() => setUndoPreview(null)}
+                              className="px-3 py-1.5 rounded-full border border-outline-variant text-on-surface font-medium text-sm hover:bg-surface-variant/60 transition-colors disabled:opacity-40"
+                            >
+                              {t('combine_tags.undo_cancel', 'Cancel')}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={undoingId !== null}
+                              onClick={() => undoRecord(record)}
+                              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              {undoingId === record.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Undo2 className="w-4 h-4" />
+                              )}
+                              {t('combine_tags.undo_confirm', 'Confirm undo')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       {result && (
                         <div
                           data-testid="tag-undo-result"

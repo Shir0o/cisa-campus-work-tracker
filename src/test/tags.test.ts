@@ -318,6 +318,42 @@ describe('planTagApplies', () => {
     const contacts = [{ id: '1', name: 'S1', tags: ['Saved'] }];
     expect(planTagApplies(contacts, [{ variants: ['Saved'], target: 'Saved' }])).toEqual([]);
   });
+
+  it('leaves a removed variant exactly as stored', () => {
+    // "club-rush" was removed from the guess; only "club rush" is still combined.
+    const contacts = [
+      { id: '1', name: 'S1', tags: ['club-rush'] },
+      { id: '2', name: 'S2', tags: ['club-rush', 'club rush'] },
+    ];
+    expect(planTagApplies(contacts, [{ variants: ['club rush'], target: 'Club Rush' }])).toEqual([
+      { contactId: '2', name: 'S2', from: ['club-rush', 'club rush'], to: ['club-rush', 'Club Rush'] },
+    ]);
+  });
+
+  it('keeps an unrelated non-normalised tag on an affected contact as stored', () => {
+    const contacts = [{ id: '1', name: 'S1', tags: ['club-rush', "Fall '26", 'BFA table'] }];
+    expect(planTagApplies(contacts, [{ variants: ['BFA table'], target: 'BFA' }])).toEqual([
+      { contactId: '1', name: 'S1', from: ['club-rush', "Fall '26", 'BFA table'], to: ['club-rush', "Fall '26", 'BFA'] },
+    ]);
+  });
+
+  it('does not touch a contact no enabled combine reaches', () => {
+    const contacts = [{ id: '1', name: 'S1', tags: ['club-rush', 'club rush'] }];
+    expect(planTagApplies(contacts, [{ variants: ['BFA table'], target: 'BFA' }])).toEqual([]);
+  });
+
+  it('still removes a duplicate the rewrite itself creates, case-insensitively', () => {
+    const contacts = [
+      { id: '1', name: 'S1', tags: ['bfa', 'BFA table', 'club-rush'] },
+      { id: '2', name: 'S2', tags: ['BFA table', 'bfa-table'] },
+    ];
+    expect(
+      planTagApplies(contacts, [{ variants: ['BFA table', 'bfa-table'], target: 'BFA' }]),
+    ).toEqual([
+      { contactId: '1', name: 'S1', from: ['bfa', 'BFA table', 'club-rush'], to: ['BFA', 'club-rush'] },
+      { contactId: '2', name: 'S2', from: ['BFA table', 'bfa-table'], to: ['BFA'] },
+    ]);
+  });
 });
 
 describe('planTagUndo', () => {

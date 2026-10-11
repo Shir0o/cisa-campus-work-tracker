@@ -4364,6 +4364,60 @@ describe("POST /api/combine-tags", () => {
     expect(Object.values(getCollection("combineRecords"))).toHaveLength(0);
   });
 
+  it("adds a requested standard tag to the standard tags document and records it", async () => {
+    seedTags();
+    seedDoc("settings", "standard_tags", { tags: ["Saved", "BFA"] });
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach", "Saved", "Unrelated"],
+      });
+
+    expect(res.status).toBe(200);
+    // Added once, after the existing ones; already-standard and non-target names are ignored.
+    expect(getCollection("settings")["standard_tags"].tags).toEqual(["Saved", "BFA", "Outreach"]);
+    const record = getCollection("combineRecords")[res.body.combineRecordId];
+    expect(record.standardTagsAdded).toEqual(["Outreach"]);
+  });
+
+  it("starts from the seed list when no standard tags document exists yet", async () => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach"],
+      });
+
+    expect(res.status).toBe(200);
+    expect(getCollection("settings")["standard_tags"].tags).toEqual([
+      "Saved", "Baptized", "Interested", "Open", "Club Rush", "BFA", "Outreach",
+    ]);
+  });
+
+  it("records no standard tags and leaves the document alone when none are requested", async () => {
+    seedTags();
+    const res = await request(app)
+      .post("/api/combine-tags")
+      .send({ combines: [{ variants: ["BFA table", "bfa-table"], target: "BFA" }] });
+
+    expect(getCollection("combineRecords")[res.body.combineRecordId].standardTagsAdded).toEqual([]);
+    expect(getCollection("settings")["standard_tags"]).toBeUndefined();
+  });
+
+  it("does not add a standard tag on a dry run", async () => {
+    seedTags();
+    await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach"],
+        dryRun: true,
+      });
+    expect(getCollection("settings")["standard_tags"]).toBeUndefined();
+  });
+
   it("returns 400 when no combines are given", async () => {
     const res = await request(app).post("/api/combine-tags").send({ combinations: [] });
     expect(res.status).toBe(400);
@@ -4417,6 +4471,40 @@ describe("POST /api/combine-tags/undo", () => {
     expect(getCollection("contacts")["b"].tags).toEqual(["bfa-table"]);
     expect(getCollection("contacts")["c"].tags).toEqual(["Saved"]);
     expect(getCollection("combineRecords")[recordId].status).toBe("undone");
+  });
+
+  it("previews the undo without writing: restored, skipped and standard tags that remain", async () => {
+    seedTags();
+    const applied = await request(app)
+      .post("/api/combine-tags")
+      .send({
+        combines: [{ variants: ["BFA table", "bfa-table"], target: "Outreach" }],
+        makeStandard: ["Outreach"],
+      });
+    const recordId = applied.body.combineRecordId as string;
+    seedDoc("contacts", "b", { name: "Bob", tags: ["Outreach", "Fall 2026"] });
+    const contactsBefore = structuredClone(getCollection("contacts"));
+    const activitiesBefore = Object.keys(getCollection("activities")).length;
+
+    const res = await request(app)
+      .post("/api/combine-tags/undo")
+      .send({ combineRecordId: recordId, dryRun: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    expect(res.body.preview.restored).toEqual([
+      { contactId: "a", name: "Alice", current: ["Outreach", "BFA"], before: ["BFA table", "BFA"] },
+    ]);
+    expect(res.body.preview.skipped).toEqual([
+      { contactId: "b", name: "Bob", current: ["Outreach", "Fall 2026"], after: ["Outreach"] },
+    ]);
+    expect(res.body.preview.standardTagsRemaining).toEqual(["Outreach"]);
+
+    // Nothing was written.
+    expect(getCollection("contacts")).toEqual(contactsBefore);
+    expect(getCollection("combineRecords")[recordId].status).toBe("done");
+    expect(Object.keys(getCollection("activities"))).toHaveLength(activitiesBefore);
+    expect(getCollection("settings")["standard_tags"].tags).toContain("Outreach");
   });
 
   it("skips a contact re-tagged after the combine and reports it", async () => {

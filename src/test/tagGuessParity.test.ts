@@ -41,6 +41,9 @@ const CORPUS: Array<Array<string> | null> = [
   ["Fall '26"],
   ['Saved'],
   ['saved'],
+  ['club-rush', "Fall '26", 'BFA table'],
+  ['bfa', 'bfa-table', 'Bible-Study'],
+  ['bfa-table', 'Saved'],
   [''],
   [],
 ];
@@ -57,6 +60,12 @@ const COMBINES: TagCombine[] = [
   { variants: ['bible study', 'bible-study'], target: 'Bible study' },
 ];
 
+// A guess the Full-timer edited: "club-rush" was removed, so it must not move.
+const EDITED_COMBINES: TagCombine[] = [
+  { variants: ['club rush'], target: 'Club Rush' },
+  { variants: ['BFA table'], target: 'BFA' },
+];
+
 describe('tag guesser mirror parity (web vs core)', () => {
   it('guessTagCombines agrees for every standard-tag set', () => {
     for (const standard of STANDARD_SETS) {
@@ -66,6 +75,17 @@ describe('tag guesser mirror parity (web vs core)', () => {
 
   it('planTagApplies agrees for the edited combines', () => {
     expect(webPlan(CONTACTS, COMBINES)).toEqual(corePlan(CONTACTS, COMBINES));
+  });
+
+  it('planTagApplies agrees when a variant was removed and only combined tags are rewritten', () => {
+    const web = webPlan(CONTACTS, EDITED_COMBINES);
+    expect(web).toEqual(corePlan(CONTACTS, EDITED_COMBINES));
+    // The removed variant and unrelated tags stay exactly as stored.
+    expect(web.length).toBeGreaterThan(0);
+    for (const row of web) {
+      expect(row.to.includes('club-rush')).toBe(row.from.includes('club-rush'));
+      expect(row.to.includes("Fall '26")).toBe(row.from.includes("Fall '26"));
+    }
   });
 
   it('planTagUndo agrees for the same record and current tags', () => {

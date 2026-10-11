@@ -621,6 +621,30 @@ export function guessTagCombines(
 }
 
 /**
+ * Rewrite only the tags that are variants of an enabled combine; every other
+ * tag stays exactly as stored. A duplicate is dropped only when the rewrite
+ * itself created it (a rewritten tag equals another tag, case-insensitively).
+ */
+function rewriteCombinedTags(tags: string[], mapping: Map<string, string>): string[] {
+  const result: Array<{ tag: string; rewritten: boolean }> = [];
+  for (const tag of tags) {
+    const target = mapping.get(tag);
+    const rewritten = target !== undefined && target !== tag;
+    const next = { tag: rewritten ? target : tag, rewritten };
+    const key = next.tag.toLowerCase();
+    const index = result.findIndex((entry) => entry.tag.toLowerCase() === key);
+    if (index === -1) {
+      result.push(next);
+    } else if (next.rewritten || result[index].rewritten) {
+      result[index] = { tag: next.rewritten ? next.tag : result[index].tag, rewritten: true };
+    } else {
+      result.push(next);
+    }
+  }
+  return result.map((entry) => entry.tag);
+}
+
+/**
  * Build the contact tag changes for the enabled, edited combines (issue #1435).
  * Pure: the browser preview and the server share it so they agree.
  */
@@ -640,7 +664,7 @@ export function planTagApplies(
   const rows: TagPlanRow[] = [];
   for (const contact of contacts) {
     const from = (contact.tags ?? []).map((tag) => tag.trim()).filter(Boolean);
-    const to = normalizeTagList(from.map((tag) => mapping.get(tag) ?? normalizeTag(tag)));
+    const to = rewriteCombinedTags(from, mapping);
     const unchanged = from.length === to.length && from.every((tag, index) => tag === to[index]);
     if (!unchanged) {
       rows.push({ contactId: contact.id, name: contact.name, from, to });
