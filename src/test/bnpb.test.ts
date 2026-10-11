@@ -251,6 +251,62 @@ describe('confirmSuggestion', () => {
     expect(updateData).toMatchObject({ status: 'confirmed', contactId: 'c1', text: 'Coffee and a walk' });
   });
 
+  const confirmOnto = (over: Partial<Contact>) =>
+    confirmSuggestion({
+      uid: 'u1',
+      user: { uid: 'u1', displayName: 'Owner', photoURL: '', email: 'owner@example.com' },
+      role: 'admin',
+      suggestion: suggestion(),
+      contact: contact({ id: 'c1', ...over }),
+      text: 'Coffee',
+    });
+  const contactUpdate = () =>
+    hoisted.batch.update.mock.calls.find(([ref]) => ref.path === 'contacts/c1')?.[1];
+
+  it('counts the confirmed Interaction as reaching the person', async () => {
+    await confirmOnto({ lastContactedDate: '2026-09-01T10:00' });
+
+    expect(contactUpdate()).toMatchObject({
+      lastSeen: '2026-09-10T08:00',
+      lastContactedDate: '2026-09-10T08:00',
+      lastContactedBy: 'Owner',
+      lastContactedById: 'u1',
+      reachedAt: '2026-09-10T08:00',
+      hasNewActivity: true,
+      updatedBy: 'u1',
+      updatedByName: 'Owner',
+    });
+    expect(hoisted.batch.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('stamps a contact that has no usable last-contacted time', async () => {
+    await confirmOnto({ lastContactedDate: undefined });
+    expect(contactUpdate()).toMatchObject({ lastContactedDate: '2026-09-10T08:00' });
+
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: 'not a date' });
+    expect(contactUpdate()).toMatchObject({ lastContactedDate: '2026-09-10T08:00' });
+
+    // A bare date is that whole local day's start, so a time later that day is newer.
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: '2026-09-10' });
+    expect(contactUpdate()).toMatchObject({ lastContactedDate: '2026-09-10T08:00' });
+  });
+
+  it('leaves a newer last-contacted time alone when backfilling an old entry', async () => {
+    await confirmOnto({ lastContactedDate: '2026-09-20T09:00' });
+    expect(contactUpdate()).toBeUndefined();
+
+    // 16:00Z is 09:00 Pacific, an hour after the confirmed 08:00.
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: '2026-09-10T16:00:00.000Z' });
+    expect(contactUpdate()).toBeUndefined();
+
+    hoisted.batch.update.mockClear();
+    await confirmOnto({ lastContactedDate: '2026-09-10T08:00' });
+    expect(contactUpdate()).toBeUndefined();
+  });
+
   it('refuses to confirm onto a contact the person cannot see', async () => {
     await expect(
       confirmSuggestion({

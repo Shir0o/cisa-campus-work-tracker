@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { db, handleFirestoreError, OperationType } from './firebase';
+import { buildContactActivityPatch } from './contactActivity';
 import { formatDateTime } from './contactComposer';
 import { canSeeContact, type AppRole } from './permissions';
 import type { Contact, Interaction } from '../types';
@@ -344,6 +345,14 @@ function toInteractionDateTime(occurredAt: string): string {
   return date ? formatDateTime(date) : occurredAt;
 }
 
+/** Whether `value` is a later moment than `current`; an unusable `current` is older. */
+function isNewerThan(value: string, current: string | null | undefined): boolean {
+  const next = parseLocalTime(value);
+  if (!next) return false;
+  const previous = parseLocalTime(current);
+  return !previous || next.getTime() > previous.getTime();
+}
+
 /**
  * The owner's own Interaction on the chosen Contact that shares `occurredAt`'s
  * calendar day, if any (#1422). Entries another teammate logged never count,
@@ -494,6 +503,17 @@ export async function confirmSuggestion(input: ConfirmSuggestionInput): Promise<
     text: trimmed,
     confirmedAt: serverTimestamp(),
   });
+
+  // Confirming reaches the person, as hand-logging does — but a backfilled
+  // older entry must not move the Contact's last-contacted time backwards.
+  if (isNewerThan(dateTime, contact.lastContactedDate)) {
+    const activityPatch = buildContactActivityPatch({
+      date: dateTime,
+      by: { uid, name: loggerName },
+      type: 'interaction',
+    });
+    batch.update(doc(db, 'contacts', contact.id), activityPatch as Record<string, unknown>);
+  }
 
   batch.set(
     doc(db, 'users', uid, SUGGESTION_LINKS_SUBCOLLECTION, suggestionLinkId(suggestion.bnpbContactId)),
