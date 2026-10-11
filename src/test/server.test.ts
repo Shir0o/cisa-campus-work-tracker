@@ -3350,6 +3350,88 @@ describe("BNPB personal sync tokens and intake (#1420)", () => {
       await sync("live-secret", payload());
       expect(ownedSuggestions().find((s) => s.bnpbContactId === "p-1")!.status).toBe("dismissed");
     });
+
+    describe("a full page", () => {
+      const interaction = (i: number, participants: string[], extra: Record<string, unknown> = {}) => ({
+        syncId: `s-${i}`,
+        occurredAt: "2026-09-10T15:00:00.000Z",
+        summary: `Entry ${i}`,
+        medium: "coffee",
+        participants: participants.map((id) => ({ bnpbContactId: id, firstName: id })),
+        ...extra,
+      });
+
+      it("counts created, updated and withdrawn across a 200-Interaction page", async () => {
+        seedOwner();
+        seedToken("live-secret");
+        const page = (build: (i: number) => ReturnType<typeof interaction>) => ({
+          interactions: Array.from({ length: 200 }, (_, i) => build(i)),
+        });
+
+        const first = await sync("live-secret", page((i) => interaction(i, ["p-1", "p-2"])));
+        expect(first.body).toMatchObject({ created: 400, updated: 0, withdrawn: 0 });
+        expect(ownedSuggestions()).toHaveLength(400);
+
+        const second = await sync(
+          "live-secret",
+          page((i) => {
+            if (i < 50) return interaction(i, ["p-1", "p-2"], { deleted: true });
+            if (i < 100) return interaction(i, ["p-1"]);
+            return interaction(i, ["p-1", "p-2"]);
+          }),
+        );
+        expect(second.body).toMatchObject({ created: 0, updated: 250, withdrawn: 150 });
+        expect(ownedSuggestions().filter((s) => s.status === "withdrawn")).toHaveLength(150);
+        expect(ownedSuggestions().filter((s) => s.status === "pending")).toHaveLength(250);
+      });
+
+      it("writes in batches of at most 500 operations", async () => {
+        seedOwner();
+        seedToken("live-secret");
+        const realBatch = mockDb.batch;
+        const sizes: number[] = [];
+        const batchSpy = vi.spyOn(mockDb, "batch").mockImplementation(() => {
+          const batch = realBatch();
+          let ops = 0;
+          const count =
+            <A extends unknown[]>(fn: (...args: A) => unknown) =>
+            (...args: A) => {
+              ops += 1;
+              return fn(...args);
+            };
+          return {
+            set: count(batch.set),
+            update: count(batch.update),
+            delete: count(batch.delete),
+            commit: async () => {
+              sizes.push(ops);
+              return batch.commit();
+            },
+          };
+        });
+
+        const res = await sync("live-secret", {
+          interactions: Array.from({ length: 200 }, (_, i) => interaction(i, ["p-1", "p-2", "p-3"])),
+        });
+
+        expect(res.body).toMatchObject({ created: 600, updated: 0, withdrawn: 0 });
+        expect(ownedSuggestions()).toHaveLength(600);
+        expect(sizes.length).toBeGreaterThan(1);
+        expect(Math.max(...sizes)).toBeLessThanOrEqual(500);
+        expect(sizes.reduce((a, b) => a + b, 0)).toBe(600);
+        batchSpy.mockRestore();
+      });
+
+      it("treats a syncId repeated in one request as an update of what the first copy wrote", async () => {
+        seedOwner();
+        seedToken("live-secret");
+        const res = await sync("live-secret", {
+          interactions: [interaction(1, ["p-1", "p-2"]), interaction(1, ["p-1", "p-2"])],
+        });
+        expect(res.body).toMatchObject({ created: 2, updated: 2, withdrawn: 0 });
+        expect(ownedSuggestions()).toHaveLength(2);
+      });
+    });
   });
 });
 
