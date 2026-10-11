@@ -190,6 +190,31 @@ export async function seedEmulator() {
     at: new Date().toISOString(),
   }, { merge: true });
 
+  // A person genuinely on the team prayer list (row 9 positive control): a
+  // prayer written on "On our hearts" carries `teamPrayer: true`, so they must
+  // stay on that page even after a private burden is typed on a contact.
+  const heldRef = db.collection('contacts').doc('e2e-contact-held');
+  await heldRef.set({
+    name: 'Held Burden',
+    initials: 'HB',
+    stage: 'First Contact',
+    tags: [],
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: DEFAULT_CREDENTIALS.fulltimer.label,
+    visibleTo: [fulltimerUid].filter(Boolean),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+  await db.collection('prayers').doc('e2e-prayer-held').set({
+    contactId: 'e2e-contact-held',
+    date: new Date().toISOString(),
+    burden: 'Settling into the new term after the move.',
+    status: 'pending',
+    prayerPage: true,
+    teamPrayer: true,
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
   // Two contacts that pin the Trainee's scope (#1475). `Casey Untied` is tied
   // to the Full-timer only, so a Trainee cannot read them at all. `Jordan
   // Visible` carries the Trainee in `visibleTo`, so the rules let the Trainee
