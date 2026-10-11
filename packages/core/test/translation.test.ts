@@ -6,6 +6,13 @@ import {
   computeTranslationHash,
 } from '../src/translation';
 
+const FALSE_MIXED_EN = [
+  'No worries, please pray for my family this week',
+  "Pray for Sarah's finals at De Anza",
+  'Met him at the BFA table, he is from Los Angeles',
+  'He said no to the invite but wants to come next week',
+];
+
 describe('detectLanguage', () => {
   it('marks clearly Spanish text as es', () => {
     expect(detectLanguage('Oración por mi familia esta semana')).toBe('es');
@@ -26,9 +33,18 @@ describe('detectLanguage', () => {
     expect(detectLanguage('   ')).toBe('none');
   });
 
-  it('reports mixed when both languages are present', () => {
-    expect(detectLanguage('El and the are common words in both')).toBe('mixed');
+  it('reports mixed only when the Spanish evidence is real', () => {
     expect(detectLanguage('Please pray for mi familia')).toBe('mixed');
+  });
+
+  it('does not call English text mixed on a lone Spanish-looking marker', () => {
+    for (const text of FALSE_MIXED_EN) {
+      expect(detectLanguage(text), text).toBe('en');
+      expect(shouldShowAsIs(text, 'en'), text).toBe(true);
+    }
+    expect(detectLanguage('Pray for mi abuela, she is sick')).not.toBe('mixed');
+    expect(shouldShowAsIs('Pray for mi abuela, she is sick', 'en')).toBe(true);
+    expect(detectLanguage('El and the are common words in both')).toBe('en');
   });
 
   it('isAlreadySpanish is exactly the es signal', () => {

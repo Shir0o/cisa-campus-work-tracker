@@ -140,6 +140,15 @@ describe("extractTranslatableItems", () => {
     ]);
     expect(find(items, "Juan")).toEqual([{ text: "Juan", targetLang: "es" }]);
   });
+
+  it("does not queue English text with a lone Spanish-looking marker for English", () => {
+    const items = extractTranslatableItems("prayers", {
+      burden: "No worries, please pray for my family this week",
+    });
+    expect(find(items, "No worries, please pray for my family this week")).toEqual([
+      { text: "No worries, please pray for my family this week", targetLang: "es" },
+    ]);
+  });
 });
 
 describe("advanceTranslationCron", () => {
