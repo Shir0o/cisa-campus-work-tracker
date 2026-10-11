@@ -12,6 +12,7 @@ import {
   type TagGuessReason,
 } from '../lib/tags';
 import { fill, formatWhen, postCombineApi } from '../lib/combineClient';
+import { combineRecordKind, type CombineRecordKind } from '../lib/combineContactsPlan';
 import { useStandardTags, saveStandardTags } from '../lib/standardTags';
 import { useLanguage } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
@@ -33,7 +34,7 @@ const reasonLabel = (t: (key: string, fallback?: string) => string, guess: TagGu
 /** A permanent tag combine record (issue #1435), as stored by the server. */
 interface TagCombineRecord {
   id: string;
-  kind?: string;
+  kind?: CombineRecordKind;
   status: 'pending' | 'done' | 'undoing' | 'undone';
   combinedByName?: string;
   combinedAt?: string;
@@ -323,7 +324,7 @@ export default function CombineTags() {
     }
   };
 
-  const tagRecords = records.filter((record) => record.kind === 'tags');
+  const tagRecords = records.filter((record) => combineRecordKind(record) === 'tags');
 
   const postUndo = (record: TagCombineRecord, dryRun: boolean) =>
     postCombineApi(

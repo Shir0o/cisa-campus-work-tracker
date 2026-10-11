@@ -10,6 +10,7 @@ import {
   historyScore,
   contactPairKey,
   chooseKeptContact,
+  combineRecordKind,
   timestampMillis,
   type CombineReferences,
   type CombineUndoRecord,
@@ -106,6 +107,14 @@ describe('findCombineCandidates', () => {
         { id: 'b', name: 'B', email: 'b@x.com', phone: '', location: '', stage: 'Lead', lastSeen: '', initials: 'B' },
       ),
     ).toBeNull();
+  });
+});
+
+describe('combineRecordKind', () => {
+  it('treats a record with no kind as a contacts record', () => {
+    expect(combineRecordKind({})).toBe('contacts');
+    expect(combineRecordKind({ kind: 'contacts' })).toBe('contacts');
+    expect(combineRecordKind({ kind: 'tags' })).toBe('tags');
   });
 });
 

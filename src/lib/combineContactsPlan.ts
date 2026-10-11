@@ -10,6 +10,13 @@ import type { Contact } from '../types';
 // exact list of documents to move and references to rewrite. Nothing here
 // writes; the server applies the plan.
 
+/** Which tool wrote a combine record: Combine contacts or Combine tags. */
+export type CombineRecordKind = 'contacts' | 'tags';
+
+/** The kind of a combine record. Records written before tag combines have none and are contacts. */
+export const combineRecordKind = (record: { kind?: CombineRecordKind }): CombineRecordKind =>
+  record.kind ?? 'contacts';
+
 /** A detected pair of records for one person. `kept` stays; `combinedIn` is folded into it. */
 export interface CombinePair {
   kept: Contact;

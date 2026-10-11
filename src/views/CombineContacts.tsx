@@ -19,7 +19,9 @@ import {
   combineContactProfiles,
   diffCombineFields,
   chooseKeptContact,
+  combineRecordKind,
   contactPairKey,
+  type CombineRecordKind,
   type CombineFieldRow,
   type CombineMoveGroup,
   type CombinePair,
@@ -46,7 +48,7 @@ import type { Contact } from '../types';
 interface CombineRecord {
   id: string;
   /** Absent on records written before tag combines; those are contacts. */
-  kind?: 'contacts' | 'tags';
+  kind?: CombineRecordKind;
   keptId: string;
   combinedInId: string;
   reason?: string;
@@ -196,7 +198,7 @@ export default function CombineContacts() {
       (snapshot) => {
         setRecords(
           (snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as CombineRecord[]).filter(
-            (r) => r.kind === undefined || r.kind === 'contacts',
+            (r) => combineRecordKind(r) === 'contacts',
           ),
         );
         setRecordsLoading(false);

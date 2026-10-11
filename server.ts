@@ -20,7 +20,7 @@ import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/l
 import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
-import { buildCombinePlan, buildCombineUndoPlan, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks } from "./src/lib/combineContactsPlan";
+import { buildCombinePlan, buildCombineUndoPlan, combineRecordKind, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks, type CombineRecordKind } from "./src/lib/combineContactsPlan";
 import { normalizeTag, planTagApplies, planTagUndo, resolveStandardTags, type TagCombine, type TagUndoEntry } from "./src/lib/tags";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
@@ -114,7 +114,7 @@ async function loadCombineRecord(
   db: any,
   res: express.Response,
   combineRecordId: string,
-  kind: "contacts" | "tags",
+  kind: CombineRecordKind,
 ) {
   const recordRef = db.collection("combineRecords").doc(combineRecordId);
   const recordSnap = await recordRef.get();
@@ -123,7 +123,7 @@ async function loadCombineRecord(
     return null;
   }
   const record = recordSnap.data() as any;
-  if ((record.kind ?? "contacts") !== kind) {
+  if (combineRecordKind(record) !== kind) {
     res.status(400).json({
       success: false,
       error: kind === "tags" ? "Not a tag combine record" : "Not a contact combine record",
@@ -3023,7 +3023,7 @@ ${JSON.stringify(contactsList)}`;
         combineRecordId: recordRef.id,
       };
       const record = {
-        kind: "contacts",
+        kind: "contacts" satisfies CombineRecordKind,
         keptId,
         combinedInId,
         reason,
@@ -3490,7 +3490,7 @@ ${JSON.stringify(contactsList)}`;
       const now = new Date().toISOString();
       const recordRef = db.collection("combineRecords").doc();
       await recordRef.set({
-        kind: "tags",
+        kind: "tags" satisfies CombineRecordKind,
         combines,
         contacts: rows.map((row) => ({
           contactId: row.contactId,
