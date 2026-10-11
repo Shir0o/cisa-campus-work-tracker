@@ -20,7 +20,7 @@
  * Serial: the reply tests build on the comment the full-timer posts first.
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
@@ -42,6 +42,28 @@ async function openBell(page: Page) {
   const panel = page.getByRole('dialog', { name: 'Notifications' });
   await expect(panel).toBeVisible({ timeout: 5_000 });
   return panel;
+}
+
+/**
+ * The notification row for `itemText`. When a later journey has raised a second
+ * notification about the same person, the bell groups them under a collapsed
+ * "N notifications on …" stack whose only control is its toggle, and the rows
+ * are not in the DOM until it is opened. Expand it first, then take the row
+ * itself — matching the stack toggle would just expand it and never navigate
+ * (#1568).
+ */
+async function notificationRow(panel: Locator, subject: RegExp, itemText: string) {
+  const rowName = new RegExp(`^${subject.source}`);
+  const row = panel.getByRole('button', { name: rowName }).filter({ hasText: itemText }).first();
+  // Only open the stack if the row is not already showing, so an expanded
+  // stack is never toggled shut.
+  if ((await row.count()) === 0) {
+    const stack = panel.getByRole('button', { name: new RegExp(`notifications on ${subject.source}`) });
+    if ((await stack.count()) > 0) await stack.first().click();
+  }
+  const target = panel.getByRole('button', { name: rowName }).filter({ hasText: itemText }).first();
+  await expect(target).toBeVisible({ timeout: 15_000 });
+  return target;
 }
 
 test.describe('Notification journey (#1479)', () => {
@@ -72,8 +94,7 @@ test.describe('Notification journey (#1479)', () => {
     const readerPage = await reader.newPage();
     await signInAs(readerPage, 'trainee');
     const panel = await openBell(readerPage);
-    const item = panel.getByRole('button', { name: /Full-timer commented on Lila Chen/ }).first();
-    await expect(item).toBeVisible({ timeout: 15_000 });
+    const item = await notificationRow(panel, /Full-timer commented on Lila Chen/, comment);
     await item.click();
 
     // A contact notification opens the contact — the Conversation, not a Thread.
@@ -117,8 +138,7 @@ test.describe('Notification journey (#1479)', () => {
     const readerPage = await reader.newPage();
     await signInAs(readerPage, 'fulltimer');
     const panel = await openBell(readerPage);
-    const item = panel.getByRole('button', { name: /Zion commented on Lila Chen/ }).first();
-    await expect(item).toBeVisible({ timeout: 15_000 });
+    const item = await notificationRow(panel, /Zion commented on Lila Chen/, reply);
     await item.click();
 
     // Row 15: opening it lands on the Thread, not the stream.
