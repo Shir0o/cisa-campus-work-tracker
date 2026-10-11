@@ -29,6 +29,7 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, ...parts: string[]) => ({ path: parts.join('/') })),
   query: vi.fn((ref: unknown) => ref),
   orderBy: vi.fn(),
+  where: vi.fn(),
   onSnapshot: vi.fn(),
 }));
 

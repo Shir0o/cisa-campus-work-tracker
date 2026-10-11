@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { where } from 'firebase/firestore';
 import type { Contact, Interaction } from '../types';
 import type { InteractionSuggestion } from '../lib/bnpb';
 
@@ -506,6 +507,12 @@ describe('subscribePendingSuggestions', () => {
     expect(hoisted.mockOnSnapshot).toHaveBeenCalledTimes(1);
     expect(seen.map((s) => s.id)).toEqual(['new', 'old']);
     expect(typeof unsub).toBe('function');
+  });
+
+  it('asks Firestore for pending suggestions only, so settled history is never re-read', () => {
+    vi.mocked(where).mockClear();
+    subscribePendingSuggestions('u1', () => {}, () => {});
+    expect(where).toHaveBeenCalledWith('status', '==', 'pending');
   });
 
   it('carries the BNPB nickname, null when there is none', () => {

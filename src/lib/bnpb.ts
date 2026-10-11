@@ -420,6 +420,7 @@ export function subscribePendingSuggestions(
 ): () => void {
   const q = query(
     collection(db, 'users', uid, INTERACTION_SUGGESTIONS_SUBCOLLECTION),
+    where('status', '==', 'pending'),
     orderBy('occurredAt', 'desc'),
   );
   return onSnapshot(
