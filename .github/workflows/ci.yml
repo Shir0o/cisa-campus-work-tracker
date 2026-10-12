@@ -17,6 +17,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Two commits so the seam warning below can diff a PR's merge commit
+          # against its base parent (HEAD^1).
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -27,6 +31,14 @@ jobs:
       - run: npm run check:i18n
       - run: npm run check:colors
       - run: npm run check:version
+      # Fails if a path or guard in e2e/seams.json matches no file (#1473).
+      - run: npm run check:seams
+      # Non-blocking: annotates a PR that changes a seam without touching the
+      # journey or contract that guards it. Never fails the job.
+      - name: Seam warning
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: npm run check:seams -- --warn HEAD^1
       - run: npm run test:coverage
       - run: npm run build
 

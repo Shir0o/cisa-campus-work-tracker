@@ -139,6 +139,7 @@ Before introducing new features, enforce these gates:
 - **Negative check**: a role journey also asserts that one seeded record outside that role's scope is absent.
 - **Selectors**: use `getByRole`/`getByLabel`, use `data-testid` for non-semantic elements, and scope any `getByText` inside a container.
 - **Stale spec**: when your UI change breaks a spec, update the spec in the same PR.
+- **Seam warning**: `e2e/seams.json` maps each seam (rules, ties/`visibleTo`, `effectiveUserId`, nav shell, Around/My Day, notifications, prayer flag, contact shape) to its guarding journey or contract. When CI's non-blocking `::warning::` says your PR touched a seam without its guard, extend the named journey or contract, or say in the PR why not. `npm run check:seams` fails if a mapped path matches no file.
 - **Prove it goes red**: a test written for an escape or a bug fails with the fix reverted. Say how in the PR body.
 - **Run what you touched**: if you added or edited a spec, run it alone under the emulator — `npm run test:e2e:emulator -- e2e/<spec>.spec.ts` (Node 24, JDK 21) — before pushing and confirm it passes. CI runs the full suite in 2 shards.
 - **Stop the line**: while an e2e-failure issue is open (a "🚨 … E2E failure on main" issue labelled `ready-for-agent`), agents fix it before taking on feature issues. `.github/workflows/ci-failure-issue.yml` files one such issue per workflow and comments on it for repeat failures instead of opening a new one.
