@@ -286,20 +286,9 @@ function parseSectionBody(lines: string[]): SectionBlock[] {
       flushList();
       flushProse();
       flushVerseRange();
-      const last = content[content.length - 1];
       const kind = promptMatch[1].toLowerCase() as PromptKind;
       const text = promptMatch[2].trim();
       const prompt: { kind: PromptKind; text?: string; points?: string[] } = text ? { kind, text } : { kind };
-      // The last prompt in a Section is the Prompt; an earlier prompt block
-      // dissolves into prose (same rule the legacy summary field followed).
-      if (last && last.kind === "prompt") {
-        const proseText = last.prompt.text
-          ? `${last.prompt.kind}: ${last.prompt.text}`
-          : last.prompt.points
-            ? `${last.prompt.kind}:\n` + last.prompt.points.map((p) => `- ${p}`).join("\n")
-            : last.prompt.kind;
-        content[content.length - 1] = { kind: "prose", md: proseText };
-      }
       content.push({ kind: "prompt", prompt });
       continue;
     }

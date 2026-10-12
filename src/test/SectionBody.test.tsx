@@ -216,6 +216,8 @@ describe('SectionBody (ordered content, read as written)', () => {
     const card = screen.getByText('Apply').closest('[data-block-kind="prompt"]')!;
     expect(card.className).toContain('bg-[var(--t-ochre-soft)]');
     expect(screen.getByText('Apply').className).toContain('text-[var(--t-ochre)]');
+    // No leading dot before prompt label
+    expect(card.querySelector('.rounded-full')).toBeNull();
   });
 
   it('renders a Prompt with points as a bullet list inside the prompt card (#1186)', () => {
@@ -245,6 +247,37 @@ describe('SectionBody (ordered content, read as written)', () => {
     // [[literal]] renders as literal text, not a blank button
     expect(items[1].textContent).toBe('Second question point with [[literal]] text');
     expect(card.querySelector('button, [role="button"]')).toBeNull();
+  });
+
+  it('renders a Prompt with both intro text and bullet points', () => {
+    const s = section({
+      content: [
+        {
+          kind: 'prompt',
+          prompt: {
+            kind: 'activity',
+            text: 'Read the story in Mark 5:21-43 with those around you. Briefly answer the following questions:',
+            points: [
+              'Who were the two people healed by the Lord?',
+              'How many years did the woman suffer from the flow of blood?',
+              'How old was the daughter of the ruler when Jesus raised her from the dead?',
+            ],
+          },
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{}} onRevealBlank={() => {}} />);
+
+    const card = screen.getByText('Activity').closest('[data-block-kind="prompt"]')!;
+    expect(card).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Read the story in Mark 5:21-43 with those around you. Briefly answer the following questions:'),
+    ).toBeInTheDocument();
+
+    const items = card.querySelectorAll('li');
+    expect(items).toHaveLength(3);
+    expect(items[0].textContent).toBe('Who were the two people healed by the Lord?');
   });
 
   it('renders a Passage with no citation as a bare quote (#921)', () => {

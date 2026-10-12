@@ -101,7 +101,7 @@ Grace is [[free]], and that changes everything.
 
 Grace is **[[free]] indeed**, and that changes everything.`,
 
-  // Multiple prompts — the last wins; earlier dissolves into prose.
+  // Multiple prompts — all prompts coexist simultaneously in authored order.
   `## Two prompts
 Question: First?
 
@@ -135,8 +135,7 @@ Verse: Rom. 5:5`,
 
   // Apply prompts (#919): the fourth Prompt kind, alongside Question,
   // Discuss and Activity — the move a study makes at the end. Case-
-  // insensitive like the other prefixes; an earlier prompt dissolves into
-  // prose under the same last-wins rule.
+  // insensitive like the other prefixes; multiple prompts coexist as prompt blocks.
   `## Apply prompts
 Question: What did we just read?
 

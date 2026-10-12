@@ -259,13 +259,13 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
           case 'prompt': {
             const k = block.prompt.kind;
             // A soft tint of the kind's tone carries the Prompt — no border,
-            // no side stripe — and a dot of the full tone leads its label.
+            // no side stripe.
             const tone = k === 'discuss' ? 'sage' : k === 'activity' ? 'clay' : k === 'apply' ? 'ochre' : 'slate';
             const toneClass = {
-              sage: { bg: 'bg-[var(--t-sage-soft)]', text: 'text-[var(--t-sage)]', dot: 'bg-[var(--t-sage)]' },
-              clay: { bg: 'bg-[var(--t-clay-soft)]', text: 'text-[var(--t-clay)]', dot: 'bg-[var(--t-clay)]' },
-              ochre: { bg: 'bg-[var(--t-ochre-soft)]', text: 'text-[var(--t-ochre)]', dot: 'bg-[var(--t-ochre)]' },
-              slate: { bg: 'bg-[var(--t-slate-soft)]', text: 'text-[var(--t-slate)]', dot: 'bg-[var(--t-slate)]' },
+              sage: { bg: 'bg-[var(--t-sage-soft)]', text: 'text-[var(--t-sage)]' },
+              clay: { bg: 'bg-[var(--t-clay-soft)]', text: 'text-[var(--t-clay)]' },
+              ochre: { bg: 'bg-[var(--t-ochre-soft)]', text: 'text-[var(--t-ochre)]' },
+              slate: { bg: 'bg-[var(--t-slate-soft)]', text: 'text-[var(--t-slate)]' },
             }[tone];
             return (
               <div
@@ -273,11 +273,13 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                 data-block-kind="prompt"
                 className={`${toneClass.bg} rounded-[20px] p-4 sm:p-5 flex flex-col gap-2`}
               >
-                <div className={`flex items-center gap-2 text-[11px] font-bold tracking-widest uppercase ${toneClass.text}`}>
-                  <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${toneClass.dot}`} />
+                <div className={`text-[11px] font-bold tracking-widest uppercase ${toneClass.text}`}>
                   {k === 'discuss' ? 'Discuss' : k === 'activity' ? 'Activity' : k === 'apply' ? 'Apply' : 'Question'}
                 </div>
-                {block.prompt.points && block.prompt.points.length > 0 ? (
+                {block.prompt.text && (
+                  <p className="m-0 text-[length:var(--reader-fs)] leading-relaxed text-on-surface">{block.prompt.text}</p>
+                )}
+                {block.prompt.points && block.prompt.points.length > 0 && (
                   <ul className="flex flex-col gap-2 py-1 list-disc pl-5 marker:text-on-surface-variant m-0">
                     {block.prompt.points.map((pt, pIdx) => (
                       <li key={pIdx} className="text-[length:var(--reader-fs)] leading-relaxed text-on-surface">
@@ -285,8 +287,6 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <p className="m-0 text-[length:var(--reader-fs)] leading-relaxed text-on-surface">{block.prompt.text}</p>
                 )}
               </div>
             );

@@ -433,6 +433,53 @@ Discuss: Single line prompt text
     });
     expect(s.content[1].kind).toBe('bullet-list');
   });
+
+  it('preserves multiple prompts in the same section simultaneously as styled prompt blocks', () => {
+    const md = `## Multi Prompt
+Discuss: First discuss prompt
+Activity: Second activity prompt
+Question: Third question prompt`;
+    const s = parseMeeting(md)[0];
+    expect(s.content).toHaveLength(3);
+    expect(s.content[0]).toEqual({
+      kind: 'prompt',
+      prompt: { kind: 'discuss', text: 'First discuss prompt' },
+    });
+    expect(s.content[1]).toEqual({
+      kind: 'prompt',
+      prompt: { kind: 'activity', text: 'Second activity prompt' },
+    });
+    expect(s.content[2]).toEqual({
+      kind: 'prompt',
+      prompt: { kind: 'question', text: 'Third question prompt' },
+    });
+    expect(s.prompt).toEqual({
+      kind: 'question',
+      text: 'Third question prompt',
+    });
+  });
+
+  it('preserves prompt text when indented points follow (#1186)', () => {
+    const md = `## Activity with questions
+Activity: Read the story in Mark 5:21-43 with those around you. Briefly answer the following questions:
+  - Who were the two people healed by the Lord?
+  - How many years did the woman suffer from the flow of blood?
+  - How old was the daughter of the ruler when Jesus raised her from the dead?`;
+    const s = parseMeeting(md)[0];
+    expect(s.content).toHaveLength(1);
+    expect(s.content[0]).toEqual({
+      kind: 'prompt',
+      prompt: {
+        kind: 'activity',
+        text: 'Read the story in Mark 5:21-43 with those around you. Briefly answer the following questions:',
+        points: [
+          'Who were the two people healed by the Lord?',
+          'How many years did the woman suffer from the flow of blood?',
+          'How old was the daughter of the ruler when Jesus raised her from the dead?',
+        ],
+      },
+    });
+  });
   it('a multi-line blockquote is all scripture — the last line is no longer a citation', () => {
     const s = parseMeeting('## Alpha\n> In the beginning was the Word,\n> and the Word was with God.')[0];
     const passage = s.content.find((b) => b.kind === 'passage');
