@@ -2,12 +2,13 @@ import { useEffect, useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { tabsForRole } from '@cisa/core';
+import { tabsForRole, type ShellTab } from '@cisa/core';
 import { Room } from '../../src/components/v2/Widget';
 import { roomForRole, useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useLanguage } from '../../src/lib/LanguageProvider';
 import { useMessagesData } from '../../src/lib/useMessagesData';
+import { translate } from '../../src/lib/i18n';
 
 // The shell — one of three, chosen by role, from the design project
 // (`MOBILE-V2.md`; `views/mobile/{m2,member,ft}.jsx`):
@@ -23,30 +24,37 @@ import { useMessagesData } from '../../src/lib/useMessagesData';
 // the same source rather than repeating the role checks.
 //
 // The bar is the design's `.mbr-tabs` (mobile.css), rendered as a CUSTOM tab
-// bar: words, not invented icons, and the active tab is a soft PILL behind the
-// word — the old 5px dot above the label read as a rendering glitch, so the
-// design replaced it. react-navigation's default bar reserves a fixed 31×28
-// icon box and draws the icon twice for an active/inactive crossfade, which
-// can't hold a full-width pill — or a bar with no tabs at all, the trainee's
-// shell — so the bar is drawn here instead.
+// bar: words, not invented icons, and the active tab is a high-contrast PILL
+// behind the word following the Inversion Rule (solid ink inversion).
+
+/**
+ * Resolves the localized display title for a tab route based on role-configured
+ * tabs from `tabsForRole` (e.g. Student "You" vs Full-timer "More", Community
+ * "What's on" vs Student "Today").
+ */
+export function getMobileTabTitle(tabs: ShellTab[], name: string, language: string = 'en'): string {
+  const tab = tabs.find((t) => t.name === name);
+  const lang = language === 'es' ? 'es' : 'en';
+  if (tab?.title === "What's on") return translate('mobile.nav.whats_on', lang);
+  if (tab?.title === 'You') return translate('mobile.nav.you', lang);
+  return translate(`mobile.nav.${name === 'index' ? 'today' : name}`, lang);
+}
 
 /** One button in the design's `.mbr-tabs`: a full-width pill behind the word,
- *  with a violet unread dot beside Messages. */
-function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTabBarProps & { tabNames: string[] }) {
-  const { c, font, fs, mode } = useV2Theme();
+ *  with a high-contrast unread dot beside Messages. */
+export function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTabBarProps & { tabNames: string[] }) {
+  const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
 
-  const night = mode === 'dark';
-
-  // `.mbr-tabs button.on` — the active tab is a soft VIOLET wash pill behind
-  // the word (`--accent-soft`), and the resting ink is `room.ink3` by day, the
-  // night floor (`room.faint`) after dark. Under Bento every role shares one
-  // room, so there are no per-role (navy/paper) variants.
-  const pill = c.card.reactOnBg;
-  const activeInk = c.card.ask;
-  // Resting ink is `--mb-ink4` — `room.ink3` by day, the night floor
-  // (`--n-ink4`, `room.faint`) after dark.
-  const idleInk = night ? c.room.faint : c.room.ink3;
+  // Selection and activation follow the Inversion Rule (DESIGN.md):
+  // solid ink inversion (solid black ink with paper-white text),
+  // which guarantees peak contrast (15.2:1) under bright campus sunlight.
+  const pill = c.card.inverse;
+  const activeInk = c.card.onInverse;
+  // Resting ink uses the room's secondary ink (ink2), guaranteeing WCAG AA
+  // (≥4.5:1 contrast ratio: 6.19:1 by day, 8.3:1 by night) against c.room.bg.
+  const idleInk = c.room.ink2;
   // `.mbr-tabs` — the bar wears the room itself, split from the canvas by the
   // datebox hairline.
   const bar = { backgroundColor: c.room.bg, borderTopColor: c.room.dateboxLine };
@@ -64,6 +72,8 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
 
   return (
     <View
+      testID="tab-bar-container"
+      accessibilityRole="tablist"
       style={[styles.bar, bar, { paddingBottom: 9 + insets.bottom }]}
       onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
     >
@@ -80,11 +90,15 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
               const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
               if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
             }}
+            hitSlop={4}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
-            // The dot carries no visible text; the count still reaches a screen
-            // reader this way (the design clips the same text out of view).
-            accessibilityLabel={unread ? `${label}, ${badge} unread` : label}
+            // Screen readers receive a fully localized label for badge state.
+            accessibilityLabel={
+              unread
+                ? t('mobile.nav.unread_tab').replace('{label}', label).replace('{count}', String(badge))
+                : label
+            }
             style={({ pressed }) => [styles.tab, focused && { backgroundColor: pill }, pressed && { opacity: 0.8 }]}
           >
             <Text
@@ -100,19 +114,16 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
               {label}
             </Text>
             {unread && (
-              // `.mbr-tabs em` — the unread marker is a 6px violet DOT, not a
-              // counted pill: "Messages" is too long a word for a number to sit
-              // beside. The exact count lives on the Messages screen.
+              // 6px dot centered beside label with label ink contrast on dark pill when focused.
               <View
                 accessible={false}
                 style={{
-                  alignSelf: 'flex-start',
-                  marginTop: 11,
+                  alignSelf: 'center',
                   marginLeft: 5,
                   width: 6,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: c.room.mark,
+                  backgroundColor: focused ? activeInk : c.room.mark,
                 }}
               />
             )}
@@ -133,12 +144,13 @@ const styles = StyleSheet.create({
     paddingTop: 7,
     borderTopWidth: 1,
   },
-  // `.mbr-tabs button` — flex:1, 46 tall, the pill's 13px radius. Row layout
-  // so the word and the unread dot sit side by side, as in the design.
+  // `.mbr-tabs button` — flex:1, 48 tall (Material 3 minimum touch target),
+  // interactive 16px radius (Bento token scale). Row layout so the word and the
+  // unread dot sit side by side.
   tab: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 13,
+    minHeight: 48,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -160,20 +172,18 @@ export default function TabsLayout() {
 
 function RoleTabs() {
   const { role } = useAuth();
-  const { t } = useLanguage();
+  const { language } = useLanguage();
   const messages = useMessagesData();
 
   const tabs = tabsForRole(role);
-  const titleOf = (name: string) => tabs.find((tab) => tab.name === name)?.title;
-  const mobileTitle = (name: string) =>
-    t(`mobile.nav.${name === 'index' ? 'today' : name}`);
+  const mobileTitle = (name: string) => getMobileTabTitle(tabs, name, language);
 
   // A tab this role doesn't have drops out of the bar — `href: null` keeps the
   // route reachable by push and by deep link, which is how the drawer and the
   // full-timer's More reach People, The Journey and the rest.
   const slot = (name: string, fallback: string) => {
-    const title = titleOf(name);
-    return title ? { title: mobileTitle(name), href: undefined } : { title: fallback, href: null };
+    const tab = tabs.find((t) => t.name === name);
+    return tab ? { title: mobileTitle(name), href: undefined } : { title: fallback, href: null };
   };
   const tabNames = tabs.map((tab) => tab.name);
 
@@ -187,19 +197,19 @@ function RoleTabs() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: mobileTitle('index') }} />
-      <Tabs.Screen name="people" options={slot('people', t('mobile.nav.people'))} />
-      <Tabs.Screen name="prayer" options={slot('prayer', t('mobile.nav.prayer'))} />
+      <Tabs.Screen name="people" options={slot('people', mobileTitle('people'))} />
+      <Tabs.Screen name="prayer" options={slot('prayer', mobileTitle('prayer'))} />
       <Tabs.Screen
         name="messages"
         options={{
-          ...slot('messages', t('mobile.nav.messages')),
+          ...slot('messages', mobileTitle('messages')),
           tabBarBadge: messages.unreadCount > 0 ? messages.unreadCount : undefined,
         }}
       />
-      <Tabs.Screen name="more" options={slot('more', t('mobile.nav.more'))} />
+      <Tabs.Screen name="more" options={slot('more', mobileTitle('more'))} />
       {/* Nobody has The Journey as a tab: the trainee reaches it from the
           drawer, the full-timer from More. */}
-      <Tabs.Screen name="journey" options={{ title: t('mobile.nav.the_journey'), href: null }} />
+      <Tabs.Screen name="journey" options={{ title: translate('mobile.nav.the_journey', language === 'es' ? 'es' : 'en'), href: null }} />
     </Tabs>
   );
 }

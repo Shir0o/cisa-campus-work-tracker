@@ -1342,6 +1342,9 @@
   "mobile": {
     "nav": {
       "today": "Hoy",
+      "whats_on": "Qué hay",
+      "you": "Tú",
+      "unread_tab": "{label}, {count} sin leer",
       "people": "Personas",
       "messages": "Mensajes",
       "more": "Más",

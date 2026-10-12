@@ -30,7 +30,7 @@ module.exports = {
     // preset's list: transformIgnorePatterns are OR'd, so a file is ignored
     // when ANY pattern matches — an appended pattern can't un-ignore what the
     // preset's already ignores.
-    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|@gorhom|firebase|@firebase|date-fns|react-native-svg))',
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|@gorhom|firebase|@firebase|date-fns|react-native-svg|decode-uri-component|query-string|split-on-first))',
     // Keep the preset's exclusion: never transform the reanimated babel plugin.
     '/node_modules/react-native-reanimated/plugin/',
   ],
