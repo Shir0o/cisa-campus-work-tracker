@@ -105,7 +105,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(page.getByRole('heading', { name: 'Around the team' })).toBeVisible({ timeout: 10_000 });
 
     // Row 24: the page's pill reads the same number the pointer card did.
-    await expect(page.getByText(new RegExp(`${count} to work through`))).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(new RegExp(`${count} to work through`))).toBeVisible({ timeout: 10_000 });
 
     // Row 24 sensitivity: reviewing a card drops the page's number, and My Day
     // mirrors the same remaining count. A pointer that counted a different axis
@@ -113,7 +113,7 @@ test.describe('Full-timer journey (#1477)', () => {
     const remaining = Number(count) - 1;
     await page.getByRole('button', { name: 'Reviewed', exact: true }).first().click();
     const pillNumber = async () => {
-      const text = await page.getByText(/to work through/).first().innerText().catch(() => '');
+      const text = await page.getByRole('main').getByText(/to work through/).innerText().catch(() => '');
       return text.match(/\d+/)?.[0] ?? '0';
     };
     await expect(async () => expect(await pillNumber()).toBe(String(remaining))).toPass({ timeout: 10_000 });
@@ -149,7 +149,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
-    await page.getByText(CARE_CONTACT).first().click();
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
 
     const contactPage = page.getByRole('main');
     await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
@@ -195,7 +195,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
-    await page.getByText(CARE_CONTACT).first().click();
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
 
     const contactPage = page.getByRole('main');
     await expect(contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first()).toBeVisible({
@@ -242,7 +242,8 @@ test.describe('Full-timer journey (#1477)', () => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
-    await page.getByText('Signup Sam').first().click();
+    // Two seeded copies of Sam (the combine pair), so two rows are expected.
+    await page.getByRole('main').getByText('Signup Sam').first().click();
 
     const contactPage = page.getByRole('main');
     await expect(contactPage.getByRole('button', { name: /About Signup Sam/ }).first()).toBeVisible({
@@ -350,7 +351,7 @@ test.describe('Full-timer journey — a private burden stays off On our hearts (
     await page.goto('/prayer');
     await waitForShell(page);
     await expect(page.getByRole('heading', { name: 'On our hearts' })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(HELD_CONTACT).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
 
     // Row 9: type the burden on the contact's own Prayer composer.
     const burden = `Kept between us ${Date.now()}`;
@@ -369,7 +370,7 @@ test.describe('Full-timer journey — a private burden stays off On our hearts (
     // It belongs to the contact, so the person never reaches the team page.
     await page.goto('/prayer');
     await waitForShell(page);
-    await expect(page.getByText(HELD_CONTACT).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText(HELD_CONTACT)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(CARE_CONTACT)).toHaveCount(0);
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
@@ -391,11 +392,11 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
 
     // Gospel partner assignment: pair two seeded trainees, then unpair them.
     await page.getByRole('button', { name: /Two trainees going out together/i }).click();
-    await expect(page.getByText("Who's the first of the two?")).toBeVisible();
+    await expect(page.getByRole('main').getByText("Who's the first of the two?")).toBeVisible();
     await page.getByRole('button', { name: /Zion Adeyemi/i }).first().click();
-    await expect(page.getByText(/Who goes out with/i)).toBeVisible();
+    await expect(page.getByRole('main').getByText(/Who goes out with/i)).toBeVisible();
     await page.getByRole('button', { name: /Caleb Owusu/i }).first().click();
-    await expect(page.getByText('Zion Adeyemi and Caleb Owusu')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('main').getByText('Zion Adeyemi and Caleb Owusu')).toBeVisible({ timeout: 5_000 });
     // End the pairing again (the card's End -> End pairing confirm).
     await page.getByRole('button', { name: /^End$/ }).first().click();
     await page.getByRole('button', { name: /^End pairing$/ }).click();
@@ -410,7 +411,7 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
 
     // Inviting a teammate offers the Full-timer role.
     await page.getByRole('button', { name: /Add someone/i }).click();
-    await expect(page.getByText('Add someone by email')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Add someone by email')).toBeVisible();
     const roleOptions = await page.getByLabel('Role').locator('option').allInnerTexts();
     expect(roleOptions).toContain('Full-timer');
     await page.getByRole('button', { name: 'Cancel' }).click();
@@ -431,7 +432,7 @@ test.describe('Full-timer journey — Settings and the role gate (#1477)', () =>
       await signInAs(page, role);
       await page.goto('/settings');
       await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText('Your account and preferences.')).toBeVisible();
+      await expect(page.getByRole('main').getByText('Your account and preferences.')).toBeVisible();
       await expect(page.getByText('Your team')).not.toBeVisible();
       await expect(page.getByText('Going out together')).not.toBeVisible();
       await expect(page.getByText("The day's goal")).not.toBeVisible();
@@ -488,14 +489,15 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
     await page.getByRole('button', { name: /new/i }).first().click();
     await page.getByRole('button', { name: /^announcement$/i }).click();
     await page.getByLabel(/channel name/i).fill(title);
-    await expect(page.getByText('Everyone in the app', { exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('Everyone in the app', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: /^next$/i }).click();
 
     await page.getByPlaceholder(/write your announcement/i).fill(body);
     await page.getByRole('button', { name: /^pin it$/i }).click();
     await page.getByRole('button', { name: /^review$/i }).click();
     await expect(page.getByRole('heading', { name: /^review$/i })).toBeVisible();
-    await expect(page.getByText(title).first()).toBeVisible();
+    // The review step names the channel twice (a chip and a summary row).
+    await expect(page.getByRole('dialog').getByText(title).first()).toBeVisible();
     // Back preserves the draft.
     await page.getByRole('button', { name: /^back$/i }).click();
     await expect(page.getByPlaceholder(/write your announcement/i)).toHaveValue(body);
@@ -504,7 +506,7 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
 
     await expect(page.locator('.msgs-thread-title')).toContainText(title, { timeout: 10_000 });
     await expect(page.locator('.strm-pinstrip')).toContainText('Pinned', { timeout: 10_000 });
-    await expect(page.getByText(body).first()).toBeVisible();
+    await expect(page.locator('.strm-flow').getByText(body)).toBeVisible();
     await expect(page.getByPlaceholder(/write an announcement…/i)).toBeVisible();
   });
 
@@ -523,7 +525,7 @@ test.describe('Full-timer journey — Announcements (#1477)', () => {
     await expect(post.locator('.strm-tag-role')).toContainText('Full-timer');
     await expect(page.locator('.strm-pinstrip')).toContainText('Pinned');
     // A non-author sees the guidance bar, not a composer.
-    await expect(page.getByText(/only full-timers post here/i)).toBeVisible();
+    await expect(page.getByRole('main').getByText(/only full-timers post here/i)).toBeVisible();
     await expect(page.getByPlaceholder(/write an announcement/i)).toHaveCount(0);
 
     const ack = post.getByRole('button', { name: /got it/i });
@@ -608,7 +610,7 @@ test.describe('Full-timer journey — Questions for the team (#1477)', () => {
 
     await signInAs(page, 'trainee');
     await page.goto('/');
-    await expect(page.getByText(ftQuestion)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText(ftQuestion)).toBeVisible({ timeout: 15_000 });
 
     await openQuestions(page);
     await page.getByRole('button', { name: /^All/ }).click();
@@ -629,7 +631,7 @@ test.describe('Full-timer journey — Questions for the team (#1477)', () => {
     await inPerson.fill('E2E In-person question recorded by Full-timer');
     const writeItDown = page.getByRole('button', { name: 'Write it down' });
     await expect(writeItDown).toBeDisabled();
-    await page.getByText('Who asked it?').waitFor();
+    await page.getByRole('main').getByText('Who asked it?').waitFor();
     await page.getByRole('button', { name: /Caleb/ }).first().click();
     await expect(writeItDown).toBeEnabled();
     await writeItDown.click();
@@ -649,12 +651,12 @@ test.describe('Full-timer journey — Questions for the team (#1477)', () => {
     await card.getByRole('textbox').fill('Say hi when they arrive and catch them after.');
     await card.getByRole('button', { name: 'Send answer' }).click();
     // The toast fires only after the write resolves; navigate only then.
-    await expect(page.getByText('Answered Caleb.')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('status').filter({ hasText: 'Answered Caleb.' })).toBeVisible({ timeout: 10_000 });
 
     await signInAs(page, 'trainee');
     await page.goto('/');
-    await expect(page.getByText(t2Question)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('Say hi when they arrive and catch them after.')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText(t2Question)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('main').getByText('Say hi when they arrive and catch them after.')).toBeVisible({ timeout: 15_000 });
   });
 
   test('Student and Community cannot reach Questions at all', async ({ page }) => {
@@ -739,21 +741,21 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await page.getByRole('button', { name: /^add contact$/i }).click();
 
     await expect(page.getByRole('heading', { name: /new contact/i })).not.toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(captured).first()).toBeVisible({ timeout: 10_000 });
-    const row = page.locator('div.group').filter({ has: page.getByText(captured).first() }).first();
+    await expect(page.getByRole('main').getByText(captured)).toBeVisible({ timeout: 10_000 });
+    const row = page.getByRole('main').locator('div.group').filter({ hasText: captured }).first();
     await expect(row.getByText(/^(Gospel|Fall2026)$/).first()).toBeVisible({ timeout: 8_000 });
 
     // Persistence: a fresh load still lists the contact.
     await page.reload();
     await waitForShell(page);
-    await expect(page.getByText(captured).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(captured)).toBeVisible({ timeout: 10_000 });
   });
 
   test('the captured contact advances across the pipeline and the By-chip reaches every teammate (#1494)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
-    await page.getByText(captured).first().click();
+    await page.getByRole('main').getByText(captured).click();
 
     const contactPage = page.getByRole('main');
     await expect(contactPage.getByRole('button', { name: /Move to a step: First Contact/i })).toBeVisible({
@@ -769,13 +771,13 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     // The board reflects the new step.
     await page.goto('/board');
     await waitForShell(page);
-    await expect(page.getByText(captured).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(captured)).toBeVisible({ timeout: 10_000 });
 
     // Back on the contact page, the story's By chip (#1494) offers every
     // teammate's name without clipping.
     await page.goto('/directory');
     await waitForShell(page);
-    await page.getByText(captured).first().click();
+    await page.getByRole('main').getByText(captured).click();
     const story = page.getByRole('main').getByRole('region', { name: /the story so far/i }).first();
     const composer = story.getByRole('textbox', { name: /what happened with/i }).first();
     await composer.click();

@@ -15,7 +15,7 @@ export default function ImpersonateBar({ target, onSwitch, onExit }: Impersonate
   const sc = impScope(target);
   const { t } = useLanguage();
   return (
-    <div className="bg-amber-500/15 border-b border-amber-500/30 text-on-surface px-4 py-2.5 pt-[calc(0.625rem+env(safe-area-inset-top,0px))] flex flex-wrap items-center justify-between gap-3 text-xs z-50 transition-all">
+    <div data-testid="impersonate-banner" className="bg-amber-500/15 border-b border-amber-500/30 text-on-surface px-4 py-2.5 pt-[calc(0.625rem+env(safe-area-inset-top,0px))] flex flex-wrap items-center justify-between gap-3 text-xs z-50 transition-all">
       <div className="flex items-center gap-2.5 font-medium min-w-0">
         <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
           <Eye className="w-3.5 h-3.5" />

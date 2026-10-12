@@ -64,12 +64,12 @@ async function openImpersonation(page: Page) {
 async function impersonateTrainee(page: Page) {
   await openImpersonation(page);
   await page.getByRole('button', { name: new RegExp(TRAINEE_NAME, 'i') }).first().click();
-  await expect(page.getByText(/seeing CISA as/i).first()).toBeVisible({ timeout: 10_000 });
+  await expect(seeingAsBanner(page)).toContainText(/seeing CISA as/i, { timeout: 10_000 });
 }
 
 /** The amber "seeing as" banner, the one surface that reads the impersonated name. */
 function seeingAsBanner(page: Page) {
-  return page.getByText(/seeing CISA as/i).first();
+  return page.getByTestId('impersonate-banner');
 }
 
 /**
@@ -117,7 +117,7 @@ test.describe('Impersonation journey (#1476)', () => {
 
     // Scope the chip check to the "Role preview:" bar so it cannot pass by
     // matching the role badge in the profile menu elsewhere on the page.
-    const chipBar = page.getByText(/^role preview:$/i).first().locator('xpath=ancestor::div[.//button][1]');
+    const chipBar = page.getByRole('dialog').getByText(/^role preview:$/i).locator('xpath=ancestor::div[.//button][1]');
     await expect(chipBar.getByRole('button', { name: /^full-timer$/i })).toBeVisible();
     await expect(chipBar.getByRole('button', { name: /^trainee$/i })).toBeVisible();
     await expect(chipBar.getByRole('button', { name: /^student$/i })).toBeVisible();
@@ -133,7 +133,7 @@ test.describe('Impersonation journey (#1476)', () => {
     expect(navBefore.some((l) => /coordination notes/i.test(l))).toBe(true);
 
     await openImpersonation(page);
-    const chipBar = page.getByText(/^role preview:$/i).first().locator('xpath=ancestor::div[.//button][1]');
+    const chipBar = page.getByRole('dialog').getByText(/^role preview:$/i).locator('xpath=ancestor::div[.//button][1]');
     await chipBar.getByRole('button', { name: /^trainee$/i }).click();
     // Back to my view appears once a preview is active.
     await expect(page.getByRole('button', { name: /back to my view/i })).toBeVisible();
@@ -158,7 +158,7 @@ test.describe('Impersonation journey (#1476)', () => {
     await signInAs(page, 'fulltimer');
     await gotoHome(page);
     await openImpersonation(page);
-    const chipBar = page.getByText(/^role preview:$/i).first().locator('xpath=ancestor::div[.//button][1]');
+    const chipBar = page.getByRole('dialog').getByText(/^role preview:$/i).locator('xpath=ancestor::div[.//button][1]');
     await chipBar.getByRole('button', { name: /^student$/i }).click();
     await page.keyboard.press('Escape');
 
@@ -202,14 +202,14 @@ test.describe('Impersonation journey (#1476)', () => {
     await clickNavLink(page, 'People');
     await expect(page).toHaveURL(/\/directory$/);
     await expect(page.getByRole('heading', { name: 'People', exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(CARE_CONTACT).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(CARE_CONTACT)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(UNTIED_CONTACT)).toHaveCount(0);
     await expect(page.getByText(VISIBLE_NOT_CARED)).toHaveCount(0);
 
     // Row 8: open a contact the trainee can see — no React #300 hook-order
     // crash. The contact page is a route page in the shell's <main>, not a
     // popup (#1560), so wait for its "About {name}" control.
-    await page.getByText(CARE_CONTACT).first().click();
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
     const contactPage = page.getByRole('main');
     await expect(
       contactPage.getByRole('button', { name: `About ${CARE_CONTACT}` }).first(),
@@ -229,7 +229,7 @@ test.describe('Impersonation journey (#1476)', () => {
     await expect(page).toHaveURL(/\/directory$/);
     await page.getByRole('button', { name: /back to my view/i }).click();
     await expect(page.getByText(/seeing CISA as/i)).toHaveCount(0);
-    await expect(page.getByText(UNTIED_CONTACT).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(UNTIED_CONTACT)).toBeVisible({ timeout: 10_000 });
   });
 
   test('the Questions feed round-trips under impersonation without a permission error', async ({ page }) => {
