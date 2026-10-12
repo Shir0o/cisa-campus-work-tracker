@@ -100,6 +100,7 @@ export default function LogVisitModal({
   const [went, setWent] = useState<string[]>([]);
   const [where, setWhere] = useState('');
   const [whereTouched, setWhereTouched] = useState(false);
+  const [overrideWhere, setOverrideWhere] = useState(false);
   const [purpose, setPurpose] = useState('');
   const [how, setHow] = useState('');
   const [followUpOn, setFollowUpOn] = useState(false);
@@ -160,6 +161,9 @@ export default function LogVisitModal({
     const startDate = visit ? visit.date : format(new Date(), 'yyyy-MM-dd');
     const startWent = visit ? visit.went.slice() : me ? [me] : [];
     const startWhere = visit ? visit.where : initialHome?.place ?? homeFor(startIds)?.place ?? '';
+    const initialMatchedHome = initialHome ?? homeFor(startIds);
+    // If editing a visit with a custom where that differs from the home's place, or if there is no home, reveal input.
+    const startOverride = !!visit && (!initialMatchedHome || visit.where !== (initialMatchedHome.place ?? ''));
     const startWhereTouched = !!visit?.where;
     const startPurpose = visit ? visit.purpose : '';
     const startHow = visit ? visit.how : '';
@@ -171,6 +175,7 @@ export default function LogVisitModal({
     setWent(startWent);
     setWhere(startWhere);
     setWhereTouched(startWhereTouched);
+    setOverrideWhere(startOverride);
     setPurpose(startPurpose);
     setHow(startHow);
     setFollowUpOn(startFollowUpOn);
@@ -398,7 +403,8 @@ export default function LogVisitModal({
         targetId: ids[0],
         targetName: chosen.map((c) => c.name).join(', '),
         type: 'event',
-        description: where.trim() || 'home',
+        description:
+          where.trim() || (chosenHome ? `${chosenHome.label}'s home` : 'home'),
       });
 
       onClose();
@@ -611,25 +617,63 @@ export default function LogVisitModal({
           <PopupField label={t('modals.when')} htmlFor="visit-date">
             <input id="visit-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />
           </PopupField>
-          <PopupField
-            label={t('modals.where')}
-            htmlFor="visit-where"
-            hint={chosenHome && !whereTouched ? t('modals.where_from_home').replace('{home}', chosenHome.label) : undefined}
-          >
-            <div className="relative">
-              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-mute)]" />
-              <input
-                id="visit-where"
-                value={where}
-                placeholder={t('modals.where_placeholder')}
-                onChange={(e) => {
-                  setWhere(e.target.value);
-                  setWhereTouched(true);
-                }}
-                className={cn(inputCls, 'pl-10')}
-              />
+          {chosenHome && !overrideWhere ? (
+            <div className="flex flex-col justify-end">
+              <span className="text-[13px] font-medium text-on-surface mb-1.5">{t('modals.where')}</span>
+              <div className="flex items-center justify-between gap-2 rounded-sm bg-surface-container-low border border-transparent px-3.5 py-2 text-sm text-on-surface min-h-[42px]">
+                <div className="flex items-center gap-2 truncate text-on-surface">
+                  <MapPin className="h-4 w-4 shrink-0 text-accent" />
+                  <span className="truncate">
+                    {t('modals.where_at_home').replace('{home}', chosenHome.label)}
+                    {chosenHome.place ? ` (${chosenHome.place})` : ''}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOverrideWhere(true)}
+                  className="shrink-0 text-xs font-medium text-accent hover:underline focus:outline-none"
+                >
+                  {t('modals.change_location')}
+                </button>
+              </div>
             </div>
-          </PopupField>
+          ) : (
+            <div>
+              <PopupField
+                label={t('modals.where')}
+                htmlFor="visit-where"
+              >
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-mute)]" />
+                  <input
+                    id="visit-where"
+                    value={where}
+                    placeholder={t('modals.where_placeholder')}
+                    onChange={(e) => {
+                      setWhere(e.target.value);
+                      setWhereTouched(true);
+                    }}
+                    className={cn(inputCls, 'pl-10')}
+                  />
+                </div>
+              </PopupField>
+              {chosenHome && (
+                <div className="mt-1.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWhere(chosenHome.place ?? '');
+                      setWhereTouched(false);
+                      setOverrideWhere(false);
+                    }}
+                    className="text-xs font-medium text-accent underline hover:opacity-80"
+                  >
+                    {t('modals.use_home_address')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </PopupSection>
 

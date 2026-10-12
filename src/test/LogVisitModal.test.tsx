@@ -119,15 +119,32 @@ describe('LogVisitModal', () => {
     expect(addVisit).not.toHaveBeenCalled();
   });
 
-  it('searches for a person, adds them, and offers their place as the where', async () => {
+  it('searches for a person, adds them, and defaults where to their home without an input field', async () => {
     render(<LogVisitModal {...baseProps} />);
     pick('Ama');
-    await waitFor(() => expect(screen.getByLabelText('Where')).toHaveValue('Whitman Hall'));
+    await waitFor(() => expect(screen.getByText("At the Oseis's home (Whitman Hall)")).toBeInTheDocument());
+    expect(screen.queryByLabelText('Where')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change place' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
     expect(screen.getByText('⌘↵ to save')).toBeInTheDocument();
   });
 
-  it('offers no where when two people live in different places', async () => {
+  it('allows overriding location when clicking Change place and reverting back', async () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+    await waitFor(() => expect(screen.getByText("At the Oseis's home (Whitman Hall)")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Change place' }));
+    const whereInput = screen.getByLabelText('Where');
+    expect(whereInput).toHaveValue('Whitman Hall');
+    fireEvent.change(whereInput, { target: { value: 'Campus Cafe' } });
+    expect(whereInput).toHaveValue('Campus Cafe');
+
+    fireEvent.click(screen.getByRole('button', { name: "Use home's place" }));
+    expect(screen.queryByLabelText('Where')).not.toBeInTheDocument();
+    expect(screen.getByText("At the Oseis's home (Whitman Hall)")).toBeInTheDocument();
+  });
+
+  it('shows the location input field when two people live in different places', async () => {
     render(<LogVisitModal {...baseProps} />);
     pick('Ama');
     fireEvent.change(screen.getByPlaceholderText('Anyone else?'), { target: { value: 'Bo' } });
@@ -330,7 +347,8 @@ describe('LogVisitModal', () => {
   it('pre-picks the person the nudge strip sent in', async () => {
     render(<LogVisitModal {...baseProps} initialContactId="c2" />);
     expect(screen.getByRole('button', { name: /Remove Bo Chen/ })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText('Where')).toHaveValue('Ridgewood House'));
+    await waitFor(() => expect(screen.getByText("At the Chens's home (Ridgewood House)")).toBeInTheDocument());
+    expect(screen.queryByLabelText('Where')).not.toBeInTheDocument();
   });
 
   it('prefills a home\'s people and place from a gap, and logs with its home id', async () => {
@@ -340,7 +358,8 @@ describe('LogVisitModal', () => {
     render(<LogVisitModal {...baseProps} homes={homes} initialHomeId="h1" />);
     expect(screen.getByRole('button', { name: /Remove Ama Osei/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Remove Bo Chen/ })).toBeInTheDocument();
-    expect(screen.getByLabelText('Where')).toHaveValue('Whitman Hall');
+    expect(screen.getByText("At the Oseis's home (Whitman Hall)")).toBeInTheDocument();
+    expect(screen.queryByLabelText('Where')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
     await waitFor(() => expect(addVisit).toHaveBeenCalled());
     const [input] = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
