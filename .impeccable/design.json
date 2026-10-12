@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T12:11:00.000Z",
+  "title": "Design System: CISA Campus Work Tracker",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Carbon Ink",
+        "canonical": "#131316",
+        "tonalRamp": ["#000000", "#131316", "#27272A", "#3F3F46", "#52525B", "#71717A", "#A1A1AA", "#D4D4D8"]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Pure Paper",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#18181B", "#27272A", "#52525B", "#71717A", "#A1A1AA", "#E4E4E7", "#F4F4F5", "#FFFFFF"]
+      },
+      "neutral-panel": {
+        "role": "neutral",
+        "displayName": "Soft Slate",
+        "canonical": "#F4F4F5",
+        "tonalRamp": ["#161618", "#202023", "#2A2A2E", "#52525B", "#A1A1AA", "#E4E4E7", "#F4F4F5", "#FAFAFA"]
+      },
+      "stage-terracotta": {
+        "role": "tertiary",
+        "displayName": "Terracotta",
+        "canonical": "oklch(0.55 0.15 42)",
+        "tonalRamp": ["#3D1408", "#61220F", "#8E3418", "#BD4824", "#CC5533", "#DE7657", "#EB9E86", "#F7CEBF"]
+      },
+      "stage-sage": {
+        "role": "tertiary",
+        "displayName": "Sage",
+        "canonical": "oklch(0.55 0.15 145)",
+        "tonalRamp": ["#122317", "#1E3825", "#2D5438", "#3E714C", "#4A7C59", "#6B9B78", "#94BC9F", "#C5DDCB"]
+      },
+      "stage-teal": {
+        "role": "tertiary",
+        "displayName": "Aegean Teal",
+        "canonical": "oklch(0.55 0.15 196)",
+        "tonalRamp": ["#0B2125", "#13373E", "#1D525C", "#266B78", "#2A7B88", "#4C99A6", "#77B8C3", "#B1DBE2"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Major hero headlines and primary page headers."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles, board column headers, and modal headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles and contact names in detail views."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Standard interaction notes, conversation threads, and reading text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Small uppercase category tags, rail dividers, and metadata."
+      },
+      "scripture": {
+        "displayName": "Scripture",
+        "purpose": "Literary passages and key lines in the Bible study reader."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shell-shadow",
+        "value": "0 8px 32px rgba(10, 10, 11, 0.14)",
+        "purpose": "Floating navigation rail in light mode."
+      },
+      {
+        "name": "shadow-pop",
+        "value": "0 16px 32px rgba(0, 0, 0, 0.16)",
+        "purpose": "Dropdown menus, popovers, and floating sheets."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Default easing curve for state transitions and menu reveals."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Button hovers, tap responses, and chip selections."
+      },
+      {
+        "name": "duration-normal",
+        "value": "250ms",
+        "purpose": "Modal dialog entrances and sheet transitions."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1440px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Tactile primary action in carbon black ink with 14px radius.",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary { height: 44px; padding: 0 22px; border: none; border-radius: 14px; background: #131316; color: #FFFFFF; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.1s ease; } .ds-btn-primary:hover { background: #35353C; } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: 2px solid #131316; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Hairline-bordered button on white background.",
+      "html": "<button class=\"ds-btn-secondary\">The team's board</button>",
+      "css": ".ds-btn-secondary { height: 44px; padding: 0 22px; border: 1px solid #E4E4E7; border-radius: 14px; background: #FFFFFF; color: #0A0A0B; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; } .ds-btn-secondary:hover { background: #F4F4F5; border-color: #D4D4D8; } .ds-btn-secondary:focus-visible { outline: 2px solid #131316; outline-offset: 2px; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Selection chip group demonstrating solid ink inversion.",
+      "html": "<div class=\"ds-chip-group\"><button class=\"ds-chip ds-chip-active\">Everyone</button><button class=\"ds-chip\">In my care</button><button class=\"ds-chip\">Needs a visit</button></div>",
+      "css": ".ds-chip-group { display: flex; gap: 8px; flex-wrap: wrap; } .ds-chip { display: inline-flex; align-items: center; height: 32px; padding: 0 15px; border-radius: 9999px; font-family: Lexend, sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid #F0F0F2; background: #FFFFFF; color: #52525B; transition: all 0.15s ease; } .ds-chip:hover { border-color: #E4E4E7; color: #0A0A0B; } .ds-chip-active { background: #0A0A0B; color: #FFFFFF; border-color: #0A0A0B; } .ds-chip-active:hover { background: #131316; color: #FFFFFF; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Clean data entry field with 10px radius and black hairline focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search people, notes, prayers\" />",
+      "css": ".ds-input { width: 100%; height: 44px; padding: 0 14px; border: 1px solid #E4E4E7; border-radius: 10px; background: #FFFFFF; color: #0A0A0B; font-family: Lexend, sans-serif; font-size: 14.5px; box-sizing: border-box; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input:focus { border-color: #0A0A0B; box-shadow: 0 0 0 3px rgba(10, 10, 11, 0.08); } .ds-input::placeholder { color: #A1A1AA; }"
+    },
+    {
+      "name": "Summary Stat Card",
+      "kind": "card",
+      "refersTo": "card-container",
+      "description": "Restful slate card with heavy display number and zero drop shadow.",
+      "html": "<div class=\"ds-card\"><span class=\"ds-card-stat\">14</span><span class=\"ds-card-label\">contacts in care</span></div>",
+      "css": ".ds-card { background: #F4F4F5; border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; } .ds-card-stat { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 38px; line-height: 1; letter-spacing: -0.03em; color: #0A0A0B; } .ds-card-label { font-family: Lexend, sans-serif; font-size: 13.5px; color: #52525B; }"
+    },
+    {
+      "name": "Navigation Rail Item",
+      "kind": "nav",
+      "refersTo": "rail-item",
+      "description": "Floating nav rail with pill-shaped inversion for active destination.",
+      "html": "<div class=\"ds-nav-rail\"><a class=\"ds-nav-item ds-nav-active\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"></path></svg><span>Home</span></a><a class=\"ds-nav-item\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle></svg><span>People</span></a></div>",
+      "css": ".ds-nav-rail { background: #0A0A0B; border-radius: 32px; padding: 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 8px 32px rgba(10, 10, 11, 0.14); width: 200px; box-sizing: border-box; } .ds-nav-item { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 14px; border-radius: 9999px; color: rgba(255, 255, 255, 0.62); font-family: Lexend, sans-serif; font-size: 13.5px; text-decoration: none; cursor: pointer; transition: all 0.15s ease; } .ds-nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #FFFFFF; } .ds-nav-active { background: #FFFFFF; color: #0A0A0B; font-weight: 500; } .ds-nav-active:hover { background: #FFFFFF; color: #0A0A0B; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Notebook",
+    "overview": "CISA Campus Work Tracker is built on the Ink design system: a calm, high-clarity monochrome shell paired with purposeful stage chroma and warm tactile surfaces suited for on-campus collegiate ministry. Unlike generic SaaS administration portals that spray decorative purple gradients, celebratory confettis, and gamified badges across every screen, Ink creates a quiet, focused canvas where real human beings, scripture passages, and field encounters provide the only color.\n\nThe visual architecture is anchored in fill-contrast rather than bordered containment. Crisp white pages hold soft slate cards, tactile rounded controls, and dense typography calibrated for split-second readability under bright campus sunlight. Black ink serves as the primary action and accent signal; when an element calls for attention, its emphasis is unmistakable because saturation has been deliberately reserved.",
+    "keyCharacteristics": [
+      "Near-Monochrome Shell: Pure white page canvas, soft zinc/slate cards, and carbon black actions.",
+      "Reserved Chroma: Saturated hue is strictly reserved for contact stages on The Journey, urgency signals, and people marks.",
+      "Fill-Over-Border Contrast: Cards and surfaces separate by tonal lightness steps rather than wireframe hairline borders.",
+      "Vocal Typography: Heavy Plus Jakarta Sans display headlines providing immediate directional leadership, supported by studious Lexend body text and literary Literata scripture.",
+      "Tactile Monotonic Hierarchy: A strict descending radius ladder ensures nested elements nest comfortably without visual distortion or stadium-clamped controls."
+    ],
+    "rules": [
+      {
+        "name": "The Inversion Rule",
+        "body": "Selection and activation are expressed as solid ink inversion (solid black background with white text), never as a faint 6% tint. When an item is selected, it turns inside out.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reserved Chroma Rule",
+        "body": "Color belongs exclusively to people, spiritual journey stages, and urgent status signals (success green, warning amber, danger red). The chrome, navigation, cards, and buttons remain strictly monochrome.",
+        "section": "colors"
+      },
+      {
+        "name": "The Accent Rarity Rule",
+        "body": "Interactive text signals and primary black buttons occupy less than 10% of any viewport. Rarity is what guarantees their command of attention.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scripture Exclusivity Rule",
+        "body": "The serif typeface (Literata) is strictly reserved for biblical passages and key study verses in the Bible study reader. It is never used for general app titles, cards, or navigation chrome.",
+        "section": "typography"
+      },
+      {
+        "name": "The Vocal Headline Rule",
+        "body": "Headings must lead with heavy weights (700 or 800) and visible size contrast. A page where headings sit at the same weight as body copy fails the Ink standard.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Content cards, list rows, and sub-panels carry zero box-shadow at rest. Depth is established purely by background tone and 1px soft hairline boundaries where needed.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Single Floating Slab Rule",
+        "body": "In desktop rail mode, the navigation rail is the only persistent elevated floating slab on screen. Multiple floating islands competing for elevation are prohibited.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Monotonic Radius Rule",
+        "body": "Nested elements must strictly descend in corner radius: Shell (32px) → Card (24px) → Panel (14px) → Control (10px). A child element must never have a larger corner radius than its parent container.",
+        "section": "shapes"
+      },
+      {
+        "name": "The No-Stadium-Input Rule",
+        "body": "Form inputs, textareas, and search fields shorter than 60px height must never use rounded-xl or rounded-full. They must strictly use rounded-sm (10px) to prevent unsightly stadium/lozenge clamping.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do separate cards from the page using tonal background fill (#F4F4F5 on #FFFFFF), not drop shadows or heavy borders.",
+      "Do invert selected items to solid black fills with white text (The Inversion Rule).",
+      "Do enforce the descending radius ladder: Shell 32px → Card 24px → Panel 14px → Input 10px (The Monotonic Radius Rule).",
+      "Do reserve Literata serif strictly for scripture readings and key study verses (The Scripture Exclusivity Rule).",
+      "Do use heavy Plus Jakarta Sans weights (700 or 800) for major headers to ensure strong scanability.",
+      "Do ensure interactive links and clickable names use --accent with persistent underlines (underline underline-offset-2)."
+    ],
+    "donts": [
+      "Don't use faint low-alpha tints (e.g. 6% black) for active selection states — they become invisible.",
+      "Don't use rounded-xl or rounded-full on inputs, search bars, or textareas under 60px height.",
+      "Don't add decorative box-shadows to cards or content tiles.",
+      "Don't introduce colored focus rings (blue, purple) to form controls; use the black hairline focus ring.",
+      "Don't use Literata serif for general UI buttons, navigation items, or system dashboards.",
+      "Don't introduce hardcoded hex colors or arbitrary Tailwind palette classes (bg-blue-500, text-indigo-600); always read from the semantic design tokens."
+    ]
+  }
+}

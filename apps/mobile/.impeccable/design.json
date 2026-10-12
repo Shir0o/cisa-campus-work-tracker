@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T12:15:30.000Z",
+  "title": "Design System: CISA Campus Mobile",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Electric Violet",
+        "canonical": "#5C17E5",
+        "tonalRamp": ["#1B0645", "#350E86", "#4913B8", "#5C17E5", "#7D3BF2", "#9E6DF5", "#C2A3F9", "#E8DEFD"]
+      },
+      "neutral-room": {
+        "role": "neutral",
+        "displayName": "Room Ground",
+        "canonical": "#F6F8FB",
+        "tonalRamp": ["#1A212B", "#27313F", "#525E6F", "#728197", "#B6C2D3", "#DEE4ED", "#ECEFF4", "#F6F8FB"]
+      },
+      "neutral-card": {
+        "role": "neutral",
+        "displayName": "Card Surface",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#202936", "#27313F", "#3C4959", "#728197", "#DEE4ED", "#ECEFF4", "#F6F8FB", "#FFFFFF"]
+      },
+      "tone-follow": {
+        "role": "tertiary",
+        "displayName": "Follow Tone",
+        "canonical": "#8C3A16",
+        "tonalRamp": ["#3D1408", "#61220F", "#8C3A16", "#C9622F", "#E2A87C", "#F0C7AC", "#FBE8DE", "#FFF5F0"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Focus card primary contact names."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Sheet headers and section titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Row items and card subtitles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Encounter notes and thread text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Action buttons and category chips."
+      }
+    },
+    "shadows": [
+      {
+        "name": "fab-shadow",
+        "value": "0 4px 8px rgba(0, 0, 0, 0.16)",
+        "purpose": "Primary floating action button."
+      }
+    ],
+    "motion": [
+      {
+        "name": "spring-sheet",
+        "value": "damping 20, stiffness 200",
+        "purpose": "Bottom sheet swipe and snap gesture physics."
+      }
+    ],
+    "breakpoints": [
+      { "name": "phone-compact", "value": "375px" },
+      { "name": "phone-standard", "value": "393px" },
+      { "name": "phone-max", "value": "430px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Mobile Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard 44pt mobile primary button with 16px radius in electric violet.",
+      "html": "<button class=\"ds-m-btn-primary\">Log encounter</button>",
+      "css": ".ds-m-btn-primary { height: 44px; padding: 0 20px; border: none; border-radius: 16px; background: #5C17E5; color: #FFFFFF; font-family: Lexend, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s ease; } .ds-m-btn-primary:active { opacity: 0.8; }"
+    },
+    {
+      "name": "Mobile Warm Button",
+      "kind": "button",
+      "refersTo": "button-warm",
+      "description": "Warm action button for queue follow-ups.",
+      "html": "<button class=\"ds-m-btn-warm\">Follow up</button>",
+      "css": ".ds-m-btn-warm { height: 44px; padding: 0 20px; border: none; border-radius: 16px; background: #BA5900; color: #FFFFFF; font-family: Lexend, sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s ease; } .ds-m-btn-warm:active { opacity: 0.8; }"
+    },
+    {
+      "name": "Category Tone Pill",
+      "kind": "chip",
+      "refersTo": "chip-pill",
+      "description": "Pill indicator with colored dot and band.",
+      "html": "<div class=\"ds-m-pill ds-m-pill-follow\"><span class=\"ds-m-dot\"></span><span class=\"ds-m-pill-text\">Follow up</span></div>",
+      "css": ".ds-m-pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; background: #FBE8DE; } .ds-m-dot { width: 8px; height: 8px; border-radius: 50%; background: #C9622F; } .ds-m-pill-text { font-family: Lexend, sans-serif; font-size: 12.5px; font-weight: 500; color: #8C3A16; }"
+    },
+    {
+      "name": "Mobile Form Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Enclosed 44pt text field with 16px radius and violet focus border.",
+      "html": "<input class=\"ds-m-input\" type=\"text\" placeholder=\"What did you talk about?\" />",
+      "css": ".ds-m-input { width: 100%; height: 44px; padding: 0 16px; border: 1px solid #DEE4ED; border-radius: 16px; background: #F6F8FB; color: #1A212B; font-family: Lexend, sans-serif; font-size: 14.5px; box-sizing: border-box; outline: none; transition: border-color 0.15s ease; } .ds-m-input:focus { border-color: #5C17E5; background: #FFFFFF; } .ds-m-input::placeholder { color: #728197; }"
+    },
+    {
+      "name": "Focus Card",
+      "kind": "card",
+      "refersTo": "card-focus",
+      "description": "White queue card with 24px radius, hairline border, and pinned action footer.",
+      "html": "<div class=\"ds-m-card\"><div class=\"ds-m-card-header\"><span class=\"ds-m-card-name\">Ana Duarte</span><span class=\"ds-m-card-sub\">Freshman · Bio · Met at Welcome Table</span></div><div class=\"ds-m-card-body\"><p class=\"ds-m-card-notes\">Interested in the Wednesday Bible Study. Wants to hear about rides.</p></div><div class=\"ds-m-card-footer\"><button class=\"ds-m-btn-warm\" style=\"flex: 1;\">Follow up</button><button class=\"ds-m-btn-primary\" style=\"flex: 1;\">Log visit</button></div></div>",
+      "css": ".ds-m-card { background: #FFFFFF; border: 1px solid #DEE4ED; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; width: 320px; } .ds-m-card-header { display: flex; flex-direction: column; gap: 4px; } .ds-m-card-name { font-family: Lexend, sans-serif; font-size: 20px; font-weight: 600; color: #1A212B; } .ds-m-card-sub { font-family: Lexend, sans-serif; font-size: 12.5px; color: #52525B; } .ds-m-card-body { font-family: Lexend, sans-serif; font-size: 14px; color: #1A212B; line-height: 1.45; } .ds-m-card-footer { display: flex; gap: 10px; padding-top: 8px; border-top: 1px solid #ECEFF4; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Handheld Compass",
+    "overview": "CISA Campus Mobile is built on the Bento V2 design system: a tactile, three-layer mobile visual architecture structured specifically for collegiate field workers walking campus. While the web application has moved to the near-monochrome Ink system, the mobile app operates on Bento's proven mobile foundations: cool blue-leaning neutrals (#F6F8FB), pure white hairline cards (#FFFFFF), energetic violet #5C17E5 brand accents, and Lexend-driven typographic rhythm.\n\nEvery screen in the mobile app stands in a clearly defined physical layer: the Room (the ground canvas and ambient chrome), the Card (the focused queue card, modal sheet, or pushed person view), and the Widget (scrollable dashboard furniture). This separation guarantees that whether a trainee is flipping through today's outreach queue or a full-timer is reviewing widget summaries, touch targets stay generous, card footers never scroll out of view, and text remains comfortably legible under intense campus sunlight.",
+    "keyCharacteristics": [
+      "Three-Layer Architecture: Rigid semantic separation between Room ground, Card focus surfaces, and Widget furniture.",
+      "Electric Violet Signal: Violet (#5C17E5) serves as the active brand fill, interactive link tint, and primary focus indicator.",
+      "Cool Hairline Framing: Crisp 1px borders (#DEE4ED light, #3C4959 dark) outline clean white cards against a soft grey-blue room.",
+      "One-Thumb Touch Ergonomics: Every interactive element satisfies a strict 44×44 pt minimum touch floor.",
+      "Static Card Feet: In focus cards and detail sheets, action footers remain anchored while interior bodies scroll."
+    ],
+    "rules": [
+      {
+        "name": "The Ink Floor Rule",
+        "body": "No text element on any layer may use an ink color lighter than that layer's ink3 token (#728197 in light, #9AA8BC in dark). Low-contrast text that washes out in daylight is strictly forbidden.",
+        "section": "colors"
+      },
+      {
+        "name": "The Layer Coherence Rule",
+        "body": "Components must read color tokens from their immediate structural layer (c.room, c.card, or c.widget). A card component must never mix room tokens into its interior.",
+        "section": "colors"
+      },
+      {
+        "name": "The Single Typeface Rule",
+        "body": "The mobile application uses Lexend exclusively. No serifs or secondary display families appear in mobile chrome or content cards.",
+        "section": "typography"
+      },
+      {
+        "name": "The Scaled Font Rule",
+        "body": "Font sizes in components must be expressed via the theme's fs(drawnSize) helper to ensure proper scaling on compact screens.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Card Rule",
+        "body": "Cards, list rows, bottom sheets, and widget tiles carry zero drop shadow. The Floating Action Button (＋) is the sole elevated element permitted a drop shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The 16/24 Shape Rule",
+        "body": "Interactive items (buttons, rows, inputs) use 16px radius; parent containers and modal sheets use 24px radius.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do maintain a minimum touch target size of 44×44 pt for every tappable element.",
+      "Do pin card and sheet action footers so only the content body scrolls (The Non-Scrolling Card Foot Rule).",
+      "Do ensure all text colors satisfy the ink floor (ink3 or darker).",
+      "Do scale font sizes using fs(size) from useV2Theme.",
+      "Do use 24px radius for outer containers and sheets, and 16px radius for buttons and inputs (The 16/24 Shape Rule)."
+    ],
+    "donts": [
+      "Don't add drop shadows or elevation blur to cards or sheets (cards are flat).",
+      "Don't let card action buttons scroll out of the viewport.",
+      "Don't use serifs or secondary fonts in mobile UI components.",
+      "Don't reduce touch targets below 44pt to cram extra items onto a phone screen.",
+      "Don't mix room ground colors into card interiors."
+    ]
+  }
+}
