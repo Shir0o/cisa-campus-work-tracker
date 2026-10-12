@@ -164,7 +164,7 @@ test.describe('Notification journey (#1479)', () => {
     await page.goto(`/people/${LILA}?tab=thread`);
     await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({ timeout: 10_000 });
     await expect(
-      page.getByRole('main').getByText('Great first connection with Lila. Let us follow up this week.'),
+      page.getByRole('region', { name: 'Conversation' }).getByText('Great first connection with Lila. Let us follow up this week.'),
     ).toBeVisible({ timeout: 10_000 });
   });
 
