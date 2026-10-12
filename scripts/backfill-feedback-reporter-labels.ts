@@ -3,7 +3,7 @@ import {
   reporterLabelFromName,
   rewriteFeedbackIssueAttribution,
 } from '../src/lib/feedbackReporter';
-import { ensureGitHubLabel } from '../src/lib/githubFeedbackLabels';
+import { ensureGitHubLabel } from '../src/server/feedbackPipeline';
 
 dotenv.config();
 

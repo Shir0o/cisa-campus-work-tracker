@@ -12,12 +12,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import dotenv from "dotenv";
 import { verifyTwilioRequest } from "./src/lib/twilioVerify";
-import { feedbackIssueSubmittedByLine } from "./src/lib/feedbackReporter";
-import { redactRecordIds } from "./src/lib/feedbackUrl";
-import { ensureReporterLabel } from "./src/lib/feedbackReporterStore";
-import { ensureGitHubLabel } from "./src/lib/githubFeedbackLabels";
-import { outcomeCopy, isStorableScreenshot, type FeedbackOutcome } from "./src/lib/feedbackKinds";
-import { shouldDropComment, LAUNDER_INSTRUCTION, CLOSE_SUMMARY_INSTRUCTION } from "./src/lib/feedbackRelay";
+import { FeedbackPipeline } from "./src/server/feedbackPipeline";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { buildCombinePlan, buildCombineUndoPlan, combineRecordKind, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks, type CombineRecordKind } from "./src/lib/combineContactsPlan";
@@ -27,8 +22,6 @@ import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type Partne
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
 
 dotenv.config();
-
-const GITHUB_TITLE_MAX = 512;
 
 // ── Combine records: claims and transactions (ADR 0038) ─────────────────────
 // Firestore caps one transaction at 500 writes; the combine record takes one.
@@ -352,53 +345,7 @@ export async function createApp() {
     }
   }
 
-  // Helper function to update GitHub issue state bidirectionally
-  async function updateGitHubIssueState(issueUrl: string | undefined, state: 'open' | 'closed', reason?: 'completed' | 'not_planned') {
-    if (!issueUrl) return;
-    const token = process.env.GITHUB_TOKEN;
-    if (!token) {
-      console.warn("GITHUB_TOKEN not configured; skipping GitHub issue status sync.");
-      return;
-    }
 
-    // Same strict parse as everywhere else. This used to carry its own loose
-    // substring regex, which had the hole parseIssueUrl now closes.
-    const parsed = parseIssueUrl(issueUrl);
-    if (!parsed) {
-      console.error("Invalid GitHub issue URL format for sync: %s", issueUrl);
-      return;
-    }
-
-    const { owner, repo, issueNumber } = parsed;
-
-    try {
-      const payload: any = { state };
-      if (state === 'closed' && reason) {
-        payload.state_reason = reason;
-      }
-
-      const response = await githubApiFetch(["repos", owner, repo, "issues", issueNumber], {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/json',
-          'User-Agent': 'CISA-Campus-Work-Tracker-Server',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response) return;
-      if (!response.ok) {
-        console.error("GitHub API error updating issue: %s - %s", response.status, await response.text());
-      } else {
-        console.log("Successfully updated GitHub issue state to %s (%s) for %s", state, reason || 'no reason', issueUrl);
-      }
-    } catch (error) {
-      console.error("Failed to update GitHub issue state for %s: %o", issueUrl, error);
-    }
-  }
 
 
   // --- Feedback Follow-ups and submitter-facing copy (ADR 0019) ---------------
@@ -415,370 +362,7 @@ export async function createApp() {
   // which initialises the *browser* Firebase SDK at module load.
   const OWNER_EMAIL_SERVER = (process.env.OWNER_EMAIL || "yilongwang05@gmail.com").trim().toLowerCase();
 
-  /**
-   * Parses an issue URL into the three components used to rebuild an API URL.
-   *
-   * Strict by necessity: `githubIssueUrl` is free text a Full-timer types into
-   * the admin list, and an issue URL also arrives on the webhook body, which is
-   * unsigned whenever GITHUB_WEBHOOK_SECRET is unset. A loose substring match
-   * would let `https://evil.test/?x=github.com/a/b/issues/1` through, and owner
-   * or repo could then carry `?`, `#` or `..` into the API path. The host must
-   * be github.com exactly, and owner/repo are held to GitHub's own charset.
-   */
-  function parseIssueUrl(issueUrl: string) {
-    let parsed: URL;
-    try {
-      parsed = new URL(issueUrl);
-    } catch {
-      return null;
-    }
-    if (parsed.protocol !== "https:") return null;
-    if (parsed.hostname !== "github.com" && parsed.hostname !== "www.github.com") return null;
 
-    const match = parsed.pathname.match(/^\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/issues\/(\d+)$/);
-    if (!match) return null;
-    if (match[1] === "." || match[1] === ".." || match[2] === "." || match[2] === "..") return null;
-    return { owner: match[1], repo: match[2], issueNumber: match[3] };
-  }
-
-  const GITHUB_SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
-
-  async function githubApiFetch(
-    segments: string[],
-    init: RequestInit,
-    search: "" | "?per_page=100" = "",
-  ): Promise<Response | null> {
-    if (segments.length === 0 || !segments.every((seg) => GITHUB_SAFE_SEGMENT.test(seg))) {
-      console.warn("Refusing a GitHub API request with an unexpected path segment.");
-      return null;
-    }
-
-    const path = segments.map((seg) => encodeURIComponent(seg)).join("/");
-    return fetch(`https://api.github.com/${path}${search}`, init);
-  }
-
-  /**
-   * Pulls the three components back out of a pull-request API URL. The
-   * timeline hands us that URL inside a response, and a URL from a response is
-   * no more trustworthy than the issue link we reached it through — so it is
-   * reduced to components and rebuilt rather than followed.
-   */
-  function parsePullApiUrl(candidate: string) {
-    let parsed: URL;
-    try {
-      parsed = new URL(candidate);
-    } catch {
-      return null;
-    }
-    if (parsed.protocol !== "https:" || parsed.hostname !== "api.github.com") return null;
-
-    const match = parsed.pathname.match(/^\/repos\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)\/pulls\/(\d+)$/);
-    if (!match) return null;
-    return { owner: match[1], repo: match[2], pullNumber: match[3] };
-  }
-
-  function githubHeaders(token: string) {
-    return {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "Content-Type": "application/json",
-      "User-Agent": "CISA-Campus-Work-Tracker-Server",
-    };
-  }
-
-  /**
-   * The owner reads the loop raw: the laundering exists to protect submitters
-   * who cannot read a stack trace, and the maintainer would rather see what
-   * actually happened. ADR 0018 stopped storing email on new feedback docs, so
-   * the Note carries only a uid and the owner test is a profile lookup.
-   */
-  async function isOwnerSubmitter(db: any, userId?: string): Promise<boolean> {
-    if (!userId || userId === "anonymous") return false;
-    try {
-      const snap = await db.collection("users").doc(userId).get();
-      const email: string = (snap.exists ? snap.data()?.email : "") || "";
-      return email.trim().toLowerCase() === OWNER_EMAIL_SERVER;
-    } catch (error) {
-      console.error(`Failed to resolve submitter email for ${userId}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Restates one GitHub issue comment for the person who filed the Note.
-   * Returns null when there is nothing safe or useful to pass on — a dropped
-   * comment is always better than a leaked one, and the Note's outcome
-   * message still guarantees that something arrives.
-   */
-  async function launderIssueComment(raw: string): Promise<string | null> {
-    const body = (raw || "").trim();
-    if (shouldDropComment(body)) {
-      console.log("Feedback relay: dropped a comment before laundering.");
-      return null;
-    }
-
-    try {
-      const response = await getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: body,
-        config: {
-          systemInstruction: LAUNDER_INSTRUCTION,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              relay: { type: Type.BOOLEAN, description: "Whether this comment has anything worth telling the reporter." },
-              text: { type: Type.STRING, description: "The restated comment, at most two sentences. Empty when relay is false." },
-            },
-            required: ["relay", "text"],
-          },
-        },
-      });
-
-      const parsed = JSON.parse(response.text || "{}");
-      if (!parsed.relay) return null;
-      const text = (parsed.text || "").trim();
-      return text ? text : null;
-    } catch (error) {
-      console.error("Failed to launder issue comment; dropping it:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Writes the sentence a submitter reads when their Note's issue closes,
-   * drawn from the pull request that closed it. ADR 0017 could not do this
-   * because nothing linked an issue to a release; a PR is linked to its issue
-   * by the close itself. Returns null whenever there is no linked PR or the
-   * model is unavailable, and the canned sentence takes over.
-   */
-  async function closeMessageFromPr(
-    issueUrl: string,
-    outcome: FeedbackOutcome,
-  ): Promise<string | null> {
-    if (outcome !== "shipped") return null;
-
-    const token = process.env.GITHUB_TOKEN;
-    const parsed = parseIssueUrl(issueUrl);
-    if (!token || !parsed) return null;
-
-    try {
-      const { owner, repo, issueNumber } = parsed;
-      const timelineRes = await githubApiFetch(
-        ["repos", owner, repo, "issues", issueNumber, "timeline"],
-        { headers: githubHeaders(token) },
-        "?per_page=100",
-      );
-      if (!timelineRes || !timelineRes.ok) {
-        console.warn("Feedback close summary: timeline fetch failed with status %s.", timelineRes?.status ?? "refused");
-        return null;
-      }
-
-      const events: any[] = await timelineRes.json();
-      // A PR that says "Closes #N" shows up on the issue's timeline as a
-      // cross-reference, never as an issue comment — which is why the mirror
-      // alone would have had nothing to relay here. Prefer the most recent
-      // merged one; fall back to the most recent referenced PR.
-      const referenced = events
-        .filter((ev) => ev?.event === "cross-referenced" && ev?.source?.issue?.pull_request?.url)
-        .map((ev) => ({
-          url: ev.source.issue.pull_request.url as string,
-          merged: Boolean(ev.source.issue.pull_request.merged_at),
-        }))
-        .reverse();
-      const prUrl = referenced.find((pr) => pr.merged)?.url ?? referenced[0]?.url ?? null;
-
-      if (!prUrl) {
-        console.log(`Feedback close summary: no linked PR for issue ${issueNumber}; using canned copy.`);
-        return null;
-      }
-
-      const pr_ = parsePullApiUrl(prUrl);
-      if (!pr_) {
-        console.warn("Feedback close summary: the linked PR URL was not a GitHub API pull URL.");
-        return null;
-      }
-      const prRes = await githubApiFetch(
-        ["repos", pr_.owner, pr_.repo, "pulls", pr_.pullNumber],
-        { headers: githubHeaders(token) },
-      );
-      if (!prRes || !prRes.ok) {
-        console.warn("Feedback close summary: PR fetch failed with status %s.", prRes?.status ?? "refused");
-        return null;
-      }
-      const pr = await prRes.json();
-
-      const response = await getAiClient().models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `Pull request title: ${pr.title || ""}\n\nPull request description:\n${(pr.body || "").slice(0, 8000)}`,
-        config: {
-          systemInstruction: CLOSE_SUMMARY_INSTRUCTION,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              usable: { type: Type.BOOLEAN, description: "Whether the PR describes a change the reporter would notice." },
-              text: { type: Type.STRING, description: "One or two sentences for the reporter. Empty when usable is false." },
-            },
-            required: ["usable", "text"],
-          },
-        },
-      });
-
-      const summary = JSON.parse(response.text || "{}");
-      if (!summary.usable) return null;
-      const text = (summary.text || "").trim();
-      return text ? text : null;
-    } catch (error) {
-      console.error("Failed to build a close summary from the linked PR:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Mirrors a Follow-up up onto the Note's issue. Attribution stays at
-   * "the reporter" (ADR 0018): the issue already carries a
-   * `reporter:<first>-<last-initial>` label, and the repository is public.
-   * Fail-open — a Follow-up that cannot reach GitHub is still stored and still
-   * notified in-app.
-   */
-  async function postIssueComment(issueUrl: string | undefined, body: string): Promise<number | null> {
-    const token = process.env.GITHUB_TOKEN;
-    if (!issueUrl || !token) return null;
-    const parsed = parseIssueUrl(issueUrl);
-    if (!parsed) return null;
-
-    try {
-      const { owner, repo, issueNumber } = parsed;
-      const response = await githubApiFetch(
-        ["repos", owner, repo, "issues", issueNumber, "comments"],
-        { method: "POST", headers: githubHeaders(token), body: JSON.stringify({ body }) },
-      );
-      if (!response) return null;
-      if (!response.ok) {
-        console.error("GitHub API error posting comment: %s - %s", response.status, await response.text());
-        return null;
-      }
-      const created = await response.json();
-      return typeof created?.id === "number" ? created.id : null;
-    } catch (error) {
-      console.error(`Failed to post a comment to ${issueUrl}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * The marker a Follow-up carries when posted onto its public issue. A
-   * reporter stays unnamed (ADR 0018); an in-app team reply names the
-   * Full-timer who wrote it. Shared by create and edit so the mirror's prefix
-   * can never drift between the two paths.
-   */
-  function replyPrefix(authorRole: "submitter" | "team", authorName?: string) {
-    return authorRole === "submitter"
-      ? "**Reporter replied:**"
-      : `**${authorName || "The team"} replied from the app:**`;
-  }
-
-  /**
-   * Rewrites a Follow-up's mirrored comment in place. Fail-open like posting:
-   * an unreachable or unlinked GitHub leaves the app's own copy authoritative,
-   * and the caller reports whether the mirror actually moved.
-   */
-  async function editIssueComment(
-    issueUrl: string | undefined,
-    commentId: number,
-    body: string,
-  ): Promise<boolean> {
-    const token = process.env.GITHUB_TOKEN;
-    if (!issueUrl || !token) return false;
-    const parsed = parseIssueUrl(issueUrl);
-    if (!parsed) return false;
-
-    try {
-      const { owner, repo } = parsed;
-      const response = await githubApiFetch(
-        ["repos", owner, repo, "issues", "comments", String(commentId)],
-        { method: "PATCH", headers: githubHeaders(token), body: JSON.stringify({ body }) },
-      );
-      if (!response) return false;
-      if (!response.ok) {
-        console.error("GitHub API error editing comment: %s - %s", response.status, await response.text());
-        return false;
-      }
-      return true;
-    } catch (error) {
-      console.error(`Failed to edit a comment on ${issueUrl}:`, error);
-      return false;
-    }
-  }
-
-  /**
-   * Fans a notification out to the Full-timers, with the author excluded —
-   * the stakeholder + self-exclusion shape of ADR 0007. Every other
-   * notification write on this server targets one known uid, so the role query
-   * lives here.
-   */
-  async function notifyFullTimers(
-    db: any,
-    payload: { title: string; message: string; link: string },
-    excludeUserId?: string,
-  ): Promise<void> {
-    try {
-      const snap = await db.collection("users").where("role", "==", "admin").get();
-      const targets = snap.docs
-        .map((d: any) => d.id)
-        .filter((uid: string) => uid !== excludeUserId);
-
-      await Promise.all(
-        targets.map((uid: string) =>
-          db.collection("notifications").add({
-            userId: uid,
-            title: payload.title,
-            message: payload.message,
-            type: "info",
-            tone: "accent",
-            read: false,
-            link: payload.link,
-            createdAt: FieldValue.serverTimestamp(),
-          }),
-        ),
-      );
-    } catch (error) {
-      console.error("Failed to notify Full-timers:", error);
-    }
-  }
-
-  /** Stores one Follow-up. Server-only by rule: see firestore.rules 11b. */
-  async function writeFollowUp(
-    db: any,
-    feedbackId: string,
-    reply: {
-      authorRole: "submitter" | "team";
-      authorId?: string;
-      authorName?: string;
-      body: string;
-      /**
-       * The laundered restatement, stored beside a raw `body` only on the
-       * owner's own Notes so "see it as they do" has something to show.
-       */
-      launderedBody?: string;
-      relayed?: boolean;
-      githubCommentId?: number;
-    },
-  ): Promise<string> {
-    const docRef = await db.collection("feedback").doc(feedbackId).collection("replies").add({
-      authorRole: reply.authorRole,
-      ...(reply.authorId ? { authorId: reply.authorId } : {}),
-      ...(reply.authorName ? { authorName: reply.authorName } : {}),
-      body: reply.body,
-      ...(reply.launderedBody ? { launderedBody: reply.launderedBody } : {}),
-      ...(reply.relayed ? { relayed: true } : {}),
-      ...(typeof reply.githubCommentId === "number" ? { githubCommentId: reply.githubCommentId } : {}),
-      createdAt: FieldValue.serverTimestamp(),
-    });
-    return docRef.id;
-  }
 
   /**
    * Both feedback write paths cost more than a database row: each creates or
@@ -826,150 +410,31 @@ export async function createApp() {
       }
 
       const db = getAdminDb();
-      let reporterLabel: string | null = null;
-      try {
-        reporterLabel = await ensureReporterLabel(db, userId, userName);
-      } catch (labelErr) {
-        console.error("Failed to establish reporter label:", labelErr);
-      }
-
-      const feedbackData: any = {
-        userId: userId || "anonymous",
-        userName: userName || "Anonymous User",
-        type: type || "enhancement",
-        kind: kind || "thought",
-        message: message.trim(),
-        status: "new",
-        createdAt: new Date().toISOString(),
-        archived: false,
-      };
-
-      if (reporterLabel) {
-        feedbackData.reporterLabel = reporterLabel;
-      }
-      if (url) feedbackData.url = url;
-      if (userAgent) feedbackData.userAgent = userAgent;
-      if (viewport) feedbackData.viewport = viewport;
-      // Screenshots are admin-only context: they live on the Firestore doc and
-      // are rendered in the feedback list, but never reach the GitHub issue
-      // body below (ADR 0018 decision 7). An oversized or malformed capture is
-      // dropped rather than rejected — the written note is the point, the
-      // screenshot is a bonus.
-      if (screenshot !== undefined && screenshot !== "") {
-        if (isStorableScreenshot(screenshot)) {
-          feedbackData.screenshot = screenshot;
-        } else {
-          console.warn(
-            "Discarding unstorable feedback screenshot (type " +
-              typeof screenshot +
-              ", length " +
-              (typeof screenshot === "string" ? screenshot.length : "n/a") +
-              ")."
-          );
-        }
-      }
-
-      // 1. Save to Firestore
-      const docRef = await db.collection("feedback").add(feedbackData);
-      console.log("Saved feedback document to Firestore: " + docRef.id);
-
-      // 2. Best-effort create GitHub issue if credentials exist
-      const githubToken = process.env.GITHUB_TOKEN;
-      const githubRepo = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO || "Shir0o/cisa-campus-work-tracker";
-
-      let githubIssueUrl = "";
-      if (githubToken && githubRepo) {
-        try {
-          const kindLabel = kind || type;
-          const cleanMsg = message.trim();
-          const prefix = "[Feedback] " + kindLabel + ": ";
-          const remaining = GITHUB_TITLE_MAX - prefix.length;
-          const ellipsis = '…';
-          const title = cleanMsg.length <= remaining
-            ? prefix + cleanMsg
-            : prefix + cleanMsg.slice(0, remaining - 1) + ellipsis;
-          const fence = '```';
-
-          // NOTE: `screenshot` is deliberately absent from every line below.
-          // ADR 0018 decision 7 keeps captures out of the public issue tracker;
-          // src/test/server.test.ts asserts the body stays screenshot-free.
-          // The Page URL is published on the same terms: the Firestore doc
-          // above keeps what the client sent, while the issue sees the route
-          // with record ids redacted (issue #1143 (from #1120/#1121)).
-          const bodyLines = [
-            "### Feedback Details",
-            feedbackIssueSubmittedByLine(userName),
-            "- **Type:** " + (type || "enhancement"),
-            "- **Kind:** " + kindLabel,
-            "- **Date:** " + new Date().toLocaleString(),
-            "- **Page URL:** " + (redactRecordIds(url) || "N/A"),
-            "- **Viewport:** " + (viewport || "N/A"),
-            "- **User Agent:** " + (userAgent || "N/A"),
-            "",
-            "### Message",
-            fence + "text",
-            cleanMsg,
-            fence,
-            "",
-            "---",
-            "*Created automatically from CISA Campus Work Tracker user feedback.*",
-          ];
-          const body = bodyLines.join("\n");
-
-          const labels: string[] = [type || "enhancement", "feedback"];
-          if (reporterLabel) {
-            try {
-              const labelReady = await ensureGitHubLabel(githubRepo, githubToken, reporterLabel);
-              if (labelReady) labels.push(reporterLabel);
-              else console.warn("Reporter label could not be created; creating issue without it.");
-            } catch (labelErr) {
-              console.error("Failed to create reporter label:", labelErr);
-            }
-          }
-
-          const ghResponse = await fetch("https://api.github.com/repos/" + githubRepo + "/issues", {
-            method: 'POST',
-            headers: {
-              'Authorization': "Bearer " + githubToken,
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-              'Content-Type': 'application/json',
-              'User-Agent': 'CISA-Campus-Work-Tracker-Server',
-            },
-            body: JSON.stringify({ title, body, labels }),
-          });
-
-          if (ghResponse.ok) {
-            const issueData = (await ghResponse.json()) as { html_url: string; number: number };
-            githubIssueUrl = issueData.html_url;
-            console.log("Auto-created GitHub issue: " + githubIssueUrl);
-
-            await docRef.update({
-              githubIssueUrl,
-              status: "in_progress"
-            });
-          } else {
-            const errorText = await ghResponse.text();
-            console.error("GitHub API error creating issue: " + ghResponse.status + " - " + errorText);
-          }
-        } catch (ghErr) {
-          console.error("Failed to auto-create GitHub issue:", ghErr);
-        }
-      } else {
-        console.warn("GitHub credentials not fully configured; skipping auto GitHub issue creation.");
-      }
+      const pipeline = new FeedbackPipeline({ db });
+      const result = await pipeline.submitNote({
+        userId,
+        userName,
+        type,
+        kind,
+        message,
+        url,
+        userAgent,
+        viewport,
+        screenshot,
+      });
 
       res.status(200).json({
         success: true,
-        id: docRef.id,
-        githubIssueUrl,
-        status: githubIssueUrl ? "in_progress" : "new",
+        id: result.id,
+        githubIssueUrl: result.githubIssueUrl,
+        status: result.status,
       });
     } catch (error: any) {
       console.error("Error in POST /api/feedback: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });
+
   // Endpoint: Update feedback status / archive (admin-facing, syncs with GitHub)
   app.post("/api/feedback/update", standardRateLimiter, async (req, res) => {
     try {
@@ -989,45 +454,14 @@ export async function createApp() {
       }
 
       const db = getAdminDb();
-      const docRef = db.collection("feedback").doc(id);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        return res.status(404).json({ error: `Feedback document with id "${id}" not found.` });
-      }
+      const pipeline = new FeedbackPipeline({ db });
+      const result = await pipeline.updateNote({ id, status, archived, githubIssueUrl });
 
-      const currentData = docSnap.data()!;
-      const updates: any = {};
-      if (status !== undefined) updates.status = status;
-      if (archived !== undefined) updates.archived = archived;
-      if (githubIssueUrl !== undefined) updates.githubIssueUrl = githubIssueUrl;
-
-      // Save changes to Firestore
-      await docRef.update(updates);
-      console.log('Updated feedback document', id, 'with:', updates);
-
-      // Bidirectional sync: check if we need to update GitHub issue state
-      const targetIssueUrl = githubIssueUrl !== undefined ? githubIssueUrl : currentData.githubIssueUrl;
-      if (targetIssueUrl) {
-        const nextStatus = status !== undefined ? status : currentData.status;
-        const nextArchived = archived !== undefined ? archived : currentData.archived;
-
-        if (archived === true && nextStatus !== 'resolved') {
-          // If archived is true, close issue as not_planned
-          await updateGitHubIssueState(targetIssueUrl, 'closed', 'not_planned');
-        } else if (status === 'resolved') {
-          // If resolved, close issue as completed
-          await updateGitHubIssueState(targetIssueUrl, 'closed', 'completed');
-        } else if ((status === 'in_progress' || status === 'new') && currentData.status === 'resolved') {
-          // If changing back from resolved to open
-          await updateGitHubIssueState(targetIssueUrl, 'open');
-        } else if (archived === false && currentData.archived === true) {
-          // If unarchived, reopen issue if it's closed, or sync status
-          await updateGitHubIssueState(targetIssueUrl, nextStatus === 'resolved' ? 'closed' : 'open', nextStatus === 'resolved' ? 'completed' : undefined);
-        }
-      }
-
-      res.status(200).json({ success: true, updates });
+      res.status(200).json({ success: true, updates: result.updates });
     } catch (error: any) {
+      if (error.status) {
+        return res.status(error.status).json({ error: error.message });
+      }
       console.error("Error in POST /api/feedback/update: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
@@ -1051,83 +485,24 @@ export async function createApp() {
       if (!id || typeof body !== "string" || !body.trim()) {
         return res.status(400).json({ error: "Missing required 'id' and 'body' parameters." });
       }
-      const text = body.trim().slice(0, 5000);
 
       const db = getAdminDb();
-      const docRef = db.collection("feedback").doc(id);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        return res.status(404).json({ error: `Feedback document with id "${id}" not found.` });
-      }
-
-      const note = docSnap.data()!;
-      const uid = decoded.uid;
-      const isAuthor = note.userId === uid;
-
-      let isFullTimer = (decoded.email || "").toLowerCase() === OWNER_EMAIL_SERVER;
-      if (!isFullTimer) {
-        try {
-          const profile = await db.collection("users").doc(uid).get();
-          isFullTimer = profile.exists && profile.data()?.role === "admin";
-        } catch (roleErr) {
-          console.error(`Failed to resolve role for ${uid}:`, roleErr);
-        }
-      }
-
-      if (!isAuthor && !isFullTimer) {
-        return res.status(403).json({ error: "Forbidden: only the note's author or a Full-timer may reply." });
-      }
-
-      const authorRole: "submitter" | "team" = isAuthor ? "submitter" : "team";
-      const authorName: string | undefined = decoded.name || decoded.displayName || undefined;
-
-      // Mirror up. A reporter stays unnamed on the public issue (ADR 0018) —
-      // the issue already carries a reporter:<first>-<last-initial> label.
-      const prefix = replyPrefix(authorRole, authorName);
-      const githubCommentId = await postIssueComment(note.githubIssueUrl, `${prefix}\n\n${text}`);
-
-      await writeFollowUp(db, id, {
-        authorRole,
-        authorId: uid,
-        authorName,
-        body: text,
-        ...(githubCommentId !== null ? { githubCommentId } : {}),
+      const pipeline = new FeedbackPipeline({ db });
+      const result = await pipeline.addFollowUp({
+        id,
+        body,
+        actor: {
+          uid: decoded.uid,
+          email: decoded.email,
+          name: decoded.name || decoded.displayName,
+        },
       });
 
-      // A Follow-up from the submitter waits on the team; the team answering
-      // clears it. Neither touches `status` or `outcome` — a reply is not a
-      // reopen, and a reopen would delete the outcome the submitter just read.
-      await docRef.update({ awaitingReply: authorRole === "submitter" });
-
-      if (authorRole === "submitter") {
-        await notifyFullTimers(
-          db,
-          {
-            title: "A follow-up on a note",
-            message: `${note.userName || "Someone"} asked a follow-up on their note.`,
-            link: "/admin/feedback",
-          },
-          uid,
-        );
-      } else if (note.userId && note.userId !== "anonymous" && note.userId !== uid) {
-        try {
-          await db.collection("notifications").add({
-            userId: note.userId,
-            title: "A reply on your note",
-            message: text,
-            type: "info",
-            tone: "accent",
-            read: false,
-            link: "/feedback",
-            createdAt: FieldValue.serverTimestamp(),
-          });
-        } catch (notifErr) {
-          console.error(`Failed to notify ${note.userId} of a Follow-up:`, notifErr);
-        }
-      }
-
-      res.status(200).json({ success: true, mirroredToGitHub: githubCommentId !== null });
+      res.status(200).json({ success: true, mirroredToGitHub: result.mirroredToGitHub });
     } catch (error: any) {
+      if (error.status) {
+        return res.status(error.status).json({ error: error.message });
+      }
       console.error("Error in POST /api/feedback/reply: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
@@ -1153,33 +528,21 @@ export async function createApp() {
       if (!id || !replyId || typeof body !== "string" || !body.trim()) {
         return res.status(400).json({ error: "Missing required 'id', 'replyId', and 'body' parameters." });
       }
-      const text = body.trim().slice(0, 5000);
 
       const db = getAdminDb();
-      const replyRef = db.collection("feedback").doc(id).collection("replies").doc(replyId);
-      const replySnap = await replyRef.get();
-      if (!replySnap.exists) {
-        return res.status(404).json({ error: `Reply "${replyId}" not found on feedback "${id}".` });
-      }
+      const pipeline = new FeedbackPipeline({ db });
+      const result = await pipeline.editFollowUp({
+        id,
+        replyId,
+        body,
+        actorUid: decoded.uid,
+      });
 
-      const reply = replySnap.data()!;
-      if (reply.relayed || reply.authorRole !== "submitter" || reply.authorId !== decoded.uid) {
-        return res.status(403).json({ error: "Forbidden: only the reply's author may edit it." });
-      }
-
-      const noteSnap = await db.collection("feedback").doc(id).get();
-      const note = noteSnap.exists ? noteSnap.data()! : {};
-
-      const prefix = replyPrefix(reply.authorRole, reply.authorName);
-      let mirrored = false;
-      if (typeof reply.githubCommentId === "number") {
-        mirrored = await editIssueComment(note.githubIssueUrl, reply.githubCommentId, `${prefix}\n\n${text}`);
-      }
-
-      await replyRef.update({ body: text, editedAt: FieldValue.serverTimestamp() });
-
-      res.status(200).json({ success: true, mirroredToGitHub: mirrored });
+      res.status(200).json({ success: true, mirroredToGitHub: result.mirroredToGitHub });
     } catch (error: any) {
+      if (error.status) {
+        return res.status(error.status).json({ error: error.message });
+      }
       console.error("Error in POST /api/feedback/reply/edit: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
@@ -1214,184 +577,33 @@ export async function createApp() {
         console.warn("GITHUB_WEBHOOK_SECRET not configured; skipping webhook signature verification.");
       }
 
-      const eventType = req.headers["x-github-event"];
-      if (eventType !== "issues" && eventType !== "issue_comment") {
-        return res.status(200).json({ message: `Ignored event type: ${eventType}` });
-      }
-
+      const eventType = req.headers["x-github-event"] as string;
       const { action, issue, comment } = req.body;
-      if (!issue || !issue.html_url) {
-        return res.status(400).json({ error: "Invalid issues event payload." });
-      }
 
-      const issueUrl = issue.html_url;
       const db = getAdminDb();
-      
-      // Query feedback collection to find document with matching githubIssueUrl
-      const snapshot = await db.collection("feedback").where("githubIssueUrl", "==", issueUrl).get();
-      if (snapshot.empty) {
-        console.log("GitHub Webhook: No feedback doc found matching issue URL: " + issueUrl);
-        return res.status(200).json({ message: "No matching feedback document found." });
-      }
-
-      console.log(`GitHub Webhook: Found ${snapshot.size} feedback documents matching issue URL: ${issueUrl}`);
-
-      // --- issue_comment: relay a comment down as a Follow-up (ADR 0019) ------
-      // Requires the `issue_comment` event to be enabled on the repository
-      // webhook; without it this branch never runs and the thread is one-way.
-      if (eventType === "issue_comment") {
-        if (action !== "created" || !comment || typeof comment.body !== "string") {
-          return res.status(200).json({ message: `Ignored issue_comment action: ${action}` });
-        }
-
-        const commentId = typeof comment.id === "number" ? comment.id : null;
-        const raw = comment.body.trim();
-        let relayedCount = 0;
-
-        for (const docSnap of snapshot.docs) {
-          // A Follow-up we mirrored up comes straight back as issue_comment.
-          // The stored GitHub comment id is the dedupe key.
-          if (commentId !== null) {
-            const seen = await docSnap.ref
-              .collection("replies")
-              .where("githubCommentId", "==", commentId)
-              .limit(1)
-              .get();
-            if (!seen.empty) continue;
-          }
-
-          const data = docSnap.data();
-          const ownerSubmitted = await isOwnerSubmitter(db, data.userId);
-
-          // The drop rule and the model both decide before anyone is told
-          // anything: a dropped comment never becomes a Follow-up and never
-          // notifies, for the owner as much as for any other submitter.
-          const laundered = await launderIssueComment(raw);
-          if (!laundered) continue;
-
-          // The owner reads the tracker as it is; everyone else reads the
-          // restatement. On the owner's own Notes both are stored so that
-          // "see it as they do" has something to show — safe there because the
-          // owner is the only non-admin who can read their own Note. The
-          // notification, however, is always the restatement: a raw comment
-          // must never be what reaches anyone's bell.
-          const body = ownerSubmitted ? raw : laundered;
-
-          await writeFollowUp(db, docSnap.id, {
-            authorRole: "team",
-            body,
-            relayed: true,
-            ...(ownerSubmitted ? { launderedBody: laundered } : {}),
-            ...(commentId !== null ? { githubCommentId: commentId } : {}),
-          });
-          relayedCount += 1;
-
-          if (data.userId && data.userId !== "anonymous") {
-            try {
-              await db.collection("notifications").add({
-                userId: data.userId,
-                title: "A reply on your note",
-                message: laundered,
-                type: "info",
-                tone: "accent",
-                read: false,
-                link: "/feedback",
-                createdAt: FieldValue.serverTimestamp(),
-              });
-            } catch (notifErr) {
-              console.error(`Failed to notify ${data.userId} of a relayed Follow-up:`, notifErr);
-            }
-          }
-        }
-
-        console.log(`GitHub Webhook: Relayed comment ${commentId} onto ${relayedCount} Note(s).`);
-        return res.status(200).json({ success: true, relayedCount });
-      }
-
-      // --- issues: closed / reopened -----------------------------------------
-      const updates: any = {};
-      let outcome: FeedbackOutcome | undefined;
-
-      if (action === "closed") {
-        updates.status = "resolved";
-
-        const hasAlreadyExistsLabel = Array.isArray(issue.labels) &&
-          issue.labels.some((l: any) => (typeof l === "string" ? l : l?.name) === "already-exists");
-
-        if (hasAlreadyExistsLabel) {
-          outcome = "already-there";
-        } else if (issue.state_reason === "not_planned") {
-          outcome = "not-planned";
-        } else {
-          outcome = "shipped";
-        }
-        updates.outcome = outcome;
-      } else if (action === "reopened") {
-        updates.status = "in_progress";
-        updates.archived = false;
-        updates.outcome = FieldValue.delete();
-        updates.outcomeMessage = FieldValue.delete();
-        // `notifiedOutcome` deliberately survives the clear: it is the only
-        // thing that stops a re-close from repeating a sentence the submitter
-        // has already read, while still letting a *changed* answer through.
-      } else {
-        return res.status(200).json({ message: `Ignored action: ${action}` });
-      }
-
-      // Update all matching documents
-      const batch = db.batch();
-      snapshot.forEach(doc => {
-        batch.update(doc.ref, updates);
+      const pipeline = new FeedbackPipeline({ db });
+      const result = await pipeline.handleGitHubWebhook({
+        eventType,
+        action,
+        issue,
+        comment,
       });
-      await batch.commit();
 
-      // Write notification for each submitter if outcome was set
-      if (outcome) {
-        // One summary per issue: every Note sharing it shipped the same change.
-        const prSummary = await closeMessageFromPr(issueUrl, outcome);
-        const canned = outcomeCopy(outcome);
-
-        for (const docSnap of snapshot.docs) {
-          const data = docSnap.data();
-          const ownerSubmitted = await isOwnerSubmitter(db, data.userId);
-
-          // Stored for everyone, including the owner — their own page renders
-          // the canned line until they switch to "see it as they do".
-          const perDoc: any = {};
-          if (prSummary) perDoc.outcomeMessage = prSummary;
-
-          // Reopen-then-reclose for the same reason is bookkeeping, not news.
-          const alreadyTold = data.notifiedOutcome === outcome;
-          if (!alreadyTold) perDoc.notifiedOutcome = outcome;
-          if (Object.keys(perDoc).length > 0) await docSnap.ref.update(perDoc);
-
-          if (alreadyTold) {
-            console.log(`GitHub Webhook: ${docSnap.id} already told about "${outcome}"; no second ping.`);
-            continue;
-          }
-
-          if (data.userId && data.userId !== "anonymous") {
-            try {
-              await db.collection("notifications").add({
-                userId: data.userId,
-                title: "What came of your note",
-                message: ownerSubmitted ? canned : (prSummary || canned),
-                type: "info",
-                tone: "accent",
-                read: false,
-                link: "/feedback",
-                createdAt: FieldValue.serverTimestamp(),
-              });
-            } catch (notifErr) {
-              console.error(`Failed to create notification for feedback submitter ${data.userId}:`, notifErr);
-            }
-          }
-        }
+      if (result.message) {
+        return res.status(200).json({ message: result.message });
       }
-
-      console.log("GitHub Webhook: Successfully updated feedback doc(s) for issue %s with updates: %o", issueUrl, updates);
-      res.status(200).json({ success: true, matchedDocsCount: snapshot.size, updates });
+      if (result.relayedCount !== undefined) {
+        return res.status(200).json({ success: true, relayedCount: result.relayedCount });
+      }
+      return res.status(200).json({
+        success: true,
+        matchedDocsCount: result.matchedDocsCount ?? 0,
+        updates: result.updates ?? {},
+      });
     } catch (error: any) {
+      if (error.status) {
+        return res.status(error.status).json({ error: error.message });
+      }
       console.error("Error in POST /api/webhook/github: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
