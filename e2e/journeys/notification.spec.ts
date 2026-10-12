@@ -87,7 +87,7 @@ test.describe('Notification journey (#1479)', () => {
     await expect(box).toBeVisible({ timeout: 15_000 });
     await box.fill(comment);
     await box.press('Meta+Enter');
-    await expect(writerPage.getByRole('main').getByText(comment)).toBeVisible({ timeout: 10_000 });
+    await expect(writerPage.locator('[data-stream-row]').getByText(comment)).toBeVisible({ timeout: 10_000 });
 
     // The trainee opens her bell; the notification about the comment is there.
     const reader = await browser.newContext();
