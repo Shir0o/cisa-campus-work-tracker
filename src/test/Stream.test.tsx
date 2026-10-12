@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import Stream from "../components/stream/Stream";
@@ -564,6 +564,54 @@ describe("Stream — optional adapter capabilities", () => {
     await userEvent.click(screen.getByRole("button", { name: "Post" }));
     await waitFor(() => expect(box).toHaveValue(""));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  describe("a draft typed while the previous post saves (#1573)", () => {
+    const slowPost = () => {
+      let land!: () => void;
+      const post = vi.fn().mockReturnValue(
+        new Promise<void>((resolve) => {
+          land = resolve;
+        }),
+      );
+      renderStream(
+        fakeAdapter({
+          post,
+          failure: { post: "That didn't send.", edit: "That didn't save." },
+          capabilities: { kinds: false, attachments: false, canPost: true, canReply: false },
+          composer: { placeholder: "Ask a follow-up…" },
+        }),
+      );
+      return { post, land, box: screen.getByPlaceholderText("Ask a follow-up…") };
+    };
+
+    it("keeps the newer draft when the earlier write lands, and sends it on the next ⌘↵ (#1573)", async () => {
+      const { post, land, box } = slowPost();
+      await userEvent.type(box, "first");
+      fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
+      expect(post).toHaveBeenCalledTimes(1);
+      await userEvent.clear(box);
+      await userEvent.type(box, "second note");
+      // The earlier write is still in flight: nothing doubles up.
+      fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
+      expect(post).toHaveBeenCalledTimes(1);
+      await act(async () => land());
+      expect(box).toHaveValue("second note");
+      await waitFor(() => expect(screen.getByRole("button", { name: "Post" })).toBeEnabled());
+      post.mockResolvedValue(undefined);
+      fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
+      expect(post).toHaveBeenLastCalledWith({ body: "second note", kind: "comment", mentionedUserIds: [] });
+      await waitFor(() => expect(box).toHaveValue(""));
+    });
+
+    it("still clears the box when nothing was typed while the write saved (#1573)", async () => {
+      const { land, box } = slowPost();
+      await userEvent.type(box, "first");
+      fireEvent.keyDown(box, { key: "Enter", ctrlKey: true });
+      expect(box).toHaveValue("first");
+      await act(async () => land());
+      expect(box).toHaveValue("");
+    });
   });
 
   it("offers no @ button where nobody can be mentioned", () => {

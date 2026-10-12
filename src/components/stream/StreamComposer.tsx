@@ -1,4 +1,4 @@
-import React, { useCallback, useId, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AtSign, FileText, Lock, Paperclip, Send, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useCommand } from "../../lib/commands";
@@ -39,8 +39,10 @@ interface StreamComposerProps {
   /** The paperclip — only where the source takes attachments. */
   onAttach?: () => void;
   onUnstage?: (key: string) => void;
-  /** A promise makes the box wait: the draft clears when it resolves and stays
-   *  where it was if it rejects, so a failed send loses nothing. */
+  /** A promise makes the box wait: the draft clears when it resolves (unless it
+   *  was edited meanwhile) and stays where it was if it rejects, so a failed
+   *  send loses nothing. A send pressed while one is pending is held back; the
+   *  draft stays for the next press. */
   onSubmit: (input: { body: string; kind: StreamComposeKind; mentionedUserIds: string[] }) => SubmitResult;
 }
 
@@ -82,6 +84,12 @@ export default function StreamComposer({
   const [selected, setSelected] = useState(0);
   const [picked, setPicked] = useState<Array<{ uid: string; name: string }>>([]);
   const [busy, setBusy] = useState(false);
+  // The draft as of the last render, so a write that lands later can tell
+  // whether the box still holds what was sent (#1573).
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   const matches = useMemo(
     () => (mention ? filterMentionCandidates(candidates, mention.query, false) : []),
@@ -140,6 +148,9 @@ export default function StreamComposer({
       return;
     }
     const clear = () => {
+      // Text typed while the write saved is a newer draft: keep it, and the
+      // kind and mentions that go with it (#1573).
+      if (draftRef.current.trim() !== body) return;
       setDraft("");
       setPicked([]);
       setMention(null);
