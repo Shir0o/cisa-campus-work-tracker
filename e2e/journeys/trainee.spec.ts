@@ -69,7 +69,7 @@ test.describe('Trainee journey (#1475)', () => {
     expect(new URL(page.url()).pathname).toBe('/directory');
 
     // The person in their care shows in the Directory...
-    await expect(page.getByText(CARE_CONTACT).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(CARE_CONTACT)).toBeVisible({ timeout: 10_000 });
 
     // ...but a person outside the role's scope never does (negative check), and
     // neither does one merely readable-but-untied (row 6: the Directory filters
@@ -127,7 +127,7 @@ test.describe('Trainee journey (#1475)', () => {
     // staged person. If the board's query dropped its tie it would be denied and
     // this would never appear.
     await expect(page.getByRole('heading', { name: 'First Contact' }).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(CARE_CONTACT).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(CARE_CONTACT)).toBeVisible({ timeout: 10_000 });
 
     // ...and neither the untied person nor the readable-but-untied one is on
     // the board either (negative checks).
@@ -184,7 +184,7 @@ test.describe('Trainee journey on a mobile viewport (#1475)', () => {
     // Open the contact from the phone's People directory.
     await page.goto('/directory');
     await waitForShell(page);
-    await page.getByText(CARE_CONTACT).first().click();
+    await page.getByRole('main').getByText(CARE_CONTACT).click();
 
     // The contact page is a route page in the shell's <main>, not a popup (#1560).
     const dialog = page.getByRole('main');

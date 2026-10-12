@@ -99,14 +99,19 @@ test.describe('Sign-up journey (#1478)', () => {
     // Settle on a stable, non-zero baseline first: the seed already puts team
     // activity here, and the subscriptions deliver it in more than one tick.
     let before = 0;
-    await expect(async () => {
-      const first = await pointerCount();
-      await page.waitForTimeout(400);
-      const second = await pointerCount();
-      expect(second).toBe(first);
-      expect(first).toBeGreaterThan(0);
-      before = first;
-    }).toPass({ timeout: 20_000 });
+    let previous = -1;
+    await expect
+      .poll(
+        async () => {
+          const current = await pointerCount();
+          const settled = current > 0 && current === previous;
+          previous = current;
+          return settled ? current : 0;
+        },
+        { intervals: [400], timeout: 20_000 },
+      )
+      .toBeGreaterThan(0);
+    before = previous;
 
     // The signed-out visitor's own browser context — no sign-in at all.
     const visitor = await browser.newContext({ baseURL: BASE_URL });

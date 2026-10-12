@@ -87,7 +87,7 @@ test.describe('Notification journey (#1479)', () => {
     await expect(box).toBeVisible({ timeout: 15_000 });
     await box.fill(comment);
     await box.press('Meta+Enter');
-    await expect(writerPage.getByText(comment).first()).toBeVisible({ timeout: 10_000 });
+    await expect(writerPage.getByRole('main').getByText(comment)).toBeVisible({ timeout: 10_000 });
 
     // The trainee opens her bell; the notification about the comment is there.
     const reader = await browser.newContext();
@@ -103,7 +103,7 @@ test.describe('Notification journey (#1479)', () => {
     });
     const conversation = readerPage.getByRole('region', { name: 'Conversation' });
     await expect(conversation).toBeVisible({ timeout: 10_000 });
-    await expect(readerPage.getByText(comment).first()).toBeVisible({ timeout: 10_000 });
+    await expect(conversation.getByText(comment)).toBeVisible({ timeout: 10_000 });
     await expect(readerPage.getByRole('region', { name: 'Thread' })).toHaveCount(0);
 
     await writer.close();
@@ -164,7 +164,7 @@ test.describe('Notification journey (#1479)', () => {
     await page.goto(`/people/${LILA}?tab=thread`);
     await expect(page.getByRole('button', { name: 'About Lila Chen' }).first()).toBeVisible({ timeout: 10_000 });
     await expect(
-      page.getByText('Great first connection with Lila. Let us follow up this week.').first(),
+      page.getByRole('main').getByText('Great first connection with Lila. Let us follow up this week.'),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -322,14 +322,19 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
   test('an @mention always buzzes the person named, even inside the hourly window', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     const box = await openThread(page, PRIYA);
+    const traineeBellCount = async () =>
+      (await db.collection('notifications').where('userId', '==', uid.trainee).get()).size;
+    const traineeBellBefore = await traineeBellCount();
     await box.fill('Looping in @Cal');
     await page.getByRole('option', { name: /Caleb Owusu/ }).click();
     await box.press('Meta+Enter');
 
     await expectPushTo('trainee2', /mentioned you on Priya Push/);
     // The trainee already heard about Priya this hour: the bell gets this one,
-    // the phone does not buzz again (#813 coalescing).
-    await page.waitForTimeout(3_000);
+    // the phone does not buzz again (#813 coalescing). Absence has no signal of
+    // its own, so wait for the trainee's bell entry for this comment: its push
+    // is dispatched alongside the mention's, which has already landed.
+    await expect.poll(traineeBellCount, { timeout: 20_000 }).toBeGreaterThan(traineeBellBefore);
     expect((await pushes()).filter((p) => p.uid === uid.trainee)).toHaveLength(1);
   });
 
@@ -376,7 +381,7 @@ test.describe('Notification journey — pushes reach every device (#1479)', () =
     await page.getByLabel('Email').fill(`sam.signup.${Date.now()}@example.com`);
     await page.getByRole('button', { name: 'Bible study', exact: true }).click();
     await page.getByRole('button', { name: 'Send it' }).click();
-    await expect(page.getByText(/Thank you for signing up, Sam\./)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: /Thank you for signing up, Sam\./ })).toBeVisible({ timeout: 10_000 });
 
     await expect
       .poll(async () =>
