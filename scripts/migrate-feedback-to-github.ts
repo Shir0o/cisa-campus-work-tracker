@@ -4,7 +4,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { readFileSync, existsSync } from 'node:fs';
 import dotenv from 'dotenv';
 import { feedbackIssueSubmittedByLine, reporterLabelFromName } from '../src/lib/feedbackReporter';
-import { ensureGitHubLabel } from '../src/lib/githubFeedbackLabels';
+import { ensureGitHubLabel } from '../src/server/feedbackPipeline';
 
 // Load local .env variables
 dotenv.config();
