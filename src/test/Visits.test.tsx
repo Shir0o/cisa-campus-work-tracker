@@ -264,6 +264,20 @@ describe('Visits', () => {
     expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: 'removed a visit to' }));
   });
 
+  it('displays home label when where is empty and visit has homeId, or Home visit when unassociated (#1483)', async () => {
+    emitHomes([{ id: 'h1', label: 'the Oseis', members: ['c1'], place: 'Whitman Hall', active: true }]);
+    emitVisits([
+      visit({ id: 'v1', where: '', homeId: 'h1' }),
+      visit({ id: 'v2', where: '', homeId: null, date: daysAgo(20) }),
+    ]);
+    render(<Visits />);
+    await goToLog();
+
+    expect(screen.getByText("the Oseis's home")).toBeInTheDocument();
+    expect(screen.getByText('Home visit')).toBeInTheDocument();
+    expect(screen.queryByText('no address noted')).not.toBeInTheDocument();
+  });
+
   it("reads back the prayer's own words, not just that there was one", async () => {
     emitVisits([visit({ prayerId: 'p1', prayerBurden: "Her mum's recovery" })]);
     render(<Visits />);

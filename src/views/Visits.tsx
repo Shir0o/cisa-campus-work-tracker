@@ -158,7 +158,9 @@ export default function Visits() {
         targetId: visit.contactIds[0],
         targetName: (visit.contactNames || []).join(', '),
         type: 'event',
-        description: visit.where || 'home',
+        description:
+          visit.where?.trim() ||
+          (visit.homeId ? homes.find((h) => h.id === visit.homeId)?.label ? `${homes.find((h) => h.id === visit.homeId)!.label}'s home` : 'home' : 'home'),
       });
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, `visits/${visit.id}`);
@@ -208,6 +210,7 @@ export default function Visits() {
   }
 
   const groupProps = {
+    homes,
     openId,
     setOpenId,
     onOpenContact: openContact,

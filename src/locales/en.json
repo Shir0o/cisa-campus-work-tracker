@@ -1834,6 +1834,9 @@
     "section_afterwards_hint": "Only asked when you log it",
     "home_last_visited": "{home} · last visited {ago} ago",
     "where_from_home": "From {home}",
+    "where_at_home": "At {home}'s home",
+    "change_location": "Change place",
+    "use_home_address": "Use home's place",
     "couldnt_save_offline": "Couldn't save — you're offline. Nothing was lost.",
     "couldnt_save": "Couldn't save. Nothing you typed was lost.",
     "try_again": "Try again",
@@ -1850,6 +1853,8 @@
   },
   "visitCard": {
     "no_address_noted": "no address noted",
+    "at_home": "{home}'s home",
+    "home_visit": "Home visit",
     "why_we_went": "Why we went",
     "how_it_went": "How it went",
     "nothing_written_yet": "Nothing written down yet.",

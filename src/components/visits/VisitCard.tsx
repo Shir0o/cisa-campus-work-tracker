@@ -9,12 +9,13 @@ import { buildContactRowActions } from '../../lib/rowActions';
 import { UserEntityState } from '../../lib/userEntityState';
 import { useLanguage } from '../LanguageProvider';
 import { Translate } from '../Translate';
-import type { Visit } from '../../types';
+import type { Home, Visit } from '../../types';
 
 interface VisitGroupProps {
   title: string;
   sub?: string;
   list: Visit[];
+  homes?: Home[];
   openId: string | null;
   setOpenId: (id: string | null) => void;
   onOpenContact: (contactId: string) => void;
@@ -30,6 +31,7 @@ export function VisitGroup({
   title,
   sub,
   list,
+  homes,
   openId,
   setOpenId,
   onOpenContact,
@@ -57,6 +59,7 @@ export function VisitGroup({
           <VisitCard
             key={v.id}
             visit={v}
+            homes={homes}
             compact={compact}
             open={openId === v.id}
             onToggle={() => setOpenId(openId === v.id ? null : v.id)}
@@ -73,6 +76,7 @@ export function VisitGroup({
 
 interface VisitCardProps {
   visit: Visit;
+  homes?: Home[];
   open: boolean;
   onToggle: () => void;
   onOpenContact: (contactId: string) => void;
@@ -105,6 +109,7 @@ const Block = ({ label, children }: { label: string; children: React.ReactNode }
 
 export default function VisitCard({
   visit,
+  homes = [],
   open,
   onToggle,
   onOpenContact,
@@ -118,6 +123,11 @@ export default function VisitCard({
   const names = visit.contactNames || [];
   const wentNames = visit.wentNames || [];
   const photos = visit.photos || [];
+
+  const matchedHome = visit.homeId ? homes.find((h) => h.id === visit.homeId) : null;
+  const whereDisplay =
+    visit.where?.trim() ||
+    (matchedHome ? t('visitCard.at_home').replace('{home}', matchedHome.label) : t('visitCard.home_visit'));
 
   return (
     <article
@@ -144,7 +154,7 @@ export default function VisitCard({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-on-surface-variant mt-1">
               <span className="inline-flex items-center gap-1.5">
                 <House className="w-3.5 h-3.5 shrink-0" />
-                {visit.where || t('visitCard.no_address_noted')}
+                {whereDisplay}
               </span>
               <span aria-hidden>·</span>
               <span>{visitWhen(visit.date)}</span>

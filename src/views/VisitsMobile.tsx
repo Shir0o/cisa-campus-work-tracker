@@ -46,7 +46,7 @@ export default function VisitsMobile({
   onManageHomes,
 }: VisitsMobileProps) {
   const { t } = useLanguage();
-  const groupProps = { openId, setOpenId, onOpenContact, onEdit, onRemove, compact: true };
+  const groupProps = { homes, openId, setOpenId, onOpenContact, onEdit, onRemove, compact: true };
 
   return (
     <div

@@ -1834,6 +1834,9 @@
     "section_afterwards_hint": "Solo se pregunta al registrar",
     "home_last_visited": "{home} · última visita hace {ago}",
     "where_from_home": "De {home}",
+    "where_at_home": "En el hogar de {home}",
+    "change_location": "Cambiar lugar",
+    "use_home_address": "Usar lugar del hogar",
     "couldnt_save_offline": "No se pudo guardar: estás sin conexión. No se perdió nada.",
     "couldnt_save": "No se pudo guardar. No se perdió nada de lo que escribiste.",
     "try_again": "Intentar de nuevo",
@@ -1850,6 +1853,8 @@
   },
   "visitCard": {
     "no_address_noted": "sin dirección anotada",
+    "at_home": "Hogar de {home}",
+    "home_visit": "Visita al hogar",
     "why_we_went": "Por qué fuimos",
     "how_it_went": "Cómo fue",
     "nothing_written_yet": "Aún no hay nada escrito.",
