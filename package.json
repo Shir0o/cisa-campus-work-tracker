@@ -27,6 +27,7 @@
     "check:i18n": "tsx scripts/check-hardcoded-ui-strings.ts",
     "check:colors": "tsx scripts/check-hardcoded-colors.ts",
     "check:version": "tsx scripts/check-version.ts",
+    "check:seams": "tsx scripts/check-seams.ts",
     "functions:emulator-prep": "npm --prefix firebase-functions ci && npm --prefix firebase-functions run build && node -e \"const f='firebase-functions/.secret.local';require('fs').existsSync(f)||require('fs').writeFileSync(f,'EXPO_ACCESS_TOKEN=emulator\\nVAPID_PRIVATE_KEY=emulator\\n')\""
   },
   "dependencies": {

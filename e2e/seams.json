@@ -1,0 +1,133 @@
+{
+  "$comment": "Seam map (#1473): each seam is a place a change has escaped before (docs/research/e2e-coverage-audit.md). `paths` are globs of the files that implement it; `guards` are the specs that pin it, and any one of them changing silences the PR warning. `npm run check:seams` fails if a glob matches no file; `npm run check:seams -- --warn` annotates a PR that touches a seam without its guard. Keep globs tight: a seam that matches half the repo makes the warning noise.",
+  "seams": [
+    {
+      "name": "firestore-rules",
+      "paths": ["firestore.rules"],
+      "guards": [
+        "src/test/queryContract.test.ts",
+        "src/test/firestore.rules.test.ts",
+        "e2e/journeys/trainee.spec.ts"
+      ]
+    },
+    {
+      "name": "ties-and-visibleTo",
+      "paths": [
+        "src/lib/contactTies.ts",
+        "src/lib/contactQueries.ts",
+        "src/lib/permissions.ts",
+        "src/lib/combineContactsPlan.ts",
+        "src/components/modals/NewContactModal.tsx",
+        "packages/core/src/permissions.ts",
+        "packages/core/src/data/contacts.ts",
+        "packages/core/src/data/signup.ts"
+      ],
+      "guards": [
+        "src/test/queryContract.test.ts",
+        "e2e/journeys/trainee.spec.ts",
+        "e2e/journeys/signup.spec.ts"
+      ]
+    },
+    {
+      "name": "effective-user-scope",
+      "paths": [
+        "src/components/AuthProvider.tsx",
+        "src/lib/impersonate.ts",
+        "packages/core/src/impersonate.ts",
+        "src/components/layout/Impersonate*.tsx",
+        "src/views/Directory.tsx",
+        "src/views/MyDay.tsx",
+        "src/views/MyDayMobile.tsx",
+        "src/views/AroundTheTeam.tsx",
+        "src/views/OutreachBoard.tsx",
+        "src/views/Attendance.tsx",
+        "src/views/Messages.tsx",
+        "src/views/landings/*.tsx",
+        "apps/mobile/src/lib/AuthProvider.tsx"
+      ],
+      "guards": [
+        "e2e/journeys/impersonation.spec.ts",
+        "e2e/journeys/trainee.spec.ts",
+        "src/test/queryContract.test.ts"
+      ]
+    },
+    {
+      "name": "nav-shell",
+      "paths": [
+        "src/components/layout/NavRail.tsx",
+        "src/components/layout/TopNav.tsx",
+        "src/components/layout/MobileNav.tsx",
+        "src/components/layout/NavChromeStrip.tsx",
+        "src/lib/permissions.ts",
+        "packages/core/src/permissions.ts",
+        "packages/core/src/shell.ts"
+      ],
+      "guards": ["e2e/journeys/student-community.spec.ts"]
+    },
+    {
+      "name": "around-and-my-day",
+      "paths": [
+        "packages/core/src/aroundTeam.ts",
+        "packages/core/src/myday.ts",
+        "packages/core/src/landing.ts",
+        "packages/core/src/ftHome.ts",
+        "packages/core/src/memberHome.ts",
+        "packages/core/src/queue.ts",
+        "packages/core/src/queueDay.ts",
+        "src/views/AroundTheTeam.tsx",
+        "src/views/MyDay.tsx",
+        "src/views/MyDayMobile.tsx",
+        "src/components/landing/*.tsx"
+      ],
+      "guards": [
+        "e2e/journeys/full-timer.spec.ts",
+        "e2e/journeys/trainee.spec.ts",
+        "e2e/journeys/signup.spec.ts",
+        "src/test/queryContract.test.ts"
+      ]
+    },
+    {
+      "name": "notification-targets-and-payloads",
+      "paths": [
+        "src/lib/threads.ts",
+        "src/components/layout/NotificationCenter.tsx",
+        "packages/core/src/notifications.ts",
+        "packages/core/src/data/notifications.ts",
+        "apps/mobile/src/lib/notificationRouting.ts",
+        "apps/mobile/src/lib/data/notifications.ts",
+        "firebase-functions/src/dispatch.ts",
+        "firebase-functions/src/transports.ts"
+      ],
+      "guards": ["e2e/journeys/notification.spec.ts"]
+    },
+    {
+      "name": "prayer-team-flag",
+      "paths": [
+        "src/lib/prayers.ts",
+        "src/views/PrayerList.tsx",
+        "src/components/landing/PrayerRows.tsx",
+        "packages/core/src/prayerThread.ts",
+        "packages/core/src/data/prayers.ts",
+        "apps/mobile/src/lib/data/prayers.ts",
+        "apps/mobile/src/lib/useMemberPrayerData.ts"
+      ],
+      "guards": ["e2e/journeys/full-timer.spec.ts"]
+    },
+    {
+      "name": "contact-data-shape",
+      "paths": [
+        "src/lib/combineContactsPlan.ts",
+        "src/lib/combineClient.ts",
+        "src/lib/contactMatch.ts",
+        "src/lib/duplicateContact.ts",
+        "packages/core/src/contactMatch.ts",
+        "packages/core/src/duplicateContact.ts",
+        "packages/core/src/data/contacts.ts"
+      ],
+      "guards": [
+        "e2e/journeys/full-timer.spec.ts",
+        "src/test/queryContract.test.ts"
+      ]
+    }
+  ]
+}
