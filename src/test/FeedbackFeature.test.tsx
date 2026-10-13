@@ -85,14 +85,13 @@ describe('User Feedback Feature', () => {
       expect(fabBtn).toBeInTheDocument();
     });
 
-    it('opens through the shared popup frame, labelled with its title (#1456)', async () => {
+    it('opens a floating panel anchored above the trigger, labelled with its title (#1578)', async () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
       await userAct.click(screen.getByTitle('Leave a note for the team'));
 
-      expect(screen.getByRole('dialog', { name: 'Leave a note' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+      expect(screen.getByRole('dialog', { name: 'Leave a note for the team' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
     });
 
