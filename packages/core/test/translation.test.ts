@@ -52,6 +52,23 @@ describe('detectLanguage', () => {
     expect(isAlreadySpanish('Prayer for my family')).toBe(false);
     expect(isAlreadySpanish('Juan')).toBe(false);
   });
+
+  it('correctly classifies representative bilingual phrases', () => {
+    const expectations: Record<string, 'en' | 'es' | 'mixed' | 'none'> = {
+      'Por favor, ora por mí y por mi hermano': 'es',
+      'muchas gracias a dios': 'es',
+      'Dios es bueno': 'es',
+      'Please pray for me and my brother': 'en',
+      'Meeting with students on campus': 'en',
+      'Welcome to Campus': 'none',
+      'Health for brother': 'en',
+      'Please pray for mi familia, gracias': 'mixed',
+      'el': 'none',
+    };
+    for (const [phrase, expected] of Object.entries(expectations)) {
+      expect(detectLanguage(phrase), phrase).toBe(expected);
+    }
+  });
 });
 
 describe('shouldShowAsIs', () => {
