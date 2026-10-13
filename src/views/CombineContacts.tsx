@@ -682,7 +682,7 @@ export default function CombineContacts() {
                     <p className="text-sm text-on-surface-variant mt-1">
                       {fill(t('combine_contacts.marked_by', 'Marked by {name} on {date}'), {
                         name: mark.markedByName || '',
-                        date: formatWhen(typeof mark.markedAt === 'string' ? mark.markedAt : undefined),
+                        date: formatWhen(mark.markedAt as any),
                       })}
                     </p>
                   </div>

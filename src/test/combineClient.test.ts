@@ -26,6 +26,15 @@ describe('combineClient', () => {
     expect(formatWhen(undefined)).toBe('');
   });
 
+  it('formatWhen formats Firestore Timestamp-like objects and Date instances', () => {
+    const d = new Date('2026-10-01T10:00:00.000Z');
+    expect(formatWhen({ toDate: () => d })).toBe(d.toLocaleDateString());
+    expect(formatWhen({ seconds: Math.floor(d.getTime() / 1000) })).toBe(
+      new Date(Math.floor(d.getTime() / 1000) * 1000).toLocaleDateString(),
+    );
+    expect(formatWhen(d)).toBe(d.toLocaleDateString());
+  });
+
   it('fill replaces placeholders and blanks unknown ones', () => {
     expect(fill('{a} into {b} {c}', { a: 'X', b: 'Y' })).toBe('X into Y ');
   });

@@ -347,6 +347,23 @@ describe('CombineContacts page', () => {
     expect(await screen.findByTestId('combine-pair')).toBeInTheDocument();
   });
 
+  it('renders mark date when markedAt is a Firestore Timestamp (#1602)', async () => {
+    const timestampDate = new Date('2026-03-05T00:00:00.000Z');
+    h.marks = [
+      {
+        id: 'c1|c2',
+        contactIds: ['c1', 'c2'],
+        markedBy: 'admin1',
+        markedByName: 'Faith',
+        markedAt: { toDate: () => timestampDate } as any,
+      },
+    ];
+    renderPage();
+    fireEvent.click(screen.getByRole('tab', { name: /not the same person/i }));
+    const markRow = await screen.findByTestId('not-same-mark');
+    expect(within(markRow).getByText(new RegExp(timestampDate.toLocaleDateString()))).toBeInTheDocument();
+  });
+
   it('keeps the pair and shows an error when the mark cannot be saved', async () => {
     (setDoc as unknown as { mockRejectedValueOnce: (e: Error) => void }).mockRejectedValueOnce(
       new Error('denied'),
