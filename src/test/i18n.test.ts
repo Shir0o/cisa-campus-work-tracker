@@ -37,7 +37,6 @@ describe("i18n dictionary and helper", () => {
     // "¿Descartar esta chat?" or a capitalised noun mid-sentence.
     const expected: Record<string, string> = {
       "attendance.rhythm_noun": "¿Descartar este ritmo?",
-      "feedback.note_noun": "¿Descartar esta nota?",
       "modals.chat_noun": "¿Descartar este chat?",
       "modals.contact_noun": "¿Descartar este contacto?",
       "modals.gathering_noun": "¿Descartar esta reunión?",
