@@ -118,18 +118,11 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
     const renderPoint = (pt: ListItem, path: string): React.ReactNode => {
       if (!pt || typeof pt !== 'object') return null;
       const key = `${sectionIndex}:${path}`;
-      const inline = 'word' in pt ? (
-        <BlankSpan
-          part={{ kind: 'blank', blank: { before: pt.before, word: pt.word, after: pt.after }, n: 0 }}
-          isOpen={!!openBlanks[key]}
-          onReveal={() => onRevealBlank(key)}
-        />
-      ) : (
-        // Sections saved before the number strip still carry the literal
-        // "1." — the reader renders Firestore's stored copy without
-        // re-parsing md, so the renderer owns legacy prefixes too.
-        <InlineMd text={block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before} />
-      );
+      // Sections saved before the number strip still carry the literal
+      // "1." — the reader renders Firestore's stored copy without
+      // re-parsing md, so the renderer owns legacy prefixes too.
+      const before = block.kind === 'number-list' ? pt.before.replace(/^\d+[.)]\s+/, '') : pt.before;
+      const inline = renderLine({ ...pt, before }, key);
       return (
         <li key={path} className="text-[length:var(--reader-fs)] leading-[1.55] text-on-surface-variant">
           {inline}
@@ -155,7 +148,7 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
     );
   };
 
-  // One line of scripture or a Key line: inline markdown around at most one Blank.
+  // One line of scripture, a Key line, a Passage or a list point: inline markdown around at most one Blank.
   const renderLine = (v: Blank | Text, blankKey: string): React.ReactNode =>
     'word' in v ? (
       <>
@@ -185,15 +178,9 @@ const SectionBody: React.FC<SectionBodyProps> = ({ section, sectionIndex, openBl
             return (
               <figure key={bIdx} data-block-kind="passage" className="m-0">
                 <p className="m-0 font-scripture text-[length:calc(var(--reader-fs)+3px)] leading-[1.6] text-on-surface">
-                  {block.passage && typeof block.passage === 'object' && 'word' in block.passage ? (
-                    <BlankSpan
-                      part={{ kind: 'blank', blank: block.passage, n: 0 }}
-                      isOpen={!!openBlanks[`${sectionIndex}:pg`]}
-                      onReveal={() => onRevealBlank(`${sectionIndex}:pg`)}
-                    />
-                  ) : block.passage && typeof block.passage === 'object' ? (
-                    <InlineMd text={block.passage.before} />
-                  ) : null}
+                  {block.passage && typeof block.passage === 'object'
+                    ? renderLine(block.passage, `${sectionIndex}:pg`)
+                    : null}
                 </p>
               </figure>
             );
