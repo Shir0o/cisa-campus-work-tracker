@@ -1458,6 +1458,14 @@ function PrayerItem({
             rows={2}
             value={howDraft}
             onChange={(e) => setHowDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!savingAnswer) {
+                  saveAnswer();
+                }
+              }
+            }}
             placeholder={t('prayers.answer_placeholder')}
           />
           <button
@@ -1554,6 +1562,14 @@ function PrayerItem({
             rows={2}
             value={archiveReasonDraft}
             onChange={(e) => setArchiveReasonDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!savingArchiveReason) {
+                  saveArchiveReason();
+                }
+              }
+            }}
             placeholder={t('prayers.archive_reason_placeholder', 'A note on why this is archived (optional)')}
           />
           <div className="mt-2 flex justify-end gap-2">

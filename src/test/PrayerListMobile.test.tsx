@@ -442,6 +442,105 @@ describe('PrayerListMobile', () => {
     resolveAdd(true);
   });
 
+  it('submits mobile testimony with ⌘+Enter and Ctrl+Enter, but not plain Enter (#1599)', () => {
+    const onUpdateStatus = vi.fn();
+    renderWithRouter({
+      entries: [
+        {
+          contact: contact(),
+          prayers: [
+            prayer({
+              id: 'p1',
+              burden: 'Peace for exams',
+              status: 'answered',
+              answer: 'Old answer',
+            }),
+          ],
+        },
+      ],
+      onUpdateStatus,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Testimony' }));
+    const textarea = screen.getByDisplayValue('Old answer');
+    fireEvent.change(textarea, { target: { value: 'Passed with flying colours' } });
+
+    // Plain Enter does not submit
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(onUpdateStatus).not.toHaveBeenCalled();
+
+    // Ctrl+Enter submits
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+    expect(onUpdateStatus).toHaveBeenCalledTimes(1);
+    expect(onUpdateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1' }),
+      'answered',
+      'Passed with flying colours',
+      expect.any(String),
+    );
+
+    // Re-open and verify Cmd+Enter submits
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Testimony' }));
+    const textarea2 = screen.getByDisplayValue('Old answer');
+    fireEvent.change(textarea2, { target: { value: 'God answered our prayers' } });
+    fireEvent.keyDown(textarea2, { key: 'Enter', metaKey: true });
+    expect(onUpdateStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('submits mobile archive reason with ⌘+Enter and Ctrl+Enter, but not plain Enter (#1599)', () => {
+    const onUpdateStatus = vi.fn();
+    renderWithRouter({
+      entries: [
+        {
+          contact: contact(),
+          prayers: [
+            prayer({
+              id: 'p1',
+              burden: 'Peace for exams',
+              status: 'unanswered',
+              archiveReason: 'Old reason',
+            }),
+          ],
+        },
+      ],
+      onUpdateStatus,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Reason' }));
+    const textarea = screen.getByDisplayValue('Old reason');
+
+    // Plain Enter does not submit
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(onUpdateStatus).not.toHaveBeenCalled();
+
+    // Ctrl+Enter submits
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+    expect(onUpdateStatus).toHaveBeenCalledTimes(1);
+    expect(onUpdateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1' }),
+      'unanswered',
+      undefined,
+      undefined,
+      undefined,
+      'Old reason',
+    );
+
+    // Re-open and verify Cmd+Enter submits
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Reason' }));
+    const textarea2 = screen.getByDisplayValue('Old reason');
+    fireEvent.change(textarea2, { target: { value: 'New reason' } });
+    fireEvent.keyDown(textarea2, { key: 'Enter', metaKey: true });
+    expect(onUpdateStatus).toHaveBeenCalledTimes(2);
+    expect(onUpdateStatus).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'p1' }),
+      'unanswered',
+      undefined,
+      undefined,
+      undefined,
+      'New reason',
+    );
+  });
+
   it('cancels the add-composer and keeps the empty card', () => {
     renderWithRouter({ entries: [{ contact: contact(), prayers: [] }] });
     fireEvent.click(screen.getByText(/Write what we're praying for Alice this week/));

@@ -397,6 +397,49 @@ describe('PrayerList', () => {
     expect(updateDoc).toHaveBeenCalled();
   });
 
+  it('submits archive reason with ⌘+Enter and Ctrl+Enter, but not plain Enter (#1599)', async () => {
+    const archivedPrayer = [
+      {
+        id: 'p-arch-key',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Graduation prayers',
+          date: '2026-06-12T00:00:00.000Z',
+          status: 'unanswered',
+          archiveReason: 'No longer on campus',
+          updatedAt: '2026-06-12T00:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 2 });
+      else if (ref?.path === 'prayers') callback({ docs: archivedPrayer, size: 1 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Graduation prayers')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Edit Reason'));
+    const textarea = screen.getByDisplayValue('No longer on campus');
+
+    // Plain Enter does not submit
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(updateDoc).not.toHaveBeenCalled();
+
+    // Ctrl+Enter submits
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+    expect(updateDoc).toHaveBeenCalledTimes(1);
+
+    // Re-open and verify Cmd+Enter submits
+    fireEvent.click(screen.getByText('Edit Reason'));
+    const textarea2 = screen.getByDisplayValue('No longer on campus');
+    fireEvent.keyDown(textarea2, { key: 'Enter', metaKey: true });
+    expect(updateDoc).toHaveBeenCalledTimes(2);
+  });
+
   it('handles adding a new prayer burden and canceling input', async () => {
     render(<PrayerList />);
 
@@ -749,6 +792,50 @@ describe('PrayerList', () => {
     fireEvent.click(saveBtn);
 
     expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('submits testimony with ⌘+Enter and Ctrl+Enter, but not plain Enter (#1599)', async () => {
+    const answeredPrayer = [
+      {
+        id: 'p-ans-key',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Passed all exams',
+          date: '2026-06-12T00:00:00.000Z',
+          status: 'answered',
+          answer: 'Got an A on the final',
+          answeredAt: '2026-06-12',
+          updatedAt: '2026-06-12T00:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: mockContacts, size: 2 });
+      else if (ref?.path === 'prayers') callback({ docs: answeredPrayer, size: 1 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Passed all exams')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Edit Testimony'));
+    const textarea = screen.getByDisplayValue('Got an A on the final');
+
+    // Plain Enter does not submit
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+    expect(updateDoc).not.toHaveBeenCalled();
+
+    // Ctrl+Enter submits
+    fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+    expect(updateDoc).toHaveBeenCalledTimes(1);
+
+    // Re-open and verify Cmd+Enter submits
+    fireEvent.click(screen.getByText('Edit Testimony'));
+    const textarea2 = screen.getByDisplayValue('Got an A on the final');
+    fireEvent.keyDown(textarea2, { key: 'Enter', metaKey: true });
+    expect(updateDoc).toHaveBeenCalledTimes(2);
   });
 
   it('handles editing an existing testimony on answered prayer', async () => {
