@@ -20,6 +20,11 @@ import { normalizeTag, planTagApplies, planTagUndo, resolveStandardTags, type Ta
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
+import {
+  TranslationEngine,
+  GeminiAIPort,
+  FirestoreTranslationCachePort,
+} from "./src/server/translationEngine";
 
 dotenv.config();
 
@@ -3490,227 +3495,23 @@ ${JSON.stringify(contactsList)}`;
         return res.status(400).json({ error: "Total character length exceeds maximum limit of 50000 characters." });
       }
 
-      const db = getAdminDb();
-      const cacheMap = new Map<string, string>();
-      const existingCachedHashes = new Set<string>();
+      const engine = new TranslationEngine({
+        aiPort: new GeminiAIPort({
+          aiClient: getAiClient(),
+          model: "gemini-3.5-flash",
+        }),
+        cachePort: new FirestoreTranslationCachePort(getAdminDb(), () => new Date().toISOString()),
+      });
 
-      // Compute hashes for unique non-empty trimmed texts
-      const uniqueItemsMap = new Map<string, string>(); // hash -> trimmedText
-      for (const rawText of texts) {
-        const trimmed = rawText.trim();
-        if (trimmed) {
-          const hash = crypto.createHash("sha256").update(`${normalizedTargetLang}:${trimmed}`).digest("hex");
-          uniqueItemsMap.set(hash, trimmed);
-        }
-      }
-
-      // Check Firestore cache for existing translations
-      const hashList = Array.from(uniqueItemsMap.keys());
-      if (hashList.length > 0) {
-        const lookups = hashList.map(async (hash) => {
-          try {
-            const docSnap = await db.collection("translations").doc(hash).get();
-            if (docSnap.exists) {
-              const data = docSnap.data();
-              if (data && typeof data.translatedText === "string") {
-                cacheMap.set(hash, data.translatedText);
-                existingCachedHashes.add(hash);
-              }
-            }
-          } catch (e) {
-            console.warn(`[Translation Cache] Lookup failed for hash ${hash}:`, e);
-          }
-        });
-        await Promise.all(lookups);
-      }
-
-      // Identify items that need translation
-      const uncachedItems: Array<{ id: number; hash: string; text: string }> = [];
-      let nextId = 0;
-      for (const [hash, trimmedText] of uniqueItemsMap.entries()) {
-        if (!cacheMap.has(hash)) {
-          uncachedItems.push({ id: nextId++, hash, text: trimmedText });
-        }
-      }
-
-      // Daily Gemini spending limit (ADR 0037): 2,000 translated strings per
-      // day, counted across all users and both languages. Cached hits and the
-      // nightly cron don't count. Above the limit, uncached strings come back
-      // as written and are not cached, so they translate after the reset.
       const dailyLimitRaw = parseInt(process.env.TRANSLATION_DAILY_LIMIT || "", 10);
       const dailyLimit = Number.isFinite(dailyLimitRaw) && dailyLimitRaw > 0 ? dailyLimitRaw : 2000;
-      const today = new Date().toISOString().slice(0, 10);
-      const usageRef = db.collection("system").doc("translationUsage");
-      // Reserve the quota before calling Gemini, in one transaction, so
-      // concurrent requests can't both read the same count and overshoot. Fail
-      // closed: if the reservation can't be made, nothing goes to Gemini.
-      // Reservations are not refunded if Gemini then fails; a slight
-      // over-count is the safe direction.
-      let allowedCount = 0;
-      if (uncachedItems.length > 0) {
-        try {
-          allowedCount = await db.runTransaction(async (tx) => {
-            const usageSnap = await tx.get(usageRef);
-            const usageData = usageSnap.exists ? usageSnap.data() : null;
-            const used =
-              usageData && usageData.date === today && typeof usageData.count === "number" ? usageData.count : 0;
-            const allowed = Math.max(0, Math.min(uncachedItems.length, dailyLimit - used));
-            tx.set(usageRef, { date: today, count: used + allowed }, { merge: true });
-            return allowed;
-          });
-        } catch (quotaErr) {
-          console.warn("[Translation Service] Failed to reserve daily usage, skipping Gemini:", quotaErr);
-        }
-      }
-      const allowedItems = uncachedItems.slice(0, allowedCount);
 
-      // If we have allowed items, call Gemini in chunks with timeout protection
-      if (allowedItems.length > 0) {
-        const KNOWN_LANGUAGES: Record<string, string> = {
-          es: "Spanish",
-          zh: "Chinese",
-          ko: "Korean",
-          ja: "Japanese",
-          fr: "French",
-          de: "German",
-          pt: "Portuguese",
-          ru: "Russian",
-          vi: "Vietnamese",
-          tl: "Tagalog",
-          en: "English",
-        };
-        const langName = KNOWN_LANGUAGES[normalizedTargetLang] || "Spanish";
-        const CHUNK_SIZE = 15;
-        const AI_TIMEOUT_MS = 15000;
-        const resultMap = new Map<number, string>();
-        const toSaveInFirestore: Array<{ hash: string; text: string; translated: string }> = [];
-
-        // Split uncachedItems into chunks
-        const chunks: Array<Array<{ id: number; hash: string; text: string }>> = [];
-        for (let i = 0; i < allowedItems.length; i += CHUNK_SIZE) {
-          chunks.push(allowedItems.slice(i, i + CHUNK_SIZE));
-        }
-
-        for (const chunk of chunks) {
-          try {
-            const prompt = `Translate the following ${chunk.length} text items into ${langName}:\n\n` +
-              JSON.stringify(chunk.map((item) => ({ id: item.id, text: item.text })));
-
-            const generatePromise = getAiClient().models.generateContent({
-              model: "gemini-3.5-flash",
-              contents: prompt,
-              config: {
-                systemInstruction: `You are an expert translator for a campus ministry community web and mobile app. Translate each text item accurately, idiomatically, and naturally into the target language (${langName}).
-CRITICAL RULES:
-1. Preserve all Markdown formatting intact (*, **, #, -, 1., [text](url), etc.).
-2. Preserve user mentions (@name or @User), emails, URLs, and phone numbers untouched.
-3. Preserve emojis and special characters.
-4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.
-5. If a text item is already entirely in the target language (${langName}), return it unchanged.`,
-                responseMimeType: "application/json",
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    translations: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          id: { type: Type.INTEGER },
-                          translatedText: { type: Type.STRING }
-                        },
-                        required: ["id", "translatedText"]
-                      }
-                    }
-                  },
-                  required: ["translations"]
-                }
-              }
-            });
-
-            const timeoutPromise = new Promise<never>((_, reject) => {
-              const timer = setTimeout(() => reject(new Error("Translation AI timeout after 15s")), AI_TIMEOUT_MS);
-              generatePromise.finally(() => clearTimeout(timer)).catch(() => {});
-            });
-
-            const response = await Promise.race([generatePromise, timeoutPromise]);
-
-            if (response?.text) {
-              const parsed = JSON.parse(response.text.trim());
-              if (parsed.translations && Array.isArray(parsed.translations)) {
-                for (const item of parsed.translations) {
-                  if (typeof item.id === "number" && typeof item.translatedText === "string") {
-                    resultMap.set(item.id, item.translatedText);
-                  }
-                }
-              }
-            }
-
-            for (const item of chunk) {
-              const translatedText = resultMap.get(item.id) ?? item.text;
-              cacheMap.set(item.hash, translatedText);
-              if (resultMap.has(item.id)) {
-                toSaveInFirestore.push({ hash: item.hash, text: item.text, translated: translatedText });
-              }
-            }
-          } catch (chunkError) {
-            console.warn("[Translation Service] AI translation chunk failed or timed out, falling back to original text:", chunkError);
-            for (const item of chunk) {
-              cacheMap.set(item.hash, item.text);
-            }
-          }
-        }
-
-        // Store new successful translations in Firestore using batch write
-        if (toSaveInFirestore.length > 0) {
-          try {
-            const batch = db.batch();
-            const now = new Date().toISOString();
-            for (const item of toSaveInFirestore) {
-              const docRef = db.collection("translations").doc(item.hash);
-              batch.set(docRef, {
-                hash: item.hash,
-                sourceText: item.text,
-                translatedText: item.translated,
-                targetLang: normalizedTargetLang,
-                sourceLang: typeof sourceLang === "string" ? sourceLang.slice(0, 10) : "auto",
-                createdAt: now,
-              });
-            }
-            await batch.commit();
-          } catch (dbErr) {
-            console.warn("[Translation Service] Failed to save translations to Firestore cache:", dbErr);
-          }
-        }
-      }
-
-      // Map back to output preserving exact original array ordering
-      const translations = texts.map((original) => {
-        const trimmed = original.trim();
-        if (!trimmed) {
-          return {
-            original,
-            translated: original,
-            hash: "",
-            cached: true
-          };
-        }
-        const hash = crypto.createHash("sha256").update(`${normalizedTargetLang}:${trimmed}`).digest("hex");
-        const translated = cacheMap.get(hash) ?? trimmed;
-        const cached = existingCachedHashes.has(hash);
-        return {
-          original,
-          translated,
-          hash,
-          cached
-        };
+      const result = await engine.translateTexts(texts, normalizedTargetLang, {
+        sourceLang: typeof sourceLang === "string" ? sourceLang.slice(0, 10) : "auto",
+        dailyLimit,
       });
 
-      res.status(200).json({
-        success: true,
-        targetLang: normalizedTargetLang,
-        translations
-      });
+      res.status(200).json(result);
     } catch (error: any) {
       console.error("Translation API Error: ", error);
       res.status(500).json({ error: error.message || "Failed to translate texts." });

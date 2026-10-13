@@ -136,6 +136,28 @@ export function firestoreTranslationDeps(
         await batch.commit();
       }
     },
+
+    async reserveDailyQuota(count: number, limit = 2000): Promise<number> {
+      if (count <= 0) return 0;
+      const today = new Date().toISOString().slice(0, 10);
+      const usageRef = db.collection("system").doc("translationUsage");
+      try {
+        if (typeof (db as any).runTransaction === "function") {
+          return await (db as any).runTransaction(async (tx: any) => {
+            const snap = await tx.get(usageRef);
+            const data = snap.exists ? (typeof snap.data === "function" ? snap.data() : snap.data) : null;
+            const used = data && data.date === today && typeof data.count === "number" ? data.count : 0;
+            const allowed = Math.max(0, Math.min(count, limit - used));
+            tx.set(usageRef, { date: today, count: used + allowed }, { merge: true });
+            return allowed;
+          });
+        }
+      } catch (err) {
+        console.warn("[firestoreTranslationDeps] Failed to reserve daily quota:", err);
+        return 0;
+      }
+      return count;
+    },
   };
 }
 

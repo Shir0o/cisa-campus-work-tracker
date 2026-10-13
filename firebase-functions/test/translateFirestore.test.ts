@@ -163,6 +163,36 @@ describe("firestoreTranslationDeps", () => {
     );
     expect(commitMock).toHaveBeenCalled();
   });
+
+  it("reserveDailyQuota reserves quota transactionally up to the daily limit", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const setMock = vi.fn();
+    const mockDb: any = {
+      collection: vi.fn(() => ({
+        doc: vi.fn(() => ({})),
+      })),
+      runTransaction: vi.fn(async (cb: any) => {
+        const tx = {
+          get: vi.fn(async () => ({
+            exists: true,
+            data: () => ({ date: today, count: 1995 }),
+          })),
+          set: setMock,
+        };
+        return cb(tx);
+      }),
+    };
+
+    const deps = firestoreTranslationDeps(mockDb, async () => []);
+    const allowed = await deps.reserveDailyQuota!(10, 2000);
+
+    expect(allowed).toBe(5);
+    expect(setMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { date: today, count: 2000 },
+      { merge: true },
+    );
+  });
 });
 
 describe("geminiTranslator", () => {
