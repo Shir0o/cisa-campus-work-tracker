@@ -200,62 +200,26 @@ function MoreMenu({
   );
 }
 
-export default function ContactHead({
-  isMobile,
-  isEditing,
-  contact,
-  currentContact,
-  stages,
-  canMoveStage,
-  currentStageIndex,
-  currentStageInfo,
-  sinceText,
-  carerNames,
-  role,
-  isAdmin,
-  showDelete,
-  showRelease,
-  onRelease,
-  canEditKind,
-  openPrayerCount,
-  canDelegate,
-  onClose,
-  onEdit,
-  onCancelEdit,
-  onCall,
-  onText,
-  onEmail,
-  onLogInteraction,
-  onStartPrayer,
-  onMoveStage,
-  onOpenMoveSheet,
-  onOpenAbout,
-  onOpenDelegate,
-  onChangeKind,
-  onChangeCreator,
-  onDelete,
-  onOpenPrayers,
-  onOpenConversation,
-  conversationUnread,
-}: {
-  isMobile: boolean;
-  isEditing: boolean;
+export interface ContactHeaderModel {
   contact: Contact;
   currentContact: Contact;
   stages: Stage[];
   canMoveStage: boolean;
   currentStageIndex: number;
-  currentStageInfo: Stage | undefined;
+  currentStageInfo?: Stage;
   sinceText: string;
   carerNames: string[];
   role: string;
   isAdmin: boolean;
   showDelete: boolean;
   showRelease?: boolean;
-  onRelease?: () => void;
   canEditKind: boolean;
   openPrayerCount: number;
   canDelegate: boolean;
+  conversationUnread?: boolean;
+}
+
+export interface ContactHeaderActions {
   onClose: () => void;
   onEdit: () => void;
   onCancelEdit: () => void;
@@ -272,11 +236,73 @@ export default function ContactHead({
   onChangeCreator: () => void;
   onDelete: () => void;
   onOpenPrayers: () => void;
-  /** Narrow screens: open the Conversation pane full-screen. */
   onOpenConversation: () => void;
-  /** Something new in the Full-timers stream the reader hasn't opened. */
-  conversationUnread?: boolean;
-}) {
+  onRelease?: () => void;
+}
+
+export interface StructuredContactHeadProps {
+  model: ContactHeaderModel;
+  actions: ContactHeaderActions;
+  isMobile: boolean;
+  isEditing: boolean;
+}
+
+export type ContactHeadProps =
+  | StructuredContactHeadProps
+  | (ContactHeaderModel &
+      ContactHeaderActions & {
+        isMobile: boolean;
+        isEditing: boolean;
+      });
+
+export default function ContactHead(props: ContactHeadProps) {
+  const isStructured = "model" in props && "actions" in props;
+  const isMobile = props.isMobile;
+  const isEditing = props.isEditing;
+
+  const model = isStructured ? props.model : props;
+  const actions = isStructured ? props.actions : props;
+
+  const {
+    contact,
+    currentContact,
+    stages,
+    canMoveStage,
+    currentStageIndex,
+    currentStageInfo,
+    sinceText,
+    carerNames,
+    role,
+    isAdmin,
+    showDelete,
+    showRelease,
+    canEditKind,
+    openPrayerCount,
+    canDelegate,
+    conversationUnread,
+  } = model;
+
+  const {
+    onClose,
+    onEdit,
+    onCancelEdit,
+    onCall,
+    onText,
+    onEmail,
+    onLogInteraction,
+    onStartPrayer,
+    onMoveStage,
+    onOpenMoveSheet,
+    onOpenAbout,
+    onOpenDelegate,
+    onChangeKind,
+    onChangeCreator,
+    onDelete,
+    onOpenPrayers,
+    onOpenConversation,
+    onRelease,
+  } = actions;
+
   const { t } = useLanguage();
   const aboutLabel = t('modals.contactDetails.about_person').replace('{name}', contact.name);
   const prayersLine = openPrayerCount > 0 && (

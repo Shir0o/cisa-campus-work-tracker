@@ -116,7 +116,7 @@ export default function ContactStory({
       <div className="cd-story-compose">{composer}</div>
       {/* Conversations are the spine; prayers join as their listener lands. */}
       {interactionsLoading ? (
-        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton data-testid="story-loading-skeleton" className="h-24 w-full rounded-2xl" />
       ) : (
         <ol className="cd-story-list">
           {story.map((entry) => (
