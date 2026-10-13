@@ -13,7 +13,16 @@ import {
   resolveStandardTags,
   standardTagsForGuessing,
   STANDARD_TAG_SEED,
+  levenshteinDistance,
+  isFuzzyMatch,
+  slugifyTag,
+  parseSemesterTag,
 } from '../lib/tags';
+import {
+  tagToneKey as presentationToneKey,
+  tagStyle as presentationStyle,
+  ALL_TAG_TONES,
+} from '../lib/tagPresentation';
 
 const guessFor = (
   guesses: ReturnType<typeof guessTagCombines>,
@@ -104,6 +113,37 @@ describe('tagToneKey and tagStyle', () => {
       '--tone': 'var(--t-sage)',
       '--tone-soft': 'var(--t-sage-soft)',
     });
+  });
+
+  it('tagPresentation exports match tagStyle and tagToneKey directly', () => {
+    expect(presentationToneKey('Saved')).toBe('sage');
+    expect(presentationStyle('Saved')).toEqual({
+      '--tone': 'var(--t-sage)',
+      '--tone-soft': 'var(--t-sage-soft)',
+    });
+    expect(ALL_TAG_TONES).toContain('teal');
+    expect(ALL_TAG_TONES).toContain('sage');
+  });
+});
+
+describe('levenshteinDistance and isFuzzyMatch', () => {
+  it('calculates string edit distance and threshold matching', () => {
+    expect(levenshteinDistance('intersted', 'interested')).toBe(1);
+    expect(isFuzzyMatch('intersted', 'interested', 1)).toBe(true);
+    expect(isFuzzyMatch('intersted', 'interested', 0)).toBe(false);
+  });
+});
+
+describe('slugifyTag and parseSemesterTag', () => {
+  it('slugifies campus tags cleanly', () => {
+    expect(slugifyTag('Club Rush')).toBe('club-rush');
+    expect(slugifyTag('Fall 2026 Table')).toBe('fall-2026-table');
+  });
+
+  it('parses academic semesters with term boundaries', () => {
+    expect(parseSemesterTag('Fall 2024')).toEqual({ season: 'Fall', year: 2024, label: 'Fall 2024' });
+    expect(parseSemesterTag("Spring '25")).toEqual({ season: 'Spring', year: 2025, label: 'Spring 2025' });
+    expect(parseSemesterTag('Regular Tag')).toBeNull();
   });
 });
 

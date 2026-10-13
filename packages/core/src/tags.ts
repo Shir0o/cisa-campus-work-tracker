@@ -71,6 +71,11 @@ export function levenshteinDistance(a: string, b: string): number {
   return row[b.length];
 }
 
+/** Threshold-based fuzzy match using Levenshtein distance. */
+export function isFuzzyMatch(a: string, b: string, threshold = 1): boolean {
+  return levenshteinDistance(a, b) <= threshold;
+}
+
 /** Clean a tag string down to lowercase alphanumeric tokens. */
 function toAlphaTokens(tag: string): string[] {
   return (tag ?? '')
@@ -100,9 +105,25 @@ export const TAG_SUGGESTIONS = [
  */
 export const STANDARD_TAG_SEED: string[] = [...TAG_SUGGESTIONS];
 
+export interface ParsedSemesterTag {
+  season: 'Spring' | 'Summer' | 'Fall' | 'Winter';
+  year: number;
+  label: string;
+}
+
+/** Parse an academic season/semester tag (e.g. "Fall 2026", "Fall '26", "Spring26"). */
+export function parseSemesterTag(tag: string): ParsedSemesterTag | null {
+  const norm = normalizeTag(tag);
+  const match = norm.match(/^(Spring|Summer|Fall|Winter)\s+(\d{4})$/i);
+  if (!match) return null;
+  const season = (match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase()) as ParsedSemesterTag['season'];
+  const year = Number(match[2]);
+  return { season, year, label: `${season} ${year}` };
+}
+
 /** True when a tag names a season cohort ("Fall 2026") — standard by pattern. */
 export function isSeasonTag(tag: string): boolean {
-  return /^(Spring|Summer|Fall|Winter)\s+\d{4}$/.test(normalizeTag(tag));
+  return parseSemesterTag(tag) !== null;
 }
 
 /**
@@ -165,8 +186,7 @@ export interface TagCombine {
 
 /** The season+year a tag names, or null; used to keep cohorts apart. */
 function seasonOf(tag: string): string | null {
-  const match = normalizeTag(tag).match(/^(Spring|Summer|Fall|Winter)\s+(\d{4})$/);
-  return match ? `${match[1]} ${match[2]}` : null;
+  return parseSemesterTag(tag)?.label ?? null;
 }
 
 /** Canonical string for "differs only in case, punctuation or spacing". */
@@ -174,10 +194,17 @@ function foldTag(tag: string): string {
   return normalizeTag(tag).toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
-function slugTagTag(value: string): string {
-  const slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+/** Slugify a tag into a URL-friendly, lowercase hyphen-delimited string. */
+export function slugifyTag(value: string): string {
+  let slug = (value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
+  while (slug.startsWith('-')) slug = slug.slice(1);
+  while (slug.endsWith('-')) slug = slug.slice(0, -1);
   return slug || 'tag';
 }
+
+const slugTagTag = slugifyTag;
 
 interface RawTagInfo {
   raw: string;
