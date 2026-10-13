@@ -3,12 +3,15 @@
 // right and that patching a checklist line doesn't move the caret (#174 regression:
 // the sync used to rebuild the whole document, throwing the caret to the bottom).
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Markdown } from 'tiptap-markdown';
 import { collectDocTaskNodes, planDocTaskEdits } from '../lib/board';
+import { TightTaskList } from '../lib/tightTaskList';
 
 describe('doc task sync on a real editor', () => {
   it('patches the stale checklist lines and leaves the caret and the rest of the page alone', () => {
@@ -100,6 +103,29 @@ describe('doc task sync on a real editor', () => {
     expect(nodes[0].text).toContain('Create a WhatApps - NACT coordination Group (@Kevin) <!-- task:tH8keV1ImKuG3aUAAVqR assignee:RMa9kONDdoYjM5bz7ZbuJPKhwdF3 -->');
 
     editor.destroy();
+  });
+
+  it('serializes task lists tightly to markdown without double newlines (#1580)', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: [
+        StarterKit.configure({ undoRedo: false }),
+        TightTaskList,
+        TaskItem.configure({ nested: true }),
+        Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
+      ],
+      content: '- [ ] item 1\n- [ ] item 2\n- [ ] item 3',
+    });
+
+    const md = (editor.storage as any).markdown.getMarkdown();
+    expect(md).toBe('- [ ] item 1\n- [ ] item 2\n- [ ] item 3');
+
+    editor.destroy();
+  });
+
+  it('zeroes out paragraph margins inside task list items in src/index.css (#1580)', () => {
+    const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
+    expect(css).toMatch(/\.bdoc-prose\s+ul\[data-type="taskList"\]\s+li\s+p[^}]*margin:\s*0/);
   });
 });
 

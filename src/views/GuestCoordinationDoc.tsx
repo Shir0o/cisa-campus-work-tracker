@@ -14,7 +14,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
-import { TaskList } from '@tiptap/extension-task-list';
+import { TightTaskList } from '../lib/tightTaskList';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
@@ -262,7 +262,7 @@ function GuestEditor({
     extensions: [
       StarterKit.configure({ undoRedo: false }),
       Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
-      TaskList,
+      TightTaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: t('guest.placeholder', 'Write the page...') }),
       Collaboration.configure({ document: ydoc }),

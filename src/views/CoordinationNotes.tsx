@@ -98,8 +98,8 @@ import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
-import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
+import { TightTaskList } from '../lib/tightTaskList';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
 import { Table } from '@tiptap/extension-table';
@@ -2800,7 +2800,7 @@ export function DocEditor({
       TableCell,
       Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
       CustomTab,
-      TaskList,
+      TightTaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: 'Write the page — a heading, some notes, a checklist…' }),
       Collaboration.configure({ document: ydoc }),
