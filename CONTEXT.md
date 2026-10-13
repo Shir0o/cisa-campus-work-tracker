@@ -275,6 +275,10 @@ _Avoid_: Sub-thread, nested replies, comments, discussion
 The relationships that make someone a recipient of what is written on a person: they added them, they founded the person (`founders`), they were deliberately added as a collaborator (`coCreators`), or they hold the person in their sheep (`carers`). These live on the contact document and can be resolved by whoever is posting. Everything written in a **Conversation** reaches them unless an `@mention` narrows it to one person.
 _Avoid_: Stakeholder, watcher, subscriber, assigned
 
+**In the Conversation**:
+Having written in one of a person's streams (their **Conversation**, their **Full-timers** stream, or an Interaction's thread) within the last 14 days. Any message counts, whatever its kind; closing or reopening an ask does not. While you are in it, everything written there by others reaches your bell and your **On you**, whether or not it answers you. Each stream is separate, so writing in the Full-timers stream puts you in that stream and no other. What reaches you this way closes with *Got it*, except a question, which closes with *Answered*, since anyone in the room may answer one; following up on an ask stays with those tied to the person. It follows from what you wrote and lapses by itself, and **Release from my queue** does not end it: writing after a release is asking to hear back. It is not a tie: nobody adds you, it gives no access to the person, and it never puts them in **Your sheep** or a reminder.
+_Avoid_: Participant, joined, watcher, subscribed
+
 **Co-creator**:
 A teammate who co-creates a contact with you — the person either of you brings in is founded by both, and the founding set (`founders`) is written on the contact at creation, so each of you is a co-equal creator of that person, not a guest on the other's contact. Co-creators can add and remove deliberately added collaborators (`coCreators`) on web and mobile, and a founder can be removed only by a Full-timer, for the genuine-mistake case. Distinct from a deliberately added collaborator, whom anyone with sharing rights can remove.
 _Avoid_: Guest, guest collaborator, delegate
