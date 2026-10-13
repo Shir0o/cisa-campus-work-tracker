@@ -178,7 +178,7 @@ export function inTheConversation(messages: readonly ConversationMessage[], of: 
   for (const m of messages) {
     if (!m.from || m.from === of.from || !sameStream(m, of)) continue;
     const t = Date.parse(m.at);
-    if (t >= since && t <= at) uids.add(m.from);
+    if (since <= t && t <= at) uids.add(m.from);
   }
   return [...uids];
 }
