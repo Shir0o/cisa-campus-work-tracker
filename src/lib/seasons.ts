@@ -1,52 +1,30 @@
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType } from "./firebase";
-import { SEASONS, seasonForDate, type SeasonId, type SeasonMeta } from "./seasonCalendar";
+import {
+  SEASONS,
+  seasonForDate,
+  type SeasonId,
+  type SeasonMeta,
+  SEASON_ORDER,
+  seasonYear,
+  seasonLabel,
+  seasonTags,
+  getAutoSemesterAndSchoolYearTags,
+} from "../../packages/core/src/seasons";
 import type { SeasonSettings } from "../types";
 
-// Seasons — the term we're in, auto-derived from today. Drives club-rush intake:
-// a new sign-up is stamped with the season so a whole cohort ("everyone we met in
-// Fall '26") can be found again later. The active season is auto-picked from the
-// date but can be overridden, with a "club rush" flag for the busy welcome weeks.
-// Both live in a single team-wide doc (settings/season), publicly readable so the
-// public sign-up reflects them.
-
-export { SEASONS, seasonForDate, type SeasonId, type SeasonMeta } from "./seasonCalendar";
-
-export const SEASON_ORDER: SeasonId[] = ["spring", "summer", "fall", "winter"];
-
-export function seasonYear(d: Date = new Date()): string {
-  return String(d.getFullYear()).slice(2);
-}
-
-/** A human cohort label like "Fall '26". */
-export function seasonLabel(id: SeasonId, d: Date = new Date()): string {
-  return `${SEASONS[id].label} '${seasonYear(d)}`;
-}
-
-/** Cohort tags for a new contact — canonical full-year tags (e.g. "Fall 2026"). */
-export function seasonTags(activeId: SeasonId, clubRush: boolean, d: Date = new Date(), bfa = false): string[] {
-  const tags = [`${SEASONS[activeId].label} ${d.getFullYear()}`];
-  if (clubRush) tags.push("Club Rush");
-  if (bfa) tags.push("BFA");
-  return tags;
-}
-
-/** Auto tags based on semester and school year (e.g. ["Fall 2026", "2026-27"]). */
-export function getAutoSemesterAndSchoolYearTags(d: Date = new Date()): string[] {
-  const month = d.getMonth();
-  const year = d.getFullYear();
-
-  const season = seasonForDate(d);
-  const seasonName = season.charAt(0).toUpperCase() + season.slice(1);
-  const semesterTag = `${seasonName} ${year}`;
-
-  const startYear = month >= 7 ? year : year - 1;
-  const endYearShort = String((startYear + 1) % 100).padStart(2, '0');
-  const schoolYearTag = `${startYear}-${endYearShort}`;
-
-  return [semesterTag, schoolYearTag];
-}
+export {
+  SEASONS,
+  seasonForDate,
+  type SeasonId,
+  type SeasonMeta,
+  SEASON_ORDER,
+  seasonYear,
+  seasonLabel,
+  seasonTags,
+  getAutoSemesterAndSchoolYearTags,
+};
 
 
 const seasonDoc = () => doc(db, "settings", "season");

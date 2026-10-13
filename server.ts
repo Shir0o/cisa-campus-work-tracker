@@ -16,7 +16,8 @@ import { FeedbackPipeline } from "./src/server/feedbackPipeline";
 import { buildAttendancePreview } from "./src/lib/sync/attdCorrelator";
 import { visibleToOf, type ContactTies } from "./src/lib/contactTies";
 import { buildCombinePlan, buildCombineUndoPlan, combineRecordKind, referenceKey, timestampMillis, type CombineReferences, type CombineUndoCurrent, type CombinePicks, type CombineRecordKind } from "./src/lib/combineContactsPlan";
-import { normalizeTag, planTagApplies, planTagUndo, resolveStandardTags, type TagCombine, type TagUndoEntry } from "./src/lib/tags";
+import { type TagCombine } from "./src/lib/tags";
+import { TagCombineEngine, TagEngineError } from "./src/server/tagEngine";
 import type { Contact } from "./src/types";
 import { partnersAt, dayKey, cleanPairings, migrateByTermToPairings, type PartnerPairing, type PartnersByTerm } from "./src/lib/partnersModel";
 import type { AttdEventMapping, AttdSyncPayload, AttendeeAlias } from "./src/lib/sync/attdCorrelator";
@@ -2636,11 +2637,9 @@ ${JSON.stringify(contactsList)}`;
     }
   });
 
-  // Combine tags (issue #1435, spec #1426). Full-timers only. The browser
-  // guesses and edits combines; this endpoint recomputes the affected contacts
-  // with the shared pure module (src/lib/tags.ts planTagApplies), rewrites
-  // their tags (dropping repeats), adds any requested new targets to the
-  // standard tags (settings/standard_tags, ADR 0039), and writes a combine
+  // Combine tags (issue #1435, spec #1426, issue #1587). Full-timers only.
+  // Replaces every occurrence of any variant with the target tag, deduping per
+  // contact. Can optionally mark new targets as standard tags. Writes a combine
   // record of kind tags holding each contact's tags before and after and the
   // standard tags it added.
   app.post("/api/combine-tags", standardRateLimiter, async (req, res) => {
@@ -2667,105 +2666,24 @@ ${JSON.stringify(contactsList)}`;
 
     try {
       const db = getAdminDb();
-      const contactsSnap = await db.collection("contacts").get();
-      const contacts = contactsSnap.docs.map((d: any) => ({
-        id: d.id,
-        name: String(d.data().name ?? ""),
-        tags: (d.data().tags ?? []) as string[],
-      }));
-
-      const rows = planTagApplies(contacts, combines);
-
-      if (req.body?.dryRun === true) {
-        return res.status(200).json({ success: true, dryRun: true, rows });
-      }
-
-      // New targets the Full-timer asked to make standard: only names this
-      // combine actually targets, and only those not already standard.
-      const requested: string[] = Array.isArray(req.body?.makeStandard)
-        ? req.body.makeStandard.filter((v: any) => typeof v === "string")
-        : [];
-      const targetNames = new Map<string, string>();
-      for (const combine of combines) {
-        const target = normalizeTag(combine.target);
-        if (target) targetNames.set(target.toLowerCase(), target);
-      }
-      const standardRef = db.collection("settings").doc("standard_tags");
-      const standardSnap = await standardRef.get();
-      const standardTags = resolveStandardTags(
-        standardSnap.exists ? ((standardSnap.data()?.tags ?? []) as string[]) : undefined,
-      );
-      const known = new Set(standardTags.map((tag) => tag.toLowerCase()));
-      const standardTagsAdded: string[] = [];
-      for (const name of requested) {
-        const target = targetNames.get(normalizeTag(name).toLowerCase());
-        if (!target || known.has(target.toLowerCase())) continue;
-        known.add(target.toLowerCase());
-        standardTagsAdded.push(target);
-      }
-
-      const now = new Date().toISOString();
-      const recordRef = db.collection("combineRecords").doc();
-      await recordRef.set({
-        kind: "tags" satisfies CombineRecordKind,
+      const engine = new TagCombineEngine({ db });
+      const result = await engine.combineTags({
         combines,
-        contacts: rows.map((row) => ({
-          contactId: row.contactId,
-          name: row.name,
-          before: row.from,
-          after: row.to,
-        })),
-        standardTagsAdded,
-        status: "pending",
-        combinedBy: actorId,
-        combinedByName: actorName,
-        combinedAt: now,
+        dryRun: req.body?.dryRun === true,
+        makeStandard: Array.isArray(req.body?.makeStandard)
+          ? req.body.makeStandard.filter((v: any) => typeof v === "string")
+          : [],
+        actorId,
+        actorName,
       });
 
-      const BATCH_LIMIT = 400;
-      for (let i = 0; i < rows.length; i += BATCH_LIMIT) {
-        const batch = db.batch();
-        for (const row of rows.slice(i, i + BATCH_LIMIT)) {
-          batch.update(db.collection("contacts").doc(row.contactId), {
-            tags: row.to,
-            updatedAt: now,
-            updatedBy: actorId,
-            updatedByName: actorName,
-          });
-        }
-        await batch.commit();
-      }
-
-      if (standardTagsAdded.length > 0) {
-        await standardRef.set({ tags: [...standardTags, ...standardTagsAdded] });
-      }
-
-      let logged = 0;
-      for (const row of rows) {
-        await db.collection("activities").add({
-          userId: actorId,
-          userName: actorName,
-          userPhoto: "",
-          action: "combined tags on",
-          targetId: row.contactId,
-          targetName: row.name,
-          targetType: "contact",
-          type: "edit",
-          description: `Tags: [${row.from.join(", ")}] → [${row.to.join(", ")}]`,
-          createdAt: now,
-        });
-        logged++;
-      }
-
-      await recordRef.update({ status: "done", completedAt: new Date().toISOString() });
-
-      return res.status(200).json({
-        success: true,
-        combineRecordId: recordRef.id,
-        changedCount: rows.length,
-        logged,
-      });
+      return res.status(200).json(result);
     } catch (error: any) {
+      if (error instanceof TagEngineError) {
+        return res
+          .status(error.status)
+          .json({ success: false, error: error.message, ...error.extra });
+      }
       console.error("Combine Tags Error:", error);
       return res
         .status(500)
@@ -2773,7 +2691,7 @@ ${JSON.stringify(contactsList)}`;
     }
   });
 
-  // Undo a tag combine (issue #1436, spec #1426). Full-timers only. Replays the
+  // Undo a tag combine (issue #1436, spec #1426, issue #1587). Full-timers only. Replays the
   // tag combine record: each contact returns to its before-tags only while its
   // current tags still equal what the combine wrote. Contacts re-tagged (or
   // deleted) since are skipped and reported. Standard tags added by the combine
@@ -2792,88 +2710,20 @@ ${JSON.stringify(contactsList)}`;
 
     try {
       const db = getAdminDb();
-      const loaded = await loadCombineRecord(db, res, combineRecordId, "tags");
-      if (!loaded) return;
-      const { recordRef, record } = loaded;
-
-      const entries: TagUndoEntry[] = (Array.isArray(record.contacts) ? record.contacts : [])
-        .map((c: any) => ({
-          contactId: String(c?.contactId ?? ""),
-          name: String(c?.name ?? ""),
-          before: Array.isArray(c?.before) ? c.before : [],
-          after: Array.isArray(c?.after) ? c.after : [],
-        }))
-        .filter((entry: TagUndoEntry) => entry.contactId);
-
-      const currentTagsByContact: Record<string, string[] | null> = {};
-      for (const entry of entries) {
-        const snap = await db.collection("contacts").doc(entry.contactId).get();
-        currentTagsByContact[entry.contactId] = snap.exists
-          ? ((snap.data()?.tags ?? []) as string[])
-          : null;
-      }
-
-      const plan = planTagUndo(entries, currentTagsByContact);
-      const preview = {
-        restored: plan.restore.map((row) => ({
-          contactId: row.contactId,
-          name: row.name,
-          current: row.current,
-          before: row.before,
-        })),
-        skipped: plan.skipped.map((row) => ({
-          contactId: row.contactId,
-          name: row.name,
-          current: row.current,
-          after: row.after,
-        })),
-        // Standard tags the combine added stay after an undo (ADR 0039).
-        standardTagsRemaining: Array.isArray(record.standardTagsAdded)
-          ? record.standardTagsAdded.filter((tag: any) => typeof tag === "string")
-          : [],
-      };
-
-      if (dryRun) {
-        return res.status(200).json({ success: true, dryRun: true, preview });
-      }
-
-      const now = new Date().toISOString();
-
-      await undoUnderClaim(
-        db,
-        recordRef,
-        plan.restore.map((row) => ({
-          op: "update" as const,
-          ref: db.collection("contacts").doc(row.contactId),
-          data: { tags: row.before, updatedAt: now, updatedBy: actorId, updatedByName: actorName },
-        })),
-        { status: "undone", undoneBy: actorId, undoneByName: actorName, undoneAt: now },
-      );
-
-      for (const row of plan.restore) {
-        await db.collection("activities").add({
-          userId: actorId,
-          userName: actorName,
-          userPhoto: "",
-          action: "undid tag combine",
-          targetId: row.contactId,
-          targetName: row.name,
-          targetType: "contact",
-          type: "edit",
-          description: `Restored tags: [${row.current.join(", ")}] → [${row.before.join(", ")}]`,
-          createdAt: now,
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        preview,
-        restoredCount: plan.restore.length,
-        skippedCount: plan.skipped.length,
+      const engine = new TagCombineEngine({ db });
+      const result = await engine.undoCombine({
+        combineRecordId,
+        dryRun,
+        actorId,
+        actorName,
       });
+
+      return res.status(200).json(result);
     } catch (error: any) {
-      if (error instanceof CombineRefusal) {
-        return res.status(error.status).json({ success: false, error: error.message, ...error.extra });
+      if (error instanceof TagEngineError) {
+        return res
+          .status(error.status)
+          .json({ success: false, error: error.message, ...error.extra });
       }
       console.error("Undo Tag Combine Error:", error);
       return res
