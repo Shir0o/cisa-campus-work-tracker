@@ -35,6 +35,7 @@ interface PrayerListMobileProps {
   onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
+  onPickHeld?(added: string[]): Promise<void> | void;
 }
 
 const THIS_WEEK_START = (() => {
@@ -117,17 +118,26 @@ export default function PrayerListMobile({
   onMakeTodo,
   isManager,
   onClearPrayer,
+  onPickHeld,
 }: PrayerListMobileProps) {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   // The picker only adds; taking someone off stays the card's × (ticket #1450).
-  const applyPick = (added: string[]) => {
-    added.forEach((id) => {
-      const c = contacts.find((x) => x.id === id);
-      if (c) startHolding(c);
-    });
+  const applyPick = async (added: string[]) => {
+    if (onPickHeld) {
+      await onPickHeld(added);
+    } else {
+      const burdenText = t('prayers.holding_in_prayer', 'Holding in prayer');
+      await Promise.all(
+        added.map(async (id) => {
+          const c = contacts.find((x) => x.id === id);
+          if (c) startHolding(c);
+          await onAddBurden(id, burdenText);
+        }),
+      );
+    }
     setPickerOpen(false);
   };
 
