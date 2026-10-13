@@ -85,7 +85,6 @@ import {
   GripVertical,
   Archive,
   Edit3,
-  Languages,
   Maximize2,
   Minimize2,
   Hash,
@@ -2588,8 +2587,7 @@ export function DocEditor({
   // reading view (unchanged); English mode shows it when the page is not
   // confidently English, and keeps its inline editor for English pages.
   const needsTranslation = !shouldShowAsIs(d.md || d.title || '', language);
-  const [isEditingInSpanish, setIsEditingInSpanish] = useState(false);
-  const showReadingView = (isSpanish || needsTranslation) && !isEditingInSpanish;
+  const showReadingView = isSpanish || needsTranslation;
   const [shareOpen, setShareOpen] = useState(false);
   // The header button doubles as the sharing indicator: accented + dotted when a
   // live guest link exists, so a Full-timer can see the page is shared at a glance.
@@ -3301,28 +3299,6 @@ export function DocEditor({
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {(isSpanish || needsTranslation) && (
-            <button
-              type="button"
-              onClick={() => setIsEditingInSpanish((v) => !v)}
-              className={cn(
-                'inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-lg px-2.5 py-1 border transition-colors',
-                isEditingInSpanish
-                  ? 'bg-stage-accent-soft border-stage-accent/40 text-stage-accent'
-                  : 'bg-surface-variant border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent',
-              )}
-            >
-              {isEditingInSpanish ? (
-                <>
-                  <Languages className="w-3.5 h-3.5" /> {t('coordination.view_translation')}
-                </>
-              ) : (
-                <>
-                  <Edit3 className="w-3.5 h-3.5" /> {t('coordination.edit')}
-                </>
-              )}
-            </button>
-          )}
           <span className={cn('inline-flex items-center gap-1 text-xs whitespace-nowrap', saved ? 'text-tertiary' : 'text-on-surface-variant/70')}>
             {saved ? (
               <>

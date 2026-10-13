@@ -2443,17 +2443,9 @@ describe('CoordinationNotes', () => {
           expect(screen.getByText(/Notas para el equipo/i)).toBeInTheDocument();
         });
 
-        // Toggle into edit mode
-        const editBtn = screen.getByRole('button', { name: /edit|editar/i });
-        fireEvent.click(editBtn);
-
-        expect(screen.getByPlaceholderText(/untitled page|página sin título/i)).toHaveValue('Cuidado de miércoles');
-
-        // Toggle back to translation view
-        const viewTransBtn = screen.getByRole('button', { name: /ver traducción/i });
-        fireEvent.click(viewTransBtn);
-
-        expect(screen.getByRole('heading', { name: 'Cuidado de miércoles' })).toBeInTheDocument();
+        // The edit/view translation toggle button is removed (#1579): translation view is governed directly by global language
+        expect(screen.queryByRole('button', { name: /ver traducción|view translation/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^edit$|^editar$/i })).not.toBeInTheDocument();
 
         // Promote to note in Spanish prefills translated title and body
         const promoteBtn = screen.getByRole('button', { name: /keep as a note|guardar como nota/i });
