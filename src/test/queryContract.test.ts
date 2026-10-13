@@ -20,7 +20,7 @@
  *     --only firestore,database --project demo-campus-hub \
  *     "npx vitest run src/test/queryContract.test.ts"
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as fs from 'fs';
 import {
   assertFails,
@@ -48,7 +48,7 @@ import {
   updateContact,
   updateContactTags,
 } from '../../packages/core/src/data/contacts';
-import { subscribeAllThreads } from '../../packages/core/src/data/threads';
+import { addThreadMessage, subscribeAllThreads } from '../../packages/core/src/data/threads';
 import { subscribeAsks, subscribeStaffAsks } from '../../packages/core/src/data/asks';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
@@ -186,6 +186,12 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       });
       await seedDoc(db, 'contacts/c-mine/threads/t-team', {
         from: ADMIN, fromName: 'Admin', kind: 'comment', body: 'team only', at: ISO, scope: 'team',
+      });
+      // Row 21: a Full-timer wrote on the trainee's person just now, so they
+      // are In the Conversation there without being tied (#1604).
+      await seedDoc(db, 'contacts/c-mine/threads/t-recent', {
+        from: ADMIN, fromName: 'Admin', kind: 'nudge', body: 'can someone text them?',
+        at: new Date().toISOString(), interactionId: null,
       });
       await seedDoc(db, 'contacts/c-theirs/threads/t-secret', {
         from: OTHER_TRAINEE, fromName: 'Other', kind: 'comment', body: 'secret', at: ISO,
@@ -430,6 +436,22 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     await expect(updateContactTags(dbFor(ADMIN), nullEmailContact.id, ['Fall 2026'], {
       uid: ADMIN, name: 'Admin',
     })).resolves.toBeUndefined();
+  });
+
+  // ── Row 21: a reply reaches teammates In the Conversation (#1604) ────────
+  // addThreadMessage reads the stream's last 14 days to find who wrote there.
+  // That read swallows a denial (it only narrows who hears), so a rule that
+  // refused it would silently notify nobody. Pin it as the Trainee who runs it.
+  it('row 21 — a Trainee’s reply reads the stream and reaches the untied Full-timer who asked', async () => {
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      dbFor(TRAINEE),
+      'c-mine',
+      { parentId: 't-recent', from: TRAINEE, fromName: 'Trainee', kind: 'comment', body: 'I texted them.' },
+      { contactName: 'Mine', stakeholders: { createdBy: TRAINEE } },
+      onNotify,
+    );
+    expect(onNotify).toHaveBeenCalledWith(expect.objectContaining({ userId: ADMIN }));
   });
 
   // ── Rows 3/5 (db side): the collection-group thread feed ─────────────────

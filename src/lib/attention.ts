@@ -1,7 +1,7 @@
 import type { Contact, Interaction, Notification } from "../types";
 import { isFullTimer, isTrainee } from "./walking";
 import { teamOf } from "./teams";
-import type { ThreadMessageWithContact } from "./threads";
+import { inTheConversation, type ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { InboxState } from "./inboxState";
 
@@ -52,6 +52,10 @@ export interface AttentionItem {
   /** Set on the asker's own outstanding questions, so they can see what they
    *  are waiting on. Without it "both ends" is really one end. */
   awaitingReply?: boolean;
+  /** Reached you only because you are In the Conversation there (#1604): you
+   *  wrote in that stream in the 14 days before it, without a tie to the
+   *  person. Information to you — it never asks you to follow up. */
+  inConversation?: boolean;
 }
 
 
@@ -189,6 +193,7 @@ export function buildAttentionItems(params: {
   // but questions, so a note, a comment and a follow-up ask on a contact they
   // carry never reached them — three rows of the completion-verb table could
   // not render.
+  const mine = threads.filter((m) => m.from === uid);
   for (const m of threads) {
     if (!isStaff) break;
     if (m.scope === "team" && !isFullTimerView) continue;
@@ -205,7 +210,10 @@ export function buildAttentionItems(params: {
           ms(r.at) > ms(m.at),
       );
 
-    if (!tied(m.contactId) && !(isFullTimerView && unansweredQuestion)) continue;
+    // In the Conversation (#1604): you wrote in this stream in the 14 days
+    // before it, which reaches you without a tie.
+    const inConversation = !tied(m.contactId) && inTheConversation(mine, m).includes(uid);
+    if (!tied(m.contactId) && !(isFullTimerView && unansweredQuestion) && !inConversation) continue;
     if (m.kind === "question" && !unansweredQuestion) continue;
 
     items.push({
@@ -219,6 +227,7 @@ export function buildAttentionItems(params: {
       interactionId: m.interactionId ?? null,
       closedAt: m.closedAt ?? null,
       closedByName: m.closedByName ?? null,
+      ...(inConversation ? { inConversation: true } : {}),
     });
   }
 
@@ -430,8 +439,10 @@ export function attentionPhrase(item: AttentionItem, staffNameMap?: Record<strin
  *  are only information. See docs/design/followup-reach/Inbox.dc.html. */
 export type WorklistVerb = "followedUp" | "answered" | "reviewed" | "gotIt";
 
+// An ask that reaches you only because you are In the Conversation is not
+// yours to follow up on — that stays with those tied to the person (#1604).
 const OPEN_ASK = (it: AttentionItem) =>
-  it.type === "thread" && it.kind === "nudge" && !it.closedAt;
+  it.type === "thread" && it.kind === "nudge" && !it.closedAt && !it.inConversation;
 
 /** The follow-up asks on this card still waiting on someone. */
 export function openAsksIn(stack: AttentionStack): AttentionItem[] {
@@ -551,9 +562,10 @@ export function partitionAttentionStacks(
     );
 
     // Something addressed to you personally: an explicit mention or a question
-    // you are waiting on a reply for (#1209).
+    // you are waiting on a reply for (#1209), or something written where you
+    // are In the Conversation (#1604).
     const hasDirectMentionOrReply = stack.items.some(
-      (it) => it.type === "thread" && (it.mentioned || it.awaitingReply),
+      (it) => it.type === "thread" && (it.mentioned || it.awaitingReply || it.inConversation),
     );
 
     // One definition of "tied to this person", shared with the notification

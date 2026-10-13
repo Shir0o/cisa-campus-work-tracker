@@ -13,7 +13,7 @@ import { DAY_MS, daysSince, parseMs, toLocalDate } from "./myday";
 import { traineeMyPeople } from "./landing";
 import { firstName } from "./history";
 import type { Contact, Event, Interaction, PrayerRecord, Task } from "./types";
-import type { ThreadKind, ThreadMessageWithContact } from "./threads";
+import { inTheConversation, type ThreadKind, type ThreadMessageWithContact } from "./threads";
 
 export type QueueKind = "due" | "msg" | "follow" | "quiet" | "pray";
 export type QueueTone = "due" | "ask" | "follow" | "pray" | "note";
@@ -262,6 +262,39 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
         contact: c,
       });
     }
+  }
+
+  // 2b — what others wrote where you are In the Conversation (#1604): you wrote
+  // in that stream in the 14 days before it. Reaches you on any person you can
+  // see, own or not; a full-timer's message already carded above stays once.
+  const carded = new Set(out.map((c) => c.id));
+  const mineWritten = input.threads.filter((m) => m.from === input.uid);
+  const heard = input.threads
+    .filter(
+      (m) =>
+        m.from &&
+        m.from !== input.uid &&
+        m.scope !== "team" &&
+        MSG_KINDS.includes(m.kind) &&
+        byId.has(m.contactId) &&
+        !carded.has("ftmsg:" + m.id) &&
+        !input.isRead("thread:" + m.id) &&
+        inTheConversation(mineWritten, m).includes(input.uid),
+    )
+    .sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));
+  for (const m of heard) {
+    const who = firstName(m.fromName ?? "A teammate");
+    out.push({
+      id: "ftmsg:" + m.id,
+      kind: "msg",
+      tone: "ask",
+      group: 1,
+      label: `${who} wrote back`,
+      ago: daysAgoWords(m.at, now),
+      title: `${who}: ${m.body.slice(0, 60)}`,
+      msg: m,
+      contact: byId.get(m.contactId),
+    });
   }
 
   // 3 — follow-ups you promised (a to-do with a person attached).

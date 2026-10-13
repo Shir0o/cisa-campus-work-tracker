@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { addDoc, deleteDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { addDoc, deleteDoc, getDocs, onSnapshot, updateDoc, where } from "firebase/firestore";
 import {
   THREAD_KINDS,
   threadsFor,
@@ -26,10 +26,12 @@ vi.mock("firebase/firestore", () => ({
   collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
   deleteDoc: vi.fn(() => Promise.resolve()),
   doc: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
+  getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
   onSnapshot: vi.fn(),
   orderBy: vi.fn((field, dir) => ({ field, dir })),
   query: vi.fn((ref) => ref),
   updateDoc: vi.fn(() => Promise.resolve()),
+  where: vi.fn((field, op, value) => ({ field, op, value })),
 }));
 
 const tiedMock = vi.hoisted(() => ({ subscribeTiedSubcollection: vi.fn(() => () => {}) }));
@@ -658,5 +660,98 @@ describe("useAllThreads hook", () => {
     const { result } = renderHook(() => useAllThreads());
     await waitFor(() => expect(result.current).toHaveLength(1));
     expect(result.current[0].contactId).toBe("c1");
+  });
+});
+
+// #1604: someone who wrote in a stream within 14 days hears what others write
+// there after — whether or not it answers them, and whether or not they are
+// tied to the person (CONTEXT.md "In the Conversation", ADR 0007 amendment).
+describe("addThreadMessage reaches teammates In the Conversation", () => {
+  const recent = (from: string, extra: Record<string, unknown> = {}) => ({
+    id: from + "-msg",
+    ref: { path: "contacts/C-1/threads/" + from + "-msg", parent: { parent: { id: "C-1" } } },
+    data: () => ({ from, fromName: from, kind: "nudge", body: "Can someone text Mark?", interactionId: null, at: new Date().toISOString(), ...extra }),
+  });
+  const reached = () => vi.mocked(sendNotification).mock.calls.map((c) => c[0]);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    applyRoster([
+      { uid: "tony", role: "admin" },
+      { uid: "anna", role: "admin" },
+      { uid: "tim", role: "manager" },
+    ]);
+  });
+
+  it("tells the asker of a Follow-up ask, though they are not tied, when a teammate replies", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tony")] } as never);
+    await addThreadMessage(
+      "C-1",
+      { parentId: "tony-msg", from: "anna", fromName: "Anna Lee", kind: "comment", body: "I texted him." },
+      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
+    );
+    expect(reached()).toContainEqual(
+      expect.objectContaining({ userId: "tony", title: "Anna commented on Mark", coalesceKey: "contact:C-1" }),
+    );
+  });
+
+  it("still reaches them when they released the person", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tony")] } as never);
+    await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "note", body: "Saw him today." },
+      { contactName: "Mark", stakeholders: { createdBy: "tony", unfollowedBy: ["tony"] } },
+    );
+    expect(reached().map((n) => n.userId)).toEqual(["tony"]);
+  });
+
+  it("tells a teammate who is both tied and In the Conversation once", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim"), recent("tim")] } as never);
+    await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "question", body: "Did he come?" },
+      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
+    );
+    expect(reached()).toEqual([expect.objectContaining({ userId: "tim", title: "Anna asked about Mark" })]);
+  });
+
+  it("never tells a Trainee about the Full-timers stream", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim"), recent("tony")] } as never);
+    await addThreadMessage(
+      "C-1",
+      { scope: "team", from: "anna", fromName: "Anna", kind: "comment", body: "Between us." },
+      { contactName: "Mark" },
+    );
+    expect(reached().map((n) => n.userId)).toEqual(["tony"]);
+  });
+
+  it("ignores messages in another stream on the same person", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tony", { interactionId: "i1" })] } as never);
+    await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "comment", body: "On the Conversation." },
+      { contactName: "Mark" },
+    );
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("asks only for the stream's last 14 days", async () => {
+    await addThreadMessage("C-1", { from: "anna", fromName: "Anna", kind: "comment", body: "Hi" }, { contactName: "Mark" });
+    expect(getDocs).toHaveBeenCalledTimes(1);
+    const [field, op, value] = vi.mocked(where).mock.calls[0] as [string, string, string];
+    expect([field, op]).toEqual(["at", ">="]);
+    const days = (Date.now() - Date.parse(value)) / 86_400_000;
+    expect(Math.round(days)).toBe(14);
+  });
+
+  it("keeps the message when the read fails", async () => {
+    vi.mocked(getDocs).mockRejectedValueOnce(new Error("offline"));
+    const id = await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "comment", body: "Hi" },
+      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
+    );
+    expect(id).toBe("new-msg-id");
+    expect(reached().map((n) => n.userId)).toEqual(["tim"]);
   });
 });

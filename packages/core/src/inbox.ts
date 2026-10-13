@@ -1,6 +1,6 @@
 import type { Contact, Interaction } from "./types";
 import { isFullTimer, isTrainee, fullTimerIds } from "./walking";
-import type { ThreadKind, ThreadMessageWithContact } from "./threads";
+import { inTheConversation, type ThreadKind, type ThreadMessageWithContact } from "./threads";
 
 // Derives a full-timer's inbox feed: the whole team's activity the full-timer
 // wants to be aware of — everyone's work except their own —
@@ -100,6 +100,25 @@ export function inboxItemsFor(
         });
       }
     }
+  }
+
+  // Anything others wrote where the full-timer is In the Conversation (#1604):
+  // they wrote in that stream in the 14 days before it, tied or not.
+  const mine = data.threads.filter((m) => m.from === uid);
+  for (const m of data.threads) {
+    if (!m.from || m.from === uid || m.kind === "encouragement") continue;
+    if (items.some((it) => it.id === "thread:" + m.id)) continue;
+    if (!inTheConversation(mine, m).includes(uid)) continue;
+    items.push({
+      id: "thread:" + m.id,
+      type: "thread",
+      at: m.at,
+      contactId: m.contactId,
+      by: m.from,
+      interactionId: m.interactionId,
+      body: m.body,
+      kind: m.kind,
+    });
   }
 
   return items.sort((a, b) => ms(b.at) - ms(a.at));

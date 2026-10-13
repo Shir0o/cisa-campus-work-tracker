@@ -135,3 +135,46 @@ export function stakeholderUidsOf(
   ].filter((id): id is string => !!id && !unfollowed.has(id));
   return [...new Set(all)].filter((id) => id !== from);
 }
+
+// ── In the Conversation (#1604, CONTEXT.md, ADR 0007 amendment) ─────────────
+// Having written in a stream within the last 14 days reaches you with what
+// others write there after, whether or not it answers you. Worked out from the
+// messages themselves: nothing is stored on the contact and it grants nothing.
+// Mirrored in the other app's copy; src/test/inTheConversation.test.ts runs
+// both against one corpus.
+
+export const IN_THE_CONVERSATION_DAYS = 14;
+
+/** The fields that place a message in its stream and in time. */
+export interface ConversationMessage {
+  from?: string | null;
+  at: string;
+  contactId?: string | null;
+  interactionId?: string | null;
+  scope?: "team" | null;
+}
+
+/** Each stream stands alone: a person's Conversation, their Full-timers
+ *  stream, and each Interaction's thread. */
+export function sameStream(a: ConversationMessage, b: ConversationMessage): boolean {
+  return (
+    (a.contactId ?? null) === (b.contactId ?? null) &&
+    (a.interactionId || null) === (b.interactionId || null) &&
+    (a.scope || null) === (b.scope || null)
+  );
+}
+
+/** Teammates In the Conversation that `of` is written into, as of when it was
+ *  written: anyone but its author with a message in the same stream in the 14
+ *  days before it. */
+export function inTheConversation(messages: readonly ConversationMessage[], of: ConversationMessage): string[] {
+  const at = Date.parse(of.at);
+  const since = at - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000;
+  const uids = new Set<string>();
+  for (const m of messages) {
+    if (!m.from || m.from === of.from || !sameStream(m, of)) continue;
+    const t = Date.parse(m.at);
+    if (t >= since && t <= at) uids.add(m.from);
+  }
+  return [...uids];
+}

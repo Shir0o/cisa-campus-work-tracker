@@ -131,7 +131,9 @@ export function ftInboxRows(
           ? `${who} brought in ${name}`
           : item.type === "interaction"
             ? `${who} logged time with ${name}`
-            : `${who} asked you something about ${name}`,
+            : item.kind && item.kind !== "question"
+              ? `${who} wrote about ${name}`
+              : `${who} asked you something about ${name}`,
       sub:
         item.type === "contact"
           // Was `item.reviewed` — a field with no writer, so this always read

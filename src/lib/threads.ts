@@ -4,10 +4,12 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
+  where,
   type Query,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
@@ -136,6 +138,49 @@ export function subscribeThreads(
     onUpdate,
     (e) => (onError ? onError(e) : console.error("threads subscription error", e)),
   );
+}
+
+// ── In the Conversation (#1604, CONTEXT.md, ADR 0007 amendment) ─────────────
+// Having written in a stream within the last 14 days reaches you with what
+// others write there after, whether or not it answers you. Worked out from the
+// messages themselves: nothing is stored on the contact and it grants nothing.
+// Mirrored in the other app's copy; src/test/inTheConversation.test.ts runs
+// both against one corpus.
+
+export const IN_THE_CONVERSATION_DAYS = 14;
+
+/** The fields that place a message in its stream and in time. */
+export interface ConversationMessage {
+  from?: string | null;
+  at: string;
+  contactId?: string | null;
+  interactionId?: string | null;
+  scope?: "team" | null;
+}
+
+/** Each stream stands alone: a person's Conversation, their Full-timers
+ *  stream, and each Interaction's thread. */
+export function sameStream(a: ConversationMessage, b: ConversationMessage): boolean {
+  return (
+    (a.contactId ?? null) === (b.contactId ?? null) &&
+    (a.interactionId || null) === (b.interactionId || null) &&
+    (a.scope || null) === (b.scope || null)
+  );
+}
+
+/** Teammates In the Conversation that `of` is written into, as of when it was
+ *  written: anyone but its author with a message in the same stream in the 14
+ *  days before it. */
+export function inTheConversation(messages: readonly ConversationMessage[], of: ConversationMessage): string[] {
+  const at = Date.parse(of.at);
+  const since = at - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000;
+  const uids = new Set<string>();
+  for (const m of messages) {
+    if (!m.from || m.from === of.from || !sameStream(m, of)) continue;
+    const t = Date.parse(m.at);
+    if (t >= since && t <= at) uids.add(m.from);
+  }
+  return [...uids];
 }
 
 /** A thread message tagged with the contact it belongs to. */
@@ -292,6 +337,18 @@ export function threadNotificationLink(
   return `/people/${contactId}?tab=${tab}${input.parentId ? `&parent=${input.parentId}` : ""}`;
 }
 
+/** The stream's last 14 days, to work out who is In the Conversation. A failed
+ *  read only narrows who hears; the message itself is already written. */
+async function recentInStream(contactId: string, scope?: Scope): Promise<ThreadMessageWithContact[]> {
+  const since = new Date(Date.now() - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const snap = await getDocs(query(col(contactId, scope), where("at", ">=", since)));
+    return snap.docs.map((d) => toMessageWithContact(d, scope === "team"));
+  } catch {
+    return [];
+  }
+}
+
 /** Post a new message to a contact (and optionally to one interaction). Dispatches
  * notifications to mentioned users, contact stakeholders, or legacy notify.to. */
 export async function addThreadMessage(
@@ -319,6 +376,7 @@ export async function addThreadMessage(
   const body = input.body.trim();
   const mentionedUserIds = (input.mentionedUserIds || []).filter(Boolean);
   let written: string | null = null;
+  const at = new Date().toISOString();
   try {
     const created = await addDoc(col(contactId, input.scope), {
       interactionId: input.interactionId ?? null,
@@ -328,7 +386,7 @@ export async function addThreadMessage(
       fromName: input.fromName,
       kind: input.kind,
       body,
-      at: new Date().toISOString(),
+      at,
       ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
     });
     // `addDoc` always hands back a reference; the guard keeps a caller that
@@ -386,6 +444,23 @@ export async function addThreadMessage(
       void sendNotification({
         userId: sUid,
         title,
+        message: truncatedBody,
+        type: "info",
+        targetId: contactId,
+        link: targetLink,
+        coalesceKey: aboutThisPerson,
+      });
+    }
+
+    // Everyone In the Conversation here (#1604): they wrote in this stream in
+    // the last 14 days. Not a tie, so a Release does not silence it.
+    const recent = await recentInStream(contactId, input.scope);
+    for (const cUid of inTheConversation(recent, { ...input, contactId, at })) {
+      if (notifiedUserIds.has(cUid) || !isAllowedRecipient(cUid)) continue;
+      notifiedUserIds.add(cUid);
+      void sendNotification({
+        userId: cUid,
+        title: isTeamScope ? TEAM_NOTIFY_TITLE(who, contactName) : NOTIFY_TITLE[input.kind](who, contactName),
         message: truncatedBody,
         type: "info",
         targetId: contactId,

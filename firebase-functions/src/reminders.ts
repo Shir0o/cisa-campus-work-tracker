@@ -197,7 +197,10 @@ async function aroundTeamDocs(db: Firestore, nowIso: string): Promise<AroundTeam
       ...d.data(),
       contactId: d.ref.parent.parent?.id ?? "",
     })),
-    threads: [...threadsSnap.docs.map(toThread), ...teamThreadsSnap.docs.map(toThread)],
+    threads: [
+      ...threadsSnap.docs.map(toThread),
+      ...teamThreadsSnap.docs.map((d) => ({ ...toThread(d), scope: "team" as const })),
+    ],
   };
 }
 

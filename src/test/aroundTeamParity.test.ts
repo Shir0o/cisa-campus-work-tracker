@@ -44,6 +44,10 @@ const CONTACTS = [
   { id: 'asked-answered', createdBy: 'tr1', createdAt: T(9) },
   { id: 'their-q', createdBy: 'tr2', createdAt: T(10) },
   { id: 'team-mention', createdBy: 'tr2', createdAt: T(11) },
+  // In the Conversation (#1604): heard, a different stream, and lapsed.
+  { id: 'heard', createdBy: 'tr2', createdAt: T(11) },
+  { id: 'heard-team', createdBy: 'tr2', createdAt: T(11) },
+  { id: 'lapsed', createdBy: 'tr2', createdAt: T(1) },
 ];
 
 const INTERACTIONS = [
@@ -68,6 +72,12 @@ const THREADS = [
   { id: 'm11', contactId: 'co', from: 'tr1', kind: 'nudge', at: T(13) },
   { id: 'm12', contactId: '', from: 'tr1', kind: 'question', at: T(13) },
   { id: 'm13', contactId: 'tr-b', from: 'tr2', kind: 'encouragement', at: T(13), mentionedUserIds: [ME] },
+  { id: 'm14', contactId: 'heard', from: ME, kind: 'nudge', at: T(13) },
+  { id: 'm15', contactId: 'heard', from: 'tr1', kind: 'comment', at: T(14) },
+  { id: 'm16', contactId: 'heard-team', from: ME, kind: 'note', at: T(13), scope: 'team' as const },
+  { id: 'm17', contactId: 'heard-team', from: 'tr1', kind: 'comment', at: T(14) },
+  { id: 'm18', contactId: 'lapsed', from: ME, kind: 'comment', at: T(1) },
+  { id: 'm19', contactId: 'lapsed', from: 'tr1', kind: 'note', at: new Date(Date.UTC(2026, 5, 16, 2)).toISOString() },
 ];
 
 const PERSONAL = new Set(['kept', 'orphan']);
@@ -111,6 +121,13 @@ describe('Around the team to-work-through mirror parity (web vs core)', () => {
 
   it.each(CASES)('the same cards land on Around the team: %s', (_name, input) => {
     expect(coreStackIds(input).sort()).toEqual(webAroundTeam(input).map((s) => s.id).sort());
+  });
+
+  it('takes a person off Around once the reader is In the Conversation there (#1604)', () => {
+    const around = coreStackIds({ uid: ME, contacts: CONTACTS, interactions: [], threads: THREADS });
+    expect(around).not.toContain('att:contact:heard');
+    expect(around).toContain('att:contact:heard-team');
+    expect(around).toContain('att:contact:lapsed');
   });
 
   it.each(CASES)('the same number is left to work through: %s', (_name, input) => {
