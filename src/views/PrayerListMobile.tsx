@@ -35,7 +35,7 @@ interface PrayerListMobileProps {
   onMakeTodo?: (prayer: PrayerRecord) => void;
   isManager: boolean;
   onClearPrayer?: (prayer: PrayerRecord) => void;
-  onPickHeld?: (added: string[]) => Promise<void> | void;
+  onPickHeld?(added: string[]): Promise<void> | void;
 }
 
 const THIS_WEEK_START = (() => {

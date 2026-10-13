@@ -19,7 +19,7 @@ interface PickHeldModalProps {
   heldIds: string[];
   onClose: () => void;
   /** The newly ticked ids (never anyone already held). */
-  onApply: (added: string[]) => void | Promise<void>;
+  onApply(added: string[]): void | Promise<void>;
 }
 
 export default function PickHeldModal({ open, contacts, heldIds, onClose, onApply }: PickHeldModalProps) {
