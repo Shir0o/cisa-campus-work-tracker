@@ -625,9 +625,6 @@ export default function PrayerList() {
     <PageContainer variant="wide">
       {/* Header */}
       <header className="ans-head">
-        <div className="ans-eyebrow">
-          <span className="ans-lit" /> {t('answered.on_our_hearts')}
-        </div>
         <div className="ans-head-row">
           <div>
             <h1 className="ans-h1">{t('nav.prayers')}</h1>

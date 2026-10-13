@@ -178,6 +178,17 @@ describe('PrayerList', () => {
     });
   });
 
+  it('does not render an eyebrow label with lit dot in the desktop header (#1598)', async () => {
+    const { container } = render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'On our hearts' })).toBeInTheDocument();
+    });
+
+    expect(container.querySelector('.ans-eyebrow')).not.toBeInTheDocument();
+    expect(container.querySelector('.ans-lit')).not.toBeInTheDocument();
+  });
+
   it('turns a prayer burden into a to-do linked to the prayer (issue #336)', async () => {
     render(<PrayerList />);
 
