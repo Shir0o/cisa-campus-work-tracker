@@ -287,11 +287,14 @@ export interface ThreadStakeholders {
   founders?: string[] | null;
   carers?: string[] | null;
   unfollowedBy?: string[] | null;
+  /** Who can open the person besides those who see everyone. Never a reason to
+   *  notify; it only bounds who In the Conversation may still hear (#1604). */
+  visibleTo?: string[] | null;
 }
 
 /** Extracts all stakeholders from a contact record. */
 export function contactStakeholdersOf(
-  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy"> | null,
+  contact?: Pick<import("../types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy" | "visibleTo"> | null,
 ): ThreadStakeholders {
   if (!contact) return {};
   const stakeholders: ThreadStakeholders = {
@@ -303,6 +306,9 @@ export function contactStakeholdersOf(
   };
   if (contact.unfollowedBy) {
     stakeholders.unfollowedBy = contact.unfollowedBy;
+  }
+  if (contact.visibleTo) {
+    stakeholders.visibleTo = contact.visibleTo;
   }
   return stakeholders;
 }
@@ -455,8 +461,11 @@ export async function addThreadMessage(
     // Everyone In the Conversation here (#1604): they wrote in this stream in
     // the last 14 days. Not a tie, so a Release does not silence it.
     const recent = await recentInStream(contactId, input.scope);
+    // Writing there once is no access: someone unshared since must not keep
+    // reading the person's messages through the bell.
+    const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
     for (const cUid of inTheConversation(recent, { ...input, contactId, at })) {
-      if (notifiedUserIds.has(cUid) || !isAllowedRecipient(cUid)) continue;
+      if (notifiedUserIds.has(cUid) || !isAllowedRecipient(cUid) || !canStillSee(cUid)) continue;
       notifiedUserIds.add(cUid);
       void sendNotification({
         userId: cUid,

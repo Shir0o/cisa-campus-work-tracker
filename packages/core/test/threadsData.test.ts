@@ -24,6 +24,7 @@ import {
   subscribeThreads,
 } from '../src/data/threads';
 import { applyRoster } from '../src/walking';
+import { contactStakeholdersOf } from '../src/threads';
 
 const DOC_REF = { __docRef: true };
 const db = {} as never;
@@ -246,7 +247,7 @@ describe('subscribeThreads', () => {
 describe('addThreadMessage reaches teammates In the Conversation', () => {
   const recent = (from: string, extra: Record<string, unknown> = {}) => ({
     id: from + '-msg',
-    data: () => ({ from, fromName: from, kind: 'nudge', body: 'Can someone text Mark?', interactionId: null, at: new Date().toISOString(), ...extra }),
+    data: () => ({ from, fromName: from, kind: 'nudge', body: 'Can someone text Mark?', interactionId: null, at: new Date(Date.now() - 60_000).toISOString(), ...extra }),
   });
 
   beforeEach(() => {
@@ -286,6 +287,20 @@ describe('addThreadMessage reaches teammates In the Conversation', () => {
       onNotify,
     );
     expect(onNotify.mock.calls.map((c) => c[0].userId)).toEqual(['tony']);
+  });
+
+  it('never tells someone who can no longer see the person, and still tells one who can (security review)', async () => {
+    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tim'), recent('tony')] });
+    const lost = vi.fn();
+    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'note', body: 'Private.' },
+      { contactName: 'Mark', stakeholders: { createdBy: 'anna', visibleTo: ['anna'] } }, lost);
+    expect(lost.mock.calls.map((c) => c[0].userId)).toEqual(['tony']);
+
+    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tim')] });
+    const kept = vi.fn();
+    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'note', body: 'Hi' },
+      { contactName: 'Mark', stakeholders: contactStakeholdersOf({ createdBy: 'anna', visibleTo: ['anna', 'tim'] } as never) }, kept);
+    expect(kept.mock.calls.map((c) => c[0].userId)).toEqual(['tim']);
   });
 
   it('reads only the last 14 days of that stream, and a failed read keeps the message', async () => {

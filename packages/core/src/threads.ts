@@ -99,11 +99,14 @@ export interface ThreadStakeholders {
   founders?: string[] | null;
   carers?: string[] | null;
   unfollowedBy?: string[] | null;
+  /** Who can open the person besides those who see everyone. Never a reason to
+   *  notify; it only bounds who In the Conversation may still hear (#1604). */
+  visibleTo?: string[] | null;
 }
 
 /** Extracts all stakeholders from a contact record. */
 export function contactStakeholdersOf(
-  contact?: Pick<import("./types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy"> | null,
+  contact?: Pick<import("./types").Contact, "createdBy" | "addedBy" | "coCreators" | "founders" | "carers" | "unfollowedBy" | "visibleTo"> | null,
 ): ThreadStakeholders {
   if (!contact) return {};
   const stakeholders: ThreadStakeholders = {
@@ -115,6 +118,9 @@ export function contactStakeholdersOf(
   };
   if (contact.unfollowedBy) {
     stakeholders.unfollowedBy = contact.unfollowedBy;
+  }
+  if (contact.visibleTo) {
+    stakeholders.visibleTo = contact.visibleTo;
   }
   return stakeholders;
 }

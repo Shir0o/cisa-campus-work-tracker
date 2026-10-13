@@ -7,6 +7,7 @@ import {
   repliesOf,
   countFor,
   addThreadMessage,
+  contactStakeholdersOf,
   threadNotificationLink,
   deleteThreadMessage,
   editThreadMessage,
@@ -670,7 +671,7 @@ describe("addThreadMessage reaches teammates In the Conversation", () => {
   const recent = (from: string, extra: Record<string, unknown> = {}) => ({
     id: from + "-msg",
     ref: { path: "contacts/C-1/threads/" + from + "-msg", parent: { parent: { id: "C-1" } } },
-    data: () => ({ from, fromName: from, kind: "nudge", body: "Can someone text Mark?", interactionId: null, at: new Date().toISOString(), ...extra }),
+    data: () => ({ from, fromName: from, kind: "nudge", body: "Can someone text Mark?", interactionId: null, at: new Date(Date.now() - 60_000).toISOString(), ...extra }),
   });
   const reached = () => vi.mocked(sendNotification).mock.calls.map((c) => c[0]);
 
@@ -742,6 +743,27 @@ describe("addThreadMessage reaches teammates In the Conversation", () => {
     expect([field, op]).toEqual(["at", ">="]);
     const days = (Date.now() - Date.parse(value)) / 86_400_000;
     expect(Math.round(days)).toBe(14);
+  });
+
+  it("never tells someone who can no longer see the person (security review)", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim"), recent("tony")] } as never);
+    await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "note", body: "Private detail." },
+      { contactName: "Mark", stakeholders: { createdBy: "anna", visibleTo: ["anna"] } },
+    );
+    // tim (Trainee) was unshared since writing; tony is a Full-timer and sees everyone.
+    expect(reached().map((n) => n.userId)).toEqual(["tony"]);
+  });
+
+  it("tells a Trainee who still sees the person", async () => {
+    vi.mocked(getDocs).mockResolvedValueOnce({ docs: [recent("tim")] } as never);
+    await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "note", body: "Hi" },
+      { contactName: "Mark", stakeholders: contactStakeholdersOf({ createdBy: "anna", visibleTo: ["anna", "tim"] } as never) },
+    );
+    expect(reached().map((n) => n.userId)).toEqual(["tim"]);
   });
 
   it("keeps the message when the read fails", async () => {

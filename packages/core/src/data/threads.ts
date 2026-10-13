@@ -268,7 +268,10 @@ export async function addThreadMessage(
   // And everyone In the Conversation here (#1604): they wrote in this stream in
   // the last 14 days. Not a tie, so a Release does not silence it.
   const recent = await recentInStream(db, contactId, input.scope);
-  for (const uid of inTheConversation(recent, { ...input, contactId, at })) recipients.add(uid);
+  // Writing there once is no access: someone unshared since must not keep
+  // reading the person's messages through the bell.
+  const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
+  for (const uid of inTheConversation(recent, { ...input, contactId, at })) if (canStillSee(uid)) recipients.add(uid);
   // The Full-timers stream is never announced to a Trainee, and a mention
   // already carried its own buzz.
   if (team) for (const uid of recipients) if (!isFullTimer(uid)) recipients.delete(uid);
