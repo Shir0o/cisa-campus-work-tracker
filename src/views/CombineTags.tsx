@@ -685,10 +685,12 @@ export default function CombineTags() {
                   {applying && <Loader2 className="w-4 h-4 animate-spin" />}
                   {applying
                     ? t('combine_tags.applying', 'Applying…')
-                    : t('combine_tags.apply', 'Combine {n} contacts').replace(
-                        '{n}',
-                        String(rows.length),
-                      )}
+                    : rows.length === 1
+                      ? t('combine_tags.apply_one', 'Combine tags on 1 contact')
+                      : t('combine_tags.apply', 'Combine tags on {n} contacts').replace(
+                          '{n}',
+                          String(rows.length),
+                        )}
                 </button>
               </div>
             </>

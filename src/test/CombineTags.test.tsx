@@ -123,11 +123,11 @@ describe('CombineTags', () => {
   it('updates the count and the result when a variant is removed', () => {
     renderPage();
 
-    expect(screen.getByRole('button', { name: /Combine 2 contacts/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Combine tags on 2 contacts/i })).toBeEnabled();
 
     fireEvent.click(screen.getByTestId('remove-variant-guess-bfa-strong-bfa-table'));
 
-    expect(screen.getByRole('button', { name: /Combine 1 contact/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Combine tags on 1 contact/i })).toBeEnabled();
     // Bob only had bfa-table, so his row disappears from the preview.
     expect(screen.queryByText('Bob')).not.toBeInTheDocument();
     expect(screen.getByText('Alice')).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('CombineTags', () => {
   it('applies the enabled combines through the server', async () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Combine tags on 2 contacts/i }));
 
     await waitFor(() => expect(screen.getByTestId('tag-combine-applied')).toBeInTheDocument());
 
@@ -164,7 +164,7 @@ describe('CombineTags', () => {
     global.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'Forbidden' }, false));
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Combine tags on 2 contacts/i }));
 
     await waitFor(() => expect(screen.getByText('Forbidden')).toBeInTheDocument());
   });
@@ -296,7 +296,7 @@ describe('CombineTags', () => {
       expect(combine.getByText('Outreach')).toBeInTheDocument();
       expect(screen.queryByTestId('combine-into-bar')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Combine tags on 2 contacts/i }));
 
       await waitFor(() => expect(screen.getByTestId('tag-combine-applied')).toBeInTheDocument());
       const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
@@ -316,12 +316,12 @@ describe('CombineTags', () => {
       });
       fireEvent.click(screen.getByTestId('combine-into-button'));
 
-      expect(screen.getByRole('button', { name: /Combine 2 contacts/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Combine tags on 2 contacts/i })).toBeInTheDocument();
 
       fireEvent.click(screen.getByLabelText('Remove combine'));
 
       expect(screen.queryByTestId('user-combine')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Combine 0 contacts/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Combine tags on 0 contacts/i })).toBeDisabled();
     });
 
     it('offers Also make standard only for a new name and asks the server to add it when checked', async () => {
@@ -343,7 +343,7 @@ describe('CombineTags', () => {
 
       fireEvent.click(makeStandard);
       fireEvent.click(screen.getByTestId('combine-into-button'));
-      fireEvent.click(screen.getByRole('button', { name: /Combine 2 contacts/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Combine tags on 2 contacts/i }));
 
       await waitFor(() => expect(screen.getByTestId('tag-combine-applied')).toBeInTheDocument());
       // The server adds the standard tag; the browser writes no standard tags document.
