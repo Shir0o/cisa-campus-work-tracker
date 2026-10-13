@@ -15,14 +15,14 @@ live in `CONTEXT.md`.
 | Entry | One durable QR per **Entry point** (`/s/:slug`), shown on a leader's phone, never printed. Resolves slug → active Study → newest published Meeting. Reversed the earlier "one QR per Meeting" — see ADR 0011. |
 | Public surface | Read-only. Nothing anonymous is ever written. |
 | Structure | Author-defined Sections, one per screen; outline points, Passage, Prompt — all optional, order as written. Confirmed by ADR 0014: a scroll-snap panel is still one Section per screen. |
-| Motion | Scrolling deck: Sections stack as scroll-snap panels (proximity), content on a raised card that settles optically in the panel, sized in `dvh`. Scrolling is the navigation — no click-to-advance, no parallax. See ADR 0014. |
+| Motion | Scrolling deck: Sections stack as scroll-snap panels (proximity), content on a raised card that settles optically in the panel, sized in `dvh`. Scrolling is the navigation — no click-to-advance, no parallax. See ADR 0014. On a reader box at least 768×600 the reader is a paged deck instead: one Section per screen, tabs and Previous/Next — see ADR 0043. |
 | Prompts | Question / Discuss / Activity. Never answered on the page. |
 | Blanks | Outline points and Passage, tap to reveal, per-Meeting author's choice. A Blank's tap is the only tap left — there is no surface tap to compete with. |
 | Navigation | Auto-hiding edge scrubber, Sections only, labelled from headings. Jumping scrolls the deck (`scrollIntoView`); the scrubber never owns position. |
 | Theme | Light and dark, following the phone. |
 | Content | Own collection. One markdown document per Meeting + three conventions (`## ` = Section, blockquote = Passage, `Question:`/`Discuss:`/`Activity:` line = Prompt), parsed live as written — see ADR 0013. |
 | Splits | Two **Entry points**, each with its own Study, populated by duplicate-week. Opening and closing are duplicated, not shared. `siblingId` removed — see ADR 0011. |
-| Reader surfaces | Public web (phone), plus the native app and installed PWA for signed-in users. No desktop reader. |
+| Reader surfaces | Public web on a phone, tablet or laptop, plus the native app and installed PWA for signed-in users. Wide screens get the paged deck (ADR 0043), reversing "No desktop reader". |
 | Desktop | Admin editing only — but the Meetings index and present mode must also work on a phone, since the QR is displayed from one. Reversed — see ADR 0011. |
 
 Governing principle from the last round: **the author decides, the page obeys.**

@@ -45,6 +45,44 @@ function stubIntersectionObserver() {
   };
 }
 
+// The reader picks its layout from its OWN box, not the window (#1590), so the
+// editor's 390-wide phone preview stays a phone inside a wide desktop window.
+// jsdom has no layout; this per-test stub captures every ResizeObserver and
+// lets a test report a size for the reader's root — the same seam the shipped
+// measurement uses.
+function stubReaderBox() {
+  const observers: { cb: ResizeObserverCallback; targets: Element[] }[] = [];
+  class StubObserver {
+    entry: { cb: ResizeObserverCallback; targets: Element[] };
+    constructor(cb: ResizeObserverCallback) {
+      this.entry = { cb, targets: [] };
+      observers.push(this.entry);
+    }
+    observe(target: Element) {
+      this.entry.targets.push(target);
+    }
+    unobserve() {}
+    disconnect() {
+      this.entry.targets = [];
+    }
+  }
+  vi.stubGlobal('ResizeObserver', StubObserver);
+  return {
+    resize: (width: number, height: number) => {
+      const root = document.querySelector('.reader-card-surface')!;
+      act(() => {
+        for (const o of observers) {
+          if (!o.targets.includes(root)) continue;
+          o.cb(
+            [{ target: root, contentRect: { width, height } } as unknown as ResizeObserverEntry],
+            {} as ResizeObserver,
+          );
+        }
+      });
+    },
+  };
+}
+
 function meeting(over: Partial<Meeting>): Meeting {
   return {
     id: 'm-1',
@@ -305,6 +343,242 @@ describe('StudyReaderView (the scrolling deck)', () => {
       io.fire(io.observed[1], true);
       io.fire(io.observed[2], true);
       expect(io.observed).toHaveLength(3);
+    });
+  });
+
+  describe('the paged deck on a wide reader (#1590)', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const sectionHeading = () => screen.getByRole('heading', { level: 2 });
+
+    it('shows every Section as a tab and one Section at a time', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      const tabs = within(screen.getByRole('navigation', { name: 'Sections' })).getAllByRole('button');
+      expect(tabs.map((t) => t.textContent)).toEqual([
+        'Where peace starts',
+        'What suffering is doing',
+        'The end of the week',
+      ]);
+      expect(tabs[0]).toHaveAttribute('aria-current', 'step');
+      expect(sectionHeading()).toHaveTextContent('Where peace starts');
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
+      // The phone's peek and edge index give way to the tabs and Next.
+      expect(screen.queryByTestId('peek-0')).toBeNull();
+      expect(screen.queryByLabelText('Open section index')).toBeNull();
+    });
+
+    it('steps with Previous and Next, naming the next Section and ending the Meeting', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      const footer = screen.getByTestId('paged-footer');
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
+      expect(footer).toHaveTextContent('01 / 03');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Next: What suffering is doing' }));
+      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+      expect(footer).toHaveTextContent('02 / 03');
+      expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Next: The end of the week' }));
+      expect(sectionHeading()).toHaveTextContent('The end of the week');
+      // The last Section ends the Meeting in place of Next.
+      expect(screen.queryByRole('button', { name: /^Next/ })).toBeNull();
+      expect(footer).toHaveTextContent('End of Peace that holds');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+    });
+
+    it('jumps to any Section from its tab', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      const nav = screen.getByRole('navigation', { name: 'Sections' });
+      fireEvent.click(within(nav).getByRole('button', { name: 'The end of the week' }));
+
+      expect(sectionHeading()).toHaveTextContent('The end of the week');
+      expect(within(nav).getByRole('button', { name: 'The end of the week' })).toHaveAttribute('aria-current', 'step');
+      expect(within(nav).getByRole('button', { name: 'Where peace starts' })).not.toHaveAttribute('aria-current');
+      expect(screen.getByTestId('paged-footer')).toHaveTextContent('03 / 03');
+    });
+
+    it('pages with the arrow keys and Page Up / Page Down', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+      fireEvent.keyDown(document.body, { key: 'PageDown' });
+      expect(sectionHeading()).toHaveTextContent('The end of the week');
+      // Past the last Section, a key does nothing rather than wrapping.
+      fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+      expect(sectionHeading()).toHaveTextContent('The end of the week');
+      fireEvent.keyDown(document.body, { key: 'ArrowLeft' });
+      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+      fireEvent.keyDown(document.body, { key: 'PageUp' });
+      expect(sectionHeading()).toHaveTextContent('Where peace starts');
+    });
+
+    it('leaves the keys alone while typing or with a modifier held', () => {
+      const box = stubReaderBox();
+      render(
+        <>
+          <input aria-label="Notes" />
+          <StudyReaderView meeting={meeting({})} staleDateLabel={null} />
+        </>,
+      );
+      box.resize(1280, 800);
+
+      fireEvent.keyDown(screen.getByLabelText('Notes'), { key: 'ArrowRight' });
+      expect(sectionHeading()).toHaveTextContent('Where peace starts');
+      fireEvent.keyDown(document.body, { key: 'ArrowRight', altKey: true });
+      expect(sectionHeading()).toHaveTextContent('Where peace starts');
+    });
+
+    it('keeps a revealed Blank revealed after paging away and back', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
+      expect(screen.getByText('standing')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
+      expect(screen.queryByText('standing')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+      expect(screen.getByText('standing')).toBeInTheDocument();
+    });
+
+    it('opens each new Section at its top', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      const card = screen.getByTestId('paged-card');
+      card.scrollTop = 240;
+      fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
+      expect(card.scrollTop).toBe(0);
+    });
+
+    it('stays scrolling below either floor — narrow, or a phone held sideways', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      box.resize(390, 844);
+      expect(screen.queryByRole('navigation', { name: 'Sections' })).toBeNull();
+      expect(screen.getByTestId('peek-0')).toBeInTheDocument();
+
+      box.resize(900, 420);
+      expect(screen.queryByRole('navigation', { name: 'Sections' })).toBeNull();
+      expect(screen.getByTestId('reader-deck')).toBeInTheDocument();
+    });
+
+    it('keeps the Section and its revealed Blanks when a tablet rotates into the paged deck', () => {
+      const io = stubIntersectionObserver();
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
+      io.fire(io.observed[1], true);
+      box.resize(1180, 820);
+
+      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+      fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+      expect(screen.getByText('standing')).toBeInTheDocument();
+    });
+
+    it('scrolls to the paged Section when a tablet rotates back to the scrolling deck', () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1180, 820);
+      fireEvent.click(within(screen.getByRole('navigation', { name: 'Sections' })).getByRole('button', { name: 'The end of the week' }));
+      scrollIntoView.mockClear();
+
+      box.resize(700, 1000);
+
+      expect(screen.getByTestId('reader-deck')).toBeInTheDocument();
+      expect(scrollIntoView).toHaveBeenCalled();
+      const panel = scrollIntoView.mock.instances[scrollIntoView.mock.instances.length - 1] as HTMLElement;
+      expect(panel.getAttribute('data-section-panel')).toBe('2');
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('03 / 03');
+    });
+
+    it('announces each page change without moving focus', () => {
+      const box = stubReaderBox();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      box.resize(1280, 800);
+
+      const next = screen.getByRole('button', { name: /^Next/ });
+      next.focus();
+      fireEvent.click(next);
+
+      expect(screen.getByTestId('paged-announcement')).toHaveTextContent('Section 2 of 3: What suffering is doing');
+      expect(screen.getByTestId('paged-announcement')).toHaveAttribute('aria-live', 'polite');
+      expect(document.activeElement).toBe(next);
+    });
+
+    it('keeps the stale-week chip and the caller\'s header actions', () => {
+      const box = stubReaderBox();
+      render(
+        <StudyReaderView
+          meeting={meeting({})}
+          staleDateLabel="Most recent · September 2"
+          headerActions={<button type="button">Show QR</button>}
+        />,
+      );
+      box.resize(1280, 800);
+
+      expect(screen.getByTestId('stale-date-chip')).toHaveTextContent('Most recent · September 2');
+      expect(screen.getByRole('button', { name: 'Show QR' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Text size')).toBeInTheDocument();
+    });
+
+    it('opens on initialSectionIndex and reports every page through onSectionChange', () => {
+      const box = stubReaderBox();
+      const onSectionChange = vi.fn();
+      render(
+        <StudyReaderView
+          meeting={meeting({})}
+          staleDateLabel={null}
+          initialSectionIndex={1}
+          onSectionChange={onSectionChange}
+        />,
+      );
+      box.resize(1280, 800);
+
+      expect(sectionHeading()).toHaveTextContent('What suffering is doing');
+      fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
+      expect(onSectionChange).toHaveBeenLastCalledWith(2);
+    });
+
+    it('shows the Section named by followSectionIndex', () => {
+      const box = stubReaderBox();
+      const { rerender } = render(
+        <StudyReaderView meeting={meeting({})} staleDateLabel={null} followSectionIndex={0} />,
+      );
+      box.resize(1280, 800);
+
+      rerender(<StudyReaderView meeting={meeting({})} staleDateLabel={null} followSectionIndex={2} />);
+      expect(sectionHeading()).toHaveTextContent('The end of the week');
+    });
+
+    it('binds no keys on the scrolling deck', () => {
+      const io = stubIntersectionObserver();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+      expect(io.observed).toHaveLength(3);
+
+      fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
     });
   });
 

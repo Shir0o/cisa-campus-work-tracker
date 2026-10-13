@@ -685,7 +685,12 @@
     "archive_reason": "Archive reason"
   },
   "reader": {
-    "text_size": "Text size"
+    "text_size": "Text size",
+    "sections": "Sections",
+    "previous": "Previous",
+    "next": "Next",
+    "end_of": "End of {title}",
+    "section_announce": "Section {n} of {total}: {title}"
   },
   "ask": {
     "questions_for_team": "Questions for the team",
