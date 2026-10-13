@@ -447,7 +447,9 @@ describe('PrayerList', () => {
 
     await waitFor(() => expect(addDoc).toHaveBeenCalled());
     // On success the field clears and the composer closes.
-    expect(screen.queryByPlaceholderText(/What are we praying for Alice this week/i)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/What are we praying for Alice this week/i)).not.toBeInTheDocument();
+    });
   });
 
   it('treats Ctrl+Enter like ⌘+Enter in the week composer (#1402)', async () => {
@@ -836,6 +838,50 @@ describe('PrayerList', () => {
     await waitFor(() =>
       expect(screen.getByText(/Write what we're praying for Carol this week/i)).toBeInTheDocument(),
     );
+  });
+
+  it('persists chosen contacts to Firestore as pending team prayers when Done is clicked (#1600)', async () => {
+    const contacts = [
+      ...mockContacts,
+      {
+        id: 'c3',
+        data: () => ({
+          name: 'Carol Lee',
+          email: 'carol@example.com',
+          role: 'Student',
+          stage: 'New',
+          tags: ['Year 1'],
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: contacts, size: 3 });
+      else if (ref?.path === 'prayers') callback({ docs: mockPrayers, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose people/i }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Who are we praying for?' });
+    fireEvent.click(within(dialog).getByText('Carol Lee').closest('button')!);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+
+    await waitFor(() => {
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          contactId: 'c3',
+          teamPrayer: true,
+          prayerPage: true,
+          status: 'pending',
+          burden: expect.any(String),
+        }),
+      );
+    });
   });
 
   it('attaches photos when saving an answer', async () => {

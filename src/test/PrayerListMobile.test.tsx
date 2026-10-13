@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import PrayerListMobile from '../views/PrayerListMobile';
@@ -514,5 +514,24 @@ describe('PrayerListMobile', () => {
     expect(screen.getByText('Samuel Green')).toBeInTheDocument();
     expect(screen.getByText(/Cared for by Mei Tanaka/)).toBeInTheDocument();
     expect(screen.getByText(/Added by Tony Wang/)).toBeInTheDocument();
+  });
+
+  it('persists chosen contacts when Done is clicked in the picker (#1600)', async () => {
+    const onPickHeld = vi.fn().mockResolvedValue(undefined);
+    const unheld = contact({ id: 'c-new', name: 'New Student' });
+    renderWithRouter({
+      contacts: [unheld],
+      entries: [],
+      onPickHeld,
+    });
+
+    fireEvent.click(screen.getByText('Pray for someone'));
+    const dialog = screen.getByRole('dialog', { name: 'Who are we praying for?' });
+    fireEvent.click(within(dialog).getByText('New Student').closest('button')!);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+
+    await waitFor(() => {
+      expect(onPickHeld).toHaveBeenCalledWith(['c-new']);
+    });
   });
 });

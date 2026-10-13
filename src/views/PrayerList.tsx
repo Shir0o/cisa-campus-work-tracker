@@ -508,10 +508,10 @@ export default function PrayerList() {
     );
   };
 
-  // "Choose people" — the picked become empty this-week composers, and any
-  // hidden ones come back. The picker only adds (ticket #1450): taking someone
-  // off stays the card's own affordance.
-  const applyPick = (added: string[]) => {
+  // "Choose people" — chosen contacts are unhidden and persisted to Firestore
+  // with an initial team prayer burden, so they stay on the page permanently across
+  // clients and reloads (#1600).
+  const applyPick = async (added: string[]) => {
     if (added.length) {
       setStartedIds((prev) => new Set([...prev, ...added]));
       setHiddenIds((prev) => {
@@ -522,6 +522,34 @@ export default function PrayerList() {
         } catch (e) {}
         return next;
       });
+
+      const now = new Date().toISOString();
+      const burdenText = t('prayers.holding_in_prayer', 'Holding in prayer');
+      await Promise.all(
+        added.map(async (contactId) => {
+          try {
+            await addDoc(collection(db, 'prayers'), {
+              contactId,
+              date: now,
+              burden: burdenText,
+              status: 'pending',
+              prayerPage: true,
+              teamPrayer: true,
+              ...stamp(),
+            } as Omit<PrayerRecord, 'id'>);
+            logActivity({
+              action: 'added a prayer burden for',
+              targetId: contactId,
+              targetName: contactName(contactId),
+              targetType: 'contact',
+              type: 'create',
+              description: burdenText,
+            });
+          } catch (e) {
+            console.error('Failed to add prayer for contact', contactId, e);
+          }
+        }),
+      );
     }
     setPicking(false);
     setSearchQuery('');
@@ -560,6 +588,7 @@ export default function PrayerList() {
           onMakeTodo={openTodoFor}
           isManager={isManager}
           onClearPrayer={handleClearPrayer}
+          onPickHeld={applyPick}
          />
         {todoFor && (
           <FromEntryTodoComposer

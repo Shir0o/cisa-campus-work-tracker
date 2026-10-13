@@ -19,18 +19,20 @@ interface PickHeldModalProps {
   heldIds: string[];
   onClose: () => void;
   /** The newly ticked ids (never anyone already held). */
-  onApply: (added: string[]) => void;
+  onApply: (added: string[]) => void | Promise<void>;
 }
 
 export default function PickHeldModal({ open, contacts, heldIds, onClose, onApply }: PickHeldModalProps) {
   const { t } = useLanguage();
   const [q, setQ] = useState('');
   const [sel, setSel] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setQ('');
       setSel([]);
+      setSaving(false);
     }
   }, [open]);
 
@@ -58,11 +60,18 @@ export default function PickHeldModal({ open, contacts, heldIds, onClose, onAppl
     setSel([]);
     onClose();
   };
-  const apply = () => {
+  const apply = async () => {
     const picked = added;
-    setQ('');
-    setSel([]);
-    onApply(picked);
+    setSaving(true);
+    try {
+      await onApply(picked);
+      setQ('');
+      setSel([]);
+    } catch (e) {
+      console.error('Error applying picked contacts:', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -93,6 +102,7 @@ export default function PickHeldModal({ open, contacts, heldIds, onClose, onAppl
         label: t('actions.done'),
         onClick: apply,
         disabled: added.length === 0,
+        saving,
         savingLabel: t('prayers.saving'),
       }}
     >
