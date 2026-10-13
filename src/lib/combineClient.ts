@@ -18,10 +18,29 @@ export interface UndoPreview {
   notRestored: { kind: string; label: string }[];
 }
 
-export const formatWhen = (iso?: string): string => {
-  if (!iso) return '';
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString();
+export const formatWhen = (
+  value?: string | number | Date | { toDate?: () => Date; seconds?: number } | null,
+): string => {
+  if (!value) return '';
+  if (typeof value === 'object') {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? '' : value.toLocaleDateString();
+    }
+    if (typeof (value as { toDate?: () => unknown }).toDate === 'function') {
+      const d = (value as { toDate: () => unknown }).toDate();
+      if (d instanceof Date && !Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString();
+      }
+    }
+    if (typeof (value as { seconds?: unknown }).seconds === 'number') {
+      const d = new Date((value as { seconds: number }).seconds * 1000);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString();
+      }
+    }
+  }
+  const date = new Date(value as string | number);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
 };
 
 /** Fills {placeholders} in a translated string. */
