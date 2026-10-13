@@ -47,3 +47,14 @@ We adopt a **Dual Model: Stakeholder Auto-notification + Explicit `@` Mentions**
 
 - Extended automatic stakeholder resolution (`ThreadStakeholders`, `contactStakeholdersOf`, `stakeholderUidsOf`) to encompass all five contact ties: `createdBy`, `addedBy`, `coCreators`, `founders` (#1049), and `carers` (#1051). This ensures trainees and partners walking with or caring for a contact consistently receive notifications when full-timers or teammates post follow-up comments, questions, or ask for updates.
 
+
+## Amendment (2026-10-13, Issue #1604)
+
+A third recipient group: teammates **In the Conversation** (CONTEXT.md). A Full-timer raised a Follow-up ask on a person they were not tied to; a teammate replied and the asker heard nothing — no bell, nothing in On you — because recipients were only ties and `@mentions`.
+
+- **Who**: anyone who wrote a message of any kind in that stream within the last 14 days, counted from their own latest message there. Closing or reopening an ask is not writing. Each stream stands alone — the Conversation, the Full-timers stream, and each Interaction's thread — and the Full-timers stream still never reaches a Trainee.
+- **What it gets**: the bell, with the same kind-shaped title and the same hourly per-person coalescing as a tie, deduped against ties and mentions; and an On you row even on a person you are not tied to. That row closes with *Got it*, or *Answered* for a question. *I followed up* stays with those tied.
+- **Derived, not stored**: it is computed from the messages themselves. Nothing is written to the contact, so it costs no Firestore rule expressions on the contacts update rule (already near its ceiling), needs no migration, and grants no access — it is not a tie and never touches `visibleTo`.
+- **Release does not end it**: `unfollowedBy` keeps severing ties only. Writing after a release is a fresh request to hear back, and the 14-day lapse does the quieting a release would otherwise have to.
+
+Rejected: a stored fifth tie (would conflate hearing with access and spend rule budget); replies-in-your-own-Thread only (misses answers not addressed to you); permanent membership until release (a Full-timer's sweep of Around the team would subscribe them to dozens of people for good).
