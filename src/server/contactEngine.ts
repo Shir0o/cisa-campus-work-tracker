@@ -39,6 +39,10 @@ export interface ContactCombineEngineOptions {
   db: any;
 }
 
+interface QuerySnapshotLike {
+  docs: Array<{ id: string; data(): Record<string, unknown> }>;
+}
+
 export interface ExpectedTimestamps {
   sourceUpdatedAt?: unknown;
   targetUpdatedAt?: unknown;
@@ -277,10 +281,10 @@ export class ContactCombineEngine {
       this.db.collection('contacts').doc(keptId).collection('comments').get(),
     ]);
 
-    const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+    const subDocs = (snap: QuerySnapshotLike) =>
       snap.docs.map((d) => ({ id: d.id, data: d.data() }));
 
-    const allDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+    const allDocs = (snap: QuerySnapshotLike) =>
       snap.docs.map((d) => ({ id: d.id, data: d.data() }));
 
     const personalPrayers: CombineReferences['personalPrayers'] = [];
@@ -743,7 +747,7 @@ export class ContactCombineEngine {
         this.db.collection('contacts').doc(keptId).collection('comments').get(),
       ]);
 
-    const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+    const subDocs = (snap: QuerySnapshotLike) =>
       snap.docs.map((d) => ({ id: d.id, data: d.data() }));
 
     const movedCurrent: CombineUndoCurrent['movedCurrent'] = {};
@@ -876,7 +880,7 @@ export class ContactCombineEngine {
         this.db.collection('contacts').doc(keptId).collection('comments').get(),
       ]);
 
-    const subDocs = (snap: { docs: Array<{ id: string; data: () => Record<string, unknown> }> }) =>
+    const subDocs = (snap: QuerySnapshotLike) =>
       snap.docs.map((d) => ({ id: d.id, data: d.data() }));
 
     const movedCurrent: CombineUndoCurrent['movedCurrent'] = {};
