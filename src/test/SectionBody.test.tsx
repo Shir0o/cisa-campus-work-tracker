@@ -157,6 +157,60 @@ describe('SectionBody (ordered content, read as written)', () => {
     expect(onRevealBlank).toHaveBeenCalledWith('1:p0.0');
   });
 
+  it('a list point with a Blank keeps the text before and after it', () => {
+    const onRevealBlank = vi.fn();
+    const s = section({
+      content: [
+        {
+          kind: 'bullet-list',
+          points: [
+            {
+              before: 'Peace with God is a ',
+              word: 'fact',
+              after: ', not a mood.',
+              children: [{ before: 'Nested **calm** is ', word: 'given', after: ' freely.' }],
+            },
+          ],
+        },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={1} openBlanks={{}} onRevealBlank={onRevealBlank} />);
+
+    const [top, nested] = screen.getAllByRole('listitem');
+    expect(top).toHaveTextContent(/^Peace with God is a\s*, not a mood\./);
+    expect(nested).toHaveTextContent(/^Nested calm is\s*freely\.$/);
+    expect(screen.getByText('calm').tagName).toBe('STRONG');
+    // Reveal keys are unchanged, so revealed state survives the fix.
+    const buttons = screen.getAllByRole('button', { name: /Blank, tap to reveal/i });
+    fireEvent.click(buttons[0]);
+    expect(onRevealBlank).toHaveBeenCalledWith('1:p0');
+    fireEvent.click(buttons[1]);
+    expect(onRevealBlank).toHaveBeenCalledWith('1:p0.0');
+  });
+
+  it('a numbered point with a Blank keeps its text and drops a legacy "1." prefix', () => {
+    const s = section({
+      content: [{ kind: 'number-list', points: [{ before: '1. Hope does not ', word: 'shame', after: ' us.' }] }],
+    });
+    render(<SectionBody section={s} sectionIndex={0} openBlanks={{ '0:p0': true }} onRevealBlank={() => {}} />);
+    expect(screen.getByRole('listitem')).toHaveTextContent(/^Hope does not\s*shame\s*us\.$/);
+  });
+
+  it('a Passage with a Blank keeps the text before and after it', () => {
+    const onRevealBlank = vi.fn();
+    const s = section({
+      content: [
+        { kind: 'passage', passage: { before: 'character produces ', word: 'hope', after: ', and hope does not put us to shame.' } },
+      ],
+    });
+    render(<SectionBody section={s} sectionIndex={3} openBlanks={{}} onRevealBlank={onRevealBlank} />);
+
+    const passage = screen.getByTestId('section-body').querySelector('[data-block-kind="passage"]');
+    expect(passage).toHaveTextContent(/^character produces\s*, and hope does not put us to shame\.$/);
+    fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
+    expect(onRevealBlank).toHaveBeenCalledWith('3:pg');
+  });
+
   it('renders a Blank as a tap target that reveals its word via the reveal callback', () => {
     const onRevealBlank = vi.fn();
     const s = section({
