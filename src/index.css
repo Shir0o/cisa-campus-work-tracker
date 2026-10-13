@@ -677,6 +677,10 @@
 .bdoc-prose ul[data-type="taskList"] li { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
 .bdoc-prose ul[data-type="taskList"] li > label { flex: none; margin-top: 3px; user-select: none; }
 .bdoc-prose ul[data-type="taskList"] li > div { min-width: 0; flex: 1; }
+.bdoc-prose ul[data-type="taskList"] li p,
+.bdoc-prose-viewer ul[data-type="taskList"] li p { margin: 0; }
+.bdoc-prose ul[data-type="taskList"] li p + p,
+.bdoc-prose-viewer ul[data-type="taskList"] li p + p { margin-top: 4px; }
 .bdoc-prose ul[data-type="taskList"] input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; }
 .bdoc-prose li[data-checked="true"] > div { color: var(--on-surface-variant); text-decoration: line-through; }
 
