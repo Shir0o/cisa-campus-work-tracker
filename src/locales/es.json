@@ -685,7 +685,12 @@
     "archive_reason": "Motivo de archivo"
   },
   "reader": {
-    "text_size": "Tamaño del texto"
+    "text_size": "Tamaño del texto",
+    "sections": "Secciones",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "end_of": "Fin de {title}",
+    "section_announce": "Sección {n} de {total}: {title}"
   },
   "ask": {
     "questions_for_team": "Preguntas para el equipo",

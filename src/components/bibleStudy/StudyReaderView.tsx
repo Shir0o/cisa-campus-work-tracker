@@ -84,6 +84,14 @@ const ChevronIcon: React.FC = () => (
 // is the slack between the card's top and the panel's top edge.
 const PANEL_TOP_PAD = 18;
 
+// The paged deck's floor (#1590): a reader box at least this wide AND this
+// tall pages one Section at a time; anything smaller keeps the scrolling deck.
+// The height floor keeps a phone held sideways on the scrolling deck. The box
+// measured is the reader's own, never the window's, so the editor's 390-wide
+// phone preview stays a phone inside a wide desktop window.
+const PAGED_MIN_WIDTH = 768;
+const PAGED_MIN_HEIGHT = 600;
+
 // The reader's type scale (#923): body text sizes in px, the raised default
 // first. The student's choice is remembered in that browser's storage — the
 // person who cannot read the text is the person who can fix it, with no
@@ -224,6 +232,67 @@ const Panel: React.FC<{
   );
 };
 
+/**
+ * One Section on the paged deck's card (#1590): the Passage set large on the
+ * left, the heading and everything else on the right, in the author's order.
+ * A Section with no Passage, or only a Passage, takes the card's full width
+ * rather than leaving half of it empty. The two columns wrap to a stack,
+ * Passage first, when the card is too narrow to hold both.
+ */
+const PagedSection: React.FC<{
+  section: Section;
+  index: number;
+  typeSize: ReaderTypeSize;
+  openBlanks: Record<string, boolean>;
+  onRevealBlank: (key: string) => void;
+}> = ({ section, index, typeSize, openBlanks, onRevealBlank }) => {
+  const hasPassage = section.content.some((b) => b.kind === 'passage');
+  const hasNotes = section.content.some((b) => b.kind !== 'passage');
+  const heading = (
+    <h2 className="font-serif font-bold text-[length:calc(var(--reader-fs)*1.7)] leading-[1.08] tracking-tight text-on-surface">
+      {section.title}
+    </h2>
+  );
+  const body = (only: 'passage' | 'notes') => (
+    <SectionBody
+      section={section}
+      sectionIndex={index}
+      openBlanks={openBlanks}
+      onRevealBlank={onRevealBlank}
+      only={only}
+    />
+  );
+  // The Passage column raises the type scale so the scripture is set larger
+  // than the notes beside it, and still follows the student's text size.
+  const passage = hasPassage && (
+    <div
+      data-testid="paged-passage"
+      className="flex-1 basis-[380px] min-w-0"
+      style={{ '--reader-fs': `${typeSize + 7}px` } as React.CSSProperties}
+    >
+      {body('passage')}
+    </div>
+  );
+
+  if (hasPassage && hasNotes) {
+    return (
+      <div className="flex flex-wrap items-start gap-12 px-14 py-12">
+        {passage}
+        <div className="flex-1 basis-[380px] min-w-0 flex flex-col gap-6">
+          {heading}
+          {body('notes')}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-6 px-14 py-12 max-w-[820px] mx-auto">
+      {heading}
+      {hasPassage ? passage : body('notes')}
+    </div>
+  );
+};
+
 const StudyReaderView: React.FC<StudyReaderViewProps> = ({
   meeting,
   staleDateLabel = null,
@@ -234,8 +303,30 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
 }) => {
   const { t } = useLanguage();
   const sections: Section[] = meeting.sections;
+  const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<(HTMLElement | null)[]>([]);
+
+  // Which layout (#1590): the paged deck when the reader's own box clears
+  // both floors, the scrolling deck otherwise. jsdom has no layout, so the
+  // reader measures 0×0 in tests and stays scrolling unless a test reports a
+  // size through the ResizeObserver.
+  const [paged, setPaged] = useState(false);
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const apply = (width: number, height: number) =>
+      setPaged(width >= PAGED_MIN_WIDTH && height >= PAGED_MIN_HEIGHT);
+    const rect = root.getBoundingClientRect();
+    apply(rect.width, rect.height);
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      if (entry) apply(entry.contentRect.width, entry.contentRect.height);
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
 
   const [state, dispatch] = useReducer(readerReducer, {
     sectionIndex: 0,
@@ -328,18 +419,69 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     );
     for (const panel of panels) if (panel) observer.observe(panel);
     return () => observer.disconnect();
-  }, [sections.length]);
+    // `paged` too: the paged deck unmounts the panels, so returning to the
+    // scrolling deck must observe the freshly mounted ones (#1590).
+  }, [sections.length, paged]);
 
   const total = sections.length;
+  const showPaged = paged && total > 0;
   const counterText =
     total > 0 ? `${padOneBased(state.sectionIndex)} / ${String(total).padStart(2, '0')}` : '';
 
   const handleJump = (index: number) => {
     dispatch({ type: 'jump', index });
-    // jump's effect is a scroll, not a state-owned position: the read model
-    // will be re-mirrored by the observer when the panel arrives.
+    // On the paged deck the reducer owns the position, so jump IS the move.
+    if (showPaged) return;
+    // On the scrolling deck jump's effect is a scroll, not a state-owned
+    // position: the read model will be re-mirrored by the observer when the
+    // panel arrives.
     panelRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // Each new Section on the paged deck opens at its top, not partway down
+  // the card where the last long Section left the scroll.
+  const pagedCardRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (pagedCardRef.current) pagedCardRef.current.scrollTop = 0;
+  }, [state.sectionIndex]);
+
+  // Crossing the floor keeps the reader's place (#1590). Into the paged deck
+  // needs nothing — the read model already holds the Section on screen. Back
+  // to the scrolling deck, the panels mount at the top, so scroll the paged
+  // Section into view before paint, ahead of the observer re-attaching.
+  const wasPaged = useRef(false);
+  useLayoutEffect(() => {
+    if (wasPaged.current && !showPaged && state.sectionIndex > 0) {
+      panelRefs.current[state.sectionIndex]?.scrollIntoView({ block: 'start' });
+    }
+    wasPaged.current = showPaged;
+    // The layout change is the signal; the Section is read at that moment,
+    // not watched — re-running on every page would scroll the hidden deck.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPaged]);
+
+  // Keyboard paging (#1590), on the paged deck only: Left/Right and Page
+  // Up/Down step a Section. A key aimed at a field, or held with a modifier,
+  // is left alone so paging never hijacks typing or a browser shortcut. The
+  // handler is an Effect Event so it steps from the CURRENT Section without
+  // re-subscribing on every page.
+  const onPagingKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    const target = e.target as HTMLElement | null;
+    if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    const step = e.key === 'ArrowRight' || e.key === 'PageDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'PageUp' ? -1 : 0;
+    if (step === 0) return;
+    e.preventDefault();
+    const next = state.sectionIndex + step;
+    if (next < 0 || next >= total) return;
+    handleJump(next);
+  });
+
+  useEffect(() => {
+    if (!showPaged) return;
+    document.addEventListener('keydown', onPagingKey);
+    return () => document.removeEventListener('keydown', onPagingKey);
+  }, [showPaged]);
 
   // The editor's preview follows the author's caret (#920): when the Section
   // the preview should show changes, scroll to that panel through the same
@@ -378,6 +520,7 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
 
   return (
     <div
+      ref={rootRef}
       className="reader-card-surface w-full h-full min-h-0 bg-[var(--reader-ground)] text-on-surface relative overflow-hidden flex flex-col"
       style={{ '--reader-fs': `${typeSize}px` } as React.CSSProperties}
     >
@@ -385,7 +528,9 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           the stale-week date chip. */}
       <div
         data-testid="reader-header"
-        className="shrink-0 sticky top-0 z-20 flex items-center gap-2 px-5 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 bg-[var(--reader-ground)]/95 backdrop-blur-sm border-b border-outline-variant"
+        className={`shrink-0 sticky top-0 z-20 flex items-center gap-2 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 bg-[var(--reader-ground)]/95 backdrop-blur-sm ${
+          showPaged ? 'px-8' : 'px-5 border-b border-outline-variant'
+        }`}
       >
         {staleDateLabel && (
           <span
@@ -401,7 +546,13 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
             the preview exists to show the whole thing. `min-w-0` keeps the
             flex row able to shrink it so the size control and counter never
             get pushed out. */}
-        <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80 min-w-0 leading-snug">
+        <div
+          className={`min-w-0 leading-snug ${
+            showPaged
+              ? 'font-serif font-bold text-[22px] tracking-tight text-on-surface'
+              : 'text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/80'
+          }`}
+        >
           {meeting.title}
         </div>
         <div className="ml-auto flex items-center gap-1 shrink-0">
@@ -447,13 +598,122 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
               </div>
             )}
           </div>
-          <div className="font-serif font-bold text-xs text-on-surface-variant tracking-wider tabular-nums">
-            {counterText}
-          </div>
+          {/* On the paged deck the counter lives in the footer, beside the
+              progress dots. */}
+          {!showPaged && (
+            <div className="font-serif font-bold text-xs text-on-surface-variant tracking-wider tabular-nums">
+              {counterText}
+            </div>
+          )}
         </div>
       </div>
 
+      {showPaged && (
+        <>
+          {/* Section tabs (#1590), labelled from the headings. The row
+              scrolls sideways rather than wrapping when a Meeting has many
+              Sections; a long heading truncates with the full title kept. */}
+          <nav aria-label={t('reader.sections')} className="shrink-0 px-8 pt-3">
+            <div className="inline-flex max-w-full gap-1 p-1 rounded-full bg-surface-variant/40 overflow-x-auto custom-scrollbar">
+              {sections.map((sec, sIdx) => (
+                <button
+                  key={sec.id || sIdx}
+                  type="button"
+                  title={sec.title}
+                  aria-current={sIdx === state.sectionIndex ? 'step' : undefined}
+                  className={`shrink-0 h-11 max-w-[260px] truncate px-4 rounded-full text-sm transition-colors ${
+                    sIdx === state.sectionIndex
+                      ? 'bg-[var(--reader-card)] text-on-surface font-medium shadow-sm'
+                      : 'text-on-surface-variant hover:bg-surface-variant/60'
+                  }`}
+                  onClick={() => handleJump(sIdx)}
+                >
+                  {sec.title}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <div className="flex-1 min-h-0 flex px-8 py-[18px]">
+            <div
+              ref={pagedCardRef}
+              data-testid="paged-card"
+              className="flex-1 min-w-0 overflow-y-auto custom-scrollbar rounded-[24px] bg-[var(--reader-card)] border border-[var(--reader-card-edge)] shadow-[var(--reader-elev)]"
+            >
+              <PagedSection
+                section={sections[state.sectionIndex] ?? sections[0]}
+                index={state.sectionIndex}
+                typeSize={typeSize}
+                openBlanks={state.openBlanks}
+                onRevealBlank={(key) => dispatch({ type: 'revealBlank', key })}
+              />
+            </div>
+          </div>
+
+          {/* A page change is announced, not focused: focus stays on the
+              control the student used, so pressing Next again keeps paging. */}
+          <div data-testid="paged-announcement" aria-live="polite" className="sr-only">
+            {t('reader.section_announce')
+              .replace('{n}', String(state.sectionIndex + 1))
+              .replace('{total}', String(total))
+              .replace('{title}', sections[state.sectionIndex]?.title ?? '')}
+          </div>
+
+          {/* Previous · progress · Next (#1590). Next names the Section it
+              leads to; the last Section ends the Meeting in its place. */}
+          <div
+            data-testid="paged-footer"
+            className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-8 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+20px)]"
+          >
+            <button
+              type="button"
+              disabled={state.sectionIndex === 0}
+              className="h-12 px-5 inline-flex items-center gap-2 rounded-full border border-outline-variant text-[15px] font-medium text-on-surface transition-colors hover:bg-surface-variant/60 disabled:opacity-35 disabled:pointer-events-none"
+              onClick={() => handleJump(state.sectionIndex - 1)}
+            >
+              <svg aria-hidden="true" className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              {t('reader.previous')}
+            </button>
+            <div className="flex items-center gap-3.5">
+              <div aria-hidden="true" className="flex gap-1.5">
+                {sections.map((_, sIdx) => (
+                  <span
+                    key={sIdx}
+                    className={`block h-1.5 rounded-full transition-all duration-200 ${
+                      sIdx === state.sectionIndex ? 'w-7 bg-on-surface' : 'w-1.5 bg-outline-variant'
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-on-surface-variant tabular-nums">{counterText}</span>
+            </div>
+            {state.sectionIndex < total - 1 ? (
+              <button
+                type="button"
+                aria-label={`${t('reader.next')}: ${sections[state.sectionIndex + 1].title}`}
+                className="h-12 max-w-[min(360px,45%)] px-5 inline-flex items-center gap-2 rounded-full bg-on-surface text-background text-[15px] font-medium transition-opacity hover:opacity-90"
+                onClick={() => handleJump(state.sectionIndex + 1)}
+              >
+                <span className="truncate">{sections[state.sectionIndex + 1].title}</span>
+                <svg aria-hidden="true" className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+            ) : (
+              <span className="h-12 inline-flex items-center gap-2.5 text-sm text-on-surface-variant">
+                <span aria-hidden="true" className="h-px w-6 bg-outline-variant" />
+                {t('reader.end_of').replace('{title}', meeting.title)}
+              </span>
+            )}
+          </div>
+        </>
+      )}
+
       {/* The deck: the scroll container owns which Section is being read. */}
+      {!showPaged && (
+      <>
       <div
         ref={scrollRef}
         data-testid="reader-deck"
@@ -554,6 +814,8 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
           </div>
           <div className="mt-4 px-3 text-xs text-on-surface-variant/60">Tap anywhere to close</div>
         </div>
+      )}
+      </>
       )}
     </div>
   );
