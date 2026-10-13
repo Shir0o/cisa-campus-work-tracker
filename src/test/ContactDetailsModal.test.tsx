@@ -4029,5 +4029,108 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
 
     expect(await screen.findByText('1 prayer we\'re holding')).toBeInTheDocument();
   });
+
+  describe('story seam (#1589)', () => {
+    it('renders modal presentation when backed by mock storyModel without database subscriptions', () => {
+      const mockStory = [
+        {
+          kind: 'conversation' as const,
+          id: 'int-1',
+          at: '2026-10-10T12:00:00Z',
+          interaction: {
+            id: 'int-1',
+            type: 'call',
+            content: 'Discussed graduation plans',
+            createdAt: '2026-10-10T12:00:00Z',
+          } as any,
+        },
+        {
+          kind: 'added' as const,
+          id: 'added',
+          at: '2026-09-01T00:00:00Z',
+          byName: 'Staff Member',
+        },
+      ];
+
+      const customActions = {
+        toggleStoryMessage: vi.fn(),
+        removeInteraction: vi.fn(),
+        updateInteraction: vi.fn(),
+        addInteraction: vi.fn(),
+        addPrayer: vi.fn(),
+        updatePrayerStatus: vi.fn(),
+        moveStage: vi.fn(),
+        changeKind: vi.fn(),
+        updateContact: vi.fn(),
+        addShare: vi.fn(),
+        removeShare: vi.fn(),
+        reassignCreator: vi.fn(),
+        releaseContact: vi.fn(),
+        deleteContact: vi.fn(),
+      };
+
+      render(
+        <ContactDetailsModal
+          isOpen={true}
+          onClose={mockOnClose}
+          contact={mockContact}
+          storyModel={{
+            story: mockStory,
+            contact: mockContact,
+            loading: false,
+            interactionsLoading: false,
+            prayersLoading: false,
+            activitiesLoading: false,
+            interactions: [
+              {
+                id: 'int-1',
+                type: 'call',
+                content: 'Discussed graduation plans',
+                createdAt: '2026-10-10T12:00:00Z',
+              } as any,
+            ],
+            prayers: [],
+            activities: [],
+            gatherings: [],
+            rhythms: [],
+            stages: [{ id: 's1', label: 'First Contact', order: 0, color: 'blue' } as any],
+            teamMembers: [
+              {
+                id: teammateDoc.id,
+                name: teammateDoc.data().name,
+                role: 'full-timer',
+                initials: 'AW',
+                fullTimer: false,
+              },
+            ],
+            threadMessages: [],
+            actions: customActions,
+          }}
+        />,
+      );
+
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Discussed graduation plans')).toBeInTheDocument();
+      expect(screen.getByText(/Added by/)).toBeInTheDocument();
+    });
+
+    it('shows loading skeletons when backed by loading storyModel', () => {
+      render(
+        <ContactDetailsModal
+          isOpen={true}
+          onClose={mockOnClose}
+          contact={mockContact}
+          storyModel={{
+            story: [],
+            loading: true,
+            interactionsLoading: true,
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('story-loading-skeleton')).toBeInTheDocument();
+    });
+  });
 });
+
 

@@ -1,37 +1,25 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { AnimatePresence } from "motion/react";
 import {
   db,
   handleFirestoreError,
   OperationType,
   logActivity,
-  sendNotification,
 } from "../../lib/firebase";
 import {
   doc,
   updateDoc,
-  deleteDoc,
   collection,
-  query,
-  where,
-  limit,
-  orderBy,
-  getDocs,
-  onSnapshot,
   addDoc,
   serverTimestamp,
-  Timestamp,
   arrayUnion,
-  arrayRemove,
 } from "firebase/firestore";
 import { formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
-import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Activity, PrayerRecord, Gathering, Rhythm } from "../../types";
+import { format } from "date-fns";
+import { Contact, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, canReleaseContact, visibleToOf } from "../../lib/permissions";
-import { partnersOf } from "../../lib/partners";
-import { useMediaQuery } from '../../lib/useMediaQuery';
-import { carerNamesOf, carersAfterCollaboratorRemoval } from '../../lib/carers';
+import { canSeeContact, hasMinRole, canManageCollaborators, canRemoveContactMember, canReleaseContact } from "../../lib/permissions";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { conversationAdapter } from "../stream/conversationAdapter";
 import { fullTimersAdapter } from "../stream/fullTimersAdapter";
 import { interactionAdapter } from "../stream/interactionAdapter";
@@ -39,41 +27,29 @@ import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
 import { walkingRecipient } from "../../lib/walking";
 import { useLanguage } from "../LanguageProvider";
-import { buildContactActivityPatch } from "../../lib/contactActivity";
-import { normalizeTagList } from "../../lib/tags";
-import { yearFromForm, yearToForm } from "../../lib/contactYear";
+import { yearToForm } from "../../lib/contactYear";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
-import { parseMs } from "../landing/helpers";
+import { fmtContactDate, computeContactDerivedModel } from "../../lib/contactViewModel";
 import { useUndoSnack } from "../../hooks/useUndoSnack";
 import { StageMoveSheet } from "../ui/StagePicker";
 import { UndoSnackbar } from "../UndoSnackbar";
-import {
-  scheduleInteractionRemoval,
-  cancelInteractionRemoval,
-  subscribeInteractionRemovals,
-  getPendingRemovalIds,
-} from "../../lib/interactionRemoval";
+import { cancelInteractionRemoval } from "../../lib/interactionRemoval";
 import { contactKind, kindLabelKey, type ContactKind } from "../../lib/contactKind";
 import AboutSheet from "../contact/AboutSheet";
 import DelegateSheet from "../contact/DelegateSheet";
-import { buildContactStory } from "../../lib/contactStory";
 import { emptyComposer, type ComposerValue } from "../../lib/contactComposer";
-import { subscribeRhythms } from "../../lib/rhythms";
+import { useContactStory, type UseContactStoryResult } from "../../hooks/useContactStory";
 
-import ContactHead from "../contact/ContactHead";
+import ContactHead, { type ContactHeaderModel, type ContactHeaderActions } from "../contact/ContactHead";
 import CombinedFromBanner from "../contact/CombinedFromBanner";
 import ContactEditForm from "../contact/ContactEditForm";
-import ContactStory from "../contact/ContactStory";
+import ContactStorySection from "../contact/ContactStorySection";
 import ContactComposer from "../contact/ContactComposer";
 import ContactReachPrompt from "../contact/ContactReachPrompt";
-import ContactPrayerCard from "../contact/ContactPrayerCard";
-import ContactInteractionItem from "../contact/ContactInteractionItem";
 import ContactStreamPane, { type ContactPaneView } from "../contact/ContactStreamPane";
-import WhatWeKnow from "../contact/overview/WhatWeKnow";
-import HowToReach from "../contact/overview/HowToReach";
-import CaredForBy from "../contact/overview/CaredForBy";
-import WhoCanSee from "../contact/overview/WhoCanSee";
-import TagsSection from "../contact/overview/TagsSection";
+import ContactAboutContent from "../contact/ContactAboutContent";
+import ContactEditFooter from "../contact/ContactEditFooter";
+import { executeContactUpdate, executePersistTags, splitName } from "../../lib/contactUpdate";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -88,6 +64,9 @@ interface ContactDetailsModalProps {
   /** A deep link onto one Conversation or Full-timers message's Thread, from a
    * notification (#1303). */
   initialThreadId?: string | null;
+  /** Clean seam allowing story timeline calculation and subscription aggregation
+   * to be substituted with mock data fixtures in tests (#1589). */
+  storyModel?: Partial<UseContactStoryResult>;
 }
 
 export default function ContactDetailsModal({
@@ -97,24 +76,33 @@ export default function ContactDetailsModal({
   initialTab,
   initialInteractionId,
   initialThreadId,
+  storyModel,
 }: ContactDetailsModalProps) {
   const { user, isAdmin, role, effectiveUserId, isImpersonating } = useAuth();
   const { t, language } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [interactionsLoading, setInteractionsLoading] = useState(true);
-  const [stages, setStages] = useState<Stage[]>([]);
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [activities, setActivities] = useState<any[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
-  const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
-  const [prayersLoading, setPrayersLoading] = useState(true);
-  const [gatherings, setGatherings] = useState<Gathering[]>([]);
-  const [rhythms, setRhythms] = useState<Rhythm[]>([]);
-  const [teamMembers, setTeamMembers] = useState<
-    { id: string; name: string; role: string; initials: string; fullTimer: boolean }[]
-  >([]);
+
+  const liveThreads = useThreads(contact?.id, { includeTeam: isAdmin });
+
+  // Deep reactive hook encapsulates subscriptions for all 9 collections & story timeline
+  const storyHook = useContactStory(contact, {
+    enabled: isOpen && !storyModel,
+    includeTeam: isAdmin,
+    threadMessages: liveThreads,
+    t,
+  });
+
+  const currentContact = storyModel?.contact ?? storyHook.contact ?? contact;
+  const story = storyModel?.story ?? storyHook.story;
+  const interactions = storyModel?.interactions ?? storyHook.interactions;
+  const prayers = storyModel?.prayers ?? storyHook.prayers;
+  const stages = storyModel?.stages ?? storyHook.stages;
+  const teamMembers = storyModel?.teamMembers ?? storyHook.teamMembers;
+  const threadMessages = storyModel?.threadMessages ?? (liveThreads.length > 0 ? liveThreads : storyHook.threadMessages);
+  const interactionsLoading = storyModel?.interactionsLoading ?? storyHook.interactionsLoading;
+  const actions = storyModel?.actions ?? storyHook.actions;
 
   // True while the mobile "Where is {name} now?" stage sheet is open (#677).
   const [movingStage, setMovingStage] = useState(false);
@@ -122,88 +110,33 @@ export default function ContactDetailsModal({
   const [reassigningCreator, setReassigningCreator] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [delegateOpen, setDelegateOpen] = useState(false);
-  // The pinned pane (ADR 0034): which of the two streams it shows, whether it
-  // is open full-screen on a narrow screen. The Interaction Thread it replaces
-  // the stream with is tracked by openThread below.
+
+  // Pinned pane (ADR 0034)
   const [paneView, setPaneView] = useState<ContactPaneView>("conversation");
   const [paneOpen, setPaneOpen] = useState(false);
-
-  const [liveContact, setLiveContact] = useState<Contact | null>(contact);
-
-  useEffect(() => {
-    setLiveContact(contact);
-  }, [contact]);
-
-  useEffect(() => {
-    if (!isOpen || !contact?.id) return;
-    const unsub = onSnapshot(doc(db, "contacts", contact.id), (snap: any) => {
-      if (snap && typeof snap.data === "function" && (snap.exists === undefined || snap.exists())) {
-        setLiveContact({ id: snap.id, ...snap.data() } as Contact);
-      }
-    });
-    return () => unsub?.();
-  }, [isOpen, contact?.id]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const unsub = onSnapshot(collection(db, "users"), (snap) => {
-      setTeamMembers(
-        snap.docs.map((d) => {
-          const data = d.data();
-          const name = data.name || data.displayName || data.email || t('modals.contactDetails.staff_role');
-          const parts = name.trim().split(/\s+/);
-          const initials = parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
-          return {
-            id: d.id,
-            name,
-            role: data.role === "admin" ? t('modals.contactDetails.full_timer') : data.role === "manager" ? t('modals.contactDetails.trainee') : t('modals.contactDetails.staff_role'),
-            initials,
-            fullTimer: data.role === "admin",
-          };
-        })
-      );
-    });
-    return () => unsub?.();
-  }, [isOpen]);
-  // Walking-together threads on this contact (live), + which Interaction's
-  // Thread the pane is open on.
-  const threadMessages = useThreads(contact?.id, { includeTeam: isAdmin });
   const [openThread, setOpenThread] = useState<string | null>(null);
-  // When the reader last opened the Full-timers side of the pane, per person,
-  // so the switch can show an unread dot (ADR 0034 decision 2).
+
   const [fullTimersSeenAt, setFullTimersSeenAt] = useState("");
   useEffect(() => {
     if (!contact?.id) return;
     setFullTimersSeenAt(localStorage.getItem(`cisa.contactFullTimersSeen.${contact.id}`) || "");
   }, [contact?.id]);
-  // The Conversation message a to-do is being made from (the stream's toolbar).
+
   const [todoFrom, setTodoFrom] = useState<ThreadMessage | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
-  const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
-  useEffect(() => subscribeInteractionRemovals(() => setPendingRemovalIds(getPendingRemovalIds())), []);
-  const [addingTag, setAddingTag] = useState(false);
-  const [tagInput, setTagInput] = useState("");
+
   const [editTagInput, setEditTagInput] = useState("");
-  // The story's one composer (#1292): text first, with the kind, the type, the
-  // time and the By chip held here so a submit posts exactly what it shows.
+
   const [composer, setComposer] = useState<ComposerValue>(() => emptyComposer());
   const [composerOpen, setComposerOpen] = useState(false);
   const [submittingComposer, setSubmittingComposer] = useState(false);
-  // A Call or Text leaves the page for the dialer/messages app; when the page
-  // comes back, the pending reach asks to be logged (#1297).
+
   const [reachPromptType, setReachPromptType] = useState<null | "call" | "chat">(null);
-  const reachPendingRef = React.useRef<null | "call" | "chat">(null);
-  const reachPageHiddenRef = React.useRef(false);
-  const [editingInteractionId, setEditingInteractionId] = useState<
-    string | null
-  >(null);
-  const [editInteractionData, setEditInteractionData] = useState({
-    content: "",
-    dateTime: "",
-    type: "interaction",
-  });
-  const [isUpdatingInteraction, setIsUpdatingInteraction] = useState(false);
+  const reachPendingRef = useRef<null | "call" | "chat">(null);
+  const reachPageHiddenRef = useRef(false);
+
   const [phoneError, setPhoneError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -221,20 +154,8 @@ export default function ContactDetailsModal({
     isStudent: false,
   });
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return (firstName.charAt(0) + (lastName.charAt(0) || "")).toUpperCase();
-  };
-
-  const splitName = (fullName: string) => {
-    const parts = fullName.trim().split(" ");
-    if (parts.length <= 1) return { first: fullName, last: "" };
-    const last = parts.pop() || "";
-    const first = parts.join(" ");
-    return { first, last };
-  };
-
-  const openedAtRef = React.useRef<number>(Date.now());
-  const hasActionRef = React.useRef<boolean>(false);
+  const openedAtRef = useRef<number>(Date.now());
+  const hasActionRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (isOpen && contact?.id) {
@@ -246,8 +167,7 @@ export default function ContactDetailsModal({
     }
   }, [isOpen, contact?.id, user?.uid]);
 
-  // Offer to log the reach when the page becomes visible again after a Call or
-  // Text. Nothing is written unless the offer is accepted.
+  // Reach prompt on return from phone/chat app
   useEffect(() => {
     if (!isOpen) return;
     const onVisibilityChange = () => {
@@ -282,8 +202,6 @@ export default function ContactDetailsModal({
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // An Interaction's Thread closes back to the stream first, then the
-      // full-screen pane, then the page.
       if (openThread && !isMobile) setOpenThread(null);
       else if (paneOpen) setPaneOpen(false);
       else if (openThread) setOpenThread(null);
@@ -319,168 +237,14 @@ export default function ContactDetailsModal({
   }, [contact]);
 
   useEffect(() => {
-    if (isOpen) {
-      const fetchStages = async () => {
-        try {
-          const q = query(collection(db, "stages"), orderBy("order", "asc"));
-          const querySnapshot = await getDocs(q);
-          const stageData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Stage[];
-          setStages(stageData);
-        } catch (error) {
-          handleFirestoreError(error, OperationType.LIST, "stages");
-        }
-      };
-      fetchStages();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && contact) {
-      const interactionsRef = collection(
-        db,
-        "contacts",
-        contact.id,
-        "interactions",
-      );
-      const q = query(interactionsRef, orderBy("createdAt", "asc"));
-
-      setInteractionsLoading(true);
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const interactionData = snapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              createdAt:
-                data.createdAt instanceof Timestamp
-                  ? data.createdAt.toDate().toISOString()
-                  : data.createdAt,
-            } as Interaction;
-          });
-          setInteractions(interactionData);
-          setInteractionsLoading(false);
-        },
-        (error) => {
-          handleFirestoreError(
-            error,
-            OperationType.LIST,
-            `contacts/${contact.id}/interactions`,
-          );
-        },
-      );
-
-      return () => unsubscribe?.();
-    }
-  }, [isOpen, contact]);
-
-  useEffect(() => {
-    if (isOpen && contact) {
-      const q = query(
-        collection(db, "activities"),
-        where("targetId", "==", contact.id),
-        orderBy("createdAt", "desc"),
-        limit(50),
-      );
-
-      setActivitiesLoading(true);
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const activityData = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setActivities(activityData);
-          setActivitiesLoading(false);
-        },
-        (error) => {
-          setActivitiesLoading(false);
-          handleFirestoreError(error, OperationType.LIST, "activities");
-        },
-      );
-
-      return () => unsubscribe?.();
-    }
-  }, [isOpen, contact]);
-
-  // Attendance is read live from Gatherings, never copied into the person's
-  // interactions, so unmarking someone takes their story entry back out (#1291).
-  useEffect(() => {
-    if (isOpen && contact) {
-      const q = query(
-        collection(db, "events"),
-        where("attendance.present", "array-contains", contact.id),
-      );
-
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          setGatherings(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Gathering));
-        },
-        (error) => handleFirestoreError(error, OperationType.LIST, "events"),
-      );
-
-      return () => unsubscribe?.();
-    }
-  }, [isOpen, contact]);
-
-  // Rhythm names are read live so a rename reads back on past attendance.
-  useEffect(() => {
-    if (!isOpen) return;
-    return subscribeRhythms(setRhythms);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && contact) {
-      const q = query(
-        collection(db, "prayers"),
-        where("contactId", "==", contact.id),
-      );
-
-      setPrayersLoading(true);
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const prayerData = snapshot.docs
-            .map((doc) => ({ id: doc.id, ...doc.data() }) as PrayerRecord)
-            .sort(
-              (a, b) =>
-                new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
-            );
-          setPrayers(prayerData);
-          setPrayersLoading(false);
-        },
-        (error) => {
-          setPrayersLoading(false);
-          handleFirestoreError(error, OperationType.LIST, "prayers");
-        },
-      );
-
-      return () => unsubscribe?.();
-    }
-  }, [isOpen, contact]);
-
-  // On open: the pane starts on the Conversation and closed on a narrow screen,
-  // unless a deep-link asks for the Full-timers side or an Interaction's Thread
-  // (a notification, Around the team). Both open the pane.
-  useEffect(() => {
     if (!isOpen) return;
     setComposerOpen(false);
-    setAddingTag(false);
-    setTagInput("");
     setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
     setPaneView(initialTab === "discussion" ? "fullTimers" : "conversation");
     setPaneOpen(Boolean(initialInteractionId || initialTab || initialThreadId));
   }, [contact?.id, isOpen, initialTab, initialInteractionId, initialThreadId]);
 
-  // An interaction deep-link on desktop scrolls the story to that
-  // conversation, whose Thread is open in the pane (openThread above).
   useEffect(() => {
     if (!isOpen || isMobile || !initialInteractionId || interactionsLoading) return;
     document.getElementById(`story-${initialInteractionId}`)?.scrollIntoView?.({ block: "center" });
@@ -490,11 +254,8 @@ export default function ContactDetailsModal({
 
   const currentUid = effectiveUserId || user?.uid;
   const hasAccess = canSeeContact(role, currentUid, contact);
-
   const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
 
-  // Every written surface on this page runs on the shared stream (ADR 0033),
-  // each through its own adapter over the one subscription above.
   const streamViewer = { uid: currentUid ?? "", role };
   const adapterBase = {
     contactId: contact.id,
@@ -513,13 +274,14 @@ export default function ContactDetailsModal({
   const openInteraction = interactions.find((i) => i.id === openThread) ?? null;
   const interactionThread = openInteraction ? interactionAdapterFor(openInteraction) : null;
 
-  const founders = contact.founders || [];
-  const coCreators = contact.coCreators || [];
+  const founders = currentContact.founders || [];
+  const coCreators = currentContact.coCreators || [];
   const sharedWith = teamMembers.filter((m) => founders.includes(m.id) || coCreators.includes(m.id));
-  const canShare = !isImpersonating && canManageCollaborators(role, currentUid, contact);
+  const canShare = !isImpersonating && canManageCollaborators(role, currentUid, currentContact);
   const shareOptions = teamMembers.filter(
     (m) => !founders.includes(m.id) && !coCreators.includes(m.id)
   );
+
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith("visit_") &&
     (currentUid === interaction.userId || hasMinRole(role, "manager"));
@@ -533,42 +295,19 @@ export default function ContactDetailsModal({
       );
       if (!ok) return;
     }
-    // Arm the snackbar's auto-dismiss BEFORE the commit timer (armed inside
-    // scheduleInteractionRemoval), so the Undo offer is always gone by the
-    // moment the delete fires — a late tap can never silently no-op.
     showUndoSnack(t('modals.contactDetails.interaction_removed'), () =>
       cancelInteractionRemoval(interaction.id),
     );
-    scheduleInteractionRemoval(interaction.id, () => {
-      deleteDoc(doc(db, "contacts", contact.id, "interactions", interaction.id))
-        .then(() =>
-          logActivity({
-            action: "deleted an interaction for",
-            targetId: contact.id,
-            targetName: contact.name,
-            targetType: "contact",
-            type: "edit",
-            description: interaction.content.trim(),
-          }),
-        )
-        .catch((e) =>
-          handleFirestoreError(e, OperationType.DELETE, `contacts/${contact.id}/interactions/${interaction.id}`),
-        );
-    });
+    actions.removeInteraction(interaction);
   };
 
   const toggleStoryMessage = (message: ThreadMessage) => {
-    const ids = (liveContact || contact).storyMessageIds ?? [];
-    const inStory = ids.includes(message.id);
-    updateDoc(doc(db, "contacts", contact.id), {
-      storyMessageIds: inStory ? arrayRemove(message.id) : arrayUnion(message.id),
-    }).catch((error) => {
-      // The optimistic toggle has already snapped back; say why.
+    actions.toggleStoryMessage(message).catch((error) => {
       showUndoSnack(t("modals.contactDetails.story_update_failed"));
       try {
         handleFirestoreError(error, OperationType.UPDATE, "contacts");
       } catch {
-        // Logged above; rethrowing here would only be an unhandled rejection.
+        // Logged
       }
     });
   };
@@ -576,122 +315,26 @@ export default function ContactDetailsModal({
   const addShare = async (staffId: string) => {
     if (!contact) return;
     const s = teamMembers.find((m) => m.id === staffId);
-    await updateDoc(doc(db, "contacts", contact.id), {
-      coCreators: arrayUnion(staffId),
-      // Keep the server-side access list in lockstep with the tie it mirrors.
-      visibleTo: visibleToOf({ ...contact, coCreators: [...(contact.coCreators || []), staffId] }),
-    });
+    await actions.addShare(staffId, { staffName: s?.name });
     contact.coCreators = [...(contact.coCreators || []), staffId];
-    if (s) {
-      await logActivity({
-        action: "shared a person",
-        targetId: contact.id,
-        targetName: `${s.name} can now see ${contact.name.split(" ")[0]}.`,
-        targetType: "contact",
-        type: "edit",
-        description: `Granted view access to ${s.name}`,
-      });
-    }
     setSharing(false);
   };
 
   const removeShare = async (staffId: string) => {
     if (!contact) return;
     const s = teamMembers.find((m) => m.id === staffId);
-    const isFounder = (contact.founders || []).includes(staffId);
-    const nextCoCreators = (contact.coCreators || []).filter((x) => x !== staffId);
-    const nextFounders = isFounder
-      ? (contact.founders || []).filter((x) => x !== staffId)
-      : contact.founders || [];
-    // Undoing a share also drops the carer tie that reached them, so a removed
-    // collaborator cannot hold the person through their sheep (#1052). Removing
-    // a founder (a Full-timer's genuine-mistake correction) takes them out of
-    // the founding set too, and with it the carer tie that only that reach held.
-    const nextCarers = carersAfterCollaboratorRemoval(
-      { ...contact, coCreators: nextCoCreators, founders: nextFounders },
-      staffId,
-    );
-    const patch: Record<string, unknown> = {
-      coCreators: arrayRemove(staffId),
-      visibleTo: visibleToOf({ ...contact, coCreators: nextCoCreators, founders: nextFounders, carers: nextCarers }),
-    };
-    if (isFounder) patch.founders = arrayRemove(staffId);
-    if ((contact.carers || []).includes(staffId) && !nextCarers.includes(staffId)) {
-      patch.carers = arrayRemove(staffId);
-    }
-    await updateDoc(doc(db, "contacts", contact.id), patch);
-    contact.coCreators = nextCoCreators;
-    if (isFounder) contact.founders = nextFounders;
-    contact.carers = nextCarers;
-    if (s) {
-      await logActivity({
-        action: "unshared a person",
-        targetId: contact.id,
-        targetName: `${s.name} no longer sees ${contact.name.split(" ")[0]}.`,
-        targetType: "contact",
-        type: "edit",
-        description: `Removed view access for ${s.name}`,
-      });
-    }
+    await actions.removeShare(staffId, { staffName: s?.name });
+    contact.coCreators = (contact.coCreators || []).filter((id) => id !== staffId);
   };
 
   const handleReassignCreator = async (newStaffId: string) => {
     if (!contact) return;
-    const targetMember = teamMembers.find((m) => m.id === newStaffId);
-    if (!targetMember) return;
-
-    const newCreatorName = targetMember.name;
-    const partnerUids = partnersOf(newStaffId);
-
-    // Compute updated coCreators: include new partners, exclude the new creator itself,
-    // and keep previous coCreators
-    const currentCoCreators = currentContact.coCreators || [];
-    const coCreatorsSet = new Set(currentCoCreators);
-    for (const p of partnerUids) {
-      if (p !== newStaffId) {
-        coCreatorsSet.add(p);
-      }
-    }
-    coCreatorsSet.delete(newStaffId);
-    const nextCoCreators = Array.from(coCreatorsSet);
-
-    // Compute updated visibleTo
-    const nextContactState = {
-      ...currentContact,
-      createdBy: newStaffId,
-      createdByName: newCreatorName,
-      coCreators: nextCoCreators,
-    };
-    const nextVisibleTo = visibleToOf(nextContactState);
-
-    const now = new Date().toISOString();
-    const patch: Record<string, unknown> = {
-      createdBy: newStaffId,
-      createdByName: newCreatorName,
-      coCreators: nextCoCreators,
-      visibleTo: nextVisibleTo,
-      updatedAt: now,
-      updatedBy: currentUid || "system",
-      updatedByName: user?.displayName || user?.email || "Admin",
-    };
-
-    await updateDoc(doc(db, "contacts", contact.id), patch);
-
-    // Update in-memory contact object for immediate reflection
-    contact.createdBy = newStaffId;
-    contact.createdByName = newCreatorName;
-    contact.coCreators = nextCoCreators;
-    contact.visibleTo = nextVisibleTo;
-
-    await logActivity({
-      action: "reassigned creator for",
-      targetId: contact.id,
-      targetName: `${newCreatorName} is now the creator of ${contact.name.split(" ")[0]}.`,
-      targetType: "contact",
-      type: "edit",
-      description: `Reassigned creator from ${addedByName || "unknown"} to ${newCreatorName}`,
+    const newStaff = teamMembers.find((m) => m.id === newStaffId);
+    const oldStaff = teamMembers.find((m) => m.id === (contact.createdBy || contact.addedBy));
+    await actions.reassignCreator(newStaffId, {
+      newStaffName: newStaff?.name,
+      oldStaffName: oldStaff?.name,
     });
-
     setReassigningCreator(false);
   };
 
@@ -705,96 +348,31 @@ export default function ContactDetailsModal({
       return;
     }
 
-    const nextUnfollowed = [...new Set([...(contact.unfollowedBy || []), currentUid])];
-    const nextCarers = (contact.carers || []).filter((id) => id !== currentUid);
-    const nextCoCreators = (contact.coCreators || []).filter((id) => id !== currentUid);
-    const isFounder = (contact.founders || []).includes(currentUid);
-    const nextFounders = isFounder
-      ? (contact.founders || []).filter((id) => id !== currentUid)
-      : (contact.founders || []);
-
-    const nextContactState = {
-      ...contact,
-      unfollowedBy: nextUnfollowed,
-      carers: nextCarers,
-      coCreators: nextCoCreators,
-      founders: nextFounders,
-    };
-    const nextVisibleTo = visibleToOf(nextContactState);
-
-    const patch: Record<string, unknown> = {
-      unfollowedBy: arrayUnion(currentUid),
-      visibleTo: nextVisibleTo,
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUid,
-      updatedByName: user?.displayName || user?.email?.split('@')[0] || t('modals.contactDetails.unknown_user'),
-    };
-    if ((contact.carers || []).includes(currentUid)) {
-      patch.carers = arrayRemove(currentUid);
-    }
-    if ((contact.coCreators || []).includes(currentUid)) {
-      patch.coCreators = arrayRemove(currentUid);
-    }
-    if (isFounder) {
-      patch.founders = arrayRemove(currentUid);
-    }
-
     try {
-      await updateDoc(doc(db, "contacts", contact.id), patch);
-      contact.unfollowedBy = nextUnfollowed;
-      contact.carers = nextCarers;
-      contact.coCreators = nextCoCreators;
-      if (isFounder) contact.founders = nextFounders;
-      contact.visibleTo = nextVisibleTo;
-
-      await logActivity({
-        action: "released a contact from queue",
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type: "edit",
-        description: `Released ${contact.name.split(" ")[0]} from personal queue`,
+      await actions.releaseContact(currentUid, {
+        userName: user?.displayName || user?.email?.split('@')[0] || t('modals.contactDetails.unknown_user'),
       });
-
       showUndoSnack(t('modals.contactDetails.release_done', 'Released from your queue'));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
     }
   };
 
-  // The kind chip in the head writes the same two booleans and stamp the edit
-  // form does, on its own rules branch (#1152, ADR 0030), and lands in History.
   const changeKind = async (kind: ContactKind) => {
     if (!contact || !isAdmin || isImpersonating) return;
-    const fields = kind === "contact"
-      ? { inChurchLife: false }
-      : { inChurchLife: true, isStudent: kind === "our-own" };
     const before = contactKind(contact);
-    const now = new Date().toISOString();
-    await updateDoc(doc(db, "contacts", contact.id), {
-      ...fields,
-      kindSetBy: user?.uid,
-      kindSetAt: now,
-      updatedAt: now,
-      updatedBy: user?.uid,
-      updatedByName:
-        user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-    });
-    contact.inChurchLife = fields.inChurchLife;
-    if ("isStudent" in fields) contact.isStudent = fields.isStudent;
-    const change = `kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(kind))}"`;
-    logActivity({
-      action: `updated ${change} for`,
-      targetId: contact.id,
-      targetName: currentContact.name,
-      targetType: "contact",
-      type: "edit",
-      description: change,
-    } as any);
+    try {
+      await actions.changeKind(kind, {
+        userId: user?.uid,
+        userName: user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+        kindLabelBefore: t(kindLabelKey(before)),
+        kindLabelAfter: t(kindLabelKey(kind)),
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "contacts");
+    }
   };
 
-  // Delegate = Share + an @mention carrying the optional note, through the
-  // contact's Conversation and the existing mention path (ADR 0034, ADR 0007).
   const handleDelegate = async (staffId: string, note: string) => {
     if (!contact || !staffId) return;
     const member = teamMembers.find((m) => m.id === staffId);
@@ -826,16 +404,6 @@ export default function ContactDetailsModal({
     }
   };
 
-  /**
-   * Move the contact to `nextStage` ("" clears it) straight from their page
-   * (#677). Writes the same `stage` field and the same history line the edit
-   * form does, then offers the move back through the shared undo snackbar.
-   *
-   * Undo passes the stage it is reversing as `from` rather than letting this
-   * re-read the contact: the live snapshot may not have caught up yet, and a
-   * stale read would make the undo look like a no-op. `silent` keeps it from
-   * offering to undo the undo.
-   */
   const moveStage = async (
     nextStage: string,
     opts?: { from?: string; silent?: boolean },
@@ -844,25 +412,11 @@ export default function ContactDetailsModal({
     if (nextStage === previous) return;
     hasActionRef.current = true;
     try {
-      await updateDoc(doc(db, "contacts", contact.id), {
-        stage: nextStage,
-        updatedAt: new Date().toISOString(),
-        updatedBy: user?.uid,
-        updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
+      await actions.moveStage(nextStage, {
+        oldStage: previous,
+        userId: user?.uid,
+        userName: user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       });
-
-      const change = `stage: "${previous}" → "${nextStage}"`;
-      logActivity({
-        action: `updated ${change} for`,
-        targetId: contact.id,
-        targetName: currentContact.name,
-        targetType: "contact",
-        type: "edit",
-        userName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-        description: change,
-      } as any);
 
       if (!opts?.silent) {
         const message = nextStage
@@ -881,120 +435,18 @@ export default function ContactDetailsModal({
     hasActionRef.current = true;
     setLoading(true);
     try {
-      const contactRef = doc(db, "contacts", contact.id);
-      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-
-      const changes: string[] = [];
-      if (fullName !== contact.name)
-        changes.push(`name: "${contact.name}" → "${fullName}"`);
-      if (formData.email !== contact.email)
-        changes.push(`email: "${contact.email}" → "${formData.email}"`);
-      if (formData.phone !== contact.phone)
-        changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-      if (formData.stage !== contact.stage)
-        changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
-      if (formData.spiritualBackground !== contact.spiritualBackground)
-        changes.push(`spiritualBackground: "${contact.spiritualBackground || ''}" → "${formData.spiritualBackground}"`);
-      if (formData.gender !== contact.gender)
-        changes.push(`gender: "${contact.gender || ''}" → "${formData.gender || ''}"`);
-      const year = yearFromForm(formData);
-      if (year !== (contact.year || ""))
-        changes.push(`year: "${contact.year || ''}" → "${year}"`);
-      const major = formData.major.trim();
-      if (major !== (contact.major || ""))
-        changes.push(`major: "${contact.major || ''}" → "${major}"`);
-      if (formData.notes !== contact.notes) changes.push(`notes updated`);
-
-      const typedTags = editTagInput.split(",").map((t) => t.trim()).filter(Boolean);
-      const combinedFormTags = normalizeTagList([...formData.tags, ...typedTags]);
-
-      // Keep an "M"/"F" tag in sync with the gender field so the prayer page's
-      // brother/sister filter stays consistent even when gender is corrected.
-      const genderTagValue = formData.gender === "M" || formData.gender === "F" ? formData.gender : "";
-      const tags = genderTagValue
-        ? Array.from(new Set([...combinedFormTags.filter((t) => t !== "M" && t !== "F"), genderTagValue]))
-        : combinedFormTags.filter((t) => t !== "M" && t !== "F");
-
-      const updateData: any = {
-        name: fullName,
-        initials: getInitials(formData.firstName, formData.lastName),
-        email: formData.email,
-        phone: formData.phone,
-        stage: formData.stage,
-        gender: formData.gender,
-        // Only a changed value is written, so saving something else never
-        // rewrites an off-list year or stamps an empty one on a record.
-        ...(year !== (contact.year || "") && { year }),
-        ...(major !== (contact.major || "") && { major }),
-        tags,
-        notes: formData.notes,
-        spiritualBackground: formData.spiritualBackground,
-        updatedAt: new Date().toISOString(),
-        updatedBy: user?.uid,
-        updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-      };
-      await updateDoc(contactRef, updateData);
-
-      // The kind of person (#1152) is a Full-timer-only write on its own rules
-      // branch, so it never travels with the profile edit above. The stamp
-      // moves with it: a kind is only ever set by someone deciding.
-      const kindChanged =
-        formData.inChurchLife !== !!contact.inChurchLife ||
-        formData.isStudent !== !!contact.isStudent;
-      if (isAdmin && kindChanged) {
-        await updateDoc(contactRef, {
-          inChurchLife: formData.inChurchLife,
-          isStudent: formData.isStudent,
-          kindSetBy: user?.uid,
-          kindSetAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          updatedBy: user?.uid,
-          updatedByName:
-            user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-        });
-
-        // Recognising someone as being in the church life is never silent —
-        // it lands in History the way a stage move does (#1152).
-        const before = contactKind(contact);
-        const after = contactKind({
-          inChurchLife: formData.inChurchLife,
-          isStudent: formData.isStudent,
-        });
-        const change = `kind: "${t(kindLabelKey(before))}" → "${t(kindLabelKey(after))}"`;
-        logActivity({
-          action: `updated ${change} for`,
-          targetId: contact.id,
-          targetName: currentContact.name,
-          targetType: "contact",
-          type: "edit",
-          userName:
-            user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-          description: change,
-        } as any);
-      }
-
-      logActivity({
-        action:
-          changes.length > 0
-            ? `updated ${changes.join(", ")} for`
-            : "updated contact details for",
-        targetId: contact.id,
-        targetName: fullName,
-        targetType: "contact",
-        type: "edit",
-        userName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-        description: changes.join("\n"),
-      } as any);
-
+      await executeContactUpdate({
+        contact,
+        currentContact,
+        formData,
+        editTagInput,
+        user,
+        isAdmin,
+        t,
+      });
       setIsEditing(false);
     } catch (error) {
-      handleFirestoreError(
-        error,
-        OperationType.UPDATE,
-        `contacts/${contact.id}`,
-      );
+      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
     } finally {
       setLoading(false);
     }
@@ -1005,39 +457,12 @@ export default function ContactDetailsModal({
     hasActionRef.current = true;
     setLoading(true);
     try {
-      const contactId = contact.id;
-      const contactName = contact.name;
-
-      // Fetch subcollections to capture their count before deleting
-      const interactionsSnap = await getDocs(
-        collection(db, "contacts", contactId, "interactions"),
-      );
-
-      const fieldsLog = [
-        `Stage: ${contact.stage}`,
-        `Email: ${contact.email || "N/A"}`,
-        `Phone: ${contact.phone || "N/A"}`,
-        `Total Interactions: ${interactionsSnap.size}`,
-      ].join("\\n");
-
-      await deleteDoc(doc(db, "contacts", contactId));
-
-      logActivity({
-        action: "deleted contact",
-        targetId: contactId,
-        targetName: contactName,
-        targetType: "contact",
-        type: "alert",
-        description: fieldsLog,
+      await actions.deleteContact({
+        userName: user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       });
-
       onClose();
     } catch (error) {
-      handleFirestoreError(
-        error,
-        OperationType.DELETE,
-        `contacts/${contact.id}`,
-      );
+      handleFirestoreError(error, OperationType.DELETE, `contacts/${contact.id}`);
     } finally {
       setLoading(false);
     }
@@ -1056,11 +481,8 @@ export default function ContactDetailsModal({
     hasActionRef.current = true;
     setSubmittingComposer(true);
     try {
-      const content = composer.text.trim();
       const loggerName =
-        user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous');
-      // Only a Full-timer may name a teammate other than themselves (#1288);
-      // the Firestore create rule enforces the same cut.
+        user.displayName || user.email?.split("@")[0] || t("modals.contactDetails.anonymous");
       const selectedReacher =
         isAdmin && !isImpersonating
           ? teamMembers.find((m) => m.id === composer.reachedById)
@@ -1070,58 +492,15 @@ export default function ContactDetailsModal({
           ? { id: selectedReacher.id, name: selectedReacher.name }
           : null;
 
-      const interactionsRef = collection(
-        db,
-        "contacts",
-        contact.id,
-        "interactions",
-      );
-      await addDoc(interactionsRef, {
+      await actions.addInteraction({
+        content: composer.text.trim(),
+        dateTime: composer.dateTime,
+        type: composer.type,
         userId: user.uid,
         userName: loggerName,
         userPhoto: user.photoURL || "",
-        ...(reacher ? { reachedById: reacher.id, reachedByName: reacher.name } : {}),
-        content,
-        dateTime: composer.dateTime,
-        type: composer.type,
-        createdAt: serverTimestamp(),
-      });
-
-      const activityPatch = buildContactActivityPatch({
-        date: composer.dateTime,
-        by: { uid: user.uid, name: loggerName },
-        ...(reacher ? { reacher: { uid: reacher.id, name: reacher.name } } : {}),
-        type: 'interaction',
-      });
-      await updateDoc(doc(db, "contacts", contact.id), activityPatch as Record<string, unknown>);
-
-      // The teammate named as reacher hears about it, so a wrong entry can be
-      // corrected (the bell entry also pushes, ADR 0031).
-      if (reacher) {
-        sendNotification({
-          userId: reacher.id,
-          title: t('modals.contactDetails.on_behalf_title'),
-          message: t('modals.contactDetails.on_behalf_message')
-            .replace('{logger}', loggerName)
-            .replace('{name}', contact.name),
-          type: 'info',
-          targetId: contact.id,
-          link: `/people/${contact.id}`,
-        });
-      }
-
-      logActivity({
-        action: "logged an interaction for",
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type:
-          composer.type === "meeting"
-            ? "event"
-            : composer.type === "chat"
-              ? "comment"
-              : (composer.type as Activity["type"]),
-        description: content,
+        reacher,
+        t,
       });
 
       setComposer(emptyComposer());
@@ -1137,49 +516,19 @@ export default function ContactDetailsModal({
     }
   };
 
-  const handleUpdateInteraction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !editInteractionData.content.trim() ||
-      !contact ||
-      !editingInteractionId
-    )
-      return;
-
+  const handleUpdateInteraction = async (
+    interactionId: string,
+    data: { content: string; dateTime?: string; type?: string },
+  ) => {
     hasActionRef.current = true;
-    setIsUpdatingInteraction(true);
     try {
-      const interactionRef = doc(
-        db,
-        "contacts",
-        contact.id,
-        "interactions",
-        editingInteractionId,
-      );
-      await updateDoc(interactionRef, {
-        content: editInteractionData.content.trim(),
-        dateTime: editInteractionData.dateTime,
-        type: editInteractionData.type,
-      });
-
-      logActivity({
-        action: "updated an interaction for",
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type: "edit",
-        description: editInteractionData.content.trim(),
-      });
-
-      setEditingInteractionId(null);
+      await actions.updateInteraction(interactionId, data);
     } catch (error) {
       handleFirestoreError(
         error,
         OperationType.UPDATE,
-        `contacts/${contact.id}/interactions/${editingInteractionId}`,
+        `contacts/${contact.id}/interactions/${interactionId}`,
       );
-    } finally {
-      setIsUpdatingInteraction(false);
     }
   };
 
@@ -1190,32 +539,12 @@ export default function ContactDetailsModal({
     hasActionRef.current = true;
     setSubmittingComposer(true);
     try {
-      const burden = [composer.text.trim(), composer.context.trim()]
-        .filter(Boolean)
-        .join("\n\n");
-      const now = new Date().toISOString();
-      await addDoc(collection(db, "prayers"), {
-        contactId: contact.id,
-        date: now,
-        burden,
-        status: "pending",
-        // A burden typed on a contact's tab belongs to that contact; only
-        // burdens written on "On our hearts" belong on the team page (#1042).
-        // It must not put a removed person back on that page (#1406).
-        teamPrayer: false,
-        updatedAt: now,
-        updatedBy: user?.uid || "",
-        updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-      });
-
-      logActivity({
-        action: "added a prayer burden for",
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type: "comment",
-        description: composer.text.trim(),
+      await actions.addPrayer({
+        text: composer.text.trim(),
+        context: composer.context.trim(),
+        userId: user?.uid,
+        userName:
+          user?.displayName || user?.email?.split("@")[0] || t("modals.contactDetails.unknown_user"),
       });
 
       setComposer(emptyComposer());
@@ -1230,53 +559,29 @@ export default function ContactDetailsModal({
   const handleUpdatePrayerStatus = async (prayer: PrayerRecord, status: PrayerRecord["status"]) => {
     if (!contact) return;
     try {
-      const now = new Date().toISOString();
-      const patch: Record<string, any> = {
-        status,
-        updatedAt: now,
-        updatedBy: user?.uid || "",
-        updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-      };
-      if (status === "answered") {
-        patch.answeredAt =
-          prayer.answeredAt ||
-          new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      }
-      await updateDoc(doc(db, "prayers", prayer.id), patch);
-      logActivity({
-        action: `marked a prayer burden as ${status} for`,
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type: "edit",
-        description: `Status changed to ${status}`,
-      });
+      const answeredText =
+        prayer.answeredAt ||
+        new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      await actions.updatePrayerStatus(prayer, status, answeredText);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, "prayers");
     }
   };
 
-  // ── Inline tag add / remove (persist to the contact's tags array) ──
   const persistTags = async (updatedTags: string[], verb: string, tag: string) => {
     hasActionRef.current = true;
     const prevTags = formData.tags;
     setFormData((f) => ({ ...f, tags: updatedTags }));
     try {
-      await updateDoc(doc(db, "contacts", contact.id), {
-        tags: updatedTags,
-        updatedAt: new Date().toISOString(),
-        updatedBy: user?.uid,
-        updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
-      });
-      logActivity({
-        action: `${verb} tag #${tag} ${verb === "removed" ? "from" : "to"}`,
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type: "edit",
-        description: `Tags: [${prevTags.join(", ")}] → [${updatedTags.join(", ")}]`,
+      await executePersistTags({
+        contactId: contact.id,
+        contactName: contact.name,
+        updatedTags,
+        prevTags,
+        verb,
+        tag,
+        user,
+        t,
       });
     } catch (error) {
       setFormData((f) => ({ ...f, tags: prevTags }));
@@ -1284,20 +589,7 @@ export default function ContactDetailsModal({
     }
   };
 
-  const commitTag = () => {
-    const val = tagInput.trim();
-    if (val && !formData.tags.includes(val)) {
-      persistTags([...formData.tags, val], "added", val);
-    }
-    setTagInput("");
-    setAddingTag(false);
-  };
 
-  const removeTag = (tag: string) => {
-    persistTags(formData.tags.filter((t) => t !== tag), "removed", tag);
-  };
-
-  // ── Contact actions: Call / Text / Email ──
   const callContact = () => {
     if (contact.phone) {
       reachPendingRef.current = "call";
@@ -1305,6 +597,7 @@ export default function ContactDetailsModal({
       window.open(`tel:${contact.phone}`);
     }
   };
+
   const textContact = () => {
     if (contact.phone) {
       reachPendingRef.current = "chat";
@@ -1312,9 +605,11 @@ export default function ContactDetailsModal({
       window.open(`sms:${contact.phone}`);
     }
   };
+
   const emailContact = () => {
     if (contact.email) window.open(`mailto:${contact.email}`);
   };
+
   const acceptReachPrompt = () => {
     const type = reachPromptType;
     setReachPromptType(null);
@@ -1329,19 +624,23 @@ export default function ContactDetailsModal({
     }));
     setComposerOpen(true);
   };
+
   const dismissReachPrompt = () => {
     setReachPromptType(null);
     reachPendingRef.current = null;
     reachPageHiddenRef.current = false;
   };
+
   const startComposer = (mode: ComposerValue["mode"]) => {
     setComposer((prev) => ({ ...prev, mode }));
     setComposerOpen(true);
   };
+
   const cancelComposer = () => {
     setComposer(emptyComposer());
     setComposerOpen(false);
   };
+
   const handleComposerSubmit = (e: React.FormEvent) => {
     if (composer.mode === "prayer") handleAddPrayer(e);
     else handleAddInteraction(e);
@@ -1349,89 +648,35 @@ export default function ContactDetailsModal({
 
   const firstName = contact.name.split(" ")[0];
 
-  // ── Desktop page aside data (Field Notes: how to reach / where they are /
-  //    cared for by / who else can see / tags) ──
-  const fmtDate = (v?: string | null): string | null => {
-    if (!v) return null;
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? null : d.toLocaleDateString();
-  };
-  const currentContact = liveContact || contact;
+  const fmtDate = fmtContactDate;
 
-  // Interactions are sorted by the date they happened (dateTime), not by when
-  // they were entered into the app (createdAt). This keeps backdated log
-  // entries in the right place (#399).
-  const sortedInteractions = useMemo(() => {
-    return [...interactions].sort((a, b) => {
-      const aMs = parseMs(a.dateTime || a.createdAt) ?? 0;
-      const bMs = parseMs(b.dateTime || b.createdAt) ?? 0;
-      return bMs - aMs;
-    });
-  }, [interactions]);
-  // Pending removals leave the list the moment Remove is tapped, even though
-  // the Firestore delete only commits after the Undo window.
-  const visibleInteractions = useMemo(
-    () => sortedInteractions.filter((i) => !pendingRemovalIds.includes(i.id)),
-    [sortedInteractions, pendingRemovalIds],
+  const {
+    carerNames,
+    carerMembers,
+    addedByName,
+    sinceText,
+    sinceBy,
+    sortedStages,
+    canMoveStage,
+    canDelete,
+    currentStageIndex,
+    currentStageInfo,
+    openPrayers,
+  } = useMemo(
+    () =>
+      computeContactDerivedModel({
+        currentContact,
+        interactions,
+        prayers,
+        stages,
+        teamMembers,
+        isAdmin,
+        role,
+        t,
+      }),
+    [currentContact, interactions, prayers, stages, teamMembers, isAdmin, role, t],
   );
-
-  const latestInteraction = useMemo(() => {
-    if (visibleInteractions.length === 0) return null;
-    let newest = visibleInteractions[0];
-    let newestMs = parseMs(newest.dateTime || newest.createdAt) ?? -Infinity;
-    for (let i = 1; i < visibleInteractions.length; i++) {
-      const ms = parseMs(visibleInteractions[i].dateTime || visibleInteractions[i].createdAt) ?? -Infinity;
-      if (ms > newestMs) {
-        newest = visibleInteractions[i];
-        newestMs = ms;
-      }
-    }
-    return newest;
-  }, [visibleInteractions]);
-
-  const effectiveLastContactedDate =
-    latestInteraction?.dateTime ||
-    latestInteraction?.createdAt ||
-    currentContact?.lastContactedDate ||
-    currentContact?.lastSeen;
-
-  const lastConnectedDate = fmtDate(effectiveLastContactedDate);
-  const sinceText = lastConnectedDate
-    ? t('modals.contactDetails.last_connected').replace('{date}', lastConnectedDate)
-    : t('modals.contactDetails.not_connected_yet');
-  const sinceBy =
-    latestInteraction?.reachedByName ||
-    latestInteraction?.userName ||
-    currentContact?.lastContactedBy ||
-    null;
-  // "Cared for by" derives from the carers tie (#1051) — everyone holding this
-  // person in their sheep — and names zero, one or several people.
-  const carerNames = carerNamesOf(
-    currentContact?.carers,
-    Object.fromEntries(teamMembers.map((m) => [m.id, m.name])),
-  );
-  const carerMembers = teamMembers.filter((m) => (currentContact?.carers || []).includes(m.id));
-  const addedByName =
-    currentContact.createdByName ||
-    ((currentContact.createdBy || currentContact.addedBy)
-      ? teamMembers.find((m) => m.id === (currentContact.createdBy || currentContact.addedBy))?.name
-      : null);
-  const sortedStages = [...stages].sort((a, b) => a.order - b.order);
-  const stageIdx = currentContact.stage
-    ? sortedStages.findIndex((s) => s.label === currentContact.stage)
-    : -1;
-  // Moving a stage is an edit, so it sits behind the same gate as the Edit
-  // action: operator and up. Viewers keep the read-only pill and step list.
-  const canMoveStage = (isAdmin || hasMinRole(role, "operator")) && sortedStages.length > 0;
-  // Deleting a contact needs isManager (Full-timer or Trainee), the same gate
-  // Firestore enforces (#1367). Kept separate from Edit so they can't drift.
-  const canDelete = isAdmin || hasMinRole(role, "manager");
-  const currentStageIndex = stageIdx === -1 ? 0 : stageIdx;
-  const currentStageInfo = stageIdx === -1 ? undefined : sortedStages[stageIdx];
   const canUpdatePrayers = isAdmin || hasMinRole(role, "operator");
-  const openPrayers = prayers.filter(
-    (p) => p.status !== "answered" && p.status !== "unanswered",
-  );
 
   if (isOpen && !hasAccess) {
     return (
@@ -1454,8 +699,6 @@ export default function ContactDetailsModal({
     );
   }
 
-  // The story's composer (#1292): one box for an interaction or a prayer,
-  // shared by the phone story and the desktop story column.
   const composerNode = (
     <ContactComposer
       open={composerOpen}
@@ -1471,79 +714,44 @@ export default function ContactDetailsModal({
     />
   );
 
-  const renderInteractionItem = (interaction: Interaction) => (
-    <ContactInteractionItem
-      interaction={interaction}
-      canEdit={user?.uid === interaction.userId || isAdmin}
-      canRemove={canRemoveInteraction(interaction)}
-      editing={editingInteractionId === interaction.id}
-      editData={editInteractionData}
-      onEditDataChange={setEditInteractionData}
-      onStartEdit={() => {
-        setEditingInteractionId(interaction.id);
-        setEditInteractionData({
-          content: interaction.content,
-          dateTime: interaction.dateTime,
-          type: interaction.type || "interaction",
-        });
-      }}
-      onCancelEdit={() => setEditingInteractionId(null)}
-      onUpdate={handleUpdateInteraction}
-      updating={isUpdatingInteraction}
-      onRemove={() => handleRemoveInteraction(interaction)}
-      adapterFor={interactionAdapterFor}
-      viewer={streamViewer}
-      threadOpen={openThread === interaction.id}
-      onOpenThread={() => {
-        setOpenThread(interaction.id);
-        setPaneOpen(true);
-      }}
-    />
-  );
-
-  const renderPrayerCard = (p: PrayerRecord) => (
-    <ContactPrayerCard
-      prayer={p}
-      canUpdatePrayers={canUpdatePrayers}
-      onUpdateStatus={handleUpdatePrayerStatus}
-    />
-  );
-
-  const story = buildContactStory({
-    contact: currentContact,
-    interactions,
-    prayers,
-    activities,
-    gatherings,
-    rhythms,
-    storyMessages: threadMessages,
-    pendingRemovalIds,
-  });
-  const storyMessageIds = new Set(currentContact.storyMessageIds ?? []);
-  const openStoryMessage = (messageId: string) => {
-    setOpenThread(null);
-    setPaneView("conversation");
-    setPaneOpen(true);
-    setTimeout(() => {
-      document.querySelector(`[data-stream-row="${messageId}"]`)?.scrollIntoView?.({ block: "center" });
-    }, 0);
-  };
   const canSeeTeamThread = role === "admin" || isAdmin;
+  const storyMessageIds = new Set(currentContact.storyMessageIds ?? []);
 
   const storySection = (
-    <ContactStory
+    <ContactStorySection
       story={story}
       fmtDate={fmtDate}
       composer={composerNode}
       interactionsLoading={interactionsLoading}
-      renderInteraction={renderInteractionItem}
-      renderPrayerCard={renderPrayerCard}
-      onOpenStoryMessage={openStoryMessage}
+      currentContact={currentContact}
+      currentUid={currentUid}
+      role={role}
+      user={user}
+      isAdmin={isAdmin}
+      canUpdatePrayers={canUpdatePrayers}
+      openThread={openThread}
+      onOpenThread={(id) => {
+        setOpenThread(id);
+        setPaneOpen(true);
+      }}
+      onOpenConversation={(messageId) => {
+        setOpenThread(null);
+        setPaneView("conversation");
+        setPaneOpen(true);
+        if (messageId) {
+          setTimeout(() => {
+            document.querySelector(`[data-stream-row="${messageId}"]`)?.scrollIntoView?.({ block: "center" });
+          }, 0);
+        }
+      }}
+      onRemoveInteraction={handleRemoveInteraction}
+      onUpdateInteraction={handleUpdateInteraction}
+      onUpdatePrayerStatus={handleUpdatePrayerStatus}
+      interactionAdapterFor={interactionAdapterFor}
+      streamViewer={streamViewer}
     />
   );
 
-  // The open Follow-up asks in the Conversation, so the pane header can say how
-  // many are waiting and jump to the first (ADR 0034 decision 2).
   const openAsks = conversation.messages.filter(
     (m) => !m.parentId && m.kind === "nudge" && !m.closedAt,
   );
@@ -1557,8 +765,6 @@ export default function ContactDetailsModal({
     }, 0);
   };
 
-  // A Full-timers unread dot: anything team-scoped newer than the last time the
-  // reader opened that side of the pane.
   const latestTeamAt = threadMessages
     .filter((m) => m.scope === "team" && !m.parentId)
     .reduce((max, m) => (m.at > max ? m.at : max), "");
@@ -1602,57 +808,66 @@ export default function ContactDetailsModal({
     />
   );
 
+  // Consolidated Header Model & Actions eliminates 35 drilled individual props
+  const headerModel: ContactHeaderModel = {
+    contact,
+    currentContact,
+    stages: sortedStages,
+    canMoveStage,
+    currentStageIndex,
+    currentStageInfo,
+    sinceText,
+    carerNames,
+    role,
+    isAdmin,
+    showDelete: canDelete,
+    showRelease: canReleaseContact(currentUid, currentContact),
+    canEditKind: isAdmin && !isImpersonating,
+    openPrayerCount: openPrayers.length,
+    canDelegate: canShare,
+    conversationUnread: fullTimersUnread,
+  };
+
+  const headerActions: ContactHeaderActions = {
+    onClose: handleClose,
+    onEdit: () => setIsEditing(true),
+    onCancelEdit: () => setIsEditing(false),
+    onCall: callContact,
+    onText: textContact,
+    onEmail: emailContact,
+    onLogInteraction: () => startComposer("interaction"),
+    onStartPrayer: () => startComposer("prayer"),
+    onMoveStage: moveStage,
+    onOpenMoveSheet: () => setMovingStage(true),
+    onOpenAbout: () => setAboutOpen(true),
+    onOpenDelegate: () => setDelegateOpen(true),
+    onChangeKind: changeKind,
+    onChangeCreator: () => setReassigningCreator(true),
+    onDelete: handleDelete,
+    onRelease: handleReleaseContact,
+    onOpenPrayers: () => {
+      requestAnimationFrame(() =>
+        document
+          .querySelector('[data-kind="prayer"], [data-kind="prayer-answered"]')
+          ?.scrollIntoView?.({ block: "center" }),
+      );
+    },
+    onOpenConversation: () => {
+      setPaneView("conversation");
+      setPaneOpen(true);
+    },
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
         <div className={isMobile ? "cdm-page" : "cd-page"}>
           <div className={isMobile ? "cdm-page-main" : "cd-page-main"}>
             <ContactHead
+              model={headerModel}
+              actions={headerActions}
               isMobile={isMobile}
               isEditing={isEditing}
-              contact={contact}
-              currentContact={currentContact}
-              stages={sortedStages}
-              canMoveStage={canMoveStage}
-              currentStageIndex={currentStageIndex}
-              currentStageInfo={currentStageInfo}
-              sinceText={sinceText}
-              carerNames={carerNames}
-              role={role}
-              isAdmin={isAdmin}
-              showDelete={canDelete}
-              showRelease={canReleaseContact(currentUid, currentContact)}
-              onRelease={handleReleaseContact}
-              canEditKind={isAdmin && !isImpersonating}
-              openPrayerCount={openPrayers.length}
-              canDelegate={canShare}
-              onClose={handleClose}
-              onEdit={() => setIsEditing(true)}
-              onCancelEdit={() => setIsEditing(false)}
-              onCall={callContact}
-              onText={textContact}
-              onEmail={emailContact}
-              onLogInteraction={() => startComposer("interaction")}
-              onStartPrayer={() => startComposer("prayer")}
-              onMoveStage={moveStage}
-              onOpenMoveSheet={() => setMovingStage(true)}
-              onOpenAbout={() => setAboutOpen(true)}
-              onOpenDelegate={() => setDelegateOpen(true)}
-              onChangeKind={changeKind}
-              onChangeCreator={() => setReassigningCreator(true)}
-              onDelete={handleDelete}
-              onOpenPrayers={() => {
-                requestAnimationFrame(() =>
-                  document
-                    .querySelector('[data-kind="prayer"], [data-kind="prayer-answered"]')
-                    ?.scrollIntoView?.({ block: "center" }),
-                );
-              }}
-              onOpenConversation={() => {
-                setPaneView("conversation");
-                setPaneOpen(true);
-              }}
-              conversationUnread={fullTimersUnread}
             />
 
             {!isEditing && currentContact.combinedFrom && (
@@ -1704,32 +919,12 @@ export default function ContactDetailsModal({
               )}
             </div>
 
-            {/* Footer: Save/Cancel only while editing. Read mode has no
-               persistent chrome — Delete lives in the head's ⋯ menu. */}
+            {/* Footer: Save/Cancel only while editing */}
             {isEditing && !isMobile && (
-              <div className="cd-page-foot">
-                <div className="flex gap-3 w-full sm:w-auto ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="flex-1 sm:flex-none px-6 h-10 rounded-full font-semibold text-on-surface-variant hover:bg-surface-variant text-sm transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    form="edit-contact-form"
-                    type="submit"
-                    disabled={loading}
-                    className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
-                  >
-                    {loading ? (
-                      <span className="animate-pulse">{t('modals.contactDetails.saving')}</span>
-                    ) : (
-                      t('modals.contactDetails.save_changes')
-                    )}
-                  </button>
-                </div>
-              </div>
+              <ContactEditFooter
+                onCancel={() => setIsEditing(false)}
+                loading={loading}
+              />
             )}
           </div>
         </div>
@@ -1737,48 +932,33 @@ export default function ContactDetailsModal({
 
       {aboutOpen && (
         <AboutSheet open={aboutOpen} name={contact.name} onClose={() => setAboutOpen(false)}>
-          <div className="space-y-2">
-            <WhatWeKnow notes={contact.notes} />
-            <HowToReach contact={contact} firstName={firstName} />
-            <CaredForBy
-              carerMembers={carerMembers}
-              addedByName={addedByName}
-              sinceBy={sinceBy}
-              fmtDate={fmtDate}
-              isAdmin={isAdmin}
-              isImpersonating={isImpersonating}
-              reassigningCreator={reassigningCreator}
-              onStartReassign={() => setReassigningCreator(true)}
-              onCancelReassign={() => setReassigningCreator(false)}
-              teamMembers={teamMembers}
-              onReassignCreator={handleReassignCreator}
-              contact={contact}
-            />
-            <TagsSection
-              tags={formData.tags}
-              addingTag={addingTag}
-              tagInput={tagInput}
-              onTagInputChange={setTagInput}
-              onStartAdd={() => setAddingTag(true)}
-              onCancelAdd={() => setAddingTag(false)}
-              onCommitTag={commitTag}
-              onRemoveTag={removeTag}
-              onAddTag={(tag) => persistTags([...formData.tags, tag], "added", tag)}
-            />
-            <WhoCanSee
-              sharedWith={sharedWith}
-              founders={founders}
-              canRemove={(staffId) => canShare && canRemoveContactMember(role, currentUid, contact, staffId)}
-              onRemoveShare={removeShare}
-              shareOptions={shareOptions}
-              canShare={canShare}
-              sharing={sharing}
-              onStartShare={() => setSharing(true)}
-              onCancelShare={() => setSharing(false)}
-              onAddShare={addShare}
-              firstName={firstName}
-            />
-          </div>
+          <ContactAboutContent
+            contact={contact}
+            firstName={firstName}
+            carerMembers={carerMembers}
+            addedByName={addedByName}
+            sinceBy={sinceBy}
+            fmtDate={fmtDate}
+            isAdmin={isAdmin}
+            isImpersonating={isImpersonating}
+            reassigningCreator={reassigningCreator}
+            onStartReassign={() => setReassigningCreator(true)}
+            onCancelReassign={() => setReassigningCreator(false)}
+            teamMembers={teamMembers}
+            onReassignCreator={handleReassignCreator}
+            tags={formData.tags}
+            onPersistTags={persistTags}
+            sharedWith={sharedWith}
+            founders={founders}
+            canRemoveShare={(staffId) => canShare && canRemoveContactMember(role, currentUid, contact, staffId)}
+            onRemoveShare={removeShare}
+            shareOptions={shareOptions}
+            canShare={canShare}
+            sharing={sharing}
+            onStartShare={() => setSharing(true)}
+            onCancelShare={() => setSharing(false)}
+            onAddShare={addShare}
+          />
         </AboutSheet>
       )}
 

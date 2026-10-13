@@ -87,10 +87,16 @@ describe("i18n dictionary and helper", () => {
     // it, so the delete button's busy state rendered its raw key. Key parity
     // between en and es cannot catch that — both files lost it together — and
     // t() falls back to the key string rather than throwing.
-    const src = readFileSync(
-      join(process.cwd(), "src/components/modals/ContactDetailsModal.tsx"),
-      "utf8",
-    );
+    const contactFiles = [
+      "src/components/modals/ContactDetailsModal.tsx",
+      "src/components/contact/ContactAboutContent.tsx",
+      "src/components/contact/ContactEditFooter.tsx",
+      "src/lib/contactViewModel.ts",
+      "src/hooks/useContactStory.ts",
+    ];
+    const src = contactFiles
+      .map((f) => readFileSync(join(process.cwd(), f), "utf8"))
+      .join("\n");
     const used = [
       ...new Set(
         [...src.matchAll(/t\(\s*['"](modals\.contactDetails\.[a-z0-9_]+)['"]/gi)].map(
