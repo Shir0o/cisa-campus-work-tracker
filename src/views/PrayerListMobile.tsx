@@ -707,6 +707,13 @@ function PrayerItemMobile({
               rows={2}
               value={howDraft}
               onChange={(e) => setHowDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || format(new Date(), 'MMM d'));
+                  setAnswering(false);
+                }
+              }}
               placeholder={t('prayers.answer_placeholder')}
             />
             <div className="mt-2 flex justify-end gap-2">
@@ -768,6 +775,13 @@ function PrayerItemMobile({
               rows={2}
               value={archiveReasonDraft}
               onChange={(e) => setArchiveReasonDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  onUpdateStatus(prayer, 'unanswered', undefined, undefined, undefined, archiveReasonDraft.trim());
+                  setArchiving(false);
+                }
+              }}
               placeholder={t('prayers.archive_reason_placeholder', 'A note on why this is archived (optional)')}
             />
             <div className="mt-2 flex justify-end gap-2">
