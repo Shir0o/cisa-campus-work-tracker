@@ -196,10 +196,11 @@ function foldTag(tag: string): string {
 
 /** Slugify a tag into a URL-friendly, lowercase hyphen-delimited string. */
 export function slugifyTag(value: string): string {
-  const slug = (value ?? '')
+  let slug = (value ?? '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9]+/g, '-');
+  while (slug.startsWith('-')) slug = slug.slice(1);
+  while (slug.endsWith('-')) slug = slug.slice(0, -1);
   return slug || 'tag';
 }
 
