@@ -37,6 +37,8 @@ export interface AroundTeamThread {
   /** ISO; the web reads a missing one as "now". */
   at: string;
   interactionId?: string | null;
+  /** "team" for a Full-timers stream message; it is its own stream. */
+  scope?: "team" | null;
   mentionedUserIds?: string[] | null;
 }
 
@@ -55,6 +57,9 @@ export interface AroundTeamInput {
 export const REVIEWED_PRUNE_AFTER_DAYS = 120;
 
 const DAY_MS = 86_400_000;
+
+/** How long writing in a stream keeps you In the Conversation (#1604). */
+const IN_THE_CONVERSATION_DAYS = 14;
 
 const ms = (iso?: string | null) => {
   if (!iso) return 0;
@@ -96,6 +101,19 @@ export function aroundTeamStackIds(input: AroundTeamInput): string[] {
   const sameLevel = (a: AroundTeamThread, b: AroundTeamThread) =>
     a.contactId === b.contactId && (a.interactionId ?? null) === (b.interactionId ?? null);
 
+  // In the Conversation (#1604): the reader wrote in the same stream in the 14
+  // days before the message — the same rule as the web's inTheConversation.
+  const mine = threads.filter((r) => r.from === uid);
+  const inConversation = (m: AroundTeamThread) =>
+    mine.some(
+      (r) =>
+        r.contactId === m.contactId &&
+        (r.interactionId || null) === (m.interactionId || null) &&
+        (r.scope || null) === (m.scope || null) &&
+        ms(r.at) <= ms(m.at) &&
+        ms(m.at) - ms(r.at) <= IN_THE_CONVERSATION_DAYS * DAY_MS,
+    );
+
   const items: Item[] = [];
 
   // Every person someone else added, or nobody did.
@@ -111,16 +129,18 @@ export function aroundTeamStackIds(input: AroundTeamInput): string[] {
     }
   }
 
-  // Teammates' messages on a person tied to the reader, and unanswered
-  // questions on anyone.
+  // Teammates' messages on a person tied to the reader, unanswered questions on
+  // anyone, and anything written where the reader is In the Conversation —
+  // which makes the card theirs.
   for (const m of threads) {
     if (m.kind === "encouragement") continue;
     if (!m.from || m.from === uid) continue;
     const unanswered =
       m.kind === "question" && !threads.some((r) => r.from === uid && sameLevel(r, m) && ms(r.at) > ms(m.at));
-    if (!tied(m.contactId) && !unanswered) continue;
+    const heard = !tied(m.contactId) && inConversation(m);
+    if (!tied(m.contactId) && !unanswered && !heard) continue;
     if (m.kind === "question" && !unanswered) continue;
-    items.push({ id: "thread:" + m.id, contactId: m.contactId, direct: false });
+    items.push({ id: "thread:" + m.id, contactId: m.contactId, direct: heard });
   }
 
   // The reader's own questions still waiting on a reply.

@@ -9,16 +9,20 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
+  where,
   type Firestore,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import {
   TEAM_THREAD_NOTIFY_TITLE,
   THREAD_NOTIFY_TITLE,
+  IN_THE_CONVERSATION_DAYS,
+  inTheConversation,
   stakeholderUidsOf,
   type ThreadStakeholders,
   type ThreadKind,
@@ -175,6 +179,18 @@ export interface ThreadNotifyPayload {
   targetId: string;
 }
 
+/** The stream's last 14 days, to work out who is In the Conversation. A failed
+ *  read only narrows who hears; the message itself is already written. */
+async function recentInStream(db: Firestore, contactId: string, scope?: Scope): Promise<ThreadMessageWithContact[]> {
+  const since = new Date(Date.now() - IN_THE_CONVERSATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const snap = await getDocs(query(col(db, contactId, scope), where("at", ">=", since)));
+    return snap.docs.map((d) => ({ ...toMessage(d.id, d.data() as Partial<ThreadMessage>, scope === "team"), contactId }));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Post a new message to a contact. `onNotify`, when given, is called with the
  * bell payload for `notify.to` — each app supplies its own notification write
@@ -206,6 +222,7 @@ export async function addThreadMessage(
   const body = input.body.trim();
   const team = input.scope === "team";
   const mentionedUserIds = (input.mentionedUserIds ?? []).filter(Boolean);
+  const at = new Date().toISOString();
   await addDoc(col(db, contactId, input.scope), {
     interactionId: input.interactionId ?? null,
     parentId: input.parentId ?? null,
@@ -214,7 +231,7 @@ export async function addThreadMessage(
     fromName: input.fromName,
     kind: input.kind,
     body,
-    at: new Date().toISOString(),
+    at,
     ...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
   });
   if (!onNotify) return;
@@ -248,6 +265,13 @@ export async function addThreadMessage(
   // contact screen notified nobody at all (#813).
   const recipients = new Set(stakeholderUidsOf(notify?.stakeholders, input.from));
   if (notify?.to && notify.to !== input.from) recipients.add(notify.to);
+  // And everyone In the Conversation here (#1604): they wrote in this stream in
+  // the last 14 days. Not a tie, so a Release does not silence it.
+  const recent = await recentInStream(db, contactId, input.scope);
+  // Writing there once is no access: someone unshared since must not keep
+  // reading the person's messages through the bell.
+  const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
+  for (const uid of inTheConversation(recent, { ...input, contactId, at })) if (canStillSee(uid)) recipients.add(uid);
   // The Full-timers stream is never announced to a Trainee, and a mention
   // already carried its own buzz.
   if (team) for (const uid of recipients) if (!isFullTimer(uid)) recipients.delete(uid);

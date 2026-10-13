@@ -118,3 +118,36 @@ describe('traineeWaitingItems', () => {
   });
 });
 
+
+// #1604: what others write where the Full-timer is In the Conversation reaches
+// their phone's feed too, tied or not (CONTEXT.md).
+describe('inboxItemsFor — In the Conversation (#1604)', () => {
+  const ANNA = 'anna-uid';
+  it('surfaces a reply to the Full-timer\'s Follow-up ask, and anything else written there', () => {
+    const items = inboxItemsFor(FT, {
+      contacts: [],
+      interactions: [],
+      threads: [
+        msg({ id: 'ask', from: FT, kind: 'nudge', at: '2026-07-04T10:00:00Z' }),
+        msg({ id: 'reply', from: ANNA, kind: 'comment', parentId: 'ask', at: '2026-07-05T10:00:00Z' }),
+        msg({ id: 'note', from: ANNA, kind: 'note', at: '2026-07-06T10:00:00Z' }),
+        msg({ id: 'other', from: ANNA, kind: 'comment', interactionId: 'i1', at: '2026-07-06T10:00:00Z' }),
+        msg({ id: 'late', from: ANNA, kind: 'comment', at: '2026-07-19T10:00:01Z' }),
+      ],
+    });
+    expect(items.map((i) => i.id)).toEqual(['thread:note', 'thread:reply']);
+    expect(items[0].kind).toBe('note');
+  });
+
+  it('lists a question once, whichever way it reached them', () => {
+    const items = inboxItemsFor(FT, {
+      contacts: [],
+      interactions: [],
+      threads: [
+        msg({ id: 'mine', from: FT, kind: 'comment', at: '2026-07-04T10:00:00Z' }),
+        msg({ id: 'q', from: ANNA, kind: 'question', at: '2026-07-05T10:00:00Z' }),
+      ],
+    });
+    expect(items.map((i) => i.id)).toEqual(['thread:q']);
+  });
+});

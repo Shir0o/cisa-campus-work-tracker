@@ -265,6 +265,15 @@ describe('ftInboxRows', () => {
     expect(row.replyKind).toBe('comment');
   });
 
+  it('does not claim a note was a question to you (#1604)', () => {
+    const [row] = ftInboxRows(
+      [inboxItem({ id: 'thread:n1', type: 'thread', by: 'u3', kind: 'note', body: 'Saw him at lunch.' })],
+      ctx,
+    );
+    expect(row.headline).toBe('Ana wrote about Rio');
+    expect(row.reply).toBe('write-back');
+  });
+
   it('falls back gently when the person or the contact is unknown', () => {
     const [row] = ftInboxRows([inboxItem({ by: 'ghost', contactId: 'gone' })], ctx);
     expect(row.headline).toBe('Someone brought in someone');

@@ -183,6 +183,23 @@ describe('buildQueue — card kinds', () => {
     expect(ids).not.toContain('ftmsg:unrelated-msg');
   });
 
+  it('makes a msg card for what a teammate writes where I am In the Conversation, on any person (#1604)', () => {
+    const q = buildQueue(
+      input({
+        contacts: [contact({ id: 'shared', createdBy: 'other' })],
+        threads: [
+          message({ id: 'my-ask', contactId: 'shared', from: 'me', kind: 'nudge', at: iso(-3) }),
+          message({ id: 'reply', contactId: 'shared', from: 'peer', fromName: 'Ana Ruiz', kind: 'comment', parentId: 'my-ask', at: iso(-1) }),
+          message({ id: 'stale', contactId: 'shared', from: 'peer', kind: 'comment', at: iso(20) }),
+          message({ id: 'elsewhere', contactId: 'shared', from: 'peer', kind: 'comment', interactionId: 'i9', at: iso(-1) }),
+        ],
+      }),
+    );
+    const cards = q.filter((c) => c.kind === 'msg');
+    expect(cards.map((c) => c.id)).toEqual(['ftmsg:reply']);
+    expect(cards[0].label).toBe('Ana wrote back');
+  });
+
   it('does NOT make a msg card for a full-timer message on a contact I can see but do not own', () => {
     // A contact tied to me via `visibleTo` (founder/carer) but not created or
     // co-created by me must not leak a card — the queue only surfaces my own

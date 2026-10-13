@@ -6,10 +6,12 @@ const firestoreMock = vi.hoisted(() => ({
   collectionGroup: vi.fn(),
   doc: vi.fn(),
   deleteDoc: vi.fn(),
+  getDocs: vi.fn(),
   onSnapshot: vi.fn(),
   orderBy: vi.fn(),
   query: vi.fn(),
   updateDoc: vi.fn(),
+  where: vi.fn(),
 }));
 
 vi.mock('firebase/firestore', () => firestoreMock);
@@ -22,6 +24,7 @@ import {
   subscribeThreads,
 } from '../src/data/threads';
 import { applyRoster } from '../src/walking';
+import { contactStakeholdersOf } from '../src/threads';
 
 const DOC_REF = { __docRef: true };
 const db = {} as never;
@@ -31,6 +34,7 @@ beforeEach(() => {
   firestoreMock.collection.mockImplementation((_db, ...path: string[]) => ({ path: path.join('/') }));
   firestoreMock.query.mockImplementation((col) => col);
   firestoreMock.addDoc.mockResolvedValue({ id: 'new' });
+  firestoreMock.getDocs.mockResolvedValue({ docs: [] });
 });
 
 describe('deleteThreadMessage', () => {
@@ -235,5 +239,78 @@ describe('subscribeThreads', () => {
       ['o1', null],
       ['t1', 'team'],
     ]);
+  });
+});
+
+// #1604: mobile posts reach teammates In the Conversation the same way the web
+// app does (CONTEXT.md, ADR 0007 amendment).
+describe('addThreadMessage reaches teammates In the Conversation', () => {
+  const recent = (from: string, extra: Record<string, unknown> = {}) => ({
+    id: from + '-msg',
+    data: () => ({ from, fromName: from, kind: 'nudge', body: 'Can someone text Mark?', interactionId: null, at: new Date(Date.now() - 60_000).toISOString(), ...extra }),
+  });
+
+  beforeEach(() => {
+    applyRoster([
+      { uid: 'tony', role: 'admin' },
+      { uid: 'anna', role: 'admin' },
+      { uid: 'tim', role: 'manager' },
+    ]);
+  });
+
+  it('tells the asker of a Follow-up ask, not tied and released, when a teammate replies', async () => {
+    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tony')] });
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { parentId: 'tony-msg', from: 'anna', fromName: 'Anna Lee', kind: 'comment', body: 'I texted him.' },
+      { contactName: 'Mark', stakeholders: { createdBy: 'tim', unfollowedBy: ['tony'] } },
+      onNotify,
+    );
+    expect(onNotify.mock.calls.map((c) => c[0])).toEqual([
+      expect.objectContaining({ userId: 'tim', title: 'Anna commented on Mark' }),
+      expect.objectContaining({ userId: 'tony', title: 'Anna commented on Mark' }),
+    ]);
+  });
+
+  it('tells nobody twice, keeps Trainees off the Full-timers stream, and ignores other streams', async () => {
+    firestoreMock.getDocs.mockResolvedValueOnce({
+      docs: [recent('tim'), recent('tony'), recent('tony', { interactionId: 'i1' })],
+    });
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { scope: 'team', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Between us.' },
+      { contactName: 'Mark', stakeholders: { coCreators: ['tony'] } },
+      onNotify,
+    );
+    expect(onNotify.mock.calls.map((c) => c[0].userId)).toEqual(['tony']);
+  });
+
+  it('never tells someone who can no longer see the person, and still tells one who can (security review)', async () => {
+    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tim'), recent('tony')] });
+    const lost = vi.fn();
+    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'note', body: 'Private.' },
+      { contactName: 'Mark', stakeholders: { createdBy: 'anna', visibleTo: ['anna'] } }, lost);
+    expect(lost.mock.calls.map((c) => c[0].userId)).toEqual(['tony']);
+
+    firestoreMock.getDocs.mockResolvedValueOnce({ docs: [recent('tim')] });
+    const kept = vi.fn();
+    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'note', body: 'Hi' },
+      { contactName: 'Mark', stakeholders: contactStakeholdersOf({ createdBy: 'anna', visibleTo: ['anna', 'tim'] } as never) }, kept);
+    expect(kept.mock.calls.map((c) => c[0].userId)).toEqual(['tim']);
+  });
+
+  it('reads only the last 14 days of that stream, and a failed read keeps the message', async () => {
+    firestoreMock.getDocs.mockRejectedValueOnce(new Error('offline'));
+    const onNotify = vi.fn();
+    await addThreadMessage(db, 'c1', { from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Hi' }, { contactName: 'Mark' }, onNotify);
+    expect(firestoreMock.addDoc).toHaveBeenCalledTimes(1);
+    expect(onNotify).not.toHaveBeenCalled();
+    const [field, op, value] = firestoreMock.where.mock.calls[0];
+    expect([field, op]).toEqual(['at', '>=']);
+    expect(Math.round((Date.now() - Date.parse(value)) / 86_400_000)).toBe(14);
   });
 });

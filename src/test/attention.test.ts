@@ -6,6 +6,8 @@ import {
   toWorkThroughCount,
   attentionPhrase,
   isTiedTo,
+  openAsksIn,
+  worklistVerbFor,
   type AttentionItem,
   type AttentionStack,
 } from "../lib/attention";
@@ -427,5 +429,74 @@ describe("isTiedTo", () => {
   it("still honors an explicit personalContactIds pin even if in unfollowedBy", () => {
     const unfollowed = { createdBy: "t1", unfollowedBy: ["t1"] };
     expect(isTiedTo(unfollowed, "t1", new Set(["c1"]), "c1")).toBe(true);
+  });
+});
+
+// #1604: a teammate who wrote in a stream within 14 days sees what others write
+// there after in On you, even on a person they are not tied to (CONTEXT.md
+// "In the Conversation"). It is information to them: Got it, or Answered for
+// a question — never "I followed up", which stays with those tied.
+describe("buildAttentionItems — In the Conversation (#1604)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+  });
+
+  const DAY = 86_400_000;
+  const now = Date.now();
+  const ago = (days: number) => new Date(now - days * DAY).toISOString();
+  const contacts: Contact[] = [
+    { id: "mark", name: "Mark Lin", createdBy: "t2", stage: "Student" } as Contact,
+    { id: "luke", name: "Luke Ho", createdBy: "ft1", stage: "Student" } as Contact,
+  ];
+  const msg = (id: string, from: string, daysAgo: number, over: Partial<ThreadMessageWithContact> = {}) =>
+    ({ id, contactId: "mark", from, fromName: from, kind: "comment", body: id, at: ago(daysAgo), interactionId: null, ...over }) as ThreadMessageWithContact;
+  const onYouFor = (uid: string, role: string, threads: ThreadMessageWithContact[]) => {
+    const items = buildAttentionItems({ role, uid, contacts, threads });
+    const stacks = attentionStacksFor(items, uid);
+    return { items, onYou: partitionAttentionStacks(stacks, contacts, uid, role).onYou };
+  };
+
+  it("puts a teammate's reply to your Follow-up ask in your On you, though you are not tied (#1604)", () => {
+    const { onYou } = onYouFor("ft1", "admin", [
+      msg("ask", "ft1", 2, { kind: "nudge" }),
+      msg("reply", "anna", 1, { parentId: "ask" }),
+    ]);
+    const mark = onYou.find((s) => s.contactId === "mark");
+    expect(mark?.items.map((i) => i.id)).toContain("thread:reply");
+    expect(worklistVerbFor(mark!)).not.toBe("followedUp");
+  });
+
+  it("reaches you with what is not addressed to you, in the same stream only", () => {
+    const { items } = onYouFor("ft1", "admin", [
+      msg("mine", "ft1", 3),
+      msg("note", "anna", 1, { kind: "note" }),
+      msg("elsewhere", "anna", 1, { interactionId: "i1" }),
+      msg("team", "anna", 1, { scope: "team" }),
+    ]);
+    expect(items.filter((i) => i.type === "thread").map((i) => i.id)).toEqual(["thread:note"]);
+  });
+
+  it("lapses 14 days after your last message there", () => {
+    const { items } = onYouFor("ft1", "admin", [msg("mine", "ft1", 20), msg("late", "anna", 5)]);
+    expect(items.map((i) => i.id)).not.toContain("thread:late");
+  });
+
+  it("offers Got it on an open ask and Answered on a question — never I followed up", () => {
+    const ask = onYouFor("t1", "manager", [msg("mine", "t1", 3), msg("ask", "anna", 1, { kind: "nudge" })]);
+    const askStack = ask.onYou.find((s) => s.contactId === "mark")!;
+    expect(worklistVerbFor(askStack)).toBe("gotIt");
+    expect(openAsksIn(askStack)).toEqual([]);
+
+    const q = onYouFor("t1", "manager", [msg("mine", "t1", 3), msg("q", "anna", 1, { kind: "question" })]);
+    expect(worklistVerbFor(q.onYou.find((s) => s.contactId === "mark")!)).toBe("answered");
+  });
+
+  it("leaves a tied teammate's card as it was: an open ask still asks them to follow up", () => {
+    const { onYou } = onYouFor("ft1", "admin", [
+      msg("mine", "ft1", 3, { contactId: "luke" }),
+      msg("ask", "anna", 1, { contactId: "luke", kind: "nudge" }),
+    ]);
+    expect(worklistVerbFor(onYou.find((s) => s.contactId === "luke")!)).toBe("followedUp");
   });
 });
