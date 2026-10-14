@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { captureRef } from 'react-native-view-shot';
 import { useRouter } from 'expo-router';
 import { Sheet } from '../ui/Sheet';
@@ -259,7 +260,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
             </View>
 
             <View>
-              <TextInput
+              <BufferedTextInput
                 multiline
                 numberOfLines={4}
                 value={message}

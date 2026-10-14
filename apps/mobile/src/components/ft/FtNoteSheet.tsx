@@ -1,7 +1,8 @@
 // Mobile v2 — writing to a teammate. Encourage them, remind them, or answer the
 // question they asked. Ported from the design's `FtNoteSheet`.
 import React from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { firstName, type ThreadKind } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -117,7 +118,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
             </View>
           )}
 
-          <TextInput
+          <BufferedTextInput
             value={body}
             onChangeText={setBody}
             placeholder={

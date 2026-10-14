@@ -2,7 +2,8 @@
 // and adding someone to your own heart. Same shape, opposite privacy, and the
 // copy says which is which every time.
 import React from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { Sheet } from '../ui';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -36,7 +37,7 @@ function Body({
       <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.card.ink2 }}>
         {sub}
       </Text>
-      <TextInput
+      <BufferedTextInput
         value={body}
         onChangeText={setBody}
         placeholder={placeholder}

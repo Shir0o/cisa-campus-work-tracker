@@ -1,7 +1,8 @@
 // Mobile v2 — "Something to carry". Handing a to-do to someone on the team (or
 // to yourself). Ported from the design's `FtTodoSheet`.
 import React from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { duePresetToISO, firstName, type AppUser, type Contact } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -126,7 +127,7 @@ function TodoSheetBody({ visible, contact, initialTitle, me, assignees, onClose,
             {contact ? `About ${contact.name}` : 'A to-do for the team'}
           </Text>
 
-          <TextInput
+          <BufferedTextInput
             value={title}
             onChangeText={setTitle}
             placeholder="What needs doing, in plain words…"
