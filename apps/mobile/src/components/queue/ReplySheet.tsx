@@ -1,7 +1,8 @@
 // Mobile v2 — "Write back". A short reply to the full-timer who cares for you,
 // posted onto the same Alongside thread the message came from.
 import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { firstName, replyDestinationLine, type ThreadMessageWithContact } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
@@ -42,7 +43,7 @@ export function ReplySheet({
           {replyDestinationLine(contactName)}
         </Text>
 
-        <TextInput
+        <BufferedTextInput
           value={body}
           onChangeText={setBody}
           placeholder="Say it how you'd say it out loud."

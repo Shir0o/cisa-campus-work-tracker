@@ -147,7 +147,6 @@ describe('V2Input / V2TextArea', () => {
 
     await fireEvent.changeText(getByPlaceholderText('Your name'), 'Rio');
     expect(onChangeText).toHaveBeenCalledWith('Rio');
-    expect(getByPlaceholderText('Your name').props.value).toBe('Alex');
   });
 
   it('V2TextArea forwards typed text', async () => {
@@ -174,6 +173,24 @@ describe('V2Input / V2TextArea', () => {
 
     expect(getByPlaceholderText('single').props.autoCorrect).toBe(false);
     expect(getByPlaceholderText('multi').props.autoCorrect).toBe(false);
+  });
+
+  // Inside a Sheet the owner's value lands a commit late (the modal's portal);
+  // a field still showing the old value makes Android move the caret back, so
+  // typing mid-text lands each letter before the last one.
+  it('shows what was typed before the owner re-renders', async () => {
+    const { getByPlaceholderText } = await renderV2(
+      <>
+        <V2Input value="hello" onChangeText={jest.fn()} placeholder="single" />
+        <V2TextArea value="hello" onChangeText={jest.fn()} placeholder="multi" />
+      </>,
+    );
+
+    await fireEvent.changeText(getByPlaceholderText('single'), 'hexllo');
+    await fireEvent.changeText(getByPlaceholderText('multi'), 'hexllo');
+
+    expect(getByPlaceholderText('single').props.value).toBe('hexllo');
+    expect(getByPlaceholderText('multi').props.value).toBe('hexllo');
   });
 });
 

@@ -7,7 +7,8 @@
 // the same shell; nothing in here is full-timer-specific — every value comes
 // from whichever room the provider below puts it in.
 import React, { createContext, useContext } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { Pressable, ScrollView, Text, View, type TextInputProps } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, V2RoomContext, type V2Room } from '../../theme/v2';
 
@@ -342,7 +343,7 @@ export function V2Input({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
-    <TextInput
+    <BufferedTextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
@@ -383,17 +384,15 @@ export function V2TextArea({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
-    <TextInput
+    <BufferedTextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
       placeholderTextColor={c.card.ink3}
       multiline
       autoFocus={autoFocus}
-      // Android IME autocorrect opens a composing region that desyncs the
-      // native EditText from the controlled value, so backspace in the middle
-      // of the text deletes the wrong character and the caret jumps (#1514).
-      // V2Input already suppresses this on single-line; multiline must too.
+      // Kept from #1514, but it was not the cause: the caret jump inside a
+      // Sheet is the portal's late value, which BufferedTextInput absorbs.
       autoCorrect={false}
       textAlignVertical="top"
       style={{

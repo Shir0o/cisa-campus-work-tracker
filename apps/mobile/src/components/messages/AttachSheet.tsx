@@ -4,7 +4,8 @@
 // the same ChatAttachment shape the web writes, so a post renders the same on
 // both platforms.
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { BufferedTextInput } from '../ui/BufferedTextInput';
 import { Ionicons } from '@expo/vector-icons';
 import type { ChatAttachment } from '@cisa/core';
 import { useLanguage } from '../../lib/LanguageProvider';
@@ -109,7 +110,7 @@ export function AttachSheet({
           })}
         </View>
 
-        <TextInput
+        <BufferedTextInput
           value={search}
           onChangeText={setSearch}
           placeholder={t('mobile.messages.attach_search')}
