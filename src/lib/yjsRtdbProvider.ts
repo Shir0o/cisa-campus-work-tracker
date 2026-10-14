@@ -11,8 +11,9 @@
 //   seeded                → bool flag guarding first-time content seeding
 //
 // Updates are idempotent in Yjs, so replaying the log (even with overlap) is
-// safe. Compaction of the log is intentionally omitted — this is an admin-only,
-// low-volume surface; revisit if a single page ever accumulates huge histories.
+// safe. Compaction of the log occurs lazily on open when entries exceed
+// thresholds (>500 entries or >256 KB), replacing the read history with a single
+// snapshot update entry and removing only the read push keys (#1374).
 
 import * as Y from 'yjs';
 import {
@@ -109,13 +110,39 @@ export class RtdbYjsProvider {
     void this.bootstrap();
   }
 
-  // Load the existing log once, then listen for new updates. Re-applying an
-  // already-seen update is harmless, but we track keys to avoid the churn. Each
-  // entry is applied in order inside one transaction — merging the whole history
-  // with `Y.mergeUpdates` first slows down sharply as the log grows and blocks
-  // the main thread on open.
+  // Thresholds to trigger compaction on open:
+  // > 500 individual update entries or payload size > 256 KB.
+  private static readonly COMPACT_ENTRY_THRESHOLD = 500;
+  private static readonly COMPACT_BYTE_THRESHOLD = 256 * 1024;
+
+  // Compacts the log by persisting a full document state update as a single entry
+  // and deleting only the keys that were read during bootstrap. Any edit pushed
+  // during or after bootstrap has a different key and is never deleted.
+  private async compactLog(keysToPurge: string[]) {
+    try {
+      const snapshotU8 = Y.encodeStateAsUpdate(this.doc);
+      const snapshotB64 = u8ToB64(snapshotU8);
+      const newRef = await push(this.updatesRef, snapshotB64);
+      if (newRef?.key) {
+        this.appliedKeys.add(newRef.key);
+      }
+      // Purge precisely the read keys
+      await Promise.all(
+        keysToPurge.map((key) => set(child(this.updatesRef, key), null).catch(() => {})),
+      );
+    } catch (e) {
+      console.warn('[RtdbYjsProvider] compaction failed', e);
+    }
+  }
+
+  // Load the existing log once, compact if threshold is exceeded, then listen
+  // for new updates. Re-applying an already-seen update is harmless, but we track
+  // keys to avoid the churn. Each entry is applied in order inside one transaction.
   private async bootstrap() {
     let degraded = false;
+    let shouldCompact = false;
+    let keysToCompact: string[] = [];
+
     try {
       const snap = await get(this.updatesRef);
       if (this.destroyed) return;
@@ -123,6 +150,18 @@ export class RtdbYjsProvider {
       if (val) {
         const entries = Object.entries(val);
         if (entries.length) {
+          let totalBytes = 0;
+          for (const [, b64] of entries) {
+            totalBytes += b64 ? b64.length : 0;
+          }
+          if (
+            entries.length >= RtdbYjsProvider.COMPACT_ENTRY_THRESHOLD ||
+            totalBytes >= RtdbYjsProvider.COMPACT_BYTE_THRESHOLD
+          ) {
+            shouldCompact = true;
+            keysToCompact = entries.map(([k]) => k);
+          }
+
           Y.transact(
             this.doc,
             () => {
@@ -142,6 +181,11 @@ export class RtdbYjsProvider {
     } catch (e) {
       degraded = true;
       console.warn('[RtdbYjsProvider] initial load failed', e);
+    }
+    if (this.destroyed) return;
+
+    if (shouldCompact && !degraded && keysToCompact.length > 0) {
+      await this.compactLog(keysToCompact);
     }
     if (this.destroyed) return;
 
