@@ -340,3 +340,106 @@ describe('RtdbYjsProvider base path', () => {
     doc.destroy();
   });
 });
+
+describe('RtdbYjsProvider log compaction (#1374)', () => {
+  let providers: RtdbYjsProvider[];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    providers = [];
+  });
+
+  afterEach(() => {
+    providers.forEach((p) => p.destroy());
+  });
+
+  it('does not compact when entries and payload size are below threshold', async () => {
+    const { source, entries } = typingLog(10);
+    const doc = new Y.Doc();
+    vi.mocked(get).mockResolvedValue(logSnapshot(entries) as never);
+    const provider = new RtdbYjsProvider({} as never, DOC_ID, doc);
+    providers.push(provider);
+    await flush();
+
+    expect(provider.synced).toBe(true);
+    // Neither push nor multi-path update / set for compaction was triggered
+    expect(vi.mocked(push)).not.toHaveBeenCalled();
+    source.destroy();
+    doc.destroy();
+  });
+
+  it('compacts the update log when entry count exceeds threshold', async () => {
+    // typingLog(600) yields ~570 entries > 500 threshold
+    const { source, entries } = typingLog(600);
+    expect(entries.length).toBeGreaterThan(500);
+    const doc = new Y.Doc();
+    vi.mocked(get).mockResolvedValue(logSnapshot(entries) as never);
+    const provider = new RtdbYjsProvider({} as never, DOC_ID, doc);
+    providers.push(provider);
+    await flush();
+
+    expect(provider.synced).toBe(true);
+    // Should push a snapshot to updatesRef
+    expect(vi.mocked(push)).toHaveBeenCalledWith(
+      expect.objectContaining({ path: `board_docs_rtdb/${DOC_ID}/updates` }),
+      expect.any(String),
+    );
+    // Should remove exactly the read entries
+    expect(vi.mocked(set)).toHaveBeenCalled();
+    const deleteCalls = vi.mocked(set).mock.calls.filter(([r, val]) =>
+      val === null && (r as unknown as { path: string }).path.startsWith(`board_docs_rtdb/${DOC_ID}/updates/`),
+    );
+    expect(deleteCalls.length).toBe(entries.length);
+
+    source.destroy();
+    doc.destroy();
+  });
+
+  it('preserves interleaved concurrent updates pushed during compaction', async () => {
+    const { source, entries } = typingLog(600);
+    expect(entries.length).toBeGreaterThan(500);
+    const doc = new Y.Doc();
+    vi.mocked(get).mockResolvedValue(logSnapshot(entries) as never);
+
+    let updatesAddedCb: ((snap: { key: string; val: () => string }) => void) | null = null;
+    const { onChildAdded } = await import('firebase/database');
+    vi.mocked(onChildAdded).mockImplementation((targetRef: unknown, cb: unknown) => {
+      const p = (targetRef as { path: string }).path;
+      if (p.endsWith('/updates')) {
+        updatesAddedCb = cb as typeof updatesAddedCb;
+      }
+      return () => {};
+    });
+
+    const provider = new RtdbYjsProvider({} as never, DOC_ID, doc);
+    providers.push(provider);
+    await flush();
+
+    // Now an external writer pushes a concurrent edit with a new key
+    const externalDoc = new Y.Doc();
+    Y.applyUpdate(externalDoc, Y.encodeStateAsUpdate(source));
+    const concurrentText = externalDoc.getText('md');
+    let concurrentUpdateU8!: Uint8Array;
+    externalDoc.on('update', (u: Uint8Array) => {
+      concurrentUpdateU8 = u;
+    });
+    concurrentText.insert(0, 'CONCURRENT_PREFIX: ');
+    const concurrentB64 = u8ToB64(concurrentUpdateU8);
+
+    // Feed to live listener (key was not in the compacted entries)
+    updatesAddedCb?.({ key: 'k_concurrent_999', val: () => concurrentB64 });
+
+    // Assert that the concurrent update was applied to the document
+    expect(doc.getText('md').toString()).toContain('CONCURRENT_PREFIX: ');
+    // And that deleting old keys does not delete the concurrent key
+    const deletedPaths = vi.mocked(set).mock.calls
+      .filter(([, val]) => val === null)
+      .map(([r]) => (r as unknown as { path: string }).path);
+    expect(deletedPaths).not.toContain(`board_docs_rtdb/${DOC_ID}/updates/k_concurrent_999`);
+    expect(deletedPaths.length).toBe(entries.length);
+
+    source.destroy();
+    externalDoc.destroy();
+    doc.destroy();
+  });
+});
