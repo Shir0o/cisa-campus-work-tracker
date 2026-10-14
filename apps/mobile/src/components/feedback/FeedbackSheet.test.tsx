@@ -139,4 +139,12 @@ describe('FeedbackSheet', () => {
     const { useRouter } = require('expo-router');
     expect(useRouter().push).toHaveBeenCalledWith('/your-notes');
   });
+
+  it('enables native autocorrect and spellcheck on feedback input (#1413)', async () => {
+    const { getByPlaceholderText } = await renderSheet();
+    const input = getByPlaceholderText("What's on your mind?");
+    expect(input.props.autoCorrect).toBe(true);
+    expect(input.props.spellCheck).toBe(true);
+  });
 });
+
