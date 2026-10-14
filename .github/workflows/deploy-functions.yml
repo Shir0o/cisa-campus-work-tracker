@@ -6,9 +6,10 @@ name: Deploy Notification Functions
 # Auth: keyless via Workload Identity Federation, the same deploy SA as the
 # rules workflows. For a functions deploy it additionally needs
 # roles/cloudfunctions.developer, roles/run.admin, roles/eventarc.admin,
-# roles/iam.serviceAccountUser, roles/artifactregistry.admin and
-# roles/secretmanager.viewer. Secrets EXPO_ACCESS_TOKEN and VAPID_PRIVATE_KEY
-# must exist in Secret Manager (`firebase functions:secrets:set <NAME>`).
+# roles/iam.serviceAccountUser, roles/artifactregistry.admin,
+# roles/cloudscheduler.admin and roles/secretmanager.viewer. Secrets
+# EXPO_ACCESS_TOKEN and VAPID_PRIVATE_KEY must exist in Secret Manager
+# (`firebase functions:secrets:set <NAME>`).
 
 on:
   workflow_dispatch:
