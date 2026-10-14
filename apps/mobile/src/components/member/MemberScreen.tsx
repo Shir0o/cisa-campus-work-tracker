@@ -84,7 +84,8 @@ export function MemberBack() {
         alignSelf: 'flex-start',
         minHeight: 44,
         justifyContent: 'center',
-        opacity: pressed ? 0.6 : 1,
+        opacity: pressed ? 0.75 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>

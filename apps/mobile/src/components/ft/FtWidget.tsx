@@ -76,7 +76,8 @@ export function FtSech({
           hitSlop={10}
           style={({ pressed }) => ({
             marginLeft: 'auto',
-            opacity: pressed ? 0.6 : 1,
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
           })}
         >
           <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.room.ink2 }}>{link}</Text>
@@ -148,7 +149,8 @@ export function FtAction({ label, onPress }: { label: string; onPress: () => voi
       style={({ pressed }) => ({
         minHeight: 44,
         justifyContent: 'center',
-        opacity: pressed ? 0.55 : 1,
+        opacity: pressed ? 0.75 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{label}</Text>

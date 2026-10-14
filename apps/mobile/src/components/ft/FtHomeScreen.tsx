@@ -74,7 +74,8 @@ function QuickTile({
         borderRadius: radius.tile,
         paddingVertical: 15,
         paddingHorizontal: 15,
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? 0.88 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
         ...c.widget.shadow,
       })}
     >

@@ -238,7 +238,8 @@ export function PrimaryButton({
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
+        transform: [{ scale: pressed && !disabled ? 0.98 : 1 }],
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: fg }}>{title}</Text>
@@ -267,7 +268,8 @@ export function SecondaryButton({
         borderColor: c.card.border,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: disabled ? 0.5 : pressed ? 0.6 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
+        transform: [{ scale: pressed && !disabled ? 0.98 : 1 }],
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.ink2 }}>{title}</Text>
@@ -281,7 +283,14 @@ export function LaterButton({ label = 'Later', onPress }: { label?: string; onPr
   return (
     <Pressable
       onPress={onPress}
-      style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 }}
+      style={({ pressed }) => ({
+        minHeight: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        opacity: pressed ? 0.7 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink3 }}>{label}  →</Text>
     </Pressable>
@@ -304,7 +313,7 @@ export function AboutChip({
   return (
     <Pressable
       onPress={onPress}
-      style={{
+      style={({ pressed }) => ({
         alignSelf: 'flex-start',
         flexDirection: 'row',
         alignItems: 'center',
@@ -316,7 +325,9 @@ export function AboutChip({
         paddingRight: 14,
         paddingVertical: 7,
         minHeight: 44,
-      }}
+        opacity: pressed ? 0.82 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
     >
       <PersonMark name={name} id={id} size={26} radius={9} fontSize={10} />
       <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>{name}</Text>

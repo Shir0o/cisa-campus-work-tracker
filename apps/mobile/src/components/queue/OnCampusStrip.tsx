@@ -46,6 +46,7 @@ export function OnCampusStrip({
         gap: 12,
         minHeight: 44,
         opacity: pressed ? 0.9 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       {goal ? (

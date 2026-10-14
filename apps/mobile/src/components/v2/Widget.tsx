@@ -82,7 +82,8 @@ export function Sech({
           hitSlop={10}
           style={({ pressed }) => ({
             marginLeft: 'auto',
-            opacity: pressed ? 0.6 : 1,
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
           })}
         >
           <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.room.ink2 }}>{link}</Text>
@@ -180,7 +181,8 @@ export function WidgetAction({ label, onPress }: { label: string; onPress: () =>
       style={({ pressed }) => ({
         minHeight: 44,
         justifyContent: 'center',
-        opacity: pressed ? 0.55 : 1,
+        opacity: pressed ? 0.75 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{label}</Text>
@@ -230,7 +232,8 @@ export function V2Screen({
               minHeight: 44,
               justifyContent: 'center',
               marginRight: 4,
-              opacity: pressed ? 0.6 : 1,
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>← Back</Text>
@@ -252,7 +255,8 @@ export function V2Screen({
               paddingHorizontal: 15,
               borderRadius: radius.chip,
               backgroundColor: c.room.chip,
-              opacity: pressed ? 0.65 : 1,
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink }}>{action.label}</Text>
@@ -310,7 +314,8 @@ export function V2RowCard({
             paddingHorizontal: 16,
             borderTopWidth: 1,
             borderTopColor: c.card.line,
-            opacity: pressed ? 0.6 : 1,
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.99 : 1 }],
           })}
         >
           <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{action}</Text>
@@ -445,7 +450,8 @@ export function V2Seg<T extends string>({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              opacity: pressed ? 0.7 : 1,
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card.onInverse : c.room.ink2 }}>
@@ -546,7 +552,8 @@ export function V2PersonRow({
         paddingHorizontal: 16,
         minHeight: 64,
         marginTop: flat ? 0 : 9,
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? 0.88 : 1,
+        transform: [{ scale: pressed ? 0.99 : 1 }],
       })}
     >
       <View

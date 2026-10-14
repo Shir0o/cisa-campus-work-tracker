@@ -110,6 +110,8 @@ function Choice<T>({
           }
         }}
         style={({ pressed }) => ({
+          minHeight: 44,
+          justifyContent: 'center',
           paddingHorizontal: 16,
           paddingVertical: 10,
           borderRadius: 999,

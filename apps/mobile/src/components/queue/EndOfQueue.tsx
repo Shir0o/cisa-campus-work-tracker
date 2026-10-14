@@ -58,12 +58,30 @@ export function EndOfQueue({
         <V2DateBox label="Dates worth knowing" dates={dates} />
       </View>
 
-      <Pressable onPress={onLookBack} style={{ minHeight: 44, justifyContent: 'center', marginTop: 12 }}>
+      <Pressable
+        onPress={onLookBack}
+        style={({ pressed }) => ({
+          minHeight: 44,
+          justifyContent: 'center',
+          marginTop: 12,
+          opacity: pressed ? 0.75 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
+      >
         <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>Look back at your week  →</Text>
       </Pressable>
 
       {handledCount > 0 && (
-        <Pressable onPress={onReset} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
+        <Pressable
+          onPress={onReset}
+          style={({ pressed }) => ({
+            minHeight: 44,
+            justifyContent: 'center',
+            marginTop: 4,
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
+        >
           <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink3 }}>Bring back today's queue</Text>
         </Pressable>
       )}

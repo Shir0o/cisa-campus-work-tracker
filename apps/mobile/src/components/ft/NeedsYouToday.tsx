@@ -36,7 +36,8 @@ export function NeedsYouToday({
                 alignItems: 'flex-start',
                 gap: 12,
                 minHeight: 44,
-                opacity: pressed ? 0.6 : 1,
+                opacity: pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.985 : 1 }],
               })}
             >
               <View

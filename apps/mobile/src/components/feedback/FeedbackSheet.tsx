@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
-import { useV2Theme } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import {
   FEEDBACK_KINDS,
   kindMeta,
@@ -168,7 +168,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
   const currentPlaceholder = kindMeta(kind).placeholder;
 
   return (
-    <Sheet visible={visible} onClose={handleClose}>
+    <Sheet visible={visible} onClose={handleClose} {...v2SheetChrome(c)}>
       <View style={{ padding: 18 }}>
         <Text style={{ fontFamily: font.extra, fontSize: fs(20), color: c.card.ink, marginBottom: 4 }}>
           {t('mobile.feedback.leave_a_note', "Tell us how it's going")}
@@ -235,6 +235,8 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
                       accessibilityRole="button"
                       onPress={() => setKind(k.id)}
                       style={({ pressed }) => ({
+                        minHeight: 44,
+                        justifyContent: 'center',
                         paddingVertical: 8,
                         paddingHorizontal: 14,
                         borderRadius: radius.button,

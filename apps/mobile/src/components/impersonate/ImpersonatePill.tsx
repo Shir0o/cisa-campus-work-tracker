@@ -39,8 +39,9 @@ export function ImpersonatePill({
     <View
       style={{
         backgroundColor: '#171d27',
-        height: 46 + insets.top,
+        minHeight: 48 + insets.top,
         paddingTop: insets.top,
+        paddingBottom: 2,
         paddingHorizontal: 10,
         flexDirection: 'row',
         alignItems: 'center',
@@ -62,7 +63,7 @@ export function ImpersonatePill({
         onPress={onSwitch}
         hitSlop={4}
         style={({ pressed }) => ({
-          paddingVertical: 6,
+          minHeight: 44,
           paddingHorizontal: 11,
           borderRadius: 99,
           backgroundColor: 'rgba(255,255,255,0.13)',
@@ -77,7 +78,7 @@ export function ImpersonatePill({
         onPress={onExit}
         hitSlop={4}
         style={({ pressed }) => ({
-          paddingVertical: 6,
+          minHeight: 44,
           paddingHorizontal: 11,
           borderRadius: 99,
           backgroundColor: '#fff',

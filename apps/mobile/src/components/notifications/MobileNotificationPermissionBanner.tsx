@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useV2Theme } from '../../theme/v2';
 import {
-  getMobileNotificationPlatformName,
   getNotificationPromptDismissed,
   setNotificationPromptDismissed,
   shouldShowMobileNotificationPrompt,
@@ -53,8 +52,6 @@ export function MobileNotificationPermissionBanner() {
 
   if (!visible) return null;
 
-  const platformName = getMobileNotificationPlatformName();
-
   const handleDismiss = async () => {
     await setNotificationPromptDismissed(true);
     setVisible(false);
@@ -95,33 +92,47 @@ export function MobileNotificationPermissionBanner() {
           Enable notifications
         </Text>
         <Text style={[styles.body, { color: c.room.ink3, fontFamily: font.medium }]}>
-          CISA Campus Work Tracker is requesting notification permission for your {platformName}.
+          Turn on nudges to get notified when follow-ups are due or team messages arrive.
         </Text>
       </View>
 
       <View style={[styles.actions, { borderTopColor: c.room.dateboxLine }]}>
-        <TouchableOpacity
+        <Pressable
           onPress={handleDismiss}
-          style={styles.button}
+          style={({ pressed }) => [
+            styles.button,
+            {
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="Later"
         >
           <Text style={[styles.dismissText, { color: c.room.ink3, fontFamily: font.medium }]}>
             Later
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           onPress={handleEnable}
           disabled={requesting}
-          style={[styles.button, styles.enableButton, { backgroundColor: c.card.ask }]}
+          style={({ pressed }) => [
+            styles.button,
+            styles.enableButton,
+            {
+              backgroundColor: c.card.ask,
+              opacity: requesting ? 0.6 : pressed ? 0.85 : 1,
+              transform: [{ scale: pressed && !requesting ? 0.97 : 1 }],
+            },
+          ]}
           accessibilityRole="button"
           accessibilityLabel="Enable"
         >
           <Text style={[styles.enableText, { fontFamily: font.semi }]}>
             {requesting ? 'Enabling…' : 'Enable'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -136,11 +147,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
   },
   header: {
     marginBottom: 12,
@@ -163,6 +169,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   button: {
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 8,

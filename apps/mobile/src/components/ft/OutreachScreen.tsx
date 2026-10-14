@@ -94,7 +94,7 @@ function Chip({ label, on, onPress }: { label: string; on?: boolean; onPress: ()
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        minHeight: 36,
+        minHeight: 44,
         justifyContent: 'center',
         paddingHorizontal: 13,
         borderRadius: radius.chip,
@@ -138,7 +138,7 @@ function PendingRow({
         <Pressable
           onPress={() => onNudge(o, n)}
           style={({ pressed }) => ({
-            minHeight: 40,
+            minHeight: 44,
             justifyContent: 'center',
             paddingHorizontal: 15,
             borderRadius: radius.chip,
@@ -156,7 +156,7 @@ function PendingRow({
         <Pressable
           onPress={() => onTake(o, n)}
           style={({ pressed }) => ({
-            minHeight: 40,
+            minHeight: 44,
             justifyContent: 'center',
             paddingHorizontal: 15,
             borderRadius: radius.chip,
@@ -171,7 +171,7 @@ function PendingRow({
         <Pressable
           onPress={() => onOpen(n.contactId!)}
           style={({ pressed }) => ({
-            minHeight: 40,
+            minHeight: 44,
             justifyContent: 'center',
             paddingHorizontal: 15,
             borderRadius: radius.chip,

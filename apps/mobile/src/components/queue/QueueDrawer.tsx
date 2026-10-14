@@ -35,7 +35,8 @@ export function DrawerButton({ onPress }: { onPress: () => void }) {
         justifyContent: 'center',
         gap: 4,
         backgroundColor: c.room.chip,
-        opacity: pressed ? 0.7 : 1,
+        opacity: pressed ? 0.75 : 1,
+        transform: [{ scale: pressed ? 0.95 : 1 }],
       })}
     >
       {[0, 1, 2].map((i) => (
@@ -131,7 +132,8 @@ export function QueueDrawer({
                     alignItems: 'center',
                     gap: 12,
                     minHeight: 52,
-                    opacity: pressed ? 0.6 : 1,
+                    opacity: pressed ? 0.75 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
                   })}
                 >
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />
@@ -150,7 +152,8 @@ export function QueueDrawer({
                       alignItems: 'center',
                       gap: 12,
                       minHeight: 52,
-                      opacity: pressed ? 0.6 : 1,
+                      opacity: pressed ? 0.75 : 1,
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
                     })}
                   >
                     <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />

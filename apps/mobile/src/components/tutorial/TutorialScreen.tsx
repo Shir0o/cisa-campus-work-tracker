@@ -78,7 +78,7 @@ export function TutorialScreen() {
           </Text>
 
           <View style={{ gap: 14, marginTop: 22 }}>
-            {SECTIONS.map((section, i) => (
+            {SECTIONS.map((section) => (
               <View
                 key={section.title}
                 style={{
@@ -87,26 +87,11 @@ export function TutorialScreen() {
                   padding: 18,
                   borderWidth: 1,
                   borderColor: c.card.border,
-                  borderStyle: 'dashed',
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View
-                    style={{
-                      minWidth: 28,
-                      height: 28,
-                      borderRadius: 10,
-                      backgroundColor: c.card.bg2,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: c.card.ink3 }}>{i + 1}</Text>
-                  </View>
-                  <Text style={{ flex: 1, fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>
-                    {section.title}
-                  </Text>
-                </View>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>
+                  {section.title}
+                </Text>
                 <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.card.ink2, marginTop: 10 }}>
                   {section.body}
                 </Text>
