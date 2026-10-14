@@ -137,7 +137,12 @@ export function ThisWeeksStudyRow({
           )}
           <Pressable
             onPress={() => open(ep)}
-            style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.7 : 1, paddingVertical: 12 })}
+            style={({ pressed }) => ({
+              flex: 1,
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              paddingVertical: 12,
+            })}
             accessibilityRole="button"
             accessibilityLabel={entryPoints.length > 1 ? `${label} — ${ep.name}` : label}
           >
@@ -158,7 +163,16 @@ export function ThisWeeksStudyRow({
             }}
             accessibilityRole="button"
             accessibilityLabel={t('mobile.study.copy_link', 'Copy link')}
-            style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}
+            style={({ pressed }) => ({
+              minHeight: 44,
+              minWidth: 44,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 10,
+              paddingVertical: 12,
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.96 : 1 }],
+            })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: ink3 }}>
               {copied ? t('mobile.study.copied', 'Copied') : t('mobile.study.copy', 'Copy')}
@@ -169,7 +183,16 @@ export function ThisWeeksStudyRow({
             onPress={() => setQrFor(ep)}
             accessibilityRole="button"
             accessibilityLabel={t('mobile.study.show_qr', 'Show QR')}
-            style={({ pressed }) => ({ paddingLeft: 10, paddingVertical: 12, opacity: pressed ? 0.7 : 1 })}
+            style={({ pressed }) => ({
+              minHeight: 44,
+              minWidth: 44,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 10,
+              paddingVertical: 12,
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.96 : 1 }],
+            })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: ink3 }}>
               {t('mobile.study.qr', 'QR')}

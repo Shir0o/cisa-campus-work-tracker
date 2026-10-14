@@ -73,7 +73,7 @@ describe('MobileNotificationPermissionBanner', () => {
     const { getByText } = await renderBanner();
     await waitFor(() => {
       expect(getByText(/Enable notifications/i)).toBeTruthy();
-      expect(getByText(/CISA Campus Work Tracker is requesting notification permission/i)).toBeTruthy();
+      expect(getByText(/Turn on nudges to get notified when follow-ups are due or team messages arrive/i)).toBeTruthy();
     });
   });
 

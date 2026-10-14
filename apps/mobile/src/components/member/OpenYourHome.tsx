@@ -104,7 +104,8 @@ export function OpenYourHome({
                 style={({ pressed }) => ({
                   minHeight: 44,
                   justifyContent: 'center',
-                  opacity: pressed ? 0.55 : 1,
+                  opacity: pressed ? 0.75 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
               >
                 <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.link }}>
@@ -117,7 +118,8 @@ export function OpenYourHome({
                 style={({ pressed }) => ({
                   minHeight: 44,
                   justifyContent: 'center',
-                  opacity: pressed ? 0.55 : 1,
+                  opacity: pressed ? 0.75 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
                 })}
               >
                 <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.widget.ink3 }}>
@@ -149,7 +151,8 @@ export function OpenYourHome({
                       borderWidth: 1.5,
                       borderColor: on ? 'transparent' : c.card.border,
                       backgroundColor: on ? c.card.primary : 'transparent',
-                      opacity: pressed ? 0.7 : 1,
+                      opacity: pressed ? 0.8 : 1,
+                      transform: [{ scale: pressed ? 0.96 : 1 }],
                     })}
                   >
                     <Text
@@ -193,7 +196,8 @@ export function OpenYourHome({
                 backgroundColor: c.card.warm,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: availability.length === 0 ? 0.45 : pressed ? 0.85 : 1,
+                opacity: availability.length === 0 ? 0.45 : pressed ? 0.88 : 1,
+                transform: [{ scale: pressed && availability.length > 0 ? 0.98 : 1 }],
               })}
             >
               <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.card.onWarm }}>
@@ -203,7 +207,13 @@ export function OpenYourHome({
             {!!offer && (
               <Pressable
                 onPress={() => setEditing(false)}
-                style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.7 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                })}
               >
                 <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.widget.ink3 }}>
                   Cancel

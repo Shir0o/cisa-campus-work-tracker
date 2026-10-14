@@ -93,9 +93,6 @@ export function QueueCard({
               answer — the design gates this line on canBoard too. */}
           {t.sourceDocTitle && api.canBoard ? ` It came from ${t.sourceDocTitle}.` : ''}
         </Why>
-        <NoteBlock label="Why it matters today">
-          Small promises are how people learn they're remembered. This is one of them.
-        </NoteBlock>
       </FocusCard>
     );
   }
@@ -176,8 +173,7 @@ export function QueueCard({
         <Ask>Reach out to {first} today.</Ask>
         <Why>
           {met ? `You met ${first} ${met}` : `You brought ${first} in`}
-          {card.last ? ` and ${agoPhrase(card.last)}` : ''}. Nothing since. Early on, the second and third message are
-          the ones that decide whether someone comes back.
+          {card.last ? ` and ${agoPhrase(card.last)}` : ''}. Nothing since.
         </Why>
         {!!c.notes && <NoteBlock label="What you wrote down">{translatedNotes}</NoteBlock>}
       </FocusCard>

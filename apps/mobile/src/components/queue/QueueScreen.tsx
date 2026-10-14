@@ -391,7 +391,7 @@ export function QueueScreen() {
           accessibilityLabel="Log a conversation"
           onPress={openBlankLog}
           hitSlop={8}
-          style={[
+          style={({ pressed }) => [
             {
               width: 54,
               height: 54,
@@ -399,6 +399,8 @@ export function QueueScreen() {
               backgroundColor: c.card.inverse,
               alignItems: 'center',
               justifyContent: 'center',
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.94 : 1 }],
             },
             shadow.fab,
           ]}

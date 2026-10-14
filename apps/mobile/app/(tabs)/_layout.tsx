@@ -99,7 +99,11 @@ export function V2TabBar({ state, descriptors, navigation, insets, tabNames }: B
                 ? t('mobile.nav.unread_tab').replace('{label}', label).replace('{count}', String(badge))
                 : label
             }
-            style={({ pressed }) => [styles.tab, focused && { backgroundColor: pill }, pressed && { opacity: 0.8 }]}
+            style={({ pressed }) => [
+              styles.tab,
+              focused && { backgroundColor: pill },
+              pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },
+            ]}
           >
             <Text
               style={{

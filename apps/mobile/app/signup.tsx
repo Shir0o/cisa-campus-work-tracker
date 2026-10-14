@@ -17,13 +17,15 @@ import {
 } from '@cisa/core';
 import { Screen, AppText, Button } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
+import { useV2Theme } from '../src/theme/v2';
 import { useActiveSeason, type ActiveSeason } from '../src/lib/useActiveSeason';
 import { useAuth } from '../src/lib/AuthProvider';
 import { submitSignUp } from '../src/lib/data/signup';
 
 export default function SignUp() {
   const { colors, spacing, radius, mode } = useTheme();
-  const paper = mode === 'dark' ? colors.background : '#eceae6';
+  const { c } = useV2Theme();
+  const paper = mode === 'dark' ? colors.background : c.room.bg;
   const router = useRouter();
   const season = useActiveSeason();
   const { user, role } = useAuth();

@@ -79,7 +79,8 @@ export function NextUp({
             backgroundColor: going ? c.card.green : c.card.primary,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.85 : 1,
+            opacity: pressed ? 0.88 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
           })}
         >
           <Text
@@ -106,7 +107,8 @@ export function NextUp({
               borderColor: c.card.border,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: pressed ? 0.6 : 1,
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.widget.ink2 }}>

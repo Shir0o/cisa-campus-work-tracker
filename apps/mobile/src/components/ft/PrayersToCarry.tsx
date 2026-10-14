@@ -91,7 +91,8 @@ export function PrayersToCarry({
                   // been prayed.
                   borderColor: prayed ? c.card.green : 'rgba(242,238,248,0.28)',
                   backgroundColor: prayed ? c.card.green : 'transparent',
-                  opacity: pressed ? 0.6 : 1,
+                  opacity: pressed ? 0.82 : 1,
+                  transform: [{ scale: pressed && !prayed ? 0.97 : 1 }],
                 })}
               >
                 <Text
@@ -112,7 +113,8 @@ export function PrayersToCarry({
                     minHeight: 44,
                     justifyContent: 'center',
                     marginTop: 10,
-                    opacity: pressed ? 0.55 : 1,
+                    opacity: pressed ? 0.75 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
                   })}
                 >
                   <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.widget.onDeep }}>

@@ -64,7 +64,14 @@ export function Snackbar({
         <Text style={{ fontFamily: font.semi, fontSize: fs(13.5), color: c.card.onInverse }}>{message}</Text>
       </View>
       {actionLabel && onAction ? (
-        <Pressable onPress={onAction} hitSlop={8}>
+        <Pressable
+          onPress={onAction}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+          })}
+        >
           <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.onInverse }}>{actionLabel}</Text>
         </Pressable>
       ) : null}

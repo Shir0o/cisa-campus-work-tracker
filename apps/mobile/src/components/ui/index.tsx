@@ -116,7 +116,8 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           alignSelf: full ? 'stretch' : 'flex-start',
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+          opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
           borderWidth: variant === 'ghost' ? 1 : 0,
           borderColor: colors.outlineVariant,
         },
@@ -148,7 +149,17 @@ export function Card({
   };
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => [cardStyle, { opacity: pressed ? 0.9 : 1 }, style]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          cardStyle,
+          {
+            opacity: pressed ? 0.92 : 1,
+            transform: [{ scale: pressed ? 0.99 : 1 }],
+          },
+          style,
+        ]}
+      >
         {children}
       </Pressable>
     );

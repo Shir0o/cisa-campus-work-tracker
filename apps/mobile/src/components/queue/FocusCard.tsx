@@ -76,8 +76,10 @@ export function FocusCard({
       x.value = e.translationX;
     })
     .onEnd((e) => {
-      if (Math.abs(e.translationX) > SWIPE_THRESHOLD) {
-        x.value = withTiming(Math.sign(e.translationX) * 600, { duration: 180 }, (done) => {
+      const isFlick = Math.abs(e.velocityX) > 600 && Math.abs(e.translationX) > 20;
+      if (Math.abs(e.translationX) > SWIPE_THRESHOLD || isFlick) {
+        const direction = Math.sign(isFlick ? e.velocityX : e.translationX) || 1;
+        x.value = withTiming(direction * 600, { duration: 180 }, (done) => {
           if (done) runOnJS(away)();
         });
       } else {
