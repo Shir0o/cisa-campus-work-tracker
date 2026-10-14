@@ -266,6 +266,9 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
                 onChangeText={setMessage}
                 placeholder={currentPlaceholder}
                 placeholderTextColor={c.card.ink3}
+                autoCorrect={true}
+                spellCheck={true}
+                autoCapitalize="sentences"
                 style={{
                   borderWidth: 1,
                   borderColor: c.card.line,
