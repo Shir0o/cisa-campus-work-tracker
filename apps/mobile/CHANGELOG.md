@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.11.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.10.0...v1.11.0) (2026-10-14)
+
+
+### Features
+
+* **mobile:** enable native autocorrect and spellcheck in feedback note (closes [#1413](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1413)) ([#1616](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1616)) ([ff77ae2](https://github.com/Shir0o/cisa-campus-work-tracker/commit/ff77ae233bf5adbfa4114c479f46e578a03965ee))
+
+
+### Bug Fixes
+
+* **mobile:** clarify tab titles, strict ink inversion, and touch targets ([#1584](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1584)) ([15ec158](https://github.com/Shir0o/cisa-campus-work-tracker/commit/15ec1588df19b450d658e5a47efa442a3cf1d99a))
+* **mobile:** keep the caret in place when typing mid-text in sheet fields ([#1619](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1619)) ([6f6f214](https://github.com/Shir0o/cisa-campus-work-tracker/commit/6f6f214991b59227df14b94a68f08e1f63f2deed))
+
 ## [1.10.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.9.0...v1.10.0) (2026-10-12)
 
 
