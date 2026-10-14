@@ -14,6 +14,96 @@
           "body": "# Getting Started\n\nCISA Campus Work Tracker keeps a campus ministry's people, follow-ups, and gatherings in one place.\n\n## What the app is for\n\n- **People** records every contact you meet on campus.\n- **Interactions** capture how each follow-up went.\n- **Gatherings** and **Prayer** keep the team aligned week to week.\n\n## Your role\n\nWhat you can see and do follows your role: Full-timer, Trainee, Student, or Community. A page in this Help corpus that is meant for a specific role says so; otherwise it applies to everyone.\n\n> This is a seed page. The full Help corpus is authored separately."
         }
       }
+    },
+    {
+      "slug": "roles",
+      "order": 2,
+      "category": "Orientation",
+      "content": {
+        "en": {
+          "title": "Roles and What You Can Do",
+          "body": "# Roles and What You Can Do\n\nAccess and visibility in CISA Campus Work Tracker reflect your role on campus. Pages throughout this Help section note when a topic applies only to specific roles.\n\n## Full-timer (`admin`)\nFull-timers carry administrative and team-wide oversight:\n- Configure campus-wide settings, terms, and the Day's Goal.\n- Pair Gospel Partners and manage team assignments.\n- View team-wide metrics and unassigned contacts across the campus.\n- Manage administrative data and system configurations.\n\n## Trainee (`manager`)\nTrainees are field workers active in day-to-day campus outreach:\n- Manage assigned contacts and log interactions.\n- Work together with a designated Gospel Partner for term outreach.\n- Participate in The Journey board, follow-up queues, and team gatherings.\n\n## Student (`operator`)\nStudent leaders and student workers assist with campus follow-ups and gatherings:\n- Log conversations and follow-ups with contacts they are caring for.\n- Check in attendees and track attendance at campus gatherings.\n- Offer prayers and follow up on prayer requests.\n\n## Community (`viewer`)\nCommunity partners and supporters stay informed and aligned with the campus work:\n- View permitted gathering announcements and schedules.\n- Join in prayer burdens for the campus."
+        },
+        "es": {
+          "title": "Roles y permisos",
+          "body": "# Roles y permisos\n\nEl acceso y la visibilidad en CISA Campus Work Tracker reflejan tu rol en el campus. Las páginas de esta sección de Ayuda indican cuándo un tema se aplica únicamente a roles específicos.\n\n## Tiempo completo (`admin`)\nLos colaboradores de tiempo completo tienen supervisión administrativa y de todo el equipo:\n- Configurar ajustes globales del campus, períodos y la Meta del día.\n- Asignar Compañeros del Evangelio y gestionar responsabilidades del equipo.\n- Ver métricas generales del equipo y contactos sin asignar en el campus.\n- Administrar configuraciones del sistema y datos administrativos.\n\n## Entrenando (`manager`)\nLos obreros en entrenamiento trabajan activamente en la labor diaria en el campus:\n- Gestionar contactos asignados y registrar interacciones.\n- Salir a laborar junto con su Compañero del Evangelio durante el período.\n- Participar en el tablero The Journey, colas de seguimiento y reuniones de equipo.\n\n## Estudiante (`operator`)\nLíderes y colaboradores estudiantiles apoyan en el seguimiento y en las reuniones:\n- Registrar conversaciones y seguimientos con los contactos a su cuidado.\n- Tomar asistencia y registrar llegadas en las reuniones del campus.\n- Participar en la lista de oración e interceder por los contactos.\n\n## Comunidad (`viewer`)\nColaboradores y miembros de la comunidad se mantienen informados y en comunión:\n- Consultar anuncios de reuniones y horarios permitidos.\n- Unirse en oración e intercesión por la labor en el campus."
+        }
+      }
+    },
+    {
+      "slug": "attention-feed",
+      "order": 3,
+      "category": "Navigation",
+      "content": {
+        "en": {
+          "title": "The Attention Feed and Bell",
+          "body": "# The Attention Feed and Bell\n\nThe Attention Feed (on My Day) and the notification bell keep you grounded in what needs attention right now without forcing you to dig through lists.\n\n## \"On you\" vs. \"Around the team\"\n\nThe Attention Feed partitions updates into two distinct streams:\n\n- **On you**: Items requiring your direct action or response. This includes questions waiting for your reply, assigned follow-up asks, and contacts in your care who have not been reached.\n- **Around the team**: Important milestones, notes, and activity from teammates across the campus work. This gives you situational awareness of what others are experiencing without cluttering your personal to-do stack.\n\nWhen \"On you\" says *\"Nothing's waiting on you\"*, your personal queue is clear. That is the ideal state—not a missing widget or broken layout.\n\n## The Notification Bell\n\nThe bell icon in the navigation bar highlights new items requiring your attention since your last check:\n\n- Unread mentions and direct follow-up requests.\n- New answers to questions or updates on notes you authored.\n- Important team announcements.\n\nClicking an item in the bell tray takes you directly to the relevant conversation, thread, or contact story."
+        },
+        "es": {
+          "title": "El panel de atención y la campana",
+          "body": "# El panel de atención y la campana\n\nEl panel de atención (en Mi Día) y la campana de notificaciones te mantienen al tanto de lo que requiere atención inmediata sin tener que buscar entre listas.\n\n## \"Para ti\" frente a \"En el equipo\"\n\nEl panel de atención divide las actualizaciones en dos secciones:\n\n- **Para ti**: Asuntos que requieren tu acción o respuesta directa. Incluye preguntas pendientes de tu respuesta, solicitudes de seguimiento asignadas y contactos a tu cuidado que aún no han sido contactados.\n- **En el equipo**: Hitos importantes, notas y actividad de tus compañeros en la labor del campus. Te brinda visibilidad de lo que sucede en el equipo sin saturar tu lista personal de tareas.\n\nCuando en \"Para ti\" aparece *\"No hay nada pendiente para ti\"*, tu bandeja personal está al día. Ese es el estado ideal, no un error ni una sección vacía.\n\n## La campana de notificaciones\n\nEl ícono de la campana en la barra de navegación resalta asuntos nuevos que requieren atención desde tu última revisión:\n\n- Menciones no leídas y solicitudes directas de seguimiento.\n- Respuestas a preguntas o actualizaciones sobre notas que enviaste.\n- Anuncios importantes para el equipo.\n\nAl hacer clic en un elemento de la campana, irás directamente a la conversación, hilo o historia del contacto correspondiente."
+        }
+      }
+    },
+    {
+      "slug": "gatherings-and-attendance",
+      "order": 4,
+      "category": "Gatherings",
+      "content": {
+        "en": {
+          "title": "Gatherings and Attendance",
+          "body": "# Gatherings and Attendance\n\nGatherings track team meetings, Bible studies, and campus fellowship events.\n\n## RSVPs and Attendance Flow\n\n1. **Scheduled Gatherings**: Events appear on the Gatherings calendar with their target audience, location, and time.\n2. **RSVPs**: Team members and invited students can indicate whether they plan to attend, helping organizers prepare materials and venue logistics.\n3. **Live Check-in & Walk-ins**:\n   - During the gathering, designated organizers or helpers check in attendees from the expected roster.\n   - Walk-in guests can be added directly to attendance on the spot, creating a new contact or linking an existing record.\n4. **Post-Gathering Wrap-up**:\n   - Attendance logs feed into the contact's historical story, showing how consistently they participate.\n   - The team can review who attended and reach out to those who were missed."
+        },
+        "es": {
+          "title": "Reuniones y asistencia",
+          "body": "# Reuniones y asistencia\n\nLa sección de Reuniones registra citas de equipo, estudios bíblicos y actividades de comunión en el campus.\n\n## Flujo de confirmación y asistencia\n\n1. **Reuniones programadas**: Los eventos se muestran en el calendario de Reuniones con su horario, ubicación y audiencia designada.\n2. **Confirmación (RSVP)**: Miembros del equipo y estudiantes invitados pueden confirmar su asistencia, lo cual ayuda en la preparación de materiales y logística.\n3. **Registro presencial y llegadas**:\n   - Durante la reunión, los encargados o ayudantes registran la llegada de quienes estaban en la lista prevista.\n   - Quienes asistan sin invitación previa pueden agregarse al momento, vinculando su contacto existente o creando un registro nuevo.\n4. **Resumen posterior**:\n   - El registro de asistencia se refleja en la historia de cada contacto, mostrando su frecuencia de participación.\n   - El equipo puede revisar quiénes asistieron y comunicarse con las personas a quienes se extrañó."
+        }
+      }
+    },
+    {
+      "slug": "notifications",
+      "order": 5,
+      "category": "Settings",
+      "content": {
+        "en": {
+          "title": "Notification Preferences",
+          "body": "# Notification Preferences\n\nConfigure how and when you receive alerts from CISA Campus Work Tracker to match your daily workflow.\n\n## Notification Channels\n\n1. **In-App Bell**: Displays active mentions, replies, and urgent follow-up items right inside the web navigation bar.\n2. **Push Notifications**: Receive timely alerts on mobile for direct messages, urgent follow-up assignments, and scheduled reminders.\n\n## Customizing Your Preferences\n\nYou can manage your notification subscriptions in **Settings > Notifications**:\n- **Mentions & Threads**: Get notified whenever someone tags you (`@name`) or responds in an interaction thread you follow.\n- **Assigned Follow-ups**: Receive alerts when you are assigned a contact or requested for follow-up care.\n- **Weekly Reminders**: Choose whether to receive the weekly summary highlighting contacts not yet reached and upcoming team gatherings."
+        },
+        "es": {
+          "title": "Preferencias de notificaciones",
+          "body": "# Preferencias de notificaciones\n\nConfigura cómo y cuándo recibir alertas en CISA Campus Work Tracker para adaptarlas a tu labor diaria.\n\n## Canales de notificación\n\n1. **Campana en la aplicación**: Muestra menciones directas, respuestas y tareas urgentes de seguimiento en la barra de navegación web.\n2. **Notificaciones móviles (Push)**: Recibe avisos en tu teléfono sobre mensajes directos, asignaciones de seguimiento y recordatorios.\n\n## Personalizar tus preferencias\n\nPuedes administrar tus notificaciones en **Ajustes > Notificaciones**:\n- **Menciones e hilos**: Recibe avisos cuando alguien te mencione (`@nombre`) o responda en un hilo de interacción en el que participas.\n- **Seguimientos asignados**: Recibe avisos cuando se te asigne un contacto o una solicitud de seguimiento.\n- **Recordatorios semanales**: Activa o desactiva el resumen semanal que destaca contactos pendientes de contactar y próximas reuniones."
+        }
+      }
+    },
+    {
+      "slug": "bible-study",
+      "order": 6,
+      "category": "Bible Study",
+      "content": {
+        "en": {
+          "title": "Bible Study Reading Flow",
+          "body": "# Bible Study Reading Flow\n\nThe Bible Study tools help teams read scriptures, share outlines, and conduct studies together smoothly.\n\n## Reading Deck and Document Index\n\n- **Document Index**: Browse available reading schedules, series outlines, and study documents organized by term and topic.\n- **Reading Deck**: Open a reading deck to follow along with the passage, footnotes, and discussion questions laid out for the session.\n- **Bilingual Readings**: Passages and reading outlines support two-way English and Spanish views, allowing bilingual groups to read side by side.\n\n## Present Mode\n\nWhen presenting a Bible study in person or over a call:\n- Enter **Present Mode** for a distraction-free, high-readability presentation screen.\n- Move through verses, companion notes, and discussion points with simple keyboard shortcuts or click navigation."
+        },
+        "es": {
+          "title": "Flujo de lectura de estudios bíblicos",
+          "body": "# Flujo de lectura de estudios bíblicos\n\nLas herramientas de estudio bíblico ayudan al equipo a leer la Biblia, compartir bosquejos y llevar a cabo estudios en grupo.\n\n## Colección de lectura e índice de documentos\n\n- **Índice de documentos**: Explora calendarios de lectura, series de temas y materiales de estudio organizados por período y tema.\n- **Colección de lectura**: Abre una lectura para seguir el pasaje bíblico, notas aclaratorias y preguntas de diálogo preparadas para la reunión.\n- **Lecturas bilingües**: Los pasajes y bosquejos admiten lectura en inglés y español, facilitando el estudio en grupos bilingües.\n\n## Modo presentación\n\nAl compartir un estudio bíblico en persona o en videollamada:\n- Activa el **Modo presentación** para una vista limpia, sin distracciones y con tipografía clara.\n- Avanza entre versículos, notas y puntos de discusión mediante atajos del teclado o controles de navegación."
+        }
+      }
+    },
+    {
+      "slug": "privacy-and-data",
+      "order": 7,
+      "category": "Basics",
+      "content": {
+        "en": {
+          "title": "Privacy, Data Ownership, and Deletion",
+          "body": "# Privacy, Data Ownership, and Deletion\n\nCISA Campus Work Tracker is built to safeguard contact information and honor the trust of campus students and team members.\n\n## Visibility and Shared Care\n\n- **Founders and Gospel Partners**: Contacts you add with your Gospel Partner are shared between the two of you as co-founders. Both partners can view and care for the contact throughout the term and after.\n- **Role Scoping**: Only Full-timers and assigned team members can view full contact details and interaction histories. Community partners and viewers see high-level gathering schedules and prayer burdens, but do not have access to individual contact profiles.\n- **Prayer Lists**: Items placed on `/prayer` respect privacy. Removing someone from your prayer list only hides them from your own personal view in that browser and does not delete records for teammates.\n\n## Deletion and Removal\n\n- **Interactions**: If you logged a conversation by mistake, you can remove it from the contact's interaction log. A brief undo window is provided before the deletion is recorded permanently.\n- **Contact Removal & Deletion**: Only teammates who can view a contact and have appropriate administrative permissions may remove or merge duplicate contact entries.\n- **Account & Data Requests**: For complete data deletion or account removal, reach out through the **Support** page (`/support`) where administrators manage account lifecycles."
+        },
+        "es": {
+          "title": "Privacidad, propiedad de datos y eliminación",
+          "body": "# Privacidad, propiedad de datos y eliminación\n\nCISA Campus Work Tracker está diseñado para resguardar la información de los contactos y cuidar la confianza de los estudiantes y del equipo en el campus.\n\n## Visibilidad y cuidado compartido\n\n- **Fundadores y Compañeros del Evangelio**: Los contactos agregados junto con tu Compañero del Evangelio se comparten entre ambos como cofundadores. Ambos pueden ver y cuidar al contacto durante el período y posteriormente.\n- **Alcance según el rol**: Solo los obreros de tiempo completo y miembros asignados del equipo pueden ver detalles completos e historial de interacciones. Los miembros comunitarios y observadores ven calendarios de reuniones y motivos de oración, pero no tienen acceso a perfiles individuales de contactos.\n- **Lista de oración**: La información en `/prayer` respeta la privacidad. Quitar a alguien de tu lista de oración únicamente lo oculta de tu vista personal en ese navegador y no borra registros del equipo.\n\n## Eliminación y corrección\n\n- **Interacciones**: Si registraste una conversación por error, puedes eliminarla del historial del contacto. Se ofrece un período breve para deshacer la acción antes de que se guarde de forma permanente.\n- **Eliminación y combinación de contactos**: Solo los miembros autorizados que tienen acceso a un contacto pueden eliminar o combinar registros duplicados.\n- **Solicitudes de cuenta y datos**: Para eliminación total de datos o de cuenta, comunícate mediante la página de **Soporte** (`/support`), donde el equipo administrativo atiende el ciclo de vida de las cuentas."
+        }
+      }
     }
   ]
 }
