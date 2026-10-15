@@ -445,3 +445,11 @@ _Avoid_: Hobbies, preferences, ministry activities
 Stepping back from a contact so they no longer appear in your **On you** feed and stop sending you thread notifications and attention prompts, without rewriting who originally logged them. The contact's `createdBy` audit stamp remains intact, but your active ties (`carers`, `coCreators`, `founders`) and personal notifications are cleared (`unfollowedBy`). For Full-timers, the contact remains in **Around the team** and the unassigned intake pool for team-wide sorting.
 _Avoid_: Unassign, delete contact, disassociate, abandon, mute (bare), untrack
 
+**Mutation testing**:
+Evaluating test suite quality by programmatically introducing artificial faults (mutants) into source code and verifying that tests fail (the mutant is "killed"). Used to reveal untested edge cases and assertions that pass vacuously despite code changes. In this project, mutation testing is powered by Stryker Mutator (`npm run test:mutation`) targeting core pure logic modules (ADR 0045).
+_Avoid_: Fault injection (for this), chaos testing, fuzzing
+
+**Mutation score (kill rate)**:
+The percentage of generated mutants that caused at least one test to fail or time out: `(killed + timeout) / total * 100`. Unlike line/branch coverage which only measures code execution, the mutation score measures assertion efficacy and fault detection capability.
+_Avoid_: Coverage score, kill percentage
+

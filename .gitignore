@@ -13,6 +13,8 @@ coverage/
 e2e/.auth/
 playwright-report/
 test-results/
+.stryker-tmp/
+reports/
 
 # AI coding-assistant session state & pack outputs — never commit
 .deepcode/
