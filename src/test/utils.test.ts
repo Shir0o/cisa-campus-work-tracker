@@ -103,6 +103,13 @@ describe('relTime', () => {
     expect(relTime('invalid-date')).toBe('');
     expect(relTime('not a date string')).toBe('');
   });
+
+  it('handles Firestore timestamp objects and epoch numbers in relTime', () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    expect(relTime({ seconds: nowSec - 5 * 60, nanoseconds: 0 })).toBe('5m ago');
+    expect(relTime((nowSec - 3 * 3600) * 1000)).toBe('3h ago');
+    expect(relTime({ toMillis: () => (nowSec - 2 * 86400) * 1000 })).toBe('2d ago');
+  });
 });
 
 describe('ntfWhen', () => {

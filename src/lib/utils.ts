@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { parseMs } from "../components/landing/helpers";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -45,10 +46,11 @@ export function getUserInitials(name: string | null | undefined) {
  * Warm, plain-language relative time ("just now", "5m ago", "3d ago", then a
  * short date). Shared by History ("Looking back") and Global Search.
  */
-export function relTime(iso: string | null | undefined): string {
+export function relTime(iso: any): string {
   if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
+  const ms = parseMs(iso);
+  if (ms == null) return "";
+  const date = new Date(ms);
   const now = new Date();
   const m = Math.floor((now.getTime() - date.getTime()) / 60_000);
   if (m < 1) return "just now";
@@ -65,12 +67,11 @@ export function relTime(iso: string | null | undefined): string {
 }
 
 /** Bidirectional relative time for notifications — handles future items (events). */
-export function ntfWhen(iso: string | null | undefined): string {
+export function ntfWhen(iso: any): string {
   if (!iso) return "";
-  const date = new Date(iso);
-  const time = date.getTime();
-  if (Number.isNaN(time)) return "";
-  const diff = time - Date.now();
+  const ms = parseMs(iso);
+  if (ms == null) return "";
+  const diff = ms - Date.now();
   if (diff > 0) {
     const days = Math.round(diff / 86_400_000);
     if (days <= 0) return 'today';

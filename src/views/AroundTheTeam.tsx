@@ -31,6 +31,7 @@ import type { TeamMemberLike } from "../components/stream/types";
 import PageContainer from "../components/layout/PageContainer";
 import { currentHref } from "../lib/navTrail";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { parseMs } from "../components/landing/helpers";
 
 // ── "Around the team" as its own destination (#943, #1012) ──────────────────
 // The team's activity — everything the team has been doing on people you
@@ -54,9 +55,10 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 // dealt with people they only scrolled past (ADR 0022).
 
 /** The day a stack belongs to, as a real heading label. */
-function dayLabel(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+function dayLabel(iso: any): string {
+  const ms = parseMs(iso);
+  if (ms == null) return "";
+  const d = new Date(ms);
   const today = new Date();
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const days = Math.round((startOf(today) - startOf(d)) / 86_400_000);

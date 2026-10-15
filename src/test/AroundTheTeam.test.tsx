@@ -586,6 +586,49 @@ describe('Around the team page (#943)', () => {
     fireEvent.click(contactBtn);
     expect(screen.getByTestId('pathname').textContent).toBe('/people/kofi');
   });
+
+  it('navigates to /people/:id when contact is not in contacts list (orphan interaction)', () => {
+    const setSelectedContact = vi.fn();
+    h.layout = { setSelectedContact };
+
+    const orphanInteraction: Interaction = {
+      id: 'i-orphan',
+      contactId: 'orphan-123',
+      userId: 'mei',
+      content: 'He said through text that he cannot make it today.',
+      createdAt: new Date().toISOString(),
+      dateTime: new Date().toISOString(),
+      type: 'text',
+      title: 'text',
+    } as unknown as Interaction;
+
+    render(
+      <MemoryRouter initialEntries={['/around']}>
+        <Routes>
+          <Route
+            path="/around"
+            element={
+              <AroundTheTeam
+                contacts={[]}
+                interactions={[orphanInteraction]}
+                threads={[]}
+                staffNameMap={staffNameMap}
+              />
+            }
+          />
+          <Route path="/people/:id" element={<DetailProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const contactBtn = screen.getByRole('button', { name: 'Contact' });
+    expect(contactBtn).toBeInTheDocument();
+    fireEvent.click(contactBtn);
+
+    // Because contact was not in contactMap, layout.setSelectedContact could not receive a Contact,
+    // so it fell back to navigate to /people/orphan-123.
+    expect(screen.getByText('Back to Around')).toBeInTheDocument();
+  });
 });
 
 
