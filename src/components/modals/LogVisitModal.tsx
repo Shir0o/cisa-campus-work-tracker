@@ -725,7 +725,7 @@ export default function LogVisitModal({
                 e.preventDefault();
                 addPhotos(e.dataTransfer.files);
               }}
-              className="flex w-full items-center justify-center gap-2 rounded border border-dashed border-outline-variant py-6 text-sm text-on-surface-variant transition-colors hover:border-primary hover:text-on-surface"
+              className="flex w-full items-center justify-center gap-2 rounded border border-outline-variant py-6 text-sm text-on-surface-variant transition-colors hover:border-primary hover:text-on-surface"
             >
               <ImageIcon className="h-4 w-4" />
               {photoCount

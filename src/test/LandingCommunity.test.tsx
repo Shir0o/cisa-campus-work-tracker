@@ -82,7 +82,7 @@ describe('LandingCommunity component', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/and the team are glad you're here/i)).toBeInTheDocument();
+    expect(await screen.findByText(/and the team/i)).toBeInTheDocument();
 
     const rsvpBtn = screen.getByRole('button', { name: /Coming|I'll be there/i });
     fireEvent.click(rsvpBtn);

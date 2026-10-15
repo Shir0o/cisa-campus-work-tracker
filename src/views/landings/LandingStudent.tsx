@@ -102,10 +102,6 @@ export default function LandingStudent() {
           />
         </div>
       </section>
-
-      <p className="mt-14 text-sm text-on-surface-variant italic">
-        You belong here — exactly as you are today.
-      </p>
     </PageContainer>
   );
 }

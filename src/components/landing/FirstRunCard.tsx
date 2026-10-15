@@ -53,7 +53,7 @@ export default function FirstRunCard({
     <section
       aria-label="Getting started checklist"
       className={cn(
-        'p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-outline-variant bg-surface shadow-sm space-y-4 text-left transition-all',
+        'p-5 sm:p-6 rounded-xl border border-outline-variant bg-surface space-y-4 text-left transition-all',
         className,
       )}
     >
@@ -67,7 +67,7 @@ export default function FirstRunCard({
             {copy.sub}
           </p>
         </div>
-        <span className="shrink-0 text-xs font-medium text-on-surface-variant border border-outline-variant rounded-full px-2.5 py-0.5 bg-surface-container/50">
+        <span className="shrink-0 text-xs font-medium text-on-surface-variant">
           {data.doneCount} of {data.totalCount} complete
         </span>
       </div>
@@ -134,10 +134,11 @@ export default function FirstRunCard({
                   <button
                     type="button"
                     onClick={() => step.to && navigate(step.to)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 rounded-full transition-colors"
+                    aria-label={`Show me: ${step.label}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 active:scale-[0.98] rounded-full transition-all cursor-pointer"
                   >
                     Show me
-                    <ArrowRight className="w-3 h-3" />
+                    <ArrowRight className="w-3 h-3" aria-hidden="true" />
                   </button>
                 )}
                 {step.helpSlug && (
@@ -160,7 +161,7 @@ export default function FirstRunCard({
         <button
           type="button"
           onClick={handlePutAway}
-          className="font-medium text-on-surface-variant hover:text-accent underline underline-offset-4 decoration-outline-variant transition-colors"
+          className="font-medium text-on-surface-variant hover:text-accent underline underline-offset-4 decoration-outline-variant active:scale-[0.98] transition-all cursor-pointer"
         >
           Put this away
         </button>

@@ -529,11 +529,11 @@ export default function AroundTheTeam({
 
           <label
             className={cn(
-              "inline-flex items-center gap-2 h-10 pl-3 pr-2 rounded-full bg-surface border text-sm text-on-surface focus-within:border-primary transition-colors",
+              "inline-flex items-center gap-2 h-10 pl-3 pr-2 rounded-sm bg-surface border text-sm text-on-surface focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors",
               effectiveWho ? "border-primary" : "border-outline-variant",
             )}
           >
-            <Users className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
+            <Users className="w-3.5 h-3.5 text-on-surface-variant shrink-0" aria-hidden="true" />
             <select
               value={effectiveWho ?? "all"}
               onChange={(e) => setWho(e.target.value === "all" ? null : e.target.value)}

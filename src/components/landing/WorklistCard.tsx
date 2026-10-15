@@ -354,19 +354,19 @@ export function WorklistCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border p-4 transition-all duration-200",
+        "rounded-2xl border p-4 transition-all duration-200 flex flex-col",
         completed
           ? "bg-surface/60 border-outline-variant/40 opacity-60"
           : !reviewedOnly && stack.seen
             ? "bg-surface/60 border-outline-variant/40"
-            : "bg-surface border-outline-variant shadow-xs",
+            : "bg-surface border-outline-variant",
         hasOpenAsk && !completed && "border-l-2 border-l-warning",
       )}
     >
-      <div className="flex items-start gap-3.5">
+      <div className="flex items-start gap-3.5 flex-1">
         <Avatar contact={contact || ({ name: "Person" } as Contact)} size={mobile ? "sm" : "md"} />
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <button
@@ -429,7 +429,7 @@ export function WorklistCard({
           ) : (
             <div
               className={cn(
-                "mt-3 flex items-center gap-2",
+                "mt-auto pt-3 flex items-center gap-2",
                 mobile ? "flex-wrap" : "flex-wrap",
               )}
             >
@@ -446,11 +446,11 @@ export function WorklistCard({
                     type="button"
                     onClick={() => onComplete(stack, verb)}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 transition-colors shadow-xs cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
-                    <Check className="w-3.5 h-3.5" /> {t(VERB_LABEL[verb])}
+                    <Check className="w-3.5 h-3.5" aria-hidden="true" /> {t(VERB_LABEL[verb])}
                   </button>
                 )}
 
@@ -464,11 +464,11 @@ export function WorklistCard({
                     aria-expanded={hasStrip ? stripOpen : undefined}
                     onClick={() => (hasStrip ? onToggleConversation!() : setComposing((v) => !v))}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
-                    <MessageSquare className="w-3.5 h-3.5" />
+                    <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
                     {hasStrip
                       ? conversationCount > 0
                         ? t("whatsNew.conversation_n").replace("{n}", String(conversationCount))
@@ -486,11 +486,11 @@ export function WorklistCard({
                       window.open(`tel:${contact.phone}`);
                     }}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
-                    <Phone className="w-3.5 h-3.5" /> {t("whatsNew.reach_call")}
+                    <Phone className="w-3.5 h-3.5" aria-hidden="true" /> {t("whatsNew.reach_call")}
                   </button>
                 )}
                 {showReach && contact && contact.email && (
@@ -498,11 +498,11 @@ export function WorklistCard({
                     href={`mailto:${contact.email}`}
                     onClick={(e) => e.stopPropagation()}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors cursor-pointer",
+                      "inline-flex items-center justify-center gap-1.5 px-3 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "min-h-11" : "py-1.5",
                     )}
                   >
-                    <Mail className="w-3.5 h-3.5" /> {t("whatsNew.reach_email")}
+                    <Mail className="w-3.5 h-3.5" aria-hidden="true" /> {t("whatsNew.reach_email")}
                   </a>
                 )}
               </div>
@@ -513,11 +513,11 @@ export function WorklistCard({
                     type="button"
                     onClick={() => setOpen(!open)}
                     className={cn(
-                      "inline-flex items-center justify-center gap-1 px-2.5 rounded-full border border-outline-variant text-[11px] font-medium text-on-surface-variant hover:bg-surface-variant transition-colors cursor-pointer",
+                      "inline-flex items-center justify-center gap-1 px-2.5 rounded-full border border-outline-variant text-[11px] font-medium text-on-surface-variant hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "min-h-11 flex-1" : "py-1",
                     )}
                   >
-                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} />
+                    <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} aria-hidden="true" />
                     {open
                       ? t("whatsNew.hide")
                       : t("whatsNew.all_n").replace("{n}", String(stack.items.length))}
@@ -533,11 +533,11 @@ export function WorklistCard({
                       title={t("whatsNew.tell_them_it_landed")}
                       aria-label={t("whatsNew.encourage")}
                       className={cn(
-                        "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer",
+                        "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all cursor-pointer",
                         mobile ? "w-11 h-11" : "w-8 h-8",
                       )}
                     >
-                      <Heart className="w-3.5 h-3.5 text-stage-accent" />
+                      <Heart className="w-3.5 h-3.5 text-stage-accent" aria-hidden="true" />
                     </button>
                     {reactOpen && (
                       <div className="absolute right-0 bottom-full mb-1 z-20 flex gap-1 p-1 bg-surface rounded-full shadow-lg border border-outline-variant">
@@ -566,11 +566,11 @@ export function WorklistCard({
                     title={t("whatsNew.open_their_page")}
                     aria-label={t("whatsNew.open_their_page")}
                     className={cn(
-                      "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors cursor-pointer",
+                      "rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all cursor-pointer",
                       mobile ? "w-11 h-11" : "w-8 h-8",
                     )}
                   >
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 )}
               </div>

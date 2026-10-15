@@ -1098,7 +1098,7 @@ const chipStyle = (state: ChipState): string => {
     case 'current-week':
       return 'bg-primary-container text-on-primary-container border-primary ring-2 ring-primary/40';
     case 'ahead':
-      return 'bg-surface text-on-surface-variant/60 border-outline-variant/60 border-dashed';
+      return 'bg-surface text-on-surface-variant/60 border-outline-variant/60';
     case 'cancelled':
       return 'bg-surface text-on-surface-variant/50 border-outline-variant/40 line-through';
   }

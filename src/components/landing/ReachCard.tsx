@@ -31,7 +31,7 @@ export function ReachCard({
   return (
     <div
       onClick={onOpen}
-      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
+      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-xl border border-outline-variant/60 p-5 hover:border-primary/40 active:scale-[0.98] transition-all cursor-pointer"
     >
       <div className="flex gap-4 min-w-0">
         <Avatar contact={contact} />
@@ -65,17 +65,17 @@ export function ReachCard({
               e.stopPropagation();
               if (onMessage) onMessage();
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer"
           >
-            <MessageSquare className="w-3.5 h-3.5" /> Message
+            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" /> Message
           </button>
         ) : contact.email ? (
           <a
             href={`mailto:${contact.email}`}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer"
           >
-            <Mail className="w-3.5 h-3.5" /> Email
+            <Mail className="w-3.5 h-3.5" aria-hidden="true" /> Email
           </a>
         ) : null}
         <button
@@ -84,7 +84,7 @@ export function ReachCard({
             e.stopPropagation();
             onOpen();
           }}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer"
         >
           Open
         </button>

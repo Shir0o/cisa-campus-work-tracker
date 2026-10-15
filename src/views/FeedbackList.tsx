@@ -213,7 +213,7 @@ export default function FeedbackList() {
   if (!hasAccess) {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center" id="feedback-admin-guard">
-        <div className="bg-error-container/10 border border-error-container/30 rounded-3xl p-12 max-w-xl mx-auto my-12 flex flex-col items-center">
+        <div className="bg-error-container/10 border border-error-container/30 rounded-xl p-12 max-w-xl mx-auto my-12 flex flex-col items-center">
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mb-6">
             <ShieldAlert className="w-8 h-8" />
           </div>
@@ -332,7 +332,7 @@ export default function FeedbackList() {
       </div>
 
       {/* Control panel containing tabs, search, and filters */}
-      <div className="bg-surface-container border border-outline-variant p-4 sm:p-5 rounded-3xl space-y-4 ">
+      <div className="bg-surface-container border border-outline-variant p-4 sm:p-5 rounded-xl space-y-4 ">
         <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
           
           {/* Segmented active tab buttons */}
@@ -370,22 +370,24 @@ export default function FeedbackList() {
           {/* Search bar & Status Select filter */}
           <div className="flex flex-col sm:flex-row gap-3 flex-1 lg:max-w-xl">
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" aria-hidden="true" />
               <input
                 type="text"
+                aria-label={t('feedbackList.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t('feedbackList.search_placeholder')}
-                className="w-full bg-surface border border-outline-variant rounded-full pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-on-surface-variant/50 text-on-surface h-10"
+                className="w-full bg-surface border border-outline-variant rounded-sm pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-on-surface-variant/50 text-on-surface h-10"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-on-surface-variant shrink-0" />
+              <Filter className="w-4 h-4 text-on-surface-variant shrink-0" aria-hidden="true" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="bg-surface border border-outline-variant text-on-surface rounded-full py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
+                aria-label={t('feedbackList.all_statuses')}
+                className="bg-surface border border-outline-variant text-on-surface rounded-sm py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
               >
                 <option value="unresolved">{t('feedbackList.unresolved_only')}</option>
                 <option value="all">{t('feedbackList.all_statuses')}</option>
@@ -396,11 +398,12 @@ export default function FeedbackList() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-on-surface-variant shrink-0" />
+              <Filter className="w-4 h-4 text-on-surface-variant shrink-0" aria-hidden="true" />
               <select
                 value={archiveFilter}
                 onChange={(e) => setArchiveFilter(e.target.value as any)}
-                className="bg-surface border border-outline-variant text-on-surface rounded-full py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
+                aria-label={t('feedbackList.archive_filter', 'Filter by archive status')}
+                className="bg-surface border border-outline-variant text-on-surface rounded-sm py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
               >
                 <option value="active">{t('feedbackList.active_only')}</option>
                 <option value="archived">{t('feedbackList.archived_only')}</option>
@@ -414,12 +417,12 @@ export default function FeedbackList() {
       {/* Main Feedback List */}
       {loading ? (
         <div className="space-y-4">
-          <Skeleton className="h-44 w-full rounded-3xl" />
-          <Skeleton className="h-44 w-full rounded-3xl" />
-          <Skeleton className="h-44 w-full rounded-3xl" />
+          <Skeleton className="h-44 w-full rounded-xl" />
+          <Skeleton className="h-44 w-full rounded-xl" />
+          <Skeleton className="h-44 w-full rounded-xl" />
         </div>
       ) : filteredFeedback.length === 0 ? (
-        <div className="bg-surface-container border border-outline-variant border-dashed rounded-3xl p-16 text-center">
+        <div className="bg-surface-container border border-outline-variant rounded-xl p-16 text-center">
           <Archive className="w-12 h-12 text-on-surface-variant/40 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-on-surface mb-1">{t('feedbackList.no_feedback_found')}</h3>
           <p className="text-xs text-on-surface-variant">{t('feedbackList.no_feedback_matches')}</p>
@@ -439,7 +442,7 @@ export default function FeedbackList() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 layout
-                className={`bg-surface-container border border-outline-variant p-5 sm:p-6 rounded-3xl  transition-all flex flex-col gap-5 relative overflow-hidden ${
+                className={`bg-surface-container border border-outline-variant p-5 sm:p-6 rounded-xl  transition-all flex flex-col gap-5 relative overflow-hidden ${
                   item.status === 'resolved' ? 'opacity-70 group' : ''
                 }`}
               >
@@ -616,7 +619,7 @@ export default function FeedbackList() {
                 </div>
 
                 {/* Feedback Message Content */}
-                <div className="bg-surface/50 border border-outline-variant/40 rounded-3xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
+                <div className="bg-surface/50 border border-outline-variant/40 rounded-xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
                   <Translate text={item.message} />
                 </div>
 

@@ -136,13 +136,13 @@ export default function PointerCard({
         navigate("/around");
       }}
       className={cn(
-        "group flex flex-col justify-between gap-3 bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 shadow-xs hover:border-accent/40 hover:shadow-md transition-all",
+        "group flex flex-col justify-between gap-3 bg-surface border border-outline-variant/60 rounded-xl p-5 sm:p-6 hover:border-accent/40 active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
         className,
       )}
     >
       <div className="flex items-center gap-2.5">
         <span className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center shrink-0">
-          <Users className="w-4 h-4" />
+          <Users className="w-4 h-4" aria-hidden="true" />
         </span>
         <span className="font-serif text-lg text-on-surface font-semibold">
           {t("whatsNew.around_the_team")}
@@ -159,7 +159,7 @@ export default function PointerCard({
         </div>
         <span className="inline-flex items-center gap-1 text-xs font-medium text-accent group-hover:underline">
           {t("whatsNew.see_around")}
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
         </span>
       </div>
     </a>

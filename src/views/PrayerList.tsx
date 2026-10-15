@@ -651,13 +651,14 @@ export default function PrayerList() {
       {/* Search + choose people */}
       <div className="flex items-center gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" aria-hidden="true" />
           <input
             type="text"
+            aria-label={t('prayers.find_someone')}
             placeholder={t('prayers.find_someone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+            className="pl-10 pr-4 h-11 w-full rounded-sm bg-surface border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
           />
         </div>
         <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface p-1 shrink-0">
@@ -1705,7 +1706,7 @@ function AddThisWeek({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border border-dashed border-outline-variant hover:border-primary text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+        className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border border-outline-variant hover:border-primary text-sm text-on-surface-variant hover:text-on-surface active:scale-[0.98] transition-all"
       >
         <Plus className="w-4 h-4 shrink-0" />
         <span>{translate('prayers.write_what_holding').replace('{name}', firstName)}</span>

@@ -243,7 +243,7 @@ export default function OnYouCard({
     <section
       aria-label={t("whatsNew.on_you")}
       className={cn(
-        "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-xs",
+        "bg-surface border border-outline-variant/60 rounded-xl p-5 sm:p-6 flex flex-col gap-4",
         className,
       )}
     >

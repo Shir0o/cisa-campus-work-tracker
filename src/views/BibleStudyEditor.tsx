@@ -562,7 +562,7 @@ export default function BibleStudyEditor() {
 
           <button
             onClick={handleAddSection}
-            className="mt-2 w-full py-2 rounded-xl border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant flex items-center justify-center gap-1 transition-colors"
+            className="mt-2 w-full py-2 rounded-xl border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
           >
             + Add section
           </button>

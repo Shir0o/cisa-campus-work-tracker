@@ -529,7 +529,7 @@ export function PopupFrame({
                       <button
                         type="button"
                         onClick={destructive.onClick}
-                        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-medium text-error transition-colors hover:bg-error/10"
+                        className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-sm font-medium text-error transition-all hover:bg-error/10 active:scale-[0.98] cursor-pointer"
                       >
                         {destructive.label}
                       </button>
@@ -542,7 +542,7 @@ export function PopupFrame({
                       <button
                         type="button"
                         onClick={requestCancel}
-                        className="h-11 rounded-full px-4 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface"
+                        className="h-11 rounded-full px-4 text-sm font-medium text-on-surface-variant transition-all hover:text-on-surface active:scale-[0.98] cursor-pointer"
                       >
                         {cancelLabel}
                       </button>
@@ -552,7 +552,7 @@ export function PopupFrame({
                         type="button"
                         onClick={primary.onClick}
                         disabled={primary.disabled || primary.saving}
-                        className="inline-flex h-11 min-w-[9.5rem] items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-on-primary transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex h-11 min-w-[9.5rem] items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-on-primary transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 cursor-pointer"
                       >
                         {primary.saving ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -581,7 +581,7 @@ export function PopupFrame({
                       type="button"
                       onClick={keepEditing}
                       className={cn(
-                        'rounded-full px-4 text-sm font-medium text-on-surface-variant transition-colors hover:text-on-surface',
+                        'rounded-full px-4 text-sm font-medium text-on-surface-variant transition-all hover:text-on-surface active:scale-[0.98] cursor-pointer',
                         sheet ? 'h-11' : 'py-2',
                       )}
                     >
@@ -603,7 +603,7 @@ export function PopupFrame({
                         else onCancel?.();
                       }}
                       className={cn(
-                        'rounded-full bg-primary px-4 text-sm font-medium text-on-primary',
+                        'rounded-full bg-primary px-4 text-sm font-medium text-on-primary transition-all active:scale-[0.98] cursor-pointer',
                         sheet ? 'h-11' : 'py-2',
                       )}
                     >

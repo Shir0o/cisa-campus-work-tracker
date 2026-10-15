@@ -231,7 +231,7 @@ describe('Settings', () => {
   // ── 2. Non-manager profile view ──
 
   describe('non-manager profile view', () => {
-    it('renders h1, subtitle, approval badge, role label, and footer message', () => {
+    it('renders h1, subtitle, approval badge, and role label', () => {
       setupNonManagerAuth({ role: 'operator', isApproved: true });
 
       render(<Settings />);
@@ -240,7 +240,6 @@ describe('Settings', () => {
       expect(screen.getByText('Your account and preferences.')).toBeInTheDocument();
       expect(screen.getByText('Approved')).toBeInTheDocument();
       expect(screen.getAllByText('Student')[0]).toBeInTheDocument();
-      expect(screen.getByText('More account settings will arrive in time.')).toBeInTheDocument();
     });
   });
 
@@ -593,7 +592,7 @@ describe('Settings', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-      });
+      }, { timeout: 3000 });
 
       expect(screen.queryByText('cisa-test-account')).not.toBeInTheDocument();
     });

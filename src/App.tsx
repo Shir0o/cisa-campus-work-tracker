@@ -149,7 +149,7 @@ function EmailPasswordForm() {
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        className="w-full px-4 py-3 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
         required
       />
     <div className="relative">
@@ -160,7 +160,7 @@ function EmailPasswordForm() {
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-4 py-3 pr-12 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        className="w-full px-4 py-3 pr-12 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
         required
       />
       <button
@@ -263,12 +263,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Skeleton className="h-32 rounded-3xl" />
-              <Skeleton className="h-32 rounded-3xl" />
-              <Skeleton className="h-32 rounded-3xl" />
+              <Skeleton className="h-32 rounded-xl" />
+              <Skeleton className="h-32 rounded-xl" />
+              <Skeleton className="h-32 rounded-xl" />
             </div>
 
-            <Skeleton className="h-96 w-full rounded-3xl" />
+            <Skeleton className="h-96 w-full rounded-xl" />
           </div>
         </div>
       </div>
@@ -282,7 +282,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           data-testid="mfa-challenge-view"
           className="min-h-screen flex flex-col items-center justify-center bg-background px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
         >
-          <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant">
+          <div className="max-w-md w-full bg-surface-container rounded-xl p-8 text-center border border-outline-variant">
             <h2 className="text-3xl font-regular mb-2">Enter your security code</h2>
             <p className="text-on-surface-variant mb-6">
               This account has a second factor. Open your authenticator app and enter the 6-digit code to finish signing in.
@@ -296,7 +296,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
                 value={mfaCode}
                 onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="6-digit code"
-                className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface text-center text-2xl tracking-[0.5em]"
+                className="w-full px-4 py-3 rounded-sm bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface text-center text-2xl tracking-[0.5em]"
                 required
               />
               {mfaError && <p className="text-sm text-error px-1">{mfaError}</p>}
@@ -328,7 +328,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         data-testid="sign-in-view"
         className="min-h-screen flex flex-col items-center justify-center bg-background px-6 pt-[max(env(safe-area-inset-top),1.5rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]"
       >
-        <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant">
+        <div className="max-w-md w-full bg-surface-container rounded-xl p-8 text-center border border-outline-variant">
           <h2 className="text-3xl font-regular mb-4">Welcome to CISA Campus Work Tracker</h2>
           <p className="text-on-surface-variant mb-8">
             Please sign in with your Google account to continue.
@@ -337,12 +337,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             onClick={handleSignIn}
             disabled={googleBusy}
             aria-busy={googleBusy}
-            className="w-full py-4 bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+            className="w-full py-4 bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-3 hover:opacity-90 active:scale-[0.98] disabled:active:scale-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
           >
             {googleBusy && <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />}
             <img
-              src="https://www.google.com/favicon.ico"
-              alt="Google"
+              src="/google.svg"
+              alt=""
+              aria-hidden="true"
               className={cn("w-5 h-5 bg-white rounded-full p-0.5", googleBusy && "hidden")}
             />
             {googleBusy ? "Signing in…" : "Sign in with Google"}
@@ -369,7 +370,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isApproved) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 border border-outline-variant">
+        <div className="max-w-md w-full bg-surface-container rounded-xl p-8 border border-outline-variant">
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
               className="w-8 h-8"
@@ -623,7 +624,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   fallback={
                     <div className="p-8 space-y-6">
                       <Skeleton className="h-10 w-64" />
-                      <Skeleton className="h-96 w-full rounded-3xl" />
+                      <Skeleton className="h-96 w-full rounded-xl" />
                     </div>
                   }
                 >
@@ -838,7 +839,7 @@ export default function App() {
                             fallback={
                               <div className="p-8 space-y-6">
                                 <Skeleton className="h-10 w-64" />
-                                <Skeleton className="h-96 w-full rounded-3xl" />
+                                <Skeleton className="h-96 w-full rounded-xl" />
                               </div>
                             }
                           >
@@ -862,7 +863,7 @@ export default function App() {
                           <React.Suspense
                             fallback={
                               <div className="p-8 space-y-6">
-                                <Skeleton className="h-96 w-full rounded-3xl" />
+                                <Skeleton className="h-96 w-full rounded-xl" />
                               </div>
                             }
                           >
@@ -899,7 +900,7 @@ export default function App() {
                             fallback={
                               <div className="p-8 space-y-6">
                                 <Skeleton className="h-10 w-64" />
-                                <Skeleton className="h-96 w-full rounded-3xl" />
+                                <Skeleton className="h-96 w-full rounded-xl" />
                               </div>
                             }
                           >
@@ -1064,7 +1065,7 @@ export default function App() {
                           fallback={
                             <div className="p-8 space-y-6">
                               <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-3xl" />
+                              <Skeleton className="h-96 w-full rounded-xl" />
                             </div>
                           }
                         >
@@ -1084,7 +1085,7 @@ export default function App() {
                           fallback={
                             <div className="p-8 space-y-6">
                               <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-3xl" />
+                              <Skeleton className="h-96 w-full rounded-xl" />
                             </div>
                           }
                         >
@@ -1105,7 +1106,7 @@ export default function App() {
                           fallback={
                             <div className="p-8 space-y-6">
                               <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-3xl" />
+                              <Skeleton className="h-96 w-full rounded-xl" />
                             </div>
                           }
                         >
@@ -1126,7 +1127,7 @@ export default function App() {
                             fallback={
                               <div className="p-8 space-y-6">
                                 <Skeleton className="h-10 w-64" />
-                                <Skeleton className="h-96 w-full rounded-3xl" />
+                                <Skeleton className="h-96 w-full rounded-xl" />
                               </div>
                             }
                           >
@@ -1172,7 +1173,7 @@ export default function App() {
                             fallback={
                               <div className="p-8 space-y-6">
                                 <Skeleton className="h-10 w-64" />
-                                <Skeleton className="h-96 w-full rounded-3xl" />
+                                <Skeleton className="h-96 w-full rounded-xl" />
                               </div>
                             }
                           >
@@ -1194,7 +1195,7 @@ export default function App() {
                             fallback={
                               <div className="p-8 space-y-6">
                                 <Skeleton className="h-10 w-64" />
-                                <Skeleton className="h-96 w-full rounded-3xl" />
+                                <Skeleton className="h-96 w-full rounded-xl" />
                               </div>
                             }
                           >
@@ -1217,7 +1218,7 @@ export default function App() {
                           fallback={
                             <div className="p-8 space-y-6">
                               <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-3xl" />
+                              <Skeleton className="h-96 w-full rounded-xl" />
                             </div>
                           }
                         >

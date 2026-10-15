@@ -17,6 +17,7 @@ import {
   type PersonalPrayer,
 } from "../../lib/personalPrayers";
 import { getOrCreateDirectChat } from "../../services/chat";
+import { useLanguage } from "../../components/LanguageProvider";
 
 interface FullTimer {
   uid: string;
@@ -29,6 +30,7 @@ interface FullTimer {
 // Full-timer. Reach-out opens a direct message, falling back to email.
 export default function LandingCommunity() {
   const { user, effectiveUserId, effectiveUserName } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const uid = effectiveUserId || user?.uid;
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
@@ -93,8 +95,7 @@ export default function LandingCommunity() {
         <p className="text-sm text-on-surface-variant">{format(new Date(), "EEEE, MMMM d")}</p>
         <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">Hello, {firstName}.</h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
-          Thank you for being part of the family around these students. Here's what's open to you,
-          and the team is always glad to hear from you.
+          Here's what's open to you this week and how to contact the campus team.
         </p>
       </header>
 
@@ -120,9 +121,9 @@ export default function LandingCommunity() {
 
       {/* ── Reach out ── */}
       <section className="mt-12">
-        <SectionHead title="Reach out" sub="The team would love to hear from you — anytime." />
+        <SectionHead title={t("common.reach_out")} sub="Connect directly with the campus team." />
         {lead ? (
-          <div className="bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="bg-surface rounded-xl border border-outline-variant/60 p-6 flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="flex shrink-0">
               {fts.slice(0, 4).map((ft, i) => (
                 <div key={ft.uid} className={cn("rounded-full ring-2 ring-surface", i > 0 && "-ml-3")}>
@@ -140,18 +141,18 @@ export default function LandingCommunity() {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-serif text-xl text-on-surface">
-                {lead.name.split(" ")[0]} and the team are glad you're here
+                {lead.name.split(" ")[0]} and the team
               </h3>
               <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
-                Questions about a student, a gathering, or anything at all? They coordinate it all
-                and would love to hear from you — no need to wait for the right moment.
+                Have questions about a student or an upcoming gathering? Send a message anytime.
               </p>
             </div>
             <button
               onClick={() => reachOut(lead)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+              aria-label={`Reach out to ${lead.name}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 active:scale-[0.98] transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none shrink-0 cursor-pointer"
             >
-              <MessageSquare className="w-4 h-4" /> Reach out
+              <MessageSquare className="w-4 h-4" aria-hidden="true" /> Reach out
             </button>
           </div>
         ) : (
@@ -160,10 +161,6 @@ export default function LandingCommunity() {
           </p>
         )}
       </section>
-
-      <p className="mt-14 text-sm text-on-surface-variant italic">
-        Thank you for making room for these students.
-      </p>
     </PageContainer>
   );
 }

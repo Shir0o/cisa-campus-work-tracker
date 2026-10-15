@@ -76,7 +76,7 @@ export default function NotReachedCard({
     <section
       aria-label={t("myDay.not_reached_title")}
       className={cn(
-        "bg-surface border border-outline-variant/60 rounded-3xl p-5 sm:p-6 flex flex-col gap-3 shadow-xs",
+        "bg-surface border border-outline-variant/60 rounded-xl p-5 sm:p-6 flex flex-col gap-3",
         className,
       )}
     >
