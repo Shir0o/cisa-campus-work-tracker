@@ -752,12 +752,13 @@ export default function OutreachBoard() {
               </button>
             )}
             <div className="relative flex-1 sm:flex-initial">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
               <input
                 type="text"
+                aria-label={t('outreachBoard.find_someone')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
+                className="pl-10 pr-4 py-2 rounded-sm border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
                 placeholder={t('outreachBoard.find_someone')}
               />
             </div>
@@ -1162,7 +1163,7 @@ function KanbanColumn({
               onDeleteContact={onDeleteContact}
             />
           )) : (
-            <div className="flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/40 rounded-xl m-1">
+            <div className="flex items-center justify-center py-10 border border-outline-variant/40 bg-surface-container-low rounded-xl m-1">
               <p className="text-on-surface-variant text-sm italic opacity-70 text-center px-4">{t('outreachBoard.no_one_here')}</p>
             </div>
           )}
@@ -1173,7 +1174,7 @@ function KanbanColumn({
       <div className="p-3">
         <button
           onClick={() => onAddContact(stageInfo.label)}
-          className="w-full py-2.5 rounded-xl border border-dashed border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
+          className="w-full py-2.5 rounded-xl border border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-variant hover:text-on-surface active:scale-[0.98] transition-all"
         >
           {isFirst ? t('outreachBoard.welcome_someone_new') : t('outreachBoard.add_to').replace('{stage}', stageInfo.label)}
         </button>
@@ -1212,7 +1213,7 @@ function KanbanCard(props: KanbanCardProps) {
       <div
         ref={setNodeRef}
         style={style}
-        className="opacity-20 bg-surface-container p-4 rounded-xl border border-dashed border-outline-variant h-28"
+        className="opacity-20 bg-surface-container p-4 rounded-xl border border-outline-variant h-28"
       />
     );
   }

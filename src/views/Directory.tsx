@@ -1092,13 +1092,14 @@ export default function Directory() {
       {/* ── Search + filters ── */}
       <div className="flex flex-wrap items-center gap-3 mt-4">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" aria-hidden="true" />
           <input
             type="text"
+            aria-label={t('directory.find_someone')}
             placeholder={t('directory.find_someone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-11 pl-10 pr-4 rounded-full border border-outline-variant bg-surface focus:border-primary outline-none text-sm transition-colors"
+            className="w-full h-11 pl-10 pr-4 rounded-sm border border-outline-variant bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm transition-colors"
           />
         </div>
         <div className="relative">

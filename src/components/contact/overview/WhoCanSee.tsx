@@ -77,7 +77,7 @@ export default function WhoCanSee({
           ) : (
             <button
               onClick={onStartShare}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent active:scale-[0.98] transition-all self-start"
             >
               <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
             </button>

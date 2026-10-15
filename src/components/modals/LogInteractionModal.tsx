@@ -455,7 +455,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
           <button
             type="button"
             onClick={addTask}
-            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-full border border-dashed border-outline-variant px-3 text-[13px] text-on-surface-variant transition-colors hover:text-on-surface"
+            className="inline-flex h-8 w-fit items-center gap-1.5 rounded-full border border-outline-variant px-3 text-[13px] text-on-surface-variant hover:text-on-surface active:scale-[0.98] transition-all"
           >
             <Plus className="h-3.5 w-3.5" /> {t('modals.add_a_follow_up')}
           </button>

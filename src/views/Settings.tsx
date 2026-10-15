@@ -640,7 +640,7 @@ function SecuritySection() {
             <div className="flex justify-center">
               <div
                 data-testid="totp-qr-container"
-                className="flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white p-3 shadow-xs"
+                className="flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white p-3"
               >
                 <QRCodeSVG
                   value={enrollment.qrCodeUrl}
@@ -2253,7 +2253,7 @@ function MemberCard({
 
 function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => void }) {
   return (
-    <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-dashed border-outline-variant/60 bg-surface-container-low">
+    <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-outline-variant/60 bg-surface-container-low">
       <div className="w-10 h-10 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center shrink-0">
         <Mail className="w-4 h-4" />
       </div>
@@ -3320,10 +3320,6 @@ export default function Settings() {
           videoUrlOverride={currentVideoUrl}
           videoRolesOverride={currentVideoRoles}
         />
-
-        <p className="mt-12 text-center text-[13px] text-on-surface-variant/70 italic">
-          {t('settings.more_account_settings', 'More account settings will arrive in time.')}
-        </p>
       </div>
     );
   }
@@ -3442,7 +3438,7 @@ export default function Settings() {
             ))}
           </div>
         ) : approvedUsers.length === 0 && filteredInvites.length === 0 ? (
-          <div className="py-12 text-center rounded-2xl border border-dashed border-outline-variant/50">
+          <div className="py-12 text-center rounded-2xl border border-outline-variant/50 bg-surface-container-low">
             <p className="text-sm text-on-surface-variant">{t('settings.no_matches', 'No teammates or invites match your search.')}</p>
           </div>
         ) : (

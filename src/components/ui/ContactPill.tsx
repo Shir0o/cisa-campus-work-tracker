@@ -160,7 +160,7 @@ export default function ContactPill({
     return (
       <span
         className={cn(
-          'rounded-xl inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-on-surface-variant/70 border border-dashed border-outline-variant bg-surface-container-low cursor-default select-none',
+          'rounded-xl inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-on-surface-variant/70 border border-outline-variant bg-surface-container-low cursor-default select-none',
           className
         )}
         title="Contact not found"
