@@ -1940,6 +1940,38 @@ describeRules('Firestore Security Rules', () => {
 
       await assertFails(deleteDoc(doc(getFirestore(), 'contacts/contact1/interactions/int1')));
     });
+
+    it('rejects an interaction update containing updatedAt, accepts permitted fields', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adb = context.firestore();
+        await setDoc(doc(adb, 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(adb, 'contacts/contact1/interactions/int1'), {
+          userId: 'operator1',
+          userName: 'Operator One',
+          content: 'Original content',
+          dateTime: '2026-08-08',
+          type: 'meeting',
+          createdAt: '2026-08-08T00:00:00.000Z',
+        });
+      });
+
+      const db = getFirestore({ uid: 'operator1' });
+      const ref = doc(db, 'contacts/contact1/interactions/int1');
+
+      // Fails when attempting to update with updatedAt (server timestamp or string)
+      await assertFails(updateDoc(ref, {
+        content: 'New content',
+        updatedAt: serverTimestamp(),
+      }));
+
+      // Succeeds when updating only permitted fields (content, dateTime, type)
+      await assertSucceeds(updateDoc(ref, {
+        content: 'New content',
+        dateTime: '2026-08-09',
+        type: 'call',
+      }));
+    });
   });
 
   describe('Access Control', () => {
