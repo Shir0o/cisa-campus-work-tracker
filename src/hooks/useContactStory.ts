@@ -447,7 +447,6 @@ export function useContactStory(
       if (!c?.id) return;
       const updateData: any = {
         content: data.content,
-        updatedAt: serverTimestamp(),
       };
       if (data.dateTime) updateData.dateTime = data.dateTime;
       if (data.type) updateData.type = data.type;

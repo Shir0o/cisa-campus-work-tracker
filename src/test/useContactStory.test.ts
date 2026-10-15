@@ -274,6 +274,18 @@ describe('useContactStory', () => {
     });
     expect(firestore.addDoc).toHaveBeenCalled();
 
+    // Update interaction
+    await act(async () => {
+      await result.current.actions.updateInteraction('int1', { content: 'Updated content', type: 'call' });
+    });
+    expect(firestore.updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts/c1/interactions/int1' }),
+      {
+        content: 'Updated content',
+        type: 'call',
+      }
+    );
+
     // Add prayer
     await act(async () => {
       await result.current.actions.addPrayer({ text: 'Pray for salvation' });
