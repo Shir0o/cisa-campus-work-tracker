@@ -371,6 +371,44 @@ describe("buildAttentionItems — creator-less sign-up contacts (#1071)", () => 
     expect(items.some((i) => i.type === "contact" && i.contactId === "c_own")).toBe(false);
   });
 
+  it("normalizes Firestore Timestamp-shaped createdAt on contacts and interactions into valid ISO strings", () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const timestampContact = signup({
+      id: "c_ts",
+      createdAt: { seconds: nowSec - 100, nanoseconds: 0 } as any,
+    });
+    const timestampInteraction: Interaction = {
+      id: "i_ts",
+      contactId: "c_ts",
+      userId: "t1",
+      content: "Talked about bible",
+      createdAt: { seconds: nowSec - 50, nanoseconds: 0 } as any,
+      dateTime: { seconds: nowSec - 50, nanoseconds: 0 } as any,
+    } as any;
+
+    const items = buildAttentionItems({
+      role: "admin",
+      uid: "ft1",
+      contacts: [timestampContact],
+      interactions: [timestampInteraction],
+    });
+
+    const contactItem = items.find((i) => i.id === "contact:c_ts")!;
+    const interactionItem = items.find((i) => i.id === "interaction:i_ts")!;
+    expect(contactItem).toBeDefined();
+    expect(interactionItem).toBeDefined();
+
+    expect(Number.isNaN(new Date(contactItem.at).getTime())).toBe(false);
+    expect(Number.isNaN(new Date(interactionItem.at).getTime())).toBe(false);
+    expect(contactItem.at).toBe(new Date((nowSec - 100) * 1000).toISOString());
+    expect(interactionItem.at).toBe(new Date((nowSec - 50) * 1000).toISOString());
+
+    const stacks = attentionStacksFor(items, "ft1");
+    expect(stacks.length).toBeGreaterThan(0);
+    expect(stacks[0].bucket).toBe("today");
+    expect(Number.isNaN(new Date(stacks[0].at).getTime())).toBe(false);
+  });
+
   it("reads the sign-up card as someone adding them", () => {
     const card = { id: "contact:c_signup", type: "contact", at: "", by: null, contactId: "c_signup" } as AttentionItem;
     expect(attentionPhrase(card)).toBe("Someone added them");

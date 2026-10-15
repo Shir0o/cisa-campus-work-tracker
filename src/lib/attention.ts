@@ -4,6 +4,12 @@ import { teamOf } from "./teams";
 import { inTheConversation, type ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { InboxState } from "./inboxState";
+import { parseMs } from "../components/landing/helpers";
+
+export function toIsoTimestamp(val: unknown): string {
+  const ms = parseMs(val);
+  return ms != null ? new Date(ms).toISOString() : new Date().toISOString();
+}
 
 export type AttentionKind = "contact" | "interaction" | "thread" | "task" | "notification";
 
@@ -100,10 +106,9 @@ const BUCKET_ORDER: DateBucket[] = [
   "older",
 ];
 
-const ms = (iso?: string | null) => {
+const ms = (iso?: any) => {
   if (!iso) return 0;
-  const t = new Date(iso).getTime();
-  return Number.isNaN(t) ? 0 : t;
+  return parseMs(iso) ?? 0;
 };
 
 export function buildAttentionItems(params: {
@@ -156,7 +161,7 @@ export function buildAttentionItems(params: {
         items.push({
           id: "contact:" + c.id,
           type: "contact",
-          at: c.createdAt ?? new Date().toISOString(),
+          at: toIsoTimestamp(c.createdAt),
           contactId: c.id,
           by: c.createdBy,
           body: c.notes,
@@ -172,7 +177,7 @@ export function buildAttentionItems(params: {
         items.push({
           id: "interaction:" + i.id,
           type: "interaction",
-          at: i.createdAt ?? i.dateTime ?? new Date().toISOString(),
+          at: toIsoTimestamp(i.createdAt || i.dateTime),
           contactId: i.contactId,
           by,
           interactionId: i.id,
@@ -295,7 +300,7 @@ export function buildAttentionItems(params: {
       items.push({
         id: "task:" + t.id,
         type: "task",
-        at: t.dueDate ?? new Date().toISOString(),
+        at: toIsoTimestamp(t.dueDate),
         contactId: t.contactId ?? null,
         title: t.title,
         by: t.createdById ?? null,
@@ -306,16 +311,10 @@ export function buildAttentionItems(params: {
   // Notifications for user
   for (const n of notifications) {
     if (!n.read && (!n.userId || n.userId === uid)) {
-      const atStr =
-        typeof n.createdAt === "string"
-          ? n.createdAt
-          : n.createdAt && typeof (n.createdAt as unknown as { seconds?: number }).seconds === "number"
-            ? new Date((n.createdAt as unknown as { seconds: number }).seconds * 1000).toISOString()
-            : new Date().toISOString();
       items.push({
         id: "notif:" + n.id,
         type: "notification",
-        at: atStr,
+        at: toIsoTimestamp(n.createdAt),
         targetId: n.targetId ?? null,
         title: n.title,
         body: n.message,
