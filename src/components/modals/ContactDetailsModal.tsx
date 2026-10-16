@@ -770,8 +770,10 @@ export default function ContactDetailsModal({
     }, 0);
   };
 
+  // Only someone else's post counts as unread — the stream's own rule: your own
+  // messages are read by definition (see src/lib/stream.ts's New divider).
   const latestTeamAt = threadMessages
-    .filter((m) => m.scope === "team" && !m.parentId)
+    .filter((m) => m.scope === "team" && !m.parentId && m.from !== currentUid)
     .reduce((max, m) => (m.at > max ? m.at : max), "");
   const fullTimersUnread = !!latestTeamAt && latestTeamAt > fullTimersSeenAt;
   const markFullTimersSeen = () => {

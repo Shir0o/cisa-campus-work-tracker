@@ -3581,6 +3581,25 @@ describe('desktop story layout (design D)', () => {
       expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
       expect(within(drawer).queryByRole('button', { name: 'Add to story' })).toBeNull();
     });
+
+    it("never raises the unread dot for the viewer's own team message, but does for another's (#1627)", () => {
+      localStorage.setItem('cisa.contactFullTimersSeen.contact-abc', new Date(2026, 8, 20, 9, 0).toISOString());
+
+      // The viewer's own top-level team message lands after the seen stamp.
+      hoisted.messages = [
+        { id: 'ft-mine', interactionId: null, scope: 'team', from: 'user-123', fromName: 'Admin Tony', kind: 'comment', body: 'My own note', at: new Date(2026, 8, 24, 9, 0).toISOString() },
+      ];
+      const mine = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      expect(screen.queryAllByLabelText('New in Full-timers')).toHaveLength(0);
+      mine.unmount();
+
+      // A teammate's top-level team message after the stamp does raise it.
+      hoisted.messages = [
+        { id: 'ft-theirs', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Ruth notes', at: new Date(2026, 8, 24, 9, 0).toISOString() },
+      ];
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      expect(screen.queryAllByLabelText('New in Full-timers').length).toBeGreaterThan(0);
+    });
   });
 
   describe('Interaction Threads', () => {
