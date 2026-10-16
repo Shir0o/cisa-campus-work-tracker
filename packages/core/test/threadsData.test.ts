@@ -6,6 +6,7 @@ const firestoreMock = vi.hoisted(() => ({
   collectionGroup: vi.fn(),
   doc: vi.fn(),
   deleteDoc: vi.fn(),
+  getDoc: vi.fn(),
   getDocs: vi.fn(),
   onSnapshot: vi.fn(),
   orderBy: vi.fn(),
@@ -34,6 +35,7 @@ beforeEach(() => {
   firestoreMock.collection.mockImplementation((_db, ...path: string[]) => ({ path: path.join('/') }));
   firestoreMock.query.mockImplementation((col) => col);
   firestoreMock.addDoc.mockResolvedValue({ id: 'new' });
+  firestoreMock.getDoc.mockResolvedValue({ exists: () => false, data: () => ({}) });
   firestoreMock.getDocs.mockResolvedValue({ docs: [] });
 });
 
@@ -312,5 +314,88 @@ describe('addThreadMessage reaches teammates In the Conversation', () => {
     const [field, op, value] = firestoreMock.where.mock.calls[0];
     expect([field, op]).toEqual(['at', '>=']);
     expect(Math.round((Date.now() - Date.parse(value)) / 86_400_000)).toBe(14);
+  });
+});
+
+// #1640: a reply reaches the author of the message it answers, past the 14-day
+// window and with no tie (CONTEXT.md, ADR 0007). The mobile app posts through
+// this shared path, so it must behave like the web app's own copy.
+describe('addThreadMessage reaches the author of the message it answers', () => {
+  const parent = (from: string) => ({
+    exists: () => true,
+    data: () => ({ from, fromName: from, kind: 'question', body: '?' }),
+  });
+
+  beforeEach(() => {
+    applyRoster([
+      { uid: 'tony', role: 'admin' },
+      { uid: 'anna', role: 'admin' },
+      { uid: 'tim', role: 'manager' },
+    ]);
+  });
+
+  it('tells the parent author though they are untied and outside the 14-day window', async () => {
+    firestoreMock.getDoc.mockResolvedValueOnce(parent('tony'));
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { parentId: 'tony-msg', from: 'anna', fromName: 'Anna Lee', kind: 'comment', body: 'I texted him.' },
+      { contactName: 'Mark', stakeholders: { createdBy: 'tim' } },
+      onNotify,
+    );
+    expect(onNotify.mock.calls.map((c) => c[0])).toContainEqual(
+      expect.objectContaining({ userId: 'tony', title: 'Anna commented on Mark' }),
+    );
+  });
+
+  it('never tells the replier, and keeps the message when the parent read fails', async () => {
+    firestoreMock.getDoc.mockResolvedValueOnce(parent('anna'));
+    const own = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { parentId: 'anna-msg', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Mine.' },
+      { contactName: 'Mark' },
+      own,
+    );
+    expect(own.mock.calls.map((c) => c[0].userId)).not.toContain('anna');
+
+    firestoreMock.getDoc.mockRejectedValueOnce(new Error('offline'));
+    const failed = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { parentId: 'tim-msg', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Hi' },
+      { contactName: 'Mark', stakeholders: { createdBy: 'tim' } },
+      failed,
+    );
+    expect(failed.mock.calls.map((c) => c[0].userId)).toEqual(['tim']);
+  });
+
+  it('never tells a Trainee about the Full-timers stream', async () => {
+    firestoreMock.getDoc.mockResolvedValueOnce(parent('tim'));
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { scope: 'team', parentId: 'tim-msg', from: 'anna', fromName: 'Anna', kind: 'comment', body: 'Between us.' },
+      { contactName: 'Mark' },
+      onNotify,
+    );
+    expect(onNotify.mock.calls.map((c) => c[0].userId)).not.toContain('tim');
+  });
+
+  it('never tells a parent author who can no longer see the person', async () => {
+    firestoreMock.getDoc.mockResolvedValueOnce(parent('tim'));
+    const onNotify = vi.fn();
+    await addThreadMessage(
+      db,
+      'c1',
+      { parentId: 'tim-msg', from: 'anna', fromName: 'Anna', kind: 'note', body: 'Private.' },
+      { contactName: 'Mark', stakeholders: { createdBy: 'anna', visibleTo: ['anna'] } },
+      onNotify,
+    );
+    expect(onNotify.mock.calls.map((c) => c[0].userId)).not.toContain('tim');
   });
 });

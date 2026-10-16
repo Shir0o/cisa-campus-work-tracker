@@ -9,6 +9,7 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -191,6 +192,24 @@ async function recentInStream(db: Firestore, contactId: string, scope?: Scope): 
   }
 }
 
+/** The author of the message a reply answers (#1640), so a reply reaches them
+ *  even after the 14-day window lapses and with no tie. A failed read only
+ *  narrows who hears; the reply itself is already written. */
+async function parentAuthorOf(
+  db: Firestore,
+  contactId: string,
+  scope: Scope,
+  parentId?: string | null,
+): Promise<string | null> {
+  if (!parentId) return null;
+  try {
+    const snap = await getDoc(msgRef(db, contactId, parentId, scope));
+    return snap.exists() ? ((snap.data()?.from as string | undefined) ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Post a new message to a contact. `onNotify`, when given, is called with the
  * bell payload for `notify.to` — each app supplies its own notification write
@@ -272,6 +291,11 @@ export async function addThreadMessage(
   // reading the person's messages through the bell.
   const canStillSee = (uid: string) => isFullTimer(uid) || !!notify?.stakeholders?.visibleTo?.includes(uid);
   for (const uid of inTheConversation(recent, { ...input, contactId, at })) if (canStillSee(uid)) recipients.add(uid);
+  // The author of the message being answered (#1640): a reply reaches them even
+  // after the 14-day window lapses and with no tie. Added before the team gate
+  // below drops any Trainee, and deduped by the recipient set.
+  const parentAuthor = await parentAuthorOf(db, contactId, input.scope, input.parentId);
+  if (parentAuthor && parentAuthor !== input.from && canStillSee(parentAuthor)) recipients.add(parentAuthor);
   // The Full-timers stream is never announced to a Trainee, and a mention
   // already carried its own buzz.
   if (team) for (const uid of recipients) if (!isFullTimer(uid)) recipients.delete(uid);
