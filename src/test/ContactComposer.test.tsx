@@ -51,4 +51,15 @@ describe('ContactComposer time picker (#1495)', () => {
     expect(screen.getByLabelText(/^date and time$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /15 minutes ago/i })).toBeInTheDocument();
   });
+
+  it('interpolates a real time into the Yesterday shortcut (#1638)', () => {
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^now$/i }));
+
+    // The shortcut names a real clock time, never the raw locale placeholder.
+    const yesterday = screen.getByRole('button', { name: /^yesterday/i });
+    expect(yesterday).not.toHaveTextContent('{time}');
+    expect(yesterday).toHaveTextContent(/^Yesterday, \d{1,2}:\d{2}\s?(AM|PM)$/i);
+  });
 });
