@@ -75,10 +75,12 @@ describe('cycleAttendanceStatus', () => {
     expect(cycleAttendanceStatus(undefined)).toBe('present');
   });
 
-  it('cycles a walk-in unmarked -> present -> absent -> unmarked', () => {
+  it('clears a walk-in in one tap: unmarked -> present -> unmarked, never absent (#1641)', () => {
     expect(cycleAttendanceStatus(undefined, false)).toBe('present');
-    expect(cycleAttendanceStatus('present', false)).toBe('absent');
-    expect(cycleAttendanceStatus('absent', false)).toBeUndefined();
+    expect(cycleAttendanceStatus('present', false)).toBeUndefined();
+    // A lingering off-roster absence is treated as no mark, so the next tap
+    // checks them in rather than being consumed clearing it.
+    expect(cycleAttendanceStatus('absent', false)).toBe('present');
   });
 
   it('keeps a roster member cycling present <-> absent', () => {

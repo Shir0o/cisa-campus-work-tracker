@@ -418,19 +418,21 @@ describe('Attendance', () => {
       expect(screen.queryByText('+ Roster')).not.toBeInTheDocument();
     });
 
-    it('moves a present walk-in to absent, which the roster rule keeps out of both groups (issue #1383)', async () => {
+    it('clears a present walk-in on one tap, so they can be checked in again (#1383, #1641)', async () => {
       await openFirstGathering();
       fireEvent.click(screen.getByText('Charlie Brown').closest('button')!);
+      // One tap removes them from both lists — no invisible `absent` stopover.
       await waitFor(() => {
         expect(mockBatch.update).toHaveBeenCalledWith(
           expect.objectContaining({ path: 'events', id: 'e1' }),
-          { attendance: { present: ['c2'], absent: ['c3'] } },
+          { attendance: { present: ['c2'], absent: [] } },
         );
       });
-      // The legacy contact mirror records the walk-in's absence.
+      // The legacy contact mirror drops the gathering key, so a re-read is
+      // unmarked and the walk-in can be checked in again.
       expect(mockBatch.update).toHaveBeenCalledWith(
         expect.objectContaining({ path: 'contacts', id: 'c3' }),
-        expect.objectContaining({ attendance: { e1: 'absent' } }),
+        expect.objectContaining({ attendance: {} }),
       );
     });
 
