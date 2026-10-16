@@ -7,6 +7,7 @@ import {
   Mail,
   MessageSquare,
   MoreHorizontal,
+  NotebookPen,
   Phone,
   Trash2,
   UserCog,
@@ -108,6 +109,8 @@ function MoreMenu({
   onDelete,
   showRelease,
   onRelease,
+  showAddToAsk,
+  onAddToAsk,
 }: {
   contact: Contact;
   onLogInteraction: () => void;
@@ -123,6 +126,8 @@ function MoreMenu({
   onDelete: () => void;
   showRelease?: boolean;
   onRelease?: () => void;
+  showAddToAsk?: boolean;
+  onAddToAsk?: () => void;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -184,6 +189,11 @@ function MoreMenu({
               <UserMinus className="w-4 h-4" /> {t('modals.contactDetails.release_from_queue', 'Release from my queue')}
             </button>
           )}
+          {showAddToAsk && onAddToAsk && (
+            <button onClick={() => { setOpen(false); onAddToAsk(); }} className={item}>
+              <NotebookPen className="w-4 h-4" /> {t('toAsk.menu_item', 'Add to To ask')}
+            </button>
+          )}
           {showChangeCreator && (
             <button onClick={() => { setOpen(false); onChangeCreator(); }} className={item}>
               <UserCog className="w-4 h-4" /> {t('modals.contactDetails.change_creator')}
@@ -217,6 +227,8 @@ export interface ContactHeaderModel {
   openPrayerCount: number;
   canDelegate: boolean;
   conversationUnread?: boolean;
+  /** To ask (#1649): a Full-timer may note a question to ask in person. */
+  showAddToAsk?: boolean;
 }
 
 export interface ContactHeaderActions {
@@ -238,6 +250,7 @@ export interface ContactHeaderActions {
   onOpenPrayers: () => void;
   onOpenConversation: () => void;
   onRelease?: () => void;
+  onAddToAsk?: () => void;
 }
 
 export interface StructuredContactHeadProps {
@@ -280,6 +293,7 @@ export default function ContactHead(props: ContactHeadProps) {
     openPrayerCount,
     canDelegate,
     conversationUnread,
+    showAddToAsk,
   } = model;
 
   const {
@@ -301,6 +315,7 @@ export default function ContactHead(props: ContactHeadProps) {
     onOpenPrayers,
     onOpenConversation,
     onRelease,
+    onAddToAsk,
   } = actions;
 
   const { t } = useLanguage();
@@ -384,6 +399,8 @@ export default function ContactHead(props: ContactHeadProps) {
                   onDelete={onDelete}
                   showRelease={showRelease}
                   onRelease={onRelease}
+                  showAddToAsk={showAddToAsk}
+                  onAddToAsk={onAddToAsk}
                 />
               </div>
             </div>
@@ -613,6 +630,8 @@ export default function ContactHead(props: ContactHeadProps) {
                   onDelete={onDelete}
                   showRelease={showRelease}
                   onRelease={onRelease}
+                  showAddToAsk={showAddToAsk}
+                  onAddToAsk={onAddToAsk}
                 />
                 <button
                   onClick={onClose}

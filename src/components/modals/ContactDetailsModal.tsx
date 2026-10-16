@@ -26,6 +26,8 @@ import { interactionAdapter } from "../stream/interactionAdapter";
 import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
 import { walkingRecipient } from "../../lib/walking";
+import { isTrainee as isTraineeUid } from "../../lib/walking";
+import AddToAskModal from "../contact/AddToAskModal";
 import { useLanguage } from "../LanguageProvider";
 import { yearToForm } from "../../lib/contactYear";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
@@ -110,6 +112,7 @@ export default function ContactDetailsModal({
   const [reassigningCreator, setReassigningCreator] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [delegateOpen, setDelegateOpen] = useState(false);
+  const [addToAskOpen, setAddToAskOpen] = useState(false);
 
   // Pinned pane (ADR 0034)
   const [paneView, setPaneView] = useState<ContactPaneView>("conversation");
@@ -281,6 +284,27 @@ export default function ContactDetailsModal({
   const shareOptions = teamMembers.filter(
     (m) => !founders.includes(m.id) && !coCreators.includes(m.id)
   );
+
+  // The Trainees tied to this person — the choices "Add to To ask" offers, so a
+  // line lands under the right person (#1649).
+  const tiedTrainees = useMemo(() => {
+    const ids = [
+      currentContact.createdBy,
+      currentContact.addedBy,
+      ...(currentContact.coCreators || []),
+      ...(currentContact.founders || []),
+      ...(currentContact.carers || []),
+    ].filter((x): x is string => !!x);
+    return [...new Set(ids)]
+      .filter((staffId) => {
+        const m = teamMembers.find((tm) => tm.id === staffId);
+        return m ? !m.fullTimer : isTraineeUid(staffId);
+      })
+      .map((staffId) => ({
+        id: staffId,
+        name: teamMembers.find((tm) => tm.id === staffId)?.name || staffId,
+      }));
+  }, [currentContact, teamMembers]);
 
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith("visit_") &&
@@ -833,6 +857,7 @@ export default function ContactDetailsModal({
     openPrayerCount: openPrayers.length,
     canDelegate: canShare,
     conversationUnread: fullTimersUnread,
+    showAddToAsk: isAdmin && !isImpersonating,
   };
 
   const headerActions: ContactHeaderActions = {
@@ -848,6 +873,7 @@ export default function ContactDetailsModal({
     onOpenMoveSheet: () => setMovingStage(true),
     onOpenAbout: () => setAboutOpen(true),
     onOpenDelegate: () => setDelegateOpen(true),
+    onAddToAsk: () => setAddToAskOpen(true),
     onChangeKind: changeKind,
     onChangeCreator: () => setReassigningCreator(true),
     onDelete: handleDelete,
@@ -975,6 +1001,14 @@ export default function ContactDetailsModal({
         members={shareOptions}
         onClose={() => setDelegateOpen(false)}
         onDelegate={handleDelegate}
+      />
+
+      <AddToAskModal
+        open={addToAskOpen}
+        contactId={currentContact.id}
+        contactName={currentContact.name}
+        trainees={tiedTrainees}
+        onClose={() => setAddToAskOpen(false)}
       />
 
       {movingStage && (

@@ -238,6 +238,14 @@ service cloud.firestore {
       allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
     }
 
+    // 2b-ii. To ask (#1649) — a Full-timer's private notepad of things to ask
+    // Trainees in person. Stricter than userPreferences above: only its OWNER
+    // may touch it, and only when the owner is a Full-timer (admin). No other
+    // Full-timer and no Trainee ever reads or writes it.
+    match /toAskNotes/{userId} {
+      allow read, write: if isApprovedUser() && isAdmin() && isOwner(userId);
+    }
+
     // 2c. Inbox state — the My Day worklist's two per-person axes, `seen` and
     // `completed` (#813). Same shape and same rule as userPreferences above:
     // it is one private document per person, holding maps of item id → ISO
