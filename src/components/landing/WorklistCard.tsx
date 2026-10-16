@@ -306,7 +306,12 @@ export function WorklistCard({
   const showDot = !reviewedOnly && !stack.seen && !completed;
 
   const newest = stack.items[0];
-  const verb = worklistVerbFor(stack);
+  // On Around the verb is always Reviewed, whatever the stack holds (#1625).
+  // A question there may not have been addressed to the reader — it reaches
+  // them only through the Full-timer oversight branch — so "Answered" would
+  // claim they answered something nobody asked them. The other three verbs
+  // belong to On you, where `worklistVerbFor`'s ranking is the right answer.
+  const verb: WorklistVerb | null = reviewedOnly ? "reviewed" : worklistVerbFor(stack);
   const openAsks = openAsksIn(stack);
   const hasOpenAsk = openAsks.length > 0;
   const rowTeam = soleTeamOf(stack);
