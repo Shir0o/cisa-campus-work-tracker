@@ -522,27 +522,28 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               </div>
             )}
 
-            <div className="mt-2">
-              <NavLink
-                to="/signup"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
-                    isActive
-                      ? 'bg-primary text-on-primary font-medium'
-                      : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <FileText className={cn('w-[18px] h-[18px] shrink-0', isActive && 'text-on-primary')} />
-                    <span>{t('nav.sign_up_form', 'Sign-up form')}</span>
-                  </>
-                )}
-              </NavLink>
-            </div>
+            {/* No wrapper margin: the Sign-up entry has no group label, so a
+                one-off top margin reads as an orphaned gap below the rows
+                above it. It follows the drawer's row rhythm instead (issue 1635). */}
+            <NavLink
+              to="/signup"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
+                  isActive
+                    ? 'bg-primary text-on-primary font-medium'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <FileText className={cn('w-[18px] h-[18px] shrink-0', isActive && 'text-on-primary')} />
+                  <span>{t('nav.sign_up_form', 'Sign-up form')}</span>
+                </>
+              )}
+            </NavLink>
 
             <div className="mt-auto pt-4 border-t border-outline-variant space-y-3">
               <div className="flex items-center justify-between px-3">
