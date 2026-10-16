@@ -3916,6 +3916,23 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
     });
   });
 
+  it('shows the contact first name, not the {name} placeholder, in the release undo snackbar (#1623)', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, createdBy: 'user-123', carers: ['user-123'] }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(await screen.findByText('Release from my queue'));
+
+    expect(await screen.findByText('Released John from your queue.')).toBeInTheDocument();
+    expect(screen.queryByText(/Released \{name\}/)).not.toBeInTheDocument();
+  });
+
   it('delegates: shares the person and posts a mention carrying the note', async () => {
     render(
       <ContactDetailsModal

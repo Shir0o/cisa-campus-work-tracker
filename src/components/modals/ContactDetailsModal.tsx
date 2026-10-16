@@ -352,7 +352,12 @@ export default function ContactDetailsModal({
       await actions.releaseContact(currentUid, {
         userName: user?.displayName || user?.email?.split('@')[0] || t('modals.contactDetails.unknown_user'),
       });
-      showUndoSnack(t('modals.contactDetails.release_done', 'Released from your queue'));
+      showUndoSnack(
+        t('modals.contactDetails.release_done', 'Released {name} from your queue.').replace(
+          '{name}',
+          firstName,
+        ),
+      );
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
     }
