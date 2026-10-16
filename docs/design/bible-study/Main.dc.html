@@ -291,9 +291,10 @@ class Component extends DCLogic {
     super(props);
     this.state = { i: 0, open: {}, nav: false };
     // The scroll container owns "which Section am I on" (ADR 0014 §2); the
-    // counter and rail mirror it the way the shipped IntersectionObserver
-    // (threshold 0.55) does. jump's effect is a scrollIntoView, never a
-    // state-owned position.
+    // counter and rail mirror it from scroll position, the way the shipped
+    // reader does: the last panel whose top has crossed a line 45% down the
+    // deck (#1622). jump's effect is a scrollIntoView, never a state-owned
+    // position.
     setTimeout(() => {
       const deck = document.querySelector('.deck');
       if (!deck) return;

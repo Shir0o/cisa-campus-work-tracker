@@ -6,11 +6,13 @@
 // browser), and tap-to-advance is gone — a Blank's tap is the only tap left.
 //
 // The scroll container owns "which Section am I on"; the reducer's sectionIndex
-// is a READ MODEL mirrored from an IntersectionObserver and consumed only by
-// the progress rail, the counter and the index highlight. jump remains as the
-// action the Section index dispatches, and its effect is a scrollIntoView.
+// is a READ MODEL mirrored from the deck's scroll position — the last panel
+// whose top has crossed a line 45% down the deck (#1622) — and consumed only
+// by the progress rail, the counter and the index highlight. jump remains as
+// the action the Section index dispatches, and its effect is a scrollIntoView.
 import React, { useEffect, useEffectEvent, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import {
+  currentSectionIndex,
   readerReducer,
   type Meeting,
   type Section,
@@ -382,19 +384,32 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
     }
   }, [sections.length, state.totalSections]);
 
-  // The IntersectionObserver mirrors the visible panel into the read model.
-  // jsdom has no IntersectionObserver and no layout; both are stubbed in the
-  // test setup (the matchMedia precedent), and the real browser supplies the
-  // truth.
+  // The deck's scroll mirrors the Section being read into the read model. The
+  // current Section is the last panel whose top has crossed a line 45% down
+  // the deck (the design of record) — reading position, not a visibility
+  // fraction, so a Section taller than the reader, whose best possible
+  // intersection ratio is readerHeight / panelHeight and therefore below the
+  // old 0.55 threshold, still becomes current once reading reaches it (#1622).
   //
-  // The callback is an Effect Event (#914): it must compare against the
-  // CURRENT sectionIndex, not the one captured when the observer was built —
-  // the observer is keyed to the Section count, so a closed-over index would
-  // stay at its initial value for the life of the Meeting and scrolling back
-  // to the first Section could never re-register. The subscription lifecycle
-  // stays keyed to the Section count so the observer is not torn down and
-  // rebuilt on every scroll tick.
-  const onPanelVisible = useEffectEvent((idx: number) => {
+  // jsdom has no layout (every rect is zero); the real browser supplies the
+  // truth, and a zero-height deck means there is nothing to read yet.
+  //
+  // The handler is an Effect Event (#914): it must compare against the CURRENT
+  // sectionIndex, not the one captured when the listener was attached — the
+  // listener is keyed to the Section count, so a closed-over index would stay
+  // at its initial value for the life of the Meeting and scrolling back to the
+  // first Section could never re-register. The subscription lifecycle stays
+  // keyed to the Section count so the listener is not torn down and re-attached
+  // on every scroll tick.
+  const onDeckScroll = useEffectEvent(() => {
+    const deck = scrollRef.current;
+    if (!deck) return;
+    const deckRect = deck.getBoundingClientRect();
+    if (deckRect.height === 0) return;
+    const panelTops = panelRefs.current
+      .slice(0, sections.length)
+      .map((panel) => (panel ? panel.getBoundingClientRect().top : Number.POSITIVE_INFINITY));
+    const idx = currentSectionIndex(deckRect, panelTops);
     if (idx !== state.sectionIndex) {
       dispatch({ type: 'jump', index: idx });
     }
@@ -402,25 +417,12 @@ const StudyReaderView: React.FC<StudyReaderViewProps> = ({
 
   useEffect(() => {
     const root = scrollRef.current;
-    if (!root || typeof IntersectionObserver === 'undefined') return;
-    const panels = panelRefs.current.slice(0, sections.length);
-    if (panels.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const idx = Number((entry.target as HTMLElement).dataset.sectionPanel);
-          if (Number.isInteger(idx)) {
-            onPanelVisible(idx);
-          }
-        }
-      },
-      { root, threshold: 0.55 },
-    );
-    for (const panel of panels) if (panel) observer.observe(panel);
-    return () => observer.disconnect();
+    if (!root || paged) return;
+    onDeckScroll();
+    root.addEventListener('scroll', onDeckScroll, { passive: true });
+    return () => root.removeEventListener('scroll', onDeckScroll);
     // `paged` too: the paged deck unmounts the panels, so returning to the
-    // scrolling deck must observe the freshly mounted ones (#1590).
+    // scrolling deck must re-read the freshly mounted ones (#1590).
   }, [sections.length, paged]);
 
   const total = sections.length;
