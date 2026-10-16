@@ -4,6 +4,7 @@ import {
   collectionGroup,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -355,6 +356,22 @@ async function recentInStream(contactId: string, scope?: Scope): Promise<ThreadM
   }
 }
 
+/** The author of the message a reply answers (#1640), so a reply reaches them
+ *  even after the 14-day window lapses and with no tie. A failed read only
+ *  narrows who hears; the reply itself is already written. */
+async function parentAuthorOf(
+  contactId: string,
+  input: { parentId?: string | null; scope?: "team" | null },
+): Promise<string | null> {
+  if (!input.parentId) return null;
+  try {
+    const snap = await getDoc(ref(contactId, input.parentId, input.scope));
+    return snap.exists() ? ((snap.data()?.from as string | undefined) ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Post a new message to a contact (and optionally to one interaction). Dispatches
  * notifications to mentioned users, contact stakeholders, or legacy notify.to. */
 export async function addThreadMessage(
@@ -469,6 +486,28 @@ export async function addThreadMessage(
       notifiedUserIds.add(cUid);
       void sendNotification({
         userId: cUid,
+        title: isTeamScope ? TEAM_NOTIFY_TITLE(who, contactName) : NOTIFY_TITLE[input.kind](who, contactName),
+        message: truncatedBody,
+        type: "info",
+        targetId: contactId,
+        link: targetLink,
+        coalesceKey: aboutThisPerson,
+      });
+    }
+
+    // The author of the message being answered (#1640): a reply must reach
+    // them even when the 14-day window has lapsed and they are not tied.
+    const parentAuthor = await parentAuthorOf(contactId, input);
+    if (
+      parentAuthor &&
+      parentAuthor !== input.from &&
+      !notifiedUserIds.has(parentAuthor) &&
+      isAllowedRecipient(parentAuthor) &&
+      canStillSee(parentAuthor)
+    ) {
+      notifiedUserIds.add(parentAuthor);
+      void sendNotification({
+        userId: parentAuthor,
         title: isTeamScope ? TEAM_NOTIFY_TITLE(who, contactName) : NOTIFY_TITLE[input.kind](who, contactName),
         message: truncatedBody,
         type: "info",

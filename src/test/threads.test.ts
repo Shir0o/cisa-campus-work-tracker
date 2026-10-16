@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { addDoc, deleteDoc, getDocs, onSnapshot, updateDoc, where } from "firebase/firestore";
+import { addDoc, deleteDoc, getDoc, getDocs, onSnapshot, updateDoc, where } from "firebase/firestore";
 import {
   THREAD_KINDS,
   threadsFor,
@@ -27,6 +27,7 @@ vi.mock("firebase/firestore", () => ({
   collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
   deleteDoc: vi.fn(() => Promise.resolve()),
   doc: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
+  getDoc: vi.fn(() => Promise.resolve({ exists: () => false, data: () => ({}) })),
   getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
   onSnapshot: vi.fn(),
   orderBy: vi.fn((field, dir) => ({ field, dir })),
@@ -775,5 +776,95 @@ describe("addThreadMessage reaches teammates In the Conversation", () => {
     );
     expect(id).toBe("new-msg-id");
     expect(reached().map((n) => n.userId)).toEqual(["tim"]);
+  });
+});
+
+// #1640: a reply reaches the author of the message it answers, even past the
+// 14-day In-the-Conversation window and with no tie (CONTEXT.md, ADR 0007).
+describe("addThreadMessage reaches the author of the message it answers", () => {
+  const parent = (from: string) => ({
+    exists: () => true,
+    data: () => ({ from, fromName: from, kind: "question", body: "?", interactionId: null }),
+  });
+  const reached = () => vi.mocked(sendNotification).mock.calls.map((c) => c[0]);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    applyRoster([
+      { uid: "tony", role: "admin" },
+      { uid: "anna", role: "admin" },
+      { uid: "tim", role: "manager" },
+    ]);
+  });
+
+  it("tells the parent author though they are untied and outside the 14-day window", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent("tony") as never);
+    await addThreadMessage(
+      "C-1",
+      { parentId: "tony-msg", from: "anna", fromName: "Anna Lee", kind: "comment", body: "I texted him." },
+      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
+    );
+    expect(reached()).toContainEqual(
+      expect.objectContaining({ userId: "tony", title: "Anna commented on Mark", coalesceKey: "contact:C-1" }),
+    );
+  });
+
+  it("never tells the replier for their own reply", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent("anna") as never);
+    await addThreadMessage(
+      "C-1",
+      { parentId: "anna-msg", from: "anna", fromName: "Anna", kind: "comment", body: "Adding to my own." },
+      { contactName: "Mark" },
+    );
+    expect(reached().map((n) => n.userId)).not.toContain("anna");
+  });
+
+  it("tells a parent author once when they are also tied", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent("tim") as never);
+    await addThreadMessage(
+      "C-1",
+      { parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "question", body: "Did he come?" },
+      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
+    );
+    expect(reached().filter((n) => n.userId === "tim")).toHaveLength(1);
+  });
+
+  it("never tells a Trainee about the Full-timers stream", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent("tim") as never);
+    await addThreadMessage(
+      "C-1",
+      { scope: "team", parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "comment", body: "Between us." },
+      { contactName: "Mark" },
+    );
+    expect(reached().map((n) => n.userId)).not.toContain("tim");
+  });
+
+  it("never tells a parent author who can no longer see the person", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce(parent("tim") as never);
+    await addThreadMessage(
+      "C-1",
+      { parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "note", body: "Private." },
+      { contactName: "Mark", stakeholders: { createdBy: "anna", visibleTo: ["anna"] } },
+    );
+    expect(reached().map((n) => n.userId)).not.toContain("tim");
+  });
+
+  it("keeps the reply and still tells the other recipients when the parent read fails", async () => {
+    vi.mocked(getDoc).mockRejectedValueOnce(new Error("offline"));
+    await addThreadMessage(
+      "C-1",
+      { parentId: "tim-msg", from: "anna", fromName: "Anna", kind: "comment", body: "Hi" },
+      { contactName: "Mark", stakeholders: { createdBy: "tim" } },
+    );
+    expect(reached().map((n) => n.userId)).toEqual(["tim"]);
+  });
+
+  it("reads the parent only when the message is a reply", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "anna", fromName: "Anna", kind: "comment", body: "Top level" },
+      { contactName: "Mark" },
+    );
+    expect(getDoc).not.toHaveBeenCalled();
   });
 });
