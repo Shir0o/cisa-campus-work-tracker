@@ -15,7 +15,7 @@ We use [Maestro](https://maestro.mobile.dev/) for cross-platform mobile UI end-t
 - **Maestro CLI**:
   ```bash
   # macOS / Linux
-  curl -FsSL "https://get.maestro.mobile.dev" | bash
+  curl -fsSL "https://get.maestro.mobile.dev" | bash
   # Or via Homebrew
   brew install mobile-dev-inc/tap/maestro
   ```
