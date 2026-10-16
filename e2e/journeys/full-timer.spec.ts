@@ -145,7 +145,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(pointerAfter.locator('.tabular-nums')).toHaveText(String(remaining), { timeout: 10_000 });
   });
 
-  test('the contact page moves the stage and posts a team discussion', async ({ page }) => {
+  test('the contact page moves the stage and posts a team discussion (#1627)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -189,6 +189,16 @@ test.describe('Full-timer journey (#1477)', () => {
     await composer.press('Meta+Enter');
     await expect(contactPage.getByText(note).first()).toBeVisible({ timeout: 10_000 });
     await expect(contactPage.getByText(/missing or insufficient permissions/i)).toHaveCount(0);
+
+    // #1627: the viewer's own team note never raises the unread dot. Switching
+    // the pane back to Conversation shows no dot on the Full-timers tab (nor on
+    // the header's Conversation button), matching the stream's own-messages-are-
+    // read rule.
+    await contactPage
+      .getByRole('group', { name: 'Which Conversation' })
+      .getByRole('button', { name: /^Conversation/ })
+      .click();
+    await expect(contactPage.locator('[aria-label="New in Full-timers"]')).toHaveCount(0);
   });
 
   test('Add to story writes and reads back into the story', async ({ page }) => {
