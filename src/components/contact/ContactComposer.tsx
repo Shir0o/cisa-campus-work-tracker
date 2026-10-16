@@ -173,7 +173,13 @@ export default function ContactComposer({
                         className={cn("cd-composer-item", value.dateTime === p.at && "on")}
                         onClick={() => pickTime(p.at)}
                       >
-                        {t(`modals.contactDetails.composer_time_${p.key}`)}
+                        {t(`modals.contactDetails.composer_time_${p.key}`).replace(
+                          "{time}",
+                          new Date(p.at).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          }),
+                        )}
                       </button>
                     ))}
                   </div>
