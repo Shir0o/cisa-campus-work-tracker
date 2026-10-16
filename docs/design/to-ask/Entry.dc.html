@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>To ask — ways in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Lexend:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+*{box-sizing:border-box}
+button,textarea{font-family:inherit}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:#71717A}
+.card{background:#F4F4F5;border:1px solid #F0F0F2;border-radius:32px;padding:20px;box-shadow:0 1px 2px rgba(10,10,11,.05)}
+.gav{width:28px;height:28px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:600;flex:none}
+.prow{display:flex;align-items:center;gap:10px;font-size:14px;min-height:36px}
+.b-s{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 20px;border-radius:999px;border:0;background:#131316;color:#FFFFFF;font-size:14px;font-weight:500;text-decoration:none}
+.menu{background:#FFFFFF;border:1px solid #E4E4E7;border-radius:20px;box-shadow:0 16px 32px rgba(0,0,0,.12);padding:6px;width:260px}
+.mi{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border-radius:14px;font-size:14px;color:#0A0A0B;border:0;background:transparent;width:100%;text-align:left}
+.mi.on{background:#F4F4F5;font-weight:600}
+.opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;border-radius:16px;border:1px solid #E4E4E7;font-size:14px;flex:1}
+.opt.on{border-color:#131316;box-shadow:inset 0 0 0 1px #131316}
+.radio{width:18px;height:18px;border-radius:999px;border:1.5px solid #A1A1AA;flex:none}
+.on .radio{border:5px solid #131316}
+.tn-a{background:#E3E8F7;color:#3B4F9A}.tn-b{background:#F3E2F0;color:#8A3A7E}.tn-c{background:#E0F0E4;color:#2F6B42}
+</style>
+</helmet>
+<div style="width:900px;min-height:760px;padding:40px;display:flex;gap:48px;font-family:Lexend,sans-serif;background:#FFFFFF;color:#0A0A0B">
+
+  <div style="width:320px;flex:none;display:flex;flex-direction:column;gap:12px">
+    <span class="lab">My Day · pointer card</span>
+    <section class="card" aria-label="To ask" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <h3 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700">To ask</h3>
+        <span style="margin-left:auto;font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:700;font-variant-numeric:tabular-nums">12</span>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div class="prow"><span class="gav tn-a">JK</span>Jae<span style="margin-left:auto;color:#52525B">4</span></div>
+        <div class="prow"><span class="gav tn-b">AR</span>Ana<span style="margin-left:auto;color:#52525B">3</span></div>
+        <div class="prow"><span class="gav tn-c">HS</span>Hana<span style="margin-left:auto;color:#52525B">2</span></div>
+        <div class="prow" style="color:#52525B">+ 3 more</div>
+      </div>
+      <a class="b-s" href="Main.dc.html">Open To ask</a>
+    </section>
+    <p style="margin:0;font-size:12.5px;color:#52525B;line-height:1.5">The same count as the page, by construction — open lines, not ticked Asked and not cleared. Full-timers only. Never truncates the page; the card is just the door.</p>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+    <span class="lab">Contact page · overflow menu</span>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0">
+      <span class="gav tn-b" style="width:44px;height:44px;font-size:14px">ML</span>
+      <div style="flex:1"><div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:700">Mei Lin</div><div style="font-size:12.5px;color:#52525B">Cared for by Jae · Ana</div></div>
+      <button aria-label="More" style="width:44px;height:44px;border-radius:999px;border:0;background:#F4F4F5;display:grid;place-items:center;color:#0A0A0B"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+    </div>
+    <div style="display:flex;gap:24px;align-items:flex-start">
+      <div class="menu" role="menu" aria-label="More">
+        <button class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>Share</button>
+        <button class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Delegate</button>
+        <button class="mi on" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Add to To ask</button>
+        <button class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>Release from my queue</button>
+      </div>
+      <section aria-label="Add to To ask" style="flex:1;min-width:0;background:#FFFFFF;border:1px solid #E4E4E7;border-radius:24px;box-shadow:0 16px 32px rgba(0,0,0,.12);padding:20px;display:flex;flex-direction:column;gap:14px">
+        <h3 style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700">Add to To ask</h3>
+        <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+          <legend style="font-size:13px;color:#52525B;padding:0;margin-bottom:8px">Ask who? Mei has two Trainees tied.</legend>
+          <div style="display:flex;gap:8px">
+            <label class="opt on"><span class="radio"></span><span class="gav tn-a">JK</span>Jae</label>
+            <label class="opt"><span class="radio"></span><span class="gav tn-b">AR</span>Ana</label>
+          </div>
+        </fieldset>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#52525B">Line
+          <textarea rows="3" style="border:1px solid #E4E4E7;border-radius:16px;padding:12px 14px;font-size:14px;color:#0A0A0B;resize:none">Did Mei say yes to Sunday lunch?</textarea>
+        </label>
+        <p style="margin:0;font-size:12px;color:#71717A">Linked to Mei Lin. Only you see it.</p>
+        <div style="display:flex;justify-content:flex-end"><button class="b-s">Add</button></div>
+      </section>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
