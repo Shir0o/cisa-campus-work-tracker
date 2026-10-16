@@ -1178,3 +1178,69 @@ describe('Around the team — the conversation in place, and one state (#1012)',
     expect(screen.queryByRole('button', { name: 'Mark all reviewed' })).not.toBeInTheDocument();
   });
 });
+
+// ── Around's verb is always Reviewed (#1625) ────────────────────────────────
+// An untied contact's unanswered question reaches Around through the oversight
+// branch in buildAttentionItems (#1209), but the reader is not the person it
+// was addressed to. The card must not claim they answered it: on Around the
+// verb is always Reviewed, whatever items the stack holds.
+describe('Around the team — the verb is always Reviewed (#1625)', () => {
+  const question = (over: Partial<ThreadMessageWithContact> = {}): ThreadMessageWithContact =>
+    ({
+      id: 'q1',
+      contactId: 'kofi',
+      interactionId: null,
+      parentId: null,
+      scope: null,
+      from: 'mei',
+      fromName: 'Mei Tanaka',
+      kind: 'question',
+      body: 'Did Kofi get the book?',
+      at: new Date().toISOString(),
+      ...over,
+    }) as ThreadMessageWithContact;
+
+  beforeEach(() => {
+    localStorage.clear();
+    __resetUserEntityStateCache();
+    __resetInboxState();
+    prefsMock.data = {};
+    h.layout = undefined;
+    applyTeams([
+      { uid: 'mei', team: 'yp', displayName: 'Mei Tanaka' },
+      { uid: 'grace', team: 'campus', displayName: 'Grace Lim' },
+    ]);
+  });
+
+  // An untied contact (created by Mei) carrying an unanswered question.
+  function renderQuestion(threads: ThreadMessageWithContact[]) {
+    return render(
+      <MemoryRouter initialEntries={['/around']}>
+        <AroundTheTeam
+          contacts={[contact({})]}
+          interactions={[]}
+          threads={threads}
+          staffNameMap={staffNameMap}
+        />
+      </MemoryRouter>,
+    );
+  }
+
+  it('offers Reviewed, never Answered, on a question not addressed to the reader', () => {
+    renderQuestion([question({})]);
+    // The question reaches Around (the oversight branch)...
+    expect(screen.getByText(/Mei asked you something/)).toBeInTheDocument();
+    // ...and there the completion verb is always Reviewed.
+    expect(screen.getByRole('button', { name: /Reviewed/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Answered/ })).not.toBeInTheDocument();
+  });
+
+  it('completes as Reviewed, and the completed line reads Reviewed', () => {
+    renderQuestion([question({})]);
+    fireEvent.click(screen.getByRole('button', { name: /Reviewed/ }));
+
+    expect(InboxState.isCompleted('u1', 'att:contact:kofi')).toBe(true);
+    expect(screen.getByText('Reviewed')).toBeInTheDocument();
+    expect(screen.queryByText('Answered')).not.toBeInTheDocument();
+  });
+});
