@@ -48,16 +48,18 @@ export function presentCount(gathering: Event): number {
 }
 
 /** Tapping a name cycles. A roster member goes present -> absent -> present.
- *  Someone outside the roster goes unmarked -> present -> absent -> unmarked:
- *  their absence is never counted, so the second tap after present clears the
- *  mark and returns them to the walk-in search. */
+ *  Someone outside the roster goes unmarked -> present -> unmarked: their
+ *  absence is never counted or shown (the lists keep only roster members
+ *  under "We missed"), so the second tap clears the mark in one go and
+ *  returns them to the walk-in search (#1383). A lingering off-roster
+ *  `absent` is treated as no mark, so the next tap checks them in rather than
+ *  being consumed clearing it (#1641). */
 export function cycleAttendanceStatus(
   current: GatheringAttendanceStatus | undefined,
   onRoster: boolean = true,
 ): GatheringAttendanceStatus | undefined {
   if (onRoster) return current === "present" ? "absent" : "present";
-  if (current === "absent") return undefined;
-  return current === "present" ? "absent" : "present";
+  return current === "present" ? undefined : "present";
 }
 
 /** Applies one contact's new mark, returning a fresh record. `undefined`
