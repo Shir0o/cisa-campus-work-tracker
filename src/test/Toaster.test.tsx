@@ -112,6 +112,121 @@ describe('Toaster', () => {
     expect(screen.queryByText('Old Notification')).not.toBeInTheDocument();
   });
 
+  it('ignores an ISO-string createdAt older than session start (#1636)', () => {
+    setCurrentUser({ uid: 'user-123' });
+    render(<Toaster />);
+
+    const oldChange = {
+      type: 'added',
+      doc: {
+        id: 'toast-old-iso',
+        data: () => ({
+          userId: 'user-123',
+          title: 'Old ISO Reminder',
+          message: 'This should be ignored',
+          type: 'info',
+          read: false,
+          createdAt: new Date(Date.now() - 10000).toISOString(),
+        }),
+      },
+    };
+
+    act(() => {
+      mockOnSnapshotCallback({ docChanges: () => [oldChange] });
+    });
+
+    expect(screen.queryByText('Old ISO Reminder')).not.toBeInTheDocument();
+  });
+
+  it('toasts an ISO-string createdAt newer than session start (#1636)', () => {
+    setCurrentUser({ uid: 'user-123' });
+    render(<Toaster />);
+
+    const newChange = {
+      type: 'added',
+      doc: {
+        id: 'toast-new-iso',
+        data: () => ({
+          userId: 'user-123',
+          title: 'New ISO Reminder',
+          message: 'This should be shown',
+          type: 'warning',
+          read: false,
+          createdAt: new Date(Date.now() + 1000).toISOString(),
+        }),
+      },
+    };
+
+    act(() => {
+      mockOnSnapshotCallback({ docChanges: () => [newChange] });
+    });
+
+    expect(screen.getByText('New ISO Reminder')).toBeInTheDocument();
+  });
+
+  it('ignores notifications the current user dismissed in the bell (#1636)', () => {
+    setCurrentUser({ uid: 'user-123' });
+    render(<Toaster />);
+
+    const dismissedChange = {
+      type: 'added',
+      doc: {
+        id: 'toast-dismissed',
+        data: () => ({
+          userId: 'user-123',
+          title: 'Dismissed Reminder',
+          message: 'Set aside in the bell',
+          type: 'info',
+          read: false,
+          dismissedBy: ['user-123'],
+          createdAt: new Date(Date.now() + 1000).toISOString(),
+        }),
+      },
+    };
+
+    act(() => {
+      mockOnSnapshotCallback({ docChanges: () => [dismissedChange] });
+    });
+
+    expect(screen.queryByText('Dismissed Reminder')).not.toBeInTheDocument();
+  });
+
+  it('does not re-toast the same notification within a page load (#1636)', () => {
+    setCurrentUser({ uid: 'user-123' });
+    render(<Toaster />);
+
+    const newChange = {
+      type: 'added',
+      doc: {
+        id: 'toast-once',
+        data: () => ({
+          userId: 'user-123',
+          title: 'Once Only',
+          message: 'Should toast only once',
+          type: 'success',
+          read: false,
+          createdAt: new Date(Date.now() + 1000).toISOString(),
+        }),
+      },
+    };
+
+    act(() => {
+      mockOnSnapshotCallback({ docChanges: () => [newChange] });
+    });
+    expect(screen.getByText('Once Only')).toBeInTheDocument();
+
+    // Auto-dismiss, then the same doc re-enters the snapshot window.
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.queryByText('Once Only')).not.toBeInTheDocument();
+
+    act(() => {
+      mockOnSnapshotCallback({ docChanges: () => [newChange] });
+    });
+    expect(screen.queryByText('Once Only')).not.toBeInTheDocument();
+  });
+
   it('displays toast for new notifications and auto-removes after 5 seconds', () => {
     setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);

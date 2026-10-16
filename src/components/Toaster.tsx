@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Notification } from '../types';
@@ -7,11 +7,32 @@ import { X, Bell, Info, CheckCircle2, AlertCircle, UserPlus, Calendar } from 'lu
 import { cn } from '../lib/utils';
 import { Translate } from './Translate';
 
+/**
+ * Resolve a notification's creation time, accepting either a Firestore
+ * `Timestamp` (web/server-timestamp writers) or an ISO string (the reminder
+ * functions write strings). Falls back to "now" for a null/local
+ * `serverTimestamp()` so a genuinely new doc still toasts.
+ */
+export function notificationCreatedAt(createdAt: unknown): Date {
+  if (createdAt && typeof (createdAt as { toDate?: unknown }).toDate === 'function') {
+    return (createdAt as { toDate: () => Date }).toDate();
+  }
+  if (typeof createdAt === 'string') {
+    const parsed = new Date(createdAt);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
 export default function Toaster() {
   const [activeToasts, setActiveToasts] = useState<Notification[]>([]);
+  // Ids already toasted this page load, so a doc re-entering the snapshot
+  // window cannot toast a second time.
+  const toastedIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
 
     // Listen for NEW unread notifications
     // We only want to show toasts for notifications created AFTER the session started
@@ -19,7 +40,7 @@ export default function Toaster() {
 
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', auth.currentUser.uid),
+      where('userId', '==', uid),
       where('read', '==', false),
       orderBy('createdAt', 'desc'),
       limit(5)
@@ -27,16 +48,22 @@ export default function Toaster() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          const notification = { id: change.doc.id, ...data } as Notification;
-          
-          // Check if it's a recent notification (not an old unread one)
-          // serverTimestamp() is null in the initial local snapshot, treat as "now"
-          const createdAt = data.createdAt?.toDate?.() || new Date();
-          if (createdAt >= sessionStartTime) {
-            showToast(notification);
-          }
+        if (change.type !== 'added') return;
+        const data = change.doc.data();
+        const notification = { id: change.doc.id, ...data } as Notification;
+
+        // Bell set-asides never toast.
+        if (notification.dismissedBy?.includes(uid)) return;
+        // At most once per page load.
+        if (toastedIds.current.has(notification.id)) return;
+
+        // Only genuinely-new notifications toast. A string `createdAt` (the
+        // reminder writers) used to fall through to "now" and re-toast forever;
+        // `notificationCreatedAt` accepts both shapes.
+        const createdAt = notificationCreatedAt(data.createdAt);
+        if (createdAt >= sessionStartTime) {
+          toastedIds.current.add(notification.id);
+          showToast(notification);
         }
       });
     }, (error) => {
