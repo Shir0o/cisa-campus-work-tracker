@@ -1,4 +1,5 @@
 import { arrayUnion, doc, onSnapshot, setDoc } from "firebase/firestore";
+import * as core from "../../packages/core/src/data/toAsk";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import type { AskNoteLine, ToAskNotepad } from "../../packages/core/src/toAsk";
 
@@ -43,3 +44,25 @@ export async function appendToAskLine(uid: string, line: AskNoteLine): Promise<v
     handleFirestoreError(e, OperationType.WRITE, `toAskNotes/${uid}`);
   }
 }
+
+// Targeted writes — a merge write cannot remove a nested key, so Undo Asked
+// and the drafted write-back go through these (see packages/core/src/data/toAsk.ts).
+async function guarded(uid: string, write: () => unknown) {
+  try {
+    await write();
+  } catch (e) {
+    handleFirestoreError(e, OperationType.WRITE, `toAskNotes/${uid}`);
+  }
+}
+
+export const setToAskAskedAt = (uid: string, key: string, at: string | null) =>
+  guarded(uid, () => core.setToAskAskedAt(db, uid, key, at));
+
+export const setToAskRewording = (uid: string, key: string, text: string) =>
+  guarded(uid, () => core.setToAskRewording(db, uid, key, text));
+
+export const deleteToAskOverride = (uid: string, key: string) =>
+  guarded(uid, () => core.deleteToAskOverride(db, uid, key));
+
+export const replaceToAskDrafted = (uid: string, drafted: Record<string, { at: string }>) =>
+  guarded(uid, () => core.replaceToAskDrafted(db, uid, drafted));

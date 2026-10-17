@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -16,6 +16,12 @@ vi.mock('../App', () => ({ useOptionalLayout: () => undefined }));
 const h = vi.hoisted(() => ({
   contacts: [] as any[],
   save: vi.fn(),
+  askedAt: vi.fn(),
+  dropOverride: vi.fn(),
+  reword: vi.fn(),
+  replaceDrafted: vi.fn(),
+  notepadCb: null as null | ((n: any) => void),
+  deferNotepad: false,
   prefs: {} as any,
   threads: [] as any[],
   notepad: {} as any,
@@ -67,10 +73,15 @@ vi.mock('../lib/toAsk', async (importOriginal) => {
   return {
     ...actual,
     subscribeToAskNotepad: (_uid: string, cb: any) => {
-      cb(h.notepad);
+      h.notepadCb = cb;
+      if (!h.deferNotepad) cb(h.notepad);
       return vi.fn();
     },
     saveToAskNotepad: (...a: any[]) => h.save(...a),
+    setToAskAskedAt: (...a: any[]) => h.askedAt(...a),
+    deleteToAskOverride: (...a: any[]) => h.dropOverride(...a),
+    setToAskRewording: (...a: any[]) => h.reword(...a),
+    replaceToAskDrafted: (...a: any[]) => h.replaceDrafted(...a),
   };
 });
 
@@ -101,6 +112,7 @@ beforeEach(() => {
   h.threads = [];
   h.notepad = {};
   h.prefs = {};
+  h.deferNotepad = false;
 });
 
 describe('To ask page (#1649)', () => {
@@ -116,9 +128,59 @@ describe('To ask page (#1649)', () => {
     renderAsk();
     await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
     fireEvent.click(screen.getByLabelText('Mark asked'));
-    await waitFor(() => expect(h.save).toHaveBeenCalled());
-    const patch = h.save.mock.calls.find((c) => c[1]?.overrides)?.[1];
-    expect(patch.overrides['notReached|c1'].askedAt).toBeTruthy();
+    await waitFor(() =>
+      expect(h.askedAt).toHaveBeenCalledWith('ft', 'notReached|c1', expect.any(String)),
+    );
+  });
+
+  // Bug 3: a merge write never removes a nested key, so Undo used to no-op.
+  it('Undo Asked on a drafted line deletes its override in storage', async () => {
+    h.notepad = { overrides: { 'notReached|c1': { askedAt: ago(0) } } };
+    renderAsk();
+    await waitFor(() => expect(screen.getByLabelText('Asked — undo')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Asked — undo'));
+    await waitFor(() => expect(h.dropOverride).toHaveBeenCalledWith('ft', 'notReached|c1'));
+    expect(h.save.mock.calls.some((c) => c[1]?.overrides)).toBe(false);
+  });
+
+  it('Undo Asked on a reworded drafted line clears only askedAt', async () => {
+    h.notepad = { overrides: { 'notReached|c1': { askedAt: ago(0), text: 'Did Priya reply?' } } };
+    renderAsk();
+    await waitFor(() => expect(screen.getByLabelText('Asked — undo')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Asked — undo'));
+    await waitFor(() => expect(h.askedAt).toHaveBeenCalledWith('ft', 'notReached|c1', null));
+    expect(h.dropOverride).not.toHaveBeenCalled();
+  });
+
+  // Bug 4: the drafted write-back must be idempotent, or every snapshot of
+  // its own write would trigger another one.
+  it('writes the drafted keys once and not again after its own snapshot', async () => {
+    renderAsk();
+    await waitFor(() => expect(h.replaceDrafted).toHaveBeenCalledTimes(1));
+    const [uid, written] = h.replaceDrafted.mock.calls[0];
+    expect(uid).toBe('ft');
+    expect(Object.keys(written)).toEqual(['notReached|c1']);
+    act(() => h.notepadCb!({ drafted: written }));
+    act(() => h.notepadCb!({ drafted: { ...written } }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(h.replaceDrafted).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not write the drafted keys before the notepad has loaded', async () => {
+    h.deferNotepad = true;
+    renderAsk();
+    await waitFor(() => expect(screen.getByText('Priya Nair — not reached yet')).toBeTruthy());
+    expect(h.replaceDrafted).not.toHaveBeenCalled();
+    act(() => h.notepadCb!({}));
+    await waitFor(() => expect(h.replaceDrafted).toHaveBeenCalledTimes(1));
+  });
+
+  it('drops a stored drafted key the derivation no longer has', async () => {
+    const at = ago(5);
+    h.notepad = { drafted: { 'notReached|c1': { at }, 'notReached|gone': { at: ago(40) } } };
+    renderAsk();
+    await waitFor(() => expect(h.replaceDrafted).toHaveBeenCalledTimes(1));
+    expect(h.replaceDrafted.mock.calls[0][1]).toEqual({ 'notReached|c1': { at } });
   });
 
   it('rewords a drafted line, keeping the signal key', async () => {
@@ -128,9 +190,9 @@ describe('To ask page (#1649)', () => {
     const input = screen.getByDisplayValue('Priya Nair — not reached yet');
     fireEvent.change(input, { target: { value: 'Did Priya reply?' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(h.save).toHaveBeenCalled());
-    const patch = h.save.mock.calls.find((c) => c[1]?.overrides)?.[1];
-    expect(patch.overrides['notReached|c1'].text).toBe('Did Priya reply?');
+    await waitFor(() =>
+      expect(h.reword).toHaveBeenCalledWith('ft', 'notReached|c1', 'Did Priya reply?'),
+    );
   });
 
   it('adds a hand-written line', async () => {

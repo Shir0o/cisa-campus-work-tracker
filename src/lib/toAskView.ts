@@ -57,6 +57,7 @@ export function toAskMessagesOf(threads: ThreadMessageWithContact[]): ToAskThrea
     at: m.at,
     closedAt: m.closedAt ?? null,
     closedByName: m.closedByName ?? null,
+    parentId: m.parentId ?? null,
   }));
 }
 
