@@ -79,10 +79,15 @@ describe('User Feedback Feature', () => {
       });
     });
 
-    it('renders the feedback FAB button', () => {
+    it('renders the feedback FAB button with a message-square-plus icon, morphing to close when open', async () => {
+      const userAct = userEvent.setup();
       render(<FeedbackFAB />);
       const fabBtn = document.querySelector('#feedback-fab-btn');
       expect(fabBtn).toBeInTheDocument();
+      expect(fabBtn?.querySelector('svg')).toHaveClass('lucide-message-square-plus');
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      expect(fabBtn?.querySelector('svg')).toHaveClass('lucide-x');
     });
 
     it('opens a floating panel anchored above the trigger, labelled with its title (#1578)', async () => {
