@@ -805,4 +805,31 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await me.click();
     await expect(story.getByRole('button', { name: /^by: me$/i })).toBeVisible();
   });
+
+  test('To ask lists a not-reached person under its Trainee (#1649)', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await gotoHome(page);
+
+    // The My Day pointer card is the door in.
+    const card = page.locator('a[href="/ask"]').first();
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    await card.click();
+    await expect(page).toHaveURL(/\/ask$/, { timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'To ask' })).toBeVisible({ timeout: 10_000 });
+
+    // The seeded "Untied Recent" (added by the YP Trainee, never reached) is
+    // drafted under that Trainee, using the same whole-team rule My Day reads.
+    const caleb = page.getByRole('region', { name: 'Caleb Owusu' });
+    await expect(caleb).toBeVisible({ timeout: 10_000 });
+    await expect(caleb.getByText('Untied Recent — not reached yet')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('a Trainee cannot open To ask (#1649)', async ({ page }) => {
+    await signInAs(page, 'trainee');
+    await page.goto('/ask');
+    // The route guard bounces them home; the notepad never renders.
+    await waitForShell(page);
+    await expect(page.getByRole('heading', { name: 'To ask' })).not.toBeVisible({ timeout: 5_000 });
+    await expect(page).not.toHaveURL(/\/ask$/);
+  });
 });

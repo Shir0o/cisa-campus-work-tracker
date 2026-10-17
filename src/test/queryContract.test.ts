@@ -50,6 +50,8 @@ import {
 } from '../../packages/core/src/data/contacts';
 import { addThreadMessage, subscribeAllThreads } from '../../packages/core/src/data/threads';
 import { subscribeAsks, subscribeStaffAsks } from '../../packages/core/src/data/asks';
+import { subscribeToAskNotepad, saveToAskNotepad } from '../../packages/core/src/data/toAsk';
+import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
 import { submitSignUp } from '../../packages/core/src/data/signup';
@@ -205,6 +207,12 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       await seedDoc(db, 'asks/q-other', {
         parentId: null, owner: OTHER_TRAINEE, from: OTHER_TRAINEE, fromName: 'Other',
         kind: 'question', body: 'theirs', at: ISO,
+      });
+
+      // The Full-timer's private To ask notepad (#1649).
+      await seedDoc(db, 'toAskNotes/admin1', {
+        teamFilter: 'all',
+        lines: [{ id: 'n1', text: 'Ask Jae about Sam', group: 'jae', createdAt: ISO }],
       });
     });
 
@@ -465,5 +473,31 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     const admin = await awaitSnapshot<ThreadMessageWithContact[]>((cb, onError) => subscribeAllThreads(dbFor(ADMIN), cb, onError));
     expect(admin.ok).toBe(true);
     if (admin.ok) expect(admin.value.length).toBeGreaterThan(0);
+  });
+
+  // ── Row 22: the To ask notepad is private to its owning Full-timer (#1649) ─
+  // The page, My Day pointer card and the contact overflow all run these exact
+  // builders. If the write shape drifts from the rule, an empty-looking page
+  // would silently reject the Full-timer's own ticks.
+  it('row 22 — the owning Full-timer reads and writes their notepad', async () => {
+    const read = await awaitSnapshot<ToAskNotepad>((cb, onError) =>
+      subscribeToAskNotepad(dbFor(ADMIN), ADMIN, cb, onError),
+    );
+    expect(read.ok).toBe(true);
+    await expect(saveToAskNotepad(dbFor(ADMIN), ADMIN, { teamFilter: 'yp' })).resolves.toBeUndefined();
+  });
+
+  it('row 22 — a Trainee and another Full-timer are denied the notepad (negative)', async () => {
+    const trainee = await awaitSnapshot<ToAskNotepad>((cb, onError) =>
+      subscribeToAskNotepad(dbFor(TRAINEE), ADMIN, cb, onError),
+    );
+    expect(trainee.ok).toBe(false);
+    await expect(saveToAskNotepad(dbFor(TRAINEE), ADMIN, { teamFilter: 'all' })).rejects.toBeTruthy();
+
+    const viewer = await awaitSnapshot<ToAskNotepad>((cb, onError) =>
+      subscribeToAskNotepad(dbFor(VIEWER), ADMIN, cb, onError),
+    );
+    expect(viewer.ok).toBe(false);
+    await expect(saveToAskNotepad(dbFor(VIEWER), ADMIN, { teamFilter: 'all' })).rejects.toBeTruthy();
   });
 });

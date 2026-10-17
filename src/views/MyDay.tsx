@@ -94,6 +94,7 @@ import NotReachedCard from "../components/landing/NotReachedCard";
 import BnpbReviewCard from "../components/landing/BnpbReviewCard";
 import OnYouCard from "../components/landing/OnYouCard";
 import PointerCard from "../components/landing/PointerCard";
+import ToAskPointerCard from "../components/landing/ToAskPointerCard";
 import { subscribeInboxState } from "../lib/inboxState";
 import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
@@ -1262,12 +1263,17 @@ export default function MyDay() {
             )}
           </div>
           {role === "admin" && uid && (
-            <div className="lg:col-span-4 min-w-0">
+            <div className="lg:col-span-4 min-w-0 flex flex-col gap-6">
               <PointerCard
                 contacts={contacts}
                 interactions={interactions}
                 threads={threads}
                 personalContactIds={personalContactIds}
+              />
+              <ToAskPointerCard
+                contacts={contacts}
+                interactions={interactions}
+                threads={threads}
               />
             </div>
           )}
