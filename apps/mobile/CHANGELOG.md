@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.11.0...v1.11.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **mobile-e2e:** fix curl flag from -FsSL to -fsSL for Maestro installation ([#1632](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1632)) ([#1642](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1642)) ([a67f7c5](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a67f7c5d0a570fcb7874bf93ec4ac7149628720f))
+
 ## [1.11.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.10.0...v1.11.0) (2026-10-14)
 
 
