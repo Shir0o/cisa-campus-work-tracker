@@ -32,6 +32,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   setDoc,
@@ -50,7 +51,14 @@ import {
 } from '../../packages/core/src/data/contacts';
 import { addThreadMessage, subscribeAllThreads } from '../../packages/core/src/data/threads';
 import { subscribeAsks, subscribeStaffAsks } from '../../packages/core/src/data/asks';
-import { subscribeToAskNotepad, saveToAskNotepad } from '../../packages/core/src/data/toAsk';
+import {
+  subscribeToAskNotepad,
+  saveToAskNotepad,
+  setToAskAskedAt,
+  deleteToAskOverride,
+  setToAskRewording,
+  replaceToAskDrafted,
+} from '../../packages/core/src/data/toAsk';
 import type { ToAskNotepad } from '../../packages/core/src/toAsk';
 import { subscribeFullTimers, subscribeUsers, type FullTimerSummary } from '../../packages/core/src/data/users';
 import { saveSeasonSettings } from '../../packages/core/src/data/seasons';
@@ -65,6 +73,7 @@ import type { ThreadMessageWithContact } from '../../packages/core/src/threads';
 import { nullEmailContact, noOwnerContact } from './fixtures/contacts';
 
 const ADMIN = 'admin1';
+const ADMIN_FRESH = 'admin2';
 const TRAINEE = 'manager1';
 const OTHER_TRAINEE = 'manager2';
 const STUDENT = 'operator1';
@@ -153,6 +162,7 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
       // Approved roster. manager = trainee (scoped); admin/operator/viewer see
       // every person; pending is approved:false.
       await seedUser(db, ADMIN, { role: 'admin', approved: true });
+      await seedUser(db, ADMIN_FRESH, { role: 'admin', approved: true });
       await seedUser(db, TRAINEE, { role: 'manager', approved: true });
       await seedUser(db, OTHER_TRAINEE, { role: 'manager', approved: true });
       await seedUser(db, STUDENT, { role: 'operator', approved: true });
@@ -499,5 +509,48 @@ describeRules('query contracts against the rules emulator (#1474)', () => {
     );
     expect(viewer.ok).toBe(false);
     await expect(saveToAskNotepad(dbFor(VIEWER), ADMIN, { teamFilter: 'all' })).rejects.toBeTruthy();
+  });
+
+  // Row 22b: a merge write never removes a nested key, so Undo Asked and the
+  // drafted write-back used to leave stale keys behind (#1649). Signal keys
+  // contain `|`, so the targeted writes must address them by FieldPath.
+  it('row 22 — the owner can set then clear a drafted line’s askedAt, and it is gone', async () => {
+    const db = dbFor(ADMIN);
+    const key = 'ask|c-mine|m1';
+    const ref = doc(db, 'toAskNotes', ADMIN);
+    await setToAskAskedAt(db, ADMIN, key, ISO);
+    await setToAskRewording(db, ADMIN, 'notReached|c-mine', 'Did they reply?');
+    expect((await getDoc(ref)).data()?.overrides?.[key]).toEqual({ askedAt: ISO });
+
+    await setToAskAskedAt(db, ADMIN, key, null);
+    expect((await getDoc(ref)).data()?.overrides?.[key]).toEqual({});
+    await deleteToAskOverride(db, ADMIN, key);
+    const overrides = (await getDoc(ref)).data()?.overrides ?? {};
+    expect(key in overrides).toBe(false);
+    expect(overrides['notReached|c-mine']).toEqual({ text: 'Did they reply?' });
+
+    await replaceToAskDrafted(db, ADMIN, { [key]: { at: ISO }, 'notReached|c-mine': { at: ISO } });
+    await replaceToAskDrafted(db, ADMIN, { 'notReached|c-mine': { at: ISO } });
+    expect((await getDoc(ref)).data()?.drafted).toEqual({ 'notReached|c-mine': { at: ISO } });
+  });
+
+  it('row 22 — the targeted writes work before the notepad doc exists', async () => {
+    const db = dbFor(ADMIN_FRESH);
+    await setToAskAskedAt(db, ADMIN_FRESH, 'notReached|c-mine', ISO);
+    await replaceToAskDrafted(db, ADMIN_FRESH, { 'notReached|c-mine': { at: ISO } });
+    const data = (await getDoc(doc(db, 'toAskNotes', ADMIN_FRESH))).data();
+    expect(data?.overrides?.['notReached|c-mine']).toEqual({ askedAt: ISO });
+    expect(data?.drafted).toEqual({ 'notReached|c-mine': { at: ISO } });
+  });
+
+  it('row 22 — a Trainee and another Full-timer are denied the targeted writes (negative)', async () => {
+    for (const uid of [TRAINEE, ADMIN_FRESH]) {
+      const db = dbFor(uid);
+      await expect(setToAskAskedAt(db, ADMIN, 'notReached|c-mine', ISO)).rejects.toBeTruthy();
+      await expect(setToAskAskedAt(db, ADMIN, 'notReached|c-mine', null)).rejects.toBeTruthy();
+      await expect(deleteToAskOverride(db, ADMIN, 'notReached|c-mine')).rejects.toBeTruthy();
+      await expect(setToAskRewording(db, ADMIN, 'notReached|c-mine', 'x')).rejects.toBeTruthy();
+      await expect(replaceToAskDrafted(db, ADMIN, {})).rejects.toBeTruthy();
+    }
   });
 });

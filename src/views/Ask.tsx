@@ -17,8 +17,11 @@ import {
   GENERAL_GROUP,
   subscribeToAskNotepad,
   saveToAskNotepad,
+  setToAskAskedAt,
+  setToAskRewording,
+  deleteToAskOverride,
+  replaceToAskDrafted,
   type AskNoteLine,
-  type AskNoteOverride,
   type ToAskLine,
   type ToAskNotepad,
   type ToAskTeamFilter,
@@ -58,29 +61,50 @@ export default function Ask() {
   const [notepad, setNotepad] = useState<ToAskNotepad>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [draftTextValue, setDraftTextValue] = useState("");
+  // Which feeds have delivered at least once — the drafted write-back waits
+  // for all of them (see below).
+  const [arrived, setArrived] = useState<ReadonlySet<string>>(() => new Set());
+  const markArrived = (feed: string) =>
+    setArrived((s) => (s.has(feed) ? s : new Set(s).add(feed)));
+  const loaded = arrived.size === 5;
 
   useEffect(() => {
     const unsubContacts = onSnapshot(
       query(collection(db, "contacts")),
-      (snap) => setContacts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Contact)),
+      (snap) => {
+        setContacts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Contact));
+        markArrived("contacts");
+      },
       (e) => handleFirestoreError(e, OperationType.LIST, "contacts"),
     );
     const unsubInteractions = onSnapshot(
       query(collectionGroup(db, "interactions"), orderBy("createdAt", "desc"), limit(500)),
-      (snap) =>
+      (snap) => {
         setInteractions(
           snap.docs.map(
             (d) => ({ id: d.id, ...(d.data() as object), contactId: d.ref.path.split("/")[1] }) as Interaction,
           ),
-        ),
+        );
+        markArrived("interactions");
+      },
       (e) => handleFirestoreError(e, OperationType.LIST, "interactions (collectionGroup)"),
     );
     const unsubEvents = onSnapshot(
       query(collection(db, "events")),
-      (snap) => setEvents(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Event)),
+      (snap) => {
+        setEvents(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Event));
+        markArrived("events");
+      },
       (e) => handleFirestoreError(e, OperationType.LIST, "events"),
     );
-    const unsubThreads = subscribeAllThreads(setThreads, undefined, { includeTeam: true });
+    const unsubThreads = subscribeAllThreads(
+      (next) => {
+        setThreads(next);
+        markArrived("threads");
+      },
+      undefined,
+      { includeTeam: true },
+    );
     return () => {
       unsubContacts();
       unsubInteractions();
@@ -91,7 +115,10 @@ export default function Ask() {
 
   useEffect(() => {
     if (!uid) return;
-    return subscribeToAskNotepad(uid, setNotepad);
+    return subscribeToAskNotepad(uid, (next) => {
+      setNotepad(next);
+      markArrived("notepad");
+    });
   }, [uid]);
 
   const nameByUid = useMemo(() => {
@@ -142,24 +169,24 @@ export default function Ask() {
 
   // Persist the drafted keys the derivation has seen, so a line that clears
   // without ever being touched can still say what cleared it for a week.
+  // Replace semantics, so a key the derivation dropped goes too; written only
+  // when the key sets differ, so the snapshot of this write never re-fires it.
+  // Waits for every feed and the notepad, or a half-loaded derivation would
+  // replace the stored map with a partial one.
   useEffect(() => {
-    if (!uid) return;
-    const stored = notepad.drafted ?? {};
-    const next = view.drafted;
-    const changed =
-      Object.keys(next).length !== Object.keys(stored).length ||
-      Object.keys(next).some((k) => !stored[k]);
-    if (changed) void saveToAskNotepad(uid, { drafted: next });
-  }, [uid, view.drafted, notepad.drafted]);
+    if (!uid || !loaded) return;
+    const stored = Object.keys(notepad.drafted ?? {});
+    const next = Object.keys(view.drafted);
+    const storedSet = new Set(stored);
+    const changed = stored.length !== next.length || next.some((k) => !storedSet.has(k));
+    if (changed) void replaceToAskDrafted(uid, view.drafted);
+  }, [uid, loaded, view.drafted, notepad.drafted]);
 
   const contactMap = useMemo(() => {
     const m = new Map<string, Contact>();
     for (const c of contacts) m.set(c.id, c);
     return m;
   }, [contacts]);
-
-  const writeOverrides = (next: Record<string, AskNoteOverride>) =>
-    void saveToAskNotepad(uid, { overrides: next });
 
   const markAsked = (line: ToAskLine) => {
     if (line.kind === "handwritten") {
@@ -169,9 +196,7 @@ export default function Ask() {
       void saveToAskNotepad(uid, { lines });
       return;
     }
-    const overrides = { ...(notepad.overrides ?? {}) };
-    overrides[line.key] = { ...overrides[line.key], askedAt: nowIso() };
-    writeOverrides(overrides);
+    void setToAskAskedAt(uid, line.key, nowIso());
   };
 
   const undoAsked = (line: ToAskLine) => {
@@ -182,11 +207,8 @@ export default function Ask() {
       void saveToAskNotepad(uid, { lines });
       return;
     }
-    const overrides = { ...(notepad.overrides ?? {}) };
-    const { askedAt: _drop, ...rest } = overrides[line.key] ?? {};
-    if (typeof rest.text === "string") overrides[line.key] = rest;
-    else delete overrides[line.key];
-    writeOverrides(overrides);
+    if (typeof notepad.overrides?.[line.key]?.text === "string") void setToAskAskedAt(uid, line.key, null);
+    else void deleteToAskOverride(uid, line.key);
   };
 
   const commitReword = (line: ToAskLine) => {
@@ -198,9 +220,7 @@ export default function Ask() {
       void saveToAskNotepad(uid, { lines });
       return;
     }
-    const overrides = { ...(notepad.overrides ?? {}) };
-    overrides[line.key] = { ...overrides[line.key], text: draftTextValue };
-    writeOverrides(overrides);
+    void setToAskRewording(uid, line.key, draftTextValue);
   };
 
   const addLine = (group: string, text: string) => {
