@@ -315,15 +315,17 @@ Grace is **[[free]] indeed**, and that changes everything.`;
       expect((s.content[0] as { md: string }).md).toContain('**[[free]] indeed**');
     });
 
-    it('multiple prompts: the last one wins (legacy behavior kept)', () => {
+    it('multiple prompts coexist as prompt blocks in authored order (ADR 0043)', () => {
       const md = `## Two prompts
 Question: First?
 
 Discuss: Second wins.`;
       const s = parseMeeting(md)[0];
       expect(s.content).toHaveLength(2);
-      expect(s.content[0]).toMatchObject({ kind: 'prose', md: 'question: First?' });
+      expect(s.content[0]).toMatchObject({ kind: 'prompt', prompt: { kind: 'question', text: 'First?' } });
       expect(s.content[1]).toMatchObject({ kind: 'prompt', prompt: { kind: 'discuss', text: 'Second wins.' } });
+      // The legacy summary field still reflects the last prompt.
+      expect(s.prompt).toMatchObject({ kind: 'discuss', text: 'Second wins.' });
     });
 
     it('a prompt between passages still yields two passage blocks around it (order preserved)', () => {
