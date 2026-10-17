@@ -47,7 +47,7 @@ export async function appendToAskLine(uid: string, line: AskNoteLine): Promise<v
 
 // Targeted writes — a merge write cannot remove a nested key, so Undo Asked
 // and the drafted write-back go through these (see packages/core/src/data/toAsk.ts).
-async function guarded(uid: string, write: () => Promise<void>): Promise<void> {
+async function guarded(uid: string, write: () => unknown) {
   try {
     await write();
   } catch (e) {
