@@ -53,6 +53,8 @@ export interface ToAskThreadMessage {
   /** A Follow-up ask is cleared once someone followed up or the asker withdrew. */
   closedAt?: string | null;
   closedByName?: string | null;
+  /** The message this one replies to; absent on a top-level message. */
+  parentId?: string | null;
 }
 
 /** An Interaction, reduced to what names whoever cleared a Not-reached line. */
@@ -237,16 +239,18 @@ function openSignals(input: ToAskInput, nowMs: number): OpenSignal[] {
   }
 
   // 2 & 3. The reminder rule's two signals. A Follow-up ask is a `nudge`; a
-  //    question is answered once anyone else replies on its level.
-  const level = (m: ToAskThreadMessage) => `${m.contactId}|${m.interactionId ?? ""}`;
-  const messagesByLevel = new Map<string, ToAskThreadMessage[]>();
+  //    question is answered once someone else replies to it (ADR 0033) — a
+  //    reply is a message whose parentId is the question's id. Only top-level
+  //    messages can start a signal.
+  const repliesTo = new Map<string, ToAskThreadMessage[]>();
   for (const m of messages) {
-    const k = level(m);
-    const list = messagesByLevel.get(k);
+    if (!m.parentId) continue;
+    const list = repliesTo.get(m.parentId);
     if (list) list.push(m);
-    else messagesByLevel.set(k, [m]);
+    else repliesTo.set(m.parentId, [m]);
   }
   for (const m of messages) {
+    if (m.parentId) continue;
     if (m.kind === "nudge") {
       if (m.closedAt) continue;
       if (campusCalendarDaysSince(m.at, nowMs) < REMIND_AFTER_CALENDAR_DAYS) continue;
@@ -260,9 +264,7 @@ function openSignals(input: ToAskInput, nowMs: number): OpenSignal[] {
         mine: m.from === uid,
       });
     } else if (m.kind === "question") {
-      const replied = (messagesByLevel.get(level(m)) ?? []).some(
-        (r) => r.from !== m.from && (parseMs(r.at) ?? 0) > (parseMs(m.at) ?? 0),
-      );
+      const replied = (repliesTo.get(m.id) ?? []).some((r) => r.from !== m.from);
       if (replied) continue;
       if (campusCalendarDaysSince(m.at, nowMs) < REMIND_AFTER_CALENDAR_DAYS) continue;
       signals.push({
@@ -319,11 +321,7 @@ function clearedInfo(
   // question
   const reply = ctx.messages
     .filter(
-      (r) =>
-        r.contactId === message.contactId &&
-        (r.interactionId ?? "") === (message.interactionId ?? "") &&
-        r.from !== message.from &&
-        (parseMs(r.at) ?? 0) > (parseMs(message.at) ?? 0),
+      (r) => r.parentId === message.id && r.from !== message.from,
     )
     .sort((a, b) => (parseMs(a.at) ?? 0) - (parseMs(b.at) ?? 0))[0];
   if (!reply) return null;
@@ -360,6 +358,8 @@ export function buildToAsk(input: ToAskInput): ToAskView {
   for (const t of input.trainees) traineeByUid.set(t.uid, t);
 
   const interactions = input.interactions ?? [];
+  /** Every drafted key, whatever the team filter hides — persisted back. */
+  const drafted: Record<string, { at: string }> = {};
   const signals = openSignals(input, nowMs);
   const signalByKey = new Map<string, OpenSignal>();
   for (const s of signals) signalByKey.set(s.key, s);
@@ -440,6 +440,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       continue;
     }
     if (askedAt) clearedCount += 1;
+    drafted[s.key] = storedDrafted[s.key] ?? { at: s.at };
 
     const tied = input.trainees.filter((t) => isTiedTo(person, t.uid));
     if (tied.length === 0) pushLine(NO_TRAINEE_GROUP, line);
@@ -482,6 +483,7 @@ export function buildToAsk(input: ToAskInput): ToAskView {
       signal: meta,
     };
     clearedCount += 1;
+    drafted[key] = storedDrafted[key] ?? { at };
     const tied = input.trainees.filter((t) => isTiedTo(person, t.uid));
     if (tied.length === 0) pushLine(NO_TRAINEE_GROUP, line);
     else for (const t of tied) pushLine(t.uid, line);
@@ -556,13 +558,9 @@ export function buildToAsk(input: ToAskInput): ToAskView {
 
   // ── The count: open lines, once per signal key ─────────────────────────────
   const openKeys = new Set<string>();
-  const drafted: Record<string, { at: string }> = {};
   for (const group of groups) {
     for (const line of group.lines) {
       if (line.state === "open") openKeys.add(line.key);
-      if (line.signalKey) {
-        drafted[line.signalKey] = storedDrafted[line.signalKey] ?? { at: line.at };
-      }
     }
   }
   const openCount = openKeys.size;

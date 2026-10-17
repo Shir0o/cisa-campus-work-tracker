@@ -134,7 +134,7 @@ describe("buildToAsk — the three signals draft lines", () => {
         people: [person("c1", { carers: ["ana"] })],
         messages: [
           message({ id: "q1", contactId: "c1", kind: "question", at: ago(4), from: "kate", fromName: "Kate" }),
-          message({ id: "r1", contactId: "c1", kind: "comment", at: ago(3), from: "jae", fromName: "Jae" }),
+          message({ id: "r1", contactId: "c1", kind: "comment", at: ago(3), from: "jae", fromName: "Jae", parentId: "q1" }),
         ],
       }),
     );
@@ -322,7 +322,7 @@ describe("buildToAsk — ADR 0046 and the lifecycle", () => {
         people: [person("c1", { name: "Leo", createdBy: "ana" })],
         messages: [
           message({ id: "q1", contactId: "c1", kind: "question", at: ago(6), from: "kate" }),
-          message({ id: "r1", contactId: "c1", kind: "comment", at: ago(2), from: "ana", fromName: "Ana" }),
+          message({ id: "r1", contactId: "c1", kind: "comment", at: ago(2), from: "ana", fromName: "Ana", parentId: "q1" }),
         ],
         notepad: { drafted: { "question|c1|q1": { at: ago(6) } } },
       }),
@@ -330,6 +330,46 @@ describe("buildToAsk — ADR 0046 and the lifecycle", () => {
     const line = view.groups.find((g) => g.id === "ana")!.lines[0];
     expect(line.state).toBe("cleared");
     expect(line.clearedBy?.reason).toBe("answered");
+  });
+
+  it("keeps a question open for a later top-level message that is not a reply (#1649)", () => {
+    const NOW2 = new Date("2026-10-16T19:00:00.000Z");
+    const q = message({ id: "q1", contactId: "c1", kind: "question", at: "2026-10-10T18:00:00.000Z", from: "kate", fromName: "Kate" });
+    const note = message({ id: "n1", contactId: "c1", kind: "note", at: "2026-10-11T18:00:00.000Z", from: "jae", fromName: "Jae" });
+    const reply = message({ id: "r1", contactId: "c1", kind: "comment", at: "2026-10-11T18:00:00.000Z", from: "jae", fromName: "Jae", parentId: "q1" });
+    const people = [person("c1", { name: "Leo", carers: ["jae"] })];
+    const drafted = { "question|c1|q1": { at: "2026-10-10T18:00:00.000Z" } };
+
+    expect(buildToAsk(base({ now: NOW2, people, messages: [q, note] })).openCount).toBe(1);
+
+    const view = buildToAsk(base({ now: NOW2, people, messages: [q, reply], notepad: { drafted } }));
+    expect(view.openCount).toBe(0);
+    const line = view.groups.find((g) => g.id === "jae")!.lines[0];
+    expect(line.state).toBe("cleared");
+    expect(line.clearedBy).toMatchObject({ reason: "answered", at: reply.at });
+  });
+
+  it("does not let the asker's own reply answer a question, nor a reply draft a signal (#1649)", () => {
+    const view = buildToAsk(
+      base({
+        people: [person("c1", { carers: ["jae"] })],
+        messages: [
+          message({ id: "q1", contactId: "c1", kind: "question", at: ago(6), from: "kate" }),
+          message({ id: "r1", contactId: "c1", kind: "comment", at: ago(5), from: "kate", parentId: "q1" }),
+          message({ id: "r2", contactId: "c1", kind: "question", at: ago(5), from: "kate", parentId: "q1" }),
+          message({ id: "r3", contactId: "c1", kind: "nudge", at: ago(5), from: "kate", parentId: "q1" }),
+        ],
+      }),
+    );
+    expect(view.openCount).toBe(1);
+  });
+
+  it("keeps drafted keys for groups the team filter hides (#1649)", () => {
+    const view = buildToAsk(
+      base({ filter: "campus", people: [fresh("c1", { createdBy: "hana" })] }),
+    );
+    expect(view.groups.find((g) => g.id === "hana")).toBeUndefined();
+    expect(Object.keys(view.drafted)).toEqual(["notReached|c1"]);
   });
 
   it("returns the drafted keys to persist back", () => {

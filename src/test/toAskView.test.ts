@@ -75,6 +75,15 @@ describe('toAskView — assembling the derivation input', () => {
     expect(rows[0]).toMatchObject({ id: 't1', closedAt: '2026-10-14T00:00:00.000Z', closedByName: 'Jae' });
   });
 
+  it('carries the parentId a reply points at', () => {
+    const rows = toAskMessagesOf([
+      { id: 'r1', contactId: 'c1', from: 'jae', kind: 'comment', body: 'b', at: '2026-10-10T00:00:00.000Z', parentId: 'q1' } as ThreadMessageWithContact,
+      { id: 'q1', contactId: 'c1', from: 'ft', kind: 'question', body: 'b', at: '2026-10-09T00:00:00.000Z' } as ThreadMessageWithContact,
+    ]);
+    expect(rows[0].parentId).toBe('q1');
+    expect(rows[1].parentId).toBeNull();
+  });
+
   describe('toAskTraineesOf', () => {
     beforeEach(() => {
       applyTeams([
