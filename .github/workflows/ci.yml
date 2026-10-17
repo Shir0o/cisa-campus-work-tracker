@@ -40,6 +40,11 @@ jobs:
         continue-on-error: true
         run: npm run check:seams -- --warn HEAD^1
       - run: npm run test:coverage
+      # The root vitest config excludes packages/**, so @cisa/core's own suite
+      # needs its own step; it resolves vitest from the root install.
+      - name: Core tests
+        run: npm test
+        working-directory: packages/core
       - run: npm run build
 
   mobile-test:

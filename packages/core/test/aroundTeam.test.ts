@@ -46,11 +46,19 @@ describe("aroundTeamStackIds", () => {
     expect(ids).toEqual(["att:contact:nobody"]);
   });
 
-  it("moves a card with the reader's own unanswered question to On you, and back once answered", () => {
+  it("moves a card with the reader's own unanswered question to On you; a reply keeps it there while In the Conversation (#1604)", () => {
     const asked = { id: "q1", contactId: "theirs", from: ME, kind: "question", at: T0 };
     expect(aroundTeamStackIds({ ...base, threads: [asked] })).toEqual(["att:contact:nobody"]);
+    // The reply lands in a stream the reader wrote in within 14 days, so the
+    // reader is In the Conversation and the card is still theirs.
     const answered = { id: "r1", contactId: "theirs", from: "tr1", kind: "comment", at: LATER };
-    expect(aroundTeamStackIds({ ...base, threads: [asked, answered] }).sort()).toEqual([
+    expect(aroundTeamStackIds({ ...base, threads: [asked, answered] })).toEqual(["att:contact:nobody"]);
+  });
+
+  it("returns the card to Around once the answer comes after the conversation window", () => {
+    const asked = { id: "q1", contactId: "theirs", from: ME, kind: "question", at: T0 };
+    const lateAnswer = { id: "r1", contactId: "theirs", from: "tr1", kind: "comment", at: "2026-06-16T12:00:00.000Z" };
+    expect(aroundTeamStackIds({ ...base, threads: [asked, lateAnswer] }).sort()).toEqual([
       "att:contact:nobody",
       "att:contact:theirs",
     ]);
