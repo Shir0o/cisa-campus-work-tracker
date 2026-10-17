@@ -2443,9 +2443,27 @@ describe('CoordinationNotes', () => {
           expect(screen.getByText(/Notas para el equipo/i)).toBeInTheDocument();
         });
 
-        // The edit/view translation toggle button is removed (#1579): translation view is governed directly by global language
-        expect(screen.queryByRole('button', { name: /ver traducción|view translation/i })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /^edit$|^editar$/i })).not.toBeInTheDocument();
+        // The edit/view translation toggle button lets full-timers toggle between translation and editing (#1661)
+        const editBtn = screen.getByRole('button', { name: /^edit$|^editar$/i });
+        expect(editBtn).toBeInTheDocument();
+
+        // Clicking Markdown button shows the raw markdown textarea (#1661)
+        const mdBtn = screen.getByRole('button', { name: /código markdown|markdown/i });
+        fireEvent.click(mdBtn);
+        expect(document.getElementById('markdown-source-textarea')).toBeInTheDocument();
+
+        // Clicking Markdown button again hides it
+        fireEvent.click(mdBtn);
+        expect(document.getElementById('markdown-source-textarea')).not.toBeInTheDocument();
+
+        // Toggle into edit mode
+        fireEvent.click(editBtn);
+        expect(screen.getByPlaceholderText(/untitled page|página sin título/i)).toHaveValue('Cuidado de miércoles');
+
+        // Toggle back to translation view
+        const viewTransBtn = screen.getByRole('button', { name: /ver traducción|view translation/i });
+        fireEvent.click(viewTransBtn);
+        expect(screen.getByRole('heading', { name: 'Cuidado de miércoles' })).toBeInTheDocument();
 
         // Promote to note in Spanish prefills translated title and body
         const promoteBtn = screen.getByRole('button', { name: /keep as a note|guardar como nota/i });
