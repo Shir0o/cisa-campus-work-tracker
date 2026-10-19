@@ -63,3 +63,49 @@ describe('ContactComposer time picker (#1495)', () => {
     expect(yesterday).toHaveTextContent(/^Yesterday, \d{1,2}:\d{2}\s?(AM|PM)$/i);
   });
 });
+
+describe('ContactComposer — edit variant (#1673, #1674)', () => {
+  const renderEdit = (value: ComposerValue, onCancel = () => {}) =>
+    render(
+      <ContactComposer
+        open
+        variant="edit"
+        value={value}
+        onChange={() => {}}
+        onOpen={() => {}}
+        onCancel={onCancel}
+        onSubmit={(e) => e.preventDefault()}
+        submitting={false}
+        canLogOnBehalf
+        teamMembers={[{ id: 'jae', name: 'Jae' }]}
+        firstName="Sam"
+      />,
+    );
+
+  it('edits an interaction with the chip row and Save, no kind switch or who-reached picker', () => {
+    renderEdit({ ...emptyComposer(), text: 'Coffee', type: 'meeting' });
+
+    expect(screen.getByRole('button', { name: 'Meeting' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /kind/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Prayer' })).toBeNull();
+    expect(screen.queryByText(/Jae|By me/)).toBeNull();
+  });
+
+  it('edits a prayer with its request, context and Save prayer', () => {
+    renderEdit({ ...emptyComposer(), mode: 'prayer', text: 'For her interview', context: 'Nervous.' });
+
+    expect(screen.getByText('Editing prayer')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('For her interview')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Nervous.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save prayer' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Meeting' })).toBeNull();
+  });
+
+  it('cancels on Escape', () => {
+    let cancelled = 0;
+    renderEdit({ ...emptyComposer(), text: 'Coffee' }, () => (cancelled += 1));
+    fireEvent.keyDown(screen.getByDisplayValue('Coffee'), { key: 'Escape' });
+    expect(cancelled).toBe(1);
+  });
+});

@@ -597,6 +597,22 @@ export default function ContactDetailsModal({
     }
   };
 
+  const handleUpdatePrayerBurden = async (
+    prayer: PrayerRecord,
+    words: { text: string; context: string },
+  ) => {
+    if (!contact) return;
+    hasActionRef.current = true;
+    try {
+      await actions.updatePrayerBurden(prayer, words, {
+        uid: user?.uid,
+        name: user?.displayName || user?.email?.split("@")[0] || null,
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "prayers");
+    }
+  };
+
   const persistTags = async (updatedTags: string[], verb: string, tag: string) => {
     hasActionRef.current = true;
     const prevTags = formData.tags;
@@ -776,6 +792,7 @@ export default function ContactDetailsModal({
       onRemoveInteraction={handleRemoveInteraction}
       onUpdateInteraction={handleUpdateInteraction}
       onUpdatePrayerStatus={handleUpdatePrayerStatus}
+      onUpdatePrayerBurden={handleUpdatePrayerBurden}
       interactionAdapterFor={interactionAdapterFor}
       streamViewer={streamViewer}
     />

@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import ContactInteractionItem from '../components/contact/ContactInteractionItem';
 import { interactionAdapter } from '../components/stream/interactionAdapter';
 import type { Interaction } from '../types';
+import { emptyComposer } from '../lib/contactComposer';
 
 const noop = () => {};
 
@@ -14,7 +15,7 @@ const renderItem = (interaction: Interaction) =>
       canEdit={false}
       canRemove={false}
       editing={false}
-      editData={{ content: '', dateTime: '', type: 'interaction' }}
+      editData={emptyComposer()}
       onEditDataChange={vi.fn()}
       onStartEdit={noop}
       onCancelEdit={noop}
