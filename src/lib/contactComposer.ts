@@ -93,3 +93,37 @@ export function timePresets(now: Date = new Date()): TimePreset[] {
     { key: "d2", at: formatDateTime(twoDays) },
   ];
 }
+
+/** A prayer burden is its request, then a blank line, then any context: the
+ *  shape the story composer writes (#1292). Editing reads it back apart (#1674). */
+export function splitPrayerBurden(burden: string | undefined | null): { text: string; context: string } {
+  const value = burden || "";
+  const at = value.indexOf("\n\n");
+  if (at === -1) return { text: value, context: "" };
+  return { text: value.slice(0, at), context: value.slice(at + 2) };
+}
+
+export function joinPrayerBurden(text: string, context: string): string {
+  return [text.trim(), context.trim()].filter(Boolean).join("\n\n");
+}
+
+/** The composer's value for editing a logged interaction in place (#1673). An
+ *  ISO timestamp becomes local wall-clock time so the picker can show it. */
+export function interactionEditValue(interaction: {
+  content: string;
+  dateTime: string;
+  type?: string;
+}): ComposerValue {
+  const parsed = interaction.dateTime ? parseLocal(interaction.dateTime) : null;
+  const type = (INTERACTION_TYPES as readonly string[]).includes(interaction.type || "")
+    ? (interaction.type as InteractionType)
+    : "interaction";
+  return {
+    mode: "interaction",
+    text: interaction.content,
+    context: "",
+    type,
+    dateTime: parsed ? formatDateTime(parsed) : interaction.dateTime,
+    reachedById: "",
+  };
+}

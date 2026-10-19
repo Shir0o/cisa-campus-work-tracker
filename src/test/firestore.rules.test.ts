@@ -1752,6 +1752,27 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets an operator edit a prayer burden, and denies a role below operator (#1674)', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'prayers', 'prayer-edit'), {
+          contactId: 'contact1',
+          burden: 'For her interview',
+          status: 'pending',
+          updatedAt: '2026-10-16T00:00:00.000Z',
+        });
+      });
+      const edit = {
+        burden: 'For her interview on Tuesday\n\nShe is nervous.',
+        updatedAt: '2026-10-19T00:00:00.000Z',
+        updatedBy: 'operator1',
+        updatedByName: 'Op',
+      };
+      await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'operator1' }), 'prayers', 'prayer-edit'), edit));
+      await assertFails(updateDoc(doc(getFirestore({ uid: 'viewer1' }), 'prayers', 'prayer-edit'), edit));
+    });
+
     it('rejects a prayer with more than 4 answeredPhotos', async () => {
       const db = getFirestore({ uid: 'operator1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {
