@@ -68,9 +68,15 @@ jobs:
       # runs here, so the app opened on a red "Unable to load script" screen
       # and every flow failed on its first assertion (#1683). The release
       # variant embeds the bundle and is signed with the debug keystore.
+      # Same EXPO_PUBLIC_* as eas.json's `qa` profile. Without the API key the
+      # app throws auth/invalid-api-key while loading and closes before any
+      # screen renders (#1683).
       - name: Build Android Release APK
         env:
           SENTRY_DISABLE_AUTO_UPLOAD: "true"
+          EXPO_PUBLIC_FIREBASE_API_KEY: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY }}
+          EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID: qa-db
+          EXPO_PUBLIC_API_URL: https://cisa-campus-work-tracker-qa.pages.dev
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon
