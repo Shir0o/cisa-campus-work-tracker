@@ -114,37 +114,36 @@ describe('BibleStudyEditor view', () => {
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}$`) }));
   }
 
-  // The preview IS the reader (#890, ADR 0014), and the reader mirrors the
-  // visible panel through an IntersectionObserver (#914). The global jsdom
-  // stub in setup.ts is inert, so these tests install the same per-test
-  // stub StudyReaderView.test.tsx uses — the counter is the read model, so
-  // firing the observer is how a test asserts which Section the preview is
-  // actually showing.
-  function stubIntersectionObserver() {
-    let callback: IntersectionObserverCallback | null = null;
-    const observed: Element[] = [];
-    class StubObserver {
-      constructor(cb: IntersectionObserverCallback) {
-        callback = cb;
-      }
-      observe(target: Element) {
-        observed.push(target);
-      }
-      unobserve() {}
-      disconnect() {}
-      takeRecords() {
-        return [];
-      }
-    }
-    vi.stubGlobal('IntersectionObserver', StubObserver);
+  // The preview IS the reader (#890, ADR 0014), and the reader picks the
+  // current Section from the deck's scroll geometry (#1622). jsdom has no
+  // layout, so these tests report the deck's box and each panel's top through
+  // this seam and fire the deck's scroll event — the counter is the read
+  // model, so that is how a test asserts which Section the preview is showing.
+  function stubPreviewScroll(deckHeight = 600) {
+    const rect = (top: number, height: number) =>
+      ({
+        top,
+        bottom: top + height,
+        height,
+        left: 0,
+        right: 0,
+        width: 390,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
     return {
-      observed,
-      fire: (target: Element, isIntersecting: boolean) => {
+      scroll: (panelTops: number[]) => {
+        const deck = screen.getByTestId('reader-deck');
+        deck.getBoundingClientRect = () => rect(0, deckHeight);
+        const panels = Array.from(
+          deck.querySelectorAll('[data-section-panel]'),
+        ) as HTMLElement[];
+        panels.forEach((panel, i) => {
+          panel.getBoundingClientRect = () => rect(panelTops[i] ?? 0, 1000);
+        });
         act(() => {
-          callback?.(
-            [{ target, isIntersecting } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          );
+          fireEvent.scroll(deck);
         });
       },
     };
@@ -1014,18 +1013,14 @@ describe('BibleStudyEditor view', () => {
         cb({ ...MEETING, md: BLANK_MD, sections: [] });
         return () => {};
       });
-      const io = stubIntersectionObserver();
+      const deck = stubPreviewScroll();
       renderAt();
       await screen.findByDisplayValue('Initial Meeting');
 
       // Scroll the preview to Section 2 — the deck's own scroll position.
-      const deck = screen.getByTestId('reader-deck');
-      deck.scrollTop = 120;
-      const panel2 = io.observed.find(
-        (el) => (el as HTMLElement).dataset.sectionPanel === '1',
-      );
-      expect(panel2, 'Section 2 panel should be observed').toBeDefined();
-      io.fire(panel2!, true);
+      const deckEl = screen.getByTestId('reader-deck');
+      deckEl.scrollTop = 120;
+      deck.scroll([-600, 0]);
       expect(within(screen.getByTestId('reader-header')).getByText('02 / 02')).toBeInTheDocument();
 
       // An edit that moves the caret into another Section must not reset the
@@ -1047,7 +1042,7 @@ describe('BibleStudyEditor view', () => {
         cb({ ...MEETING, md: BLANK_MD, sections: [] });
         return () => {};
       });
-      const io = stubIntersectionObserver();
+      const deck = stubPreviewScroll();
       renderAt();
       await screen.findByDisplayValue('Initial Meeting');
 
@@ -1059,11 +1054,7 @@ describe('BibleStudyEditor view', () => {
       // Scroll the preview to Section 2 — the textarea's selection must not
       // follow. Tracking is strictly one-way: the reader mirrors the visible
       // panel into its own read model and never writes back to the editor.
-      const panel2 = io.observed.find(
-        (el) => (el as HTMLElement).dataset.sectionPanel === '1',
-      );
-      expect(panel2, 'Section 2 panel should be observed').toBeDefined();
-      io.fire(panel2!, true);
+      deck.scroll([-600, 0]);
       expect(within(screen.getByTestId('reader-header')).getByText('02 / 02')).toBeInTheDocument();
 
       expect(area.selectionStart).toBe(0);

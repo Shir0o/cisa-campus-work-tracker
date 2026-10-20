@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import TopNav from '../components/layout/TopNav';
@@ -162,6 +162,29 @@ describe('TopNav (top-anchored navigation)', () => {
     renderTopNav();
     fireEvent.click(screen.getByLabelText('Open navigation'));
     expect(h.mockSetIsMobileMenuOpen).toHaveBeenCalledWith(true);
+  });
+
+  // ── No orphaned vertical gap above the Sign-up entry (#1635) ────────────
+  // Every destination row in the drawer is a flush h-11 flex item. The
+  // Sign-up entry has no group label, so the one-off `mt-2` wrapper it carried
+  // read as a dead gap below the rows above it. The entry now sits directly in
+  // the drawer column and follows the same row rhythm (#747 fixed the desktop
+  // rail; this covers the mobile drawer).
+  it('draws the Sign-up entry without an orphaned top margin in the mobile drawer (#1635)', () => {
+    h.layout = { ...h.layout, isMobileMenuOpen: true };
+    renderTopNav();
+
+    const nav = screen.getByRole('navigation', { name: /mobile menu/i });
+    const signup = within(nav).getByRole('link', { name: /sign-up form/i });
+    expect(signup).toHaveAttribute('href', '/signup');
+
+    // Nothing between the link and the drawer may carry a top-margin utility —
+    // that is the gap the fix removed.
+    for (let el: HTMLElement | null = signup; el && el !== nav; el = el.parentElement) {
+      expect(el.className, `${el.tagName} should not carry a top-margin utility`).not.toMatch(
+        /(^|\s)m?t-[0-9]/,
+      );
+    }
   });
 
   it('renders profile dropdown with persona, season chip, Settings and Log out', () => {

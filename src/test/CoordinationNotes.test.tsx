@@ -2443,9 +2443,18 @@ describe('CoordinationNotes', () => {
           expect(screen.getByText(/Notas para el equipo/i)).toBeInTheDocument();
         });
 
-        // The edit/view translation toggle button is removed (#1579): translation view is governed directly by global language
-        expect(screen.queryByRole('button', { name: /ver traducción|view translation/i })).not.toBeInTheDocument();
+        // In Spanish mode, translated reading view is displayed directly without an in-header toggle button (#1664)
         expect(screen.queryByRole('button', { name: /^edit$|^editar$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /ver traducción|view translation/i })).not.toBeInTheDocument();
+
+        // Clicking Markdown button shows the raw markdown textarea (#1661, #1664)
+        const mdBtn = screen.getByRole('button', { name: /código markdown|markdown/i });
+        fireEvent.click(mdBtn);
+        expect(document.getElementById('markdown-source-textarea')).toBeInTheDocument();
+
+        // Clicking Markdown button again hides it
+        fireEvent.click(mdBtn);
+        expect(document.getElementById('markdown-source-textarea')).not.toBeInTheDocument();
 
         // Promote to note in Spanish prefills translated title and body
         const promoteBtn = screen.getByRole('button', { name: /keep as a note|guardar como nota/i });
@@ -2455,6 +2464,42 @@ describe('CoordinationNotes', () => {
           expect(screen.getByPlaceholderText(/un título corto|short title/i)).toHaveValue('Cuidado de miércoles');
           expect(screen.getByPlaceholderText(/qué pasó|what happened/i)).toHaveValue('Notas para el equipo');
         });
+      });
+
+      it('renders editable title and editor in English mode without toggle button (#1664)', async () => {
+        const docsList = [
+          {
+            id: 'doc-en',
+            data: () => ({
+              title: 'Wednesday care',
+              date: todayISO(),
+              weekday: 'Wednesday',
+              md: '# hi\n\nNotes for team',
+              createdBy: 'u-admin',
+              updatedAt: 'mock-ts',
+            }),
+          },
+        ];
+        setupSnapshots({ docs: docsList as any, notes: [], team: mockTeam as any });
+
+        render(
+          <LanguageProvider defaultLanguage="en">
+            <CoordinationNotes />
+          </LanguageProvider>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByPlaceholderText(/untitled page|página sin título/i)).toHaveValue('Wednesday care');
+        });
+
+        // No in-header edit/view translation toggle button (#1664)
+        expect(screen.queryByRole('button', { name: /^edit$|^editar$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /view translation|ver traducción/i })).not.toBeInTheDocument();
+
+        // Markdown button works
+        const mdBtn = screen.getByRole('button', { name: /view markdown source|código markdown|markdown/i });
+        fireEvent.click(mdBtn);
+        expect(document.getElementById('markdown-source-textarea')).toBeInTheDocument();
       });
     });
   });

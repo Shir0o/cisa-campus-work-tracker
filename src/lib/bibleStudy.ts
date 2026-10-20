@@ -819,6 +819,34 @@ export function previewScale(paneWidth: number, paneHeight = 0): number {
   return Math.min(1, fit);
 }
 
+// The line the current-Section detection sits on, as a fraction of the deck's
+// height (the design of record, docs/design/bible-study/Main.dc.html): the
+// current Section is the last panel whose top has crossed it.
+export const READER_SECTION_LINE = 0.45;
+
+/**
+ * The Section the reader has scrolled into (#1622): the last panel whose top
+ * is at or above a line 45% down the deck. It reads position, not a fraction
+ * of the panel's own height, so a Section taller than the reader becomes
+ * current once reading reaches it — such a panel's best possible intersection
+ * ratio is readerHeight / panelHeight, which for a panel over ~1.82× the
+ * reader never reaches the old 0.55 threshold. `panelTops[i]` is panel i's
+ * viewport-relative top.
+ */
+export function currentSectionIndex(
+  deck: { top: number; height: number },
+  panelTops: readonly number[],
+): number {
+  const line = deck.top + deck.height * READER_SECTION_LINE;
+  let index = 0;
+  let n = 0;
+  for (const top of panelTops) {
+    if (top <= line) index = n;
+    n += 1;
+  }
+  return index;
+}
+
 export function readerReducer(state: ReaderState, action: ReaderAction): ReaderState {
   switch (action.type) {
     case 'jump': {

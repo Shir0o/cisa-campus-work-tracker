@@ -47,7 +47,7 @@ vi.mock('motion/react', () => ({
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db: unknown, path: string) => ({ path })),
   onSnapshot: vi.fn((_, callback) => {
-    callback({ docs: [], size: 0 });
+    callback({ docs: [], size: 0, data: () => undefined, exists: () => false });
     return vi.fn();
   }),
   query: vi.fn((ref: unknown) => ref),
@@ -131,7 +131,7 @@ const byPath =
   (map: Record<string, DocLike[]>) =>
   (ref: any, callback: any) => {
     const p = ref?.path;
-    callback({ docs: (p && map[p]) || [], size: (p && map[p]?.length) || 0 });
+    callback({ docs: (p && map[p]) || [], size: (p && map[p]?.length) || 0, data: () => undefined, exists: () => false });
     return vi.fn();
   };
 

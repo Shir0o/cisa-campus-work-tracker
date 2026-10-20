@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { joinPrayerBurden } from "../lib/contactComposer";
 import {
   db,
   handleFirestoreError,
@@ -79,6 +80,11 @@ export interface ContactStoryActions {
     context?: string;
   }): Promise<void>;
   updatePrayerStatus(prayer: PrayerRecord, status: PrayerRecord["status"], answeredAtText?: string): Promise<void>;
+  updatePrayerBurden(
+    prayer: PrayerRecord,
+    words: { text: string; context: string },
+    by: { uid?: string | null; name?: string | null },
+  ): Promise<void>;
   moveStage(newStage: string, meta?: { oldStage?: string; userName?: string; userId?: string }): Promise<void>;
   changeKind(kind: ContactKind, meta?: { userName?: string; userId?: string; kindLabelBefore?: string; kindLabelAfter?: string }): Promise<void>;
   updateContact(data: ContactPatch): Promise<void>;
@@ -538,9 +544,7 @@ export function useContactStory(
     }) => {
       const c = currentContactRef.current;
       if (!c?.id) return;
-      const burden = [data.text.trim(), (data.context || "").trim()]
-        .filter(Boolean)
-        .join("\n\n");
+      const burden = joinPrayerBurden(data.text, data.context || "");
       const now = new Date().toISOString();
       await addDoc(collection(db, "prayers"), {
         contactId: c.id,
@@ -585,6 +589,33 @@ export function useContactStory(
         targetType: "contact",
         type: "edit",
         description: `Status changed to ${status}`,
+      });
+    },
+    []
+  );
+
+  // Rewrites a prayer's words from the story (#1674). Status is left alone.
+  const updatePrayerBurden = useCallback(
+    async (
+      prayer: PrayerRecord,
+      words: { text: string; context: string },
+      by: { uid?: string | null; name?: string | null },
+    ) => {
+      const c = currentContactRef.current;
+      if (!c?.id) return;
+      await updateDoc(doc(db, "prayers", prayer.id), {
+        burden: joinPrayerBurden(words.text, words.context),
+        updatedAt: new Date().toISOString(),
+        updatedBy: by.uid || null,
+        updatedByName: by.name || null,
+      });
+      await logActivity({
+        action: "edited a prayer burden for",
+        targetId: c.id,
+        targetName: c.name,
+        targetType: "contact",
+        type: "edit",
+        description: words.text.trim(),
       });
     },
     []
@@ -857,6 +888,7 @@ export function useContactStory(
       addInteraction,
       addPrayer,
       updatePrayerStatus,
+      updatePrayerBurden,
       moveStage,
       changeKind,
       updateContact,
@@ -873,6 +905,7 @@ export function useContactStory(
       addInteraction,
       addPrayer,
       updatePrayerStatus,
+      updatePrayerBurden,
       moveStage,
       changeKind,
       updateContact,

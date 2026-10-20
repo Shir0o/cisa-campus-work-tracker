@@ -263,6 +263,14 @@ _Avoid_: Not contacted, uncontacted, cold, new lead
 An **Interaction** a Full-timer records for the teammate who actually reached the person — typically after asking a Trainee in person and hearing that they did. The story reads it as the teammate's act ("Jae messaged him · logged by Anna"), the person's last connection names the teammate, and the teammate is told, so a wrong entry cannot sit in their name unnoticed. Only Full-timers may log on someone else's behalf.
 _Avoid_: Proxy log, impersonate, log as
 
+**To ask**:
+A Full-timer's private notepad of things to ask Trainees in person, grouped by Trainee. The app drafts lines into it for people with no update — **Not reached yet**, a **Follow-up ask** still open after three days, a question unanswered in its Thread after three days — and the Full-timer writes their own beside them, under a Trainee or under General. A drafted line stays tied to its signal even once reworded: when the signal clears, the line ticks itself off, so nobody asks a Trainee about something already logged. A person with no Trainee tied lands under "No Trainee tied" rather than disappearing. What the Full-timer hears is recorded by **Logged on behalf**, not by the notepad; ticking **Asked** records only that the question was put. Ticked lines stay struck through for a week. No other Full-timer and no Trainee ever sees it.
+_Avoid_: Notepad (bare), to-do, task list, nudge, reminders
+
+**Asked**:
+The private tick on a **To ask** line meaning "I put this to the Trainee". It changes nothing anyone else can see and leaves the signal open; a ticked drafted line returns only if a new signal appears for that person, never because time passed.
+_Avoid_: Done, resolved, followed up
+
 **Weekly reminders**:
 The two team-wide notifications that keep the week's rhythm. A Full-timer is told on Tuesday and Wednesday at 5 pm how many people are waiting **to work through** on **Around the team**; a Trainee is told at 6 pm — Tuesday for the YP team, Tuesday and Wednesday for the Campus team — what is waiting on their own people (**Not reached yet**, open **Follow-up asks**). Each goes out only when something is waiting, so a quiet week or a break stays quiet. The days and times are one schedule for the whole team, which only Full-timers change; anyone may turn their own reminder off. A Trainee with no team gets none, and is shown as unassigned so a Full-timer notices.
 _Avoid_: Nudge, digest, cron, check-in

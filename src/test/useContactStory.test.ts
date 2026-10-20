@@ -298,6 +298,28 @@ describe('useContactStory', () => {
     });
     expect(firestore.updateDoc).toHaveBeenCalled();
 
+    // Edit a prayer's words (#1674): request + context, the composer's shape.
+    (firestore.updateDoc as any).mockClear();
+    await act(async () => {
+      await result.current.actions.updatePrayerBurden(
+        { id: 'p1', burden: 'Old' } as any,
+        { text: 'For her interview', context: 'She is nervous.' },
+        { uid: 'u1', name: 'Tony' },
+      );
+    });
+    expect(firestore.updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'prayers/p1' }),
+      expect.objectContaining({
+        burden: 'For her interview\n\nShe is nervous.',
+        updatedAt: expect.any(String),
+        updatedBy: 'u1',
+        updatedByName: 'Tony',
+      }),
+    );
+    expect(hoisted.logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'edited a prayer burden for', targetId: 'c1' }),
+    );
+
     // Delete contact
     await act(async () => {
       await result.current.actions.deleteContact();

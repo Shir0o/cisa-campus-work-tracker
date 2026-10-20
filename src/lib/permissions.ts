@@ -67,6 +67,8 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // Around the team is Full-timer-only (#943): the team's activity is pastoral
   // detail, and the pointer card on My Day is the only door.
   '/around': 'admin',
+  // To ask (#1649) — the Full-timer's private notepad. Admin-only.
+  '/ask': 'admin',
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
   '/coordination': 'operator',

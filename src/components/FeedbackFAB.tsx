@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Pencil, X, Loader2 } from 'lucide-react';
+import { MessageSquarePlus, X, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useCommand } from '../lib/commands';
 import { useAuth } from './AuthProvider';
@@ -175,7 +175,7 @@ export default function FeedbackFAB() {
 
   return (
     <>
-      {/* FAB Button — pencil, morphs to × when open.
+      {/* FAB Button — message square plus, morphs to × when open.
           It sits below the overlay layer (z-100) so drawers and modals stack
           above it; at z-[100] it used to land on top of the Rhythm drawer's
           own controls (issue 982). While its own panel is open it rises above that
@@ -196,7 +196,7 @@ export default function FeedbackFAB() {
         aria-label={isOpen ? t('feedback.close_feedback_panel') : t('feedback.leave_note_for_team')}
         aria-expanded={isOpen}
       >
-        {isOpen ? <X className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
+        {isOpen ? <X className="w-5 h-5" /> : <MessageSquarePlus className="w-5 h-5" />}
       </button>
 
       <AnimatePresence>

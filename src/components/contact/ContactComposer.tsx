@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronDown, Loader2, Send } from "lucide-react";
+import { ChevronDown, Heart, Loader2, Send } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useLanguage } from "../LanguageProvider";
 import {
@@ -21,6 +21,8 @@ const TYPE_LABEL: Record<InteractionType, string> = {
 // The story's composer (#1292): text first. The kind switch, the type and the
 // time live in a quiet chip row inside the box, and Cancel / Log sit at its
 // foot. ⌘/Ctrl+Enter logs. Full-timers can say who reached the person.
+// The `edit` variant reopens it in place on a logged entry (#1673, #1674): no
+// kind switch or who-reached picker, Save instead of Log, Esc cancels.
 export default function ContactComposer({
   open,
   value,
@@ -32,6 +34,7 @@ export default function ContactComposer({
   canLogOnBehalf = false,
   teamMembers = [],
   firstName,
+  variant = "compose",
 }: {
   open: boolean;
   value: ComposerValue;
@@ -43,6 +46,7 @@ export default function ContactComposer({
   canLogOnBehalf?: boolean;
   teamMembers?: { id: string; name: string }[];
   firstName: string;
+  variant?: "compose" | "edit";
 }) {
   const { t } = useLanguage();
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -54,6 +58,7 @@ export default function ContactComposer({
   }, [open]);
 
   const isPrayer = value.mode === "prayer";
+  const isEdit = variant === "edit";
   const canSubmit = value.text.trim().length > 0;
 
   const pickType = (type: InteractionType) => onChange((p) => ({ ...p, type }));
@@ -78,6 +83,10 @@ export default function ContactComposer({
       e.preventDefault();
       if (canSubmit) formRef.current?.requestSubmit();
     }
+    if (e.key === "Escape" && isEdit) {
+      e.preventDefault();
+      onCancel();
+    }
   };
 
   const chip = timeChipFor(value.dateTime);
@@ -98,9 +107,20 @@ export default function ContactComposer({
     <form
       ref={formRef}
       onSubmit={onSubmit}
-      className={cn("cd-composer", open ? "is-open" : "is-rest")}
+      className={cn(
+        "cd-composer",
+        open ? "is-open" : "is-rest",
+        isEdit && "is-edit",
+        isEdit && isPrayer && "is-prayer",
+      )}
     >
       <div className="cd-composer-box">
+        {isEdit && isPrayer && (
+          <div className="cd-composer-editing">
+            <Heart className="w-3.5 h-3.5" aria-hidden="true" />
+            {t("modals.contactDetails.composer_editing_prayer")}
+          </div>
+        )}
         <textarea
           ref={textRef}
           value={value.text}
@@ -121,6 +141,7 @@ export default function ContactComposer({
           <textarea
             value={value.context}
             onChange={(e) => onChange((p) => ({ ...p, context: e.target.value }))}
+            onKeyDown={onKeyDown}
             rows={2}
             placeholder={t("modals.contactDetails.prayer_context_placeholder")}
             aria-label={t("modals.contactDetails.prayer_context_label")}
@@ -173,7 +194,13 @@ export default function ContactComposer({
                         className={cn("cd-composer-item", value.dateTime === p.at && "on")}
                         onClick={() => pickTime(p.at)}
                       >
-                        {t(`modals.contactDetails.composer_time_${p.key}`)}
+                        {t(`modals.contactDetails.composer_time_${p.key}`).replace(
+                          "{time}",
+                          new Date(p.at).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          }),
+                        )}
                       </button>
                     ))}
                   </div>
@@ -184,6 +211,7 @@ export default function ContactComposer({
         )}
 
         <div className="cd-composer-foot">
+          {!isEdit && (
           <div className="cd-composer-switch" role="group" aria-label={t("modals.contactDetails.composer_kind_group")}>
             <button
               type="button"
@@ -202,8 +230,9 @@ export default function ContactComposer({
               {t("modals.contactDetails.composer_prayer")}
             </button>
           </div>
+          )}
 
-          {canLogOnBehalf && !isPrayer && (
+          {canLogOnBehalf && !isPrayer && !isEdit && (
             <span className="cd-composer-pop">
               <button
                 type="button"
@@ -242,7 +271,7 @@ export default function ContactComposer({
           )}
 
           <span className="cd-composer-spacer" />
-          {open && !isPrayer && (
+          {open && (!isPrayer || isEdit) && (
             <span className="cd-composer-hint" aria-hidden="true">
               {t("modals.contactDetails.composer_hint")}
             </span>
@@ -260,9 +289,17 @@ export default function ContactComposer({
                 {submitting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Send className="w-3.5 h-3.5" />
+                  !isEdit && <Send className="w-3.5 h-3.5" />
                 )}
-                {t(isPrayer ? "modals.contactDetails.add_prayer" : "modals.contactDetails.composer_log")}
+                {t(
+                  isEdit
+                    ? isPrayer
+                      ? "modals.contactDetails.composer_save_prayer"
+                      : "modals.contactDetails.save"
+                    : isPrayer
+                      ? "modals.contactDetails.add_prayer"
+                      : "modals.contactDetails.composer_log",
+                )}
               </button>
             </>
           )}

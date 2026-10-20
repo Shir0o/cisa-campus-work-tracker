@@ -10,36 +10,38 @@ import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import StudyReaderView from '../components/bibleStudy/StudyReaderView';
 import type { Meeting } from '../lib/bibleStudy';
 
-// The reader mirrors the visible panel through an IntersectionObserver
-// (#914). The global jsdom stub in setup.ts is inert, so these tests install
-// a per-test stub that captures the callback and the observed panels — the
-// same seam the shipped observer uses, asserted from the outside (counter,
-// rail, index highlight, scrollIntoView).
-function stubIntersectionObserver() {
-  let callback: IntersectionObserverCallback | null = null;
-  const observed: Element[] = [];
-  class StubObserver {
-    constructor(cb: IntersectionObserverCallback) {
-      callback = cb;
-    }
-    observe(target: Element) {
-      observed.push(target);
-    }
-    unobserve() {}
-    disconnect() {}
-    takeRecords() {
-      return [];
-    }
-  }
-  vi.stubGlobal('IntersectionObserver', StubObserver);
+// The reader's scroll deck owns "which Section am I on": it reads the deck's
+// box and each panel's top, and picks the last panel whose top has crossed a
+// line 45% down the deck (#1622, the design of record). jsdom has no layout —
+// every getBoundingClientRect is zero — so tests report the geometry through
+// this seam and fire the deck's scroll event, the exact path the shipped
+// listener uses. Panel height is whatever the test says: a panel taller than
+// the deck is just a larger reported height, which is the escape the old
+// 0.55 IntersectionObserver missed.
+function stubDeckScroll(deckHeight = 600) {
+  const deck = () => screen.getByTestId('reader-deck');
+  const panels = () =>
+    Array.from(deck().querySelectorAll('[data-section-panel]')) as HTMLElement[];
+  const rect = (top: number, height: number) =>
+    ({
+      top,
+      bottom: top + height,
+      height,
+      left: 0,
+      right: 0,
+      width: 390,
+      x: 0,
+      y: top,
+      toJSON: () => ({}),
+    }) as DOMRect;
   return {
-    observed,
-    fire: (target: Element, isIntersecting: boolean) => {
+    scroll: (panelTops: number[]) => {
+      deck().getBoundingClientRect = () => rect(0, deckHeight);
+      panels().forEach((panel, i) => {
+        panel.getBoundingClientRect = () => rect(panelTops[i] ?? 0, 1000);
+      });
       act(() => {
-        callback?.(
-          [{ target, isIntersecting } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        );
+        fireEvent.scroll(deck());
       });
     },
   };
@@ -258,23 +260,51 @@ describe('StudyReaderView (the scrolling deck)', () => {
     });
 
     it('names the Section on screen and decreases when scrolling back up', () => {
-      const io = stubIntersectionObserver();
+      const deck = stubDeckScroll();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
       expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
 
-      // The observer mirrors the visible panel into the read model.
-      io.fire(io.observed[1], true);
+      // The deck scrolls into the second Section (its top reaches the line).
+      deck.scroll([-600, 0, 600]);
       expect(screen.getByTestId('reader-header')).toHaveTextContent('02 / 03');
 
-      // Scrolling back up re-registers: the callback reads current state
-      // rather than the Section index captured when the observer was built.
-      io.fire(io.observed[0], true);
+      // Scrolling back up re-registers: the listener reads current state
+      // rather than a Section index captured when it was attached.
+      deck.scroll([0, 600, 1200]);
       expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
     });
 
+    it('follows a Section taller than the reader (#1622)', () => {
+      const deck = stubDeckScroll();
+      render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
+
+      const rail = screen.getByTestId('progress-rail');
+      const filled = () =>
+        Array.from(rail.children).filter((s) => s.getAttribute('data-filled') === 'true').length;
+
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
+      expect(filled()).toBe(1);
+
+      // Section 2 is 4000px tall in a 600px reader: its best possible
+      // intersection ratio is 600 / 4000 = 0.15, so the old 0.55 threshold
+      // never reported it and the rail/counter stalled. Position does.
+      deck.scroll([-4000, 0, 4000]);
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('02 / 03');
+      expect(filled()).toBe(2);
+
+      // Reading on into Section 3 — also taller than the reader — moves the
+      // rail and counter to it, and scrolling back reverses both.
+      deck.scroll([-7000, -4000, 0]);
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('03 / 03');
+      expect(filled()).toBe(3);
+      deck.scroll([-4000, 0, 4000]);
+      expect(screen.getByTestId('reader-header')).toHaveTextContent('02 / 03');
+      expect(filled()).toBe(2);
+    });
+
     it('fills the progress rail as the reader advances and unfills on the way back', () => {
-      const io = stubIntersectionObserver();
+      const deck = stubDeckScroll();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
       const rail = screen.getByTestId('progress-rail');
@@ -282,14 +312,13 @@ describe('StudyReaderView (the scrolling deck)', () => {
       const filled = () => steps().filter((s) => s.getAttribute('data-filled') === 'true').length;
 
       expect(filled()).toBe(1);
-      io.fire(io.observed[2], true);
+      deck.scroll([-1200, -600, 0]);
       expect(filled()).toBe(3);
-      io.fire(io.observed[0], true);
+      deck.scroll([0, 600, 1200]);
       expect(filled()).toBe(1);
     });
 
     it('tapping a Section index row scrolls the deck to that Section', () => {
-      const io = stubIntersectionObserver();
       const scrollIntoView = vi.fn();
       Element.prototype.scrollIntoView = scrollIntoView;
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
@@ -299,12 +328,12 @@ describe('StudyReaderView (the scrolling deck)', () => {
       fireEvent.click(rows[rows.length - 1]);
 
       expect(scrollIntoView).toHaveBeenCalledTimes(1);
-      expect(scrollIntoView.mock.instances[0]).toBe(io.observed[2]);
+      const panel = scrollIntoView.mock.instances[0] as HTMLElement;
+      expect(panel.getAttribute('data-section-panel')).toBe('2');
       expect(screen.queryByRole('dialog')).toBeNull();
     });
 
     it('tapping the peek scrolls the deck to the following Section', () => {
-      const io = stubIntersectionObserver();
       const scrollIntoView = vi.fn();
       Element.prototype.scrollIntoView = scrollIntoView;
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
@@ -312,16 +341,17 @@ describe('StudyReaderView (the scrolling deck)', () => {
       fireEvent.click(screen.getByTestId('peek-0'));
 
       expect(scrollIntoView).toHaveBeenCalledTimes(1);
-      expect(scrollIntoView.mock.instances[0]).toBe(io.observed[1]);
+      const panel = scrollIntoView.mock.instances[0] as HTMLElement;
+      expect(panel.getAttribute('data-section-panel')).toBe('1');
     });
 
     it('highlights the Section on screen in the index', () => {
-      const io = stubIntersectionObserver();
+      const deck = stubDeckScroll();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
       // Scroll to the last Section, then open the index: the row for the
       // Section on screen is the highlighted one.
-      io.fire(io.observed[2], true);
+      deck.scroll([-1200, -600, 0]);
       fireEvent.click(screen.getByLabelText('Open section index'));
       const dialog = screen.getByRole('dialog');
       const rowFor = (title: string) =>
@@ -333,16 +363,22 @@ describe('StudyReaderView (the scrolling deck)', () => {
       expect(rowFor('The end of the week').getAttribute('data-current')).toBe('true');
     });
 
-    it('does not rebuild the observer on every scroll tick', () => {
-      const io = stubIntersectionObserver();
+    it('attaches one scroll listener, not one per tick', () => {
+      const addSpy = vi.spyOn(Element.prototype, 'addEventListener');
+      const deck = stubDeckScroll();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
-      // One observe per panel, once — the observer is keyed to the Section
-      // count, not to the read model it mirrors.
-      expect(io.observed).toHaveLength(3);
-      io.fire(io.observed[1], true);
-      io.fire(io.observed[2], true);
-      expect(io.observed).toHaveLength(3);
+      const scrollAdds = () =>
+        addSpy.mock.calls.filter(([type]) => type === 'scroll').length;
+      // The listener is attached at mount — once, keyed to the Section count.
+      expect(scrollAdds()).toBeGreaterThanOrEqual(1);
+      addSpy.mockClear();
+
+      // Scrolling changes the read model but never re-attaches the listener.
+      deck.scroll([-600, 0, 600]);
+      deck.scroll([-1200, -600, 0]);
+      expect(scrollAdds()).toBe(0);
+      addSpy.mockRestore();
     });
   });
 
@@ -482,12 +518,12 @@ describe('StudyReaderView (the scrolling deck)', () => {
     });
 
     it('keeps the Section and its revealed Blanks when a tablet rotates into the paged deck', () => {
-      const io = stubIntersectionObserver();
+      const deck = stubDeckScroll();
       const box = stubReaderBox();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
 
       fireEvent.click(screen.getByRole('button', { name: /Blank, tap to reveal/i }));
-      io.fire(io.observed[1], true);
+      deck.scroll([-600, 0, 600]);
       box.resize(1180, 820);
 
       expect(sectionHeading()).toHaveTextContent('What suffering is doing');
@@ -573,9 +609,8 @@ describe('StudyReaderView (the scrolling deck)', () => {
     });
 
     it('binds no keys on the scrolling deck', () => {
-      const io = stubIntersectionObserver();
       render(<StudyReaderView meeting={meeting({})} staleDateLabel={null} />);
-      expect(io.observed).toHaveLength(3);
+      expect(document.querySelectorAll('[data-section-panel]')).toHaveLength(3);
 
       fireEvent.keyDown(document.body, { key: 'ArrowRight' });
       expect(screen.getByTestId('reader-header')).toHaveTextContent('01 / 03');
