@@ -20,6 +20,7 @@ import {
   resolveTotpSignIn,
   PendingMfaChallenge,
 } from '../lib/mfa';
+import { setSentryUser } from '../lib/sentry';
 
 export interface AuthContextType {
   user: User | null;
@@ -142,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
       setUser(authUser);
+      setSentryUser(authUser ? authUser.uid : null);
       // Keep this browser's push subscription on the signed-in account. A
       // no-op until the user has granted notification permission.
       if (authUser) void registerWebPush(authUser.uid);
