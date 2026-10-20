@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { formatBytes, formatDelta, type BundleScorecard } from './measure-bundle';
+import {
+  type MobileBundleScorecard,
+} from './measure-mobile-bundle';
 
 export interface LighthouseMetrics {
   performanceScore: number; // 0-100
@@ -27,6 +30,8 @@ export interface HistoryEntry {
   perfScore: number | string;
   lcp: string;
   defects: number;
+  androidBytecode?: string;
+  iosBytecode?: string;
 }
 
 export function parseLighthouseManifest(lighthouseDir: string): LighthouseMetrics | null {
@@ -129,20 +134,27 @@ export function evaluateQualityChecks(): QualityMetrics {
   };
 }
 
+function safeDelta(bytes: number | undefined): string {
+  if (bytes === undefined || Number.isNaN(bytes) || bytes === 0) return '0 B';
+  return formatDelta(bytes);
+}
+
 export function composeScorecardMarkdown(options: {
   bundle: BundleScorecard | null;
   lighthouse: LighthouseMetrics | null;
   quality: QualityMetrics;
   history: HistoryEntry[];
+  mobile?: MobileBundleScorecard | null;
   commitSha?: string;
 }): string {
-  const { bundle, lighthouse, quality, history, commitSha } = options;
+  const { bundle, lighthouse, quality, history, mobile, commitSha } = options;
   const dateStr = new Date().toISOString().split('T')[0];
   const shaShort = (commitSha || process.env.GITHUB_SHA || 'local').substring(0, 7);
+  const targetDesc = mobile ? 'Web, PWA & Mobile' : 'Web & PWA';
 
   const lines: string[] = [];
   lines.push(`# 📈 Daily Performance & Quality Scorecard (${dateStr})`);
-  lines.push(`> **Commit**: \`${shaShort}\` | **Trigger**: \`${process.env.GITHUB_EVENT_NAME || 'manual'}\` | **Target**: Web & PWA\n`);
+  lines.push(`> **Commit**: \`${shaShort}\` | **Trigger**: \`${process.env.GITHUB_EVENT_NAME || 'manual'}\` | **Target**: ${targetDesc}\n`);
 
   // Section 1: Executive KPI Summary
   lines.push('## 1. Metric Overview');
@@ -152,8 +164,21 @@ export function composeScorecardMarkdown(options: {
   if (bundle) {
     const entryGzip = formatBytes(bundle.entryJsGzipBytes);
     const entryStatus = bundle.entryJsGzipBytes <= 350 * 1024 ? '🟢 Pass' : '⚠️ Warn';
-    lines.push(`| **Bundle** | Entry JS (Gzip) | \`${entryGzip}\` | \`< 350 KB\` | ${entryStatus} |`);
-    lines.push(`| **Bundle** | Total Transfer (Gzip) | \`${formatBytes(bundle.totalGzipBytes)}\` | Monitored | ⚪ Baseline |`);
+    lines.push(`| **Web Bundle** | Entry JS (Gzip) | \`${entryGzip}\` | \`< 350 KB\` | ${entryStatus} |`);
+    lines.push(`| **Web Bundle** | Total Transfer (Gzip) | \`${formatBytes(bundle.totalGzipBytes)}\` | Monitored | ⚪ Baseline |`);
+  }
+
+  if (mobile) {
+    if (mobile.android) {
+      const androidStatus = mobile.android.rawBytes <= 16 * 1024 * 1024 ? '🟢 Pass' : '⚠️ Warn';
+      lines.push(`| **Mobile** | Android Hermes Bytecode | \`${formatBytes(mobile.android.rawBytes)}\` | \`< 16.00 MB\` | ${androidStatus} |`);
+    }
+    if (mobile.ios) {
+      const iosStatus = mobile.ios.rawBytes <= 16 * 1024 * 1024 ? '🟢 Pass' : '⚠️ Warn';
+      lines.push(`| **Mobile** | iOS Hermes Bytecode | \`${formatBytes(mobile.ios.rawBytes)}\` | \`< 16.00 MB\` | ${iosStatus} |`);
+    }
+    const assetsStatus = mobile.totalAssetsRawBytes <= 8 * 1024 * 1024 ? '🟢 Pass' : '⚠️ Warn';
+    lines.push(`| **Mobile** | Export Assets | \`${formatBytes(mobile.totalAssetsRawBytes)}\` | \`< 8.00 MB\` | ${assetsStatus} |`);
   }
 
   if (lighthouse) {
@@ -172,9 +197,11 @@ export function composeScorecardMarkdown(options: {
   lines.push(`| **Quality** | Impeccable Primary Defects | \`${quality.primaryDefects}\` | \`0\` | ${quality.primaryDefects === 0 ? '🟢 Pass' : '⚠️ Warn'} |`);
   lines.push('\n');
 
-  // Section 2: Bundle Breakdown
+  let sectionIndex = 2;
+
+  // Section: Web Bundle Breakdown
   if (bundle) {
-    lines.push('## 2. Bundle Chunk Breakdown & Deltas');
+    lines.push(`## ${sectionIndex++}. Web Bundle Chunk Breakdown & Deltas`);
     lines.push('| Chunk / Module | Category | Gzip Size | Raw Size | Delta vs Baseline | Trend |');
     lines.push('| :--- | :--- | :--- | :--- | :--- | :---: |');
 
@@ -199,16 +226,48 @@ export function composeScorecardMarkdown(options: {
     lines.push('\n');
   }
 
-  // Section 3: Quality Checks
-  lines.push('## 3. Code Integrity & Design System Health');
+  // Section: Mobile Bundle Breakdown
+  if (mobile) {
+    const statusEmoji =
+      mobile.budgetStatus === 'PASS'
+        ? '🟢'
+        : mobile.budgetStatus === 'WARN'
+          ? '🟡'
+          : '🔴';
+    lines.push(`## ${sectionIndex++}. Mobile Bundle & Hermes Bytecode Breakdown (${statusEmoji} ${mobile.budgetStatus})`);
+    lines.push('| Component / Platform | Raw Size | Gzip Transfer | Delta vs Baseline | Budget Target |');
+    lines.push('| :--- | :--- | :--- | :--- | :---: |');
+    if (mobile.android) {
+      lines.push(
+        `| Android Hermes Bytecode | ${formatBytes(mobile.android.rawBytes)} | ${formatBytes(mobile.android.gzipBytes)} | ${safeDelta(mobile.deltas?.androidRawDelta)} | < 16.00 MB |`
+      );
+    }
+    if (mobile.ios) {
+      lines.push(
+        `| iOS Hermes Bytecode | ${formatBytes(mobile.ios.rawBytes)} | ${formatBytes(mobile.ios.gzipBytes)} | ${safeDelta(mobile.deltas?.iosRawDelta)} | < 16.00 MB |`
+      );
+    }
+    for (const asset of mobile.assets) {
+      lines.push(
+        `| Assets (${asset.category}, ${asset.count} files) | ${formatBytes(asset.rawBytes)} | ${formatBytes(asset.gzipBytes)} | - | Monitored |`
+      );
+    }
+    lines.push(
+      `| **Total Export Payload** | **${formatBytes(mobile.totalPackageRawBytes)}** | **${formatBytes(mobile.totalPackageGzipBytes)}** | ${safeDelta(mobile.deltas?.assetsRawDelta)} | **< 24.00 MB** |`
+    );
+    lines.push('\n');
+  }
+
+  // Section: Quality Checks
+  lines.push(`## ${sectionIndex++}. Code Integrity & Design System Health`);
   for (const detail of quality.details) {
     lines.push(detail);
   }
   lines.push('\n');
 
-  // Section 4: Rolling History (Last 7 Runs)
+  // Section: Rolling History (Last 7 Runs)
   if (history.length > 0) {
-    lines.push('## 4. Rolling History (Recent Runs)');
+    lines.push(`## ${sectionIndex++}. Rolling History (Recent Runs)`);
     lines.push('| Date | Commit | Entry JS (Gzip) | Perf Score | LCP | Primary Defects |');
     lines.push('| :--- | :--- | :--- | :--- | :--- | :---: |');
     for (const entry of history.slice(-7).reverse()) {
@@ -302,6 +361,12 @@ if (process.argv[1]?.endsWith('generate-scorecard.ts')) {
     const sha = (process.env.GITHUB_SHA || 'local').substring(0, 7);
     const dateStr = new Date().toISOString().split('T')[0];
 
+    const mobileJsonPath = path.resolve(process.cwd(), '.cache/mobile-bundle-metrics.json');
+    let mobile: MobileBundleScorecard | null = null;
+    if (fs.existsSync(mobileJsonPath)) {
+      mobile = JSON.parse(fs.readFileSync(mobileJsonPath, 'utf8'));
+    }
+
     const currentEntry: HistoryEntry = {
       date: dateStr,
       commitSha: sha,
@@ -309,6 +374,8 @@ if (process.argv[1]?.endsWith('generate-scorecard.ts')) {
       perfScore: lighthouse ? `${lighthouse.performanceScore}/100` : '-',
       lcp: lighthouse ? `${(lighthouse.lcpMs / 1000).toFixed(2)}s` : '-',
       defects: quality.primaryDefects,
+      androidBytecode: mobile?.android ? formatBytes(mobile.android.rawBytes) : undefined,
+      iosBytecode: mobile?.ios ? formatBytes(mobile.ios.rawBytes) : undefined,
     };
 
     const history = updateRollingHistory(historyPath, currentEntry);
@@ -317,6 +384,7 @@ if (process.argv[1]?.endsWith('generate-scorecard.ts')) {
       lighthouse,
       quality,
       history,
+      mobile,
       commitSha: sha,
     });
 

@@ -30,8 +30,11 @@
     "check:version": "tsx scripts/check-version.ts",
     "check:seams": "tsx scripts/check-seams.ts",
     "measure:bundle": "tsx scripts/measure-bundle.ts",
+    "measure:bundle:mobile": "tsx scripts/measure-mobile-bundle.ts",
+    "mobile:export": "npm --prefix apps/mobile run export:bundles",
     "metrics:scorecard": "tsx scripts/generate-scorecard.ts",
     "metrics:audit": "npm run build && npm run measure:bundle && npm run metrics:scorecard",
+    "metrics:audit:mobile": "npm run mobile:export && npm run measure:bundle:mobile",
     "functions:emulator-prep": "npm --prefix firebase-functions ci && npm --prefix firebase-functions run build && node -e \"const f='firebase-functions/.secret.local';require('fs').existsSync(f)||require('fs').writeFileSync(f,'EXPO_ACCESS_TOKEN=emulator\\nVAPID_PRIVATE_KEY=emulator\\n')\""
   },
   "dependencies": {

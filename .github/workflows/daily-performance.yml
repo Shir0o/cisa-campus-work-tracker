@@ -31,9 +31,16 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci
+
+      - name: Install mobile dependencies
+        run: npm ci
+        working-directory: apps/mobile
 
       - name: Restore daily metrics baseline cache
         uses: actions/cache@v4
@@ -46,8 +53,14 @@ jobs:
       - name: Build web application
         run: npm run build
 
-      - name: Measure bundle sizes & chunk budgets
+      - name: Measure web bundle sizes & chunk budgets
         run: npx tsx scripts/measure-bundle.ts
+
+      - name: Export mobile application bundles (Android & iOS)
+        run: npm run mobile:export
+
+      - name: Measure mobile bundle & bytecode budgets
+        run: npx tsx scripts/measure-mobile-bundle.ts --save-baseline
 
       - name: Run Lighthouse CI (Synthetic Core Web Vitals)
         continue-on-error: true
@@ -68,6 +81,7 @@ jobs:
           name: performance-and-quality-artifacts-${{ github.run_id }}
           path: |
             dist/bundle-scorecard.json
+            .cache/mobile-bundle-metrics.json
             .lighthouseci/
             .cache/rolling-history.json
           retention-days: 30
