@@ -29,6 +29,9 @@
     "check:colors": "tsx scripts/check-hardcoded-colors.ts",
     "check:version": "tsx scripts/check-version.ts",
     "check:seams": "tsx scripts/check-seams.ts",
+    "measure:bundle": "tsx scripts/measure-bundle.ts",
+    "metrics:scorecard": "tsx scripts/generate-scorecard.ts",
+    "metrics:audit": "npm run build && npm run measure:bundle && npm run metrics:scorecard",
     "functions:emulator-prep": "npm --prefix firebase-functions ci && npm --prefix firebase-functions run build && node -e \"const f='firebase-functions/.secret.local';require('fs').existsSync(f)||require('fs').writeFileSync(f,'EXPO_ACCESS_TOKEN=emulator\\nVAPID_PRIVATE_KEY=emulator\\n')\""
   },
   "dependencies": {
@@ -36,6 +39,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^2.29.0",
+    "@sentry/react": "^11.8.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tiptap/core": "^3.31.4",
     "@tiptap/extension-collaboration": "^3.31.4",

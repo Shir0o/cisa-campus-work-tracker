@@ -21,7 +21,7 @@ import { usePushRegistration } from '../src/lib/usePushRegistration';
 import { useNotificationTapRouting } from '../src/lib/notificationRouting';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
 import { initReleaseStore } from '../src/lib/releases';
-import { initSentry } from '../src/lib/sentry';
+import { initSentry, wrapRootLayout } from '../src/lib/sentry';
 import { MobileNotificationPermissionBanner } from '../src/components/notifications/MobileNotificationPermissionBanner';
 
 // Fire error reporting up before anything else can throw (no-op without a DSN).
@@ -114,7 +114,7 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -134,3 +134,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default wrapRootLayout(RootLayout);

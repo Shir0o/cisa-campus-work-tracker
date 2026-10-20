@@ -55,3 +55,7 @@ docs/design/**/[a-z]*-*.html
 *.p8
 *.p12
 *.mobileprovision
+
+# Metrics and Lighthouse CI local scratch/cache
+.cache/
+.lighthouseci/

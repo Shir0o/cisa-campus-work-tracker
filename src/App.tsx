@@ -49,6 +49,9 @@ import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
 import { applyTeams, subscribeUsers } from "./lib/teams";
 import { applyPartners, subscribePartners } from "./lib/partners";
+import { wrapRoutesWithSentry } from "./lib/sentry";
+
+const SentryRoutes = wrapRoutesWithSentry(Routes);
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
 const Outreach = lazyWithRetry(() => import("./views/Outreach"));
@@ -716,7 +719,7 @@ export default function App() {
           <AuthProvider>
             <LanguageProvider>
               <RosterSync />
-              <Routes>
+              <SentryRoutes>
                 <Route
                   path="/signup"
                   element={
@@ -1254,7 +1257,7 @@ export default function App() {
 
                 {/* Redirect unknown routes */}
                 <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+              </SentryRoutes>
             </LanguageProvider>
           </AuthProvider>
         </Router>

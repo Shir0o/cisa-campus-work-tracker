@@ -24,6 +24,7 @@ import {
   type ImpersonateTarget,
 } from '@cisa/core';
 import { auth, db, signIn } from './firebase';
+import { setSentryUser } from './sentry';
 import { subscribeUsers } from './data/users';
 import { subscribePartners } from './data/partners';
 import {
@@ -156,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubAuth = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
+      setSentryUser(authUser ? authUser.uid : null);
       unsubUserDoc?.();
       unsubUserDoc = null;
 
