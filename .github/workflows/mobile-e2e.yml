@@ -81,12 +81,21 @@ jobs:
           cd android
           ./gradlew assembleRelease --no-daemon
 
+      # Without KVM the emulator runs in software: boot took 4-6 minutes and
+      # "System UI isn't responding" covered the app during the flows (#1683).
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Run Maestro E2E tests on Android Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 31
           target: default
           arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: apps/mobile
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
