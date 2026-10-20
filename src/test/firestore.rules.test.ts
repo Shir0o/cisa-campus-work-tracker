@@ -1752,6 +1752,27 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
 
+    it('lets an operator edit a prayer burden, and denies a role below operator (#1674)', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'prayers', 'prayer-edit'), {
+          contactId: 'contact1',
+          burden: 'For her interview',
+          status: 'pending',
+          updatedAt: '2026-10-16T00:00:00.000Z',
+        });
+      });
+      const edit = {
+        burden: 'For her interview on Tuesday\n\nShe is nervous.',
+        updatedAt: '2026-10-19T00:00:00.000Z',
+        updatedBy: 'operator1',
+        updatedByName: 'Op',
+      };
+      await assertSucceeds(updateDoc(doc(getFirestore({ uid: 'operator1' }), 'prayers', 'prayer-edit'), edit));
+      await assertFails(updateDoc(doc(getFirestore({ uid: 'viewer1' }), 'prayers', 'prayer-edit'), edit));
+    });
+
     it('rejects a prayer with more than 4 answeredPhotos', async () => {
       const db = getFirestore({ uid: 'operator1' });
       await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -2423,6 +2444,7 @@ describeRules('Firestore Security Rules', () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'u1'), { role: 'admin', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'u2'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
       });
@@ -2454,6 +2476,37 @@ describeRules('Firestore Security Rules', () => {
       await seedUsers();
       const db = getFirestore({ uid: 'pending1' });
       await assertFails(setDoc(doc(db, 'userPreferences', 'pending1'), { personalContactIds: [] }));
+    });
+
+    // To ask (#1649) — a Full-timer's private notepad. Unlike userPreferences
+    // above, a Trainee (manager) is NOT allowed to read another's notepad, and
+    // neither is another Full-timer: it is readable and writable only by its
+    // owning Full-timer.
+    it('TA1: the owning Full-timer can read and write their own notepad', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'u1' });
+      const ref = doc(db, 'toAskNotes', 'u1');
+      await assertSucceeds(
+        setDoc(ref, { lines: [{ id: 'n1', text: 'Ask Jae about Sam', group: 'jae', createdAt: '2026-10-16T00:00:00.000Z' }] }),
+      );
+      await assertSucceeds(getDoc(ref));
+    });
+
+    it('TA2: another Full-timer and a Trainee are denied', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'toAskNotes', 'u1'), { teamFilter: 'all' });
+      });
+      await assertFails(getDoc(doc(getFirestore({ uid: 'u2' }), 'toAskNotes', 'u1')));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'u2' }), 'toAskNotes', 'u1'), { teamFilter: 'yp' }));
+      await assertFails(getDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'u1')));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'u1'), { teamFilter: 'yp' }));
+    });
+
+    it('TA3: a Full-timer cannot reach a Trainee’s notepad, and a Trainee cannot touch their own', async () => {
+      await seedUsers();
+      await assertFails(getDoc(doc(getFirestore({ uid: 'u1' }), 'toAskNotes', 'trainee1')));
+      await assertFails(setDoc(doc(getFirestore({ uid: 'trainee1' }), 'toAskNotes', 'trainee1'), { teamFilter: 'all' }));
     });
 
     // The worklist's two per-person axes (#813). Get this wrong and every write

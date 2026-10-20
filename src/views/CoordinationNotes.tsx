@@ -2583,11 +2583,9 @@ export function DocEditor({
   const isSpanish = language === 'es';
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
   const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
-  // Reading translation runs both ways (ADR 0037): Spanish mode always shows the
-  // reading view (unchanged); English mode shows it when the page is not
-  // confidently English, and keeps its inline editor for English pages.
-  const needsTranslation = !shouldShowAsIs(d.md || d.title || '', language);
-  const showReadingView = isSpanish || needsTranslation;
+  // Translation display is governed directly by global language setting (ADR 0037, #1664):
+  // Spanish mode displays the translated reading view; English mode displays the inline editor.
+  const showReadingView = isSpanish;
   const [shareOpen, setShareOpen] = useState(false);
   // The header button doubles as the sharing indicator: accented + dotted when a
   // live guest link exists, so a Full-timer can see the page is shared at a glance.
@@ -3339,13 +3337,7 @@ export function DocEditor({
           onMouseUp={refreshSelectionFab}
           onKeyUp={refreshSelectionFab}
         >
-          {showReadingView ? (
-            <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
-                {translatedMarkdown || t('coordination.this_page_empty')}
-              </ReactMarkdown>
-            </div>
-          ) : showSource ? (
+          {showSource ? (
             <textarea
               ref={textareaRef}
               id="markdown-source-textarea"
@@ -3372,6 +3364,12 @@ export function DocEditor({
               className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[160px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap focus:ring-1 focus:ring-primary/20 overflow-hidden"
               title={t('coordination.markdown_source_view')}
             />
+          ) : showReadingView ? (
+            <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
+                {translatedMarkdown || t('coordination.this_page_empty')}
+              </ReactMarkdown>
+            </div>
           ) : (
             <EditorContent editor={editor as Editor} />
           )}

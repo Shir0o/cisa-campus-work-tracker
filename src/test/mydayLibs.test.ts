@@ -28,6 +28,7 @@ import {
   deletePersonalPrayer,
 } from '../lib/personalPrayers';
 import { subscribeUserPreferences, saveUserPreferences } from '../lib/userPreferences';
+import { subscribeToAskNotepad, saveToAskNotepad } from '../lib/toAsk';
 import { updatePrayerStatus } from '../lib/prayers';
 import { openMessage } from '../lib/messaging';
 
@@ -113,6 +114,35 @@ describe('userPreferences', () => {
   it('routes save failures through handleFirestoreError', async () => {
     vi.mocked(setDoc).mockRejectedValueOnce(new Error('denied'));
     await saveUserPreferences('u1', {});
+    expect(handleFirestoreError).toHaveBeenCalled();
+  });
+});
+
+describe('toAsk notepad storage (#1649)', () => {
+  it('defaults to {} when the doc has no data', () => {
+    let success: any;
+    vi.mocked(onSnapshot).mockImplementation((_q: any, ok: any) => {
+      success = ok;
+      return vi.fn();
+    });
+    const cb = vi.fn();
+    subscribeToAskNotepad('u1', cb);
+    success({ data: () => undefined });
+    expect(cb).toHaveBeenCalledWith({});
+  });
+
+  it('merge-writes notepad patches', async () => {
+    await saveToAskNotepad('u1', { teamFilter: 'campus' });
+    expect(setDoc).toHaveBeenCalledWith(
+      { path: 'toAskNotes/u1' },
+      { teamFilter: 'campus' },
+      { merge: true },
+    );
+  });
+
+  it('routes save failures through handleFirestoreError', async () => {
+    vi.mocked(setDoc).mockRejectedValueOnce(new Error('denied'));
+    await saveToAskNotepad('u1', {});
     expect(handleFirestoreError).toHaveBeenCalled();
   });
 });

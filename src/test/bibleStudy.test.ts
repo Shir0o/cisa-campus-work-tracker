@@ -13,6 +13,7 @@ import {
   blockInsertionPoint,
   promptInsertionPoint,
   previewScale,
+  currentSectionIndex,
   PREVIEW_PHONE_HEIGHT,
   type StudySetupForm,
   type Meeting,
@@ -797,6 +798,46 @@ describe('previewScale (#916/#937/#939/#946 — the phone fits the pane on BOTH 
 
   it('never scales above 1 — the phone is never blown up past true size', () => {
     expect(previewScale(2000, 4000)).toBe(1);
+  });
+});
+
+describe('currentSectionIndex (#1622 — the scrolled-into Section, never a visibility fraction)', () => {
+  // The deck's line sits 45% down its height (the design of record,
+  // docs/design/bible-study/Main.dc.html): the current Section is the last
+  // panel whose top has crossed that line. It reads position, not a fraction
+  // of the panel's own height, so a Section taller than the reader — whose
+  // best achievable intersection ratio is readerHeight / panelHeight — still
+  // becomes current once reading reaches it.
+  const deck = (height = 600) => ({ top: 0, height });
+
+  it('returns the first Section while the deck rests at its top', () => {
+    expect(currentSectionIndex(deck(), [0, 600, 1200])).toBe(0);
+  });
+
+  it('returns the last panel whose top has crossed the 45% line', () => {
+    // Deck 600 tall: the line sits at 270. A panel has scrolled up past it
+    // once its top is at or above 270, so the next panel is not yet current.
+    expect(currentSectionIndex(deck(), [-600, 0, 600])).toBe(1);
+    expect(currentSectionIndex(deck(), [-1200, -600, 0])).toBe(2);
+  });
+
+  it('follows a Section taller than the reader once its top reaches the line (#1622)', () => {
+    // A 4000px panel against a 600px reader tops out at an intersection ratio
+    // of 600 / 4000 = 0.15 — it can never reach the old 0.55 threshold. Read
+    // from position, it becomes current the moment its top crosses the line.
+    expect(currentSectionIndex(deck(), [-4000, 0, 4000])).toBe(1);
+  });
+
+  it('keeps a fitted Section current exactly as the deck snaps to it', () => {
+    // Panels that fit the reader stack one reader-height apart; each becomes
+    // current as the deck snaps to its top — no regression for short Sections.
+    expect(currentSectionIndex(deck(), [0, 600, 1200])).toBe(0);
+    expect(currentSectionIndex(deck(), [-600, 0, 600])).toBe(1);
+    expect(currentSectionIndex(deck(), [-1200, -600, 0])).toBe(2);
+  });
+
+  it('treats an empty deck as the first Section', () => {
+    expect(currentSectionIndex({ top: 0, height: 0 }, [])).toBe(0);
   });
 });
 

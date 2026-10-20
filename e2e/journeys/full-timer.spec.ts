@@ -145,7 +145,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(pointerAfter.locator('.tabular-nums')).toHaveText(String(remaining), { timeout: 10_000 });
   });
 
-  test('the contact page moves the stage and posts a team discussion', async ({ page }) => {
+  test('the contact page moves the stage and posts a team discussion (#1627)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -189,6 +189,16 @@ test.describe('Full-timer journey (#1477)', () => {
     await composer.press('Meta+Enter');
     await expect(contactPage.getByText(note).first()).toBeVisible({ timeout: 10_000 });
     await expect(contactPage.getByText(/missing or insufficient permissions/i)).toHaveCount(0);
+
+    // #1627: the viewer's own team note never raises the unread dot. Switching
+    // the pane back to Conversation shows no dot on the Full-timers tab (nor on
+    // the header's Conversation button), matching the stream's own-messages-are-
+    // read rule.
+    await contactPage
+      .getByRole('group', { name: 'Which Conversation' })
+      .getByRole('button', { name: /^Conversation/ })
+      .click();
+    await expect(contactPage.locator('[aria-label="New in Full-timers"]')).toHaveCount(0);
   });
 
   test('Add to story writes and reads back into the story', async ({ page }) => {
@@ -794,5 +804,32 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await byChip.click();
     await me.click();
     await expect(story.getByRole('button', { name: /^by: me$/i })).toBeVisible();
+  });
+
+  test('To ask lists a not-reached person under its Trainee (#1649)', async ({ page }) => {
+    await signInAs(page, 'fulltimer');
+    await gotoHome(page);
+
+    // The My Day pointer card is the door in.
+    const card = page.locator('a[href="/ask"]').first();
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    await card.click();
+    await expect(page).toHaveURL(/\/ask$/, { timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'To ask' })).toBeVisible({ timeout: 10_000 });
+
+    // The seeded "Untied Recent" (added by the YP Trainee, never reached) is
+    // drafted under that Trainee, using the same whole-team rule My Day reads.
+    const caleb = page.getByRole('region', { name: 'Caleb Owusu' });
+    await expect(caleb).toBeVisible({ timeout: 10_000 });
+    await expect(caleb.getByText('Untied Recent — not reached yet')).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('a Trainee cannot open To ask (#1649)', async ({ page }) => {
+    await signInAs(page, 'trainee');
+    await page.goto('/ask');
+    // The route guard bounces them home; the notepad never renders.
+    await waitForShell(page);
+    await expect(page.getByRole('heading', { name: 'To ask' })).not.toBeVisible({ timeout: 5_000 });
+    await expect(page).not.toHaveURL(/\/ask$/);
   });
 });

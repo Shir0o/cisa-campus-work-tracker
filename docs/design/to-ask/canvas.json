@@ -1,0 +1,20 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-16T18:50:00Z"},
+  "title": "To ask — #1639",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 1600, "title": "/ask at 1440 — the week's list, by Trainee"},
+    "Mobile.dc.html": {"x": 1520, "y": 0, "w": 860, "h": 1320, "title": "/ask at 390 — standing next to Jae"},
+    "Lifecycle.dc.html": {"x": 0, "y": 1720, "w": 1440, "h": 760, "title": "A drafted line stays tied to its signal (ADR 0046)"},
+    "Entry.dc.html": {"x": 1520, "y": 1720, "w": 900, "h": 760, "title": "Ways in — My Day card, contact overflow"}
+  },
+  "order": ["Main.dc.html", "Mobile.dc.html", "Lifecycle.dc.html", "Entry.dc.html"],
+  "notes": {
+    "brief": {"x": 0, "y": -560, "w": 520, "fill": "orange", "text": "#1639 — \"a smart notepad for Full-timers to note items to ask Trainees in person. All the names with no updates need asking in person.\"\n\nTo ask is a private notepad per Full-timer, grouped by Trainee. The app drafts lines from three signals that already exist:\n· Not reached yet\n· a Follow-up ask open 3 days\n· a Thread question unanswered 3 days\n\nThe Full-timer writes their own lines beside them, under a Trainee or under General. No Trainee or other Full-timer ever sees it."},
+    "settled": {"x": 600, "y": -560, "w": 520, "fill": "green", "text": "SETTLED in grilling (2026-10-16)\n\n· Lines resolve by Log on behalf (the honest record) or a private Asked tick. No \"I followed up\" on a Trainee's behalf.\n· Asked leaves the signal open; the line returns only on a NEW signal, never on a timer.\n· Ticked lines stay struck through 7 days; Clear done empties them sooner.\n· Contacts with no Trainee tied get their own group, last.\n· Team filter as on Around the team; groups sorted most-open first; hand-written lines before drafted, drafted oldest first.\n· No notifications. My Day pointer card carries the count."},
+    "mobile": {"x": 1520, "y": -560, "w": 460, "fill": "blue", "text": "Phone is where it's used — you're standing next to Jae. The page opens on the whole list, but tapping a Trainee header narrows to them alone, so the conversation is one screen.\n\nEvery target 44px. Bottom nav unchanged and omitted."}
+  },
+  "designSystems": []
+}

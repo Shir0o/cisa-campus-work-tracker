@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>To ask — phone</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Lexend:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+*{box-sizing:border-box}
+button,input{font-family:inherit}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.phone{width:390px;min-height:1320px;border:1px solid #E4E4E7;border-radius:36px;padding:24px 16px 40px;display:flex;flex-direction:column;gap:16px;background:#FFFFFF}
+.eyebrow{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:#71717A}
+h1{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:700;letter-spacing:-.025em}
+.pill{font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;background:rgba(82,82,91,.15);color:#3F3F46}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.fchip{min-height:44px;padding:0 16px;border-radius:999px;border:1px solid #F0F0F2;background:transparent;font-size:13px;font-weight:500;color:#52525B}
+.fchip.on{background:#131316;color:#FFFFFF;border-color:transparent;font-weight:600}
+.trow{display:flex;align-items:center;gap:12px;min-height:64px;padding:10px 14px;border-radius:24px;background:#F4F4F5;text-decoration:none;color:#0A0A0B}
+.gav{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.tname{font-size:16px;font-weight:500}
+.tsub{display:block;font-size:12px;color:#52525B}
+.tcount{margin-left:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#0A0A0B}
+.back{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:14px;font-weight:500;color:#52525B;text-decoration:none;align-self:flex-start}
+.ln{background:#F4F4F5;border-radius:24px;padding:12px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.ltop{display:flex;gap:10px;align-items:flex-start}
+.ltext{margin:0;font-size:15px;line-height:1.4;color:#0A0A0B;flex:1}
+.cleared .ltext,.done .ltext{text-decoration:line-through;color:#71717A}
+.lmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#52525B}
+.who{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#3F3F46;font-weight:500}
+.av{width:22px;height:22px;border-radius:999px;display:grid;place-items:center;font-size:9px;font-weight:600}
+.sig{font-size:11.5px;padding:1px 8px;border-radius:999px;background:#FFFFFF;color:#52525B}
+.sig.mine{background:transparent;border:1px dashed #D4D4D8;color:#71717A}
+.sig.ok{background:#E0F0E4;color:#016A1C}
+.acts{display:flex;gap:8px}
+.b-s{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border-radius:999px;border:0;background:#131316;color:#FFFFFF;font-size:13px;font-weight:500}
+.b-o{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border-radius:999px;border:1px solid #E4E4E7;background:#FFFFFF;color:#0A0A0B;font-size:13px;font-weight:500}
+.add{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 16px;border-radius:24px;border:1px dashed #D4D4D8;color:#71717A}
+.add input{border:0;background:transparent;font-size:15px;flex:1;outline:none}
+.tn-a{background:#E3E8F7;color:#3B4F9A}.tn-b{background:#F3E2F0;color:#8A3A7E}.tn-c{background:#E0F0E4;color:#2F6B42}.tn-d{background:#F8E4DA;color:#9A4A2A}.tn-e{background:#F6EBD2;color:#7F5A12}.tn-z{background:#EAEAEC;color:#52525B}
+</style>
+</helmet>
+<div style="width:860px;min-height:1320px;display:flex;gap:80px;font-family:Lexend,sans-serif;background:#FFFFFF;color:#0A0A0B">
+
+  <div class="phone" aria-label="The whole list">
+    <div>
+      <p class="eyebrow">Only you see this</p>
+      <div style="display:flex;align-items:center;gap:10px"><h1>To ask</h1><span class="pill">12 open</span></div>
+    </div>
+    <div class="chips" role="group" aria-label="Team">
+      <button class="fchip on">All teams</button><button class="fchip">Campus</button><button class="fchip">YP</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{trainees}}" as="t" hint-placeholder-count="6">
+        <a class="trow" href="#"><span class="gav {{t.tone}}">{{t.ini}}</span><span><span class="tname">{{t.name}}</span><span class="tsub">{{t.sub}}</span></span><span class="tcount">{{t.open}}</span><svg class="ic" viewBox="0 0 24 24" style="color:#A1A1AA"><path d="m9 6 6 6-6 6"/></svg></a>
+      </sc-for>
+    </div>
+    <button class="b-o" style="flex:none;align-self:flex-start;padding:0 18px">Clear done · 2</button>
+  </div>
+
+  <div class="phone" aria-label="Narrowed to Jae">
+    <a class="back" href="#"><svg class="ic" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>All Trainees</a>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="gav tn-a" style="width:44px;height:44px;font-size:14px">JK</span>
+      <div><h1 style="font-size:24px">Jae</h1><span style="font-size:13px;color:#52525B">Campus · 4 to ask</span></div>
+    </div>
+    <sc-for list="{{lines}}" as="l" hint-placeholder-count="5">
+      <div class="ln {{l.cls}}">
+        <div class="ltop"><p class="ltext">{{l.text}}</p></div>
+        <div class="lmeta"><a class="who" href="#"><span class="av {{l.tone}}">{{l.ini}}</span>{{l.who}}</a><span class="sig {{l.sigCls}}">{{l.sig}}</span></div>
+        <sc-if value="{{l.open}}" hint-placeholder-val="{{ true }}">
+          <div class="acts">
+            <button class="b-s"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Asked</button>
+            <sc-if value="{{l.canLog}}" hint-placeholder-val="{{ true }}"><button class="b-o">Log on behalf</button></sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <label class="add"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><input aria-label="Add a line for Jae" placeholder="Add a line for Jae…"></label>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":860,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      trainees: [
+        { name: 'Jae', ini: 'JK', tone: 'tn-a', sub: 'Campus', open: '4' },
+        { name: 'Ana', ini: 'AR', tone: 'tn-b', sub: 'Campus', open: '3' },
+        { name: 'Hana', ini: 'HS', tone: 'tn-c', sub: 'YP', open: '2' },
+        { name: 'Mateo', ini: 'MV', tone: 'tn-d', sub: 'Campus', open: '1' },
+        { name: 'General', ini: '··', tone: 'tn-z', sub: 'Not for one Trainee', open: '1' },
+        { name: 'No Trainee tied', ini: '?', tone: 'tn-z', sub: 'Share them with someone', open: '1' }
+      ],
+      lines: [
+        { open: true, canLog: false, text: 'Did Mei say yes to Sunday lunch?', who: 'Mei Lin', ini: 'ML', tone: 'tn-b', sig: 'Your note', sigCls: 'mine' },
+        { open: true, canLog: true, text: 'Did Daniel ever answer after Club Rush? He signed up on your phone.', who: 'Daniel Ortiz', ini: 'DO', tone: 'tn-d', sig: 'Not reached yet · 12 days', sigCls: '' },
+        { open: true, canLog: true, text: 'Sam Okafor — your follow-up ask is still open', who: 'Sam Okafor', ini: 'SO', tone: 'tn-e', sig: 'Follow-up ask open 5 days', sigCls: '' },
+        { open: true, canLog: true, text: 'Priya Nair — not reached yet', who: 'Priya Nair', ini: 'PN', tone: 'tn-c', sig: 'Not reached yet · 8 days', sigCls: '' },
+        { open: false, canLog: false, cls: 'cleared', text: 'Ruth Kim — not reached yet', who: 'Ruth Kim', ini: 'RK', tone: 'tn-a', sig: 'Cleared · Jae texted her Wed', sigCls: 'ok' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

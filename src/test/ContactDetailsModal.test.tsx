@@ -1725,6 +1725,39 @@ describe('ContactDetailsModal Component', () => {
   });
 
 
+  it('lets an operator edit a logged prayer in place on the story (#1674)', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'prayers') {
+        s({
+          docs: [
+            { id: 'prayer-1', data: () => ({ contactId: 'contact-abc', burden: 'Pray for finals\n\nShe is stressed.', status: 'ongoing', date: new Date().toISOString() }) },
+          ],
+        });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    const story = screen.getByRole('region', { name: 'The story so far' });
+    fireEvent.click(within(story).getByRole('button', { name: 'Edit prayer' }));
+
+    fireEvent.change(within(story).getByDisplayValue('Pray for finals'), { target: { value: 'Pray for finals week' } });
+    fireEvent.change(within(story).getByDisplayValue('She is stressed.'), { target: { value: 'Three exams on Monday.' } });
+    fireEvent.click(within(story).getByRole('button', { name: 'Save prayer' }));
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ burden: 'Pray for finals week\n\nThree exams on Monday.' }),
+      );
+    });
+    // Status is left alone by an edit.
+    expect(firestore.updateDoc).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: expect.anything() }));
+    await waitFor(() => expect(within(story).queryByRole('button', { name: 'Save prayer' })).toBeNull());
+  });
+
   // ── Edit form edge cases ──────────────────────────────────────────
 
   it('splits a single-word name and applies capitalize on the last name', async () => {
@@ -2135,10 +2168,12 @@ describe('ContactDetailsModal Component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Edit$/ }));
 
-    // Change dateTime and type fields.
+    // The composer reopens in place (#1673): type is a chip, time sits behind its chip.
+    fireEvent.click(screen.getByRole('button', { name: 'Meeting' }));
+    expect(screen.getByRole('button', { name: 'Meeting' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /Jun 15/ }));
     const dateInput = screen.getByDisplayValue('2026-06-15T08:00');
     fireEvent.change(dateInput, { target: { value: '2026-06-16T09:30' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'meeting' } });
 
     // Empty content guard: Save does nothing.
     const textareas = screen.getAllByRole('textbox');
@@ -3581,6 +3616,25 @@ describe('desktop story layout (design D)', () => {
       expect(within(drawer).getByText('Staff only')).toBeInTheDocument();
       expect(within(drawer).queryByRole('button', { name: 'Add to story' })).toBeNull();
     });
+
+    it("never raises the unread dot for the viewer's own team message, but does for another's (#1627)", () => {
+      localStorage.setItem('cisa.contactFullTimersSeen.contact-abc', new Date(2026, 8, 20, 9, 0).toISOString());
+
+      // The viewer's own top-level team message lands after the seen stamp.
+      hoisted.messages = [
+        { id: 'ft-mine', interactionId: null, scope: 'team', from: 'user-123', fromName: 'Admin Tony', kind: 'comment', body: 'My own note', at: new Date(2026, 8, 24, 9, 0).toISOString() },
+      ];
+      const mine = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      expect(screen.queryAllByLabelText('New in Full-timers')).toHaveLength(0);
+      mine.unmount();
+
+      // A teammate's top-level team message after the stamp does raise it.
+      hoisted.messages = [
+        { id: 'ft-theirs', interactionId: null, scope: 'team', from: 'u-ft', fromName: 'Ruth Chen', kind: 'comment', body: 'Ruth notes', at: new Date(2026, 8, 24, 9, 0).toISOString() },
+      ];
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+      expect(screen.queryAllByLabelText('New in Full-timers').length).toBeGreaterThan(0);
+    });
   });
 
   describe('Interaction Threads', () => {
@@ -3916,6 +3970,23 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
     });
   });
 
+  it('shows the contact first name, not the {name} placeholder, in the release undo snackbar (#1623)', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{ ...mockContact, createdBy: 'user-123', carers: ['user-123'] }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(await screen.findByText('Release from my queue'));
+
+    expect(await screen.findByText('Released John from your queue.')).toBeInTheDocument();
+    expect(screen.queryByText(/Released \{name\}/)).not.toBeInTheDocument();
+  });
+
   it('delegates: shares the person and posts a mention carrying the note', async () => {
     render(
       <ContactDetailsModal
@@ -4059,6 +4130,7 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
         addInteraction: vi.fn(),
         addPrayer: vi.fn(),
         updatePrayerStatus: vi.fn(),
+        updatePrayerBurden: vi.fn(),
         moveStage: vi.fn(),
         changeKind: vi.fn(),
         updateContact: vi.fn(),

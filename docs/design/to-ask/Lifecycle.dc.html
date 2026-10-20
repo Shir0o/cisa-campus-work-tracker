@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>To ask — line lifecycle</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Lexend:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#52525B}a:hover{color:#0A0A0B}
+*{box-sizing:border-box}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+h2{margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.015em}
+.rowsub{margin:4px 0 0;font-size:13px;color:#52525B}
+.steps{display:flex;align-items:flex-start;gap:12px}
+.step{width:248px;flex:none;display:flex;flex-direction:column;gap:10px}
+.slab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#71717A}
+.mini{background:#FFFFFF;border:1px solid #E4E4E7;border-radius:20px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;min-height:96px}
+.mini.event{background:#F4F4F5;border-style:dashed;align-items:center}
+.mini.gone{background:transparent;border-style:dashed;color:#A1A1AA;align-items:center;justify-content:center;font-size:13px}
+.box{width:18px;height:18px;border-radius:6px;border:1.5px solid #A1A1AA;display:grid;place-items:center;color:transparent;flex:none;margin-top:2px}
+.done .box{background:#131316;border-color:#131316;color:#FFFFFF}
+.cleared .box{background:#016A1C;border-color:#016A1C;color:#FFFFFF}
+.mtext{margin:0;font-size:13.5px;line-height:1.4}
+.done .mtext,.cleared .mtext{text-decoration:line-through;color:#71717A}
+.sig{display:inline-block;margin-top:6px;font-size:11px;padding:1px 8px;border-radius:999px;background:#F4F4F5;color:#52525B}
+.sig.ok{background:#E0F0E4;color:#016A1C}
+.sig.tie{background:#131316;color:#FFFFFF}
+.cap{margin:0;font-size:12.5px;line-height:1.45;color:#52525B}
+.arrow{width:28px;flex:none;height:96px;margin-top:22px;display:grid;place-items:center;color:#A1A1AA}
+</style>
+</helmet>
+<div style="width:1440px;min-height:760px;padding:48px 40px;display:flex;flex-direction:column;gap:48px;font-family:Lexend,sans-serif;background:#FFFFFF;color:#0A0A0B">
+
+  <sc-for list="{{rows}}" as="r" hint-placeholder-count="2">
+    <section style="display:flex;flex-direction:column;gap:20px">
+      <div><h2>{{r.title}}</h2><p class="rowsub">{{r.sub}}</p></div>
+      <div class="steps">
+        <sc-for list="{{r.steps}}" as="s" hint-placeholder-count="5">
+          <sc-if value="{{s.arrow}}" hint-placeholder-val="{{ false }}"><div class="arrow" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></sc-if>
+          <div class="step">
+            <span class="slab">{{s.label}}</span>
+            <sc-if value="{{s.isLine}}" hint-placeholder-val="{{ true }}">
+              <div class="mini {{s.cls}}">
+                <span class="box"><svg class="ic" viewBox="0 0 24 24" style="width:11px;height:11px;stroke-width:3"><path d="M20 6 9 17l-5-5"/></svg></span>
+                <div><p class="mtext">{{s.text}}</p><span class="sig {{s.sigCls}}">{{s.sig}}</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{s.isEvent}}" hint-placeholder-val="{{ false }}">
+              <div class="mini event"><svg class="ic" viewBox="0 0 24 24" style="color:#52525B"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg><p class="mtext">{{s.text}}</p></div>
+            </sc-if>
+            <sc-if value="{{s.isGone}}" hint-placeholder-val="{{ false }}">
+              <div class="mini gone">{{s.text}}</div>
+            </sc-if>
+            <p class="cap">{{s.cap}}</p>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const line = (o) => Object.assign({ isLine: true, isEvent: false, isGone: false, cls: '', sigCls: '' }, o);
+    const ev = (o) => Object.assign({ isLine: false, isEvent: true, isGone: false }, o);
+    const gone = (o) => Object.assign({ isLine: false, isEvent: false, isGone: true }, o);
+    const rows = [
+      { title: 'The signal clears it — even after you reworded it', sub: 'You never ask Jae about something he already logged.', steps: [
+        line({ label: '1 · Drafted', text: 'Daniel Ortiz — not reached yet', sig: 'Not reached yet · 12 days', cap: 'The app writes the line under the Trainee tied to Daniel.' }),
+        line({ label: '2 · You reword it', text: 'Did Daniel ever answer after Club Rush?', sig: 'Still tied · Not reached yet', sigCls: 'tie', cap: 'Your words replace the app’s. The tie to the signal stays.' }),
+        ev({ label: '3 · Jae logs a text', text: 'Wed 9:40 · Jae messaged Daniel', cap: 'From anywhere — Jae’s phone, or you logging on his behalf.' }),
+        line({ label: '4 · It ticks itself', cls: 'cleared', text: 'Did Daniel ever answer after Club Rush?', sig: 'Cleared · Jae texted him Wed', sigCls: 'ok', cap: 'Struck through, saying what cleared it. Your wording is kept.' }),
+        gone({ label: '5 · A week on', text: 'Gone', cap: 'Ticked lines leave after 7 days, or sooner with Clear done.' })
+      ].map((s, i) => Object.assign(s, { arrow: i > 0 })) },
+      { title: 'You tick Asked — the signal stays open', sub: 'Asked is only that you put the question. It comes back on a new signal, never on a timer.', steps: [
+        line({ label: '1 · You ask Hana', cls: 'done', text: 'Noah Kim — not reached yet', sig: 'Asked Wed · still not reached', cap: 'Hana hasn’t reached him yet. Nothing anyone else can see changes.' }),
+        gone({ label: '2 · A week on', text: 'Gone — and stays gone', cap: 'Noah is still not reached, but the same signal never re-adds him.' }),
+        ev({ label: '3 · A new signal', text: 'Kate’s follow-up ask on Noah · open 3 days', cap: 'A different signal instance for the same person.' }),
+        line({ label: '4 · Drafted again', text: 'Noah Kim — Kate’s follow-up ask is still open', sig: 'Follow-up ask open 3 days', cap: 'Back under Hana, as a new line.' })
+      ].map((s, i) => Object.assign(s, { arrow: i > 0 })) }
+    ];
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

@@ -4245,6 +4245,62 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   .cd-composer-chip-row { gap: 5px; }
   .cd-composer-hint { display: none; }
 }
+/* Editing in place reuses the composer (#1673, #1674). A prayer being
+   edited keeps the prayer tone of its card. */
+.cd-composer-editing {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: var(--prayer-ink);
+}
+.cd-composer.is-edit.is-prayer .cd-composer-box {
+  border-color: var(--prayer-ink);
+  background: var(--prayer-tint);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--stage-violet) 14%, transparent);
+}
+
+/* ── a prayer on the story (#1672) ──
+   The plum stage tone the timeline dot already uses, at low strength, so a
+   prayer is told apart from an interaction at a glance. */
+.cd-story, .cd-composer {
+  --prayer-tint: color-mix(in oklch, var(--stage-violet) 7%, transparent);
+  --prayer-line: color-mix(in oklch, var(--stage-violet) 22%, transparent);
+  --prayer-ink: color-mix(in oklch, var(--stage-violet) 78%, var(--on-surface));
+}
+.cd-prayer {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px 12px; border-radius: var(--radius);
+  background: var(--prayer-tint); border: 1px solid var(--prayer-line);
+}
+.cd-prayer-head { display: flex; align-items: center; gap: 8px; }
+.cd-prayer-badge {
+  width: 24px; height: 24px; border-radius: 999px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in oklch, var(--stage-violet) 16%, transparent); color: var(--prayer-ink);
+}
+.cd-prayer-kind { font-size: 12.5px; font-weight: 600; color: var(--prayer-ink); }
+.cd-prayer-edit {
+  height: 28px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--prayer-ink);
+  font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.cd-prayer-edit:hover { background: var(--prayer-tint); }
+.cd-prayer-text { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.5; color: var(--on-surface); white-space: pre-wrap; }
+.cd-prayer-context { margin: 0; font-size: 14px; line-height: 1.5; color: var(--on-surface-variant); white-space: pre-wrap; }
+.cd-prayer-foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 6px; padding-top: 10px;
+  border-top: 1px solid color-mix(in oklch, var(--stage-violet) 16%, transparent);
+}
+.cd-prayer-status {
+  display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px;
+  background: color-mix(in oklch, var(--stage-violet) 10%, transparent);
+}
+.cd-prayer-status button {
+  height: 26px; padding: 0 11px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--on-surface-variant);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.cd-prayer-status button.on { background: var(--surface); color: var(--prayer-ink); box-shadow: var(--shadow-pop); }
+.cd-prayer-held { font-size: 12px; color: var(--on-surface-variant); }
 .cd-story-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .cd-story-entry {
   display: grid; grid-template-columns: 84px 14px minmax(0, 1fr); column-gap: 14px;

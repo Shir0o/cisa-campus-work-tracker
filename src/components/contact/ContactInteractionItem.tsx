@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, Footprints, Loader2, UserCircle } from "lucide-react";
+import { Clock, Footprints, UserCircle } from "lucide-react";
 import { interactionAdapter, interactionThreadSummary } from "../stream/interactionAdapter";
 
 type InteractionStreamAdapter = ReturnType<typeof interactionAdapter>;
@@ -8,12 +8,8 @@ import type { StreamViewer } from "../../lib/stream";
 import type { Interaction } from "../../types";
 import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
-
-export interface EditInteractionData {
-  content: string;
-  dateTime: string;
-  type: string;
-}
+import ContactComposer from "./ContactComposer";
+import type { ComposerValue } from "../../lib/contactComposer";
 
 export default function ContactInteractionItem({
   interaction,
@@ -31,13 +27,14 @@ export default function ContactInteractionItem({
   viewer,
   threadOpen,
   onOpenThread,
+  firstName = "",
 }: {
   interaction: Interaction;
   canEdit: boolean;
   canRemove: boolean;
   editing: boolean;
-  editData: EditInteractionData;
-  onEditDataChange: React.Dispatch<React.SetStateAction<EditInteractionData>>;
+  editData: ComposerValue;
+  onEditDataChange: React.Dispatch<React.SetStateAction<ComposerValue>>;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onUpdate: (e: React.FormEvent) => void;
@@ -47,6 +44,7 @@ export default function ContactInteractionItem({
   viewer: StreamViewer;
   threadOpen: boolean;
   onOpenThread: () => void;
+  firstName?: string;
 }) {
   const { t } = useLanguage();
 
@@ -71,95 +69,18 @@ export default function ContactInteractionItem({
       </div>
       <div className="flex-1 min-w-0">
         {editing ? (
-          <form
+          // The story's composer reopens in place (#1673).
+          <ContactComposer
+            open
+            variant="edit"
+            value={editData}
+            onChange={onEditDataChange}
+            onOpen={() => {}}
+            onCancel={onCancelEdit}
             onSubmit={onUpdate}
-            className="space-y-3 p-3 rounded-3xl bg-surface-container-high border border-primary/20"
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                  {t('modals.contactDetails.date')}
-                </label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={editData.dateTime}
-                  onChange={(e) =>
-                    onEditDataChange((prev) => ({
-                      ...prev,
-                      dateTime: e.target.value,
-                    }))
-                  }
-                  className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                  {t('modals.contactDetails.type')}
-                </label>
-                <select
-                  value={editData.type}
-                  onChange={(e) =>
-                    onEditDataChange((prev) => ({
-                      ...prev,
-                      type: e.target.value,
-                    }))
-                  }
-                  className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
-                >
-                  <option value="chat">
-                    {t('modals.contactDetails.chat_message')}
-                  </option>
-                  <option value="call">
-                    {t('modals.contactDetails.phone_call')}
-                  </option>
-                  <option value="meeting">
-                    {t('modals.contactDetails.meeting')}
-                  </option>
-                  <option value="email">{t('modals.contactDetails.email')}</option>
-                  <option value="interaction">
-                    {t('modals.contactDetails.other')}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                {t('modals.contactDetails.content')}
-              </label>
-              <textarea
-                required
-                value={editData.content}
-                onChange={(e) =>
-                  onEditDataChange((prev) => ({
-                    ...prev,
-                    content: e.target.value,
-                  }))
-                }
-                className="w-full min-h-[60px] p-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs resize-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-1 border-t border-outline-variant/30">
-              <button
-                type="button"
-                onClick={onCancelEdit}
-                className="h-7 px-3 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
-              >
-                {t('modals.contactDetails.cancel')}
-              </button>
-              <button
-                type="submit"
-                disabled={updating || !editData.content.trim()}
-                className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-semibold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
-              >
-                {updating ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  t('modals.contactDetails.save')
-                )}
-              </button>
-            </div>
-          </form>
+            submitting={updating}
+            firstName={firstName}
+          />
         ) : (
           <>
             <div className="flex items-center justify-between mb-1">

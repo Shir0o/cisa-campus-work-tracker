@@ -26,6 +26,8 @@ import { interactionAdapter } from "../stream/interactionAdapter";
 import { contactStakeholdersOf } from "../../lib/threads";
 import { useThreads, countFor, type ThreadMessage } from "../../lib/threads";
 import { walkingRecipient } from "../../lib/walking";
+import { isTrainee as isTraineeUid } from "../../lib/walking";
+import AddToAskModal from "../contact/AddToAskModal";
 import { useLanguage } from "../LanguageProvider";
 import { yearToForm } from "../../lib/contactYear";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
@@ -110,6 +112,7 @@ export default function ContactDetailsModal({
   const [reassigningCreator, setReassigningCreator] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [delegateOpen, setDelegateOpen] = useState(false);
+  const [addToAskOpen, setAddToAskOpen] = useState(false);
 
   // Pinned pane (ADR 0034)
   const [paneView, setPaneView] = useState<ContactPaneView>("conversation");
@@ -282,6 +285,27 @@ export default function ContactDetailsModal({
     (m) => !founders.includes(m.id) && !coCreators.includes(m.id)
   );
 
+  // The Trainees tied to this person — the choices "Add to To ask" offers, so a
+  // line lands under the right person (#1649).
+  const tiedTrainees = useMemo(() => {
+    const ids = [
+      currentContact.createdBy,
+      currentContact.addedBy,
+      ...(currentContact.coCreators || []),
+      ...(currentContact.founders || []),
+      ...(currentContact.carers || []),
+    ].filter((x): x is string => !!x);
+    return [...new Set(ids)]
+      .filter((staffId) => {
+        const m = teamMembers.find((tm) => tm.id === staffId);
+        return m ? !m.fullTimer : isTraineeUid(staffId);
+      })
+      .map((staffId) => ({
+        id: staffId,
+        name: teamMembers.find((tm) => tm.id === staffId)?.name || staffId,
+      }));
+  }, [currentContact, teamMembers]);
+
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith("visit_") &&
     (currentUid === interaction.userId || hasMinRole(role, "manager"));
@@ -352,7 +376,12 @@ export default function ContactDetailsModal({
       await actions.releaseContact(currentUid, {
         userName: user?.displayName || user?.email?.split('@')[0] || t('modals.contactDetails.unknown_user'),
       });
-      showUndoSnack(t('modals.contactDetails.release_done', 'Released from your queue'));
+      showUndoSnack(
+        t('modals.contactDetails.release_done', 'Released {name} from your queue.').replace(
+          '{name}',
+          firstName,
+        ),
+      );
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
     }
@@ -568,6 +597,22 @@ export default function ContactDetailsModal({
     }
   };
 
+  const handleUpdatePrayerBurden = async (
+    prayer: PrayerRecord,
+    words: { text: string; context: string },
+  ) => {
+    if (!contact) return;
+    hasActionRef.current = true;
+    try {
+      await actions.updatePrayerBurden(prayer, words, {
+        uid: user?.uid,
+        name: user?.displayName || user?.email?.split("@")[0] || null,
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "prayers");
+    }
+  };
+
   const persistTags = async (updatedTags: string[], verb: string, tag: string) => {
     hasActionRef.current = true;
     const prevTags = formData.tags;
@@ -747,6 +792,7 @@ export default function ContactDetailsModal({
       onRemoveInteraction={handleRemoveInteraction}
       onUpdateInteraction={handleUpdateInteraction}
       onUpdatePrayerStatus={handleUpdatePrayerStatus}
+      onUpdatePrayerBurden={handleUpdatePrayerBurden}
       interactionAdapterFor={interactionAdapterFor}
       streamViewer={streamViewer}
     />
@@ -765,8 +811,10 @@ export default function ContactDetailsModal({
     }, 0);
   };
 
+  // Only someone else's post counts as unread — the stream's own rule: your own
+  // messages are read by definition (see src/lib/stream.ts's New divider).
   const latestTeamAt = threadMessages
-    .filter((m) => m.scope === "team" && !m.parentId)
+    .filter((m) => m.scope === "team" && !m.parentId && m.from !== currentUid)
     .reduce((max, m) => (m.at > max ? m.at : max), "");
   const fullTimersUnread = !!latestTeamAt && latestTeamAt > fullTimersSeenAt;
   const markFullTimersSeen = () => {
@@ -826,6 +874,7 @@ export default function ContactDetailsModal({
     openPrayerCount: openPrayers.length,
     canDelegate: canShare,
     conversationUnread: fullTimersUnread,
+    showAddToAsk: isAdmin && !isImpersonating,
   };
 
   const headerActions: ContactHeaderActions = {
@@ -841,6 +890,7 @@ export default function ContactDetailsModal({
     onOpenMoveSheet: () => setMovingStage(true),
     onOpenAbout: () => setAboutOpen(true),
     onOpenDelegate: () => setDelegateOpen(true),
+    onAddToAsk: () => setAddToAskOpen(true),
     onChangeKind: changeKind,
     onChangeCreator: () => setReassigningCreator(true),
     onDelete: handleDelete,
@@ -968,6 +1018,14 @@ export default function ContactDetailsModal({
         members={shareOptions}
         onClose={() => setDelegateOpen(false)}
         onDelegate={handleDelegate}
+      />
+
+      <AddToAskModal
+        open={addToAskOpen}
+        contactId={currentContact.id}
+        contactName={currentContact.name}
+        trainees={tiedTrainees}
+        onClose={() => setAddToAskOpen(false)}
       />
 
       {movingStage && (
