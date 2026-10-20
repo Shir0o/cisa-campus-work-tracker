@@ -1,0 +1,72 @@
+name: Weekly Autonomous Maintenance Loop
+
+on:
+  schedule:
+    # 04:00 UTC every Monday
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-maintenance
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  maintenance-agent:
+    name: Autonomous Weekly Micro-Improvements
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Configure Git Bot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install mobile dependencies
+        run: npm ci
+        working-directory: apps/mobile
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Discover micro-improvements
+        run: npx tsx scripts/discover-improvements.ts
+
+      - name: Execute maintenance agent loop
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: npx tsx scripts/agent/runner.ts --publish
+
+      - name: Upload maintenance artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: maintenance-artifacts-${{ github.run_id }}
+          path: |
+            .cache/improvement-candidates.json
+            .cache/pr-body.md
+          retention-days: 14
