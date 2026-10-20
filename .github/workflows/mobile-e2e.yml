@@ -14,7 +14,7 @@ jobs:
   maestro-android:
     name: Mobile E2E (Android Maestro)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: apps/mobile
@@ -54,10 +54,26 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
 
-      - name: Build Android Debug APK
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/mobile/package-lock.json') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # Release, not debug: a debug APK loads its JS from Metro, which never
+      # runs here, so the app opened on a red "Unable to load script" screen
+      # and every flow failed on its first assertion (#1683). The release
+      # variant embeds the bundle and is signed with the debug keystore.
+      - name: Build Android Release APK
+        env:
+          SENTRY_DISABLE_AUTO_UPLOAD: "true"
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Run Maestro E2E tests on Android Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -67,7 +83,7 @@ jobs:
           arch: x86_64
           working-directory: apps/mobile
           script: |
-            adb install android/app/build/outputs/apk/debug/app-debug.apk
+            adb install android/app/build/outputs/apk/release/app-release.apk
             maestro test .maestro/
 
       - name: Upload Maestro output on failure
