@@ -8,6 +8,7 @@ import {
   type HistoryEntry,
 } from '../../scripts/generate-scorecard';
 import type { BundleScorecard } from '../../scripts/measure-bundle';
+import type { MobileBundleScorecard } from '../../scripts/measure-mobile-bundle';
 
 describe('generate-scorecard', () => {
   describe('composeScorecardMarkdown', () => {
@@ -73,7 +74,7 @@ describe('generate-scorecard', () => {
       expect(md).toContain('`fedcba9`');
       expect(md).toContain('92/100');
       expect(md).toContain('1.60s');
-      expect(md).toContain('## 2. Bundle Chunk Breakdown & Deltas');
+      expect(md).toContain('## 2. Web Bundle Chunk Breakdown & Deltas');
       expect(md).toContain('## 3. Code Integrity & Design System Health');
       expect(md).toContain('## 4. Rolling History (Recent Runs)');
       expect(md).toContain('`abc1234`');
@@ -89,6 +90,48 @@ describe('generate-scorecard', () => {
 
       expect(md).toContain('Lighthouse CI');
       expect(md).toContain('Not run / Deferred');
+    });
+
+    it('renders mobile bundle and bytecode section when mobile metrics are present', () => {
+      const mockMobile: MobileBundleScorecard = {
+        timestamp: '2026-10-20T00:00:00Z',
+        distDir: '/tmp/mobile-dist',
+        android: {
+          platform: 'android',
+          bundleFile: 'entry-123.hbc',
+          rawBytes: 13000000,
+          gzipBytes: 5000000,
+          brotliBytes: 4000000,
+        },
+        ios: {
+          platform: 'ios',
+          bundleFile: 'entry-456.hbc',
+          rawBytes: 13000000,
+          gzipBytes: 5000000,
+          brotliBytes: 4000000,
+        },
+        assets: [
+          { category: 'fonts', count: 12, rawBytes: 2000000, gzipBytes: 1500000 },
+        ],
+        totalAssetsRawBytes: 2000000,
+        totalAssetsGzipBytes: 1500000,
+        totalPackageRawBytes: 28000000,
+        totalPackageGzipBytes: 11500000,
+        budgetStatus: 'PASS',
+      };
+
+      const md = composeScorecardMarkdown({
+        bundle: mockBundle,
+        lighthouse: mockLighthouse,
+        quality: mockQuality,
+        history: mockHistory,
+        mobile: mockMobile,
+      });
+
+      expect(md).toContain('**Target**: Web, PWA & Mobile');
+      expect(md).toContain('Android Hermes Bytecode');
+      expect(md).toContain('iOS Hermes Bytecode');
+      expect(md).toContain('Mobile Bundle & Hermes Bytecode Breakdown');
     });
   });
 
