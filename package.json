@@ -81,7 +81,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@playwright/test": "^1.63.0",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
