@@ -37,7 +37,7 @@ import { useQueueState } from './queueState';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
 
-/** The card id "I prayed just now" marks. Shares the trainee queue's per-day
+/** The card id "Prayed for {name}" marks. Shares the trainee queue's per-day
  * `handled` map exactly as the full-timer home does — `prayedBy` doesn't exist
  * on a prayer, and there is no shared "who prayed today" in Firestore. Safe to
  * share the map because pickLandingForRole never sends one user to two of
@@ -131,7 +131,7 @@ export function useMemberPrayerData(
     carriedToday: (id: string) => !!queueState.handled[carriedId(id)],
 
     // ── writes ────────────────────────────────────────────────────────────────
-    /** "I prayed just now" — device-local, one-way for the day. */
+    /** "Prayed for {name}" — device-local, one-way for the day. */
     markCarried: (id: string) => queueState.handle(carriedId(id)),
 
     askTheTeam: (body: string) =>

@@ -6,7 +6,7 @@
 // contract: the mobile queue derives its card order in a `useMemo` keyed on
 // `handled` and `later`, so a map mutated in place re-renders the screen
 // without recomputing the order — which is exactly how "Later", swipe-to-defer
-// and "I prayed just now" all came to do nothing on screen. The design leans
+// and "Prayed for {name}" all came to do nothing on screen. The design leans
 // the other way and says so in views/mobile/m2.jsx: it rebuilds the queue every
 // render "on purpose … so memoising it goes stale immediately". We memoise, so
 // the state has to move underneath it.

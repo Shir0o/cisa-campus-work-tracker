@@ -389,7 +389,7 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     },
     markAskScanned: (id: string) => uid && InboxReads.markRead(uid, 'ask:' + id),
 
-    // "I prayed just now" is device-local, exactly as it is on the trainee's
+    // "Prayed for {name}" is device-local, exactly as it is on the trainee's
     // queue (QueueCard's pray branch just marks the card handled): PrayerRecord
     // has no `prayedBy`, and there is no shared "who prayed today" anywhere in
     // Firestore. It shares queueState's per-day `handled` map — safe because
@@ -401,7 +401,7 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     markPrayed: (rowId: string) => queueState.handle(prayerCardId(rowId)),
 
     /** Close out a member's ask — "the team prayed, and God answered". Unlike
-     * "I prayed just now" this one is real and shared: the asker sees it. */
+     * "Prayed for {name}" this one is real and shared: the asker sees it. */
     markRequestAnswered: (requestId: string) => setPrayerRequestStatus(requestId, 'answered'),
 
     /** Opens (or finds) the DM with someone — how "Homes open to students"

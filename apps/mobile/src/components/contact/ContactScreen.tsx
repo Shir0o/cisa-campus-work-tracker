@@ -456,6 +456,7 @@ function Person({ contactId, initialTab, initialInteractionId, initialStream }: 
               <PrayerCard
                 key={prayer.id}
                 prayer={prayer}
+                name={first}
                 prayed={!!queueState.handled[prayerCardId(prayer.id)]}
                 canWrite={canWrite}
                 onPrayed={() => queueState.handle(prayerCardId(prayer.id))}
@@ -884,6 +885,7 @@ function StreamSwitch({
 /** An open or set-down prayer (`.m2c-pr`). */
 function PrayerCard({
   prayer,
+  name,
   prayed,
   done,
   canWrite,
@@ -891,6 +893,8 @@ function PrayerCard({
   onAnswered,
 }: {
   prayer: PrayerRecord;
+  /** First name for the "Prayed for {name}" button. */
+  name?: string;
   prayed?: boolean;
   done?: boolean;
   canWrite: boolean;
@@ -943,7 +947,7 @@ function PrayerCard({
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.card.onDeep : c.card.tones.pray.text }}>
-              {prayed ? t('mobile.contact.prayed') : t('mobile.contact.i_prayed_just_now')}
+              {prayed ? t('mobile.contact.prayed') : t('mobile.contact.prayed_for').replace('{name}', name ?? '')}
             </Text>
           </Pressable>
           <Pressable

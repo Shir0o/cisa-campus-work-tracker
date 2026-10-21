@@ -31,7 +31,7 @@ export function MemberPrayerScreen({ role }: { role: MemberRole }) {
   );
 }
 
-/** The one-way "I prayed just now" chip, shared by every list on this screen. */
+/** The one-way "Prayed for {name}" chip, shared by every list on this screen. */
 function CarryButton({
   carried,
   label,
@@ -258,7 +258,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <CarryButton
                     carried={data.carriedToday(p.id)}
-                    label={t('mobile.prayer.i_prayed_just_now')}
+                    label={t('mobile.prayer.prayed_for').replace('{name}', p.title)}
                     onPress={() => {
                       data.markCarried(p.id);
                       setToast(t('mobile.prayer.thank_you_for_carrying'));
