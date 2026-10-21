@@ -815,7 +815,7 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await expect(card).toBeVisible({ timeout: 10_000 });
     await card.click();
     await expect(page).toHaveURL(/\/ask$/, { timeout: 10_000 });
-    await expect(page.getByRole('heading', { name: 'To ask' })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'To ask', exact: true })).toBeVisible({ timeout: 10_000 });
 
     // The seeded "Untied Recent" (added by the YP Trainee, never reached) is
     // drafted under that Trainee, using the same whole-team rule My Day reads.
@@ -829,7 +829,7 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await page.goto('/ask');
     // The route guard bounces them home; the notepad never renders.
     await waitForShell(page);
-    await expect(page.getByRole('heading', { name: 'To ask' })).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: 'To ask', exact: true })).not.toBeVisible({ timeout: 5_000 });
     await expect(page).not.toHaveURL(/\/ask$/);
   });
 });
