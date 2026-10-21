@@ -15,6 +15,7 @@ import {
   type BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '../../theme/ThemeProvider';
+import { KeyboardAvoidingView } from './KeyboardAvoidingView';
 
 // The library's own BottomSheetBackdrop only flips pointer-events to 'none' once its
 // Reanimated-driven close animation crosses a threshold index — on web that animation is
@@ -204,12 +205,14 @@ export function Sheet({
         doesn't implement and throws. Regular TextInput works fine here on both
         web and native.
       */}
-      <BottomSheetScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={footer ? { paddingBottom: footerHeight + 24 } : undefined}
-      >
-        {children}
-      </BottomSheetScrollView>
+      <KeyboardAvoidingView style={{ flex: 1 }}>
+        <BottomSheetScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={footer ? { paddingBottom: footerHeight + 24 } : undefined}
+        >
+          {children}
+        </BottomSheetScrollView>
+      </KeyboardAvoidingView>
     </BottomSheetModal>
   );
 }
