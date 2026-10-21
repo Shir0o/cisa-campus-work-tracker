@@ -507,8 +507,34 @@ describe("Stream — optional adapter capabilities", () => {
         ],
       }),
     );
-    expect(within(row("fixed")).getByText("Edited")).toBeInTheDocument();
-    expect(within(row("untouched")).queryByText("Edited")).toBeNull();
+    expect(within(row("fixed")).getByText(/Edited/)).toBeInTheDocument();
+    expect(within(row("untouched")).queryByText(/Edited/)).toBeNull();
+  });
+
+  it("puts Edit in the hover toolbar, not under the message (#1712)", () => {
+    renderStream(editable());
+    const edit = within(row("my words")).getByRole("button", { name: "Edit" });
+    expect(edit.closest('[role="toolbar"]')).not.toBeNull();
+  });
+
+  it("shows Edited beside the time in the header (#1712)", () => {
+    renderStream(fakeAdapter({ messages: [message({ from: "josh", body: "fixed", editedAt: ago(1000) })] }));
+    const edited = within(row("fixed")).getByText(/Edited/);
+    expect(edited.closest(".strm-mh")).not.toBeNull();
+    expect(edited.previousElementSibling).toHaveClass("strm-when");
+  });
+
+  it("still shows Edited on a continuation row, which has no header (#1712)", () => {
+    renderStream(
+      fakeAdapter({
+        messages: [
+          message({ id: "a", body: "first", at: yesterdayAt(9, 0) }),
+          message({ id: "b", body: "second", at: yesterdayAt(9, 2), editedAt: ago(1000) }),
+        ],
+      }),
+    );
+    expect(row("second").querySelector(".strm-mh")).toBeNull();
+    expect(within(row("second")).getByText("Edited")).toBeInTheDocument();
   });
 
   it("draws a message's own initials in its avatar when the source gives them, else the name's", () => {

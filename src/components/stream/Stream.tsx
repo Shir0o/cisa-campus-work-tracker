@@ -305,6 +305,7 @@ function Row<M extends StreamSourceMessage>({
             )}
             {justPosted && <span className="strm-tag strm-tag-just">{t("stream.just_posted")}</span>}
             <span className="strm-when">{when}</span>
+            {m.editedAt && !editing && !gone && <span className="strm-edited">· {t("stream.edited")}</span>}
           </div>
         )}
         {editing ? (
@@ -395,23 +396,9 @@ function Row<M extends StreamSourceMessage>({
             )}
           </div>
         )}
-        {!editing && !gone && (m.editedAt || canEdit) && (
+        {continuation && m.editedAt && !editing && !gone && (
           <div className="strm-status">
-            {m.editedAt && <span className="strm-edited">{t("stream.edited")}</span>}
-            {canEdit && (
-              <button
-                type="button"
-                className="strm-btn strm-btn-ghost strm-btn-sm"
-                onClick={() => {
-                  setDraft(m.body);
-                  setEditError(false);
-                  setEditing(true);
-                }}
-              >
-                <Pencil className="w-3.5 h-3.5" aria-hidden />
-                {t("stream.edit")}
-              </button>
-            )}
+            <span className="strm-edited">{t("stream.edited")}</span>
           </div>
         )}
         {!gone && actions ? (
@@ -444,6 +431,21 @@ function Row<M extends StreamSourceMessage>({
             onClick={onAddToStory}
           >
             <Quote className="w-4 h-4" />
+          </button>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            className="strm-tool"
+            aria-label={t("stream.edit")}
+            title={t("stream.edit")}
+            onClick={() => {
+              setDraft(m.body);
+              setEditError(false);
+              setEditing(true);
+            }}
+          >
+            <Pencil className="w-4 h-4" aria-hidden />
           </button>
         )}
         <button

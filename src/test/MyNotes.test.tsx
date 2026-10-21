@@ -317,7 +317,7 @@ describe('MyNotes — your own notes and their follow-ups', () => {
       ];
       render(<MyNotes />);
       await userEvent.click(screen.getByRole('button', { name: /Follow-ups/i }));
-      expect(screen.getAllByText('Edited')).toHaveLength(1);
+      expect(screen.getAllByText(/Edited/)).toHaveLength(1);
     });
 
     it('keeps the public-tracker line under the composer', async () => {
