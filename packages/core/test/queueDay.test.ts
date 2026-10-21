@@ -19,7 +19,7 @@ describe('emptyQueueDay', () => {
 // The whole point of these reducers. The mobile queue derives its card order in
 // a `useMemo` keyed on `handled` and `later`; when the store mutated those maps
 // in place their identity never changed, so the memo never recomputed and
-// "Later" (and swipe-to-defer, and "I prayed just now") did nothing on screen.
+// "Later" (and swipe-to-defer, and "Prayed for {name}") did nothing on screen.
 // See apps/mobile/src/lib/data/inboxReads.ts for the same fix one file over.
 describe('queue day state is replaced, never mutated', () => {
   it('queueDayLater returns a new state with a new `later` map', () => {

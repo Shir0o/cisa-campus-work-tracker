@@ -194,7 +194,7 @@ export function QueueCard({
           <>
             {/* Marks the card done for today. There is no shared "who prayed"
                 record in the schema yet, so this claims nothing more. */}
-            <PrimaryButton tone="deep" title="I prayed just now" onPress={() => api.handle(card.id)} />
+            <PrimaryButton tone="deep" title={c ? `Prayed for ${first}` : 'Prayed for this'} onPress={() => api.handle(card.id)} />
             {!!c && <SecondaryButton title={`Open ${first}`} onPress={() => api.openContact(c.id, 'prayer')} />}
             <LaterButton onPress={later} />
           </>

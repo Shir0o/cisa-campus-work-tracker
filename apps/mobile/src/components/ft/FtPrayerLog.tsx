@@ -4,7 +4,7 @@
 //
 // It reads the SAME `carryRows` the "Prayers to carry" widget and the glance
 // tile read — uncapped here, capped there — so the number on the tile and the
-// length of this list can never disagree. "I prayed just now" is device-local
+// length of this list can never disagree. "Prayed for {name}" is device-local
 // for the day, exactly as it is everywhere else in v2 (see useFtHomeData).
 import React, { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';

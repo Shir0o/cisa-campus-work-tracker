@@ -453,6 +453,18 @@ _Avoid_: Hobbies, preferences, ministry activities
 Stepping back from a contact so they no longer appear in your **On you** feed and stop sending you thread notifications and attention prompts, without rewriting who originally logged them. The contact's `createdBy` audit stamp remains intact, but your active ties (`carers`, `coCreators`, `founders`) and personal notifications are cleared (`unfollowedBy`). For Full-timers, the contact remains in **Around the team** and the unassigned intake pool for team-wide sorting.
 _Avoid_: Unassign, delete contact, disassociate, abandon, mute (bare), untrack
 
+**Today**:
+A Trainee's home on the phone: the day's cards — people to follow up, people gone quiet, messages from the Full-timer who cares for them, to-dos due, prayers to carry — shown one at a time. It is finite: once every card is **Done for today** or moved to tomorrow, there is nothing left to show until the next day.
+_Avoid_: Queue, feed, inbox, deck, "Today ends"
+
+**Later today**:
+Not now, but still today: the card goes behind the others and is shown again after them. Distinct from **Tomorrow**, which takes a to-do off Today entirely by moving its due date.
+_Avoid_: Later (bare), back of today, skip, dismiss, snooze
+
+**Done for today**:
+A card that has been answered — the text was sent, the conversation logged, the prayer prayed, the to-do done — and so leaves Today. Only an action that actually answers the card makes it done; moving a card aside never does.
+_Avoid_: Handled, looked after, cleared, dismissed
+
 **Mutation testing**:
 Evaluating test suite quality by programmatically introducing artificial faults (mutants) into source code and verifying that tests fail (the mutant is "killed"). Used to reveal untested edge cases and assertions that pass vacuously despite code changes. In this project, mutation testing is powered by Stryker Mutator (`npm run test:mutation`) targeting core pure logic modules (ADR 0045).
 _Avoid_: Fault injection (for this), chaos testing, fuzzing
