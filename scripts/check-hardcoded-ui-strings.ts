@@ -20,13 +20,13 @@
  * `scripts/_diff-base.ts`.
  */
 /// <reference types="node" />
-import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   getBaseRef,
   ensureBaseRef,
   getChangedFiles,
+  getFileDiff,
   parseUnifiedDiff,
 } from './_diff-base';
 
@@ -170,7 +170,7 @@ function checkHardcodedStrings(): string[] {
 
   const allViolations: string[] = [];
   for (const file of targetFiles) {
-    const diff = execSync(`git diff --unified=0 ${base}...HEAD -- ${file}`, { encoding: 'utf8' });
+    const diff = getFileDiff(base, file);
     for (const hit of parseUnifiedDiff(diff)) {
       allViolations.push(...findViolations(hit.text, file, hit.line));
     }

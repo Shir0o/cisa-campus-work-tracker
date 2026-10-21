@@ -17,11 +17,11 @@
  * flag, and a guard that fails on its own tests is not runnable.
  */
 /// <reference types="node" />
-import { execSync } from 'node:child_process';
 import {
   getBaseRef,
   ensureBaseRef,
   getChangedFiles,
+  getFileDiff,
   parseUnifiedDiff,
 } from './_diff-base';
 
@@ -128,9 +128,7 @@ export function isTargetFile(path: string): boolean {
  * comment lines and lines carrying a `colour-token-ignore:` marker. Each violation is annotated with the file it came from.
  */
 export function checkFile(file: string, base: string): Violation[] {
-  const diff = execSync(`git diff --unified=0 ${base}...HEAD -- ${file}`, {
-    encoding: 'utf8',
-  });
+  const diff = getFileDiff(base, file);
   const violations: Violation[] = [];
   for (const hit of parseUnifiedDiff(diff)) {
     if (isCommentLine(hit.text) || isSuppressedLine(hit.text)) continue;
