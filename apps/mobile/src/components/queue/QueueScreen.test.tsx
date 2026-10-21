@@ -99,6 +99,28 @@ const dueCard = {
   task: { id: 't2', title: 'Book the room' },
 };
 
+const prayer = { id: 'p1', contactId: 'c1', date: '2026-10-01T10:00:00Z', burden: 'A safe place to land', status: 'pending', updatedAt: '' };
+
+const prayerCard = {
+  id: 'pray:p1',
+  kind: 'pray',
+  tone: 'pray',
+  group: 3,
+  label: 'Pray for Sam',
+  ago: '',
+  title: prayer.burden,
+  contact: sam,
+  prayer,
+};
+
+const anonymousPrayerCard = {
+  ...prayerCard,
+  id: 'pray:p2',
+  label: 'A prayer to carry',
+  contact: undefined,
+  prayer: { ...prayer, id: 'p2', contactId: '' },
+};
+
 const queueOf = (...cards: object[]) => Object.assign([...cards], { held: 0 });
 
 describe('QueueScreen', () => {
@@ -203,6 +225,15 @@ describe('QueueScreen', () => {
       // The card's actions are pinned at the sheet's foot too.
       expect(getAllByText('Text Sam')).toHaveLength(2);
       expect(getAllByText('Later today')).toHaveLength(2);
+    });
+
+    it('names who the prayer was for, and says "Prayed for this" when nobody is behind it', async () => {
+      const named = await renderToday({ queue: queueOf(prayerCard) });
+      expect(named.getByLabelText('Prayed for Sam')).toBeTruthy();
+      await named.unmount();
+
+      const anonymous = await renderToday({ queue: queueOf(anonymousPrayerCard) });
+      expect(anonymous.getByLabelText('Prayed for this')).toBeTruthy();
     });
 
     it('opens the full sheet when the card body is tapped', async () => {
