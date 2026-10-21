@@ -5,8 +5,10 @@ import os from 'node:os';
 import {
   applyAssetOptimization,
   generatePrSummary,
+  generateIssueSummary,
   type AppliedImprovement,
 } from '../../scripts/agent/runner';
+import type { ImprovementCandidate } from '../../scripts/discover-improvements';
 
 describe('agent runner', () => {
   let tempDir: string;
@@ -77,6 +79,28 @@ describe('agent runner', () => {
 
       const summary = generatePrSummary(applied, false);
       expect(summary).toContain('Requires Human Review');
+    });
+
+    it('generates issue summary markdown for pending review candidates', () => {
+      const pending: ImprovementCandidate[] = [
+        {
+          id: 'design-token-hardcoded-colors',
+          category: 'design-token-drift',
+          title: 'Migrate hardcoded colors in 2 files',
+          description: 'Hex codes in App.tsx',
+          targetFiles: ['src/App.tsx', 'src/views/Settings.tsx'],
+          confidence: 'medium',
+          canAutoMerge: false,
+          instructions: 'Replace with tokens',
+          recommendedSkill: 'better-colors',
+          localAgentCommand: '/better-colors replace',
+        },
+      ];
+      const issueBody = generateIssueSummary(pending);
+      expect(issueBody).toContain('Weekly Micro-Improvement Candidates');
+      expect(issueBody).toContain('better-colors');
+      expect(issueBody).toContain('/better-colors replace');
+      expect(issueBody).toContain('ready-for-agent');
     });
   });
 });
