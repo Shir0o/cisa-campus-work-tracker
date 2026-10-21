@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { emptyQueueDay, queueDayHandle, queueDayLater, type QueueDayState } from '../src/queueDay';
+import { emptyQueueDay, queueDayHandle, queueDayLater, queueDayUnhandle, type QueueDayState } from '../src/queueDay';
 
 const DAY = '2026-08-07';
 
@@ -74,6 +74,18 @@ describe('queueDayHandle', () => {
   it('keeps other cards deferred', () => {
     const state = queueDayLater(queueDayLater(emptyQueueDay(DAY), 'a', 100), 'b', 200);
     expect(queueDayHandle(state, 'a', 300).later).toEqual({ b: 200 });
+  });
+});
+
+describe('queueDayUnhandle', () => {
+  it('puts a card dealt with back in today, and leaves the others done', () => {
+    const done = queueDayHandle(queueDayHandle(emptyQueueDay(DAY), 'a', 100), 'b', 200);
+    const undone = queueDayUnhandle(done, 'a');
+
+    expect(undone.handled).toEqual({ b: 200 });
+    // replaced, not mutated
+    expect(done.handled).toEqual({ a: 100, b: 200 });
+    expect(undone.handled).not.toBe(done.handled);
   });
 });
 

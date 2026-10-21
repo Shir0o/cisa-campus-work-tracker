@@ -13,7 +13,7 @@
 // would re-render the screen without ever recomputing the order.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { emptyQueueDay, queueDayHandle, queueDayLater, type QueueDayState } from '@cisa/core';
+import { emptyQueueDay, queueDayHandle, queueDayLater, queueDayUnhandle, type QueueDayState } from '@cisa/core';
 
 const QUEUE_PREFIX = 'cisa.m2.queue.';
 
@@ -81,6 +81,13 @@ export const QueueState = {
     emit();
   },
 
+  /** Undo — back in today. Only the card comes back; nothing saved is touched. */
+  unhandle(uid: string, cardId: string) {
+    cache[uid] = queueDayUnhandle(get(uid), cardId);
+    save(uid);
+    emit();
+  },
+
   /** Not now — back of the queue, behind anything deferred earlier. */
   later(uid: string, cardId: string) {
     cache[uid] = queueDayLater(get(uid), cardId, Date.now());
@@ -111,6 +118,7 @@ export function useQueueState(uid: string | null): {
   later: Record<string, number>;
   handledCount: number;
   handle: (cardId: string) => void;
+  unhandle: (cardId: string) => void;
   pushLater: (cardId: string) => void;
   reset: () => void;
 } {
@@ -125,6 +133,7 @@ export function useQueueState(uid: string | null): {
     later: state.later,
     handledCount: Object.keys(state.handled).length,
     handle: (cardId: string) => uid && QueueState.handle(uid, cardId),
+    unhandle: (cardId: string) => uid && QueueState.unhandle(uid, cardId),
     pushLater: (cardId: string) => uid && QueueState.later(uid, cardId),
     reset: () => uid && QueueState.reset(uid),
   };

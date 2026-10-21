@@ -4,7 +4,7 @@
 // src/theme/v2.ts and the ordering in @cisa/core's buildQueue.
 //
 // This shell has no tab bar at all (app/(tabs)/_layout.tsx hides it for the
-// trainee): the chrome is ☰ · the meta line · the ＋ log button, and everything
+// trainee): the chrome is ☰ · "Today · N left" · the ＋ log button, and everything
 // that isn't the queue lives behind the drawer.
 import React, { useRef } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
@@ -21,7 +21,6 @@ import {
   getUserInitials,
   isOnCampus,
   personColor,
-  queueMeta,
   upNextLine,
   type Contact,
   type QueueCard as QueueCardData,
@@ -32,6 +31,7 @@ import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 import { setTodoDone, updateTodo } from '../../lib/data/todos';
 import { addThreadMessage } from '../../lib/data/threads';
 import { useDayGoal } from '../../lib/useDayGoal';
+import { useTodayHint } from '../../lib/todayHint';
 import { InboxReads } from '../../lib/data/inboxReads';
 import { useV2Theme } from '../../theme/v2';
 import { LogSheet } from '../log/LogSheet';
@@ -46,6 +46,10 @@ import { ReplySheet } from './ReplySheet';
 import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { QueueSkeleton } from '../skeleton/QueueSkeleton';
 import { M2Release } from '../release/M2Release';
+
+/** What the "done for today" toast calls a card: its person, else the thing itself. */
+const cardName = (card: QueueCardData | undefined): string =>
+  card?.contact ? firstName(card.contact.name) : (card?.task?.title ?? card?.title ?? '');
 
 const tomorrowISO = () => {
   const d = new Date();
@@ -75,7 +79,11 @@ export function QueueScreen() {
   const [logCard, setLogCard] = React.useState<string | null>(null);
   const [logOpen, setLogOpen] = React.useState(false);
   const [replyTo, setReplyTo] = React.useState<QueueCardData | null>(null);
-  const [toast, setToast] = React.useState<string | null>(null);
+  // `undo` is set only after an action that answers a card. `n` remounts the
+  // snackbar per toast so each one gets its full time on screen.
+  const [toast, setToastState] = React.useState<{ message: string; undo?: () => void; n: number } | null>(null);
+  const setToast = (message: string | null, undo?: () => void) =>
+    setToastState((prev) => (message ? { message, undo, n: (prev?.n ?? 0) + 1 } : null));
 
   const { queue, queueState, queuePrefs } = data;
   // The queue rebuilds continuously (handling a card shortens it), so the
@@ -102,6 +110,22 @@ export function QueueScreen() {
   // trainee is exactly who can't open it — canAccessRoute('manager', …) closes
   // /coordination, which is why The Board isn't in TRAINEE_DRAWER either.
   const canBoard = canAccessRoute(role, '/coordination');
+  const hint = useTodayHint(uid);
+
+  // Done for today: the card goes, the toast names it, and Undo brings it back.
+  // Undo only ever reverses the queue (and a to-do it completed) — whatever was
+  // logged or sent stays saved.
+  const doneForToday = (cardId: string, reverse?: () => void) => {
+    const card = queue.find((k) => k.id === cardId);
+    queueState.handle(cardId);
+    setIndex(0);
+    setToast(t('mobile.queue.done_for_today').replace('{name}', cardName(card)), () => {
+      queueState.unhandle(cardId);
+      reverse?.();
+      setIndex(0);
+      setToast(null);
+    });
+  };
 
   // Logging from nowhere in particular: no contact, no to-do, and — the one
   // that bit — no card. Leaving `logCard` behind meant dismissing a card's log
@@ -115,10 +139,7 @@ export function QueueScreen() {
 
   const api: QueueCardApi = {
     canBoard,
-    handle: (id) => {
-      queueState.handle(id);
-      setIndex(0);
-    },
+    handle: (id) => doneForToday(id),
     later: (id) => {
       // The queue this handler closes over is the pre-press one. Deferring a
       // 1-of-1 queue puts the only card back at the front, so it stays on
@@ -131,9 +152,7 @@ export function QueueScreen() {
     },
     markDone: (taskId) => {
       void setTodoDone(taskId, true);
-      queueState.handle('todo:' + taskId);
-      setIndex(0);
-      setToast(t('mobile.queue.done_nice'));
+      doneForToday('todo:' + taskId, () => void setTodoDone(taskId, false));
     },
     pushToTomorrow: (taskId) => {
       void updateTodo(taskId, { dueDate: tomorrowISO() });
@@ -181,10 +200,8 @@ export function QueueScreen() {
       { to: card.msg.from, contactName: card.contact?.name },
     );
     InboxReads.markRead(uid, 'thread:' + card.msg.id);
-    queueState.handle(card.id);
-    setIndex(0);
     setReplyTo(null);
-    setToast(t('mobile.queue.sent'));
+    doneForToday(card.id);
   };
 
   // `firstName('')` answers "Someone", so the fallback has to go INSIDE it —
@@ -237,7 +254,16 @@ export function QueueScreen() {
   // behind it calls itself by its label, as the design's `nextName` does.
   const waiting = queue.slice(at + 1);
   const upNext = waiting.slice(0, 3);
-  const meta = queueMeta(queue.length, queueState.handledCount, at);
+  // The header spans the WHOLE day — what's left plus what's already done — so
+  // the bar fills as cards clear instead of the day shrinking.
+  const done = queueState.handledCount;
+  const total = queue.length + done;
+  const history = current?.contact
+    ? data.interactions
+        .filter((i) => i.contactId === current.contact!.id)
+        .sort((a, b) => b.dateTime.localeCompare(a.dateTime))
+        .slice(0, 5)
+    : [];
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -257,50 +283,42 @@ export function QueueScreen() {
       )}
 
       {/* Chrome in the air above the card (the design's `.m2-top`): ☰, then
-          what today holds on the left and where you are in it on the right.
-          The counter spans the WHOLE day — what's left plus what's already been
-          looked after — so working through cards moves it instead of shrinking
-          the day. The pips are retired. */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-          paddingHorizontal: 18,
-          paddingTop: 10,
-          paddingBottom: 14,
-        }}
-      >
-        <DrawerButton onPress={() => setDrawerOpen(true)} />
-        <Pressable
-          onPress={() => setShowAll(true)}
-          disabled={queue.length === 0}
-          style={{
-            flex: 1,
-            height: 44,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-          }}
-        >
-          <Text
+          how much of today is left, how much is done, and a bar of the day. */}
+      <View style={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 14, gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <DrawerButton onPress={() => setDrawerOpen(true)} />
+          <Pressable
+            onPress={() => setShowAll(true)}
+            disabled={queue.length === 0}
             style={{
-              fontFamily: font.extra,
-              fontSize: fs(10.5),
-              
-              
-              color: c.room.ink2,
-              flexShrink: 1,
+              flex: 1,
+              height: 44,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
             }}
-            numberOfLines={1}
           >
-            {meta.left}
-          </Text>
-          {!!meta.right && (
-            <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.room.ink3 }}>{meta.right}</Text>
-          )}
-        </Pressable>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(15), color: c.room.ink, flexShrink: 1 }} numberOfLines={1}>
+              {total === 0 ? t('mobile.queue.today') : t('mobile.queue.today_left').replace('{count}', String(queue.length))}
+            </Text>
+            {done > 0 && (
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.room.ink3 }}>
+                {t('mobile.queue.done_count').replace('{count}', String(done))}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+        {total > 0 && (
+          <View style={{ flexDirection: 'row', gap: 3 }}>
+            {Array.from({ length: total }, (_, i) => (
+              <View
+                key={i}
+                style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: i < done ? c.room.ink : c.room.chip }}
+              />
+            ))}
+          </View>
+        )}
       </View>
 
       {current ? (
@@ -310,6 +328,7 @@ export function QueueScreen() {
             card={current}
             me={uid ?? ''}
             api={api}
+            history={history}
             header={
               onCampus ? (
                 <OnCampusStrip
@@ -317,6 +336,8 @@ export function QueueScreen() {
                   onPress={openBlankLog}
                   goal={goalRing}
                 />
+              ) : hint.show ? (
+                <TodayHint count={queue.length} onDismiss={hint.dismiss} />
               ) : undefined
             }
           />
@@ -420,11 +441,8 @@ export function QueueScreen() {
         cardId={logCard}
         onCampus={queuePrefs.prefs.onCampus}
         onSaved={(message, cardId) => {
-          setToast(message);
-          if (cardId) {
-            queueState.handle(cardId);
-            setIndex(0);
-          }
+          if (cardId) doneForToday(cardId);
+          else setToast(message);
         }}
         onOpenContact={(id) => router.push(`/contact/${id}`)}
         // logFor is left alone here: clearing it would swap the key mid-close
@@ -438,7 +456,15 @@ export function QueueScreen() {
         onClose={() => setReplyTo(null)}
         onSend={sendReply}
       />
-      {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
+      {!!toast && (
+        <Snackbar
+          key={toast.n}
+          message={toast.message}
+          actionLabel={toast.undo ? t('mobile.queue.undo') : undefined}
+          onAction={toast.undo}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       </View>
       <QueueDrawer
         visible={drawerOpen}
@@ -451,5 +477,42 @@ export function QueueScreen() {
           actually on campus. */}
       <M2Release role={role} inWindow={onCampus} />
     </SafeAreaView>
+  );
+}
+
+/** The one-time hint, inside the first card (#1715). */
+function TodayHint({ count, onDismiss }: { count: number; onDismiss: () => void }) {
+  const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginBottom: 16,
+        paddingVertical: 12,
+        paddingLeft: 14,
+        paddingRight: 4,
+        borderRadius: radius.note,
+        backgroundColor: c.card.note,
+      }}
+    >
+      <Text style={{ flex: 1, fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.card.noteInk }}>
+        <Text style={{ fontFamily: font.bold }}>
+          {count === 1 ? t('mobile.queue.hint_count_one') : t('mobile.queue.hint_count').replace('{count}', String(count))}
+        </Text>
+        {' ' + t('mobile.queue.hint_body')}
+      </Text>
+      <Pressable
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel={t('mobile.queue.dismiss_hint')}
+        hitSlop={6}
+        style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -10 }}
+      >
+        <Ionicons name="close" size={18} color={c.card.noteInk} />
+      </Pressable>
+    </View>
   );
 }

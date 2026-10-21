@@ -102,6 +102,22 @@ describe('QueueState.handle / later / reset', () => {
     expect(raw).toEqual({ day: today(), handled: {}, later: {} });
   });
 
+  it('unhandle puts a done card back in today, drops the count, saves, and emits', async () => {
+    QueueState.handle('u10', 'c1');
+    QueueState.handle('u10', 'c2');
+    const sub = jest.fn();
+    const unsubscribe = QueueState.subscribe(sub);
+
+    QueueState.unhandle('u10', 'c1');
+
+    expect(QueueState.for('u10').handled).not.toHaveProperty('c1');
+    expect(QueueState.handledCount('u10')).toBe(1);
+    expect(sub).toHaveBeenCalledTimes(1);
+    const raw = JSON.parse((await AsyncStorage.getItem(queueKey('u10')))!);
+    expect(raw.handled).not.toHaveProperty('c1');
+    unsubscribe();
+  });
+
   it('handledCount counts only handled cards', () => {
     QueueState.handle('u7', 'c1');
     QueueState.handle('u7', 'c2');
@@ -164,6 +180,10 @@ describe('useQueueState', () => {
     expect(result.current.handledCount).toBe(1);
     expect(result.current.handled).toHaveProperty('c1');
 
+    await act(() => result.current.unhandle('c1'));
+    expect(result.current.handledCount).toBe(0);
+
+    await act(() => result.current.handle('c1'));
     await act(() => result.current.pushLater('c2'));
     expect(result.current.later).toHaveProperty('c2');
 
