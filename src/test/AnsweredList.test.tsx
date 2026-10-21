@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import AnsweredList from '../views/AnsweredList';
@@ -212,6 +212,105 @@ describe('AnsweredList', () => {
       // Unanswered prayer should NOT render
       expect(screen.queryByText('Personal unanswered prayer')).not.toBeInTheDocument();
     });
+  });
+
+  it('renders answer photos on recent and earlier answered prayers (#1690)', async () => {
+    const withPhotos = [
+      {
+        id: 'recent-photo',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Argentina trip',
+          date: daysAgo(140),
+          status: 'answered',
+          answer: 'Sent to Argentina!',
+          answeredAt: daysAgo(5),
+          answeredPhotos: [
+            {
+              path: 'photos/argentina-1.jpg',
+              url: 'http://example.com/argentina-1.jpg',
+              name: 'Argentina trip',
+            },
+          ],
+        }),
+      },
+      {
+        id: 'earlier-photo',
+        data: () => ({
+          contactId: 'c2',
+          burden: 'Old burden',
+          date: daysAgo(300),
+          status: 'answered',
+          answer: 'Answered long ago',
+          answeredAt: daysAgo(180),
+          answeredPhotos: [
+            {
+              path: 'photos/argentina-2.jpg',
+              url: 'http://example.com/argentina-2.jpg',
+              name: 'Argentina team',
+            },
+            // No download URL: renders as an icon placeholder, not an <img>.
+            { path: 'photos/pending.jpg', name: 'Pending photo' },
+          ],
+        }),
+      },
+      {
+        id: 'recent-no-photos',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Empty photo list',
+          date: daysAgo(120),
+          status: 'answered',
+          answer: 'Answered without a photo',
+          answeredAt: daysAgo(7),
+          answeredPhotos: [],
+        }),
+      },
+      {
+        id: 'earlier-no-photos',
+        data: () => ({
+          contactId: 'c2',
+          burden: 'Legacy testimony',
+          date: daysAgo(240),
+          status: 'answered',
+          answer: 'Answered before photos existed',
+          answeredAt: daysAgo(200),
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      callback({
+        docs: ref?.path === 'contacts' ? mockContacts : withPhotos,
+        size: withPhotos.length,
+      });
+      return vi.fn();
+    });
+
+    render(<AnsweredList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sent to Argentina!')).toBeInTheDocument();
+    });
+
+    const recentCard = screen.getByText('Sent to Argentina!').closest('article')!;
+    expect(within(recentCard).getByAltText('Argentina trip')).toHaveAttribute(
+      'src',
+      'http://example.com/argentina-1.jpg'
+    );
+
+    const earlierCard = screen.getByText('Answered long ago').closest('article')!;
+    expect(within(earlierCard).getByAltText('Argentina team')).toHaveAttribute(
+      'src',
+      'http://example.com/argentina-2.jpg'
+    );
+    expect(within(earlierCard).getByTitle('Pending photo')).toBeInTheDocument();
+
+    // No photos (empty array and legacy record): only the contact avatar renders.
+    const emptyCard = screen.getByText('Answered without a photo').closest('article')!;
+    expect(within(emptyCard).getAllByRole('img')).toHaveLength(1);
+    const legacyCard = screen.getByText('Answered before photos existed').closest('article')!;
+    expect(within(legacyCard).getAllByRole('img')).toHaveLength(1);
   });
 
   it('handles navigation toggle to active prayers', async () => {
