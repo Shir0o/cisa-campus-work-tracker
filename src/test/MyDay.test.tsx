@@ -1364,4 +1364,56 @@ describe('MyDay', () => {
     fireEvent.click(within(card).getByRole('button', { name: /Show 2 more people/ }));
     expect(within(card).getByText('Person 5')).toBeInTheDocument();
   });
+
+  describe('first-run checklist counts only this reader\'s own work', () => {
+    const threadDoc = (id: string, data: any): DocLike => ({
+      id,
+      ref: { path: `contacts/c1/threads/${id}` },
+      data: () => ({ kind: 'question', body: 'x', at: new Date().toISOString(), interactionId: null, scope: null, ...data }),
+    });
+    const logged = (id: string, userId: string): DocLike =>
+      interactionDoc(id, 'c1', {
+        userId,
+        content: 'talked',
+        createdAt: new Date().toISOString(),
+        dateTime: new Date().toISOString(),
+        type: 'visit',
+        title: 't',
+      });
+    // The mocked board_docs snapshot has no `empty`, so "learn" is always ticked: baseline 1.
+    const complete = () => screen.queryByText(/of 5 complete/)?.textContent;
+
+    beforeEach(() => {
+      localStorage.clear();
+      (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'admin' });
+    });
+
+    it("leaves every step open when only other people have logged, prayed, or closed asks", async () => {
+      vi.mocked(onSnapshot).mockImplementation(
+        byPath({
+          interactions: [logged('i1', 'someone-else')],
+          prayers: [prayerDoc('p1', { contactId: 'c1', status: 'pending', updatedBy: 'someone-else' })],
+          tasks: [taskDoc('t1', { status: 'completed', assigneeId: 'u-test', createdById: 'someone-else' })],
+          threads: [threadDoc('m1', { from: 'ft1', closedBy: 'ft2' })],
+        }),
+      );
+      render(<MyDay />);
+      await waitFor(() => expect(complete()).toBe('1 of 5 complete'));
+    });
+
+    it('ticks log, prayer and follow-up from the reader\'s own records', async () => {
+      vi.mocked(onSnapshot).mockImplementation(
+        byPath({
+          interactions: [logged('i1', 'someone-else'), logged('i2', 'u-test')],
+          prayers: [prayerDoc('p1', { contactId: 'c1', status: 'pending', updatedBy: 'u-test' })],
+          threads: [
+            threadDoc('m1', { from: 'ft1', closedBy: 'u-test' }),
+            threadDoc('m2', { from: 'u-test', closedBy: 'u-test' }), // retracted own ask
+          ],
+        }),
+      );
+      render(<MyDay />);
+      await waitFor(() => expect(complete()).toBe('4 of 5 complete'));
+    });
+  });
 });

@@ -1353,10 +1353,15 @@ export default function MyDay() {
           userId={uid}
           context={{
             contactsCount: contacts.length,
-            interactionsCount: touches.length,
-            prayersCount: personalPrayers.length + prayers.length,
+            // Only this reader's own work counts: the interaction feed and the
+            // prayers collection span the whole team.
+            interactionsCount: interactions.filter((i) => i.userId === uid).length,
+            prayersCount:
+              personalPrayers.length + prayers.filter((p) => p.updatedBy === uid).length,
             todosCreatedCount: tasks.filter((t) => t.createdById === uid).length,
-            todosCompletedCount: tasks.filter((t) => t.status === "completed").length,
+            // A follow-up ask this reader closed; an asker retracting their own
+            // ask (closedBy === from) is not a follow-up.
+            todosCompletedCount: threads.filter((m) => m.closedBy === uid && m.from !== uid).length,
             ...firstRunRecords,
           }}
           className="mt-8"
