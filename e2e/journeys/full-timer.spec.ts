@@ -820,6 +820,20 @@ test.describe('Full-timer journey — Quick Capture and the Journey board (#1477
     await byChip.click();
     await me.click();
     await expect(story.getByRole('button', { name: /^by: me$/i })).toBeVisible();
+
+    // #1669: an entry logged on Zion's behalf carries his portrait, not the
+    // logger's. The seeded users have no photo, so his initials are what the
+    // row must show — on the breaking read it rendered a blank person icon.
+    const onBehalf = `E2E reached Zion ${Date.now()}`;
+    await byChip.click();
+    await teammate.click();
+    await composer.fill(onBehalf);
+    await composer.press('Meta+Enter');
+    const onBehalfRow = story.locator('[data-kind="conversation"]').filter({ hasText: onBehalf }).first();
+    await expect(onBehalfRow).toBeVisible({ timeout: 10_000 });
+    await expect(onBehalfRow.getByTestId('story-avatar')).toHaveAttribute('data-avatar-name', 'Zion Adeyemi');
+    await expect(onBehalfRow.getByTestId('story-avatar')).toContainText('ZA');
+    await expect(onBehalfRow.getByText('logged by Full-timer Test User')).toBeVisible();
   });
 
   test('To ask lists a not-reached person under its Trainee (#1649)', async ({ page }) => {

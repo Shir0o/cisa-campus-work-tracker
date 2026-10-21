@@ -795,6 +795,7 @@ export default function ContactDetailsModal({
       onUpdatePrayerBurden={handleUpdatePrayerBurden}
       interactionAdapterFor={interactionAdapterFor}
       streamViewer={streamViewer}
+      teamMembers={teamMembers}
     />
   );
 

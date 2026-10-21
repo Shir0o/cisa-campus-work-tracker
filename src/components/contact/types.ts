@@ -4,4 +4,6 @@ export interface ContactTeamMember {
   role: string;
   initials: string;
   fullTimer: boolean;
+  /** The users doc's photo, when they have one (#1669). */
+  photoURL?: string;
 }

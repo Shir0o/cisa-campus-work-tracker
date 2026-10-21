@@ -10,6 +10,8 @@ import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import ContactComposer from "./ContactComposer";
 import type { ComposerValue } from "../../lib/contactComposer";
+import type { ContactTeamMember } from "./types";
+import { getUserInitials } from "../../lib/utils";
 
 export default function ContactInteractionItem({
   interaction,
@@ -28,6 +30,7 @@ export default function ContactInteractionItem({
   threadOpen,
   onOpenThread,
   firstName = "",
+  teamMembers,
 }: {
   interaction: Interaction;
   canEdit: boolean;
@@ -45,22 +48,45 @@ export default function ContactInteractionItem({
   threadOpen: boolean;
   onOpenThread: () => void;
   firstName?: string;
+  /** The roster the reacher's portrait is resolved from (#1669). */
+  teamMembers: ContactTeamMember[];
 }) {
   const { t } = useLanguage();
+
+  // An interaction logged on someone else's behalf belongs to the reacher, so
+  // the avatar follows them — never the logger's face (#1669). Their photo
+  // comes from the roster the page already subscribes to; without one, their
+  // initials. Only a row with no on-behalf-of shows the logger.
+  const reacherId = interaction.reachedById || "";
+  const reacher = reacherId ? teamMembers.find((m) => m.id === reacherId) : undefined;
+  const avatarName = reacherId
+    ? reacher?.name || interaction.reachedByName || ""
+    : interaction.userName || "";
+  const avatarPhoto = reacherId ? reacher?.photoURL || "" : interaction.userPhoto || "";
+  const avatarInitials =
+    reacherId && avatarName ? reacher?.initials || getUserInitials(avatarName) : "";
 
   return (
     <div
       key={interaction.id}
       className="flex gap-3 group"
     >
-      <div className="shrink-0 mt-0.5">
-        {interaction.userPhoto ? (
+      <div
+        className="shrink-0 mt-0.5"
+        data-testid="story-avatar"
+        data-avatar-name={avatarName}
+      >
+        {avatarPhoto ? (
           <img
-            src={interaction.userPhoto}
-            alt={interaction.userName}
+            src={avatarPhoto}
+            alt={avatarName}
             className="w-8 h-8 rounded-full border border-outline-variant"
             referrerPolicy="no-referrer"
           />
+        ) : avatarInitials ? (
+          <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-semibold flex items-center justify-center">
+            {avatarInitials}
+          </div>
         ) : (
           <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
             <UserCircle className="w-5 h-5" />
