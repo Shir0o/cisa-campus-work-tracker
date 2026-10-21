@@ -319,10 +319,19 @@ describe('QueueScreen', () => {
       expect(queryByText('Sign-up form')).toBeNull();
     });
 
+    it('from Today, the Campus control brings the three actions back', async () => {
+      const { getByLabelText, getByText, queryByText } = await renderAt(ON);
+      await fireEvent.press(getByLabelText('2 people to reach today'));
+      await fireEvent.press(getByLabelText('Campus'));
+      expect(getByText('Sign-up form')).toBeTruthy();
+      expect(queryByText('Today · 2 left')).toBeNull();
+    });
+
     it('off campus, the home is still Today', async () => {
-      const { getByText, queryByText } = await renderAt(OFF);
+      const { getByText, queryByText, queryByLabelText } = await renderAt(OFF);
       expect(getByText('Today · 2 left')).toBeTruthy();
       expect(queryByText('Sign-up form')).toBeNull();
+      expect(queryByLabelText('Campus')).toBeNull();
     });
   });
 });

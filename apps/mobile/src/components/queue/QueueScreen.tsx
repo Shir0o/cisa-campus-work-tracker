@@ -61,7 +61,7 @@ const tomorrowISO = () => {
 };
 
 export function QueueScreen() {
-  const { c, font, shadow, fs } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const { uid, user, role } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
@@ -338,6 +338,33 @@ export function QueueScreen() {
               </Text>
             )}
           </Pressable>
+          {/* Opening Today on campus mustn't strand the sign-up form back behind
+              the drawer: this is the way back to campus mode (#1715 review). */}
+          {onCampus && todayChosen && (
+            <Pressable
+              onPress={() => setTodayChosen(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t('mobile.queue.campus')}
+              style={({ pressed }) => [
+                {
+                  minHeight: 44,
+                  paddingHorizontal: 14,
+                  borderRadius: radius.chip,
+                  backgroundColor: c.card.primary,
+                  borderBottomWidth: pressed ? 1 : 3,
+                  borderBottomColor: c.card.primaryEdge,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  transform: [{ translateY: pressed ? 2 : 0 }],
+                },
+                shadow.raisedSmall,
+              ]}
+            >
+              <Ionicons name="school-outline" size={16} color={c.card.onPrimary} />
+              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.onPrimary }}>{t('mobile.queue.campus')}</Text>
+            </Pressable>
+          )}
         </View>
         {total > 0 && (
           <View style={{ flexDirection: 'row', gap: 3 }}>
