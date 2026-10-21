@@ -102,6 +102,13 @@ export interface V2CardLayer {
   inverse: string;
   onInverse: string;
 
+  /** The darker bottom edge under a RAISED surface (#1715): a 4–5px
+   *  `borderBottomWidth` in this colour, under the matching fill. */
+  edge: string;
+  primaryEdge: string;
+  warmEdge: string;
+  inverseEdge: string;
+
   /** Text fields on a card or sheet. */
   field: string;
   link: string;
@@ -217,6 +224,10 @@ const cardLight: V2CardLayer = {
   onGreen: '#FFFFFF',
   inverse: '#1A212B',
   onInverse: '#F6F8FB',
+  edge: '#DEE4ED',
+  primaryEdge: '#3F0FA6',
+  warmEdge: '#7A3A00',
+  inverseEdge: '#0E1319',
 
   field: '#F6F8FB',
   link: '#5C17E5',
@@ -270,6 +281,10 @@ const cardDark: V2CardLayer = {
   onGreen: '#1A212B',
   inverse: '#F6F8FB',
   onInverse: '#1A212B',
+  edge: '#141A22',
+  primaryEdge: '#3F0FA6',
+  warmEdge: '#7A3A00',
+  inverseEdge: '#B6C2D3',
 
   field: '#202936',
   link: '#9A8FFF',
@@ -394,6 +409,22 @@ export const v2Shadow = {
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+  },
+  // The raised Today and campus-mode surfaces (#1715): a soft drop under the
+  // palette's `edge` colours. Every other Bento card stays flat.
+  raised: {
+    shadowColor: '#1A212B',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  raisedSmall: {
+    shadowColor: '#1A212B',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
 } as const;
 

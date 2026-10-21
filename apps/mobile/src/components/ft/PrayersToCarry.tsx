@@ -5,7 +5,7 @@
 // (MOBILE-V2.md). @cisa/core's `ftCarryRows` flattens both into one list, asks
 // first, so this component never has to know which collection a row came from.
 //
-// "I prayed just now" is device-local and one-way for the day, exactly as it is
+// "Prayed for {name}" is device-local and one-way for the day, exactly as it is
 // on the trainee's queue: there is no `prayedBy` on a prayer and no shared "who
 // prayed today" anywhere in Firestore. See useFtHomeData's note. Marking a
 // member's ask ANSWERED is the opposite — that one is shared, and the person
@@ -102,7 +102,11 @@ export function PrayersToCarry({
                     color: prayed ? c.card.onGreen : c.widget.onDeep,
                   }}
                 >
-                  {prayed ? t('mobile.prayer.prayed_today') : t('mobile.prayer.i_prayed_just_now')}
+                  {prayed
+                    ? t('mobile.prayer.prayed_today')
+                    : row.who
+                      ? t('mobile.prayer.prayed_for').replace('{name}', row.who)
+                      : t('mobile.prayer.prayed_for_this')}
                 </Text>
               </Pressable>
               {row.asked && (
