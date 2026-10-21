@@ -9,6 +9,8 @@
 // tapping the body opens everything in a full-height sheet instead.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme, type V2ToneKey } from '../../theme/v2';
 import { ToneBadge } from './atoms';
 
@@ -33,7 +35,13 @@ export function FocusCard({
   onRead?: () => void;
   readLabel?: string;
 }) {
-  const { c, radius, shadow } = useV2Theme();
+  const { c, radius, shadow, font, fs } = useV2Theme();
+  const { t } = useLanguage();
+  // The body clips rather than scrolls, so a cut-off card has to say so: the
+  // body's room against its content's natural height (#1715 review).
+  const [room, setRoom] = React.useState(0);
+  const [content, setContent] = React.useState(0);
+  const cutOff = !!onRead && room > 0 && content > room + 1;
 
   return (
     <View
@@ -56,10 +64,38 @@ export function FocusCard({
           accessibilityRole="button"
           accessibilityLabel={readLabel}
           style={{ flex: 1, minHeight: 0 }}
+          testID="focus-card-body"
+          onLayout={(e) => setRoom(e.nativeEvent.layout.height)}
         >
-          <ToneBadge tone={tone} label={label} ago={ago} />
-          {children}
+          <View testID="focus-card-content" onLayout={(e) => setContent(e.nativeEvent.layout.height)}>
+            <ToneBadge tone={tone} label={label} ago={ago} />
+            {children}
+          </View>
         </Pressable>
+        {cutOff && (
+          <Pressable
+            onPress={onRead}
+            accessibilityRole="button"
+            hitSlop={6}
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              minHeight: 44,
+              paddingHorizontal: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: c.card.bg,
+              borderTopWidth: 1,
+              borderTopColor: c.card.line,
+            }}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.link }}>{t('mobile.queue.read_more')}</Text>
+            <Ionicons name="chevron-down" size={16} color={c.card.link} />
+          </Pressable>
+        )}
       </View>
       <View style={{ paddingTop: 16, paddingHorizontal: 24, paddingBottom: 18, gap: 10 }}>{foot}</View>
     </View>
