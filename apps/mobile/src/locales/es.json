@@ -1775,6 +1775,16 @@
       "qr": "QR",
       "copy_link": "Copiar enlace",
       "show_qr": "Mostrar código QR"
+    },
+    "campus": {
+      "someone_new": "Alguien nuevo",
+      "sign_up_form": "Formulario de registro",
+      "add_someone_new": "Agregar a alguien nuevo",
+      "someone_you_know": "Alguien que ya conoces",
+      "log_conversation": "Registrar una conversación",
+      "added_this_window": "Agregados o registrados en este horario",
+      "new_suffix": " · nuevo",
+      "people_to_reach": "{count} personas para contactar hoy"
     }
   }
 }
