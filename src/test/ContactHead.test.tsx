@@ -108,4 +108,37 @@ describe('ContactHead', () => {
 
     expect(screen.getByText('Sarah Connor')).toBeInTheDocument();
   });
+
+  // #1671: Delegate moved from a header button into More actions, in both heads.
+  it.each([false, true])('keeps Delegate behind More actions (isMobile=%s)', (isMobile) => {
+    const actions = createActions();
+    render(
+      <ContactHead
+        model={defaultModel}
+        actions={actions}
+        isMobile={isMobile}
+        isEditing={false}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delegate' }));
+    expect(actions.onOpenDelegate).toHaveBeenCalled();
+  });
+
+  it('omits the Delegate item for a viewer who cannot share', () => {
+    render(
+      <ContactHead
+        model={{ ...defaultModel, canDelegate: false, role: 'viewer', isAdmin: false }}
+        actions={createActions()}
+        isMobile={false}
+        isEditing={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    expect(screen.getByText('Log interaction')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
+  });
 });

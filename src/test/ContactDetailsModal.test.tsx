@@ -4029,6 +4029,9 @@ describe('contact head, About sheet, Delegate and kind (#1299)', () => {
       />,
     );
 
+    // #1671: Delegate is a More-actions item, not a header button.
+    expect(screen.queryByRole('button', { name: 'Delegate' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delegate' }));
     const sheet = await screen.findByRole('dialog', { name: /Delegate John Doe/i });
     // #1455: the side panel uses the shared popup frame's header and pinned footer.
