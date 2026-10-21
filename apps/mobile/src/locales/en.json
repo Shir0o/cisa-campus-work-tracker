@@ -1664,6 +1664,7 @@
       "hint_body": "A card clears once you text, log or pray. “Later today” shows it again after the others.",
       "dismiss_hint": "Dismiss hint",
       "later_today": "Later today",
+      "campus": "Campus",
       "more_about": "More about {name}",
       "read_all_about": "Read all about {name}",
       "read_whole_card": "Read the whole card",
