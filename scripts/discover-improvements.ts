@@ -13,6 +13,10 @@ export interface ImprovementCandidate {
   confidence: 'high' | 'medium' | 'low';
   canAutoMerge: boolean;
   instructions: string;
+  recommendedSkill?: string;
+  recommendedCadence?: 'weekly' | 'daily' | 'on-demand' | 'monthly';
+  prerequisite?: string;
+  localAgentCommand?: string;
 }
 
 export interface DiscoveryReport {
@@ -75,6 +79,10 @@ export function discoverAssetImprovements(filePaths?: string[]): ImprovementCand
           confidence: 'high',
           canAutoMerge: true,
           instructions: `Apply lossless SVGO optimization preserving viewBox and dimensions to ${relPath}.`,
+          recommendedSkill: 'none (deterministic script)',
+          recommendedCadence: 'weekly',
+          prerequisite: 'New SVG assets added or unminified paths found',
+          localAgentCommand: 'npm run maintenance:run',
         });
       }
     } catch {
@@ -105,6 +113,10 @@ export function discoverBundleBudgetAnomalies(scorecard: BundleScorecard | null)
       confidence: 'high',
       canAutoMerge: false,
       instructions: 'Review top dependencies in index.js and identify vendor modules that can be lazy-loaded.',
+      recommendedSkill: 'performance-and-web-vitals',
+      recommendedCadence: 'weekly',
+      prerequisite: 'dist/bundle-scorecard.json shows entryJsGzipBytes > 350KB',
+      localAgentCommand: '/performance-and-web-vitals Lazy-load heavy route components or vendor dependencies in src/App.tsx',
     });
   }
 
@@ -120,6 +132,10 @@ export function discoverBundleBudgetAnomalies(scorecard: BundleScorecard | null)
           confidence: 'medium',
           canAutoMerge: false,
           instructions: `Inspect components included in ${chunk.name} for sub-route dynamic importing.`,
+          recommendedSkill: 'performance-and-web-vitals',
+          recommendedCadence: 'weekly',
+          prerequisite: `Chunk ${chunk.name} exceeds 200 KB gzip threshold in dist/bundle-scorecard.json`,
+          localAgentCommand: `/performance-and-web-vitals Split sub-components in ${chunk.name} using dynamic imports and React.lazy()`,
         });
       }
     }
@@ -172,6 +188,10 @@ export function discoverDesignTokenDrift(rootDir = process.cwd()): ImprovementCa
       confidence: 'medium',
       canAutoMerge: false,
       instructions: 'Replace hardcoded hex color literals with semantic Tailwind tokens or var(--...) tokens.',
+      recommendedSkill: 'better-colors',
+      recommendedCadence: 'weekly',
+      prerequisite: 'Hex color regex match in src/**/*.tsx',
+      localAgentCommand: '/better-colors Migrate hardcoded hex colors in target files to CSS custom properties from src/index.css',
     });
   }
 
@@ -260,9 +280,13 @@ if (process.argv[1]?.endsWith('discover-improvements.ts')) {
     console.log(`   - 📄 Manifest saved to: ${outputPath}\n`);
 
     if (allCandidates.length > 0) {
-      console.log('Top Candidates:');
+      console.log('Top Candidates & Agent Skills:');
       for (const c of allCandidates.slice(0, 5)) {
         console.log(`   • [${c.category}] ${c.title} (${c.canAutoMerge ? 'Auto-merge' : 'Review'})`);
+        if (c.recommendedSkill) {
+          console.log(`     Skill: ${c.recommendedSkill} (cadence: ${c.recommendedCadence || 'on-demand'})`);
+          console.log(`     Command: ${c.localAgentCommand}`);
+        }
       }
     }
   } catch (err) {
