@@ -145,7 +145,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(pointerAfter.locator('.tabular-nums')).toHaveText(String(remaining), { timeout: 10_000 });
   });
 
-  test('the contact page moves the stage and posts a team discussion (#1627, #1666)', async ({ page }) => {
+  test('the contact page moves the stage and posts a team discussion (#1627, #1666, #1671)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -199,6 +199,15 @@ test.describe('Full-timer journey (#1477)', () => {
       .getByRole('button', { name: /^Conversation/ })
       .click();
     await expect(contactPage.locator('[aria-label="New in Full-timers"]')).toHaveCount(0);
+
+    // #1671: Delegate is not a header button — it opens from More actions.
+    await expect(contactPage.getByRole('button', { name: 'Delegate' })).toHaveCount(0);
+    await contactPage.getByRole('button', { name: 'More actions' }).click();
+    await contactPage.getByRole('button', { name: 'Delegate' }).click();
+    const delegateSheet = page.getByRole('dialog', { name: /Delegate Lila Chen/i });
+    await expect(delegateSheet).toBeVisible({ timeout: 5_000 });
+    await delegateSheet.getByRole('button', { name: 'Cancel' }).click();
+    await expect(delegateSheet).toBeHidden({ timeout: 5_000 });
 
     // #1666: "Edit details" is a header action, not something buried in the
     // overflow menu. It stays the only instance while the menu is open.

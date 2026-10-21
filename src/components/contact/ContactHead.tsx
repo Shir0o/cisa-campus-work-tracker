@@ -109,6 +109,8 @@ function MoreMenu({
   onRelease,
   showAddToAsk,
   onAddToAsk,
+  showDelegate,
+  onDelegate,
 }: {
   contact: Contact;
   onLogInteraction: () => void;
@@ -124,6 +126,8 @@ function MoreMenu({
   onRelease?: () => void;
   showAddToAsk?: boolean;
   onAddToAsk?: () => void;
+  showDelegate?: boolean;
+  onDelegate?: () => void;
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -183,6 +187,12 @@ function MoreMenu({
           {showAddToAsk && onAddToAsk && (
             <button onClick={() => { setOpen(false); onAddToAsk(); }} className={item}>
               <NotebookPen className="w-4 h-4" /> {t('toAsk.menu_item', 'Add to To ask')}
+            </button>
+          )}
+          {/* #1671: Delegate sits with the other hand-offs, not in the head. */}
+          {showDelegate && onDelegate && (
+            <button onClick={() => { setOpen(false); onDelegate(); }} className={item}>
+              <UserPlus className="w-4 h-4" /> {t('modals.contactDetails.delegate')}
             </button>
           )}
           {showChangeCreator && (
@@ -359,14 +369,6 @@ export default function ContactHead(props: ContactHeadProps) {
                 <span>{t('modals.contactDetails.people')}</span>
               </button>
               <div className="flex items-center gap-2">
-                {canDelegate && (
-                  <button
-                    onClick={onOpenDelegate}
-                    className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" /> {t('modals.contactDetails.delegate')}
-                  </button>
-                )}
                 {role !== 'viewer' && (
                   <button
                     onClick={onEdit}
@@ -390,6 +392,8 @@ export default function ContactHead(props: ContactHeadProps) {
                   onRelease={onRelease}
                   showAddToAsk={showAddToAsk}
                   onAddToAsk={onAddToAsk}
+                  showDelegate={canDelegate}
+                  onDelegate={onOpenDelegate}
                 />
               </div>
             </div>
@@ -565,15 +569,6 @@ export default function ContactHead(props: ContactHeadProps) {
             </div>
             {!isEditing && (
               <div className="cd-actions">
-                {canDelegate && (
-                  <button
-                    onClick={onOpenDelegate}
-                    title={t('modals.contactDetails.delegate')}
-                    className="h-9 px-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                  >
-                    <UserPlus className="w-4 h-4" /> {t('modals.contactDetails.delegate')}
-                  </button>
-                )}
                 {contact.phone && (
                   <button
                     onClick={onCall}
@@ -629,6 +624,8 @@ export default function ContactHead(props: ContactHeadProps) {
                   onRelease={onRelease}
                   showAddToAsk={showAddToAsk}
                   onAddToAsk={onAddToAsk}
+                  showDelegate={canDelegate}
+                  onDelegate={onOpenDelegate}
                 />
                 <button
                   onClick={onClose}
