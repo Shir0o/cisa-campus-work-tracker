@@ -123,6 +123,7 @@ export default function Login() {
               value={email}
               onChangeText={setEmail}
               placeholder="Email"
+              testID="sign-in-email"
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
@@ -133,6 +134,7 @@ export default function Login() {
               value={password}
               onChangeText={setPassword}
               placeholder="Password"
+              testID="sign-in-password"
               secureTextEntry
               placeholderTextColor={colors.onSurfaceVariant}
               style={inputStyle}
@@ -148,6 +150,7 @@ export default function Login() {
               title={submitting ? 'Signing in…' : 'Sign in'}
               onPress={submit}
               disabled={submitting || !email || !password}
+              testID="sign-in-submit"
               full
             />
 

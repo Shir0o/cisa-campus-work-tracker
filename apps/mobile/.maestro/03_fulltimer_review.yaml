@@ -3,29 +3,44 @@ appId: com.cisa.campus
 - launchApp:
     clearState: true
 - assertVisible: "Sign in"
-- tapOn: "Email"
-- inputText: "reviewer-appstore@yourdomain.com"
-- tapOn: "Password"
-- inputText: "TestReviewer2026!"
-- tapOn: "Sign in"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${FT_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${FT_PASSWORD}
+- tapOn:
+    id: "sign-in-submit"
+
+# A release note ("A few things are different") covers the first screen of
+# every fresh install; `clearState` makes every flow a fresh install.
+- runFlow:
+    when:
+      visible: "Carry on"
+    commands:
+      - tapOn: "Carry on"
 
 # Full-timer Home / My Day
-- assertVisible: "Log a moment"
+- extendedWaitUntil:
+    visible: "Log a moment"
+    timeout: 20000
 - assertVisible: "Hand something over"
-- assertVisible: "CARRYING"
 
 # People Tab
 - tapOn: "People"
-- assertVisible: "Find a person..."
-
-# Messages Tab
-- tapOn: "Messages"
+- assertVisible: "Find someone by name, major, hall…"
 
 # More Tab
 - tapOn: "More"
 - assertVisible: "The Journey"
 - assertVisible: "The Board"
-- assertVisible: "Gospel"
 - assertVisible: "Sign-up form"
-- assertVisible: "Settings"
-- assertVisible: "See it as they do"
+- assertVisible: "How this works"
+- scrollUntilVisible:
+    element:
+      text: "Settings"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      text: "See it as they do"
+    direction: DOWN

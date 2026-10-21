@@ -2,30 +2,72 @@ appId: com.cisa.campus
 ---
 - launchApp:
     clearState: true
-- tapOn: "Email"
-- inputText: "cisa-student@hub.com"
-- tapOn: "Password"
-- inputText: "cisastudent3!"
-- tapOn: "Sign in"
+- assertVisible: "Sign in"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${STUDENT_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${STUDENT_PASSWORD}
+- tapOn:
+    id: "sign-in-submit"
+
+# A release note ("A few things are different") covers the first screen of
+# every fresh install; `clearState` makes every flow a fresh install.
+- runFlow:
+    when:
+      visible: "Carry on"
+    commands:
+      - tapOn: "Carry on"
 
 # Student View
-- assertVisible: "Friday Gathering"
+- extendedWaitUntil:
+    visible: "Today"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Bring someone with you"
+    direction: DOWN
 - tapOn: "Prayer"
 - assertVisible: "Ask the team to pray"
 - tapOn: "You"
-- assertVisible: "WHO TO REACH"
+- scrollUntilVisible:
+    element:
+      text: "Who to reach"
+    direction: DOWN
 
 # Community View Sign in
 - launchApp:
     clearState: true
-- tapOn: "Email"
-- inputText: "cisa-community@hub.com"
-- tapOn: "Password"
-- inputText: "cisacommunity4!"
-- tapOn: "Sign in"
+- assertVisible: "Sign in"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${COMMUNITY_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${COMMUNITY_PASSWORD}
+- tapOn:
+    id: "sign-in-submit"
+- runFlow:
+    when:
+      visible: "Carry on"
+    commands:
+      - tapOn: "Carry on"
 
 # Community Hospitality Offer
-- assertVisible: "OPEN YOUR HOME"
-- assertVisible: "Offer to host"
+- extendedWaitUntil:
+    visible: "What's on"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Open your home"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      text: "Offer to host"
+    direction: DOWN
 - tapOn: "Prayer"
-- assertVisible: "I'm praying for this"
+- scrollUntilVisible:
+    element:
+      text: "Names, not cases. Thank you for carrying them."
+    direction: DOWN

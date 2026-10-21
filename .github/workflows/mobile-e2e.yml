@@ -94,22 +94,20 @@ jobs:
 
       - name: Run Maestro E2E tests on Android Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
+        env:
+          E2E_TEST_CREDENTIALS: ${{ secrets.E2E_TEST_CREDENTIALS }}
         with:
           api-level: 31
           target: default
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: apps/mobile
-          script: |
-            adb install android/app/build/outputs/apk/release/app-release.apk
-            # On failure, print what the app actually showed and logged, so the
-            # cause is readable in the job log without the artifact.
-            maestro test .maestro/ || { adb shell uiautomator dump /sdcard/ui.xml; adb shell cat /sdcard/ui.xml; echo; adb logcat -d -s ReactNativeJS:V ReactNative:V AndroidRuntime:E | tail -n 200; exit 1; }
+          script: sh scripts/maestro-e2e.sh
 
       - name: Upload Maestro output on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: maestro-debug-artifacts
-          path: ~/.maestro/tests/
+          path: /home/runner/.maestro/tests/
           retention-days: 7
