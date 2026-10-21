@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 import { MemberHomeSkeleton } from '../skeleton/MemberHomeSkeleton';
+import { KeyboardAvoidingView } from '../ui/KeyboardAvoidingView';
 
 /** Every member screen is two components — the provider has to sit ABOVE
  * anything calling useV2Theme(). See Room's own note. */
@@ -49,22 +50,24 @@ export function MemberScreen({
   }
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: 18,
-          paddingTop: 10,
-          paddingBottom: 44,
-          gap: 22,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {!!error && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>
-            {error}
-          </Text>
-        )}
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 18,
+            paddingTop: 10,
+            paddingBottom: 44,
+            gap: 22,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          {!!error && (
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>
+              {error}
+            </Text>
+          )}
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
