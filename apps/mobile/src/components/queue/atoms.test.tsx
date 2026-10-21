@@ -9,7 +9,9 @@ import {
   AboutChip,
   Ask,
   Kicker,
-  LaterButton,
+  CardAction,
+  CardPrimary,
+  LaterTodayButton,
   Lead,
   NoteBlock,
   PersonMark,
@@ -111,10 +113,27 @@ describe('buttons', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('LaterButton renders its label (customisable) and fires onPress', async () => {
+  it('CardPrimary and CardAction show their icon beside the label and fire onPress', async () => {
+    const onPrimary = jest.fn();
+    const onAction = jest.fn();
+    const { getByText, getByLabelText } = await renderV2(
+      <>
+        <CardPrimary title="Mark it done" icon="checkmark" onPress={onPrimary} />
+        <CardAction title="Push to tomorrow" icon="calendar-outline" onPress={onAction} />
+      </>,
+    );
+    expect(getByText('checkmark')).toBeTruthy();
+    expect(getByText('calendar-outline')).toBeTruthy();
+    await fireEvent.press(getByLabelText('Mark it done'));
+    await fireEvent.press(getByLabelText('Push to tomorrow'));
+    expect(onPrimary).toHaveBeenCalledTimes(1);
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('LaterTodayButton says "Later today" and fires onPress', async () => {
     const onPress = jest.fn();
-    const { getByText } = await renderV2(<LaterButton label="Not now" onPress={onPress} />);
-    await fireEvent.press(getByText('Not now  →'));
+    const { getByText } = await renderV2(<LaterTodayButton onPress={onPress} />);
+    await fireEvent.press(getByText('Later today'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

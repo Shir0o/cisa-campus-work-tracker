@@ -11,6 +11,7 @@ appId: com.cisa.campus
 # Trainee Focus Queue
 - assertVisible: "Mark it done"
 - assertVisible: "Push to tomorrow"
+- assertVisible: "Later today"
 
 # Drawer Navigation
 - tapOn:

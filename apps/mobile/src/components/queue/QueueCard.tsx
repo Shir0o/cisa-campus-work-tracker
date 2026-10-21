@@ -1,8 +1,11 @@
-// Mobile v2 — one component, one branch per card kind. Ported from the design
-// project's views/mobile/cards.jsx; every mutation goes through the same data
+// Mobile v2 — one component, one branch per card kind. Each branch says what
+// the card holds once; the card shows it clamped (notes to 3 lines, prayer
+// burdens and Full-timer messages to 4, never reworded) and tapping it opens the
+// same body in full, with recent history and the same actions at its foot. Ported from the design
+// Ported from the design project's views/mobile/cards.jsx; every mutation goes through the same data
 // modules the rest of the app writes with, so the desktop screens agree.
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import {
   agoPhrase,
   daysAgoWords,
@@ -10,20 +13,25 @@ import {
   personSubLine,
   prayerCarryLine,
   roleLabel,
+  type Interaction,
   type QueueCard as QueueCardData,
 } from '@cisa/core';
+import { Sheet } from '../ui';
+import { useV2Theme, v2SheetChrome } from '../../theme/v2';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { FocusCard } from './FocusCard';
 import { Translate, useTranslate } from '../Translate';
 import {
   AboutChip,
   Ask,
+  CardAction,
+  CardPrimary,
+  Kicker,
+  LaterTodayButton,
   Lead,
-  LaterButton,
   NoteBlock,
-  PrimaryButton,
   Quote,
   Said,
-  SecondaryButton,
   WhoBlock,
   Why,
 } from './atoms';
@@ -50,162 +58,227 @@ export function QueueCard({
   me,
   api,
   header,
+  history = [],
 }: {
   card: QueueCardData;
   me: string;
   api: QueueCardApi;
   header?: React.ReactNode;
+  /** Recent conversations with this card's person, newest first — sheet only. */
+  history?: Interaction[];
 }) {
+  const { c: pal, font, fs } = useV2Theme();
+  const { t: tr } = useLanguage();
   const c = card.contact;
   const first = c ? firstName(c.name) : '';
   const later = () => api.later(card.id);
   const { translatedText: translatedNotes } = useTranslate(c?.notes);
+  // The sheet mounts on first open and stays, so closing it can animate.
+  const [reading, setReading] = React.useState(false);
+  const [opened, setOpened] = React.useState(false);
+  const read = () => {
+    setOpened(true);
+    setReading(true);
+  };
 
-  // ── a to-do off The Board, due now ────────────────────────────────────────
-  if (card.kind === 'due' && card.task) {
-    const t = card.task;
+  const shape = cardShape();
+  if (!shape) return <View />;
+
+  // In the sheet, an action closes it first, so you land back on Today.
+  const foot = (inSheet: boolean) => {
+    const run = (fn: () => void) => () => {
+      if (inSheet) setReading(false);
+      fn();
+    };
     return (
-      <FocusCard
-        tone="due"
-        label={card.label}
-        ago={card.ago}
-        header={header}
-        onSwipeAway={later}
-        foot={
-          <>
-            <PrimaryButton title="Mark it done" onPress={() => api.markDone(t.id)} />
-            {api.canBoard && (
-              <SecondaryButton
-                title={t.sourceDocId ? 'Open the page' : 'Open The Board'}
-                onPress={() => api.openBoardDoc(t.sourceDocId)}
-              />
-            )}
-            <LaterButton label="Push to tomorrow" onPress={() => api.pushToTomorrow(t.id)} />
-          </>
-        }
-      >
-        <Lead><Translate text={t.title} /></Lead>
-        <Why>
-          {t.createdByName
-            ? `${firstName(t.createdByName)} put this on the page and put your name on it.`
-            : 'This one has your name on it.'}
-          {/* Naming a page they can't open just raises a question they can't
-              answer — the design gates this line on canBoard too. */}
-          {t.sourceDocTitle && api.canBoard ? ` It came from ${t.sourceDocTitle}.` : ''}
-        </Why>
-      </FocusCard>
+      <>
+        <CardPrimary {...shape.primary} onPress={run(shape.primary.onPress)} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {shape.actions.map((a) => (
+            <CardAction key={a.title} {...a} onPress={run(a.onPress)} />
+          ))}
+          <LaterTodayButton onPress={run(later)} />
+        </View>
+      </>
     );
-  }
+  };
 
-  // ── a message from the full-timer who cares for you ──────────────────────
-  if (card.kind === 'msg' && card.msg) {
-    const m = card.msg;
-    return (
-      <FocusCard
-        tone="ask"
-        label={card.label}
-        ago={card.ago}
-        header={header}
-        onSwipeAway={later}
-        foot={
-          <>
-            <PrimaryButton title="Write back" onPress={() => api.openReply(card)} />
-            {!!c && <SecondaryButton title={`Open ${first}`} onPress={() => api.openContact(c.id, 'thread')} />}
-            <LaterButton onPress={later} />
-          </>
-        }
-      >
-        <WhoBlock name={m.fromName} id={m.from} sub={`${roleLabel('admin')} · cares for you`} />
-        <Quote>{m.body}</Quote>
-        {!!c && <AboutChip name={c.name} id={c.id} detail={c.stage} onPress={() => api.openContact(c.id, 'thread')} />}
-      </FocusCard>
-    );
-  }
-
-  // ── you said you'd follow up ─────────────────────────────────────────────
-  if (card.kind === 'follow' && c && card.task) {
-    return (
-      <FocusCard
-        tone="follow"
-        label={card.label}
-        ago={card.ago}
-        header={header}
-        onSwipeAway={later}
-        foot={
-          <>
-            <PrimaryButton tone="warm" title={`Text ${first}`} onPress={() => api.text(card)} />
-            <SecondaryButton title="Log what happened" onPress={() => api.openLog(card)} />
-            <LaterButton onPress={later} />
-          </>
-        }
-      >
-        <WhoBlock name={c.name} id={c.id} sub={[personSubLine(c), c.pronouns].filter(Boolean).join(' · ')} />
-        <Ask>{card.task.title}</Ask>
-        {!!card.last && (
-          <Why>
-            You {agoPhrase(card.last)} — {card.last.content.split('. ')[0].toLowerCase()}. Nothing since.
-          </Why>
+  const notes = (full: boolean) =>
+    shape.notes &&
+    !!c?.notes && (
+      <>
+        <NoteBlock label={tr('mobile.queue.what_you_wrote_down')} lines={full ? undefined : 3}>
+          {translatedNotes}
+        </NoteBlock>
+        {!full && (
+          <Pressable onPress={read} accessibilityRole="link" hitSlop={8} style={{ minHeight: 44, justifyContent: 'center' }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: pal.card.link }}>
+              {tr('mobile.queue.more_about').replace('{name}', first)}
+            </Text>
+          </Pressable>
         )}
-        {!!c.notes && <NoteBlock label="What you wrote down">{translatedNotes}</NoteBlock>}
-      </FocusCard>
+      </>
     );
-  }
 
-  // ── gone quiet ───────────────────────────────────────────────────────────
-  if (card.kind === 'quiet' && c) {
-    const met = c.createdAt ? daysAgoWords(c.createdAt) : null;
-    return (
+  return (
+    <>
       <FocusCard
-        tone="follow"
+        tone={shape.tone}
         label={card.label}
         ago={card.ago}
         header={header}
-        onSwipeAway={later}
-        foot={
-          <>
-            <PrimaryButton tone="warm" title={`Text ${first}`} onPress={() => api.text(card)} />
-            <SecondaryButton title="Log what happened" onPress={() => api.openLog(card)} />
-            <LaterButton onPress={later} />
-          </>
-        }
+        onRead={read}
+        readLabel={first ? tr('mobile.queue.read_all_about').replace('{name}', first) : tr('mobile.queue.read_whole_card')}
+        foot={foot(false)}
       >
-        <WhoBlock name={c.name} id={c.id} sub={[personSubLine(c), c.pronouns].filter(Boolean).join(' · ')} />
-        <Ask>Reach out to {first} today.</Ask>
-        <Why>
-          {met ? `You met ${first} ${met}` : `You brought ${first} in`}
-          {card.last ? ` and ${agoPhrase(card.last)}` : ''}. Nothing since.
-        </Why>
-        {!!c.notes && <NoteBlock label="What you wrote down">{translatedNotes}</NoteBlock>}
+        {shape.body(false)}
+        {notes(false)}
       </FocusCard>
-    );
-  }
+      {opened && (
+        <Sheet visible={reading} onClose={() => setReading(false)} maxHeightRatio={0.94} {...v2SheetChrome(pal)}
+          footer={<View style={{ paddingHorizontal: 18, paddingTop: 12, paddingBottom: 18, gap: 10, backgroundColor: pal.card.sheet }}>{foot(true)}</View>}
+        >
+          <View style={{ paddingHorizontal: 22, paddingBottom: 12 }}>
+            {shape.body(true)}
+            {notes(true)}
+            {history.length > 0 && (
+              <View style={{ marginTop: 24, gap: 12 }}>
+                <Kicker>{tr('mobile.queue.recent')}</Kicker>
+                {history.map((i) => (
+                  <View key={i.id} style={{ gap: 3 }}>
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: pal.card.ink3 }}>
+                      {daysAgoWords(i.dateTime)}
+                    </Text>
+                    <Text style={{ fontFamily: font.medium, fontSize: fs(15), lineHeight: fs(22), color: pal.card.ink2 }}>
+                      {i.content}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </Sheet>
+      )}
+    </>
+  );
 
-  // ── a prayer to carry ────────────────────────────────────────────────────
-  if (card.kind === 'pray' && card.prayer) {
-    const p = card.prayer;
-    return (
-      <FocusCard
-        tone="pray"
-        label={card.label}
-        ago={card.ago}
-        header={header}
-        onSwipeAway={later}
-        foot={
+  function cardShape(): {
+    tone: React.ComponentProps<typeof FocusCard>['tone'];
+    body: (full: boolean) => React.ReactNode;
+    /** Shows "What you wrote down" — the person cards only. */
+    notes?: boolean;
+    primary: React.ComponentProps<typeof CardPrimary>;
+    actions: React.ComponentProps<typeof CardAction>[];
+  } | null {
+    // ── a to-do off The Board, due now ──────────────────────────────────────
+    if (card.kind === 'due' && card.task) {
+      const t = card.task;
+      return {
+        tone: 'due',
+        primary: { title: 'Mark it done', icon: 'checkmark-circle', onPress: () => api.markDone(t.id) },
+        actions: [
+          ...(api.canBoard
+            ? [
+                {
+                  title: t.sourceDocId ? 'Open the page' : 'Open The Board',
+                  icon: 'document-text-outline' as const,
+                  onPress: () => api.openBoardDoc(t.sourceDocId),
+                },
+              ]
+            : []),
+          { title: 'Push to tomorrow', icon: 'calendar-outline', onPress: () => api.pushToTomorrow(t.id) },
+        ],
+        body: () => (
           <>
-            {/* Marks the card done for today. There is no shared "who prayed"
-                record in the schema yet, so this claims nothing more. */}
-            <PrimaryButton tone="deep" title={c ? `Prayed for ${first}` : 'Prayed for this'} onPress={() => api.handle(card.id)} />
-            {!!c && <SecondaryButton title={`Open ${first}`} onPress={() => api.openContact(c.id, 'prayer')} />}
-            <LaterButton onPress={later} />
+            <Lead><Translate text={t.title} /></Lead>
+            <Why>
+              {t.createdByName
+                ? `${firstName(t.createdByName)} put this on the page and put your name on it.`
+                : 'This one has your name on it.'}
+              {/* Naming a page they can't open just raises a question they can't
+                  answer — the design gates this line on canBoard too. */}
+              {t.sourceDocTitle && api.canBoard ? ` It came from ${t.sourceDocTitle}.` : ''}
+            </Why>
           </>
-        }
-      >
-        {!!c && <WhoBlock name={c.name} id={c.id} sub={personSubLine(c)} />}
-        <Said>“{p.burden}”</Said>
-        <Why>{prayerCarryLine(p, { me })}</Why>
-      </FocusCard>
-    );
-  }
+        ),
+      };
+    }
 
-  return <View />;
+    // ── a message from the full-timer who cares for you ────────────────────
+    if (card.kind === 'msg' && card.msg) {
+      const m = card.msg;
+      return {
+        tone: 'ask',
+        primary: { title: 'Write back', icon: 'chatbubble-outline', onPress: () => api.openReply(card) },
+        actions: c ? [{ title: `Open ${first}`, icon: 'person-outline', onPress: () => api.openContact(c.id, 'thread') }] : [],
+        body: (full) => (
+          <>
+            <WhoBlock name={m.fromName} id={m.from} sub={`${roleLabel('admin')} · cares for you`} />
+            <Quote lines={full ? undefined : 4}>{m.body}</Quote>
+            {!!c && <AboutChip name={c.name} id={c.id} detail={c.stage} onPress={() => api.openContact(c.id, 'thread')} />}
+          </>
+        ),
+      };
+    }
+
+    // ── you said you'd follow up / gone quiet ──────────────────────────────
+    if ((card.kind === 'follow' && c && card.task) || (card.kind === 'quiet' && c)) {
+      const met = card.kind === 'quiet' && c.createdAt ? daysAgoWords(c.createdAt) : null;
+      return {
+        tone: 'follow',
+        notes: true,
+        primary: { title: `Text ${first}`, icon: 'chatbubble-ellipses-outline', tone: 'warm', onPress: () => api.text(card) },
+        actions: [{ title: 'Log what happened', icon: 'create-outline', onPress: () => api.openLog(card) }],
+        body: () => (
+          <>
+            <WhoBlock name={c.name} id={c.id} sub={[personSubLine(c), c.pronouns].filter(Boolean).join(' · ')} />
+            {card.kind === 'follow' && card.task ? (
+              <>
+                <Ask>{card.task.title}</Ask>
+                {!!card.last && (
+                  <Why>
+                    You {agoPhrase(card.last)} — {card.last.content.split('. ')[0].toLowerCase()}. Nothing since.
+                  </Why>
+                )}
+              </>
+            ) : (
+              <>
+                <Ask>Reach out to {first} today.</Ask>
+                <Why>
+                  {met ? `You met ${first} ${met}` : `You brought ${first} in`}
+                  {card.last ? ` and ${agoPhrase(card.last)}` : ''}. Nothing since.
+                </Why>
+              </>
+            )}
+          </>
+        ),
+      };
+    }
+
+    // ── a prayer to carry ──────────────────────────────────────────────────
+    if (card.kind === 'pray' && card.prayer) {
+      const p = card.prayer;
+      return {
+        tone: 'pray',
+        // Marks the card done for today. There is no shared "who prayed"
+        // record in the schema yet, so this claims nothing more.
+        primary: {
+          title: c ? `Prayed for ${first}` : 'Prayed for this',
+          icon: 'heart-outline',
+          tone: 'deep',
+          onPress: () => api.handle(card.id),
+        },
+        actions: c ? [{ title: `Open ${first}`, icon: 'person-outline', onPress: () => api.openContact(c.id, 'prayer') }] : [],
+        body: (full) => (
+          <>
+            {!!c && <WhoBlock name={c.name} id={c.id} sub={personSubLine(c)} />}
+            <Said lines={full ? undefined : 4}>“{p.burden}”</Said>
+            <Why>{prayerCarryLine(p, { me })}</Why>
+          </>
+        ),
+      };
+    }
+
+    return null;
+  }
 }

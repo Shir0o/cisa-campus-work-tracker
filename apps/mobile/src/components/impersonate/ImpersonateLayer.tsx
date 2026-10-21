@@ -9,7 +9,7 @@
 //
 // The strip is IN FLOW, not floating: it takes real space and the app renders
 // beneath it. It used to float, which put it straight on top of the queue's
-// own chrome row (☰ and the "Today · N to look after" counter, both of which
+// own chrome row (☰ and the "Today · N left" header, both of which
 // start ~10px below the same inset) and buried them.
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { InteractionManager, View } from 'react-native';

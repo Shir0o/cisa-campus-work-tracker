@@ -8,7 +8,6 @@ import {
   heldForTomorrowLine,
   isPushedScreen,
   lookedAfterLine,
-  queueMeta,
   replyDestinationLine,
   shellForRole,
   tabsForRole,
@@ -130,37 +129,6 @@ describe('the drawer and More lists', () => {
   it('never repeats a tab the full-timer already has', () => {
     const tabs = tabsForRole('admin').map((t) => t.name);
     expect(FT_MORE.every((l) => !tabs.includes(l.key))).toBe(true);
-  });
-});
-
-describe('queueMeta', () => {
-  it('counts the whole day, not just what is left', () => {
-    expect(queueMeta(5, 3)).toEqual({ left: 'Today · 8 to look after', right: '4 of 8' });
-  });
-
-  it('starts at one of N before anything is handled', () => {
-    expect(queueMeta(8, 0)).toEqual({ left: 'Today · 8 to look after', right: '1 of 8' });
-  });
-
-  it('does not run past the end once the last card is handled', () => {
-    expect(queueMeta(0, 8).right).toBe('8 of 8');
-  });
-
-  it('says just "Today" when the day held nothing', () => {
-    expect(queueMeta(0, 0)).toEqual({ left: 'Today', right: '' });
-  });
-
-  it('moves with the queue index, not just the handled count', () => {
-    // 3 handled, jumped to the 4th still-waiting card (index 3) of 8 total.
-    expect(queueMeta(5, 3, 3).right).toBe('7 of 8');
-  });
-
-  it('defaults the index to 0 when not given', () => {
-    expect(queueMeta(5, 3)).toEqual({ left: 'Today · 8 to look after', right: '4 of 8' });
-  });
-
-  it('does not run past the end when index overshoots', () => {
-    expect(queueMeta(1, 7, 5).right).toBe('8 of 8');
   });
 });
 

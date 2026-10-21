@@ -5,8 +5,10 @@
 // and geometry (see src/theme/v2.ts). Every target here is ≥44px.
 import React from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, type V2ToneKey } from '../../theme/v2';
+import { useLanguage } from '../../lib/LanguageProvider';
 
 // ── the tone pill ("YOU SAID YOU'D FOLLOW UP · due tomorrow") ───────────────
 // Wraps rather than overflows: the longest label is 312px against a 292px inner
@@ -119,7 +121,7 @@ export function WhoBlock({ name, sub, id }: { name: string; sub?: string; id?: s
 }
 
 // ── "What you wrote down" — a quiet inset note ─────────────────────────────
-export function NoteBlock({ label, children }: { label: string; children: string }) {
+export function NoteBlock({ label, children, lines }: { label: string; children: string; lines?: number }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
     <View
@@ -143,7 +145,9 @@ export function NoteBlock({ label, children }: { label: string; children: string
       >
         {label}
       </Text>
-      <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.card.noteInk }}>{children}</Text>
+      <Text numberOfLines={lines} style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.card.noteInk }}>
+        {children}
+      </Text>
     </View>
   );
 }
@@ -171,10 +175,10 @@ export function Lead({ children }: { children: React.ReactNode }) {
 }
 
 /** Something someone said — a prayer's burden. */
-export function Said({ children }: { children: React.ReactNode }) {
+export function Said({ children, lines }: { children: React.ReactNode; lines?: number }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.medium, fontSize: fs(20), lineHeight: fs(28), letterSpacing: -0.24, color: c.card.said, marginTop: 18 }}>
+    <Text numberOfLines={lines} style={{ fontFamily: font.medium, fontSize: fs(20), lineHeight: fs(28), letterSpacing: -0.24, color: c.card.said, marginTop: 18 }}>
       {children}
     </Text>
   );
@@ -202,11 +206,11 @@ export function Why({ children }: { children: React.ReactNode }) {
 }
 
 /** A message quoted from a thread. */
-export function Quote({ children }: { children: React.ReactNode }) {
+export function Quote({ children, lines }: { children: React.ReactNode; lines?: number }) {
   const { c, font, fs } = useV2Theme();
   return (
     <View style={{ marginTop: 20, paddingLeft: 16, borderLeftWidth: 3, borderLeftColor: c.card.quoteLine }}>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(18), lineHeight: fs(26), color: c.card.said }}>{children}</Text>
+      <Text numberOfLines={lines} style={{ fontFamily: font.medium, fontSize: fs(18), lineHeight: fs(26), color: c.card.said }}>{children}</Text>
     </View>
   );
 }
@@ -277,24 +281,94 @@ export function SecondaryButton({
   );
 }
 
-/** The one ghost affordance at the foot of every card. */
-export function LaterButton({ label = 'Later', onPress }: { label?: string; onPress: () => void }) {
-  const { c, font, fs } = useV2Theme();
+// ── the Today card's foot (#1715): raised, an icon inline with each label ──
+// A solid darker bottom edge plus a soft drop, so they read as pressable. The
+// other v2 sheets keep the flat Primary/SecondaryButton above.
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+/** The one action that answers the card — full width. */
+export function CardPrimary({
+  title,
+  icon,
+  onPress,
+  tone = 'primary',
+}: {
+  title: string;
+  icon: IconName;
+  onPress: () => void;
+  tone?: 'primary' | 'warm' | 'deep';
+}) {
+  const { c, font, radius, shadow, fs } = useV2Theme();
+  const bg = { primary: c.card.primary, warm: c.card.warm, deep: c.card.deep }[tone];
+  const fg = { primary: c.card.onPrimary, warm: c.card.onWarm, deep: c.card.onDeep }[tone];
+  const edge = tone === 'warm' ? c.card.warmEdge : c.card.primaryEdge;
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
-        minHeight: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 14,
-        opacity: pressed ? 0.7 : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
-      })}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={({ pressed }) => [
+        {
+          height: 56,
+          borderRadius: radius.button,
+          backgroundColor: bg,
+          borderBottomWidth: pressed ? 2 : 5,
+          borderBottomColor: edge,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 9,
+          transform: [{ translateY: pressed ? 3 : 0 }],
+        },
+        shadow.raisedSmall,
+      ]}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink3 }}>{label}  →</Text>
+      <Ionicons name={icon} size={19} color={fg} />
+      <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: fg }}>{title}</Text>
     </Pressable>
   );
+}
+
+/** One of the two smaller actions in the row under the primary. */
+export function CardAction({ title, icon, onPress }: { title: string; icon: IconName; onPress: () => void }) {
+  const { c, font, radius, shadow, fs } = useV2Theme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={({ pressed }) => [
+        {
+          flex: 1,
+          minHeight: 48,
+          paddingHorizontal: 8,
+          borderRadius: radius.button,
+          backgroundColor: c.card.bg,
+          borderWidth: 1.5,
+          borderColor: c.card.border,
+          borderBottomWidth: pressed ? 2 : 4,
+          borderBottomColor: c.card.edge,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          transform: [{ translateY: pressed ? 2 : 0 }],
+        },
+        shadow.raisedSmall,
+      ]}
+    >
+      <Ionicons name={icon} size={16} color={c.card.ink2} />
+      <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink2, flexShrink: 1 }}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** "Later today" — sets the card aside; it comes round again after the others. */
+export function LaterTodayButton({ onPress }: { onPress: () => void }) {
+  const { t } = useLanguage();
+  return <CardAction title={t('mobile.queue.later_today')} icon="refresh" onPress={onPress} />;
 }
 
 // ── the small "about this person" chip under a message ─────────────────────

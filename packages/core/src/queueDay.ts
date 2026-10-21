@@ -35,6 +35,13 @@ export function queueDayHandle(state: QueueDayState, cardId: string, at: number)
   };
 }
 
+/** Undo of a handle — the card is back in today. A deferral the handle cleared
+ *  stays cleared, so it returns to its own place rather than the back. */
+export function queueDayUnhandle(state: QueueDayState, cardId: string): QueueDayState {
+  const { [cardId]: _dropped, ...handled } = state.handled;
+  return { day: state.day, handled, later: state.later };
+}
+
 /** Not now — back of the queue, behind anything deferred earlier. Deferring a
  *  card that is already deferred restamps it, so it moves to the back again. */
 export function queueDayLater(state: QueueDayState, cardId: string, at: number): QueueDayState {
