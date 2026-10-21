@@ -113,9 +113,9 @@ export function StageMenu({
       </button>
 
       {open && (
-        <div className="cd-stage-menu" role="menu">
-          <div className="cd-stage-menu-label">{t('modals.contactDetails.move_to_step')}</div>
-          <div className="cd-stage-menu-list">
+        <div className="cd-menu" role="menu">
+          <div className="cd-menu-label">{t('modals.contactDetails.move_to_step')}</div>
+          <div className="cd-menu-list">
             {stages.map((s, i) => (
               <StageOption
                 key={s.id}
@@ -129,7 +129,7 @@ export function StageMenu({
           </div>
           {current && (
             <>
-              <div className="cd-stage-menu-rule" />
+              <div className="cd-menu-rule" />
               <button
                 role="menuitem"
                 onClick={() => pick("")}
