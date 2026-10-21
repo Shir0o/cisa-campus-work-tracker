@@ -339,7 +339,7 @@ export function QueueScreen() {
             )}
           </Pressable>
           {/* Opening Today on campus mustn't strand the sign-up form back behind
-              the drawer: this is the way back to campus mode (#1715 review). */}
+              the drawer: this is the way back to campus mode (issue 1715 review). */}
           {onCampus && todayChosen && (
             <Pressable
               onPress={() => setTodayChosen(false)}
