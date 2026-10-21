@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
+import { Heart, Image as ImageIcon } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord } from '../types';
 import { cn } from '../lib/utils';
@@ -222,6 +222,28 @@ export default function AnsweredList() {
                       <div className="ans-card-body">
                         <div className="ans-who">{name}</div>
                         <Translate as="p" className="ans-how" text={p.answer || p.burden} />
+                        {(p.answeredPhotos || []).length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {p.answeredPhotos!.map((ph) =>
+                              ph.url ? (
+                                <img
+                                  key={ph.path}
+                                  src={ph.url}
+                                  alt={ph.name || 'photo'}
+                                  className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
+                                />
+                              ) : (
+                                <span
+                                  key={ph.path}
+                                  title={ph.name}
+                                  className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
+                                >
+                                  <ImageIcon className="w-4 h-4" />
+                                </span>
+                              ),
+                            )}
+                          </div>
+                        )}
                         <div className="ans-arc">
                           <Translate as="span" className="ans-item" text={p.burden} />
                           <span className="ans-dates">
@@ -275,6 +297,28 @@ export default function AnsweredList() {
                       <div className="ans-card-body">
                         <div className="ans-who">{name}</div>
                         <Translate as="p" className="ans-how" text={p.answer || p.burden} />
+                        {(p.answeredPhotos || []).length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {p.answeredPhotos!.map((ph) =>
+                              ph.url ? (
+                                <img
+                                  key={ph.path}
+                                  src={ph.url}
+                                  alt={ph.name || 'photo'}
+                                  className="w-16 h-16 object-cover rounded-sm border border-outline-variant"
+                                />
+                              ) : (
+                                <span
+                                  key={ph.path}
+                                  title={ph.name}
+                                  className="w-16 h-16 grid place-items-center rounded-sm border border-outline-variant text-on-surface-variant"
+                                >
+                                  <ImageIcon className="w-4 h-4" />
+                                </span>
+                              ),
+                            )}
+                          </div>
+                        )}
                         <div className="ans-arc">
                           <Translate as="span" className="ans-item" text={p.burden} />
                           <span className="ans-dates">
