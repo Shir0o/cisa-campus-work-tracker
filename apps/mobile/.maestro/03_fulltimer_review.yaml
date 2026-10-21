@@ -36,5 +36,11 @@ appId: com.cisa.campus
 - assertVisible: "The Board"
 - assertVisible: "Sign-up form"
 - assertVisible: "How this works"
-- assertVisible: "Settings"
-- assertVisible: "See it as they do"
+- scrollUntilVisible:
+    element:
+      text: "Settings"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      text: "See it as they do"
+    direction: DOWN

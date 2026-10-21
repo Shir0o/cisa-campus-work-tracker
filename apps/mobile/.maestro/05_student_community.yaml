@@ -22,12 +22,19 @@ appId: com.cisa.campus
 
 # Student View
 - extendedWaitUntil:
-    visible: "Bring someone with you"
+    visible: "Today"
     timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Bring someone with you"
+    direction: DOWN
 - tapOn: "Prayer"
 - assertVisible: "Ask the team to pray"
 - tapOn: "You"
-- assertVisible: "Who to reach"
+- scrollUntilVisible:
+    element:
+      text: "Who to reach"
+    direction: DOWN
 
 # Community View Sign in
 - launchApp:
@@ -49,8 +56,18 @@ appId: com.cisa.campus
 
 # Community Hospitality Offer
 - extendedWaitUntil:
-    visible: "Open your home"
+    visible: "What's on"
     timeout: 20000
-- assertVisible: "Offer to host"
+- scrollUntilVisible:
+    element:
+      text: "Open your home"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      text: "Offer to host"
+    direction: DOWN
 - tapOn: "Prayer"
-- assertVisible: "Names, not cases. Thank you for carrying them."
+- scrollUntilVisible:
+    element:
+      text: "Names, not cases. Thank you for carrying them."
+    direction: DOWN
