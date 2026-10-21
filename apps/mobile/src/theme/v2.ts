@@ -224,10 +224,10 @@ const cardLight: V2CardLayer = {
   onGreen: '#FFFFFF',
   inverse: '#1A212B',
   onInverse: '#F6F8FB',
-  edge: '#DEE4ED',
-  primaryEdge: '#3F0FA6',
-  warmEdge: '#7A3A00',
-  inverseEdge: '#0E1319',
+  edge: '#DEE4ED', // colour-token-ignore: palette source, this IS the token
+  primaryEdge: '#3F0FA6', // colour-token-ignore: palette source, this IS the token
+  warmEdge: '#7A3A00', // colour-token-ignore: palette source, this IS the token
+  inverseEdge: '#0E1319', // colour-token-ignore: palette source, this IS the token
 
   field: '#F6F8FB',
   link: '#5C17E5',
@@ -281,10 +281,10 @@ const cardDark: V2CardLayer = {
   onGreen: '#1A212B',
   inverse: '#F6F8FB',
   onInverse: '#1A212B',
-  edge: '#141A22',
-  primaryEdge: '#3F0FA6',
-  warmEdge: '#7A3A00',
-  inverseEdge: '#B6C2D3',
+  edge: '#141A22', // colour-token-ignore: palette source, this IS the token
+  primaryEdge: '#3F0FA6', // colour-token-ignore: palette source, this IS the token
+  warmEdge: '#7A3A00', // colour-token-ignore: palette source, this IS the token
+  inverseEdge: '#B6C2D3', // colour-token-ignore: palette source, this IS the token
 
   field: '#202936',
   link: '#9A8FFF',
@@ -413,14 +413,14 @@ export const v2Shadow = {
   // The raised Today and campus-mode surfaces (#1715): a soft drop under the
   // palette's `edge` colours. Every other Bento card stays flat.
   raised: {
-    shadowColor: '#1A212B',
+    shadowColor: '#1A212B', // colour-token-ignore: palette source, this IS the token
     shadowOpacity: 0.1,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
   raisedSmall: {
-    shadowColor: '#1A212B',
+    shadowColor: '#1A212B', // colour-token-ignore: palette source, this IS the token
     shadowOpacity: 0.06,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
