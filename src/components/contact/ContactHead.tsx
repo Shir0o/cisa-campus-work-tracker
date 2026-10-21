@@ -67,10 +67,8 @@ function KindControl({
         <ChevronDown className="w-3 h-3 text-on-surface-variant" />
       </button>
       {open && (
-        <div
-          role="menu"
-          className="absolute left-0 top-full mt-2 z-30 min-w-[160px] bg-surface rounded-xl border border-outline-variant shadow-lg py-1.5"
-        >
+        <div role="menu" className="cd-menu">
+          <div className="cd-menu-label">{t('modals.contactDetails.change_kind')}</div>
           {KIND_OPTIONS.map((kind) => (
             <button
               key={kind}
@@ -81,7 +79,7 @@ function KindControl({
                 onChange(kind);
               }}
               className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-container-high transition-colors",
+                "w-full flex items-center px-4 py-2 text-left text-sm transition-colors hover:bg-surface-variant",
                 contactKind(contact) === kind && "font-semibold text-accent",
               )}
             >
