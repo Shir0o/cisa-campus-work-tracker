@@ -57,6 +57,14 @@ jest.mock('@gorhom/bottom-sheet', () => {
   };
 });
 
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn(), setParams: jest.fn() }),
+  useLocalSearchParams: () => ({}),
+  usePathname: () => '/',
+  useSegments: () => [],
+}));
+
 // Captures the props the screen hands the log sheet, so a test can "save" a log.
 const mockLogSheet = jest.fn((_props: { onSaved: (message: string, cardId?: string | null) => void }) => null);
 jest.mock('../log/LogSheet', () => ({ LogSheet: (props: never) => mockLogSheet(props) }));
@@ -233,6 +241,88 @@ describe('QueueScreen', () => {
       expect(deleteInteraction).not.toHaveBeenCalled();
       expect(deleteTodo).not.toHaveBeenCalled();
       expect(setTodoDone).toHaveBeenCalledWith('t1', false);
+    });
+  });
+
+  describe('campus mode, on campus', () => {
+    // Tuesday 1:30pm local — inside the default Tue/Wed 12pm–3pm window.
+    const ON = new Date(2026, 9, 20, 13, 30).getTime();
+    // Tuesday 4pm — the window has closed.
+    const OFF = new Date(2026, 9, 20, 16, 0).getTime();
+    const window = { days: [2, 3], from: 12, to: 15 };
+
+    const renderAt = async (now: number) => {
+      jest.spyOn(Date, 'now').mockReturnValue(now);
+      (useTraineeLandingData as jest.Mock).mockReturnValue({
+        ...baseData,
+        loading: false,
+        contacts: [{ id: 'c9', name: 'Ana Ruiz', createdBy: 'user1', createdAt: new Date(2026, 9, 20, 12, 15).toISOString() }],
+        interactions: [],
+        queue: queueOf(followCard, dueCard),
+        queuePrefs: { prefs: { onCampus: window } },
+      });
+      return render(
+        <ThemeProvider>
+          <QueueScreen />
+        </ThemeProvider>,
+      );
+    };
+
+    const lastLogSheet = () =>
+      mockLogSheet.mock.calls.at(-1)![0] as unknown as { visible: boolean; start?: string; onClose: () => void };
+
+    beforeEach(async () => {
+      jest.clearAllMocks();
+      await AsyncStorage.clear();
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    it('shows the three actions instead of Today', async () => {
+      const { getByText, queryByText } = await renderAt(ON);
+      expect(getByText('Sign-up form')).toBeTruthy();
+      expect(getByText('Add someone new')).toBeTruthy();
+      expect(getByText('Log a conversation')).toBeTruthy();
+      expect(getByText("You're on campus until 3pm")).toBeTruthy();
+      expect(queryByText('Today · 2 left')).toBeNull();
+    });
+
+    it('lists who I added this window', async () => {
+      const { getByText } = await renderAt(ON);
+      expect(getByText('Ana · new')).toBeTruthy();
+    });
+
+    it('opens the sign-up form', async () => {
+      const { getByLabelText } = await renderAt(ON);
+      await fireEvent.press(getByLabelText('Sign-up form'));
+      expect(mockPush).toHaveBeenCalledWith('/signup');
+    });
+
+    it('"Add someone new" opens the log sheet in its new-person form', async () => {
+      const { getByLabelText } = await renderAt(ON);
+      await fireEvent.press(getByLabelText('Add someone new'));
+      expect(lastLogSheet()).toMatchObject({ visible: true, start: 'new' });
+    });
+
+    it('"Log a conversation" opens the log sheet in its default flow, even after "Add someone new"', async () => {
+      const { getByLabelText } = await renderAt(ON);
+      await fireEvent.press(getByLabelText('Add someone new'));
+      await act(() => lastLogSheet().onClose());
+      await fireEvent.press(getByLabelText('Log a conversation'));
+      expect(lastLogSheet().visible).toBe(true);
+      expect(lastLogSheet().start).toBeUndefined();
+    });
+
+    it('the Today row opens Today', async () => {
+      const { getByLabelText, getByText, queryByText } = await renderAt(ON);
+      await fireEvent.press(getByLabelText('2 people to reach today'));
+      expect(getByText('Today · 2 left')).toBeTruthy();
+      expect(queryByText('Sign-up form')).toBeNull();
+    });
+
+    it('off campus, the home is still Today', async () => {
+      const { getByText, queryByText } = await renderAt(OFF);
+      expect(getByText('Today · 2 left')).toBeTruthy();
+      expect(queryByText('Sign-up form')).toBeNull();
     });
   });
 });

@@ -20,6 +20,7 @@ import {
   goalShow,
   getUserInitials,
   isOnCampus,
+  onCampusHeadline,
   personColor,
   upNextLine,
   type Contact,
@@ -38,6 +39,8 @@ import { LogSheet } from '../log/LogSheet';
 import { Snackbar } from '../ui';
 import { QueueCard, type QueueCardApi } from './QueueCard';
 import { OnCampusStrip } from './OnCampusStrip';
+import { CampusModeScreen } from './CampusModeScreen';
+import { campusRecent } from './campusRecent';
 import { EndOfQueue } from './EndOfQueue';
 import { AllTodayList } from './AllTodayList';
 import { WeekLookBack } from './WeekLookBack';
@@ -78,6 +81,12 @@ export function QueueScreen() {
   // complete, so logging is the only thing that answers it.
   const [logCard, setLogCard] = React.useState<string | null>(null);
   const [logOpen, setLogOpen] = React.useState(false);
+  // Campus mode's "Add someone new" opens the sheet straight into its
+  // new-person form; every other opener clears this so it never sticks.
+  const [logStart, setLogStart] = React.useState<'new' | undefined>(undefined);
+  // On campus the home is campus mode until the trainee opens Today; then
+  // Today stays for as long as this screen is mounted.
+  const [todayChosen, setTodayChosen] = React.useState(false);
   const [replyTo, setReplyTo] = React.useState<QueueCardData | null>(null);
   // `undo` is set only after an action that answers a card. `n` remounts the
   // snackbar per toast so each one gets its full time on screen.
@@ -134,7 +143,13 @@ export function QueueScreen() {
     setLogFor(null);
     setLogTask(null);
     setLogCard(null);
+    setLogStart(undefined);
     setLogOpen(true);
+  };
+
+  const openNewPerson = () => {
+    openBlankLog();
+    setLogStart('new');
   };
 
   const api: QueueCardApi = {
@@ -176,6 +191,7 @@ export function QueueScreen() {
       setLogFor(card.contact ?? null);
       setLogTask(card.task?.id ?? null);
       setLogCard(card.id);
+      setLogStart(undefined);
       setLogOpen(true);
     },
     text: (card) => {
@@ -268,6 +284,20 @@ export function QueueScreen() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <View ref={captureRef} collapsable={false} style={{ flex: 1 }}>
+      {onCampus && !todayChosen ? (
+        <CampusModeScreen
+          windowLabel={onCampusHeadline(queuePrefs.prefs.onCampus)}
+          recent={campusRecent(data.contacts, data.interactions, uid, queuePrefs.prefs.onCampus)}
+          todayCount={queue.length}
+          todayFaces={queue.flatMap((k) => (k.contact ? [{ id: k.contact.id, name: k.contact.name }] : [])).slice(0, 3)}
+          onMenu={() => setDrawerOpen(true)}
+          onSignUp={() => router.push('/signup')}
+          onAddNew={openNewPerson}
+          onLog={openBlankLog}
+          onOpenToday={() => setTodayChosen(true)}
+        />
+      ) : (
+      <>
       {!!data.error && (
         <Text
           style={{
@@ -429,6 +459,8 @@ export function QueueScreen() {
           <Ionicons name="add" size={28} color={c.card.onInverse} />
         </Pressable>
       </View>
+      </>
+      )}
 
       {/* Keyed so the sheet remounts when the person it's about changes — its
           mode/contact are seeded from initialContact at mount. */}
@@ -437,6 +469,7 @@ export function QueueScreen() {
         visible={logOpen}
         room="queue"
         initialContact={logFor}
+        start={logStart}
         taskId={logTask}
         cardId={logCard}
         onCampus={queuePrefs.prefs.onCampus}
