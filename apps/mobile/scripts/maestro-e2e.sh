@@ -46,7 +46,7 @@ run_flow() {
     "$1"
 }
 
-for flow in .maestro/*.yaml; do
+for flow in .maestro/[0-9]*.yaml; do
   echo "::group::maestro $flow"
   # On failure, print what the app actually showed and logged, so the cause is
   # readable in the job log without the artifact.
