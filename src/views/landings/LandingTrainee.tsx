@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { HelpCircle, Bell, Check } from "lucide-react";
+import { HelpCircle, Bell, Check, RotateCcw } from "lucide-react";
 import { db, handleFirestoreError, OperationType } from "../../lib/firebase";
 import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../../components/AuthProvider";
@@ -33,8 +33,10 @@ import { isFullTimer } from "../../lib/walking";
 import { subscribeTiedThreads, type ThreadMessageWithContact } from "../../lib/threads";
 import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
+import { subscribeTiedSubcollection } from "../../lib/contactQueries";
 import FirstRunCard from "../../components/landing/FirstRunCard";
 import AskTheTeam from "../../components/landing/AskTheTeam";
+import { useLayout } from "../../App";
 
 // One thing the full-timer has put on the trainee's plate: a nudge to follow up
 // or a question awaiting a reply. "Open" jumps into the contact's conversation.
@@ -86,26 +88,31 @@ function WaitingRow({
               )}
             </div>
             {!read && (
-              <span className="flex-none mt-1.5 w-[7px] h-[7px] rounded-full bg-primary" aria-label="Unread" />
+              <span className="flex-none mt-1.5 w-[7px] h-[7px] rounded-full bg-primary" role="img" aria-label="Unread" />
             )}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={onOpen}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[14px] bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Open {contactName.split(/\s+/)[0]}
             </button>
+            {/* Names the action it performs; the state itself shows in the card's
+                border and the unread dot. */}
             <button
               onClick={onHandled}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors",
-                read
-                  ? "border-accent-line bg-primary/10 text-accent"
-                  : "border-outline-variant text-on-surface-variant hover:bg-surface-variant",
-              )}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[14px] border border-outline-variant text-on-surface-variant text-xs font-medium hover:bg-surface-variant transition-colors"
             >
-              <Check className="w-3.5 h-3.5" /> {read ? "Handled" : "Mark handled"}
+              {read ? (
+                <>
+                  <RotateCcw className="w-3.5 h-3.5" /> Reopen
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" /> Mark handled
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -119,6 +126,7 @@ function WaitingRow({
 export default function LandingTrainee() {
   const { user, effectiveUserId, effectiveUserName } = useAuth();
   const navigate = useNavigate();
+  const { openLogInteraction, openNewContact } = useLayout();
   const uid = effectiveUserId || user?.uid;
   const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
 
@@ -138,6 +146,16 @@ export default function LandingTrainee() {
   const error = errorRead?.reader === uid ? errorRead.label : null;
 
   const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
+  // How the thread read last ended, stamped with its reader so a persona switch
+  // drops it; bumping the attempt resubscribes.
+  const [threadsRead, setThreadsRead] = useState<{ reader: string; ok: boolean } | null>(null);
+  const threadsLoaded = threadsRead?.reader === uid && threadsRead.ok;
+  const threadsFailed = threadsRead?.reader === uid && !threadsRead.ok;
+  const [threadsAttempt, setThreadsAttempt] = useState(0);
+  // How many conversations this reader has logged, for the first-run checklist.
+  // Stamped with the reader so a persona switch drops the previous count.
+  const [loggedRead, setLoggedRead] = useState<{ reader: string; count: number } | null>(null);
+  const loggedCount = loggedRead?.reader === uid ? loggedRead.count : 0;
   const [selection, setSelection] = useState<{ reader: string; contact: Contact } | null>(null);
   const selectedContact = selection?.reader === uid ? selection.contact : null;
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -195,14 +213,36 @@ export default function LandingTrainee() {
   // Thread messages on the people this trainee can see — powers "What's
   // waiting on you" and the weighed-in status. The rules deny a Trainee the
   // threads collection group (it spans people outside their visibleTo), so this
-  // reads each visible person's. A failed read leaves the section empty
-  // (it simply doesn't render), so degrade quietly rather than surfacing a
-  // load error.
+  // reads each visible person's. A failed read shows one inline line with a
+  // Retry in place of the section, so it never reads as "nothing waiting" and
+  // never takes the rest of the home down with it.
   useEffect(() => {
     if (!uid) return;
-    return subscribeTiedThreads(uid, (messages) =>
-      // Trainees never see Full-timer-only Discussion scope.
-      setThreads(messages.filter((m) => m.scope !== "team")),
+    return subscribeTiedThreads(
+      uid,
+      (messages) => {
+        setThreadsRead({ reader: uid, ok: true });
+        // Trainees never see Full-timer-only Discussion scope.
+        setThreads(messages.filter((m) => m.scope !== "team"));
+      },
+      () => setThreadsRead({ reader: uid, ok: false }),
+    );
+  }, [uid, threadsAttempt]);
+
+  // Interactions on the people this trainee can see, narrowed to the ones they
+  // wrote: the first-run "write up a conversation" step reads this, not notes.
+  // A failed read leaves the step unticked.
+  useEffect(() => {
+    if (!uid) return;
+    return subscribeTiedSubcollection(
+      uid,
+      "interactions",
+      (docs) =>
+        setLoggedRead({
+          reader: uid,
+          count: docs.filter((d) => (d.data() as { userId?: string }).userId === uid).length,
+        }),
+      () => setLoggedRead({ reader: uid, count: 0 }),
     );
   }, [uid]);
 
@@ -345,16 +385,37 @@ export default function LandingTrainee() {
         userId={uid}
         context={{
           contactsCount: myPeople.length,
-          interactionsCount: myPeople.filter((p) => p.note).length,
+          interactionsCount: loggedCount,
           messagesCount: threads.filter((m) => m.from === uid).length,
-          prayersCount: personalPrayers.length + prayers.length,
-          todosCompletedCount: myPeople.filter((p) => p.note).length,
+          prayersCount:
+            personalPrayers.length + prayers.filter((p) => p.updatedBy === uid).length,
+          // A follow-up ask this reader closed; an asker retracting their own
+          // ask (closedBy === from) is not a follow-up.
+          todosCompletedCount: threads.filter((m) => m.closedBy === uid && m.from !== uid).length,
         }}
         className="mt-8"
       />
 
       {/* ── What's waiting on you — your full-timer's nudges & questions ── */}
-      {waiting.length > 0 && (
+      {threadsFailed ? (
+        <p className="mt-12 text-sm text-on-surface-variant">
+          Couldn't load what's waiting on you.{" "}
+          <button
+            type="button"
+            onClick={() => {
+              setThreadsRead(null);
+              setThreadsAttempt((n) => n + 1);
+            }}
+            className="font-semibold text-primary hover:underline cursor-pointer"
+          >
+            Retry
+          </button>
+        </p>
+      ) : waiting.length === 0 ? (
+        threadsLoaded && (
+          <p className="mt-12 text-sm text-on-surface-variant">Nothing's waiting on you.</p>
+        )
+      ) : (
         <section className="mt-12">
           <SectionHead
             title="What's waiting on you"
@@ -362,7 +423,8 @@ export default function LandingTrainee() {
             action={
               waitingUnread > 0 ? (
                 <span className="text-xs font-semibold text-accent bg-accent-soft rounded-full px-2.5 py-1">
-                  {waitingUnread}
+                  <span aria-hidden>{waitingUnread}</span>
+                  <span className="sr-only">{waitingUnread} unread</span>
                 </span>
               ) : undefined
             }
@@ -398,9 +460,6 @@ export default function LandingTrainee() {
         </section>
       )}
 
-      {/* ── Ask the team (#545) — questions that aren't about a person ── */}
-      <AskTheTeam meUid={uid} />
-
       {/* ── Your people ── */}
       <section className="mt-12">
         <SectionHead
@@ -411,7 +470,7 @@ export default function LandingTrainee() {
         />
         {myPeople.length > 0 ? (
           <div className="flex flex-col gap-3">
-            {myPeople.map(({ contact, days, note }) => (
+            {myPeople.slice(0, 5).map(({ contact, days, note }) => (
               <ReachCard
                 key={contact.id}
                 contact={contact}
@@ -420,12 +479,21 @@ export default function LandingTrainee() {
                 stages={stages}
                 onOpen={() => openContact(contact)}
                 onMessage={() => openMessage(contact.phone)}
+                onLog={() => openLogInteraction(contact.id)}
               />
             ))}
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-2">
-            No one's in your care yet — add a contact to gather your circle here.
+            No one's in your care yet —{" "}
+            <button
+              type="button"
+              onClick={() => openNewContact()}
+              className="font-semibold text-primary hover:underline cursor-pointer"
+            >
+              add a contact
+            </button>{" "}
+            to gather your circle here.
           </p>
         )}
       </section>
@@ -472,6 +540,9 @@ export default function LandingTrainee() {
           />
         </div>
       </section>
+
+      {/* ── Ask the team (#545) — questions that aren't about a person ── */}
+      <AskTheTeam meUid={uid} />
     </PageContainer>
   );
 }

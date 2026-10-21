@@ -1,14 +1,20 @@
 import React from "react";
-import { Mail, MessageSquare } from "lucide-react";
+import { Mail, MessageSquare, PenLine } from "lucide-react";
 import { Contact, Stage } from "../../types";
 import { Avatar, StageChip } from "./primitives";
 import { connectedLabel } from "./helpers";
 import { Translate } from "../Translate";
 import KindChip from '../ui/KindChip';
+import { useLanguage } from "../LanguageProvider";
+
+// Keeps each pill's compact look but gives it a 44px-tall tap target with a
+// layout-neutral ::after; the action gaps leave room so targets never overlap.
+const hitArea =
+  "relative after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-11";
 
 // A person you're walking with: avatar + name + stage, when you last connected,
-// a recent note, and reach actions (Message / Email / Open). Shared by My Day's
-// "Your sheep" and the Trainee landing's "Your people".
+// a recent note, and reach actions (Message / Email / Log interaction / Open).
+// Shared by My Day's "Your sheep" and the Trainee landing's "Your people".
 export function ReachCard({
   contact,
   days,
@@ -16,6 +22,7 @@ export function ReachCard({
   stages,
   onOpen,
   onMessage,
+  onLog,
   statusNode,
 }: {
   contact: Contact;
@@ -24,10 +31,13 @@ export function ReachCard({
   stages: Stage[];
   onOpen: () => void;
   onMessage?: () => void;
+  // Record an interaction with this person; the action shows only when set.
+  onLog?: () => void;
   // Optional status line under the name (e.g. the trainee cockpit's "{FT}
   // weighed in" / "Awaiting a look").
   statusNode?: React.ReactNode;
 }) {
+  const { t } = useLanguage();
   return (
     <div
       onClick={onOpen}
@@ -55,7 +65,7 @@ export function ReachCard({
         </div>
       </div>
       <div
-        className="flex sm:flex-col gap-2 items-start sm:items-end"
+        className="flex flex-wrap sm:flex-col gap-x-2 gap-y-4 items-start sm:items-end"
         onClick={(e) => e.stopPropagation()}
       >
         {contact.phone ? (
@@ -65,7 +75,7 @@ export function ReachCard({
               e.stopPropagation();
               if (onMessage) onMessage();
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer"
+            className={`${hitArea} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[14px] border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer`}
           >
             <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" /> Message
           </button>
@@ -73,18 +83,30 @@ export function ReachCard({
           <a
             href={`mailto:${contact.email}`}
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer"
+            className={`${hitArea} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[14px] border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer`}
           >
             <Mail className="w-3.5 h-3.5" aria-hidden="true" /> Email
           </a>
         ) : null}
+        {onLog && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onLog();
+            }}
+            className={`${hitArea} inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[14px] border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant active:scale-[0.98] transition-all cursor-pointer`}
+          >
+            <PenLine className="w-3.5 h-3.5" aria-hidden="true" /> {t("modals.contactDetails.log_interaction")}
+          </button>
+        )}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onOpen();
           }}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer"
+          className={`${hitArea} inline-flex items-center gap-1 px-3 py-1.5 rounded-[14px] bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer`}
         >
           Open
         </button>

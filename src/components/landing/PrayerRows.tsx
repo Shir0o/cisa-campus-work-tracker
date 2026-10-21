@@ -93,7 +93,7 @@ export function TeamPrayerRow({
               {isContactStale(contact) && (
                 <span
                   data-testid="stale-badge"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning/10 text-warning border border-warning/20"
                 >
                   <Clock className="w-3 h-3" />
                   {getDaysSinceLastInteraction(contact) !== null
@@ -145,14 +145,14 @@ export function TeamPrayerRow({
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+                  className="px-3 py-1 rounded-[14px] text-xs text-on-surface-variant hover:bg-surface-variant"
                   onClick={() => setAnswering(false)}
                 >
                   {t("actions.skip", "Skip")}
                 </button>
                 <button
                   type="button"
-                  className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+                  className="px-3 py-1 rounded-[14px] text-xs bg-primary text-on-primary"
                   onClick={saveAnswer}
                 >
                   {t("actions.save", "Save")}
@@ -200,14 +200,14 @@ export function TeamPrayerRow({
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+                  className="px-3 py-1 rounded-[14px] text-xs text-on-surface-variant hover:bg-surface-variant"
                   onClick={() => setArchiving(false)}
                 >
                   {t("actions.skip", "Skip")}
                 </button>
                 <button
                   type="button"
-                  className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+                  className="px-3 py-1 rounded-[14px] text-xs bg-primary text-on-primary"
                   onClick={saveArchiveReason}
                 >
                   {t("actions.save", "Save")}
@@ -382,14 +382,14 @@ export function PersonalPrayerRow({
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+                  className="px-3 py-1 rounded-[14px] text-xs text-on-surface-variant hover:bg-surface-variant"
                   onClick={() => setAnswering(false)}
                 >
                   {t("actions.skip", "Skip")}
                 </button>
                 <button
                   type="button"
-                  className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+                  className="px-3 py-1 rounded-[14px] text-xs bg-primary text-on-primary"
                   onClick={saveAnswer}
                 >
                   {t("actions.save", "Save")}
@@ -435,7 +435,7 @@ export function PersonalPrayerRow({
                 <div className="flex-1" />
                 <button
                   type="button"
-                  className="px-3 py-1.5 rounded-full text-sm text-on-surface hover:bg-surface-variant"
+                  className="px-3 py-1.5 rounded-[14px] text-sm text-on-surface hover:bg-surface-variant"
                   onClick={() => setOpen(false)}
                 >
                   {t("actions.cancel", "Cancel")}
@@ -443,7 +443,7 @@ export function PersonalPrayerRow({
                 <button
                   type="button"
                   disabled={!title.trim()}
-                  className="px-3 py-1.5 rounded-full text-sm bg-primary text-on-primary disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-[14px] text-sm bg-primary text-on-primary disabled:opacity-50"
                   onClick={save}
                 >
                   {t("actions.save", "Save")}
@@ -549,7 +549,7 @@ export function AddPersonalPrayer({
         <div className="flex-1" />
         <button
           type="button"
-          className="px-3 py-1.5 rounded-full text-sm text-on-surface hover:bg-surface-variant"
+          className="px-3 py-1.5 rounded-[14px] text-sm text-on-surface hover:bg-surface-variant"
           onClick={reset}
         >
           {t("actions.cancel", "Cancel")}
@@ -557,7 +557,7 @@ export function AddPersonalPrayer({
         <button
           type="button"
           disabled={!title.trim()}
-          className="px-3 py-1.5 rounded-full text-sm bg-primary text-on-primary disabled:opacity-50"
+          className="px-3 py-1.5 rounded-[14px] text-sm bg-primary text-on-primary disabled:opacity-50"
           onClick={commit}
         >
           {t("actions.add", "Add")}

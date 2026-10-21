@@ -56,6 +56,12 @@ typography:
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "0.08em"
+  caption:
+    fontFamily: "Lexend, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 500
+    lineHeight: 1.3
+    letterSpacing: "normal"
   scripture:
     fontFamily: "Literata, Georgia, 'Times New Roman', serif"
     fontSize: "1.25rem"
@@ -191,6 +197,7 @@ The type system pairs modern geometric authority with clean reading speed and cl
 - **Title** (700 weight, `1.125rem` / 18px, line-height 1.25, tracking -0.015em): Card titles, contact names in detail headers, and item summaries.
 - **Body** (400/500 weight, `0.9375rem` / 15px, line-height 1.55, max width 68ch): Primary prose, interaction notes, and conversation threads.
 - **Label** (600 weight, `0.75rem` / 12px, line-height 1.2, uppercase, tracking 0.08em): Small category tags, rail section dividers, and table metadata.
+- **Caption** (500 weight, `0.6875rem` / 11px, line-height 1.3, tracking normal, sentence case): Timestamps, role suffixes, inline text links, and compact badges. Use 400 or 600 where the surrounding element already does; do not go below 11px.
 - **Scripture Passage** (400 weight, `1.25rem` / 20px, line-height 1.6): Dedicated reading passages in the Bible study reader; foregrounded with zero distraction.
 
 ### Named Rules

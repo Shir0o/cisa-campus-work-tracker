@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { HelpCircle, Send, MessageSquare, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { HelpCircle, Send, MessageSquare, Pencil, Trash2, AlertTriangle, ArrowRight } from "lucide-react";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { cn, relTime } from "../../lib/utils";
 import { db } from "../../lib/firebase";
@@ -20,8 +21,9 @@ import {
 } from "../../lib/asks";
 
 // "Ask the team" (#545, #645), trainee side — the questions that don't belong
-// on anyone's page. Asking and reading are ONE list: the composer at the top,
-// the whole team's questions newest-first under it (staff read every question),
+// on anyone's page. Asking and reading are ONE list: a one-line "Ask the
+// team…" row at the top that opens into the composer, then the team's three
+// newest questions (staff read every question; the rest live on /questions),
 // each answer inline. Nothing to resolve, nothing to mark — a question with a
 // reply is just a question with a reply. Every staff member sees every
 // question; any full-timer can answer.
@@ -70,7 +72,7 @@ function ReplyRow({
             type="button"
             disabled={deleting}
             onClick={() => void remove()}
-            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-error text-on-error text-xs font-semibold disabled:opacity-40 disabled:cursor-default"
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[14px] bg-error text-on-error text-xs font-semibold disabled:opacity-40 disabled:cursor-default"
           >
             <Trash2 className="w-3 h-3" />
             {t("ask.delete_reply", "Delete answer")}
@@ -78,7 +80,7 @@ function ReplyRow({
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="h-7 px-2.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface-variant hover:text-on-surface"
+            className="h-7 px-2.5 rounded-[14px] border border-outline-variant text-xs font-semibold text-on-surface-variant hover:text-on-surface"
           >
             {t("ask.delete_reply_keep", "Keep it")}
           </button>
@@ -127,7 +129,7 @@ function AskRow({
   // delete a reply on this surface. A full-timer cleans up on /questions.
   const canDeleteReply = Boolean(viewerUid) && m.from === viewerUid;
   return (
-    <div className="bg-surface rounded-3xl border border-outline-variant/60 p-5">
+    <div className="bg-surface rounded-xl border border-outline-variant/60 p-5">
       <div className="flex gap-3">
         <span className="flex-none grid place-items-center rounded-[9px] w-[30px] h-[30px] text-stage-amber bg-stage-amber-soft" aria-hidden>
           <HelpCircle className="w-[15px] h-[15px]" />
@@ -216,11 +218,30 @@ export default function AskTheTeam({
 
   const questions = useMemo(() => askQuestions(asks), [asks]);
 
+  // The composer stays a single row until asked for, so the home's first
+  // screen isn't an empty textarea.
+  const [open, setOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const refocusTrigger = useRef(false);
+  useEffect(() => {
+    if (open) textareaRef.current?.focus();
+    else if (refocusTrigger.current) {
+      refocusTrigger.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [open]);
+  const collapse = () => {
+    refocusTrigger.current = true;
+    setOpen(false);
+  };
+
   const send = () => {
     const b = body.trim();
     if (!b) return;
     void addAsk({ from: uid, fromName: user?.displayName || "A trainee", body: b });
     setBody("");
+    collapse();
     setToast(t("ask.toast_asked", "Asked. The team can see it."));
     window.setTimeout(() => setToast(null), 2600);
   };
@@ -232,43 +253,58 @@ export default function AskTheTeam({
         sub={t("ask.sub", "The questions that don't belong on anyone's page. Every full-timer sees this — any of them can answer.")}
       />
       <div className="flex flex-col gap-3">
-        {/* Composer at the top */}
-        <div className="bg-surface rounded-3xl border border-outline-variant/60 p-5">
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={t("ask.composer_placeholder", "What do you want to ask? Say it how you'd say it out loud.")}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
-            }}
-            className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none min-h-[88px] resize-none"
-          />
-          <div className="flex items-center justify-between gap-2 mt-2">
-            <span className="text-xs text-on-surface-variant">
-              {t("ask.composer_note", "Every full-timer sees this. Any of them can answer.")}
-            </span>
-            <button
-              type="button"
-              onClick={send}
-              disabled={!body.trim()}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-opacity",
-                body.trim()
-                  ? "bg-primary text-on-primary hover:opacity-90"
-                  : "bg-surface-variant text-on-surface-variant opacity-60 cursor-not-allowed",
-              )}
-            >
-              <Send className="w-3.5 h-3.5" /> {t("ask.ask", "Ask")}
-            </button>
+        {/* Composer at the top: one row until opened */}
+        {!open ? (
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex items-center gap-2 w-full min-h-[44px] px-4 py-2.5 rounded-[14px] border border-outline-variant/60 bg-surface text-left text-sm text-on-surface-variant hover:border-outline-variant transition-colors"
+          >
+            <HelpCircle className="w-4 h-4 shrink-0" aria-hidden />
+            {t("ask.trigger", "Ask the team…")}
+          </button>
+        ) : (
+          <div className="bg-surface rounded-xl border border-outline-variant/60 p-5">
+            <textarea
+              ref={textareaRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              aria-label={t("ask.composer_label", "Your question for the team")}
+              placeholder={t("ask.composer_placeholder", "What do you want to ask? Say it how you'd say it out loud.")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+                else if (e.key === "Escape") collapse();
+              }}
+              onBlur={() => {
+                if (!body.trim()) setOpen(false);
+              }}
+              className="w-full px-3 py-2 rounded-sm border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none min-h-[88px] resize-none"
+            />
+            <div className="flex items-center justify-end gap-2 mt-2">
+              <button
+                type="button"
+                onClick={send}
+                disabled={!body.trim()}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-4 py-2 rounded-[14px] text-sm font-medium transition-opacity",
+                  body.trim()
+                    ? "bg-primary text-on-primary hover:opacity-90"
+                    : "bg-surface-variant text-on-surface-variant opacity-60 cursor-not-allowed",
+                )}
+              >
+                <Send className="w-3.5 h-3.5" /> {t("ask.ask", "Ask")}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {questions.length === 0 ? (
           <p className="text-sm text-on-surface-variant py-2">
             {t("ask.empty", "Nothing asked yet. The questions that don't belong on anyone's page — how to start a conversation at the club table, what to say when you're stuck — live here.")}
           </p>
         ) : (
-          questions.map((m) => (
+          questions.slice(0, 3).map((m) => (
             <AskRow
               key={m.id}
               m={m}
@@ -280,6 +316,14 @@ export default function AskTheTeam({
               }}
             />
           ))
+        )}
+        {questions.length > 3 && (
+          <Link
+            to="/questions"
+            className="self-start text-sm font-medium text-accent underline underline-offset-2 inline-flex items-center gap-1 min-h-[44px]"
+          >
+            {t("ask.see_all", "See all")} <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         )}
       </div>
       {toast && (

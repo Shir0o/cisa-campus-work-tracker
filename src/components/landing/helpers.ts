@@ -47,12 +47,12 @@ export const getGreeting = () => {
 
 // Shared input/label classes for the inline editors and composers.
 export const editInputClass =
-  "w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none";
+  "w-full px-3 py-2 rounded-sm border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none";
 export const dueLabelClass =
   "text-xs font-medium text-on-surface-variant";
 
 // Card shell shared by the landing/My Day sections. Bento containers are 24px.
-export const cardClass = "bg-surface rounded-3xl border border-outline-variant/60 px-5";
+export const cardClass = "bg-surface rounded-xl border border-outline-variant/60 px-5";
 
 // Resolve a stage's color classes from the stage list (fallback neutral).
 export const stageColor = (stages: Stage[], label?: string) =>
