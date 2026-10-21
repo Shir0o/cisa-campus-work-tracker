@@ -6,6 +6,7 @@ import ContactInteractionItem from "./ContactInteractionItem";
 import ContactPrayerCard from "./ContactPrayerCard";
 import { canRemoveInteraction } from "../../lib/interactionRemoval";
 import ContactComposer from "./ContactComposer";
+import type { ContactTeamMember } from "./types";
 import {
   emptyComposer,
   interactionEditValue,
@@ -36,6 +37,8 @@ export interface ContactStorySectionProps {
   onUpdatePrayerBurden(prayer: PrayerRecord, words: { text: string; context: string }): Promise<void>;
   interactionAdapterFor: (interaction: Interaction) => any;
   streamViewer: { uid: string; role?: string };
+  /** The roster, so a story row can show the reacher's portrait (#1669). */
+  teamMembers: ContactTeamMember[];
 }
 
 export default function ContactStorySection({
@@ -58,6 +61,7 @@ export default function ContactStorySection({
   onUpdatePrayerBurden,
   interactionAdapterFor,
   streamViewer,
+  teamMembers,
 }: ContactStorySectionProps) {
   const [editingInteractionId, setEditingInteractionId] = useState<string | null>(null);
   const [editInteractionData, setEditInteractionData] = useState<ComposerValue>(() => emptyComposer());
@@ -104,6 +108,7 @@ export default function ContactStorySection({
       threadOpen={openThread === interaction.id}
       onOpenThread={() => onOpenThread(interaction.id)}
       firstName={firstName}
+      teamMembers={teamMembers}
     />
   );
 

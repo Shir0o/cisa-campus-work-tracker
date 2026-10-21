@@ -45,6 +45,9 @@ export interface TeamMember {
   role: string;
   initials: string;
   fullTimer: boolean;
+  /** The users doc's photo, so a story row can show the person it is about
+   *  (#1669). Empty when they never set one. */
+  photoURL?: string;
 }
 
 export interface UseContactStoryOptions {
@@ -336,6 +339,7 @@ export function useContactStory(
             role: data.role === "admin" ? fullTimerDefault : data.role === "manager" ? traineeDefault : staffRoleDefault,
             initials,
             fullTimer: data.role === "admin",
+            photoURL: data.photoURL || "",
           };
         });
         setTeamMembers(list);
