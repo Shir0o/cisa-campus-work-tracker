@@ -940,13 +940,17 @@ function PrayerCard({
               flex: 1,
               minHeight: 46,
               borderRadius: 15,
+              paddingHorizontal: 12,
               backgroundColor: prayed ? c.card.deep : c.card.tones.pray.band,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.card.onDeep : c.card.tones.pray.text }}>
+            <Text
+              numberOfLines={1}
+              style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.card.onDeep : c.card.tones.pray.text, flexShrink: 1, textAlign: 'center' }}
+            >
               {prayed ? t('mobile.contact.prayed') : t('mobile.contact.prayed_for').replace('{name}', name ?? '')}
             </Text>
           </Pressable>

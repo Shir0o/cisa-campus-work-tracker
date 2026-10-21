@@ -239,6 +239,7 @@ export function PrimaryButton({
       style={({ pressed }) => ({
         height: 56,
         borderRadius: radius.button,
+        paddingHorizontal: 18,
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',
@@ -246,7 +247,7 @@ export function PrimaryButton({
         transform: [{ scale: pressed && !disabled ? 0.98 : 1 }],
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: fg }}>{title}</Text>
+      <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: fs(16.5), color: fg, flexShrink: 1, textAlign: 'center' }}>{title}</Text>
     </Pressable>
   );
 }
