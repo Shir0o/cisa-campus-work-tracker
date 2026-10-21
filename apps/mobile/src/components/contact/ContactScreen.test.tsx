@@ -5,7 +5,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ContactScreen } from './ContactScreen';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import { useAuth } from '../../lib/AuthProvider';
-import type { Interaction, ThreadMessage } from '@cisa/core';
+import type { Interaction, PrayerRecord, ThreadMessage } from '@cisa/core';
 
 jest.mock('../../lib/AuthProvider', () => ({
   useAuth: jest.fn(),
@@ -244,6 +244,46 @@ describe('ContactScreen', () => {
     expect(getByTestId('combined-from')).toBeTruthy();
     expect(getByText(/Combined from Jane Duplicate/)).toBeTruthy();
     expect(queryByText(/Undo combine/i)).toBeNull();
+  });
+
+  describe('long names on the prayer buttons (#1703)', () => {
+    const longName = 'Bartholomew-Maximilian Featherstonehaugh';
+
+    const renderPrayers = async (overrides: { prayers?: PrayerRecord[] } = {}) => {
+      (useContactDetailData as jest.Mock).mockReturnValue({
+        ...baseLoadedData,
+        contact: { ...mockContact, name: longName },
+        ...overrides,
+      });
+      return await render(
+        <ThemeProvider>
+          <ContactScreen contactId="contact1" initialTab="prayers" />
+        </ThemeProvider>,
+      );
+    };
+
+    it('keeps "Pray for {name}" to a single line', async () => {
+      const { getByText } = await renderPrayers();
+
+      expect(getByText('Pray for Bartholomew-Maximilian').props.numberOfLines).toBe(1);
+    });
+
+    it('keeps "Prayed for {name}" to a single line beside Answered', async () => {
+      const { getByText } = await renderPrayers({
+        prayers: [
+          {
+            id: 'prayer1',
+            contactId: 'contact1',
+            date: '2026-08-01T12:00:00.000Z',
+            burden: 'Safety on the drive home',
+            status: 'pending',
+            updatedAt: '2026-08-01T12:00:00.000Z',
+          },
+        ],
+      });
+
+      expect(getByText('Prayed for Bartholomew-Maximilian').props.numberOfLines).toBe(1);
+    });
   });
 
   it('renders empty/error state when contact is not found', async () => {
