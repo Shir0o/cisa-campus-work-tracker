@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getUserInitials } from '@cisa/core';
 import { useTheme } from '../../theme/ThemeProvider';
 import { toneColors, type ToneKey } from '../../theme/tokens';
+import { KeyboardAvoidingView } from './KeyboardAvoidingView';
 
 // ── Screen ──────────────────────────────────────────────────────────────────
 export function Screen({
@@ -35,7 +36,9 @@ export function Screen({
   const { colors } = useTheme();
   return (
     <SafeAreaView edges={edges} style={[{ flex: 1, backgroundColor: colors.background }, style]}>
-      {children}
+      <KeyboardAvoidingView style={{ flex: 1 }}>
+        {children}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -222,3 +225,4 @@ export function InlineInput(props: TextInputProps) {
 
 export * from './Sheet';
 export * from './Snackbar';
+export * from './KeyboardAvoidingView';

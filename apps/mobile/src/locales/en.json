@@ -1788,6 +1788,16 @@
       "qr": "QR",
       "copy_link": "Copy link",
       "show_qr": "Show QR"
+    },
+    "campus": {
+      "someone_new": "Someone new",
+      "sign_up_form": "Sign-up form",
+      "add_someone_new": "Add someone new",
+      "someone_you_know": "Someone you already know",
+      "log_conversation": "Log a conversation",
+      "added_this_window": "Added or logged this window",
+      "new_suffix": " · new",
+      "people_to_reach": "{count} people to reach today"
     }
   }
 }
