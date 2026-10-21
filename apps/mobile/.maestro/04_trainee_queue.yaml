@@ -21,11 +21,14 @@ appId: com.cisa.campus
       - tapOn: "Carry on"
 
 # Trainee Focus Queue — qa-db seeds an overdue Board to-do, so the first card
-# is a "due" card and carries the primary action. The card's secondary actions
-# fall below the 320x640 fold in its fixed foot.
+# is a "due" card and carries the primary action. The foot is fixed to the
+# card's bottom (not scrollable), so the secondary row is on screen too: the
+# earlier "below the fold" note came from the pre-#1719 card, whose labels also
+# carried a " →" suffix that never matched an exact text assertion.
 - extendedWaitUntil:
     visible: "Mark it done"
     timeout: 20000
+- assertVisible: "Later today"
 
 # Drawer Navigation
 - tapOn:
