@@ -113,6 +113,14 @@ describe('QueueScreen', () => {
     error: null,
   };
 
+  // The default on-campus window is Tue/Wed 12–3, so an unpinned clock turned
+  // every "off campus" test into campus mode for three hours each week (#1726).
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockReturnValue(new Date(2026, 9, 20, 10, 0).getTime());
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
   it('shows the queue skeleton while data is loading', async () => {
     (useTraineeLandingData as jest.Mock).mockReturnValue(baseData);
     const { getByTestId } = await render(
