@@ -12,6 +12,14 @@ appId: com.cisa.campus
 - tapOn:
     id: "sign-in-submit"
 
+# A release note ("A few things are different") covers the first screen of
+# every fresh install; `clearState` makes every flow a fresh install.
+- runFlow:
+    when:
+      visible: "Carry on"
+    commands:
+      - tapOn: "Carry on"
+
 # Full-timer Home / My Day
 - extendedWaitUntil:
     visible: "Log a moment"

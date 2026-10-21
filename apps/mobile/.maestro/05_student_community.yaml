@@ -12,6 +12,14 @@ appId: com.cisa.campus
 - tapOn:
     id: "sign-in-submit"
 
+# A release note ("A few things are different") covers the first screen of
+# every fresh install; `clearState` makes every flow a fresh install.
+- runFlow:
+    when:
+      visible: "Carry on"
+    commands:
+      - tapOn: "Carry on"
+
 # Student View
 - extendedWaitUntil:
     visible: "Bring someone with you"
@@ -33,6 +41,11 @@ appId: com.cisa.campus
 - inputText: ${COMMUNITY_PASSWORD}
 - tapOn:
     id: "sign-in-submit"
+- runFlow:
+    when:
+      visible: "Carry on"
+    commands:
+      - tapOn: "Carry on"
 
 # Community Hospitality Offer
 - extendedWaitUntil:
