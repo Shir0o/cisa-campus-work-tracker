@@ -194,10 +194,8 @@ describe('Contact Management', () => {
       />
     );
 
-    // #780: Edit action is in the head's overflow menu
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    const editBtn = screen.getByText('Edit details');
-    fireEvent.click(editBtn);
+    // #780/#1666: Edit is a header action.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
 
     // Change the last name (#1345: there is no group / role field to change)
     fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Smith' } });

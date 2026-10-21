@@ -101,8 +101,6 @@ function MoreMenu({
   onCall,
   onText,
   onEmail,
-  onEdit,
-  showEdit,
   showDelete,
   showChangeCreator,
   onChangeCreator,
@@ -118,8 +116,6 @@ function MoreMenu({
   onCall: () => void;
   onText: () => void;
   onEmail: () => void;
-  onEdit: () => void;
-  showEdit: boolean;
   showDelete: boolean;
   showChangeCreator: boolean;
   onChangeCreator: () => void;
@@ -177,11 +173,6 @@ function MoreMenu({
           {contact.email && (
             <button onClick={() => { setOpen(false); onEmail(); }} className={item}>
               <Mail className="w-4 h-4" /> {t('modals.contactDetails.email')}
-            </button>
-          )}
-          {showEdit && (
-            <button onClick={() => { setOpen(false); onEdit(); }} className={item}>
-              <Edit3 className="w-4 h-4" /> {t('modals.contactDetails.edit_details')}
             </button>
           )}
           {showRelease && onRelease && (
@@ -391,8 +382,6 @@ export default function ContactHead(props: ContactHeadProps) {
                   onCall={onCall}
                   onText={onText}
                   onEmail={onEmail}
-                  onEdit={onEdit}
-                  showEdit={role !== 'viewer'}
                   showDelete={showDelete}
                   showChangeCreator={isAdmin}
                   onChangeCreator={onChangeCreator}
@@ -615,6 +604,16 @@ export default function ContactHead(props: ContactHeadProps) {
                     <Mail className="w-4 h-4" />
                   </button>
                 )}
+                {/* #1666: Edit is a header action, not an overflow item. */}
+                {role !== 'viewer' && (
+                  <button
+                    onClick={onEdit}
+                    title={t('modals.contactDetails.edit_details')}
+                    className="h-9 px-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-variant transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                  >
+                    <Edit3 className="w-4 h-4" /> {t('modals.contactDetails.edit_details')}
+                  </button>
+                )}
                 <MoreMenu
                   contact={contact}
                   onLogInteraction={onLogInteraction}
@@ -622,8 +621,6 @@ export default function ContactHead(props: ContactHeadProps) {
                   onCall={onCall}
                   onText={onText}
                   onEmail={onEmail}
-                  onEdit={onEdit}
-                  showEdit={role !== 'viewer'}
                   showDelete={showDelete}
                   showChangeCreator={isAdmin}
                   onChangeCreator={onChangeCreator}

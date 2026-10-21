@@ -120,13 +120,8 @@ const mockContact = {
 describe('ContactDetailsModal Component', () => {
   const mockOnClose = vi.fn();
 
-  /** #780: The Edit action moved into the head's overflow menu. Click the
-   * "More actions" trigger, then the "Edit details" item, and return the
-   * item button the caller can re-click if it wants. */
-  const openEditMenu = () => {
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    return screen.getByText('Edit details');
-  };
+  /** #1666: Edit is a top-level header action again, not an overflow item. */
+  const openEditAction = () => screen.getByRole('button', { name: 'Edit details' });
 
   /** #1290: the profile sections (what we know, how to reach, cared for by,
    * tags, who can see) live in the About sheet, opened from the name. */
@@ -317,7 +312,7 @@ describe('ContactDetailsModal Component', () => {
     const { container } = render(
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
     );
-    fireEvent.click(openEditMenu());
+    fireEvent.click(openEditAction());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     const foot = container.querySelector('.cd-page-foot') as HTMLElement;
     expect(foot).toBeTruthy();
@@ -360,11 +355,48 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
 
     // Open edit mode via the head's overflow menu
-    fireEvent.click(openEditMenu());
+    fireEvent.click(openEditAction());
 
     // Now Save/Cancel render.
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+  });
+
+  describe('Edit is a header action (#1666)', () => {
+    const menuContaining = (label: string) => screen.getByText(label).parentElement as HTMLElement;
+
+    it('opens the edit form from the head without opening More actions', () => {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+
+      expect(screen.getByPlaceholderText('First name is plenty')).toBeInTheDocument();
+    });
+
+    it('no longer lists Edit details in the More actions menu', () => {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+      const menu = menuContaining('Log interaction');
+      expect(within(menu).queryByText('Edit details')).not.toBeInTheDocument();
+      // The header button is still there while the menu is open.
+      expect(screen.getAllByRole('button', { name: 'Edit details' })).toHaveLength(1);
+    });
+
+    it('keeps Edit out of the head and the menu for a viewer', () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'viewer_1', displayName: 'Viewer Val' },
+        isAdmin: false,
+        role: 'viewer',
+        effectiveUserId: 'viewer_1',
+      });
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+      expect(screen.queryByRole('button', { name: 'Edit details' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+      const menu = menuContaining('Log interaction');
+      expect(within(menu).queryByText('Edit details')).not.toBeInTheDocument();
+    });
   });
 
   it('an empty tab renders without a forced min-height (#780)', () => {
@@ -600,7 +632,7 @@ describe('ContactDetailsModal Component', () => {
     await screen.findByText('John Doe');
 
     // Click edit details
-    const editBtn = openEditMenu();
+    const editBtn = openEditAction();
     fireEvent.click(editBtn);
 
     // Get phone input
@@ -639,7 +671,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     
     // Click edit details
-    const editBtn = openEditMenu();
+    const editBtn = openEditAction();
     fireEvent.click(editBtn);
 
     // Modify firstName, notes
@@ -674,7 +706,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click edit details
-    const editBtn = openEditMenu();
+    const editBtn = openEditAction();
     fireEvent.click(editBtn);
 
     expect(screen.getByPlaceholderText('First name is plenty')).toBeRequired();
@@ -815,7 +847,7 @@ describe('ContactDetailsModal Component', () => {
     await screen.findByText('John Doe');
 
     // Click edit details
-    const editBtn = openEditMenu();
+    const editBtn = openEditAction();
     await act(async () => {
       fireEvent.click(editBtn);
     });
@@ -1626,7 +1658,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    const editBtn = openEditMenu();
+    const editBtn = openEditAction();
     fireEvent.click(editBtn);
 
     const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
@@ -1766,7 +1798,7 @@ describe('ContactDetailsModal Component', () => {
     );
     await screen.findByText('Prince');
 
-    fireEvent.click(openEditMenu());
+    fireEvent.click(openEditAction());
     const lastInput = screen.getByPlaceholderText('e.g. Johnson');
     fireEvent.change(lastInput, { target: { value: 'davies' } });
 
@@ -1797,7 +1829,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithHall} />);
     await screen.findByText('John Doe');
 
-    fireEvent.click(openEditMenu());
+    fireEvent.click(openEditAction());
 
     // #730: the contact-detail edit form no longer exposes a "How we met"
     // select or an ADDRESS input. Both must be gone.
@@ -1845,7 +1877,7 @@ describe('ContactDetailsModal Component', () => {
     const openEditing = async (contact: Record<string, unknown>) => {
       render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, ...contact }} />);
       await screen.findByText('John Doe');
-      fireEvent.click(openEditMenu());
+      fireEvent.click(openEditAction());
     };
     const savedUpdate = () =>
       (vi.mocked(firestore.updateDoc).mock.calls as unknown[][]).find(([, d]) => 'year' in (d as object))![1] as Record<string, unknown>;
@@ -1941,7 +1973,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    fireEvent.click(openEditMenu());
+    fireEvent.click(openEditAction());
     const tagsInput = screen.getByPlaceholderText('e.g. Gospel, Fall2023');
     fireEvent.change(tagsInput, { target: { value: 'alpha, beta ,  gamma' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
@@ -1958,7 +1990,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     await screen.findByText('John Doe');
 
-    fireEvent.click(openEditMenu());
+    fireEvent.click(openEditAction());
     const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
 
     fireEvent.change(phoneInput, { target: { value: '123' } });
@@ -2613,7 +2645,7 @@ describe('ContactDetailsModal Component', () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Open edit mode
-    const editBtn = openEditMenu();
+    const editBtn = openEditAction();
     await user.click(editBtn);
 
     // Verify existing tags rendered as chips with remove button inside edit form
@@ -2973,12 +3005,13 @@ describe('removing interactions (#650)', () => {
       );
     };
 
-    it('shows a Student Edit but no Delete in the More menu', async () => {
+    it('shows a Student Edit in the header but no Delete in the More menu', async () => {
       renderFor('operator');
       await screen.findByText('John Doe');
 
+      expect(screen.getByRole('button', { name: 'Edit details' })).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-      expect(screen.getByText('Edit details')).toBeInTheDocument();
+      expect(screen.getByText('Log interaction').parentElement).not.toHaveTextContent('Edit details');
       expect(screen.queryByText('Delete Contact')).not.toBeInTheDocument();
     });
 
@@ -3004,8 +3037,9 @@ describe('removing interactions (#650)', () => {
       renderFor(role);
       await screen.findByText('John Doe');
 
+      expect(screen.getByRole('button', { name: 'Edit details' })).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-      expect(screen.getByText('Edit details')).toBeInTheDocument();
+      expect(screen.getByText('Log interaction').parentElement).not.toHaveTextContent('Edit details');
       expect(screen.getByText('Delete Contact')).toBeInTheDocument();
     });
 
@@ -3168,8 +3202,7 @@ describe('ContactDetailsModal — the kind of person', () => {
   });
 
   const openEdit = () => {
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    fireEvent.click(screen.getByText('Edit details'));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
   };
 
   it('shows a Trainee who a person is, though they cannot change it', () => {
