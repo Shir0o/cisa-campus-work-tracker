@@ -37,6 +37,7 @@ import { subscribeTiedSubcollection } from "../../lib/contactQueries";
 import FirstRunCard from "../../components/landing/FirstRunCard";
 import AskTheTeam from "../../components/landing/AskTheTeam";
 import { useLayout } from "../../App";
+import { useI18n } from "../../components/LanguageProvider";
 
 // One thing the full-timer has put on the trainee's plate: a nudge to follow up
 // or a question awaiting a reply. "Open" jumps into the contact's conversation.
@@ -55,6 +56,7 @@ function WaitingRow({
   onOpen: () => void;
   onHandled: () => void;
 }) {
+  const { t } = useI18n();
   const isNudge = item.kind === "nudge";
   const Icon = isNudge ? Bell : HelpCircle;
   const cls = isNudge ? "text-warning bg-warning/10" : "text-stage-amber bg-stage-amber-soft";
@@ -88,7 +90,7 @@ function WaitingRow({
               )}
             </div>
             {!read && (
-              <span className="flex-none mt-1.5 w-[7px] h-[7px] rounded-full bg-primary" role="img" aria-label="Unread" />
+              <span className="flex-none mt-1.5 w-[7px] h-[7px] rounded-full bg-primary" role="img" aria-label={t("ask.unread", "Unread")} />
             )}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -125,6 +127,7 @@ function WaitingRow({
 // the prayers you're holding.
 export default function LandingTrainee() {
   const { user, effectiveUserId, effectiveUserName } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { openLogInteraction, openNewContact } = useLayout();
   const uid = effectiveUserId || user?.uid;
@@ -413,7 +416,7 @@ export default function LandingTrainee() {
         </p>
       ) : waiting.length === 0 ? (
         threadsLoaded && (
-          <p className="mt-12 text-sm text-on-surface-variant">Nothing's waiting on you.</p>
+          <p className="mt-12 text-sm text-on-surface-variant">{t("ask.nothing_waiting", "Nothing's waiting on you.")}</p>
         )
       ) : (
         <section className="mt-12">

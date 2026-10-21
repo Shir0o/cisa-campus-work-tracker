@@ -710,6 +710,8 @@
     "composer_label": "Tu pregunta para el equipo",
     "trigger": "Pregunta al equipo…",
     "see_all": "Ver todo",
+    "unread": "Sin leer",
+    "nothing_waiting": "No hay nada esperándote.",
     "ask": "Preguntar",
     "empty": "Todavía no has preguntado nada. Las preguntas que no pertenecen a la página de nadie — cómo empezar una conversación en la mesa del club, qué decir cuando estás atascado — viven aquí.",
     "waited_today": "preguntado hoy",
