@@ -7,6 +7,9 @@
 # Credentials arrive as E2E_TEST_CREDENTIALS, the full JSON of
 # e2e/.test-credentials.json (role key → { email, password }). They are never
 # committed in the flows (#1713).
+#
+# Flows run one at a time so a failure is dumped while its screen is still up;
+# `maestro test .maestro/` moved on to the next flow before the dump.
 set -e
 
 adb install android/app/build/outputs/apk/release/app-release.apk
@@ -30,21 +33,29 @@ STUDENT_PASSWORD=$(cred student password)
 COMMUNITY_EMAIL=$(cred community email)
 COMMUNITY_PASSWORD=$(cred community password)
 
-# On failure, print what the app actually showed and logged, so the cause is
-# readable in the job log without the artifact.
-if ! maestro test \
-  -e FT_EMAIL="$FT_EMAIL" \
-  -e FT_PASSWORD="$FT_PASSWORD" \
-  -e TRAINEE_EMAIL="$TRAINEE_EMAIL" \
-  -e TRAINEE_PASSWORD="$TRAINEE_PASSWORD" \
-  -e STUDENT_EMAIL="$STUDENT_EMAIL" \
-  -e STUDENT_PASSWORD="$STUDENT_PASSWORD" \
-  -e COMMUNITY_EMAIL="$COMMUNITY_EMAIL" \
-  -e COMMUNITY_PASSWORD="$COMMUNITY_PASSWORD" \
-  .maestro/; then
-  adb shell uiautomator dump /sdcard/ui.xml || true
-  adb shell cat /sdcard/ui.xml || true
-  echo
-  adb logcat -d -s ReactNativeJS:V ReactNative:V AndroidRuntime:E | tail -n 200 || true
-  exit 1
-fi
+run_flow() {
+  maestro test \
+    -e FT_EMAIL="$FT_EMAIL" \
+    -e FT_PASSWORD="$FT_PASSWORD" \
+    -e TRAINEE_EMAIL="$TRAINEE_EMAIL" \
+    -e TRAINEE_PASSWORD="$TRAINEE_PASSWORD" \
+    -e STUDENT_EMAIL="$STUDENT_EMAIL" \
+    -e STUDENT_PASSWORD="$STUDENT_PASSWORD" \
+    -e COMMUNITY_EMAIL="$COMMUNITY_EMAIL" \
+    -e COMMUNITY_PASSWORD="$COMMUNITY_PASSWORD" \
+    "$1"
+}
+
+for flow in .maestro/*.yaml; do
+  echo "::group::maestro $flow"
+  # On failure, print what the app actually showed and logged, so the cause is
+  # readable in the job log without the artifact.
+  if ! run_flow "$flow"; then
+    adb shell uiautomator dump /sdcard/ui.xml || true
+    adb shell cat /sdcard/ui.xml || true
+    echo
+    adb logcat -d -s ReactNativeJS:V ReactNative:V AndroidRuntime:E | tail -n 200 || true
+    exit 1
+  fi
+  echo "::endgroup::"
+done

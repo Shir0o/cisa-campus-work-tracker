@@ -109,5 +109,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: maestro-debug-artifacts
-          path: ~/.maestro/tests/
+          path: /home/runner/.maestro/tests/
           retention-days: 7
