@@ -145,7 +145,7 @@ test.describe('Full-timer journey (#1477)', () => {
     await expect(pointerAfter.locator('.tabular-nums')).toHaveText(String(remaining), { timeout: 10_000 });
   });
 
-  test('the contact page moves the stage and posts a team discussion (#1627)', async ({ page }) => {
+  test('the contact page moves the stage and posts a team discussion (#1627, #1666)', async ({ page }) => {
     await signInAs(page, 'fulltimer');
     await page.goto('/directory');
     await waitForShell(page);
@@ -199,6 +199,13 @@ test.describe('Full-timer journey (#1477)', () => {
       .getByRole('button', { name: /^Conversation/ })
       .click();
     await expect(contactPage.locator('[aria-label="New in Full-timers"]')).toHaveCount(0);
+
+    // #1666: "Edit details" is a header action, not something buried in the
+    // overflow menu. It stays the only instance while the menu is open.
+    await expect(contactPage.getByRole('button', { name: 'Edit details' })).toBeVisible();
+    await contactPage.getByRole('button', { name: 'More actions' }).click();
+    await expect(contactPage.getByText('Log interaction')).toBeVisible();
+    await expect(contactPage.getByRole('button', { name: 'Edit details' })).toHaveCount(1);
   });
 
   test('Add to story writes and reads back into the story', async ({ page }) => {
@@ -262,8 +269,8 @@ test.describe('Full-timer journey (#1477)', () => {
 
     // Row 20: the sign-up shape carries `email: null`; the rule once required an
     // email on every contact write, so any edit was denied.
-    await contactPage.getByRole('button', { name: 'More actions' }).first().click();
-    await page.getByRole('button', { name: /edit details/i }).first().click();
+    // #1666: Edit is a header action, not a More-actions item.
+    await contactPage.getByRole('button', { name: 'Edit details' }).first().click();
     const notes = page.locator('textarea').first();
     await expect(notes).toBeVisible({ timeout: 5_000 });
     await notes.fill(`Edited a null-email contact ${Date.now()}`);
