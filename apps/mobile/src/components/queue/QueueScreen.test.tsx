@@ -217,8 +217,10 @@ describe('QueueScreen', () => {
       expect(setTodoDone).toHaveBeenLastCalledWith('t2', false);
     });
 
-    it('Undo after a saved log brings the card back and never deletes what was logged', async () => {
+    it('Undo after a saved log brings the card back, reopens its to-do, and never deletes what was logged', async () => {
       const { getByText, queueState } = await renderToday();
+      // Logging from the card hands the sheet its to-do, which saving completes.
+      await fireEvent.press(getByText('Log what happened'));
       const { onSaved } = mockLogSheet.mock.calls.at(-1)![0];
       await act(() => onSaved('Logged.', 'task:t1'));
 
@@ -230,7 +232,7 @@ describe('QueueScreen', () => {
       expect(queueState.unhandle).toHaveBeenCalledWith('task:t1');
       expect(deleteInteraction).not.toHaveBeenCalled();
       expect(deleteTodo).not.toHaveBeenCalled();
-      expect(setTodoDone).not.toHaveBeenCalled();
+      expect(setTodoDone).toHaveBeenCalledWith('t1', false);
     });
   });
 });

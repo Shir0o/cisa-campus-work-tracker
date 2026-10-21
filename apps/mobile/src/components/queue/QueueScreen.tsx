@@ -441,7 +441,11 @@ export function QueueScreen() {
         cardId={logCard}
         onCampus={queuePrefs.prefs.onCampus}
         onSaved={(message, cardId) => {
-          if (cardId) doneForToday(cardId);
+          // Saving completed the card's to-do (if it had one), and a follow-up
+          // card only shows while its to-do is open — so Undo reopens it too.
+          // The logged conversation itself stays saved.
+          const task = logTask;
+          if (cardId) doneForToday(cardId, task ? () => void setTodoDone(task, false) : undefined);
           else setToast(message);
         }}
         onOpenContact={(id) => router.push(`/contact/${id}`)}
