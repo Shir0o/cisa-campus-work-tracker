@@ -73,6 +73,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   - **No videos or screen recordings**, and do not capture every combination or intermediate state.
   - The user performs a short manual playtest at milestones (e.g. after a ticket lands), rather than agents recording or continuously running the app.
 
+## 6. CPU Conservation & GitHub CI Test Delegation
+
+**Do not run full test suites locally. Let GitHub CI handle tests.**
+
+Running comprehensive test suites locally consumes excessive CPU, triggers thermal throttling, and wastes local cycles. All repositories run full test matrices in GitHub Actions CI:
+- **No full test runs locally**: Do not run full test suites (e.g. `flutter test`, `npm test`, `jest`, `pytest`, `cargo test`, `go test`, or coverage runs) locally before opening a pull request.
+- **Lightweight local gates only**: Local verification prior to pushing is strictly limited to fast static checks: typechecking (`tsc --noEmit`, `flutter analyze`), linting (`eslint`, `dart analyze`), and formatting checks.
+- **Targeted single tests during TDD**: If writing a unit test for a bug reproduction or new seam, you may execute *only that specific test file* if strictly needed to verify behavior. Never execute the broader suite.
+- **Push and let CI verify**: Push the branch, open the PR, and monitor GitHub Actions (`gh pr checks <pr> --watch`). If and only if CI fails, inspect the failing job log and fix the targeted issue.
+- **Sequential execution for any local heavy tasks**: Any remaining required local heavy tasks (e.g. build steps or code generators) must strictly run sequentially (`cmd1 && cmd2`), never concurrently.
+
 ## 6. Legal & Regulatory Compliance (US & California)
 
 **Prevent statutory exposure before writing or shipping features.**
@@ -119,8 +130,8 @@ Before introducing new features, enforce these gates:
 - **Verification scope**: While iterating, run only the checks the change can actually break - a doc-only change needs no typecheck/lint/test/build at all. Before pushing a PR, run the full gate once, in order:
   ```bash
   git fetch origin main && git rebase origin/main
-  npm run typecheck && npm run lint && npm run test:coverage && npm run build
-  This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
+  npm run typecheck && npm run lint && npm run build
+  Offload full test runs and coverage to GitHub CI. Fix static failures; never push through them.
   A PR that adds or edits an e2e spec also runs that spec under the emulator: `npm run test:e2e:emulator -- e2e/<spec>.spec.ts`.
 ## 8. Regression Testing (E2E)
 **Each check lives at the cheapest layer that would have gone red on the escape.** The reasoning is in the e2e map (#1457); setup is in `e2e/README.md`.

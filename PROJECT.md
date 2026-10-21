@@ -25,8 +25,8 @@
 - **Verification scope**: While iterating, run only the checks the change can actually break - a doc-only change needs no typecheck/lint/test/build at all. Before pushing a PR, run the full gate once, in order:
   ```bash
   git fetch origin main && git rebase origin/main
-  npm run typecheck && npm run lint && npm run test:coverage && npm run build
-  This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
+  npm run typecheck && npm run lint && npm run build
+  Offload full test runs and coverage to GitHub CI. Fix static failures; never push through them.
 ---
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
 ---
