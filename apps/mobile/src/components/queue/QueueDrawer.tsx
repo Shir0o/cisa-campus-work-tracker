@@ -25,6 +25,7 @@ export function DrawerButton({ onPress }: { onPress: () => void }) {
     <Pressable
       accessibilityLabel={t('mobile.drawer.menu')}
       accessibilityRole="button"
+      testID="open-drawer"
       onPress={onPress}
       hitSlop={10}
       style={({ pressed }) => ({

@@ -2,30 +2,42 @@ appId: com.cisa.campus
 ---
 - launchApp:
     clearState: true
-- tapOn: "Email"
-- inputText: "cisa-student@hub.com"
-- tapOn: "Password"
-- inputText: "cisastudent3!"
-- tapOn: "Sign in"
+- assertVisible: "Sign in"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${STUDENT_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${STUDENT_PASSWORD}
+- tapOn:
+    id: "sign-in-submit"
 
 # Student View
-- assertVisible: "Friday Gathering"
+- extendedWaitUntil:
+    visible: "Bring someone with you"
+    timeout: 20000
 - tapOn: "Prayer"
 - assertVisible: "Ask the team to pray"
 - tapOn: "You"
-- assertVisible: "WHO TO REACH"
+- assertVisible: "Who to reach"
 
 # Community View Sign in
 - launchApp:
     clearState: true
-- tapOn: "Email"
-- inputText: "cisa-community@hub.com"
-- tapOn: "Password"
-- inputText: "cisacommunity4!"
-- tapOn: "Sign in"
+- assertVisible: "Sign in"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${COMMUNITY_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${COMMUNITY_PASSWORD}
+- tapOn:
+    id: "sign-in-submit"
 
 # Community Hospitality Offer
-- assertVisible: "OPEN YOUR HOME"
+- extendedWaitUntil:
+    visible: "Open your home"
+    timeout: 20000
 - assertVisible: "Offer to host"
 - tapOn: "Prayer"
-- assertVisible: "I'm praying for this"
+- assertVisible: "Names, not cases. Thank you for carrying them."

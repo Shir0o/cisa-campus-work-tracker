@@ -94,6 +94,8 @@ jobs:
 
       - name: Run Maestro E2E tests on Android Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
+        env:
+          E2E_TEST_CREDENTIALS: ${{ secrets.E2E_TEST_CREDENTIALS }}
         with:
           api-level: 31
           target: default
@@ -102,9 +104,27 @@ jobs:
           working-directory: apps/mobile
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
+
+            # Credentials come from the E2E_TEST_CREDENTIALS secret (the full
+            # JSON of e2e/.test-credentials.json), never from the flows (#1713).
+            if [ -z "$E2E_TEST_CREDENTIALS" ]; then
+              echo "::error::E2E_TEST_CREDENTIALS secret is not set"
+              exit 1
+            fi
+            cred() { printf '%s' "$E2E_TEST_CREDENTIALS" | jq -er --arg role "$1" --arg field "$2" '.[$role][$field]'; }
+
             # On failure, print what the app actually showed and logged, so the
             # cause is readable in the job log without the artifact.
-            maestro test .maestro/ || { adb shell uiautomator dump /sdcard/ui.xml; adb shell cat /sdcard/ui.xml; echo; adb logcat -d -s ReactNativeJS:V ReactNative:V AndroidRuntime:E | tail -n 200; exit 1; }
+            maestro test \
+              -e FT_EMAIL="$(cred fulltimer email)" \
+              -e FT_PASSWORD="$(cred fulltimer password)" \
+              -e TRAINEE_EMAIL="$(cred trainee email)" \
+              -e TRAINEE_PASSWORD="$(cred trainee password)" \
+              -e STUDENT_EMAIL="$(cred student email)" \
+              -e STUDENT_PASSWORD="$(cred student password)" \
+              -e COMMUNITY_EMAIL="$(cred community email)" \
+              -e COMMUNITY_PASSWORD="$(cred community password)" \
+              .maestro/ || { adb shell uiautomator dump /sdcard/ui.xml; adb shell cat /sdcard/ui.xml; echo; adb logcat -d -s ReactNativeJS:V ReactNative:V AndroidRuntime:E | tail -n 200; exit 1; }
 
       - name: Upload Maestro output on failure
         if: failure()

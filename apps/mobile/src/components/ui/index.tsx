@@ -92,6 +92,7 @@ export function Button({
   disabled,
   full,
   style,
+  testID,
 }: {
   title: string;
   onPress?: () => void;
@@ -99,6 +100,7 @@ export function Button({
   disabled?: boolean;
   full?: boolean;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }) {
   const { colors, radius, spacing } = useTheme();
   const bg =
@@ -109,6 +111,7 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      testID={testID}
       style={({ pressed }) => [
         {
           backgroundColor: bg,

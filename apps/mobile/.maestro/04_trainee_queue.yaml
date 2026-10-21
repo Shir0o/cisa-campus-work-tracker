@@ -2,21 +2,28 @@ appId: com.cisa.campus
 ---
 - launchApp:
     clearState: true
-- tapOn: "Email"
-- inputText: "cisa-trainee@hub.com"
-- tapOn: "Password"
-- inputText: "cisatrainee2!"
-- tapOn: "Sign in"
+- assertVisible: "Sign in"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${TRAINEE_EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${TRAINEE_PASSWORD}
+- tapOn:
+    id: "sign-in-submit"
 
-# Trainee Focus Queue
-- assertVisible: "Mark it done"
+# Trainee Focus Queue — qa-db seeds an overdue Board to-do, so the first card
+# is a "due" card and carries these two actions.
+- extendedWaitUntil:
+    visible: "Mark it done"
+    timeout: 20000
 - assertVisible: "Push to tomorrow"
 - assertVisible: "Later today"
 
 # Drawer Navigation
 - tapOn:
-    point: "50,2250"
-- assertVisible: "The queue is the app"
+    id: "open-drawer"
+- assertVisible: "The queue is the app. Everything else lives here."
 - assertVisible: "People"
 - assertVisible: "The Journey"
 - assertVisible: "Messages"
