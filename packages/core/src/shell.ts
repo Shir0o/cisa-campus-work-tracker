@@ -118,32 +118,6 @@ export const FT_MORE_FOOT =
 
 // ── the queue's chrome copy (`.m2-top`, `.m2-queue`, `.m2-clear`) ──────────
 
-export interface QueueMeta {
-  /** "Today · 8 to look after" */
-  left: string;
-  /** "3 of 8", or "" when there is nothing to count. */
-  right: string;
-}
-
-/**
- * The two labels either side of the meta row. `total` counts what the day
- * held — everything still queued PLUS what's already been looked after — so
- * working through cards moves the counter instead of shrinking the day.
- *
- * `index` is where the current card sits within what's still queued (0 for
- * the card on top). Jumping to the 4th card from "Everything today", or
- * swiping one to Later, moves the position even though nothing was handled.
- */
-export function queueMeta(remaining: number, handled: number, index = 0): QueueMeta {
-  const total = remaining + handled;
-  if (total === 0) return { left: "Today", right: "" };
-  const position = Math.min(handled + index + 1, total);
-  return {
-    left: `Today · ${total} to look after`,
-    right: `${position} of ${total}`,
-  };
-}
-
 /**
  * The floor line under the up-next faces: "Then Ana, Rio, Kofi +2".
  * `names` is what each waiting card calls itself — a person's first name, or
