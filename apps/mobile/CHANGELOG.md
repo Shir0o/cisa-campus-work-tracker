@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.12.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.11.0...v1.12.0) (2026-10-22)
+
+
+### Features
+
+* **metrics:** cross-platform daily performance & quality tracking pipeline (closes [#1677](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1677)) ([#1686](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1686)) ([c719a27](https://github.com/Shir0o/cisa-campus-work-tracker/commit/c719a27dd49cfda119d979b5c4689a05ac1e83d5))
+* **mobile:** add CampusModeScreen for the on-campus home (D5, raised) ([#1717](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1717)) ([c94a806](https://github.com/Shir0o/cisa-campus-work-tracker/commit/c94a806deb524a18ff1453fd28efd77e6eeb1a56))
+* **mobile:** off-campus Today with a clear footer, tap-to-read and Undo ([#1719](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1719)) ([fae78e2](https://github.com/Shir0o/cisa-campus-work-tracker/commit/fae78e27f18c562440696cd8c67ce23177df4682))
+* **mobile:** switch the trainee home to campus mode on campus ([#1724](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1724)) ([9f0e06a](https://github.com/Shir0o/cisa-campus-work-tracker/commit/9f0e06a14fc10f9cd5b64afe68550ab737877b7f))
+* **mobile:** synthetic bundle metrics & export performance tracking in daily pipeline (closes [#1687](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1687)) ([#1688](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1688)) ([baff7e4](https://github.com/Shir0o/cisa-campus-work-tracker/commit/baff7e4a117fda94a5eb9d1e7cf69d3a7f3326f5))
+
+
+### Bug Fixes
+
+* **mobile-e2e:** fix curl flag from -FsSL to -fsSL for Maestro installation ([#1632](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1632)) ([#1642](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1642)) ([a67f7c5](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a67f7c5d0a570fcb7874bf93ec4ac7149628720f))
+* **mobile:** keep name-bearing prayer buttons on one line ([#1703](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1703)) ([#1734](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1734)) ([d9bc9c8](https://github.com/Shir0o/cisa-campus-work-tracker/commit/d9bc9c86c295a8fb0b8f875ed15b714afd82bc78))
+* **mobile:** mark raised theme hex tokens for the colour guard ([#1715](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1715)) ([#1722](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1722)) ([124c3d3](https://github.com/Shir0o/cisa-campus-work-tracker/commit/124c3d31d1777a18acde69efef54de06d3ba12e5))
+* **mobile:** pin the clock in the off-campus Today tests ([#1728](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1728)) ([a2032b2](https://github.com/Shir0o/cisa-campus-work-tracker/commit/a2032b2cb5980ed93c725bfa67f20b1f163a53fe)), closes [#1726](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1726)
+* **mobile:** push content and inputs above soft keyboard in shared shells (closes [#1704](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1704)) ([#1718](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1718)) ([81f1470](https://github.com/Shir0o/cisa-campus-work-tracker/commit/81f1470499e8d30329370cee6ce8a329d13a9da7))
+* **mobile:** say so when a Today card's body is cut off ([#1715](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1715)) ([#1725](https://github.com/Shir0o/cisa-campus-work-tracker/issues/1725)) ([19484e8](https://github.com/Shir0o/cisa-campus-work-tracker/commit/19484e8ee551ca23f95c8249b2a70ddddf4db50f))
+
 ## [1.11.0](https://github.com/Shir0o/cisa-campus-work-tracker/compare/v1.10.0...v1.11.0) (2026-10-14)
 
 
