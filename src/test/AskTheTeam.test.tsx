@@ -1,8 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import AskTheTeam from "../components/landing/AskTheTeam";
 import { useAuth } from "../components/AuthProvider";
 import { addAsk, deleteAskReply } from "../lib/asks";
+
+const render = (ui: React.ReactElement) => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
 
 vi.mock("../components/AuthProvider", () => ({
   useAuth: vi.fn(),
@@ -28,7 +31,8 @@ vi.mock("firebase/firestore", () => ({
   }),
 }));
 
-const mockMessages = [
+let mockMessages: Record<string, unknown>[] = [];
+const baseMessages = [
   {
     id: "q1",
     parentId: null,
@@ -73,12 +77,25 @@ const mockMessages = [
   },
 ];
 
+// Older than the three above, so the home's cap of 3 leaves it off.
+const olderQuestion = {
+  id: "q0",
+  parentId: null,
+  owner: "t1",
+  from: "t1",
+  fromName: "Zion Park",
+  kind: "question",
+  body: "An older question that only lives on /questions",
+  at: "2026-07-20T10:00:00.000Z",
+};
+
 vi.mock("../lib/asks", () => ({
   subscribeStaffAsks: (_uid: string, cb: (m: unknown[]) => void) => {
     cb(mockMessages);
     return () => {};
   },
-  askQuestions: (all: { parentId: string | null }[]) => all.filter((m) => !m.parentId),
+  askQuestions: (all: { parentId: string | null; at: string }[]) =>
+    all.filter((m) => !m.parentId).sort((a, b) => Date.parse(b.at) - Date.parse(a.at)),
   askRepliesOf: (all: { parentId: string | null }[], parentId: string) =>
     all.filter((m) => m.parentId === parentId),
   askWaitedDays: () => 0,
@@ -104,6 +121,16 @@ vi.mock("../lib/asks", () => ({
   addAsk: vi.fn(),
   deleteAskReply: vi.fn(),
 }));
+
+beforeEach(() => {
+  mockMessages = baseMessages;
+});
+
+const PLACEHOLDER = "What do you want to ask? Say it how you'd say it out loud.";
+const openComposer = () => {
+  fireEvent.click(screen.getByRole("button", { name: "Ask the team…" }));
+  return screen.getByRole("textbox", { name: "Your question for the team" });
+};
 
 describe("AskTheTeam component", () => {
   beforeEach(() => {
@@ -144,12 +171,11 @@ describe("AskTheTeam component", () => {
   it("allows submitting a new question and confirms it reached the team", () => {
     render(<AskTheTeam meUid="t1" />);
 
-    const textarea = screen.getByPlaceholderText(
-      "What do you want to ask? Say it how you'd say it out loud.",
-    );
+    const textarea = openComposer();
+    expect(textarea).toHaveAttribute("placeholder", PLACEHOLDER);
     fireEvent.change(textarea, { target: { value: "New question here" } });
 
-    const askBtn = screen.getByRole("button", { name: /ask/i });
+    const askBtn = screen.getByRole("button", { name: /^ask$/i });
     fireEvent.click(askBtn);
 
     expect(addAsk).toHaveBeenCalledWith({
@@ -160,6 +186,90 @@ describe("AskTheTeam component", () => {
     expect(
       screen.getByText("Asked. The team can see it."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("AskTheTeam collapsed composer", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { uid: "t1", displayName: "Zion Park" },
+    });
+  });
+
+  it("starts as a single trigger row with no textarea", () => {
+    render(<AskTheTeam meUid="t1" />);
+    expect(screen.getByRole("button", { name: "Ask the team…" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("opening the trigger shows the composer and moves focus into it", () => {
+    render(<AskTheTeam meUid="t1" />);
+    const textarea = openComposer();
+    expect(textarea).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Ask the team…" })).not.toBeInTheDocument();
+  });
+
+  it("Escape collapses it and returns focus to the trigger", () => {
+    render(<AskTheTeam meUid="t1" />);
+    const textarea = openComposer();
+    fireEvent.change(textarea, { target: { value: "half a thought" } });
+    fireEvent.keyDown(textarea, { key: "Escape" });
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask the team…" })).toHaveFocus();
+    // The draft survives a collapse.
+    expect(openComposer()).toHaveValue("half a thought");
+  });
+
+  it("an empty blur collapses it; a blur with a draft keeps it open", () => {
+    render(<AskTheTeam meUid="t1" />);
+    let textarea = openComposer();
+    fireEvent.blur(textarea);
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+
+    textarea = openComposer();
+    fireEvent.change(textarea, { target: { value: "Still writing" } });
+    fireEvent.blur(textarea);
+    expect(screen.getByRole("textbox", { name: "Your question for the team" })).toBeInTheDocument();
+  });
+
+  it("Cmd+Enter sends the question and collapses back to the trigger", () => {
+    render(<AskTheTeam meUid="t1" />);
+    const textarea = openComposer();
+    fireEvent.change(textarea, { target: { value: "Sent by keyboard" } });
+    fireEvent.keyDown(textarea, { key: "Enter", metaKey: true });
+    expect(addAsk).toHaveBeenCalledWith({ from: "t1", fromName: "Zion Park", body: "Sent by keyboard" });
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("says once that every full-timer sees it", () => {
+    render(<AskTheTeam meUid="t1" />);
+    openComposer();
+    expect(screen.getAllByText(/every full-timer sees this/i)).toHaveLength(1);
+  });
+});
+
+describe("AskTheTeam home cap", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { uid: "t1", displayName: "Zion Park" },
+    });
+  });
+
+  it("shows the 3 most recent questions, then See all to /questions", () => {
+    mockMessages = [...baseMessages, olderQuestion];
+    render(<AskTheTeam meUid="t1" />);
+    expect(screen.getByText("What do we do about the club table flyers?")).toBeInTheDocument();
+    expect(screen.getByText("Question recorded in person")).toBeInTheDocument();
+    expect(screen.getByText("How do you start a conversation at the club table?")).toBeInTheDocument();
+    expect(screen.queryByText(olderQuestion.body)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /see all/i })).toHaveAttribute("href", "/questions");
+  });
+
+  it("has no See all when every question already fits", () => {
+    render(<AskTheTeam meUid="t1" />);
+    expect(screen.queryByRole("link", { name: /see all/i })).not.toBeInTheDocument();
   });
 });
 

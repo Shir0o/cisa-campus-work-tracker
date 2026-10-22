@@ -40,7 +40,7 @@ export default function BnpbReviewCard({ className }: { className?: string } = {
   return (
     <section
       className={cn(
-        'rounded-3xl border border-outline-variant/40 bg-surface-container p-5',
+        'rounded-xl border border-outline-variant/40 bg-surface-container p-5',
         className,
       )}
     >
@@ -51,13 +51,13 @@ export default function BnpbReviewCard({ className }: { className?: string } = {
         <div className="flex-1 min-w-0">
           <div className="font-medium text-on-surface">{countText}</div>
           {needName > 0 && (
-            <div className="text-[13px] text-on-surface-variant mt-0.5">{needNameText}</div>
+            <div className="text-xs text-on-surface-variant mt-0.5">{needNameText}</div>
           )}
         </div>
         <button
           type="button"
           onClick={() => navigate('/suggestions')}
-          className="shrink-0 px-4 py-2 rounded-full bg-primary text-on-primary text-[13px] font-medium hover:bg-primary/90 transition-colors"
+          className="shrink-0 px-4 py-2 rounded-[14px] bg-primary text-on-primary text-xs font-medium hover:bg-primary/90 transition-colors"
         >
           {t('bnpb.home_review_cta')}
         </button>

@@ -129,4 +129,20 @@ describe('primitives components', () => {
     openBtn.click();
     expect(onOpen).toHaveBeenCalled();
   });
+
+  it('offers Log interaction only when the surface wires it, without opening the card', () => {
+    const onOpen = vi.fn();
+    const onLog = vi.fn();
+    const { rerender } = render(
+      <ReachCard contact={{ id: 'c1', name: 'Alice' } as any} days={3} stages={[]} onOpen={onOpen} />
+    );
+    expect(screen.queryByRole('button', { name: /^Log interaction$/i })).not.toBeInTheDocument();
+
+    rerender(
+      <ReachCard contact={{ id: 'c1', name: 'Alice' } as any} days={3} stages={[]} onOpen={onOpen} onLog={onLog} />
+    );
+    screen.getByRole('button', { name: /^Log interaction$/i }).click();
+    expect(onLog).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
 });

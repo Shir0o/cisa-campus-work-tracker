@@ -62,6 +62,10 @@
         "displayName": "Label",
         "purpose": "Small uppercase category tags, rail dividers, and metadata."
       },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Timestamps, role suffixes, inline text links, and compact badges."
+      },
       "scripture": {
         "displayName": "Scripture",
         "purpose": "Literary passages and key lines in the Bible study reader."

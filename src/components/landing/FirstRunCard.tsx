@@ -135,7 +135,7 @@ export default function FirstRunCard({
                     type="button"
                     onClick={() => step.to && navigate(step.to)}
                     aria-label={`Show me: ${step.label}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 active:scale-[0.98] rounded-full transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-accent border border-outline-variant hover:bg-accent-soft/60 active:scale-[0.98] rounded-[14px] transition-all cursor-pointer"
                   >
                     Show me
                     <ArrowRight className="w-3 h-3" aria-hidden="true" />
