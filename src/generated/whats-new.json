@@ -1,6 +1,314 @@
 {
-  "latestReleaseId": "2026-10-13-v1.11.0",
+  "latestReleaseId": "2026-10-21-v1.12.0",
   "releases": [
+    {
+      "id": "2026-10-21-v1.12.0",
+      "version": "1.12.0",
+      "title": "Release 1.12.0",
+      "date": "2026-10-21",
+      "platforms": [
+        "web",
+        "mobile"
+      ],
+      "lines": [
+        "Tidy the Trainee home after a UI/UX critique.",
+        "Count only the reader's own work in the Full-timer first-run checklist.",
+        "Show the reacher's portrait on an on-behalf story entry.",
+        "Give the kind menu the head's shared popover treatment."
+      ],
+      "overview": "Highlights and updates in this release.",
+      "items": [
+        {
+          "text": "Tidy the Trainee home after a UI/UX critique",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Count only the reader's own work in the Full-timer first-run checklist",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Show the reacher's portrait on an on-behalf story entry",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Give the kind menu the head's shared popover treatment",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Move Delegate from the header into More actions",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Promote Edit details out of the header's overflow menu",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Keep name-bearing prayer buttons on one line",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Match the To ask heading exactly",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Show answer photos on the answered prayer wall",
+          "platforms": [
+            "web"
+          ]
+        },
+        {
+          "text": "Pin the clock in the off-campus Today tests",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Automate weekly micro-improvement discovery and issue sync",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Switch the trainee home to campus mode on campus",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Say so when a Today card's body is cut off",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Resolve guard diff base from the PR merge commit's base parent",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Mark raised theme hex tokens for the colour guard",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Off-campus Today with a clear footer, tap-to-read and Undo",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Define explicit least-privilege workflow permissions",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add CampusModeScreen for the on-campus home (D5, raised)",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Push content and inputs above soft keyboard in shared shells",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Move Edit into hover toolbar",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Give the e2e build its Firebase config, KVM, release build and timeout",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Weekly autonomous micro-improvements pipeline",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Synthetic bundle metrics & export performance tracking in daily pipeline",
+          "platforms": [
+            "mobile"
+          ]
+        },
+        {
+          "text": "Cross-platform daily performance & quality tracking pipeline",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Prayer cards in the prayer tone, edit in the composer",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Control doc translation via global language setting",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Answer questions by Thread reply, keep drafted keys under the filter, make notepad keys removable",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Restore doc editing and markdown mode in DocEditor",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Update feedback FAB button icon from pencil to message-square-plus",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Add the To ask notepad on web",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Interpolate the time into the preset label",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Stop the not-reached toast repeating each visit",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Remove the gap above the sign-up link in the mobile drawer",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Don't mark Full-timers unread for your own message",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Always label the card verb Reviewed",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Track the current section from scroll position in tall sections",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Interpolate the contact name in the release undo snackbar",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "A reply reaches the author of the message it answers",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Clear a walk-in in one tap so re-checking in works",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Fix curl flag from -FsSL to -fsSL for Maestro installation",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Setup Stryker mutation testing for core domain logic",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Parse timestamp objects and fallback navigate on orphan contacts",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        },
+        {
+          "text": "Remove updatedAt from interaction update payload",
+          "platforms": [
+            "web",
+            "mobile"
+          ]
+        }
+      ]
+    },
     {
       "id": "2026-10-13-v1.11.0",
       "version": "1.11.0",
